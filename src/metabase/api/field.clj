@@ -1,11 +1,11 @@
 (ns metabase.api.field
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
             [metabase.models
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
-             [field-values :refer [create-field-values-if-needed! field-should-have-field-values? FieldValues]]]
+             [field-values :refer [create-field-values-if-needed! field-should-have-field-values? field-values->pairs FieldValues]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -70,14 +70,18 @@
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let [field (api/read-check Field id)]
-    (if-not (field-should-have-field-values? field)
-      {:values []}
-      {:values (create-field-values-if-needed! field)})))
+  (try
+    (let [field (api/read-check Field id)]
+      (if-let [field-values (and (field-should-have-field-values? field)
+                                 (create-field-values-if-needed! field))]
+        (-> field-values
+            (assoc :values (field-values->pairs field-values))
+            (dissoc :human_readable_values))
+        {:values []}))
+    (catch Exception e (.printStackTrace e) (throw e))))
 
 (api/defendpoint POST "/:id/dimension"
-  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
-   all distinct values of the field, and a map of human-readable values defined by the user."
+  "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_id} :body}]
   {dimension-type         (s/enum "internal" "external")
    dimension-name         su/NonBlankString
@@ -94,6 +98,13 @@
                    :name dimension-name
                    :human_readable_field_id human_readable_field_id}))
     (Dimension :field_id id)))
+
+(api/defendpoint DELETE "/:id/dimension"
+  "Remove the dimension associated to field at ID"
+  [id]
+  (let [field (api/read-check Field id)]
+    (db/delete! Dimension :field_id id)
+    api/generic-204-no-content))
 
 (defn validate-human-readable-pairs
   "Human readable values are optional, but if present they must be
@@ -124,18 +135,16 @@
                                (map second value-pairs)))))
 
 (api/defendpoint POST "/:id/values"
-  "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
-   or whose base type is `type/Boolean`."
+  "Update the fields values and human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
+   or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
   {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
-  (try
-    (let [field (api/write-check Field id)]
-      (api/check (field-should-have-field-values? field)
-        [400 "You can only update the human readable values of a mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
-      (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
-        (update-field-values! field-value-id value-pairs)
-        (create-field-values! field value-pairs)))
-    (catch Exception e (println "fail") (.printStackTrace e) (throw e)))
+  (let [field (api/write-check Field id)]
+    (api/check (field-should-have-field-values? field)
+      [400 "You can only update the human readable values of a mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
+    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
+      (update-field-values! field-value-id value-pairs)
+      (create-field-values! field value-pairs)))
   {:status :success})
 
 (api/define-routes)

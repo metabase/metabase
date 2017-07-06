@@ -74,9 +74,8 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (field-values->pairs
-     (or (db/select-one [FieldValues :values :human_readable_values] :field_id field-id)
-         (create-field-values! field human-readable-values)))))
+    (or (FieldValues :field_id field-id)
+        (create-field-values! field human-readable-values))))
 
 (defn save-field-values!
   "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."

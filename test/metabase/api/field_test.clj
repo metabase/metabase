@@ -16,6 +16,9 @@
 
 ;; Helper Fns
 
+(def ^:private default-field-values
+  {:id true, :created_at true, :updated_at true, :field_id true})
+
 (defn- db-details []
   (tu/match-$ (db)
     {:created_at         $
@@ -151,13 +154,13 @@
 ;; ## GET /api/field/:id/values
 ;; Should return something useful for a field that has special_type :type/Category
 (expect
-  {:values (mapv vector [1 2 3 4])}
+  (merge default-field-values {:values (mapv vector [1 2 3 4])})
   (do
     ;; clear out existing human_readable_values in case they're set
     (db/update! FieldValues (field-values-id :venues :price)
       :human_readable_values nil)
     ;; now update the values via the API
-    ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
+    (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price))))))
 
 ;; Should return nothing for a field whose special_type is *not* :type/Category
 (expect
@@ -175,63 +178,68 @@
 
 ;; Human readable values are optional
 (expect
-  [{:values (map vector (range 5 10))}
+  [(merge default-field-values {:values (map vector (range 5 10))})
    {:status "success"}
-   {:values (map vector (range 1 5))}]
+   (merge default-field-values {:values (map vector (range 1 5))})]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 5 10), :field_id field-id}]]
-    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
-     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-      {:values (map vector (range 1 5))})
-     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+    (mapv tu/boolean-ids-and-timestamps
+          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+           ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+            {:values (map vector (range 1 5))})
+           ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Existing field values can be updated (with their human readable values)
 (expect
-  [{:values (map vector (range 1 5))}
+  [(merge default-field-values {:values (map vector (range 1 5))})
    {:status "success"}
-   {:values (num->$ (range 1 5))}]
+   (merge default-field-values {:values (num->$ (range 1 5))})]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
-    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
-     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-      {:values (num->$ (range 1 5))})
-     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+    (mapv tu/boolean-ids-and-timestamps
+          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+           ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+            {:values (num->$ (range 1 5))})
+           ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Field values are created when not present
 (expect
-  [{:values []}
+  [(merge default-field-values {:values []})
    {:status "success"}
-   {:values (num->$ (range 1 5))}]
+   (merge default-field-values {:values (num->$ (range 1 5))})]
   (tt/with-temp* [Field [{field-id :id} category-field]]
-    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
-     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-      {:values (num->$ (range 1 5))})
-     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+    (mapv tu/boolean-ids-and-timestamps
+          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+           ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+            {:values (num->$ (range 1 5))})
+           ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset values
 (expect
-  [{:values (mapv vector (range 1 5))}
+  [(merge default-field-values {:values (mapv vector (range 1 5))})
    {:status "success"}
-   {:values []}]
+   (merge default-field-values {:values []})]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
-    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
-     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-      {:values []})
-     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+    (mapv tu/boolean-ids-and-timestamps
+          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+           ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+            {:values []})
+           ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset just human readable values
 (expect
-  [{:values (num->$ (range 1 5))}
+  [(merge default-field-values {:values (num->$ (range 1 5))})
    {:status "success"}
-   {:values (mapv vector (range 1 5))}]
+   (merge default-field-values {:values (mapv vector (range 1 5))})]
   (tt/with-temp* [Field [{field-id :id} category-field]
                   FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id
                                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]]
-    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
-     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-      {:values (mapv vector (range 1 5))})
-     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+    (mapv tu/boolean-ids-and-timestamps
+          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+           ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+            {:values (mapv vector (range 1 5))})
+           ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Should throw when human readable values are present but not for every value
 (expect
@@ -296,3 +304,21 @@
           new-dim         (dimension-for-field field-id-1)]
       [before-creation
        (tu/boolean-ids-and-timestamps new-dim)])))
+
+(expect
+  [{:id true
+    :created_at true
+    :updated_at true
+    :type :internal
+    :name "some dimension name"
+    :human_readable_field_id false
+    :field_id true}
+   []]
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
+
+    (dimension-post field-id {:name "some dimension name", :type "internal"})
+
+    (let [new-dim (dimension-for-field field-id)]
+      ((user->client :crowberto) :delete 204 (format "field/%d/dimension" field-id))
+      [(tu/boolean-ids-and-timestamps new-dim)
+       (dimension-for-field field-id)])))
