@@ -16,30 +16,30 @@ const TableSidebar = ({
     className
 }) =>
     <div className={cx(S.sidebar, className)} style={style}>
-        <ul>
-            <div className={S.breadcrumbs}>
-                <Breadcrumbs
-                    className="py4"
-                    crumbs={[["Databases","/reference/databases"],
-                             [database.name, `/reference/databases/${database.id}`],
-                             [table.name]]}
-                    inSidebar={true}
-                    placeholder="Data Reference"
-                />
-            </div>
-                <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}`} 
-                             href={`/reference/databases/${database.id}/tables/${table.id}`} 
-                             icon="document" 
-                             name="Details" />
-                <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields`} 
-                             href={`/reference/databases/${database.id}/tables/${table.id}/fields`} 
-                             icon="fields" 
-                             name="Fields in this table" />
-                <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
-                             href={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
-                             icon="all" 
-                             name={`Questions about this table`} />
-        </ul>
+        <div className={S.breadcrumbs}>
+            <Breadcrumbs
+                className="py4"
+                crumbs={[["Databases","/reference/databases"],
+                         [database.name, `/reference/databases/${database.id}`],
+                         [table.name]]}
+                inSidebar={true}
+                placeholder="Data Reference"
+            />
+        </div>
+        <ol>
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}`} 
+                         href={`/reference/databases/${database.id}/tables/${table.id}`} 
+                         icon="document" 
+                         name="Details" />
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields`} 
+                         href={`/reference/databases/${database.id}/tables/${table.id}/fields`} 
+                         icon="fields" 
+                         name="Fields in this table" />
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
+                         href={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
+                         icon="all" 
+                         name="Questions about this table" />
+        </ol>
     </div>
 
 TableSidebar.propTypes = {
