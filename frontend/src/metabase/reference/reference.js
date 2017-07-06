@@ -105,6 +105,18 @@ export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRI
     };
 });
 
+const FETCH_FIELD_COMPARISON = 'metabase/reference/FETCH_FIELD_COMPARISON';
+export const fetchFieldComparison = createThunkAction(FETCH_FIELD_COMPARISON, function(fieldId1, fieldId2) {
+    return async () => {
+        try {
+            let comparison = await MetabaseApi.field_compare({ fieldId1, fieldId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+
 
 const initialState = {
     error: null,
@@ -125,6 +137,9 @@ export default handleActions({
     },
     [FETCH_SEGMENT_FINGERPRINT]: {
         next: (state, { payload }) => assoc(state, 'segmentFingerprint', payload)
+    },
+    [FETCH_FIELD_COMPARISON]: {
+        next: (state, { payload }) => assoc(state, 'fieldComparison', payload)
     },
     [SET_ERROR]: {
         throw: (state, { payload }) => assoc(state, 'error', payload)

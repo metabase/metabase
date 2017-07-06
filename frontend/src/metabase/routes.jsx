@@ -61,9 +61,13 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
+/* XRay */
 import FieldXRay from "metabase/reference/containers/FieldXray.jsx";
 import TableXRay from "metabase/reference/containers/TableXRay.jsx";
 import SegmentXRay from "metabase/reference/containers/SegmentXRay.jsx";
+
+/* Comparisons */
+import FieldComparison from "metabase/reference/containers/FieldComparison.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
@@ -216,7 +220,7 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId/xray" component={FieldXRay} />
-                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/compare/:fieldId1/:fieldId2" component={FieldComparison} />
                 </Route>
 
                 {/* PULSE */}
