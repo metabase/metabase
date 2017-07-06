@@ -47,7 +47,17 @@
     :seconds      (hsql/call :to_timestamp expr)
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- cast-timestamp
+  "Vertica requires stringified timestamps (what
+  Date/DateTime/Timestamps are converted to) to be cast as timestamps
+  before date operations can be performed. This function will add that
+  cast if it is a timestamp, otherwise this is a noop."
+  [expr]
+  (if (u/is-temporal? expr)
+    (hx/cast :timestamp expr)
+    expr))
+
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              expr))
 
 (def ^:private extract-integer (comp hx/->integer extract))
@@ -65,7 +75,8 @@
     :day-of-week     (hx/inc (extract-integer :dow expr))
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
-    :week            (hx/- (date-trunc :week (hx/+ expr one-day))
+    :week            (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
+                                                   one-day))
                            one-day)
     ;:week-of-year    (extract-integer :week (hx/+ expr one-day))
     :week-of-year    (hx/week expr)
