@@ -3021,7 +3021,7 @@ databaseChangeLog:
             columnNames: group_id, object
         ############################################################ Tweaks to metabase_table ############################################################
         # Modify the length of metabase_table.schema from 256 -> 254
-        # It turns out MySQL InnoDB indecies have to be 767 bytes or less (at least for older versions of MySQL)
+        # It turns out MySQL InnoDB indices have to be 767 bytes or less (at least for older versions of MySQL)
         # and 'utf8' text columns can use up to 3 bytes per character in MySQL -- see http://stackoverflow.com/a/22515986/1198455
         # So 256 * 3 = 768 bytes (too large to index / add unique constraints)
         # Drop this to 254; 254 * 3 = 762, which should give us room to index it along with a 4-byte integer as well if need be
@@ -3323,7 +3323,7 @@ databaseChangeLog:
       id: 49
       author: camsaul
       changes:
-        ######################################## Card public_uuid & indecies ########################################
+        ######################################## Card public_uuid & indices ########################################
         - addColumn:
             tableName: report_card
             columns:
@@ -3346,7 +3346,7 @@ databaseChangeLog:
             columns:
               column:
                 name: public_uuid
-        ######################################## Dashboard public_uuid & indecies ########################################
+        ######################################## Dashboard public_uuid & indices ########################################
         - addColumn:
             tableName: report_dashboard
             columns:
@@ -3646,3 +3646,27 @@ databaseChangeLog:
             columns:
               - column:
                   name: dashboard_id
+  - changeSet:
+      id: 56
+      author: wwwiiilll
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 57
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: result_metadata
+                  type: text
+                  remarks: 'Serialized JSON containing metadata about the result columns from running the query.'

@@ -1193,7 +1193,7 @@ Fetch the results for a Card in a publically-accessible Dashboard. Does not requ
 
 ## `GET /api/public/oembed`
 
-oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL.
+oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL.
 
 ##### PARAMS:
 
@@ -1709,7 +1709,7 @@ Fetch the current `User`.
 
 ## `POST /api/user/`
 
-Create a new `User`, or or reäctivate an existing one.
+Create a new `User`, or or reactivate an existing one.
 
 You must be a superuser to do this.
 
@@ -1783,7 +1783,7 @@ You must be a superuser to do this.
 
 ## `GET /api/util/random_token`
 
-Return a cryptographically secure random 32-byte token, encoded as a hexidecimal string.
+Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`.
 
 

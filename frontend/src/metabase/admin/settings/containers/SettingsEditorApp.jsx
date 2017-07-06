@@ -11,6 +11,7 @@ import AdminLayout from "metabase/components/AdminLayout.jsx";
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
+import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
@@ -52,6 +53,7 @@ export default class SettingsEditorApp extends Component {
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
+        updateLdapSettings: PropTypes.func.isRequired,
         sendTestEmail: PropTypes.func.isRequired
     };
 
@@ -145,8 +147,14 @@ export default class SettingsEditorApp extends Component {
                     updateSetting={this.updateSetting}
                 />
             );
+        } else if (activeSection.name === "LDAP") {
+            return (
+                <SettingsLdapForm
+                    elements={activeSection.settings}
+                    updateLdapSettings={this.props.updateLdapSettings}
+                />
+            );
         } else {
-
             return (
                 <ul>
                     {activeSection.settings

@@ -44,7 +44,7 @@ export async function login() {
         )
     }
 
-    loginSession = await SessionApi.create({ email: "bob@metabase.com", password: "12341234"});
+    loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
 }
 
 /**
@@ -177,7 +177,7 @@ const testStoreEnhancer = (createStore, history) => {
              *
              * Convenient in tests for waiting specific actions to be executed after mounting a React container.
              */
-            waitForActions: (actionTypes, {timeout = 2000} = {}) => {
+            waitForActions: (actionTypes, {timeout = 8000} = {}) => {
                 actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
 
                 const allActionsAreTriggered = () => _.every(actionTypes, actionType =>

@@ -245,19 +245,25 @@
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
   [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
-  {:pre [(integer? source-table-id)]}
-  (let [table-ids             (conj table-ids source-table-id)
-        source-table          (or (db/select-one [Table :schema :name :id], :id source-table-id)
-                                  (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id))))
-        joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
-        fk-id+table-id->table (into {[nil source-table-id] source-table}
-                                    (for [{:keys [source-field table-id join-alias]} joined-tables]
-                                      {[(:field-id source-field) table-id] {:name join-alias
-                                                                            :id   table-id}}))]
-    (as-> expanded-query-dict <>
-      (assoc-in <> [:query :source-table] source-table)
-      (assoc-in <> [:query :join-tables]  joined-tables)
-      (walk/postwalk #(resolve-table % fk-id+table-id->table) <>))))
+  (if-not source-table-id
+    ;; if we have a `source-query`, recurse and resolve tables in that
+    (update-in expanded-query-dict [:query :source-query] (fn [source-query]
+                                                            (if (:native source-query)
+                                                              source-query
+                                                              (:query (resolve-tables (assoc expanded-query-dict :query source-query))))))
+    ;; otherwise we can resolve tables in the (current) top-level
+    (let [table-ids             (conj table-ids source-table-id)
+          source-table          (or (db/select-one [Table :schema :name :id], :id source-table-id)
+                                    (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id))))
+          joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
+          fk-id+table-id->table (into {[nil source-table-id] source-table}
+                                      (for [{:keys [source-field table-id join-alias]} joined-tables]
+                                        {[(:field-id source-field) table-id] {:name join-alias
+                                                                              :id   table-id}}))]
+      (as-> expanded-query-dict <>
+        (assoc-in <> [:query :source-table] source-table)
+        (assoc-in <> [:query :join-tables]  joined-tables)
+        (walk/postwalk #(resolve-table % fk-id+table-id->table) <>)))))
 
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------

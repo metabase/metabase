@@ -29,7 +29,9 @@
             [metabase.query-processor
              [interface :as qpi]
              [util :as qputil]]
-            [metabase.query-processor.middleware.cache :as cache]
+            [metabase.query-processor.middleware
+             [cache :as cache]
+             [results-metadata :as results-metadata]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -206,14 +208,44 @@
 
 
 ;;; ------------------------------------------------------------ Saving Cards ------------------------------------------------------------
+
+;; When a new Card is saved, we wouldn't normally have the results metadata for it until the first time its query is ran.
+;; As a workaround, we'll calculate this metadata and return it with all query responses, and then let the frontend
+;; pass it back to us when saving or updating a Card.
+;; As a basic step to make sure the Metadata is valid we'll also pass a simple checksum and have the frontend pass it back to us.
+;; See the QP `results-metadata` middleware namespace for more details
+
+(s/defn ^:private ^:always-validate result-metadata-for-query :- results-metadata/ResultsMetadata
+  "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
+   This is obviously a bit wasteful so hopefully we can avoid having to do this."
+  [query]
+  (binding [qpi/*disable-qp-logging* true]
+    (get-in (qp/process-query query) [:data :results_metadata :columns])))
+
+(s/defn ^:private ^:always-validate result-metadata :- (s/maybe results-metadata/ResultsMetadata)
+  "Get the right results metadata for this CARD. We'll check to see whether the METADATA passed in seems valid;
+   otherwise we'll run the query ourselves to get the right values."
+  [query metadata checksum]
+  (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
+                             (s/validate results-metadata/ResultsMetadata metadata))]
+    (log/info (str "Card results metadata passed in to API is " (cond
+                                                                  valid-metadata? "VALID. Thanks!"
+                                                                  metadata        "INVALID. Running query to fetch correct metadata."
+                                                                  :else           "MISSING. Running query to fetch correct metadata.")))
+    (if valid-metadata?
+      metadata
+      (result-metadata-for-query query))))
+
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name visualization_settings collection_id]} :body}]
+  [:as {{:keys [dataset_query description display name visualization_settings collection_id result_metadata metadata_checksum]} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
-   collection_id          (s/maybe su/IntGreaterThanZero)}
+   collection_id          (s/maybe su/IntGreaterThanZero)
+   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -227,7 +259,8 @@
          :display                display
          :name                   name
          :visualization_settings visualization_settings
-         :collection_id          collection_id)
+         :collection_id          collection_id
+         :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum))
        (events/publish-event! :card-create)))
 
 
@@ -275,6 +308,17 @@
     (api/check-embedding-enabled)
     (api/check-superuser)))
 
+
+(defn- result-metadata-for-updating
+  "If CARD's query is being updated, return the value that should be saved for `result_metadata`. This *should* be passed
+   in to the API; if so, verifiy that it was correct (the checksum is valid); if not, go fetch it.
+   If the query has not changed, this returns `nil`, which means the value won't get updated below."
+  [card query metadata checksum]
+  (when (and query
+             (not= query (:dataset_query card)))
+
+    (result-metadata query metadata checksum)))
+
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving events)."
   [card archived?]
@@ -290,7 +334,7 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params result_metadata metadata_checksum], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
@@ -299,19 +343,23 @@
    archived               (s/maybe s/Bool)
    enable_embedding       (s/maybe s/Bool)
    embedding_params       (s/maybe su/EmbeddingParams)
-   collection_id          (s/maybe su/IntGreaterThanZero)}
+   collection_id          (s/maybe su/IntGreaterThanZero)
+   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card (api/write-check Card id)]
     ;; Do various permissions checks
     (check-allowed-to-change-collection card collection_id)
     (check-allowed-to-modify-query card dataset_query)
     (check-allowed-to-unarchive card archived)
     (check-allowed-to-change-embedding card enable_embedding embedding_params)
-    ;; ok, now save the Card
-    (db/update! Card id
-      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
-      (u/select-keys-when body
-        :present #{:collection_id :description}
-        :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params}))
+    ;; make sure we have the correct `result_metadata`
+    (let [body (assoc body :result_metadata (result-metadata-for-updating card dataset_query result_metadata metadata_checksum))]
+      ;; ok, now save the Card
+      (db/update! Card id
+        ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
+        (u/select-keys-when body
+          :present #{:collection_id :description}
+          :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
       (publish-card-update! card archived)

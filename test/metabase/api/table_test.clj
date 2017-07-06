@@ -5,16 +5,17 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
-             [util :as u]
-             [sync-database :as sync-database]]
+             [sync-database :as sync-database]
+             [util :as u]]
             [metabase.models
-             [database :refer [Database]]
+             [card :refer [Card]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu :refer [match-$ resolve-private-vars]]]
             [metabase.test.data
              [dataset-definitions :as defs]
@@ -456,3 +457,38 @@
                                                               :raw_table_id $
                                                               :created_at   $}))}))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
+
+
+;; Make sure metadata for 'virtual' tables comes back as expected from GET /api/table/:id/query_metadata
+(tt/expect-with-temp [Card [card {:name          "Go Dubs!"
+                                  :database_id   (data/id)
+                                  :dataset_query {:database (data/id)
+                                                  :type     :native
+                                                  :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
+  (let [card-virtual-table-id (str "card__" (u/get-id card))]
+    {:display_name "Go Dubs!"
+     :schema       "All questions"
+     :db_id        database/virtual-id
+     :id           card-virtual-table-id
+     :description  nil
+     :fields       (for [[field-name display-name base-type] [["NAME"     "Name"     "type/Text"]
+                                                              ["ID"       "ID"       "type/Integer"]
+                                                              ["PRICE"    "Price"    "type/Integer"]
+                                                              ["LATITUDE" "Latitude" "type/Float"]]]
+                     {:name         field-name
+                      :display_name display-name
+                      :base_type    base-type
+                      :table_id     card-virtual-table-id
+                      :id           ["field-literal" field-name base-type]
+                      :special_type nil})})
+  (do
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ;; Now fetch the metadata for this "table"
+    ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+
+
+;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
+(expect
+  []
+  ((user->client :crowberto) :get 200 "table/card__1000/fks"))
