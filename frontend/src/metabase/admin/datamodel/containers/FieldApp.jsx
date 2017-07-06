@@ -1,79 +1,116 @@
+/**
+ * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
+ *
+ * TODO Atte Keinänen 7/6/17: This uses the standard metadata API; we should migrate also other parts of admin section
+ */
+
 import React, { Component } from 'react'
 import { Link } from 'react-router'
+import { connect } from "react-redux";
+import _ from "underscore";
 
 import Button from 'metabase/components/Button'
 import Icon from 'metabase/components/Icon'
 import Input from 'metabase/components/Input'
 import Select from 'metabase/components/Select'
 
+import { getMetadata } from "metabase/selectors/metadata";
+import { fetchFieldValues, fetchTableMetadata } from "metabase/redux/metadata";
+
+import Metadata from "metabase/meta/metadata/Metadata";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 const SelectClasses = 'h3 border-dark shadowed p2'
 
+const mapStateToProps = (state, props) => {
+    return {
+        databaseId: parseInt(props.params.databaseId),
+        tableId: parseInt(props.params.tableId),
+        fieldId: parseInt(props.params.fieldId),
+        metadata: getMetadata(state)
+    }
+}
+
+const mapDispatchToProps = {
+    fetchTableMetadata,
+    fetchFieldValues
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class FieldApp extends Component {
+    props: {
+        databaseId: number,
+        tableId: number,
+        fieldId: number,
+        metadata: Metadata,
+
+        fetchDatabaseMetadata: (number) => Promise<void>,
+        fetchTableMetadata: (number) => Promise<void>,
+        fetchFieldValues: (number) => Promise<void>
+    }
+
+    async componentWillMount() {
+        const { tableId, fieldId, fetchTableMetadata, fetchFieldValues } = this.props;
+
+        await fetchTableMetadata(tableId);
+        const fieldValues = await fetchFieldValues(fieldId);
+
+        // There is a separate "Save" button for committing custom field remappings so store them to local state
+        // Store values as a map for easier manipulation
+
+        this.state = {
+            humanReadableValues: _.object(fieldValues.human_readable_values || [])
+        }
+    }
+
     render () {
+        const { metadata, fieldId, databaseId, tableId } = this.props;
+        const field = metadata.fields[fieldId];
+
+        // TODO: How to show a metadata loading error here?
         return (
-            <div className="relative">
-                <div className="wrapper wrapper--trim">
-                    <BackButton table={{ name: 'Orders' }} />
+            <LoadingAndErrorWrapper loading={!field} error={null} noWrapper>
+                { () =>
+                    <div className="relative">
+                        <div className="wrapper wrapper--trim">
+                            <BackButton databaseId={databaseId} tableId={tableId} />
 
-                    <Section>
-                        <FieldHeader
-                            name="Order status"
-                            description="The status of the order"
-                        />
-                    </Section>
+                            <Section>
+                                <FieldHeader
+                                    name={field.name}
+                                    description={field.description}
+                                />
+                            </Section>
 
-                    <Section>
-                        <FieldType />
-                    </Section>
+                            <Section>
+                                <FieldType field={field} />
+                            </Section>
 
-                    <Section>
-                        <FieldVisibility />
-                    </Section>
+                            <Section>
+                                <FieldVisibility field={field} />
+                            </Section>
 
-                    <Section>
-                        <FieldRemapping />
-                    </Section>
-
-                    { /*
-                    <Section>
-                        <FieldCache />
-                    </Section>
-                    */}
-                </div>
-            </div>
+                            <Section>
+                                <FieldRemapping field={field} />
+                            </Section>
+                        </div>
+                    </div>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }
 
-const BackButton = ({ table }) =>
-    <div
+// TODO: Should this invoke goBack() instead?
+// not sure if it's possible to do that neatly with Link component
+const BackButton = ({ databaseId, tableId }) =>
+    <Link
+        to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
         className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
         style={{ backgroundColor: '#8091AB' }}
     >
         <Icon name="backArrow" />
-    </div>
-
-class FieldCache extends Component {
-    render () {
-        return (
-            <div>
-                <SectionHeader title="Cache settings" description="Set how frequently Metabase checks for new field values" />
-                <Select
-                    className={SelectClasses}
-                    value={{ name: 'Daily' }}
-                    options={[{}, {}]}
-                />
-                <div className="mt2 text-danger text-bold cursor-pointer flex align-center">
-                    <Icon
-                        name="refresh"
-                        className="mr1"
-                    />
-                    Reset cache
-                </div>
-            </div>
-        )
-    }
-}
+    </Link>
 
 class FieldVisibility extends Component {
     render () {
