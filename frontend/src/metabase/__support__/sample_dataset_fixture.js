@@ -1,5 +1,4 @@
 import { getMetadata } from "metabase/selectors/metadata";
-import { assocIn } from "icepick";
 
 export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;

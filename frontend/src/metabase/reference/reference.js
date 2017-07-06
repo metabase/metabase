@@ -17,7 +17,7 @@ import {
     isEmptyObject 
 } from "./utils.js"
 
-const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
+export const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
 const SET_ERROR = "metabase/reference/SET_ERROR";
 const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
 const START_LOADING = "metabase/reference/START_LOADING";
