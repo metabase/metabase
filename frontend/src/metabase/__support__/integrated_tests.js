@@ -240,6 +240,7 @@ const testStoreEnhancer = (createStore, history) => {
                 )
             },
 
+            // eslint-disable-next-line react/display-name
             _connectWithStore: (reactContainer) =>
                 <Provider store={store._finalStoreInstance}>
                     {reactContainer}

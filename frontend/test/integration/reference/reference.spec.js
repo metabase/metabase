@@ -7,10 +7,10 @@ import {
 } from "metabase/__support__/integrated_tests";
 
 import React from 'react';
-import { shallow, mount, render } from 'enzyme';
+import { mount } from 'enzyme';
 
 import { CardApi, SegmentApi, MetricApi } from 'metabase/services'
-import { fetchMetrics } from "metabase/redux/metadata";
+
 import { 
     FETCH_DATABASE_METADATA,
     FETCH_DATABASES,
@@ -86,7 +86,7 @@ describe("The Reference Section", () => {
         it("Should show an empty guide for non-admin users", async () => {
             const store = await createTestStore()    
             store.pushPath("/reference/");
-            const container = mount(store.connectContainer(<GettingStartedGuideContainer />));
+            mount(store.connectContainer(<GettingStartedGuideContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA, FETCH_SEGMENTS, FETCH_METRICS])
         })
         
@@ -133,7 +133,7 @@ describe("The Reference Section", () => {
             it("Should show no metrics in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics");
-                const container = mount(store.connectContainer(<MetricListContainer />));
+                mount(store.connectContainer(<MetricListContainer />));
                 await store.waitForActions([FETCH_METRICS])
             })
 
@@ -141,7 +141,6 @@ describe("The Reference Section", () => {
 
         describe("With Metrics State", async () => {
             var metricIds = []
-            var segmentIds = []
 
             beforeAll(async () => {            
                 // Create some metrics to have something to look at
@@ -165,28 +164,28 @@ describe("The Reference Section", () => {
             it("Should show no metrics in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics");
-                const container = mount(store.connectContainer(<MetricListContainer />));
+                mount(store.connectContainer(<MetricListContainer />));
                 await store.waitForActions([FETCH_METRICS])
             })
             // metric detail
             it("Should show the metric detail view for a specific id", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics/"+metricIds[0]);
-                const container = mount(store.connectContainer(<MetricDetailContainer />));
+                mount(store.connectContainer(<MetricDetailContainer />));
                 await store.waitForActions([FETCH_METRIC_TABLE, FETCH_GUIDE])
             })
             // metrics questions 
             it("Should show no questions based on a new metric", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics/"+metricIds[0]+'/questions');
-                const container = mount(store.connectContainer(<MetricQuestionsContainer />));
+                mount(store.connectContainer(<MetricQuestionsContainer />));
                 await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE])
             })
             // metrics revisions
             it("Should show revisions", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/metrics/"+metricIds[0]+'/revisions');
-                const container = mount(store.connectContainer(<MetricRevisionsContainer />));
+                mount(store.connectContainer(<MetricRevisionsContainer />));
                 await store.waitForActions([FETCH_METRICS, FETCH_METRIC_REVISIONS])
             })
 
@@ -197,7 +196,7 @@ describe("The Reference Section", () => {
                     // see that there is a new question on the metric's questions page
                     const store = await createTestStore()    
                     store.pushPath("/reference/metrics/"+metricIds[0]+'/questions');
-                    const container = mount(store.connectContainer(<MetricQuestionsContainer />));
+                    mount(store.connectContainer(<MetricQuestionsContainer />));
                     await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE])
                     
                     await CardApi.delete({cardId: card.id})
@@ -213,13 +212,13 @@ describe("The Reference Section", () => {
                 it("Should show no segments in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments");
-                const container = mount(store.connectContainer(<SegmentListContainer />));
+                mount(store.connectContainer(<SegmentListContainer />));
                 await store.waitForActions([FETCH_SEGMENTS])
             })
 
         });
 
-        fdescribe("With Segments State", async () => {
+        describe("With Segments State", async () => {
             var segmentIds = []
 
             beforeAll(async () => {            
@@ -245,14 +244,14 @@ describe("The Reference Section", () => {
             it("Should show the segments in the list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments");
-                const container = mount(store.connectContainer(<SegmentListContainer />));
+                mount(store.connectContainer(<SegmentListContainer />));
                 await store.waitForActions([FETCH_SEGMENTS])
             })
             // segment detail
             it("Should show the segment detail view for a specific id", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]);
-                const container = mount(store.connectContainer(<SegmentDetailContainer />));
+                mount(store.connectContainer(<SegmentDetailContainer />));
                 await store.waitForActions([FETCH_SEGMENT_TABLE])
             })
 
@@ -260,14 +259,14 @@ describe("The Reference Section", () => {
             it("Should show the segment fields list", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+"/fields");
-                const container = mount(store.connectContainer(<SegmentFieldListContainer />));
+                mount(store.connectContainer(<SegmentFieldListContainer />));
                 await store.waitForActions([FETCH_SEGMENT_TABLE, FETCH_SEGMENT_FIELDS])
             })
             // segment detail
             it("Should show the segment field detail view for a specific id", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+"/fields/" + 1);
-                const container = mount(store.connectContainer(<SegmentFieldDetailContainer />));
+                mount(store.connectContainer(<SegmentFieldDetailContainer />));
                 await store.waitForActions([FETCH_SEGMENT_TABLE, FETCH_SEGMENT_FIELDS])
             })
 
@@ -275,14 +274,14 @@ describe("The Reference Section", () => {
             it("Should show no questions based on a new segment", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+'/questions');
-                const container = mount(store.connectContainer(<SegmentQuestionsContainer />));
+                mount(store.connectContainer(<SegmentQuestionsContainer />));
                 await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES])
             })
             // segment revisions
             it("Should show revisions", async () => {
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+'/revisions');
-                const container = mount(store.connectContainer(<SegmentRevisionsContainer />));
+                mount(store.connectContainer(<SegmentRevisionsContainer />));
                 await store.waitForActions([FETCH_SEGMENT_TABLE, FETCH_SEGMENT_REVISIONS])
             })
 
@@ -297,7 +296,7 @@ describe("The Reference Section", () => {
 
                 const store = await createTestStore()    
                 store.pushPath("/reference/segments/"+segmentIds[0]+'/questions');
-                const container = mount(store.connectContainer(<SegmentQuestionsContainer />));
+                mount(store.connectContainer(<SegmentQuestionsContainer />));
                 await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES])
             })
                       
@@ -310,16 +309,16 @@ describe("The Reference Section", () => {
         it("should see a single database", async ()=>{
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
-            const container = mount(store.connectContainer(<DatabaseListContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASES"])
+            mount(store.connectContainer(<DatabaseListContainer />));
+            await store.waitForActions([FETCH_DATABASES])
         })
         
         // database detail
         it("should see a the detail view for the sample database", async ()=>{
             const store = await createTestStore()
             store.pushPath("/reference/databases/1");
-            const container = mount(store.connectContainer(<DatabaseDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<DatabaseDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
 
         })
         
@@ -327,8 +326,8 @@ describe("The Reference Section", () => {
        it("should see the 4 tables in the sample database",async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables");
-            const container = mount(store.connectContainer(<TableListContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<TableListContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
 
             expect(4).toBe(4);
         })
@@ -337,38 +336,38 @@ describe("The Reference Section", () => {
        it("should see the Orders table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1");
-            const container = mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<TableDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
             expect(true).toBe(true);
         })
 
        it("should see the Reviews table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/2");
-            const container = mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<TableDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
             expect(true).toBe(true);
         })
        it("should see the Products table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/3");
-            const container = mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<TableDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
             expect(true).toBe(true);
         })
        it("should see the People table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/4");
-            const container = mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<TableDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
             expect(true).toBe(true);
         })
         // field list
        it("should see the fields for the orders table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields");
-            const container = mount(store.connectContainer(<FieldListContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<FieldListContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
             expect(true).toBe(true);
 
             expect(true).toBe(true);
@@ -377,8 +376,8 @@ describe("The Reference Section", () => {
 
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/questions");
-            const container = mount(store.connectContainer(<TableQuestionsContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<TableQuestionsContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
             expect(true).toBe(true);
 
 
@@ -396,15 +395,15 @@ describe("The Reference Section", () => {
        it("should see the orders created_at timestamp field", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/1");
-            const container = mount(store.connectContainer(<FieldDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<FieldDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
         })
 
        it("should see the orders id field", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/25");
-            const container = mount(store.connectContainer(<FieldDetailContainer />));
-            await store.waitForActions(["metabase/metadata/FETCH_DATABASE_METADATA"])
+            mount(store.connectContainer(<FieldDetailContainer />));
+            await store.waitForActions([FETCH_DATABASE_METADATA])
         })
     });
 
