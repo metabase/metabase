@@ -97,7 +97,7 @@
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
-  (->> [id2 id2]
+  (->> [id1 id2]
        (map (partial api/read-check Table))
        (apply fingerprinting/compare-fingerprints
               {:max-cost (max-cost max_query_cost max_computation_cost)})))
