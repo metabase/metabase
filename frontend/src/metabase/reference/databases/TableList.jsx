@@ -62,7 +62,7 @@ const createSchemaSeparator = (entity) =>
     <li className={R.schemaSeparator}>{entity.schema}</li>;
 
 
-const separateTablesBySchema = (
+export const separateTablesBySchema = (
     tables,
     createSchemaSeparator,
     createListItem
