@@ -1,6 +1,5 @@
 /* @flow weak */
 
-// import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
 import {
     login,
     createTestStore
@@ -24,7 +23,7 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
-
+import ListItem from "metabase/components/ListItem.jsx";
 
 describe("The Reference Section", () => {
     // Test data
@@ -44,8 +43,10 @@ describe("The Reference Section", () => {
         it("should see a single database", async ()=>{
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
-            mount(store.connectContainer(<DatabaseListContainer />));
+            var container = mount(store.connectContainer(<DatabaseListContainer />));
+            console.log(container)
             await store.waitForActions([FETCH_DATABASES])
+            expect(container.find(ListItem).length).toBe(1)
         })
         
         // database detail
