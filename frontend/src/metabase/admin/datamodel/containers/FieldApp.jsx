@@ -15,7 +15,10 @@ import Input from 'metabase/components/Input'
 import Select from 'metabase/components/Select'
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { fetchTableMetadata, updateField, updateFieldValues } from "metabase/redux/metadata";
+import {
+    deleteFieldDimension, fetchTableMetadata, updateField, updateFieldDimension,
+    updateFieldValues
+} from "metabase/redux/metadata";
 
 import Metadata from "metabase/meta/metadata/Metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -35,7 +38,9 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
     fetchTableMetadata,
     updateField,
-    updateFieldValues
+    updateFieldValues,
+    updateFieldDimension,
+    deleteFieldDimension
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -70,7 +75,7 @@ export default class FieldApp extends Component {
     }
 
     render () {
-        const { metadata, fieldId, databaseId, tableId, updateFieldValues } = this.props;
+        const { metadata, fieldId, databaseId, tableId, updateFieldValues, updateFieldDimension, deleteFieldDimension } = this.props;
 
         // Provide the Field wrapper to child components
         const field = metadata.fields[fieldId] && new Field(metadata.fields[fieldId]);
@@ -109,6 +114,8 @@ export default class FieldApp extends Component {
                                     field={field}
                                     updateFieldProperties={this.onUpdateFieldProperties}
                                     updateFieldValues={updateFieldValues}
+                                    updateFieldDimension={updateFieldDimension}
+                                    deleteFieldDimension={deleteFieldDimension}
                                 />
                             </Section>
                         </div>
@@ -359,6 +366,33 @@ class FieldRemapping extends Component {
         return [ { name: "Test foreign key" } ];
     }
 
+    // dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_i
+    onSetMappingType = async (mappingType) => {
+        const { field, updateFieldDimension, deleteFieldDimension } = this.props;
+
+        console.log(field, field.id);
+
+        if (mappingType.type === "original") {
+            await deleteFieldDimension(field.id)
+        } else if (mappingType.type === "foreign") {
+            await updateFieldDimension(field.id, {
+                type: "external",
+                name: field.display_name,
+                human_readable_field_id: 1
+            })
+        } else if (mappingType.type === "custom") {
+            await updateFieldDimension(field.id, {
+                type: "internal",
+                name: field.display_name,
+                human_readable_field_id: null
+            })
+        } else {
+            throw new Error("Unrecognized mapping type");
+        }
+
+        this.setState({ mappingType })
+    }
+
     onUpdateRemappings = async (remappings) => {
         const { field, updateFieldValues } = this.props;
         await updateFieldValues(field.id, Array.from(remappings));
@@ -376,7 +410,7 @@ class FieldRemapping extends Component {
                 <Select
                     className={SelectClasses}
                     value={this.state.mappingType}
-                    onChange={mappingType => this.setState({ mappingType })}
+                    onChange={this.onSetMappingType}
                     options={this.getAvailableMappingTypes()}
                 />
                 { this.state.mappingType === MAP_OPTIONS.foreign && [
