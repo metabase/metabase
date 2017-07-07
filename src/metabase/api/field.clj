@@ -5,7 +5,7 @@
             [metabase.models
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
-             [field-values :refer [create-field-values-if-needed! field-should-have-field-values? field-values->pairs FieldValues]]]
+             [field-values :refer [create-field-values-if-needed! field-values->pairs FieldValues]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -70,15 +70,11 @@
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
-  (try
-    (let [field (api/read-check Field id)]
-      (if-let [field-values (and (field-should-have-field-values? field)
-                                 (create-field-values-if-needed! field))]
-        (-> field-values
-            (assoc :values (field-values->pairs field-values))
-            (dissoc :human_readable_values))
-        {:values []}))
-    (catch Exception e (.printStackTrace e) (throw e))))
+  (let [field (api/read-check Field id)
+        field-values (create-field-values-if-needed! field)]
+    (-> field-values
+        (assoc :values (field-values->pairs field-values))
+        (dissoc :human_readable_values))))
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
@@ -140,8 +136,6 @@
   [id :as {{value-pairs :values} :body}]
   {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
-    (api/check (field-should-have-field-values? field)
-      [400 "You can only update the human readable values of a mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
     (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
