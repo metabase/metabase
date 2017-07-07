@@ -1,6 +1,8 @@
-.ModalContainer {
-    z-index: 4;
+:root {
+  --modalBackdropColor: rgba(46, 53, 59, 0.6);
 }
+
+.ModalContainer { z-index: 4; }
 
 .Modal {
   margin: auto;
@@ -12,7 +14,7 @@
 
 /* On IE11, single flex item with `margin: auto` gets shifted to flex end
  * https://github.com/philipwalton/flexbugs/issues/157
- * Set margin to zero when using Flexbox in `WindowModal` component 
+ * Set margin to zero when using Flexbox in `WindowModal` component
  */
 .Modal-backdrop > .Modal, .Modal-backdrop--dark > .Modal {
   margin: 0;
@@ -37,60 +39,6 @@
 }
 
 .Modal-backdrop {
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: var(--modalBackdropColor)
 }
 
-.Modal-backdrop--dark {
-    background-color: rgba(75, 75, 75, 0.7);
-}
-
-/* TRANSITIONS */
-
-/* backdrop */
-
-.Modal-backdrop.Modal-appear,
-.Modal-backdrop.Modal-enter {
-  transition: background-color 200ms ease-in-out;
-  background-color: rgba(255, 255, 255, 0.01);
-}
-
-.Modal-backdrop.Modal-appear-active,
-.Modal-backdrop.Modal-enter-active {
-  background-color: rgba(255, 255, 255, 0.6);
-}
-
-.Modal-backdrop.Modal-leave {
-  transition: background-color 200ms ease-in-out 100ms;
-  background-color: rgba(255, 255, 255, 0.6);
-}
-
-.Modal-backdrop.Modal-leave-active {
-  background-color: rgba(255, 255, 255, 0.01);
-}
-
-
-/* modal */
-
-.Modal-backdrop.Modal-appear .Modal,
-.Modal-backdrop.Modal-enter .Modal {
-  transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
-  opacity: 0.01;
-  transform: translate(0, 40px);
-}
-
-.Modal-backdrop.Modal-appear-active .Modal,
-.Modal-backdrop.Modal-enter-active .Modal {
-  opacity: 1;
-  transform: translate(0, 0);
-}
-
-.Modal-backdrop.Modal-leave .Modal {
-  transition: opacity 200ms linear, transform 200ms ease-in-out;
-  opacity: 1;
-  transform: translate(0, 0);
-}
-
-.Modal-backdrop.Modal-leave-active .Modal {
-  opacity: 0.01;
-  transform: translate(0, -40px);
-}
