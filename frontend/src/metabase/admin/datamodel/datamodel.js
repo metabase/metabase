@@ -176,17 +176,6 @@ export const updateFieldTarget = createThunkAction(UPDATE_FIELD_TARGET, function
     };
 });
 
-// Docstring from m.api.field:
-// Update the human-readable values for a `Field` whose special type is
-// `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."
-export const UPDATE_FIELD_VALUES = "metabase/admin/datamodel/UPDATE_FIELD_VALUES";
-export const updateFieldValues = createThunkAction(UPDATE_FIELD_VALUES, function(fieldId, valuePairs) {
-    return async function(dispatch, getState) {
-        await MetabaseApi.field_values_update({ fieldId, values: valuePairs })
-        MetabaseAnalytics.trackEvent("Data Model", "Update Human-Readable Values");
-    };
-});
-
 // retireSegment
 export const RETIRE_SEGMENT = "metabase/admin/datamodel/RETIRE_SEGMENT";
 export const onRetireSegment = createThunkAction(RETIRE_SEGMENT, function(segment) {
