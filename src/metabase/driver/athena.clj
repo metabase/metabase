@@ -61,7 +61,7 @@
   (assert password)
   (assert s3_staging_dir)
   (assert log_path)
-  (let [current-read-fn (if read-fn read-fn jdbc/result-set-seq)]
+  (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs))))]
     (with-open [con (DriverManager/getConnection url (get-properties (dissoc details :url)))]
                (let [athena-stmt (.createStatement con)]
                  (->> (.executeQuery athena-stmt query)
@@ -263,12 +263,7 @@
   (binding [metabase.driver.generic-sql.query-processor/*query* outer-query]
     (let [honeysql-form (sql-qp/build-honeysql-form driver outer-query)
           unqualify-honey-form (unqualify-query honeysql-form)
-          ; FIXME : Asking 1000 elements leads to a driver exception
-          unqualify-honey-form2 (if (and (:limit unqualify-honey-form)
-                                         (> (:limit unqualify-honey-form) 950))
-                                  (assoc unqualify-honey-form :limit 950)
-                                  unqualify-honey-form)
-          [sql & args]  (sql/honeysql-form->sql+args driver unqualify-honey-form2)
+          [sql & args]  (sql/honeysql-form->sql+args driver unqualify-honey-form)
           athena-sql (unquote-table-name sql (get-in inner-query [:source-table :name]))]
       {:query  athena-sql
        :params args})))
