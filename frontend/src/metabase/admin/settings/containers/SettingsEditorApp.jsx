@@ -15,7 +15,7 @@ import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
-import SettingsAuthenticationForm from "../components/SettingsAuthenticationForm.jsx";
+import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
 
 import { prepareAnalyticsValue } from 'metabase/admin/settings/utils'
 
@@ -163,7 +163,7 @@ export default class SettingsEditorApp extends Component {
                     )
                 }
             } else {
-                return (<SettingsAuthenticationForm />)
+                return (<SettingsAuthenticationOptions />)
             }
         } else {
             return (

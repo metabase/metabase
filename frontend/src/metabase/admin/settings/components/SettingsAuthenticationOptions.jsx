@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router'
 
-class SettingsAuthenticationForm extends Component {
+class SettingsAuthenticationOptions extends Component {
     render () {
         return (
             <ul className="text-measure">
@@ -25,4 +25,4 @@ class SettingsAuthenticationForm extends Component {
     }
 }
 
-export default SettingsAuthenticationForm
+export default SettingsAuthenticationOptions
