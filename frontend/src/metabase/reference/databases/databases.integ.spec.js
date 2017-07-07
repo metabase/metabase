@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import {
     login,
     createTestStore
@@ -15,6 +13,8 @@ import {
     FETCH_DATABASES
 } from "metabase/redux/metadata";
 
+import { END_LOADING } from "metabase/reference/reference"
+
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import TableListContainer from "metabase/reference/databases/TableListContainer";
@@ -23,7 +23,11 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
+import DatabaseList from "metabase/reference/databases/DatabaseList";
+import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
+import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
 
 describe("The Reference Section", () => {
     // Test data
@@ -44,8 +48,13 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
             var container = mount(store.connectContainer(<DatabaseListContainer />));
-            console.log(container)
-            await store.waitForActions([FETCH_DATABASES])
+            await store.waitForActions([FETCH_DATABASES, END_LOADING])
+            
+            expect(container.find(ReferenceHeader).length).toBe(1)
+            expect(container.find(DatabaseList).length).toBe(1)            
+            expect(container.find(AdminAwareEmptyState).length).toBe(0)
+            
+            expect(container.find(List).length).toBe(1)
             expect(container.find(ListItem).length).toBe(1)
         })
         

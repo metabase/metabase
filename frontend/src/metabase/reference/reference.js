@@ -18,16 +18,16 @@ import {
 } from "./utils.js"
 
 export const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
-const SET_ERROR = "metabase/reference/SET_ERROR";
-const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
-const START_LOADING = "metabase/reference/START_LOADING";
-const END_LOADING = "metabase/reference/END_LOADING";
-const START_EDITING = "metabase/reference/START_EDITING";
-const END_EDITING = "metabase/reference/END_EDITING";
-const EXPAND_FORMULA = "metabase/reference/EXPAND_FORMULA";
-const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
-const SHOW_DASHBOARD_MODAL = "metabase/reference/SHOW_DASHBOARD_MODAL";
-const HIDE_DASHBOARD_MODAL = "metabase/reference/HIDE_DASHBOARD_MODAL";
+export const SET_ERROR = "metabase/reference/SET_ERROR";
+export const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
+export const START_LOADING = "metabase/reference/START_LOADING";
+export const END_LOADING = "metabase/reference/END_LOADING";
+export const START_EDITING = "metabase/reference/START_EDITING";
+export const END_EDITING = "metabase/reference/END_EDITING";
+export const EXPAND_FORMULA = "metabase/reference/EXPAND_FORMULA";
+export const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
+export const SHOW_DASHBOARD_MODAL = "metabase/reference/SHOW_DASHBOARD_MODAL";
+export const HIDE_DASHBOARD_MODAL = "metabase/reference/HIDE_DASHBOARD_MODAL";
 
 
 export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {

@@ -1,6 +1,3 @@
-/* @flow weak */
-
-// import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
 import {
     login,
     createTestStore
