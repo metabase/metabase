@@ -396,6 +396,7 @@ export default class Visualization extends Component {
                         visualizationIsClickable={this.visualizationIsClickable}
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
+                        onActionDismissal={() => this.setState({ clicked: null })}
                         gridSize={gridSize}
                         onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                     />
