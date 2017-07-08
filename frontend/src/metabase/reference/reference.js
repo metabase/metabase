@@ -93,7 +93,7 @@ const fetchDataWrapper = (props, fn) => {
         props.endLoading();
     }
 }
-export const rFetchGuide = async (props) => {
+export const wrappedFetchGuide = async (props) => {
 
     fetchDataWrapper(
         props, 
@@ -107,11 +107,11 @@ export const rFetchGuide = async (props) => {
                 )}
         )()
 }
-export const rFetchDatabaseMetadata = (props, databaseID) => {
+export const wrappedFetchDatabaseMetadata = (props, databaseID) => {
     fetchDataWrapper(props, props.fetchDatabaseMetadata)(databaseID)
 }
 
-export const rFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
+export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
 
     fetchDataWrapper(
         props, 
@@ -122,7 +122,7 @@ export const rFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
                 )}
         )(databaseID)
 }
-export const rFetchMetricDetail = async (props, metricID) => {
+export const wrappedFetchMetricDetail = async (props, metricID) => {
 
     fetchDataWrapper(
         props, 
@@ -134,7 +134,7 @@ export const rFetchMetricDetail = async (props, metricID) => {
                 )}
         )(metricID)
 }
-export const rFetchMetricQuestions = async (props, metricID) => {
+export const wrappedFetchMetricQuestions = async (props, metricID) => {
 
     fetchDataWrapper(
         props, 
@@ -146,7 +146,7 @@ export const rFetchMetricQuestions = async (props, metricID) => {
                 )}
         )(metricID)
 }
-export const rFetchMetricRevisions = async (props, metricID) => {
+export const wrappedFetchMetricRevisions = async (props, metricID) => {
 
     fetchDataWrapper(
         props, 
@@ -158,7 +158,7 @@ export const rFetchMetricRevisions = async (props, metricID) => {
         )(metricID)
 }
 
-// export const rFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
+// export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
 //         clearError();
 //         startLoading();
 //         try {
@@ -175,23 +175,23 @@ export const rFetchMetricRevisions = async (props, metricID) => {
 //         endLoading();
 // }
 
-export const rFetchDatabases = (props) => {
+export const wrappedFetchDatabases = (props) => {
     fetchDataWrapper(props, props.fetchDatabases)({})
 }
-export const rFetchMetrics = (props) => {
+export const wrappedFetchMetrics = (props) => {
     fetchDataWrapper(props, props.fetchMetrics)({})
 }
 
-export const rFetchSegments = (props) => {
+export const wrappedFetchSegments = (props) => {
     fetchDataWrapper(props, props.fetchSegments)({})
 }
 
 
-export const rFetchSegmentDetail = (props, segmentID) => {
+export const wrappedFetchSegmentDetail = (props, segmentID) => {
     fetchDataWrapper(props, props.fetchSegmentTable)(segmentID)
 }
 
-export const rFetchSegmentQuestions = async (props, segmentID) => {
+export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
 
     fetchDataWrapper(
         props, 
@@ -203,7 +203,7 @@ export const rFetchSegmentQuestions = async (props, segmentID) => {
                 )}
         )(segmentID)
 }
-export const rFetchSegmentRevisions = async (props, segmentID) => {
+export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
 
     fetchDataWrapper(
         props, 
@@ -215,7 +215,7 @@ export const rFetchSegmentRevisions = async (props, segmentID) => {
                 )}
         )(segmentID)
 }
-export const rFetchSegmentFields = async (props, segmentID) => {
+export const wrappedFetchSegmentFields = async (props, segmentID) => {
 
     fetchDataWrapper(
         props, 
@@ -289,7 +289,7 @@ export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
 
             if (!areFieldIdsIdentitical) {
                 await props.updateMetricImportantFields(metric.id, importantFieldIds);
-                rFetchMetricDetail(props, metric.id);
+                wrappedFetchMetricDetail(props, metric.id);
             }
         }
     }

@@ -34,7 +34,7 @@ export default class DatabaseListContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchDatabases(this.props);
+        await actions.wrappedFetchDatabases(this.props);
     }
 
     componentWillMount() {

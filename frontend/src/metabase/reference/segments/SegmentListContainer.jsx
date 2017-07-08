@@ -35,7 +35,7 @@ export default class SegmentListContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchSegments(this.props);
+        await actions.wrappedFetchSegments(this.props);
     }
 
     componentWillMount() {

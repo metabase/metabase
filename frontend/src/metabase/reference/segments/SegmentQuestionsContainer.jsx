@@ -48,7 +48,7 @@ export default class SegmentQuestionsContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchSegmentQuestions(this.props, this.props.segmentId);
+        await actions.wrappedFetchSegmentQuestions(this.props, this.props.segmentId);
     }
 
     componentWillMount() {

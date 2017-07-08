@@ -43,7 +43,7 @@ export default class SegmentRevisionsContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchSegmentRevisions(this.props, this.props.segmentId);
+        await actions.wrappedFetchSegmentRevisions(this.props, this.props.segmentId);
     }
 
     componentWillMount() {

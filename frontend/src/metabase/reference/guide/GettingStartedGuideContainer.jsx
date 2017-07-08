@@ -38,7 +38,7 @@ export default class GettingStartedGuideContainer extends Component {
     };
 
     async fetchContainerData() {
-        await actions.rFetchGuide(this.props);
+        await actions.wrappedFetchGuide(this.props);
     }
 
     componentWillMount() {

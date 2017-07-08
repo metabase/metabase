@@ -47,7 +47,7 @@ export default class MetricQuestionsContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchMetricQuestions(this.props, this.props.metricId);
+        await actions.wrappedFetchMetricQuestions(this.props, this.props.metricId);
     }
 
     componentWillMount() {

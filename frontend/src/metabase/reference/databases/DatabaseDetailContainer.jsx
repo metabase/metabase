@@ -38,7 +38,7 @@ export default class DatabaseDetailContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchDatabaseMetadata(this.props, this.props.databaseId);
+        await actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
     }
 
     componentWillMount() {

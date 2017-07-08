@@ -42,7 +42,7 @@ export default class SegmentDetailContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchSegmentDetail(this.props, this.props.segmentId);
+        await actions.wrappedFetchSegmentDetail(this.props, this.props.segmentId);
     }
 
     componentWillMount() {

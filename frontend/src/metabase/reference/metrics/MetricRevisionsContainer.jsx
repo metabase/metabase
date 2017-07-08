@@ -44,7 +44,7 @@ export default class MetricRevisionsContainer extends Component {
 
 
     async fetchContainerData(){
-        await actions.rFetchMetricRevisions(this.props, this.props.metricId);
+        await actions.wrappedFetchMetricRevisions(this.props, this.props.metricId);
     }
 
     componentWillMount() {

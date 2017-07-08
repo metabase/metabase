@@ -43,7 +43,7 @@ export default class MetricDetailContainer extends Component {
     };
 
     async fetchContainerData(){
-        await actions.rFetchMetricDetail(this.props, this.props.metricId);
+        await actions.wrappedFetchMetricDetail(this.props, this.props.metricId);
     }
 
     componentWillMount() {

@@ -35,7 +35,7 @@ export default class MetricListContainer extends Component {
 
 
     async fetchContainerData(){
-        await actions.rFetchMetrics(this.props);
+        await actions.wrappedFetchMetrics(this.props);
     }
 
     componentWillMount() {

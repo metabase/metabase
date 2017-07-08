@@ -46,7 +46,7 @@ export default class TableQuestionsContainer extends Component {
     };
 
     async fetchContainerData() {
-        await actions.rFetchDatabaseMetadataAndQuestion(this.props, this.props.databaseId);
+        await actions.wrappedFetchDatabaseMetadataAndQuestion(this.props, this.props.databaseId);
     }
 
     componentWillMount() {
