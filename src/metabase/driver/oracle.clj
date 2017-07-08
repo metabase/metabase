@@ -156,7 +156,8 @@
 (defn- apply-limit [honeysql-query {value :limit}]
   {:pre [(integer? value)]}
   {:select [:*]
-   :from   [honeysql-query]
+   :from   [(merge {:select [:*]}   ; if `honeysql-query` doesn't have a `SELECT` clause yet (which might be the case when using a source query)
+                   honeysql-query)] ; fall back to including a `SELECT *` just to make sure a valid query is produced
    :where  [:<= (hsql/raw "rownum") value]})
 
 (defn- apply-page [honeysql-query {{:keys [items page]} :page}]
@@ -167,7 +168,9 @@
       ;; if we need to do an offset we have to do double-nesting
       {:select [:*]
        :from   [{:select [:__table__.* [(hsql/raw "rownum") :__rownum__]]
-                 :from   [[honeysql-query :__table__]]
+                 :from   [[(merge {:select [:*]}
+                                  honeysql-query)
+                           :__table__]]
                  :where  [:<= (hsql/raw "rownum") (+ offset items)]}]
        :where  [:> :__rownum__ offset]})))
 
