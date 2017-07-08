@@ -30,6 +30,7 @@ export default class MetricListContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
+        databaseId: PropTypes.integer.isRequired,
         isEditing: PropTypes.bool
     };
 

@@ -42,8 +42,10 @@ export default class SegmentQuestionsContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
+        databaseId: PropTypes.integer.isRequired,
         user: PropTypes.object.isRequired,
         segment: PropTypes.object.isRequired,
+        segmentId: PropTypes.integer.isRequired,
         isEditing: PropTypes.bool
     };
 

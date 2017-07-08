@@ -29,6 +29,7 @@ const mapDispatchToProps = {
 export default class DatabaseListContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
+        databaseId: PropTypes.integer.isRequired,
         location: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
