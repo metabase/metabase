@@ -31,6 +31,7 @@ type Props = VisualizationProps & {
     height: number,
     sort: any,
     isPivoted: boolean,
+    onActionDismissal: () => void
 }
 type State = {
     columnWidths: number[],
