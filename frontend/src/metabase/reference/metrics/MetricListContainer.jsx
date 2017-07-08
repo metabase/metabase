@@ -38,12 +38,12 @@ export default class MetricListContainer extends Component {
         await actions.rFetchMetrics(this.props);
     }
 
-    async componentWillMount() {
+    componentWillMount() {
         this.fetchContainerData()
     }
 
 
-    async componentWillReceiveProps(newProps) {
+    componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }

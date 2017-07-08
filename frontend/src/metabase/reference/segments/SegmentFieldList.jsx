@@ -39,9 +39,9 @@ import * as actions from 'metabase/reference/reference';
 
 
 const emptyStateData = {
-            message: `Fields in this table will appear here as they're added`,
-            icon: "fields"
-        }
+    message: `Fields in this table will appear here as they're added`,
+    icon: "fields"
+}
 
 
 const mapStateToProps = (state, props) => {

@@ -29,9 +29,9 @@ import * as metadataActions from "metabase/redux/metadata";
 
 
 const emptyStateData = {
-            message: `Tables in this database will appear here as they're added`,
-            icon: "table2"
-        }
+    message: `Tables in this database will appear here as they're added`,
+    icon: "table2"
+}
 
 const mapStateToProps = (state, props) => ({
     database: getDatabase(state, props),

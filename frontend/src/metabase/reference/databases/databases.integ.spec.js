@@ -73,8 +73,6 @@ describe("The Reference Section", () => {
             store.pushPath("/reference/databases/1/tables");
             mount(store.connectContainer(<TableListContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-
-            expect(4).toBe(4);
         })
         // table detail
 
@@ -83,7 +81,6 @@ describe("The Reference Section", () => {
             store.pushPath("/reference/databases/1/tables/1");
             mount(store.connectContainer(<TableDetailContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-            expect(true).toBe(true);
         })
 
        it("should see the Reviews table", async  () => {
@@ -91,21 +88,18 @@ describe("The Reference Section", () => {
             store.pushPath("/reference/databases/1/tables/2");
             mount(store.connectContainer(<TableDetailContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-            expect(true).toBe(true);
         })
        it("should see the Products table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/3");
             mount(store.connectContainer(<TableDetailContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-            expect(true).toBe(true);
         })
        it("should see the People table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/4");
             mount(store.connectContainer(<TableDetailContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-            expect(true).toBe(true);
         })
         // field list
        it("should see the fields for the orders table", async  () => {
@@ -113,9 +107,7 @@ describe("The Reference Section", () => {
             store.pushPath("/reference/databases/1/tables/1/fields");
             mount(store.connectContainer(<FieldListContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-            expect(true).toBe(true);
 
-            expect(true).toBe(true);
         })
        it("should see the questions for the orders tables", async  () => {
 
@@ -123,10 +115,6 @@ describe("The Reference Section", () => {
             store.pushPath("/reference/databases/1/tables/1/questions");
             mount(store.connectContainer(<TableQuestionsContainer />));
             await store.waitForActions([FETCH_DATABASE_METADATA])
-            expect(true).toBe(true);
-
-
-            expect(true).toBe(true);
             
             var card = await CardApi.create(cardDef)
 

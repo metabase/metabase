@@ -48,14 +48,10 @@ describe("The Reference Section", () => {
             await store.waitForActions([FETCH_DATABASE_METADATA, FETCH_SEGMENTS, FETCH_METRICS])
         })
         
-        it("Should show an empty guide with a creation CTA for admin users", async () => {
-            // TODO
-            expect(true).toBe(true)
+        xit("Should show an empty guide with a creation CTA for admin users", async () => {
         })
 
-        it("A non-admin attempting to edit the guide should get an error", async () => {
-            // TODO
-            expect(true).toBe(true)
+        xit("A non-admin attempting to edit the guide should get an error", async () => {
         })
 
         it("Adding metrics should to the guide should make them appear", async () => {

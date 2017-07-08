@@ -25,13 +25,13 @@ import * as metadataActions from "metabase/redux/metadata";
 
 
 const emptyStateData = {
-            title: "Metrics are the official numbers that your team cares about",
-            adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
-            message: "Metrics will appear here once your admins have created some",
-            image: "app/assets/img/metrics-list",
-            adminAction: "Learn how to create metrics",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
-        }
+    title: "Metrics are the official numbers that your team cares about",
+    adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
+    message: "Metrics will appear here once your admins have created some",
+    image: "app/assets/img/metrics-list",
+    adminAction: "Learn how to create metrics",
+    adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
+}
 
 const mapStateToProps = (state, props) => ({
     entities: getMetrics(state, props),

@@ -46,11 +46,11 @@ export default class MetricDetailContainer extends Component {
         await actions.rFetchMetricDetail(this.props, this.props.metricId);
     }
 
-    async componentWillMount() {
+    componentWillMount() {
         this.fetchContainerData()
     }
 
-    async componentWillReceiveProps(newProps) {
+    componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }

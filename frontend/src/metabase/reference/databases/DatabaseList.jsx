@@ -24,13 +24,13 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
-            title: "Metabase is no fun without any data",
-            adminMessage: "Your databses will appear here once you connect one",
-            message: "Databases will appear here once your admins have added some",
-            image: "app/assets/img/databases-list",
-            adminAction: "Connect a database",
-            adminLink: "/admin/databases/create"
-        }
+    title: "Metabase is no fun without any data",
+    adminMessage: "Your databases will appear here once you connect one",
+    message: "Databases will appear here once your admins have added some",
+    image: "app/assets/img/databases-list",
+    adminAction: "Connect a database",
+    adminLink: "/admin/databases/create"
+}
 
 const mapStateToProps = (state, props) => ({
     entities: getDatabases(state, props),

@@ -196,6 +196,7 @@ export const rFetchSegmentQuestions = async (props, segmentID) => {
     fetchDataWrapper(
         props, 
         async (sID) => { 
+                await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentTable(sID),
                      props.fetchQuestions()]
@@ -207,6 +208,7 @@ export const rFetchSegmentRevisions = async (props, segmentID) => {
     fetchDataWrapper(
         props, 
         async (sID) => { 
+                await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentRevisions(sID),
                      props.fetchSegmentTable(sID)]
@@ -218,6 +220,7 @@ export const rFetchSegmentFields = async (props, segmentID) => {
     fetchDataWrapper(
         props, 
         async (sID) => { 
+                await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentFields(sID),
                      props.fetchSegmentTable(sID)]

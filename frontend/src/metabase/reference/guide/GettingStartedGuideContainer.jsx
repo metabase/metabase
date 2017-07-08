@@ -41,11 +41,11 @@ export default class GettingStartedGuideContainer extends Component {
         await actions.rFetchGuide(this.props);
     }
 
-    async componentWillMount() {
-        await this.fetchContainerData()
+    componentWillMount() {
+        this.fetchContainerData()
     }
 
-    async componentWillReceiveProps(newProps) {
+    componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }

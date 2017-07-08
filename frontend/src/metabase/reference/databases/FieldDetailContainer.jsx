@@ -46,12 +46,12 @@ export default class FieldDetailContainer extends Component {
         await actions.rFetchDatabaseMetadata(this.props, this.props.databaseId);
     }
 
-    async componentWillMount() {
+    componentWillMount() {
         this.fetchContainerData()
     }
 
 
-    async componentWillReceiveProps(newProps) {
+    componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }
