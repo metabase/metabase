@@ -234,6 +234,12 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
 // dispatch directly, since there is no actual dependence with the props 
 // of that component
 
+const resetForm = (props) => {
+    props.resetForm();
+    props.endLoading();
+    props.endEditing();
+}
+
 const updateDataWrapper = (props, fn) => {
 
     return async (fields) => {
@@ -250,9 +256,7 @@ const updateDataWrapper = (props, fn) => {
             console.error(error);
             props.setError(error);
         }
-        props.resetForm();
-        props.endLoading();
-        props.endEditing();
+        resetForm(props)
     }
 }
 
@@ -298,9 +302,7 @@ export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
         console.error(error);
     }
 
-    props.resetForm();
-    props.endLoading();
-    props.endEditing();
+    resetForm(props)
 }
 
 export const rUpdateFields = async (fields, formFields, props) => {
@@ -321,9 +323,7 @@ export const rUpdateFields = async (fields, formFields, props) => {
         console.error(error);
     }
 
-    props.resetForm();
-    props.endLoading();
-    props.endEditing();
+    resetForm(props)
 }
 
 
