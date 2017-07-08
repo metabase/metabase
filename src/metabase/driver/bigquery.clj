@@ -511,4 +511,7 @@
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
           :mbql->native             (u/drop-first-arg mbql->native)}))
 
-(driver/register-driver! :bigquery driver)
+(defn -init-driver
+  "Register the BigQuery driver"
+  []
+  (driver/register-driver! :bigquery driver))
