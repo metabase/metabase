@@ -58,10 +58,7 @@ export default class MetricRevisionsContainer extends Component {
             return;
         }
 
-        newProps.endEditing();
-        newProps.endLoading();
-        newProps.clearError();
-        newProps.collapseFormula();
+        newProps.clearState(newProps)
     }
 
     render() {

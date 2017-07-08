@@ -54,10 +54,7 @@ export default class FieldListContainer extends Component {
             return;
         }
 
-        newProps.endEditing();
-        newProps.endLoading();
-        newProps.clearError();
-        newProps.collapseFormula();
+        newProps.clearState(newProps)
     }
 
     render() {

@@ -228,17 +228,29 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
         )(segmentID)
 }
 
-// Update actions
-// these use the "fetchDataWrapper" for now. It should probably be renamed. 
-// Using props to fire off actions, which imo should be refactored to 
-// dispatch directly, since there is no actual dependence with the props 
-// of that component
+// This is called when a component gets a new set of props.
+// I *think* this is un-necessary in all cases as we're using multiple 
+// components where the old code re-used the same component
+const clearState = props => {
+    props.endEditing();
+    props.endLoading();
+    props.clearError();
+    props.collapseFormula();
+}
 
+
+// This is called on the success or failure of a form triggered update
 const resetForm = (props) => {
     props.resetForm();
     props.endLoading();
     props.endEditing();
 }
+
+// Update actions
+// these use the "fetchDataWrapper" for now. It should probably be renamed. 
+// Using props to fire off actions, which imo should be refactored to 
+// dispatch directly, since there is no actual dependence with the props 
+// of that component
 
 const updateDataWrapper = (props, fn) => {
 
