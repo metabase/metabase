@@ -34,7 +34,7 @@ export default class TableListContainer extends Component {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
         database: PropTypes.object.isRequired,
-        databaseId: PropTypes.integer.isRequired,
+        databaseId: PropTypes.number.isRequired,
         isEditing: PropTypes.bool
     };
 

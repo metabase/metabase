@@ -37,7 +37,7 @@ export default class FieldDetailContainer extends Component {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
         database: PropTypes.object.isRequired,
-        databaseId: PropTypes.integer.isRequired,
+        databaseId: PropTypes.number.isRequired,
         table: PropTypes.object.isRequired,
         field: PropTypes.object.isRequired,
         isEditing: PropTypes.bool

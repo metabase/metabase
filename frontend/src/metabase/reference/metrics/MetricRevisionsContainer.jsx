@@ -39,8 +39,8 @@ export default class MetricRevisionsContainer extends Component {
         location: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
         metric: PropTypes.object.isRequired,
-        metricId: PropTypes.integer.isRequired,
-        databaseId: PropTypes.integer.isRequired,
+        metricId: PropTypes.number.isRequired,
+        databaseId: PropTypes.number.isRequired,
         isEditing: PropTypes.bool
     };
 

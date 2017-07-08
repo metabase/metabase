@@ -31,7 +31,7 @@ export default class SegmentListContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        databaseId: PropTypes.integer.isRequired,
+        databaseId: PropTypes.number.isRequired,
         isEditing: PropTypes.bool
     };
 
