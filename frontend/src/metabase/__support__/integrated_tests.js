@@ -108,7 +108,7 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         const error = { status: result.status, data: resultBody, isCancelled: false }
         if (!simulateOfflineMode) {
             console.log('A request made in a test failed with the following error:');
-            console.dir(error, { depth: null });
+            console.log(error, { depth: null });
             console.log(`The original request: ${method} ${url}`);
             if (requestBody) console.log(`Original payload: ${requestBody}`);
         }
@@ -135,14 +135,14 @@ if (process.env.E2E_HOST) {
  *     * getting a React container subtree for the current route
  */
 
-export const createTestStore = () => {
+export const createTestStore = async () => {
     hasCreatedStore = true;
 
     const history = useRouterHistory(createMemoryHistory)();
     const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history));
     store.setFinalStoreInstance(store);
 
-    store.dispatch(refreshSiteSettings());
+    await store.dispatch(refreshSiteSettings());
     return store;
 }
 
@@ -217,6 +217,7 @@ const testStoreEnhancer = (createStore, history) => {
             },
 
             pushPath: (path) => history.push(path),
+            goBack: () => history.goBack(),
             getPath: () => urlFormat(history.getCurrentLocation()),
 
             connectContainer: (reactContainer) => {
