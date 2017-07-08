@@ -57,7 +57,7 @@ export default class SegmentFieldDetailContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

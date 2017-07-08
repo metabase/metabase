@@ -47,7 +47,7 @@ export default class DatabaseListContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
 
     }
 

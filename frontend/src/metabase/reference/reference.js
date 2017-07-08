@@ -231,7 +231,7 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
 // This is called when a component gets a new set of props.
 // I *think* this is un-necessary in all cases as we're using multiple 
 // components where the old code re-used the same component
-const clearState = props => {
+export const clearState = props => {
     props.endEditing();
     props.endLoading();
     props.clearError();

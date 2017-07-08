@@ -59,7 +59,7 @@ export default class TableQuestionsContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

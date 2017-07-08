@@ -57,7 +57,7 @@ export default class MetricDetailContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

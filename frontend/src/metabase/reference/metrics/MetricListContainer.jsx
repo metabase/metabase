@@ -49,7 +49,7 @@ export default class MetricListContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

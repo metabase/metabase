@@ -56,7 +56,7 @@ export default class SegmentFieldListContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

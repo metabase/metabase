@@ -58,7 +58,7 @@ export default class SegmentRevisionsContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

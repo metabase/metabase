@@ -55,7 +55,7 @@ export default class TableDetailContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {

@@ -51,7 +51,7 @@ export default class TableListContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
 
     }
 

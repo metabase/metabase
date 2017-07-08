@@ -51,7 +51,7 @@ export default class GettingStartedGuideContainer extends Component {
             return;
         }
 
-        newProps.clearState(newProps)
+        actions.clearState(newProps)
     }
 
     render() {
