@@ -149,6 +149,7 @@ const SECTIONS = [
     },
     {
         name: "Single Sign-On",
+        sidebar: false,
         settings: [
             {
                 key: "google-auth-client-id"
@@ -159,7 +160,12 @@ const SECTIONS = [
         ]
     },
     {
+        name: "Authentication",
+        settings: []
+    },
+    {
         name: "LDAP",
+        sidebar: false,
         settings: [
             {
                 key: "ldap-enabled",

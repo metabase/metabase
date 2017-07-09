@@ -192,4 +192,7 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-(driver/register-driver! :sqlserver (SQLServerDriver.))
+(defn -init-driver
+  "Register the SQLServer driver"
+  []
+  (driver/register-driver! :sqlserver (SQLServerDriver.)))

@@ -170,7 +170,10 @@
 (defn default-schema [] (i/default-schema *driver*))
 (defn id-field-type  [] (i/id-field-type *driver*))
 
-(defn expected-base-type->actual [base-type]
+(defn expected-base-type->actual
+  "Return actual `base_type` that will be used for the given driver if we asked for BASE-TYPE.
+   Mainly for Oracle because it doesn't have `INTEGER` types and uses decimals instead."
+  [base-type]
   (i/expected-base-type->actual *driver* base-type))
 
 

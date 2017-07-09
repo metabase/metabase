@@ -31,8 +31,8 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { VisualizationSettings} from "metabase/meta/types/Card";
-import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
+import type { Card as CardObject, VisualizationSettings } from "metabase/meta/types/Card";
+import type { HoverObject, ClickObject, Series, OnChangeCardAndRun } from "metabase/meta/types/Visualization";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
 type Props = {
@@ -63,7 +63,7 @@ type Props = {
 
     // for click actions
     metadata: Metadata,
-    onChangeCardAndRun: any => void,
+    onChangeCardAndRun: OnChangeCardAndRun,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -224,11 +224,12 @@ export default class Visualization extends Component {
     };
 
     // Add the underlying card of current series to onChangeCardAndRun if available
-    handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
+    handleOnChangeCardAndRun = ({ nextCard, seriesIndex }: { nextCard: CardObject, seriesIndex: number }) => {
         const { series, clicked } = this.state;
 
         const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-        const previousCard = series && series[index] && series[index].card;
+        // $FlowFixMe
+        const previousCard: ?CardObject = series && series[index] && series[index].card;
 
         this.props.onChangeCardAndRun({ nextCard, previousCard });
     }
