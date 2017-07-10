@@ -65,6 +65,8 @@
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
 
+(def ^:private empty-field-values
+  {:values []})
 
 (api/defendpoint GET "/:id/values"
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
@@ -101,6 +103,16 @@
   (let [field (api/read-check Field id)]
     (db/delete! Dimension :field_id id)
     api/generic-204-no-content))
+
+;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
+;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
+(api/defendpoint GET "/field-literal%2C:field-name%2Ctype%2F:field-type/values"
+  "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB.
+   This endpoint is just a convenience to simplify the frontend code. It just returns the standard
+   'empty' field values response."
+  ;; we don't actually care what field-name or field-type are, so they're ignored
+  [_ _]
+  empty-field-values)
 
 (defn validate-human-readable-pairs
   "Human readable values are optional, but if present they must be

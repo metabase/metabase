@@ -247,5 +247,7 @@
           :mbql->native             (u/drop-first-arg qp/mbql->native)
           :table-rows-seq           (u/drop-first-arg table-rows-seq)}))
 
-
-(driver/register-driver! :googleanalytics (GoogleAnalyticsDriver.))
+(defn -init-driver
+  "Register the Google Analytics driver"
+  []
+  (driver/register-driver! :googleanalytics (GoogleAnalyticsDriver.)))

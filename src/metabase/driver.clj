@@ -284,7 +284,10 @@
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
-    (require ns-symb)))
+    (require ns-symb)
+    (if-let [register-driver-fn (ns-resolve ns-symb (symbol "-init-driver"))]
+      (register-driver-fn)
+      (log/warn (format "No -init-driver function found for '%s'" (name ns-symb))))))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"

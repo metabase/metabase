@@ -77,6 +77,7 @@
   "Return the `Cards` associated with this PULSE."
   [{:keys [id]}]
   (db/select [Card :id :name :description :display]
+    :archived false
     (mdb/join [Card :id] [PulseCard :card_id])
     (db/qualify PulseCard :pulse_id) id
     {:order-by [[(db/qualify PulseCard :position) :asc]]}))
@@ -119,7 +120,7 @@
   (db/delete! PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
   (when (seq card-ids)
-    (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
+    (let [cards (map-indexed (fn [i card-id] {:pulse_id id, :card_id card-id, :position i}) card-ids)]
       (db/insert-many! PulseCard cards))))
 
 
@@ -207,7 +208,7 @@
   (db/transaction
     ;; update the pulse itself
     (db/update! Pulse id, :name name, :skip_if_empty skip-if-empty?)
-    ;; update cards (only if they changed)
+    ;; update cards (only if they changed). Order for the cards is important which is why we're not using select-field
     (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
       (update-pulse-cards! pulse cards))
     ;; update channels

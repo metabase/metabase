@@ -9,6 +9,7 @@
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data.users :refer :all]
+            [ring.util.codec :as codec]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
@@ -281,6 +282,11 @@
        (tu/boolean-ids-and-timestamps new-dim)
        (tu/boolean-ids-and-timestamps updated-dim)
        (= (:id new-dim) (:id updated-dim))])))
+
+;; Check that trying to get values for a 'virtual' field just returns a blank values map
+(expect
+  {:values []}
+  ((user->client :rasta) :get 200 (format "field/%s/values" (codec/url-encode "field-literal,created_at,type/Datetime"))))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
 (expect

@@ -460,38 +460,26 @@
                                                   :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name "Go Dubs!"
+     :schema       "All questions"
      :db_id        database/virtual-id
      :id           card-virtual-table-id
-     :fields       [{:name         "NAME"
-                     :display_name "Name"
-                     :base_type    "type/Text"
-                     :table_id     card-virtual-table-id
-                     :id           ["field-literal" "NAME" "type/Text"]
-                     :special_type nil}
-                    {:name         "ID"
-                     :display_name "ID"
-                     :base_type    "type/Integer"
-                     :table_id     card-virtual-table-id
-                     :id           ["field-literal" "ID" "type/Integer"]
-                     :special_type nil}
-                    {:name         "PRICE"
-                     :display_name "Price"
-                     :base_type    "type/Integer"
-                     :table_id     card-virtual-table-id
-                     :id           ["field-literal" "PRICE" "type/Integer"]
-                     :special_type nil}
-                    {:name         "LATITUDE"
-                     :display_name "Latitude"
-                     :base_type    "type/Float"
-                     :table_id     card-virtual-table-id
-                     :id           ["field-literal" "LATITUDE" "type/Float"]
-                     :special_type nil}]})
+     :description  nil
+     :fields       (for [[field-name display-name base-type] [["NAME"     "Name"     "type/Text"]
+                                                              ["ID"       "ID"       "type/Integer"]
+                                                              ["PRICE"    "Price"    "type/Integer"]
+                                                              ["LATITUDE" "Latitude" "type/Float"]]]
+                     {:name         field-name
+                      :display_name display-name
+                      :base_type    base-type
+                      :table_id     card-virtual-table-id
+                      :id           ["field-literal" field-name base-type]
+                      :special_type nil})})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
-
     ;; Now fetch the metadata for this "table"
     ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+
 
 ;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
 (expect

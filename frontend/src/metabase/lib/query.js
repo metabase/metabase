@@ -341,6 +341,8 @@ var Query = {
             (Query.isRegularField(field)) ||
             (Query.isLocalField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
+            // datetime field can  be either 4-item (deprecated): ["datetime-field", <field>, "as", <unit>]
+            // or 3 item (preferred style): ["datetime-field", <field>, <unit>]
             (Query.isDatetimeField(field)   && Query.isValidField(field[1]) &&
                 (field.length === 4 ?
                     (field[2] === "as" && typeof field[3] === "string") : // deprecated
