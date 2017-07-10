@@ -16,6 +16,7 @@ import Select from 'metabase/components/Select'
 
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
+import * as datamodelActions from "../datamodel"
 
 import Metadata from "metabase/meta/metadata/Metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -24,25 +25,31 @@ import Query from "metabase/lib/query";
 import SelectButton from "metabase/components/SelectButton";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
+import {
+    FieldVisibilitySelect,
+    SpecialTypeAndTargetSelect
+} from "metabase/admin/datamodel/components/database/ColumnItem";
+import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 
-const SelectClasses = 'h3 border-dark shadowed p2'
+const SelectClasses = 'h3 border-dark shadowed p2 inline-block'
 
 const mapStateToProps = (state, props) => {
     return {
         databaseId: parseInt(props.params.databaseId),
         tableId: parseInt(props.params.tableId),
         fieldId: parseInt(props.params.fieldId),
-        metadata: getMetadata(state)
+        metadata: getMetadata(state),
+        idfields: getDatabaseIdfields(state)
     }
 }
 
 const mapDispatchToProps = {
-    fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
     fetchTableMetadata: metadataActions.fetchTableMetadata,
     updateField: metadataActions.updateField,
     updateFieldValues: metadataActions.updateFieldValues,
     updateFieldDimension: metadataActions.updateFieldDimension,
-    deleteFieldDimension: metadataActions.deleteFieldDimension
+    deleteFieldDimension: metadataActions.deleteFieldDimension,
+    fetchDatabaseIdfields: datamodelActions.fetchDatabaseIdfields
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -52,18 +59,24 @@ export default class FieldApp extends Component {
         tableId: number,
         fieldId: number,
         metadata: Metadata,
+        idfields: Object[],
 
-        fetchDatabaseMetadata: (number) => Promise<void>,
-        updateField: (Field) => Promise<void>
+        fetchTableMetadata: (number) => Promise<void>,
+        updateField: (any) => Promise<void>,
+        updateFieldValues: (any) => Promise<void>,
+        updateFieldDimension: (any) => Promise<void>,
+        deleteFieldDimension: (any) => Promise<void>,
+        fetchDatabaseIdfields: (number) => Promise<void>
     }
 
     async componentWillMount() {
-        const {tableId, fetchDatabaseMetadata, fetchTableMetadata} = this.props;
+        const {databaseId, tableId, fetchTableMetadata, fetchDatabaseIdfields} = this.props;
 
         // Only fetchTableMetadata hydrates `dimensions` and user-defined `values` in the field object
         await fetchTableMetadata(tableId);
 
-        // await fetchDatabaseMetadata(tableId);
+        // TODO Atte Keinänen 7/10/17: Migrate this to redux/metadata
+        await fetchDatabaseIdfields(databaseId);
     }
 
     onUpdateFieldProperties = async (fieldProps) => {
@@ -71,23 +84,36 @@ export default class FieldApp extends Component {
         const field = metadata.fields[fieldId];
 
         if (field) {
-            // TODO: Should Object.assign be used in this case ??
-            await this.props.updateField({ ...field, ...fieldProps, table: undefined });
+            // `table` and `target` propertes is part of the fully connected metadata graph; drop it because it
+            // makes conversion to JSON impossible due to cyclical data structure
+            await this.props.updateField({ ...field, ...fieldProps, table: undefined, target: undefined });
         } else {
             console.warn("Updating field properties in fields settings failed because of missing field metadata")
         }
     }
 
     render () {
-        const { metadata, fieldId, databaseId, tableId, updateFieldValues, updateFieldDimension, deleteFieldDimension, fetchTableMetadata } = this.props;
+        const {
+            metadata,
+            fieldId,
+            databaseId,
+            tableId,
+            idfields,
+            updateField,
+            updateFieldValues,
+            updateFieldDimension,
+            deleteFieldDimension,
+            fetchTableMetadata
+        } = this.props;
 
         // Provide the Field and Table wrappers to child components as metadata lib doesn't wrap them automatically before metabase-lib
         const field = metadata.fields[fieldId] && new Field(metadata.fields[fieldId]);
         const table = metadata.tables[tableId] && new Field(metadata.tables[tableId]);
 
-        // TODO: How to show a metadata loading error here?
+        const isLoading = !field || !table || !idfields
+
         return (
-            <LoadingAndErrorWrapper loading={!field} error={null} noWrapper>
+            <LoadingAndErrorWrapper loading={isLoading} error={null} noWrapper>
                 { () =>
                     <div className="relative">
                         <div className="wrapper wrapper--trim">
@@ -100,19 +126,28 @@ export default class FieldApp extends Component {
                                 />
                             </Section>
 
-                            {/*<Section>*/}
-                                {/*<FieldType*/}
-                                    {/*field={field}*/}
-                                    {/*updateFieldProperties={this.onUpdateFieldProperties}*/}
-                                {/*/>*/}
-                            {/*</Section>*/}
+                            <Section>
+                                <SectionHeader title="Visibility"
+                                               description="Where this field will appear throughout Metabase"/>
+                                <FieldVisibilitySelect
+                                    className={SelectClasses}
+                                    // Enter the unwrapped object without cyclical structure
+                                    field={{ ...field._object, table: undefined, target: undefined }}
+                                    updateField={updateField}
+                                />
+                            </Section>
 
-                            {/*<Section>*/}
-                                {/*<FieldVisibility*/}
-                                    {/*field={field}*/}
-                                    {/*updateFieldProperties={this.onUpdateFieldProperties}*/}
-                                {/*/>*/}
-                            {/*</Section>*/}
+                            <Section>
+                                <SectionHeader title="Type" />
+                                <SpecialTypeAndTargetSelect
+                                    className={SelectClasses}
+                                    // Enter the unwrapped object without cyclical structure
+                                    field={{ ...field._object, table: undefined, target: undefined }}
+                                    updateField={updateField}
+                                    idfields={idfields}
+                                    selectSeparator={<SelectSeparator />}
+                                />
+                            </Section>
 
                             <Section>
                                 <FieldRemapping
@@ -145,56 +180,12 @@ const BackButton = ({ databaseId, tableId }) =>
         <Icon name="backArrow" />
     </Link>
 
-// TODO: Replicate the implementation from Column component
-class FieldVisibility extends Component {
-    render () {
-        return (
-            <div>
-                <SectionHeader title="Visibility" description="Where this field will appear throughout Metabase" />
-                <Select
-                    className={SelectClasses}
-                    value={{ name: 'Everywhere' }}
-                    options={[{}, {}]}
-                />
-            </div>
-        )
-    }
-}
-
 const SelectSeparator = () =>
     <Icon
         name="chevronright"
         size={12}
         className="mx2 text-grey-3"
     />
-
-// TODO: Replicate the implementation from Column component
-class FieldType extends Component {
-    onUpdateFieldType() {
-
-    }
-
-    render () {
-        return (
-            <div>
-                <SectionHeader title="Type" />
-                <div className="flex align-center">
-                    <Select
-                        className={SelectClasses}
-                        value={{ name: 'Foreign Key' }}
-                        options={[{}, {}]}
-                    />
-                    <SelectSeparator />
-                    <Select
-                        className={SelectClasses
-                        }value={{ name: 'Order Statuses' }}
-                        options={[{}, {}]}
-                    />
-                </div>
-            </div>
-        )
-    }
-}
 
 class FieldHeader extends Component {
     onNameChange = (e) => {

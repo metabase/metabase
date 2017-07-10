@@ -12,6 +12,10 @@ import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
 
 import _  from "underscore";
+import cx from "classnames";
+
+import type { Field } from "metabase/meta/types/Field"
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 @withRouter
 export default class Column extends Component {
@@ -19,8 +23,6 @@ export default class Column extends Component {
         super(props, context);
         this.onDescriptionChange = this.onDescriptionChange.bind(this);
         this.onNameChange = this.onNameChange.bind(this);
-        this.onSpecialTypeChange = this.onSpecialTypeChange.bind(this);
-        this.onTargetChange = this.onTargetChange.bind(this);
         this.onVisibilityChange = this.onVisibilityChange.bind(this);
     }
 
@@ -28,8 +30,6 @@ export default class Column extends Component {
         field: PropTypes.object,
         idfields: PropTypes.array.isRequired,
         updateField: PropTypes.func.isRequired,
-        updateFieldSpecialType: PropTypes.func.isRequired,
-        updateFieldTarget: PropTypes.func.isRequired
     };
 
     updateProperty(name, value) {
@@ -54,37 +54,8 @@ export default class Column extends Component {
         this.updateProperty("visibility_type", type.id);
     }
 
-    onSpecialTypeChange(special_type) {
-        this.props.field.special_type = special_type.id;
-        this.props.updateFieldSpecialType(this.props.field);
-    }
-
-    onTargetChange(target_field) {
-        this.props.field.fk_target_field_id = target_field.id;
-        this.props.updateFieldTarget(this.props.field);
-    }
-
     render() {
-        var targetSelect;
-        if (isFK(this.props.field.special_type)) {
-            targetSelect = (
-                <Select
-                    className="TableEditor-field-target block"
-                    placeholder="Select a target"
-                    value={this.props.field.fk_target_field_id && _.find(this.props.idfields, (field) => field.id === this.props.field.fk_target_field_id)}
-                    options={this.props.idfields}
-                    optionNameFn={(field) => field.table.schema && field.table.schema !== "public" ? titleize(humanize(field.table.schema))+"."+field.displayName : field.displayName}
-                    onChange={this.onTargetChange}
-                />
-            );
-        }
-
-        let specialTypes = MetabaseCore.field_special_types.slice(0);
-        specialTypes.push({'id': null, 'name': 'No special type', 'section': 'Other'});
-        // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
-        if (!isNumericBaseType(this.props.field)) {
-            specialTypes = specialTypes.filter((f) => !isa(f.id, TYPE.UNIXTimestamp));
-        }
+        const { field, idfields, updateField } = this.props;
 
         return (
             <li className="mt1 mb3 flex">
@@ -94,23 +65,19 @@ export default class Column extends Component {
                         <div className="clearfix">
                             <div className="flex flex-full">
                                 <div className="flex-full px1">
-                                    <Select
-                                        className="TableEditor-field-visibility block"
-                                        placeholder="Select a field visibility"
-                                        value={_.find(MetabaseCore.field_visibility_types, (type) => type.id === this.props.field.visibility_type)}
-                                        options={MetabaseCore.field_visibility_types}
-                                        onChange={this.onVisibilityChange}
+                                    <FieldVisibilitySelect
+                                        className="block"
+                                        field={field}
+                                        updateField={updateField}
                                     />
                                 </div>
                                 <div className="flex-full px1">
-                                    <Select
-                                        className="TableEditor-field-special-type block"
-                                        placeholder="Select a special type"
-                                        value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
-                                        options={specialTypes}
-                                        onChange={this.onSpecialTypeChange}
+                                    <SpecialTypeAndTargetSelect
+                                        className="block"
+                                        field={field}
+                                        updateField={updateField}
+                                        idfields={idfields}
                                     />
-                                    {targetSelect}
                                 </div>
                             </div>
                         </div>
@@ -126,4 +93,104 @@ export default class Column extends Component {
         )
     }
 }
+
+// FieldVisibilitySelect and SpecialTypeSelect are also used in FieldApp
+
+export class FieldVisibilitySelect extends Component {
+    props: {
+        field: Field,
+        updateField: (Field) => void,
+        className?: string
+    }
+
+    onVisibilityChange = (visibilityType) => {
+        const { field } = this.props
+        field.visibility_type = visibilityType.id;
+        this.props.updateField(field);
+    }
+
+    render() {
+        const { field, className } = this.props;
+
+        return (
+            <Select
+                className={cx("TableEditor-field-visibility block", className)}
+                placeholder="Select a field visibility"
+                value={_.find(MetabaseCore.field_visibility_types, (type) => { return type.id === field.visibility_type })}
+                options={MetabaseCore.field_visibility_types}
+                onChange={this.onVisibilityChange}
+            />
+        )
+    }
+}
+
+export class SpecialTypeAndTargetSelect extends Component {
+    props: {
+        field: Field,
+        updateField: (Field) => void,
+        className?: string,
+        selectSeparator?: React$Element<any>
+    }
+
+    onSpecialTypeChange = async (special_type) => {
+        const { field, updateField } = this.props;
+        field.special_type = special_type.id;
+
+        // If we are changing the field from a FK to something else, we should delete any FKs present
+        if (field.target && field.target.id != null && isFK(field.special_type)) {
+            // we have something that used to be an FK and is now not an FK
+            // clean up after ourselves
+            field.target = null;
+            field.fk_target_field_id = null;
+        }
+
+        await updateField(field);
+
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field Special-Type", field.special_type);
+    }
+
+    onTargetChange = async (target_field) => {
+        const { field, updateField } = this.props;
+        field.fk_target_field_id = target_field.id;
+
+        await updateField(field);
+
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
+    }
+
+    render() {
+        const { field, idfields, className, selectSeparator } = this.props;
+
+        let specialTypes = MetabaseCore.field_special_types.slice(0);
+        specialTypes.push({'id': null, 'name': 'No special type', 'section': 'Other'});
+        // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
+        if (!isNumericBaseType(field)) {
+            specialTypes = specialTypes.filter((f) => !isa(f.id, TYPE.UNIXTimestamp));
+        }
+
+        const showFKTargetSelect = isFK(field.special_type);
+
+        return (
+            <div>
+                <Select
+                    className={cx("TableEditor-field-special-type", className)}
+                    placeholder="Select a special type"
+                    value={_.find(MetabaseCore.field_special_types, (type) => type.id === field.special_type)}
+                    options={specialTypes}
+                    onChange={this.onSpecialTypeChange}
+                />
+                { showFKTargetSelect && selectSeparator }
+                { showFKTargetSelect && <Select
+                    className={cx("TableEditor-field-target", className)}
+                    placeholder="Select a target"
+                    value={field.fk_target_field_id && _.find(idfields, (idField) => idField.id === field.fk_target_field_id)}
+                    options={idfields}
+                    optionNameFn={(idField) => idField.table.schema && idField.table.schema !== "public" ? titleize(humanize(idField.table.schema)) + "." + idField.displayName : idField.displayName}
+                    onChange={this.onTargetChange}
+                /> }
+            </div>
+        )
+    }
+}
+
 
