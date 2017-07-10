@@ -372,7 +372,7 @@ class FieldRemapping extends Component {
     getAvailableMappingTypes = () => {
         const { field } = this.props;
 
-        const hasForeignKeys = this.getForeignKeys().length > 0;
+        const hasForeignKeys = !!field.fk_target_field_id;
 
         // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
         // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -438,8 +438,9 @@ class FieldRemapping extends Component {
     }
 
     getForeignKeys = () => {
-        const { table } = this.props;
-        return Query.getFieldOptions(table.fields, true).fks;
+        const { table, field } = this.props;
+        const unfilteredFks = Query.getFieldOptions(table.fields, true).fks
+        return unfilteredFks.filter(fk => fk.field.id === field.id);
     }
 
     render () {
