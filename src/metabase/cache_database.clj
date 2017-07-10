@@ -11,7 +11,8 @@
             [metabase.sync-database.cached-values :as cached-values]
             [toucan.db :as db]))
 
-(defonce ^:private currently-syncing-dbs (atom #{}))
+(defonce ^:private currently-syncing-db-ids
+  (atom #{}))
 
 (defn- cache-database-with-tracking! [driver database]
   (let [start-time (System/nanoTime)
@@ -47,18 +48,18 @@
   [{database-id :id, :as database} & {:keys [full-sync?]}]
   {:pre [(map? database)]}
   ;; if this database is already being synced then bail now
-  (when-not (contains? @currently-syncing-dbs database-id)
+  (when-not (contains? @currently-syncing-db-ids database-id)
     (binding [i/*disable-qp-logging*  true
               db/*disable-db-logging* true]
       (let [db-driver  (driver/engine->driver (:engine database))]
         (try
           ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
-          (swap! currently-syncing-dbs conj database-id)
+          (swap! currently-syncing-db-ids conj database-id)
           ;; do our work
           (driver/sync-in-context db-driver database (partial cache-database-with-tracking! db-driver database))
           (finally
             ;; always cleanup our tracking when we are through
-            (swap! currently-syncing-dbs disj database-id)))))))
+            (swap! currently-syncing-db-ids disj database-id)))))))
 
 (defn cache-table-field-values!
   "Analyze a *single* TABLE and all of its Fields.
@@ -72,6 +73,3 @@
                        full-sync?
                        (:is_full_sync database))]
       (driver/sync-in-context db-driver database (partial cache-table-with-tracking! db-driver database table)))))
-
-
-
