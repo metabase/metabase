@@ -171,8 +171,8 @@
   [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
   {:pre [(integer? table-id) (string? field-name) (isa? base-type :type/*)]}
   (let [special-type (or special-type
-                       (when pk? :type/PK)                       
-                       (infer-special-type/infer-field-special-type field-name base-type))]
+                         (when pk? :type/PK)
+                         (infer-special-type/infer-field-special-type field-name base-type))]
     (db/insert! Field
       :table_id      table-id
       :raw_column_id raw-column-id

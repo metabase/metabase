@@ -28,6 +28,8 @@
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
+;; TODO - we should make all these `test:` functions private since they're only used in this namespace.
+;; In order to do that we need to tweak the corresponding tests however
 (defn test:category-type
   "When no initial guess of the special type, based on the fields name, was found
    and the field has less than `low-cardinality-threshold`
