@@ -1,8 +1,11 @@
 (ns metabase.test.data.athena
-  (:require [clojure.string :as s]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [clojure.string :as s]
             [environ.core :refer [env]]
             [metabase.db.spec :as dbspec]
             [metabase.test.data
+             [dataset-definitions :as defs]
              [generic-sql :as generic]
              [interface :as i]]
             [metabase.util :as u])
@@ -30,26 +33,61 @@
 
 (def ^:private db-connection-details
   (delay {:log_path         (get-db-env-var :log_path "/tmp/athena.log")
+          :schema           (get-db-env-var :log_path "sampledb")
           :s3_staging_dir   (get-db-env-var :s3-staging-dir)
+          :region           (get-db-env-var :region "us-east-1")
           :url              (get-db-env-var :url "jdbc:awsathena://athena.us-east-1.amazonaws.com:443")
           :user             (get-db-env-var :user)
           :password         (get-db-env-var :password)}))
 
-
 (u/strict-extend AthenaDriver
   generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
-         {:create-db-sql             (constantly nil)
+         {:add-fk-sql                (constantly nil)
+          :create-db-sql             (constantly nil)
+          :create-table-sql          (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
           :drop-table-if-exists-sql  (constantly nil)
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :load-data!                (constantly nil)
-          :pk-sql-type               (constantly nil)
-          :qualified-name-components (partial i/single-db-qualified-name-components "sampledb")})
+          :pk-sql-type               (constantly nil)})
+          ;:qualified-name-components (partial i/single-db-qualified-name-components "sampledb")})
 
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (fn [& _]
+                                          (println "Coucou: " @db-connection-details)
                                           @db-connection-details)
-          :default-schema               (constantly "sampledb")
+          :default-schema               (constantly (:schema @db-connection-details))
           :engine                       (constantly :athena)}))
+
+
+
+
+;;; Helper for generating Athena data
+
+;; It's a copy from metabase.test.data.druid, I don't know the good place to put it in. metabase.test.data.interface ?
+(defn- write-dbdef-to-json [dbdef filename]
+  (io/delete-file filename :silently)
+  (let [rows dbdef]
+    (with-open [writer (io/writer filename)]
+      (doseq [row rows]
+        (json/generate-stream row writer)
+        (.append writer \newline)))))
+
+
+(defn table->maps [dbdef table-name]
+  (let [db (i/flatten-dbdef dbdef table-name)
+        ks (map :field-name (:field-definitions (first (:table-definitions db))))
+        rows (:rows (first (:table-definitions db)))]
+    (map #(zipmap ks %) rows)))
+
+(defn dataset->json! [root-path dbdef]
+  (let [tables (i/gettables dbdef)]
+    (doseq [table tables]
+      (write-dbdef-to-json
+       (table->maps dbdef table)
+       (str root-path "/" table ".json")))))
+
+;(dataset->json! "/tmp/test" defs/test-data)
+;(dataset->json! "/tmp/tupac" defs/tupac-sightings)

@@ -169,6 +169,11 @@
 
 ;;; ## Convenience + Helper Functions
 ;; TODO - should these go here, or in `metabase.test.data`?
+(defn gettables
+    [^DatabaseDefinition dbdef]
+    (for [tabledef (:table-definitions dbdef)]
+      (:table-name tabledef)))
+
 
 (defn get-tabledef
   "Return `TableDefinition` with TABLE-NAME in DBDEF."

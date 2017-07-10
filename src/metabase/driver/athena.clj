@@ -90,8 +90,7 @@
 (defn- connection-details->spec
   "Create a database specification for an Athena database. DETAILS should include keys for `:user`,
    `:password`, `:s3_staging_dir` `:log_path` and `region`"
-  [driver
-   {:keys [log_path  password s3_staging_dir region user]
+  [{:keys [log_path  password s3_staging_dir region user]
     :as   details}]
   (assert (or user password s3_staging_dir log_path region))
   (merge {:url (str "jdbc:awsathena://athena." region ".amazonaws.com:443")}
@@ -99,12 +98,12 @@
 
 (defn- can-connect? [driver details]
   (let [details-with-tunnel (ssh/include-ssh-tunnel details)
-        connection (connection-details->spec driver details-with-tunnel)]
+        connection (connection-details->spec details-with-tunnel)]
     (= 1 (first (vals (first (run-query connection "SELECT 1" {})))))))
 
 (defn- describe-database
   [driver {:keys [details] :as database}]
-  (let [conn (connection-details->spec driver details)
+  (let [conn (connection-details->spec details)
         databases (->> (run-query conn "SHOW DATABASES" {})
                        (remove #(= (:database_name %) "default")) ; this table have permission issue if you use a role with limited permission
                        (map (fn [{:keys [database_name]}]
@@ -112,7 +111,7 @@
                        set)
         tables (->> databases
                     (map (fn [{:keys [name] :as table}]
-                           (let [tables (run-query conn(str "SHOW TABLES IN " name) {})]
+                           (let [tables (run-query conn (str "SHOW TABLES IN " name) {})]
                              (map (fn [{:keys [tab_name]}] (assoc table :name (str name "." tab_name)))
                                   tables))))
                     flatten
@@ -126,14 +125,14 @@
                                     :type/*)})))
 
 (defn- describe-table [driver database table]
-  (let [conn (connection-details->spec driver (:details database))]
+  (let [conn (connection-details->spec (:details database))]
     (assoc (select-keys table [:name :schema]) :fields (describe-table-fields conn table))))
 
 (defn- execute-query
   [driver {:keys [database settings], query :native, :as outer-query}]
   (let [final-query (str "-- " (qputil/query->remark outer-query) "\n"
                                (unprepare/unprepare (concat [(:query query)] (:params query)) :quote-escape "'"))
-        results (run-query (connection-details->spec driver (:details database)) final-query {})
+        results (run-query (connection-details->spec (:details database)) final-query {})
         columns (into [] (keys (first results)))
         rows (->> results
                   (map vals)
