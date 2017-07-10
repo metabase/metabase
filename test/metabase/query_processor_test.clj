@@ -129,8 +129,8 @@
                   :base_type    (data/id-field-type)
                   :name         (data/format-name "id")
                   :display_name "ID"
-                  :min_value 1.0
-                  :max_value 15.0}
+                  :min_value    1.0
+                  :max_value    15.0}
      :name       {:special_type :type/Name
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")

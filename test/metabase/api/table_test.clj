@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   (:require [clojure.walk :as walk]
             [expectations :refer :all]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [http-client :as http]
@@ -24,8 +25,7 @@
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
-            [toucan.util.test :as tt]
-            [medley.core :as m]))
+            [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 (resolve-private-vars metabase.api.table dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes)

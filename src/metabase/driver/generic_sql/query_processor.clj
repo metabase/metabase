@@ -41,7 +41,7 @@
 
 ;;; ## Formatting
 
-(defn qualified-alias
+(defn- qualified-alias
   "Convert the given `FIELD` to a stringified alias"
   [field]
   (some->> field

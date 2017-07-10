@@ -11,7 +11,7 @@
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))
 
-;; single column
+;;; single column
 (qp-expect-with-all-engines
   {:rows    [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
    :columns [(data/format-name "user_id")
