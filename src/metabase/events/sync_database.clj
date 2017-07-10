@@ -27,13 +27,13 @@
 
 (defn- process-event-with-database
   "extract a database from an event and call the supplied function with it"
-  [event-fn name event]
+  [event-fn event-name event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic database :item} event]
       (event-fn database))
     (catch Throwable e
-      (log/warn (format "Failed to process %s event. %s" name (:topic event)) e))))
+      (log/warn (format "Failed to process %s event. %s" event-name (:topic event)) e))))
 
 (defn- process-sync-database-event
   "Handle processing for a single event notification received on the sync-database-channel"
