@@ -1,3 +1,4 @@
+/* eslint-disable */
 
 describe("FieldApp", () => {
     describe("name settings", () => {

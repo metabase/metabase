@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { isFK } from "metabase/lib/types";
 
 import { MetabaseApi, SegmentApi, MetricApi, RevisionsApi } from "metabase/services";
 
