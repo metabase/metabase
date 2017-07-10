@@ -20,7 +20,6 @@ import * as metadataActions from "metabase/redux/metadata";
 import Metadata from "metabase/meta/metadata/Metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Field from "metabase/meta/metadata/Field";
-import { humanize, titleize } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import SelectButton from "metabase/components/SelectButton";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -226,7 +225,7 @@ class FieldHeader extends Component {
                 />
             </div>
         )
-    }
+}
 }
 
 // consider renaming this component to something more descriptive
@@ -246,6 +245,15 @@ class ValueRemappings extends Component {
                 return [original, mappedString]
             })
         )
+
+        const containsUnsetMappings = [...props.remappings].some(([_, mappedOrUndefined]) => {
+            return mappedOrUndefined === undefined;
+        })
+        if (containsUnsetMappings) {
+            // Save the initial values to make sure that we aren't left in a potentially broken state where
+            // the dimension type is "internal" but we don't have any values in metabase_fieldvalues
+            this.props.updateRemappings(editingRemappings);
+        }
 
         this.state = {
             editingRemappings
@@ -304,6 +312,7 @@ class ValueRemappings extends Component {
         )
     }
 }
+
 class FieldValueMapping extends Component {
     onInputChange = (e) => {
         this.props.setMapping(e.target.value)
@@ -363,20 +372,24 @@ class FieldRemapping extends Component {
     getAvailableMappingTypes = () => {
         const { field } = this.props;
 
+        const hasForeignKeys = this.getForeignKeys().length > 0;
+
         // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
         // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
-        if (field.remapping.size > 0) {
-            return [MAP_OPTIONS.original, MAP_OPTIONS.foreign, MAP_OPTIONS.custom];
-        } else {
-            return [MAP_OPTIONS.original, MAP_OPTIONS.foreign];
-        }
+        const hasMappableNumeralValues =
+            field.remapping.size > 0 &&
+            [...field.remapping.keys()].every((key) => typeof key === "number" );
+
+        return [
+            MAP_OPTIONS.original,
+            ...(hasForeignKeys ? [MAP_OPTIONS.foreign] : []),
+            ...(hasMappableNumeralValues > 0 ? [MAP_OPTIONS.custom] : [])
+        ]
     }
 
     // dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_i
     onSetMappingType = async (mappingType) => {
         const { field, updateFieldDimension, deleteFieldDimension } = this.props;
-
-        console.log(field, field.id);
 
         if (mappingType.type === "original") {
             await deleteFieldDimension(field.id)
@@ -399,21 +412,34 @@ class FieldRemapping extends Component {
         this.setState({ mappingType })
     }
 
-    onForeignKeyFieldChange = async (newField) => {
+    onForeignKeyFieldChange = async (foreignKeyClause) => {
         const { table, field, fetchTableMetadata, updateFieldDimension } = this.props;
 
-        await updateFieldDimension(field.id, {
-            type: "external",
-            name: field.display_name,
-            human_readable_field_id: newField.id
-        })
+        // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
+        if (foreignKeyClause.length === 3 && foreignKeyClause[0] === "fk->") {
+            await updateFieldDimension(field.id, {
+                type: "external",
+                name: field.display_name,
+                human_readable_field_id: foreignKeyClause[2]
+            })
 
-        await fetchTableMetadata(table.id, true);
+            await fetchTableMetadata(table.id, true);
+
+            this.refs.fkPopover.close()
+        } else {
+            throw new Error("The selected field isn't a foreign key")
+        }
+
     }
 
     onUpdateRemappings = async (remappings) => {
         const { field, updateFieldValues } = this.props;
         await updateFieldValues(field.id, Array.from(remappings));
+    }
+
+    getForeignKeys = () => {
+        const { table } = this.props;
+        return Query.getFieldOptions(table.fields, true).fks;
     }
 
     render () {
@@ -438,7 +464,7 @@ class FieldRemapping extends Component {
                 { this.state.mappingType === MAP_OPTIONS.foreign && [
                     <SelectSeparator key="foreignKeySeparator" />,
                     <PopoverWithTrigger
-                        ref="popover"
+                        ref="fkPopover"
                         triggerElement={
                             <SelectButton
                                 hasValue={hasFKMappingValue}
@@ -452,7 +478,7 @@ class FieldRemapping extends Component {
                         <FieldList
                             className="text-purple"
                             field={fkMappingField}
-                            fieldOptions={{ count: 0, fields: [], fks: Query.getFieldOptions(table.fields, true).fks }}
+                            fieldOptions={{ count: 0, fields: [], fks: this.getForeignKeys() }}
                             tableMetadata={table}
                             onFieldChange={this.onForeignKeyFieldChange}
                         />
