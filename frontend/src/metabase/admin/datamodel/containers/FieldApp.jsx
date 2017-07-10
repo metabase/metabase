@@ -217,11 +217,13 @@ class FieldHeader extends Component {
                     className="h1 AdminInput bordered rounded border-dark block mb1"
                     value={this.props.field.display_name}
                     onChange={this.onNameChange}
+                    placeholder={this.props.field.name}
                 />
                 <Input
                     className="text AdminInput bordered input text-measure block"
                     value={this.props.field.description}
                     onChange={this.onDescriptionChange}
+                    placeholder="No description for this field yet"
                 />
             </div>
         )
