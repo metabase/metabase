@@ -100,19 +100,19 @@ export default class FieldApp extends Component {
                                 />
                             </Section>
 
-                            <Section>
-                                <FieldType
-                                    field={field}
-                                    updateFieldProperties={this.onUpdateFieldProperties}
-                                />
-                            </Section>
+                            {/*<Section>*/}
+                                {/*<FieldType*/}
+                                    {/*field={field}*/}
+                                    {/*updateFieldProperties={this.onUpdateFieldProperties}*/}
+                                {/*/>*/}
+                            {/*</Section>*/}
 
-                            <Section>
-                                <FieldVisibility
-                                    field={field}
-                                    updateFieldProperties={this.onUpdateFieldProperties}
-                                />
-                            </Section>
+                            {/*<Section>*/}
+                                {/*<FieldVisibility*/}
+                                    {/*field={field}*/}
+                                    {/*updateFieldProperties={this.onUpdateFieldProperties}*/}
+                                {/*/>*/}
+                            {/*</Section>*/}
 
                             <Section>
                                 <FieldRemapping
