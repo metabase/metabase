@@ -177,4 +177,7 @@
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 
-(driver/register-driver! :druid (DruidDriver.))
+(defn -init-driver
+  "Register the druid driver1"
+  []
+  (driver/register-driver! :druid (DruidDriver.)))

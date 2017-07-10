@@ -36,4 +36,5 @@ If you're running Metabase from the Mac App, the plugins directory defaults to `
 /Users/camsaul/Library/Application Support/Metabase/Plugins/vertica-jdbc-8.0.0-0.jar
 ```
 
-Finally, you can choose a custom plugins directory if the default doesn't suit your needs by setting the environment variable `MB_PLUGINS_DIR`.
+If you are running the Docker image or you want to use another directory for plugins, you should then specify a custom plugins directory by setting the environment variable `MB_PLUGINS_DIR`. 
+

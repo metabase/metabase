@@ -210,15 +210,15 @@
 (defn- date-add [unit timestamp interval]
   (hsql/call :date_add timestamp interval (hx/literal unit)))
 
-;; µs = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this format
+;; microseconds = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this format
 
-(def ^:private ->µs (partial hsql/call :timestamp_to_usec))
+(def ^:private ->microseconds (partial hsql/call :timestamp_to_usec))
 
-(defn- µs->str [format-str µs]
+(defn- microseconds->str [format-str µs]
   (hsql/call :strftime_utc_usec µs (hx/literal format-str)))
 
 (defn- trunc-with-format [format-str timestamp]
-  (hx/->timestamp (µs->str format-str (->µs timestamp))))
+  (hx/->timestamp (microseconds->str format-str (->microseconds timestamp))))
 
 (defn- date [unit expr]
   {:pre [expr]}
@@ -511,4 +511,7 @@
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
           :mbql->native             (u/drop-first-arg mbql->native)}))
 
-(driver/register-driver! :bigquery driver)
+(defn -init-driver
+  "Register the BigQuery driver"
+  []
+  (driver/register-driver! :bigquery driver))

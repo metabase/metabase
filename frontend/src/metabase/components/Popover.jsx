@@ -100,7 +100,7 @@ export default class Popover extends Component {
                 >
                     { typeof this.props.children === "function" ?
                         this.props.children()
-                    :
+                        :
                         this.props.children
                     }
                 </div>
@@ -173,7 +173,7 @@ export default class Popover extends Component {
                 >
                     {this._popoverComponent()}
                 </ReactCSSTransitionGroup>
-            , popoverElement);
+                , popoverElement);
 
             var tetherOptions = {};
 

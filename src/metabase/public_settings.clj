@@ -130,6 +130,7 @@
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
    :site_name             (site-name)
+   :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents)

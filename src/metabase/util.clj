@@ -533,6 +533,7 @@
    function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
+  {:style/indent 1}
   (^String [x]
    (when x
      (with-out-str (pprint x))))

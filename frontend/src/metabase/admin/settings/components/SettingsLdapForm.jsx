@@ -5,6 +5,7 @@ import cx from "classnames";
 
 import Collapse from "react-collapse";
 
+import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
@@ -219,6 +220,13 @@ export default class SettingsLdapForm extends Component {
 
         return (
             <form noValidate>
+                <Breadcrumbs
+                    crumbs={[
+                        ["Authentication", "/admin/settings/authentication"],
+                        ["LDAP"]
+                    ]}
+                    className="ml2 mb3"
+                />
                 <h2 className="mx2">Server Settings</h2>
                 <ul>{serverSettings}</ul>
                 <h2 className="mx2">User Schema</h2>

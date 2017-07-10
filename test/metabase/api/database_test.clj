@@ -354,17 +354,20 @@
    :features ["basic-aggregations"]
    :tables   card-tables})
 
+(defn- virtual-table-for-card [card & {:as kvs}]
+  (merge {:id           (format "card__%d" (u/get-id card))
+          :db_id        database/virtual-id
+          :display_name (:name card)
+          :schema       "All questions"
+          :description  nil}
+         kvs))
+
 (tt/expect-with-temp [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
   (saved-questions-virtual-db
-    {:id           (format "card__%d" (u/get-id card))
-     :db_id        database/virtual-id
-     :display_name "Kanye West Quote Views Per Month"
-     :schema       "All questions"
-     :description  nil})
+    (virtual-table-for-card card))
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
-
     ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
 
@@ -374,29 +377,14 @@
                       Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
                       Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
   (saved-questions-virtual-db
-    {:id           (format "card__%d" (u/get-id coin-card))
-     :db_id        database/virtual-id
-     :display_name "Total Coin Count"
-     :schema       "Coins"
-     :description  nil}
-    {:id           (format "card__%d" (u/get-id stamp-card))
-     :db_id        database/virtual-id
-     :display_name "Total Stamp Count"
-     :schema       "Stamps"
-     :description  nil})
+    (virtual-table-for-card coin-card  :schema "Coins")
+    (virtual-table-for-card stamp-card :schema "Stamps"))
   (do
     ;; run the Cards which will populate their result_metadata columns
     (doseq [card [stamp-card coin-card]]
       ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
     ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their Collection name as their Schema
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
-
-(defn- virtual-table-for-card [card]
-  {:id           (format "card__%d" (u/get-id card))
-   :db_id        database/virtual-id
-   :display_name (:name card)
-   :schema       "All questions"
-   :description  nil})
 
 (defn- fetch-virtual-database []
   (some #(when (= (:name %) "Saved Questions")
@@ -438,3 +426,19 @@
   (saved-questions-virtual-db
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))
+
+
+;; make sure that GET /api/database/:id/metadata works for the Saved Questions 'virtual' database
+(tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card") :result_metadata [{:name "age_in_bird_years"}])]]
+  (saved-questions-virtual-db
+    (assoc (virtual-table-for-card card)
+      :fields [{:name         "age_in_bird_years"
+                :table_id     (str "card__" (u/get-id card))
+                :id           ["field-literal" "age_in_bird_years" "type/*"]
+                :special_type nil}]))
+  ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
+
+;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`
+(expect
+  nil
+  ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))

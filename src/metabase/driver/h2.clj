@@ -225,4 +225,7 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-(driver/register-driver! :h2 (H2Driver.))
+(defn -init-driver
+  "Register the H2 driver"
+  []
+  (driver/register-driver! :h2 (H2Driver.)))
