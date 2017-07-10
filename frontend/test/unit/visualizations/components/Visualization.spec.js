@@ -1,6 +1,6 @@
 
 import React from "react";
-import { renderIntoDocument, scryRenderedComponentsWithType as scryWithType } from "react-addons-test-utils";
+import { renderIntoDocument, scryRenderedDOMComponentsWithClass, scryRenderedComponentsWithType as scryWithType } from "react-dom/test-utils";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
@@ -14,7 +14,7 @@ describe("Visualization", () => {
         describe("scalar card", () => {
             it("should not render title", () => {
                 let viz = renderVisualization({ series: [ScalarCard("Foo")] });
-                expect(getTitles(viz)).toEqual([]);
+                expect(getScalarTitles(viz)).toEqual([]);
             });
         });
 
@@ -38,9 +38,10 @@ describe("Visualization", () => {
 
     describe("in dashboard", () => {
         describe("scalar card", () => {
-            it("should not render title", () => {
-                let viz = renderVisualization({ series: [ScalarCard("Foo")], showTitle: true });
+            it("should render a scalar title, not a legend title", () => {
+                let viz = renderVisualization({ series: [ScalarCard("Foo")], showTitle: true, isDashboard: true });
                 expect(getTitles(viz)).toEqual([]);
+                expect(getScalarTitles(viz).length).toEqual(1);
             });
             it("should render title when loading", () => {
                 let viz = renderVisualization({ series: [ScalarCard("Foo", { data: null })], showTitle: true });
@@ -108,6 +109,10 @@ describe("Visualization", () => {
 
 function renderVisualization(props) {
     return renderIntoDocument(<Visualization className="spread" {...props} />);
+}
+
+function getScalarTitles (scalarComponent) {
+    return scryRenderedDOMComponentsWithClass(scalarComponent, 'Scalar-title')
 }
 
 function getTitles(viz) {

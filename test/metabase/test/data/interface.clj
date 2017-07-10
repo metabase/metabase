@@ -113,7 +113,7 @@
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
      can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
+     For example, Oracle has no `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
 
   (format-name ^String [this, ^String table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset

@@ -348,5 +348,7 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-
-(driver/register-driver! :presto (PrestoDriver.))
+(defn -init-driver
+  "Register the Presto driver"
+  []
+  (driver/register-driver! :presto (PrestoDriver.)))

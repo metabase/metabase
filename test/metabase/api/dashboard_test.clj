@@ -133,7 +133,8 @@
                                                            :query_type             nil
                                                            :dataset_query          {}
                                                            :visualization_settings {}
-                                                           :query_average_duration nil})
+                                                           :query_average_duration nil
+                                                           :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]

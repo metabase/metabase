@@ -117,5 +117,7 @@
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp
           :current-datetime-fn       (constantly now)}))
 
-
-(driver/register-driver! :crate (CrateDriver.))
+(defn -init-driver
+  "Register the Crate driver"
+  []
+  (driver/register-driver! :crate (CrateDriver.)))

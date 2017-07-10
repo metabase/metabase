@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { connect } from "react-redux";
 
 import QueryModeButton from "./QueryModeButton.jsx";
 
@@ -19,6 +20,8 @@ import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuest
 
 import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
 
+import { clearRequestState } from "metabase/redux/requests";
+
 import { CardApi, RevisionApi } from "metabase/services";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -29,7 +32,11 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 import _ from "underscore";
 
+const mapDispatchToProps = {
+    clearRequestState
+};
 
+@connect(null, mapDispatchToProps)
 export default class QueryHeader extends Component {
     constructor(props, context) {
         super(props, context);
@@ -76,6 +83,24 @@ export default class QueryHeader extends Component {
         , 5000);
     }
 
+    /// Add result_metadata and metadata_checksum columns to card as expected by the endpoints used for saving
+    /// and updating Cards. These values are returned as part of Query Processor results and fetched from there
+    addResultMetadata(card) {
+        let metadata = this.props.result && this.props.result.data && this.props.result.data.results_metadata;
+        let metadataChecksum = metadata && metadata.checksum;
+        let metadataColumns = metadata && metadata.columns;
+
+        card.result_metadata = metadataColumns;
+        card.metadata_checksum = metadataChecksum;
+    }
+
+    /// remove the databases in the store that are used to populate the QB databases list.
+    /// This is done when saving a Card because the newly saved card will be elligable for use as a source query
+    /// so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
+    clearQBDatabases() {
+        this.props.clearRequestState({ statePath: ["metadata", "databases"] });
+    }
+
     onCreate(card, addToDash) {
         // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
@@ -89,9 +114,13 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
+        this.addResultMetadata(card);
+
         // TODO: reduxify
         this.requestPromise = cancelable(CardApi.create(card));
         return this.requestPromise.then(newCard => {
+            this.clearQBDatabases();
+
             this.props.notifyCardCreatedFn(newCard);
 
             this.setState({
@@ -114,9 +143,13 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
+        this.addResultMetadata(card);
+
         // TODO: reduxify
         this.requestPromise = cancelable(CardApi.update(card));
         return this.requestPromise.then(updatedCard => {
+            this.clearQBDatabases();
+
             if (this.props.fromUrl) {
                 this.onGoBack();
                 return;

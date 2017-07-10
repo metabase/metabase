@@ -5,6 +5,7 @@
              [card :refer :all]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
+             [database :as database]
              [interface :as mi]
              [permissions :as perms]]
             [metabase.query-processor.expand :as ql]
@@ -119,6 +120,42 @@
                            (ql/source-table (data/id :checkins))
                            (ql/order-by (ql/asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :name))))))
                    :read))
+
+;; MBQL w/ nested MBQL query
+(defn- query-with-source-card [card]
+  {:database database/virtual-id, :type "query", :query {:source_table (str "card__" (u/get-id card))}})
+
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :venues)}}}]
+    (query-perms-set (query-with-source-card card) :read)))
+
+;; MBQL w/ nested MBQL query including a JOIN
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
+    (perms/object-path (data/id) "PUBLIC" (data/id :users))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :checkins)
+                                                       :order-by     [[:asc [:fk-> (data/id :checkins :user_id) (data/id :users :id)]]]}}}]
+    (query-perms-set (query-with-source-card card) :read)))
+
+;; MBQL w/ nested NATIVE query
+(expect
+  #{(perms/native-read-path (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM CHECKINS"}}}]
+    (query-perms-set (query-with-source-card card) :read)))
+
+(expect
+  #{(perms/native-readwrite-path (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM CHECKINS"}}}]
+    (query-perms-set (query-with-source-card card) :write)))
 
 ;; invalid/legacy card should return perms for something that doesn't exist so no one gets to see it
 (expect
