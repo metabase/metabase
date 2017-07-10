@@ -33,7 +33,7 @@
 
 (def ^:private db-connection-details
   (delay {:log_path         (get-db-env-var :log_path "/tmp/athena.log")
-          :schema           (get-db-env-var :log_path "sampledb")
+          ;:schema           (get-db-env-var :log_path "sampledb")
           :s3_staging_dir   (get-db-env-var :s3-staging-dir)
           :region           (get-db-env-var :region "us-east-1")
           :url              (get-db-env-var :url "jdbc:awsathena://athena.us-east-1.amazonaws.com:443")
@@ -56,7 +56,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (fn [& _]
-                                          (println "Coucou: " @db-connection-details)
                                           @db-connection-details)
           :default-schema               (constantly (:schema @db-connection-details))
           :engine                       (constantly :athena)}))

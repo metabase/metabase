@@ -112,7 +112,7 @@
         tables (->> databases
                     (map (fn [{:keys [name] :as table}]
                            (let [tables (run-query conn (str "SHOW TABLES IN " name) {})]
-                             (map (fn [{:keys [tab_name]}] (assoc table :name (str name "." tab_name)))
+                             (map (fn [{:keys [tab_name]}] (assoc table :schema name :name tab_name))
                                   tables))))
                     flatten
                     set)]
@@ -120,7 +120,7 @@
 
 (defn- describe-table-fields
   [conn {:keys [name schema]}]
-  (set (for [{:keys [name type]} (run-query conn (str "DESCRIBE " name ";") {:read-fn describe-all-database->clj})]
+  (set (for [{:keys [name type]} (run-query conn (str "DESCRIBE " schema "." name ";") {:read-fn describe-all-database->clj})]
          {:name name :base-type (or (column->base-type (keyword type))
                                     :type/*)})))
 
