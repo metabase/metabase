@@ -220,7 +220,7 @@ class FieldHeader extends Component {
                     placeholder={this.props.field.name}
                 />
                 <Input
-                    className="text AdminInput bordered input text-measure block"
+                    className="text AdminInput bordered input text-measure block full"
                     value={this.props.field.description}
                     onChange={this.onDescriptionChange}
                     placeholder="No description for this field yet"
@@ -284,7 +284,7 @@ class ValueRemappings extends Component {
         const { editingRemappings } = this.state;
 
         return (
-            <div className="bordered rounded p2 border-dark ">
+            <div className="bordered rounded py2 px4 border-dark">
                 <div className="flex align-center my1 pb2 border-bottom">
                     <h3>Original value</h3>
                     <h3 className="ml-auto">Mapped value</h3>
