@@ -8,6 +8,7 @@
              [core :as core]
              [db :as mdb]
              [driver :as driver]
+             [plugins :as plugins]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]))
@@ -62,6 +63,9 @@
                       (> (count e) (count a))             "expected is larger than actual"))))
 
 ;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
+
+;; Without this, the AthenaDriver is not loaded. How does it works for the OracleDriver ?
+(plugins/load-plugins!)
 
 ;; `test-startup` function won't work for loading the drivers because they need to be available at evaluation time for some of the unit tests work work properly
 (driver/find-and-load-drivers!)
