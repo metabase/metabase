@@ -32,7 +32,8 @@
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver"
-  [^com.amazonaws.athena.jdbc.AthenaResultSet rs]
+  ;[^com.amazonaws.athena.jdbc.AthenaResultSet rs]
+  [rs]
   (let [m (.getMetaData rs)
         cnt (.getColumnCount m)
         name-and-type (.getString rs 1)
@@ -268,11 +269,11 @@
       {:query  athena-sql
        :params args})))
 
-(defrecord Athena []
+(defrecord AthenaDriver []
   clojure.lang.Named
   (getName [_] "Athena"))
 
-(u/strict-extend Athena
+(u/strict-extend AthenaDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:can-connect?              can-connect?
@@ -319,4 +320,4 @@
 
 (when (u/ignore-exceptions
        (Class/forName "com.amazonaws.athena.jdbc.AthenaDriver"))
-  (driver/register-driver! :athena (Athena.)))
+  (driver/register-driver! :athena (AthenaDriver.)))
