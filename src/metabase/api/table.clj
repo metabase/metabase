@@ -4,12 +4,13 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [sync-database :as sync-database]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
-             [database :as database]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
              [interface :as mi]
              [table :as table :refer [Table]]]
@@ -140,29 +141,35 @@
 (def ^:private coordinate-dimension-indexes
   (create-dim-index-seq :type/Coordinate))
 
-(defn- assoc-dimension-options [resp]
-  (-> resp
-      (assoc :dimension_options dimension-options-for-response)
-      (update :fields (fn [fields]
-                        (for [{:keys [base_type special_type min_value max_value] :as field} fields]
-                          (assoc field
-                            :dimension_options
-                            (cond
+(defn- assoc-field-dimension-options [{:keys [base_type special_type min_value max_value] :as field}]
+  (assoc field
+    :dimension_options
+    (cond
 
-                              (isa? base_type :type/DateTime)
-                              datetime-dimension-indexes
+      (isa? base_type :type/DateTime)
+      datetime-dimension-indexes
 
-                              (and min_value max_value
-                                   (isa? special_type :type/Coordinate))
-                              coordinate-dimension-indexes
+      (and min_value max_value
+           (isa? special_type :type/Coordinate))
+      coordinate-dimension-indexes
 
-                              (and min_value max_value
-                                   (isa? base_type :type/Number)
-                                   (or (nil? special_type) (isa? special_type :type/Number)))
-                              numeric-dimension-indexes
+      (and min_value max_value
+           (isa? base_type :type/Number)
+           (or (nil? special_type) (isa? special_type :type/Number)))
+      numeric-dimension-indexes
 
-                              :else
-                              [])))))))
+      :else
+      [])))
+
+(defn- assoc-dimension-options [resp driver]
+  (if (and driver (contains? (driver/features driver) :binning))
+    (-> resp
+        (assoc :dimension_options dimension-options-for-response)
+        (update :fields #(mapv assoc-field-dimension-options %)))
+    (-> resp
+        (assoc :dimension_options [])
+        (update :fields (fn [fields]
+                          (mapv #(assoc % :dimension_options []) fields))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -172,16 +179,18 @@
   will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
-  (-> (api/read-check Table id)
-      (hydrate :db [:fields :target] :field_values :segments :metrics)
-      (m/dissoc-in [:db :details])
-      assoc-dimension-options
-      (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
-                             ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                             identity
-                             ;; Otherwise filter out all :sensitive fields
-                             (partial filter (fn [{:keys [visibility_type]}]
-                                               (not= (keyword visibility_type) :sensitive)))))))
+  (let [table (api/read-check Table id)
+        driver (driver/engine->driver (db/select-one-field :engine Database :id (:db_id table)))]
+    (-> table
+        (hydrate :db [:fields :target] :field_values :segments :metrics)
+        (m/dissoc-in [:db :details])
+        (assoc-dimension-options driver)
+        (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
+                               ;; If someone passes include_sensitive_fields return hydrated :fields as-is
+                               identity
+                               ;; Otherwise filter out all :sensitive fields
+                               (partial filter (fn [{:keys [visibility_type]}]
+                                                 (not= (keyword visibility_type) :sensitive))))))))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual' database."

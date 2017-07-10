@@ -167,6 +167,11 @@
   []
   (contains? (driver/features *driver*) :foreign-keys))
 
+(defn binning-supported?
+  "Does the current engine support binning?"
+  []
+  (contains? (driver/features *driver*) :binning))
+
 (defn default-schema [] (i/default-schema *driver*))
 (defn id-field-type  [] (i/id-field-type *driver*))
 
