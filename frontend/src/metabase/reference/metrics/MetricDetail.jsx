@@ -5,38 +5,29 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
 
-import S from "metabase/reference/Reference.css";
-
 import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
 import Detail from "metabase/reference/components/Detail.jsx";
-import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
-import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
-    tryUpdateData
+    getQuestionUrl
 } from '../utils';
 
 import {
-    getSection,
-    getData,
+    getMetric,
     getTable,
     getFields,
     getGuide,
     getError,
     getLoading,
     getUser,
-    getHasQuestions,
     getIsEditing,
-    getHasDisplayName,
-    getHasRevisionHistory,
-    getHasSingleSchema,
     getIsFormulaExpanded,
     getForeignKeys
 } from "../selectors";
@@ -44,8 +35,9 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
+
 const mapStateToProps = (state, props) => {
-    const entity = getData(state, props) || {};
+    const entity = getMetric(state, props) || {};
     const guide = getGuide(state, props);
     const fields = getFields(state, props);
 
@@ -58,7 +50,6 @@ const mapStateToProps = (state, props) => {
     };
 
     return {
-        section: getSection(state, props),
         entity,
         table: getTable(state, props),
         metadataFields: fields,
@@ -69,11 +60,7 @@ const mapStateToProps = (state, props) => {
         user: getUser(state, props),
         foreignKeys: getForeignKeys(state, props),
         isEditing: getIsEditing(state, props),
-        hasSingleSchema: getHasSingleSchema(state, props),
-        hasQuestions: getHasQuestions(state, props),
-        hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
         initialValues,
     }
 };
@@ -84,18 +71,16 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
-const validate = (values, props) => props.hasRevisionHistory ?
-    !values.revision_message ?
-        { revision_message: "Please enter a revision message" } : {} :
-    {};
+const validate = (values, props) =>  !values.revision_message ? 
+    { revision_message: "Please enter a revision message" } : {} 
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id', 'important_fields'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'important_fields'],
     validate
 })
-export default class ReferenceEntity extends Component {
+export default class MetricDetail extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
@@ -103,9 +88,7 @@ export default class ReferenceEntity extends Component {
         metadataFields: PropTypes.object,
         guide: PropTypes.object,
         user: PropTypes.object.isRequired,
-        foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
-        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -117,11 +100,7 @@ export default class ReferenceEntity extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
-        hasSingleSchema: PropTypes.bool,
-        hasDisplayName: PropTypes.bool,
         isFormulaExpanded: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -130,9 +109,8 @@ export default class ReferenceEntity extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id, important_fields },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, important_fields },
             style,
-            section,
             entity,
             table,
             metadataFields,
@@ -140,17 +118,12 @@ export default class ReferenceEntity extends Component {
             loadingError,
             loading,
             user,
-            foreignKeys,
             isEditing,
-            hasQuestions,
             startEditing,
             endEditing,
             expandFormula,
             collapseFormula,
-            hasSingleSchema,
-            hasDisplayName,
             isFormulaExpanded,
-            hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
@@ -158,7 +131,7 @@ export default class ReferenceEntity extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateData(fields, this.props)
+            await actions.rUpdateMetricDetail(this.props.entity, this.props.guide, fields, this.props)
         );
 
         return (
@@ -167,7 +140,7 @@ export default class ReferenceEntity extends Component {
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={true}
                         onSubmit={onSubmit}
                         endEditing={endEditing}
                         reinitializeForm={resetForm}
@@ -175,14 +148,17 @@ export default class ReferenceEntity extends Component {
                         revisionMessageFormField={revision_message}
                     />
                 }
-                <ReferenceHeader
+                <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    type="metric"
+                    headerIcon="ruler"
+                    headerLink={getQuestionUrl({ dbId: table && table.db_id, tableId: entity.table_id, metricId: entity.id})}
+                    name="Details"
                     user={user}
                     isEditing={isEditing}
-                    hasSingleSchema={hasSingleSchema}
-                    hasDisplayName={hasDisplayName}
+                    hasSingleSchema={false}
+                    hasDisplayName={false}
                     startEditing={startEditing}
                     displayNameFormField={display_name}
                     nameFormField={name}
@@ -201,20 +177,10 @@ export default class ReferenceEntity extends Component {
                                     field={description}
                                 />
                             </li>
-                            { hasDisplayName && !isEditing &&
-                                <li className="relative">
-                                    <Detail
-                                        id="name"
-                                        name="Actual name in database"
-                                        description={entity.name}
-                                        subtitleClass={S.tableActualName}
-                                    />
-                                </li>
-                            }
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name="Why this Metric is interesting"
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -224,30 +190,27 @@ export default class ReferenceEntity extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name="Things to be aware of about this Metric"
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}
                                     field={caveats}
                                 />
                             </li>
-                            { section.type === 'metric' &&
-                                <li className="relative">
-                                    <Detail
-                                        id="how_is_this_calculated"
-                                        name={`How this ${section.type} is calculated`}
-                                        description={entity.how_is_this_calculated}
-                                        placeholder="Nothing on how it's calculated yet"
-                                        isEditing={isEditing}
-                                        field={how_is_this_calculated}
-                                    />
-                                </li>
-                            }
-                            { (section.type === 'metric' || section.type === 'segment') &&
-                                table && !isEditing &&
+                            <li className="relative">
+                                <Detail
+                                    id="how_is_this_calculated"
+                                    name="How this Metric is calculated"
+                                    description={entity.how_is_this_calculated}
+                                    placeholder="Nothing on how it's calculated yet"
+                                    isEditing={isEditing}
+                                    field={how_is_this_calculated}
+                                />
+                            </li>
+                            {   table && !isEditing &&
                                 <li className="relative">
                                     <Formula
-                                        type={section.type}
+                                        type="metric"
                                         entity={entity}
                                         table={table}
                                         isExpanded={isFormulaExpanded}
@@ -256,49 +219,22 @@ export default class ReferenceEntity extends Component {
                                     />
                                 </li>
                             }
-                            { !isEditing && section.type === 'field' &&
-                                <li className="relative">
-                                    <Detail
-                                        id="base_type"
-                                        name={`Data type`}
-                                        description={entity.base_type}
-                                    />
-                                </li>
-                            }
-                            { section.type === 'field' &&
-                                <li className="relative">
-                                    <FieldTypeDetail
-                                        field={entity}
-                                        foreignKeys={foreignKeys}
-                                        fieldTypeFormField={special_type}
-                                        foreignKeyFormField={fk_target_field_id}
-                                        isEditing={isEditing}
-                                    />
-                                </li>
-                            }
-                            { hasQuestions && !isEditing &&
-                                <li className="relative">
-                                    <UsefulQuestions questions={section.questions} />
-                                </li>
-                            }
-                            { section.type === 'metric' &&
-                                <li className="relative">
-                                    <MetricImportantFieldsDetail
-                                        fields={guide && guide.metric_important_fields[entity.id] &&
-                                            Object.values(guide.metric_important_fields[entity.id])
-                                                .map(fieldId => metadataFields[fieldId])
-                                                .reduce((map, field) => ({ ...map, [field.id]: field }), {})
-                                        }
-                                        table={table}
-                                        allFields={metadataFields}
-                                        metric={entity}
-                                        onChangeLocation={onChangeLocation}
-                                        isEditing={isEditing}
-                                        formField={important_fields}
-                                    />
-                                </li>
-                            }
-                            { section.type === 'metric' && !isEditing &&
+                            <li className="relative">
+                                <MetricImportantFieldsDetail
+                                    fields={guide && guide.metric_important_fields[entity.id] &&
+                                        Object.values(guide.metric_important_fields[entity.id])
+                                            .map(fieldId => metadataFields[fieldId])
+                                            .reduce((map, field) => ({ ...map, [field.id]: field }), {})
+                                    }
+                                    table={table}
+                                    allFields={metadataFields}
+                                    metric={entity}
+                                    onChangeLocation={onChangeLocation}
+                                    isEditing={isEditing}
+                                    formField={important_fields}
+                                />
+                            </li>
+                            { !isEditing &&
                                 <li className="relative">
                                     <FieldsToGroupBy
                                         fields={table.fields
@@ -308,7 +244,7 @@ export default class ReferenceEntity extends Component {
                                             .map(fieldId => metadataFields[fieldId])
                                             .reduce((map, field) => ({ ...map, [field.id]: field }), {})
                                         }
-                                        databaseId={table.db_id}
+                                        databaseId={table && table.db_id}
                                         metric={entity}
                                         title={ guide && guide.metric_important_fields[entity.id] ?
                                             "Other fields you can group this metric by" :
