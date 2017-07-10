@@ -87,39 +87,41 @@ export default class Column extends Component {
         }
 
         return (
-            <li className="mt1 mb3">
-                <div>
-                    <Input style={{minWidth: 420}} className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold" type="text" value={this.props.field.display_name || ""} onBlurChange={this.onNameChange}/>
-                    <div className="clearfix">
-                        <div className="flex flex-full">
-                            <div className="flex-full px1">
-                                <Select
-                                    className="TableEditor-field-visibility block"
-                                    placeholder="Select a field visibility"
-                                    value={_.find(MetabaseCore.field_visibility_types, (type) => type.id === this.props.field.visibility_type)}
-                                    options={MetabaseCore.field_visibility_types}
-                                    onChange={this.onVisibilityChange}
-                                />
+            <li className="mt1 mb3 flex">
+                <div className="flex flex-column flex-full">
+                    <div>
+                        <Input style={{minWidth: 420}} className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold" type="text" value={this.props.field.display_name || ""} onBlurChange={this.onNameChange}/>
+                        <div className="clearfix">
+                            <div className="flex flex-full">
+                                <div className="flex-full px1">
+                                    <Select
+                                        className="TableEditor-field-visibility block"
+                                        placeholder="Select a field visibility"
+                                        value={_.find(MetabaseCore.field_visibility_types, (type) => type.id === this.props.field.visibility_type)}
+                                        options={MetabaseCore.field_visibility_types}
+                                        onChange={this.onVisibilityChange}
+                                    />
+                                </div>
+                                <div className="flex-full px1">
+                                    <Select
+                                        className="TableEditor-field-special-type block"
+                                        placeholder="Select a special type"
+                                        value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
+                                        options={specialTypes}
+                                        onChange={this.onSpecialTypeChange}
+                                    />
+                                    {targetSelect}
+                                </div>
                             </div>
-                            <div className="flex-full px1">
-                                <Select
-                                    className="TableEditor-field-special-type block"
-                                    placeholder="Select a special type"
-                                    value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
-                                    options={specialTypes}
-                                    onChange={this.onSpecialTypeChange}
-                                />
-                                {targetSelect}
-                            </div>
-                            <Link to={`${this.props.location.pathname}/${this.props.field.id}`}>
-                                <Icon name="gear" />
-                            </Link>
                         </div>
                     </div>
+                    <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
+                        <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description || ""} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
+                    </div>
                 </div>
-                <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
-                    <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description || ""} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
-                </div>
+                <Link to={`${this.props.location.pathname}/${this.props.field.id}`} className="text-brand-hover mx2 mt1">
+                    <Icon name="gear" />
+                </Link>
             </li>
         )
     }
