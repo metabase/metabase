@@ -75,8 +75,10 @@
 (defprotocol IField
   "Methods specific to the Query Expander `Field` record type."
   (qualified-name-components [this]
-    "Return a vector of name components of the form `[table-name parent-names... field-name]`"))
-
+    "Return a vector of name components of the form `[table-name parent-names... field-name]`
+     (This should always return AT LEAST 2 components. If no table name should be used, return
+     `nil` as the first part.)"))
+;; TODO - Yes, I know, that makes no sense. `annotate/qualify-field-name` expects it that way tho
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                                             FIELDS                                                                             |
@@ -102,7 +104,7 @@
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
   IField
-  (qualified-name-components [this]
+  (qualified-name-components [_]
     (conj (if parent
             (qualified-name-components parent)
             [table-name])
@@ -132,9 +134,17 @@
   [unit]
   (contains? relative-datetime-value-units (keyword unit)))
 
+;; TODO - maybe we should figure out some way to have the schema validate that the driver supports field literals, like we do for some of the other clauses.
+;; Ideally we'd do that in a more generic way (perhaps in expand, we could make the clauses specify required feature metadata and have that get checked automatically?)
+(s/defrecord FieldLiteral [field-name    :- su/NonBlankString
+                           base-type     :- su/FieldType]
+  clojure.lang.Named
+  (getName [_] field-name)
+  IField
+  (qualified-name-components [_] [nil field-name]))
 
 ;; DateTimeField is just a simple wrapper around Field
-(s/defrecord DateTimeField [field :- Field
+(s/defrecord DateTimeField [field :- (s/cond-pre Field FieldLiteral)
                             unit  :- DatetimeFieldUnit]
   clojure.lang.Named
   (getName [_] (name field)))
@@ -154,18 +164,10 @@
                                fk-field-id   :- (s/maybe (s/constrained su/IntGreaterThanZero
                                                                         (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
                                                                         "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
-                               datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
+                               datetime-unit :- (s/maybe DatetimeFieldUnit)])
 
 (s/defrecord AgFieldRef [index :- s/Int])
 ;; TODO - add a method to get matching expression from the query?
-
-
-
-
-(def FieldPlaceholderOrExpressionRef
-  "Schema for either a `FieldPlaceholder` or `ExpressionRef`."
-  (s/named (s/cond-pre FieldPlaceholder ExpressionRef)
-           "Valid field or expression reference."))
 
 (s/defrecord RelativeDatetime [amount :- s/Int
                                unit   :- DatetimeValueUnit])
@@ -182,9 +184,11 @@
 
 
 (def AnyField
-  "Schema for a anything that is considered a valid 'field'."
+  "Schema for anything that is considered a valid 'field' including placeholders, expressions, and literals."
   (s/named (s/cond-pre Field
                        FieldPlaceholder
+                       DateTimeField
+                       FieldLiteral
                        AgFieldRef
                        Expression
                        ExpressionRef)
@@ -207,13 +211,13 @@
   "Schema for an MBQL datetime value: an ISO-8601 string, `java.sql.Date`, or a relative dateitme form."
   (s/named (s/cond-pre RelativeDatetime LiteralDatetime) "Valid datetime (must ISO-8601 string literal or a relative-datetime form)"))
 
-(def OrderableValue
+(def OrderableValueLiteral
   "Schema for something that is orderable value in MBQL (either a number or datetime)."
   (s/named (s/cond-pre s/Num Datetime) "Valid orderable value (must be number or datetime)"))
 
 (def AnyValueLiteral
   "Schema for anything that is a considered a valid value literal in MBQL - `nil`, a `Boolean`, `Number`, `String`, or relative datetime form."
-  (s/named (s/maybe (s/cond-pre s/Bool su/NonBlankString OrderableValue)) "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
+  (s/named (s/maybe (s/cond-pre s/Bool su/NonBlankString OrderableValueLiteral)) "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
 
 
 ;; Value is the expansion of a value within a QL clause
@@ -222,13 +226,28 @@
 (s/defrecord Value [value   :- AnyValueLiteral
                     field   :- (s/recursive #'AnyField)])
 
+(s/defrecord RelativeDateTimeValue [amount :- s/Int
+                                    unit   :- DatetimeValueUnit
+                                    field  :- (s/cond-pre DateTimeField
+                                                          FieldPlaceholder)])
+
 ;; e.g. an absolute point in time (literal)
 (s/defrecord DateTimeValue [value :- Timestamp
                             field :- DateTimeField])
 
-(s/defrecord RelativeDateTimeValue [amount :- s/Int
-                                    unit   :- DatetimeValueUnit
-                                    field  :- DateTimeField])
+(def OrderableValue
+  "Schema for an instance of `Value` whose `:value` property is itself orderable (a datetime or number, i.e. a `OrderableValueLiteral`)."
+  (s/named (s/cond-pre
+            DateTimeValue
+            RelativeDateTimeValue
+            (s/constrained Value (fn [{value :value}]
+                                   (nil? (s/check OrderableValueLiteral value)))))
+           "Value that is orderable (Value whose :value is something orderable, like a datetime or number)"))
+
+(def StringValue
+  "Schema for an instance of `Value` whose `:value` property is itself a string (a datetime or string, i.e. a `OrderableValueLiteral`)."
+  (s/named (s/constrained Value (comp string? :value))
+           "Value that is a string (Value whose :value is a string)"))
 
 (defprotocol ^:private IDateTimeValue
   (unit [this]
@@ -251,20 +270,34 @@
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
-(s/defrecord ValuePlaceholder [field-placeholder :- FieldPlaceholderOrExpressionRef
+(s/defrecord ValuePlaceholder [field-placeholder :- AnyField
                                value             :- AnyValueLiteral])
 
 (def OrderableValuePlaceholder
   "`ValuePlaceholder` schema with the additional constraint that the value be orderable (a number or datetime)."
-  (s/constrained ValuePlaceholder (comp (complement (s/checker OrderableValue)) :value) ":value must be orderable (number or datetime)"))
+  (s/constrained ValuePlaceholder (comp (complement (s/checker OrderableValueLiteral)) :value) ":value must be orderable (number or datetime)"))
+
+(def OrderableValueOrPlaceholder
+  "Schema for an `OrderableValue` (instance of `Value` whose `:value` is orderable) or a placeholder for one."
+  (s/named (s/cond-pre OrderableValue OrderableValuePlaceholder)
+           "Must be an OrderableValue or OrderableValuePlaceholder"))
 
 (def StringValuePlaceholder
   "`ValuePlaceholder` schema with the additional constraint that the value be a string/"
   (s/constrained ValuePlaceholder (comp string? :value) ":value must be a string"))
 
+(def StringValueOrPlaceholder
+  "Schema for an `StringValue` (instance of `Value` whose `:value` is a string) or a placeholder for one."
+  (s/named (s/cond-pre StringValue StringValuePlaceholder)
+           "Must be an StringValue or StringValuePlaceholder"))
+
+(def AnyValue
+  "Schema that accepts anything normally considered a value or value placeholder."
+  (s/named (s/cond-pre DateTimeValue RelativeDateTimeValue Value ValuePlaceholder) "Valid value"))
+
 (def AnyFieldOrValue
-  "Schema that accepts anything normally considered a field (including expressions and literals) *or* a value or value placehoder."
-  (s/named (s/cond-pre AnyField Value ValuePlaceholder) "Field or value"))
+  "Schema that accepts anything normally considered a field or value."
+  (s/named (s/cond-pre AnyField AnyValue) "Field or value"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -279,7 +312,7 @@
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
-                                   field            :- (s/cond-pre FieldPlaceholderOrExpressionRef
+                                   field            :- (s/cond-pre AnyField
                                                                    Expression)
                                    custom-name      :- (s/maybe su/NonBlankString)])
 
@@ -299,21 +332,21 @@
 ;;; filter
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
-                             field       :- FieldPlaceholderOrExpressionRef
+                             field       :- AnyField
                              value       :- AnyFieldOrValue])
 
 (s/defrecord ComparisonFilter [filter-type :- (s/enum :< :<= :> :>=)
-                               field       :- FieldPlaceholderOrExpressionRef
-                               value       :- OrderableValuePlaceholder])
+                               field       :- AnyField
+                               value       :- OrderableValueOrPlaceholder])
 
 (s/defrecord BetweenFilter [filter-type  :- (s/eq :between)
-                            min-val      :- OrderableValuePlaceholder
-                            field        :- FieldPlaceholderOrExpressionRef
-                            max-val      :- OrderableValuePlaceholder])
+                            min-val      :- OrderableValueOrPlaceholder
+                            field        :- AnyField
+                            max-val      :- OrderableValueOrPlaceholder])
 
 (s/defrecord StringFilter [filter-type :- (s/enum :starts-with :contains :ends-with)
-                           field       :- FieldPlaceholderOrExpressionRef
-                           value       :- StringValuePlaceholder])
+                           field       :- AnyField
+                           value       :- (s/cond-pre s/Str StringValueOrPlaceholder)]) ; TODO - not 100% sure why this is also allowed to accept a plain string
 
 (def SimpleFilterClause
   "Schema for a non-compound, non-`not` MBQL `filter` clause."
@@ -356,18 +389,39 @@
            "Valid page clause"))
 
 
+;;; source-query
+
+(declare Query)
+
+(def SourceQuery
+  "Schema for a valid value for a `:source-query` clause."
+  (s/if :native
+    {:native                         s/Any
+     (s/optional-key :template_tags) s/Any}
+    (s/recursive #'Query)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                                             QUERY                                                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 (def Query
   "Schema for an MBQL query."
-  {(s/optional-key :aggregation) [Aggregation]
-   (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
-   (s/optional-key :fields)      [AnyField]
-   (s/optional-key :filter)      Filter
-   (s/optional-key :limit)       su/IntGreaterThanZero
-   (s/optional-key :order-by)    [OrderBy]
-   (s/optional-key :page)        Page
-   (s/optional-key :expressions) {s/Keyword Expression}
-   :source-table                 su/IntGreaterThanZero})
+  (s/constrained
+   {(s/optional-key :aggregation)  [Aggregation]
+    (s/optional-key :breakout)     [AnyField]
+    (s/optional-key :fields)       [AnyField]
+    (s/optional-key :filter)       Filter
+    (s/optional-key :limit)        su/IntGreaterThanZero
+    (s/optional-key :order-by)     [OrderBy]
+    (s/optional-key :page)         Page
+    (s/optional-key :expressions)  {s/Keyword Expression}
+    (s/optional-key :source-table) su/IntGreaterThanZero
+    (s/optional-key :source-query) SourceQuery}
+   (fn [{:keys [source-table source-query native-source-query]}]
+     (and (or source-table
+              source-query
+              native-source-query)
+          (not (and source-table
+                    source-query
+                    native-source-query))))
+   "Query must specify either `:source-table` or `:source-query`, but not both."))

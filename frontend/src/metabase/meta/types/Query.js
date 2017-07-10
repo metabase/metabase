@@ -1,7 +1,7 @@
 /* @flow */
 
 import type { TableId } from "./Table";
-import type { FieldId } from "./Field";
+import type { FieldId, BaseType } from "./Field";
 import type { SegmentId } from "./Segment";
 import type { MetricId } from "./Metric";
 import type { ParameterType } from "./Parameter";
@@ -143,6 +143,9 @@ export type ForeignFieldReference =
 
 export type ExpressionReference =
     ["expression", ExpressionName];
+
+export type FieldLiteral =
+    ["field-literal", string, BaseType]; // ["field-literal", name, base-type]
 
 export type DatetimeField =
     ["datetime-field", LocalFieldReference | ForeignFieldReference, DatetimeUnit] |

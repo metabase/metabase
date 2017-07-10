@@ -183,3 +183,13 @@
                                                   :recipients    [{:email "foo@bar.com"}
                                                                   {:id (user->id :crowberto)}]}]
                                 :skip-if-empty? false})))
+
+;; make sure fetching a Pulse doesn't return any archived cards
+(expect
+  1
+  (tt/with-temp* [Pulse     [pulse]
+                  Card      [card-1 {:archived true}]
+                  Card      [card-2]
+                  PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-1), :position 0}]
+                  PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-2), :position 1}]]
+    (count (:cards (retrieve-pulse (u/get-id pulse))))))

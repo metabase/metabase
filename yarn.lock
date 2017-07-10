@@ -6231,13 +6231,6 @@ react-addons-shallow-compare@^15.2.1:
     fbjs "^0.8.4"
     object-assign "^4.1.0"
 
-react-addons-test-utils@^15.4.2:
-  version "15.5.1"
-  resolved "https://registry.yarnpkg.com/react-addons-test-utils/-/react-addons-test-utils-15.5.1.tgz#e0d258cda2a122ad0dff69f838260d0c3958f5f7"
-  dependencies:
-    fbjs "^0.8.4"
-    object-assign "^4.1.0"
-
 react-ansi-style@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/react-ansi-style/-/react-ansi-style-1.0.0.tgz#9b1d4c8eedfc56f4dcf359a3962184658c3e8c09"

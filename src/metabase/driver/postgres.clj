@@ -233,4 +233,7 @@
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 
-(driver/register-driver! :postgres (PostgresDriver.))
+(defn -init-driver
+  "Register the PostgreSQL driver"
+  []
+  (driver/register-driver! :postgres (PostgresDriver.)))
