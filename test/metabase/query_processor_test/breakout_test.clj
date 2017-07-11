@@ -142,6 +142,14 @@
                                  (ql/> $latitude 20)))
               (ql/breakout (ql/binning-strategy $latitude :default)))))))
 
+(defn- round-binning-decimals [result]
+  (let [round-to-decimal #(u/round-to-decimals 4 %)]
+    (-> result
+        (update :min_value round-to-decimal)
+        (update :max_value round-to-decimal)
+        (update-in [:binning_info :min_value] round-to-decimal)
+        (update-in [:binning_info :max_value] round-to-decimal))))
+
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-engines (engines-that-support :binning)
   (merge (venues-col :latitude)
@@ -153,7 +161,8 @@
                       (ql/aggregation (ql/count))
                       (ql/breakout (ql/binning-strategy $latitude :default)))
       (get-in [:data :cols])
-      first))
+      first
+      round-binning-decimals))
 
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-engines (engines-that-support :binning)
