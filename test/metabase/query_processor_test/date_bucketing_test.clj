@@ -350,31 +350,31 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
 
 ;; make sure if you use a relative date bucket in the past (e.g. "past 2 months") you get the correct amount of rows (#3910)
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval -2))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:athena :bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval 2))
