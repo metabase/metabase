@@ -11,7 +11,7 @@
    (s/optional-key :schedule_hour)  (s/maybe (s/constrained s/Int (fn [n]
                                                                     (and (>= n 0)
                                                                          (<= n 23)))))
-   :schedule_type                    (s/enum "hourly" "daily" "weekly" "monthly")})
+   :schedule_type                   (s/enum "hourly" "daily" "weekly" "monthly")})
 
 ;;; ------------------------------------------------------------ Schedule Map -> Cron String ------------------------------------------------------------
 
@@ -41,22 +41,16 @@
    "mid"   15
    "last"  "L"})
 
-(s/defn ^:always-validate schedule-map->cron-string
-  "Convert the frontend schedule"
-  [{day-of-week :schedule_day, day-of-month :schedule_frame, hour :schedule_hour, schedule-type :schedule_type} :- ScheduleMap] :- s/Str
-  (case (keyword schedule-type)
-    :hourly  (cron-string)
-    :daily   (cron-string
-               :hours hour)
-    :weekly  (cron-string
-               :hours       hour
-               :day-of-week (day-of-week->cron day-of-week))
-    :monthly (cron-string
-               :hours        hour
-               :day-of-month (day-of-month->cron day-of-month))))
-
-(defn- x [] ; NOCOMMIT
-  (schedule-map->cron-string {:schedule_day "mon", :schedule_frame "last", :schedule_hour 5, :schedule_type "daily"}))
+(s/defn ^:always-validate schedule-map->cron-string :- s/Str
+  "Convert the frontend schedule map into a cron string."
+  [{day-of-week :schedule_day, day-of-month :schedule_frame, hour :schedule_hour, schedule-type :schedule_type} :- ScheduleMap]
+  (apply cron-string (case (keyword schedule-type)
+                       :hourly  nil
+                       :daily   [:hours hour]
+                       :weekly  [:hours       hour
+                                 :day-of-week (day-of-week->cron day-of-week)]
+                       :monthly [:hours        hour
+                                 :day-of-month (day-of-month->cron day-of-month)])))
 
 
 ;;; ------------------------------------------------------------ Cron String -> Schedule Map ------------------------------------------------------------
@@ -87,8 +81,8 @@
     (and hours        (not= hours "*"))        "daily"
     :else                                      "hourly"))
 
-(s/defn ^:always-validate cron-string->schedule-map
-  [cron-string :- s/Str] :- ScheduleMap
+(s/defn ^:always-validate cron-string->schedule-map :- ScheduleMap
+  [cron-string :- s/Str]
   (let [[_ _ hours day-of-month _ day-of-week _] (str/split cron-string #"\s+")]
     {:schedule_day   (cron->day-of-week day-of-week)
      :schedule_frame (cron->day-of-month day-of-month)

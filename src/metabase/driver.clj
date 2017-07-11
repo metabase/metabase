@@ -50,10 +50,6 @@
 
    This name should be a \"nice-name\" that we'll display to the user."
 
-  (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
-    "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
-     Output should match the `AnalyzeTable` schema.")
-
   (can-connect? ^Boolean [this, ^java.util.Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
      try running a query like `SELECT 1;`. This function should return `true` or `false`.")
@@ -203,8 +199,7 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:analyze-table                     (constantly nil)
-   :date-interval                     (u/drop-first-arg u/relative-date)
+  {:date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)

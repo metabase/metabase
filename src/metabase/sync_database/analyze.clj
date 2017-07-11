@@ -47,6 +47,7 @@
       false)))
 
 (defn- percent-match
+  "Return the percentage of VALUES that satisfy PREDICATE."
   [predicate values]
   (if-let [non-nil-values (remove nil? values)]
     (if (seq non-nil-values)
@@ -76,7 +77,7 @@
                                   more)))))
 
 (defn field-avg-length
-  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
+  "Calculate the average length of all the non-nil strings in a sequence of VALUES."
   [values]
   (let [field-values       (filter identity values)
         field-values-count (count field-values)]
@@ -92,19 +93,19 @@
   (let [values      (->> (driver/field-values-lazy-seq driver field)
                          (take driver/max-sync-lazy-seq-results))
         field-id    (:id field)
-        fingerprint {:base_type               (:base_type field)
-                     :is_pk                   (isa? (:special_type field) :type/PK)
-                     :is_fk                   (isa? (:special_type field) :type/FK)
-                     :cardinality             (count (distinct values))
-                     :field_percent_urls      (percent-valid-urls values)
-                     :field_percent_json      (percent-json values)
-                     :field_percent_email     (percent-email values)
-                     :field_avg_length        (field-avg-length values)
-                     :field_id                field-id
-                     :table_id                (:id table)
-                     :name                    (:name field)
-                     :qualified_name          (field/qualified-name field)
-                     :visibility_type         (:visibility_type field)}]
+        fingerprint {:base_type           (:base_type field)
+                     :is_pk               (isa? (:special_type field) :type/PK)
+                     :is_fk               (isa? (:special_type field) :type/FK)
+                     :cardinality         (count (distinct values))
+                     :field_percent_urls  (percent-valid-urls values)
+                     :field_percent_json  (percent-json values)
+                     :field_percent_email (percent-email values)
+                     :field_avg_length    (field-avg-length values)
+                     :field_id            field-id
+                     :table_id            (:id table)
+                     :name                (:name field)
+                     :qualified_name      (field/qualified-name field)
+                     :visibility_type     (:visibility_type field)}]
     (log/trace (u/format-color 'green "generated fingerprint for field: %s (%s):%s" field-id (:name field) fingerprint))
     fingerprint))
 
@@ -138,31 +139,22 @@
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
-  [driver {table-id :id, :as table}]
-  (let [fields (table/fields table)
-        rows (table-row-count table)
-        field-fingerprints (map #(field-fingerprint driver table %) fields)
-        table-fingerprint (table-fingerprint table)]
-    (db/update! table/Table table-id :rows rows)
-    (save-field-fingerprints! field-fingerprints)
-    (save-table-fingerprint! table-fingerprint)))
-
-(defn analyze-table
-  "analyze only one table"
-  [table]
-  (analyze-table-data-shape! (->> table
-                                  table/database
-                                  :id
-                                  driver/database-id->driver)
-                             table))
+  ([table]
+   (analyze-table-data-shape! (driver/database-id->driver (:db_id table)) table))
+  ([driver {table-id :id, :as table}]
+   (let [fields             (table/fields table)
+         rows               (table-row-count table)
+         field-fingerprints (map #(field-fingerprint driver table %) fields)
+         table-fingerprint  (table-fingerprint table)]
+     (db/update! table/Table table-id :rows rows)
+     (save-field-fingerprints! field-fingerprints)
+     (save-table-fingerprint! table-fingerprint))))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
-   This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting.
-   The bulk of the work is done by the `(analyze-table ...)` function on the IDriver protocol."
+   This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
   [driver {database-id :id, :as database}]
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
-
   (let [start-time-ns         (System/nanoTime)
         tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
         tables-count          (count tables)
@@ -176,7 +168,6 @@
         (finally
           (u/prog1 (swap! finished-tables-count inc)
             (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
-
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn analyze-database!

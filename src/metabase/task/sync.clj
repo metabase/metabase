@@ -20,7 +20,6 @@
 (def ^:private ^:const classify-databases-trigger-key "metabase.task.%s-databases.trigger-%s")
 
 (defonce ^:private classify-databases-job (atom nil))
-(defonce ^:private classify-databases-trigger (atom nil))
 
 ;; simple job which looks up all databases and runs a classify on any saved fingerprints for them
 (jobs/defjob ClassifyDatabase [job-context]

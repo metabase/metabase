@@ -109,29 +109,6 @@
 
 ;;; IDriver implementation
 
-(defn- field-avg-length [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(round(avg(length(%s))) AS integer) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (or v 0)))
-
-(defn- field-percent-urls [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (if (= v "NaN") 0.0 v)))
-
-(defn- analyze-table [driver table new-table-ids]
-  ((cached-values/make-field-extractor driver) driver table new-table-ids))
-
 (defn- can-connect? [{:keys [catalog] :as details}]
   (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
     (= v "information_schema")))
@@ -296,8 +273,7 @@
 (u/strict-extend PrestoDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:analyze-table                     analyze-table
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)

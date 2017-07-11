@@ -48,8 +48,7 @@
 (extend SyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table      (constantly nil)
-          :describe-database  (constantly {:tables (set (for [table (vals sync-test-tables)]
+         {:describe-database  (constantly {:tables (set (for [table (vals sync-test-tables)]
                                                           (dissoc table :fields)))})
           :describe-table     (fn [_ _ table]
                                 (get sync-test-tables (:name table)))
@@ -190,7 +189,7 @@
                                        :db_id        (u/get-id db)}]]
     (sync-table! table)
     (cached-values/cache-field-values-for-table! table)
-    (analyze/analyze-table table)
+    (analyze/analyze-table-data-shape! table)
     (classify/classify-table! table)
     (table-details (Table (:id table)))))
 
@@ -206,8 +205,7 @@
 (extend ConcurrentSyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table     (constantly nil)
-          :describe-database (fn [_ _]
+         {:describe-database (fn [_ _]
                                (swap! sync-count inc)
                                (Thread/sleep 1000)
                                {:tables #{}})

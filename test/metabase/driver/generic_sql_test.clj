@@ -20,7 +20,7 @@
 (def ^:private generic-sql-engines
   (delay (set (for [engine datasets/all-valid-engines
                     :let   [driver (driver/engine->driver engine)]
-                    :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
+                    ;; :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
                     :when  (extends? ISQLDriver (class driver))]
                 (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
                     engine)))))
@@ -78,7 +78,8 @@
                    {:id (id :venues :longitude)}
                    {:id (id :venues :name), :values (sort-by :id (db/select-one-field :values 'FieldValues, :field_id (id :venues :name)))}
                    {:id (id :venues :price), :values [1 2 3 4]}]})
-  (update (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))) :fields #(sort-by :id %)))
+  (-> (#'cached-values/extract-field-values-for-fields (set (map :id (table/fields @venues-table))))
+      (update :fields (partial sort-by :id))))
 
 (resolve-private-vars metabase.driver.generic-sql field-values-lazy-seq table-rows-seq)
 

@@ -1,8 +1,8 @@
 (ns metabase.driver.presto-test
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
             [metabase.models.table :as table]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.test
              [data :as data]
              [util :refer [resolve-private-vars]]]
@@ -106,7 +106,7 @@
                {:id (data/id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (data/id :venues :name))}
                {:id (data/id :venues :price), :values [1 2 3 4]}]}
   (let [venues-table (db/select-one 'Table :id (data/id :venues))]
-    (driver/analyze-table (PrestoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
+    (#'cached-values/extract-field-values-for-fields (set (map :id (table/fields venues-table))))))
 
 ;;; FIELD-VALUES-LAZY-SEQ
 (datasets/expect-with-engine :presto

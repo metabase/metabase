@@ -287,7 +287,7 @@
              :created_at   $})))
   (do
     (cached-values/cache-field-values-for-table! (Table (id :users)))
-    (analyze/analyze-table (Table (id :users)))
+    (analyze/analyze-table-data-shape! (Table (id :users)))
     (classify/classify-table! (Table (id :users)))
     (dissoc-time-based-keys
      ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))))
@@ -357,7 +357,7 @@
                              "Szymon Theutrich"]}
              :created_at   $})))
   (do (cached-values/cache-field-values-for-table! (Table (id :users)))
-      (analyze/analyze-table (Table (id :users)))
+      (analyze/analyze-table-data-shape! (Table (id :users)))
       (classify/classify-table! (Table (id :users)))
       (dissoc-time-based-keys
        ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))))
@@ -486,7 +486,7 @@
                                                               :raw_table_id $
                                                               :created_at   $}))}))}]))
 (do (cached-values/cache-field-values-for-table! (Table (id :users)))
-      (analyze/analyze-table (Table (id :users)))
+      (analyze/analyze-table-data-shape! (Table (id :users)))
       (classify/classify-table! (Table (id :users)))
       (dissoc-time-based-keys ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))))
 

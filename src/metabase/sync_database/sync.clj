@@ -287,7 +287,7 @@
   (try
     (future (sync-database/sync-table! table)
             (cached-values/cache-field-values-for-table! table)
-            (analyze/analyze-table table)
+            (analyze/analyze-table-data-shape! table)
             (classify/classify-table! table))
     (catch Throwable e
         (log/error (format "Error syncing Table: %d" (:id table))))))

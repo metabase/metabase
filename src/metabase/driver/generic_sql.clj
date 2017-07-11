@@ -373,15 +373,6 @@
             :dest-column-name (:pkcolumn_name result)}))))
 
 
-(defn analyze-table
-  "Default implementation of `analyze-table` for SQL drivers."
-  [driver table new-table-ids]
-  ((cached-values/make-field-extractor driver)
-   driver
-   table
-   new-table-ids))
-
-
 (defn ISQLDriverDefaultsMixin
   "Default implementations for methods in `ISQLDriver`."
   []
@@ -400,8 +391,6 @@
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
-;   :field-percent-urls   fast-field-percent-urls
-;   :field-avg-length     (u/drop-first-arg field-avg-length)
    :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
@@ -414,8 +403,7 @@
   []
   (require 'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table           analyze-table
-          :can-connect?            can-connect?
+         {:can-connect?            can-connect?
           :describe-database       describe-database
           :describe-table          describe-table
           :describe-table-fks      describe-table-fks

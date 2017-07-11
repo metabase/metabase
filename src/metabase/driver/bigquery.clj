@@ -470,8 +470,7 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table            cached-values/generic-analyze-table
-          :can-connect?             (u/drop-first-arg can-connect?)
+         {:can-connect?             (u/drop-first-arg can-connect?)
           :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
           :describe-database        (u/drop-first-arg describe-database)
           :describe-table           (u/drop-first-arg describe-table)
