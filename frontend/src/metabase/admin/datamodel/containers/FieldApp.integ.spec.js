@@ -312,7 +312,7 @@ describe("FieldApp", () => {
         });
         
         fit("shows the updated values after page reload", async () => {
-            const { store, fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
+            const { fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
 
