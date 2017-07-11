@@ -79,12 +79,13 @@ import FieldDetailContainer from "metabase/reference/databases/FieldDetailContai
 
 
 /* XRay */
-import FieldXRay from "metabase/reference/containers/FieldXray.jsx";
-import TableXRay from "metabase/reference/containers/TableXRay.jsx";
-import SegmentXRay from "metabase/reference/containers/SegmentXRay.jsx";
+import FieldXRay from "metabase/xray/containers/FieldXray.jsx";
+import TableXRay from "metabase/xray/containers/TableXRay.jsx";
+import SegmentXRay from "metabase/xray/containers/SegmentXRay.jsx";
+import CardXRay from "metabase/xray/containers/CardXRay.jsx";
 
 /* Comparisons */
-import FieldComparison from "metabase/reference/containers/FieldComparison.jsx";
+import FieldComparison from "metabase/xray/containers/FieldComparison.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
@@ -224,7 +225,6 @@ export const getRoutes = (store) =>
                     <Route path="metrics/:metricId/revisions" component={MetricRevisionsContainer} />
                     <Route path="segments" component={SegmentListContainer} />
                     <Route path="segments/:segmentId" component={SegmentDetailContainer} />
-                    <Route path="segments/:segmentId/xray" component={SegmentXRay} />
                     <Route path="segments/:segmentId/fields" component={SegmentFieldListContainer} />
                     <Route path="segments/:segmentId/fields/:fieldId" component={SegmentFieldDetailContainer} />
                     <Route path="segments/:segmentId/questions" component={SegmentQuestionsContainer} />
@@ -233,11 +233,17 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId" component={DatabaseDetailContainer} />
                     <Route path="databases/:databaseId/tables" component={TableListContainer} />
                     <Route path="databases/:databaseId/tables/:tableId" component={TableDetailContainer} />
-                    <Route path="databases/:databaseId/tables/:tableId/xray" component={TableXRay} />
                     <Route path="databases/:databaseId/tables/:tableId/fields" component={FieldListContainer} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetailContainer} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId/xray" component={FieldXRay} />
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
+                </Route>
+                {/* REFERENCE */}
+                <Route path="/xray" title="xray">
+                    <Route path="segment/:segmentId" component={SegmentXRay} />
+                    <Route path="table/:tableId" component={TableXRay} />
+                    <Route path="field/:fieldId" component={FieldXRay} />
+                    <Route path="card/:cardId" component={CardXRay} />
+                    <Route path="compare/fields/:fieldId1/:fieldId2" component={FieldComparison} />
                 </Route>
 
                 {/* PULSE */}

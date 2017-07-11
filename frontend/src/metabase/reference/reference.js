@@ -10,7 +10,7 @@ import {
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
-import { GettingStartedApi, MetabaseApi } from 'metabase/services';
+import { GettingStartedApi, XRayApi } from 'metabase/services';
 
 import { 
     filterUntouchedFields, 
@@ -79,7 +79,7 @@ const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
 export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
     return async () => {
         try {
-            let fingerprint = await MetabaseApi.field_fingerprint({ fieldId });
+            let fingerprint = await XRayApi.field_fingerprint({ fieldId });
             return fingerprint;
         } catch (error) {
             console.error(error);
@@ -91,7 +91,7 @@ const FETCH_TABLE_FINGERPRINT = 'metabase/reference/FETCH_TABLE_FINGERPRINT';
 export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, function(tableId) {
     return async () => {
         try {
-            let fingerprint = await MetabaseApi.table_fingerprint({ tableId });
+            let fingerprint = await XRayApi.table_fingerprint({ tableId });
             return fingerprint;
         } catch (error) {
             console.error(error);
@@ -104,7 +104,19 @@ const FETCH_SEGMENT_FINGERPRINT = 'metabase/reference/FETCH_SEGMENT_FINGERPRINT'
 export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRINT, function(segmentId) {
     return async () => {
         try {
-            let fingerprint = await MetabaseApi.segment_fingerprint({ segmentId });
+            let fingerprint = await XRayApi.segment_fingerprint({ segmentId });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+const FETCH_CARD_FINGERPRINT = 'metabase/reference/FETCH_CARD_FINGERPRINT';
+export const fetchCardFingerPrint = createThunkAction(FETCH_CARD_FINGERPRINT, function(cardId) {
+    return async () => {
+        try {
+            let fingerprint = await XRayApi.card_fingerprint({ cardId });
             return fingerprint;
         } catch (error) {
             console.error(error);
@@ -116,7 +128,42 @@ const FETCH_FIELD_COMPARISON = 'metabase/reference/FETCH_FIELD_COMPARISON';
 export const fetchFieldComparison = createThunkAction(FETCH_FIELD_COMPARISON, function(fieldId1, fieldId2) {
     return async () => {
         try {
-            let comparison = await MetabaseApi.field_compare({ fieldId1, fieldId2 })
+            let comparison = await XRayApi.field_compare({ fieldId1, fieldId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+const FETCH_TABLE_COMPARISON = 'metabase/reference/FETCH_TABLE_COMPARISON';
+export const fetchTableComparison = createThunkAction(FETCH_TABLE_COMPARISON, function(tableId1, tableId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.table_compare({ tableId1, tableId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+
+const FETCH_SEGMENT_COMPARISON = 'metabase/reference/FETCH_SEGMENT_COMPARISON';
+export const fetchSegmentComparison = createThunkAction(FETCH_SEGMENT_COMPARISON, function(segmentId1, segmentId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.segment_compare({ segmentId1, segmentId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+
+const FETCH_METRIC_COMPARISON = 'metabase/reference/FETCH_METRIC_COMPARISON';
+export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, function(metricId1, metricId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.metric_compare({ metricId1, metricId2 })
             return comparison
         } catch (error) {
             console.error(error)

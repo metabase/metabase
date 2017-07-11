@@ -32,8 +32,8 @@ const FieldSidebar =({
                              href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`} 
                              icon="document" 
                              name="Details" />
-                <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}/xray`} 
-                             href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}/xray`} 
+                <SidebarItem key={`/xray/field/${field.id}`} 
+                             href={`/xray/field/${field.id}`} 
                              icon="document" 
                              name="X-Ray this Field" />
         </ul>

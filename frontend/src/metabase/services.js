@@ -129,8 +129,10 @@ export const MetabaseApi = {
     // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
     field_update:                PUT("/api/field/:id"),
     dataset:                    POST("/api/dataset"),
-    dataset_duration:           POST("/api/dataset/duration"),
+    dataset_duration:           POST("/api/dataset/duration")
+};
 
+export const XRayApi = {
     // X-Rays
     field_fingerprint:           GET("api/fingerprint/field/:fieldId"),
     table_fingerprint:           GET("api/fingerprint/table/:tableId"),
