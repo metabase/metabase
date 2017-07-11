@@ -242,6 +242,10 @@ export default class Visualization extends Component {
         this.setState({ error })
     }
 
+    hideActions = () => {
+        this.setState({ clicked: null })
+    }
+
     render() {
         const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
         const { series, CardVisualization } = this.state;
@@ -396,7 +400,7 @@ export default class Visualization extends Component {
                         visualizationIsClickable={this.visualizationIsClickable}
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
-                        onActionDismissal={() => this.setState({ clicked: null })}
+                        onActionDismissal={this.hideActions}
                         gridSize={gridSize}
                         onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                     />
@@ -410,7 +414,7 @@ export default class Visualization extends Component {
                         clicked={clicked}
                         clickActions={clickActions}
                         onChangeCardAndRun={this.handleOnChangeCardAndRun}
-                        onClose={() => this.setState({ clicked: null })}
+                        onClose={this.hideActions}
                     />
                 }
             </div>
