@@ -38,6 +38,10 @@ const SegmentSidebar = ({
                              href={`/reference/segments/${segment.id}/questions`} 
                              icon="all" 
                              name={`Questions about this segment`} />
+                <SidebarItem key={`/reference/segments/${segment.id}/xray`} 
+                             href={`/reference/segments/${segment.id}/xray`} 
+                             icon="all" 
+                             name={`X-Ray this segment`} />
              { user && user.is_superuser &&
 
                 <SidebarItem key={`/reference/segments/${segment.id}/revisions`}

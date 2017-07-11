@@ -39,6 +39,10 @@ const TableSidebar = ({
                          href={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
                          icon="all" 
                          name="Questions about this table" />
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/xray`} 
+                         href={`/reference/databases/${database.id}/tables/${table.id}/xray`} 
+                         icon="all" 
+                         name="X-Ray this table" />
         </ol>
     </div>
 
