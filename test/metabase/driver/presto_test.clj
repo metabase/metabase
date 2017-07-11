@@ -105,7 +105,7 @@
                {:id (data/id :venues :latitude), :min-value 10.0646, :max-value 40.7794}
                {:id (data/id :venues :longitude), :min-value -165.374, :max-value -73.9533}
                {:id (data/id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (data/id :venues :name))}
-               {:id (data/id :venues :price), :values [1 2 3 4]}]}
+               {:id (data/id :venues :price), :values [1 2 3 4], :min-value 1.0, :max-value 4.0}]}
   (let [venues-table (db/select-one 'Table :id (data/id :venues))]
     (driver/analyze-table (PrestoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
 
