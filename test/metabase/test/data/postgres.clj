@@ -26,13 +26,7 @@
           :password (i/db-test-env-var :postgresql :password)
           :timezone :America/Los_Angeles}
          (when (= context :db)
-           {:db database-name})
-         (when-let [password (env :mb-pg-test-db-pass)]
-           {:password password})
-         (when-let [user (env :mb-pg-test-db-user)]
-           {:user user})
-         (when-let [db (env :mb-pg-test-db-dbname)]
-           {:db db})))
+           {:db database-name})))
 
 (defn- kill-connections-to-db-sql
   "Return a SQL `SELECT` statement that will kill all connections to a database with DATABASE-NAME."
