@@ -10,9 +10,6 @@ import { delay } from "metabase/lib/promise"
 
 import { MetabaseApi } from 'metabase/services'
 
-
-import { TestModal } from "metabase/components/Modal"
-
 describe('dashboard list', () => {
 
     beforeAll(async () => {
