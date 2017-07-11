@@ -11,11 +11,11 @@ import { MetabaseApi } from "metabase/services";
 
 const RESET = "metabase/admin/databases/RESET";
 const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
-const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
+export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
 const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
 const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
-const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
+export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
 
 export const reset = createAction(RESET);
