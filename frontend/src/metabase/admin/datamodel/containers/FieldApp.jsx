@@ -26,8 +26,8 @@ import SelectButton from "metabase/components/SelectButton";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
 import {
-    FieldVisibilitySelect,
-    SpecialTypeAndTargetSelect
+    FieldVisibilityPicker,
+    SpecialTypeAndTargetPicker
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 
@@ -129,7 +129,7 @@ export default class FieldApp extends Component {
                             <Section>
                                 <SectionHeader title="Visibility"
                                                description="Where this field will appear throughout Metabase"/>
-                                <FieldVisibilitySelect
+                                <FieldVisibilityPicker
                                     className={SelectClasses}
                                     // Enter the unwrapped object without cyclical structure
                                     field={{ ...field._object, table: undefined, target: undefined }}
@@ -139,7 +139,7 @@ export default class FieldApp extends Component {
 
                             <Section>
                                 <SectionHeader title="Type" />
-                                <SpecialTypeAndTargetSelect
+                                <SpecialTypeAndTargetPicker
                                     className={SelectClasses}
                                     // Enter the unwrapped object without cyclical structure
                                     field={{ ...field._object, table: undefined, target: undefined }}
@@ -345,11 +345,6 @@ export class FieldRemapping extends Component {
 
     constructor(props, context) {
         super(props, context);
-
-        // could we simply infer mappingType from metadata instead of resorting to local state?
-        this.state = {
-            mappingType: this.getMappingType()
-        }
     }
 
     getMappingType = () => {
@@ -365,7 +360,7 @@ export class FieldRemapping extends Component {
     getAvailableMappingTypes = () => {
         const { field } = this.props;
 
-        const hasForeignKeys = !!field.fk_target_field_id;
+        const hasForeignKeys = field.special_type === "type/FK" && !!field.fk_target_field_id;
 
         // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
         // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -382,7 +377,7 @@ export class FieldRemapping extends Component {
 
     // dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_i
     onSetMappingType = async (mappingType) => {
-        const { field, updateFieldDimension, deleteFieldDimension } = this.props;
+        const { table, field, fetchTableMetadata, updateFieldDimension, deleteFieldDimension } = this.props;
 
         if (mappingType.type === "original") {
             await deleteFieldDimension(field.id)
@@ -392,6 +387,8 @@ export class FieldRemapping extends Component {
                 name: field.display_name,
                 human_readable_field_id: null
             })
+
+            await fetchTableMetadata(table.id, true);
         } else if (mappingType.type === "custom") {
             await updateFieldDimension(field.id, {
                 type: "internal",
@@ -402,7 +399,7 @@ export class FieldRemapping extends Component {
             throw new Error("Unrecognized mapping type");
         }
 
-        this.setState({ mappingType })
+        await fetchTableMetadata(table.id, true);
     }
 
     onForeignKeyFieldChange = async (foreignKeyClause) => {
@@ -439,7 +436,8 @@ export class FieldRemapping extends Component {
     render () {
         const { field, table, fields} = this.props;
 
-        const isFKMapping = this.state.mappingType === MAP_OPTIONS.foreign;
+        const mappingType = this.getMappingType()
+        const isFKMapping = mappingType === MAP_OPTIONS.foreign;
         const hasFKMappingValue = isFKMapping && field.dimensions.human_readable_field_id !== null;
         const fkMappingField = hasFKMappingValue && fields[field.dimensions.human_readable_field_id];
 
@@ -451,11 +449,11 @@ export class FieldRemapping extends Component {
                 />
                 <Select
                     className={SelectClasses}
-                    value={this.state.mappingType}
+                    value={mappingType}
                     onChange={this.onSetMappingType}
                     options={this.getAvailableMappingTypes()}
                 />
-                { this.state.mappingType === MAP_OPTIONS.foreign && [
+                { mappingType === MAP_OPTIONS.foreign && [
                     <SelectSeparator key="foreignKeySeparator" />,
                     <PopoverWithTrigger
                         ref="fkPopover"
@@ -478,7 +476,7 @@ export class FieldRemapping extends Component {
                         />
                     </PopoverWithTrigger>
                 ]}
-                { this.state.mappingType === MAP_OPTIONS.custom && (
+                { mappingType === MAP_OPTIONS.custom && (
                     <div className="mt3">
                         <ValueRemappings
                             remappings={field && field.remapping}

@@ -234,7 +234,7 @@ export const fetchTables = createThunkAction(FETCH_TABLES, (reload = false) => {
     };
 });
 
-const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
+export const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
 export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, function(tableId, reload = false) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "tables", tableId];
@@ -301,7 +301,7 @@ export const updateFieldValues = createThunkAction(UPDATE_FIELD_VALUES, function
 export const ADD_PARAM_VALUES = "metabase/metadata/ADD_PARAM_VALUES";
 export const addParamValues = createAction(ADD_PARAM_VALUES);
 
-const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
+export const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
 export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", field.id];
@@ -325,7 +325,7 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
     };
 });
 
-const DELETE_FIELD_DIMENSION = "metabase/metadata/DELETE_FIELD_DIMENSION";
+export const DELETE_FIELD_DIMENSION = "metabase/metadata/DELETE_FIELD_DIMENSION";
 export const deleteFieldDimension = createThunkAction(DELETE_FIELD_DIMENSION, function(fieldId) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", fieldId, "dimension"];
@@ -345,7 +345,7 @@ export const deleteFieldDimension = createThunkAction(DELETE_FIELD_DIMENSION, fu
     };
 });
 
-const UPDATE_FIELD_DIMENSION = "metabase/metadata/UPDATE_FIELD_DIMENSION";
+export const UPDATE_FIELD_DIMENSION = "metabase/metadata/UPDATE_FIELD_DIMENSION";
 export const updateFieldDimension = createThunkAction(UPDATE_FIELD_DIMENSION, function(fieldId, dimension) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", fieldId, "dimension"];

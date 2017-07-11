@@ -65,14 +65,14 @@ export default class Column extends Component {
                         <div className="clearfix">
                             <div className="flex flex-full">
                                 <div className="flex-full px1">
-                                    <FieldVisibilitySelect
+                                    <FieldVisibilityPicker
                                         className="block"
                                         field={field}
                                         updateField={updateField}
                                     />
                                 </div>
                                 <div className="flex-full px1">
-                                    <SpecialTypeAndTargetSelect
+                                    <SpecialTypeAndTargetPicker
                                         className="block"
                                         field={field}
                                         updateField={updateField}
@@ -94,9 +94,9 @@ export default class Column extends Component {
     }
 }
 
-// FieldVisibilitySelect and SpecialTypeSelect are also used in FieldApp
+// FieldVisibilityPicker and SpecialTypeSelect are also used in FieldApp
 
-export class FieldVisibilitySelect extends Component {
+export class FieldVisibilityPicker extends Component {
     props: {
         field: Field,
         updateField: (Field) => void,
@@ -124,7 +124,7 @@ export class FieldVisibilitySelect extends Component {
     }
 }
 
-export class SpecialTypeAndTargetSelect extends Component {
+export class SpecialTypeAndTargetPicker extends Component {
     props: {
         field: Field,
         updateField: (Field) => void,
