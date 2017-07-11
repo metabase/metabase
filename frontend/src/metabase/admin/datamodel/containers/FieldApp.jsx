@@ -171,7 +171,7 @@ export default class FieldApp extends Component {
 
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-const BackButton = ({ databaseId, tableId }) =>
+export const BackButton = ({ databaseId, tableId }) =>
     <Link
         to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
         className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
@@ -187,7 +187,7 @@ const SelectSeparator = () =>
         className="mx2 text-grey-3"
     />
 
-class FieldHeader extends Component {
+export class FieldHeader extends Component {
     onNameChange = (e) => {
         const { updateFieldProperties } = this.props;
         const display_name = e.target.value;
@@ -222,7 +222,7 @@ class FieldHeader extends Component {
 }
 
 // consider renaming this component to something more descriptive
-class ValueRemappings extends Component {
+export class ValueRemappings extends Component {
     constructor(props, context) {
         super(props, context);
 
@@ -306,7 +306,7 @@ class ValueRemappings extends Component {
     }
 }
 
-class FieldValueMapping extends Component {
+export class FieldValueMapping extends Component {
     onInputChange = (e) => {
         this.props.setMapping(e.target.value)
     }
@@ -341,7 +341,7 @@ const MAP_OPTIONS = {
     custom:   { type: "custom", name: 'Custom mapping' }
 }
 
-class FieldRemapping extends Component {
+export class FieldRemapping extends Component {
 
     constructor(props, context) {
         super(props, context);
