@@ -164,10 +164,7 @@ const deletes = handleActions({
         next: (state, { payload }) => state.concat([payload])
     },
     [DELETE_DATABASE]: {
-        next: (state, { payload }) => {
-            console.log(state.indexOf(payload))
-            return state.splice(state.indexOf(payload), 1)
-        }
+        next: (state, { payload }) => state.splice(state.indexOf(payload), 1)
     }
 }, []);
 
