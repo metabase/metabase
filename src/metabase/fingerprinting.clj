@@ -2,20 +2,25 @@
   "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as hist]
             [bigml.sketchy.hyper-loglog :as hyper-loglog]
-            [clj-time.coerce :as t.coerce]
-            [clj-time.core :as t]
-            [clj-time.format :as t.format]
-            [clj-time.periodic :as t.periodic]
-            [kixi.stats.core :as stats]
-            [kixi.stats.math :as math]
+            [clj-time
+             [coerce :as t.coerce]
+             [core :as t]
+             [format :as t.format]
+             [periodic :as t.periodic]]
+            [kixi.stats
+             [core :as stats]
+             [math :as math]]
             [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models
+             [card :refer [Card]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
             [redux.core :as redux]
-            [tide.core :as tide]))
+            [tide.core :as tide])
+  (import com.bigml.histogram.Histogram))
 
 (def ^:private ^:const percentiles (range 0 1 0.1))
 
@@ -84,6 +89,23 @@
   (+ (hist/total-count histogram)
      (nil-count histogram)))
 
+(defn kl-divergence
+  "Kullback-Leibler divergence of discrete probability distributions `p` and `q`.
+   https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence"
+  [p q]
+  (reduce + (map (fn [pi qi]
+                   (* pi (math/log (/ pi qi))))
+                 p q)))
+
+(defn jensen-shannon-divergence
+  "Jensen-Shannon divergence of discrete probability distributions `p` and `q`.
+   Note returned is the square root of JS-divergence, so that it obeys the
+   metric laws.
+   https://en.wikipedia.org/wiki/Jensen%E2%80%93Shannon_divergence"
+  [p q]
+  (let [m (map + p q)]
+    (math/sqrt (+ (* 0.5 (kl-divergence p m)) (* 0.5 (kl-divergence q m))))))
+
 (def ^:private ^:const ^Double cardinality-error 0.01)
 
 (defn cardinality
@@ -99,17 +121,19 @@
              (redux/post-complete + -)
              (vals (pmf histogram))))
 
-(defn- field-type
-  [field]
-  (if (sequential? field)
-    (mapv field-type field)
-    [(:base_type field) (or (:special_type field) :type/*)]))
-
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
 (def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
+
+(defn- field-type
+  [field]
+  (cond
+    (sequential? field)             (mapv field-type field)
+    (instance? (type Metric) field) Num
+    :else                           [(:base_type field)
+                                     (or (:special_type field) :type/*)]))
 
 (def linear-computation? ^:private ^{:arglists '([max-cost])}
   (comp #{:linear} :computation))
@@ -162,7 +186,7 @@
              max         (hist/maximum histogram)
              mean        (hist/mean histogram)
              median      (hist/median histogram)
-             range       (- max min)]
+             span        (- max min)]
          {:histogram            (pmf histogram)
           :percentiles          (apply hist/percentiles histogram percentiles)
           :sum                  sum
@@ -175,9 +199,10 @@
           :has-nils?            (pos? nil-count)
           :0<=x<=1?             (<= 0 min max 1)
           :-1<=x<=1?            (<= -1 min max 1)
-          :range-vs-sd          (safe-divide range sd)
-          :range-vs-spread      (safe-divide range (- mean median))
-          :range                range
+          :span-vs-sd           (safe-divide span sd)
+          :mean-median-spread   (safe-divide span (- mean median))
+          :min-vs-max           (safe-divide min max)
+          :span                 span
           :cardinality          cardinality
           :min                  min
           :max                  max
@@ -226,11 +251,12 @@
 (defn- decompose-timeseries
   "Decompose given timeseries with expected periodicty `period` into trend,
    seasonal component, and reminder.
-   `period` can be one of `:day`, or `:month`."
+   `period` can be one of `:day`, `week`, or `:month`."
   [period ts]
   (let [period (case period
                  :month 12
-                 :day 52)]
+                 :week  52
+                 :day   365)]
     (when (>= (count ts) (* 2 period))
       (select-keys (tide/decompose period ts) [:trend :seasonal :reminder]))))
 
@@ -247,7 +273,8 @@
                                          (partial fill-timeseries
                                                   (case scale
                                                     :month (t/months 1)
-                                                    :day (t/days 1)))))})
+                                                    :week  (t/weeks 1)
+                                                    :day   (t/days 1)))))})
       (fn [[x y]]
         [(-> x t.format/parse to-double) y]))
      (fn [{:keys [series linear-regression]}]
@@ -264,6 +291,10 @@
                           :YoY-previous (growth (second ys-r) (nth ys-r 12))
                           :MoM          (growth (first ys-r) (second ys-r))
                           :MoM-previous (growth (second ys-r) (nth ys-r 2))}
+                  :week  {:YoY          (growth (first ys-r) (nth ys-r 51))
+                          :YoY-previous (growth (second ys-r) (nth ys-r 52))
+                          :WoW          (growth (first ys-r) (second ys-r))
+                          :WoW-previous (growth (second ys-r) (nth ys-r 2))}
                   :day   {:DoD          (growth (first ys-r) (second ys-r))
                           :DoD-previous (growth (second ys-r) (nth ys-r 2))}
                   :raw   nil)))))))
@@ -357,6 +388,16 @@
 (prefer-method fingerprinter Category Text)
 (prefer-method fingerprinter Num Category)
 
+(defmulti comparison-vector
+  "Fingerprint feature vector for comparison/difference purposes."
+  :type)
+
+(defmethod comparison-vector Num
+  [fingerprint]
+  (select-keys fingerprint
+               [:histogram :mean :median :min :max :sd :count :kurtosis
+                :skewness :entropy :nil-count :cardinality-vs-count :span]))
+
 (defn- fingerprint-field
   "Transduce given column with corresponding fingerprinter."
   [opts field data]
@@ -367,13 +408,13 @@
   "Transuce each column in given dataset with corresponding fingerprinter."
   [opts {:keys [rows cols]}]
   (transduce identity
-             (redux/fuse (into {}
-                           (for [[i field] (m/indexed cols)]
-                             [(:name field)
-                              (redux/post-complete
-                               (redux/pre-step (fingerprinter opts field)
-                                               #(nth % i))
-                               #(assoc % :field field))])))
+             (redux/juxt (map-indexed (fn [i field]
+                                        (redux/post-complete
+                                         (redux/pre-step
+                                          (fingerprinter opts field)
+                                          #(nth % i))
+                                         #(assoc % :field field)))
+                                      cols))
              rows))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
@@ -393,66 +434,116 @@
                          needed).
 
    * `:scale`            controls pre-aggregation by time. Can be one of `:day`,
-                         `:month`, or `:raw`"
-  #(class %2))
+                         `week`, `:month`, or `:raw`"
+  #(type %2))
 
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
     (sample-only? max-cost) (assoc :limit max-sample-size)))
 
-(defmethod fingerprint (class Field)
+(defmethod fingerprint (type Field)
   [opts field]
   (->> (metadata/field-values field (extract-query-opts opts))
        (fingerprint-field opts field)))
 
-(defmethod fingerprint (class Table)
+(defmethod fingerprint (type Table)
   [opts table]
   (fingerprint-query opts (metadata/query-values
                            (:db_id table)
                            (merge (extract-query-opts opts)
                                   {:source-table (:id table)}))))
 
-(defmethod fingerprint (class Card)
+(defmethod fingerprint (type Card)
   [opts card]
   (fingerprint-query opts (metadata/query-values
                            (:database_id card)
                            (merge (extract-query-opts opts)
                                   (-> card :dataset_query :query)))))
 
-(defmethod fingerprint (class Segment)
+(defmethod fingerprint (type Segment)
   [opts segment]
   (fingerprint-query opts (metadata/query-values
                            (metadata/db-id segment)
                            (merge (extract-query-opts opts)
                                   (:definition segment)))))
 
+(defmethod fingerprint (type Metric)
+  [_ metric]
+  {:metric metric})
+
 (defn compare-fingerprints
   "Compare fingerprints of two models."
   [opts a b]
-  {(:name a) (fingerprint opts a)
-   (:name b) (fingerprint opts b)})
+  {:models [(fingerprint opts a)
+            (fingerprint opts b)]})
+
+(defn- build-query
+  [{:keys [scale] :as opts} a b]
+  (merge (extract-query-opts opts)
+         (cond
+           (and (isa? (field-type a) DateTime)
+                (not= scale :raw)
+                (instance? (type Metric) b))
+           (merge (:definition b)
+                  {:breakout [[:datetime-field [:field-id (:id a)] scale]]})
+
+           (and (isa? (field-type a) DateTime)
+                (not= scale :raw)
+                (isa? (field-type b) Num))
+           {:source-table (:table_id a)
+            :breakout     [[:datetime-field [:field-id (:id a)] scale]]
+            :aggregation  [:sum [:field-id (:id b)]]}
+
+           :else
+           {:source-table (:table_id a)
+            :fields       [[:field-id (:id a)]
+                           [:field-id (:id b)]]})))
 
 (defn multifield-fingerprint
   "Holistically fingerprint dataset with multiple columns.
    Takes and additional option `:scale` which controls how timeseries data
-   is aggregated. Possible values: `:month`, `:day`, `:raw`."
-  [{:keys [scale] :as opts} a b]
+   is aggregated. Possible values: `:month`, `week`, `:day`, `:raw`."
+  [opts a b]
   (assert (= (:table_id a) (:table_id b)))
-  {:fingerprint (->> (metadata/query-values
-                      (metadata/db-id a)
-                      (merge
-                       (extract-query-opts opts)
-                       (if (and (isa? (field-type a) DateTime)
-                                (isa? (field-type b) Num)
-                                (not= scale :raw))
-                         {:source-table (:table_id a)
-                          :breakout     [[:datetime-field [:field-id (:id a)]
-                                          scale]]
-                          :aggregation  [:sum [:field-id (:id b)]]}
-                         {:source-table (:table_id a)
-                          :fields       [[:field-id (:id a)]
-                                         [:field-id (:id b)]]})))
+  {:fingerprint (->> (metadata/query-values (metadata/db-id a)
+                                            (build-query opts a b))
                      :rows
                      (fingerprint-field opts [a b]))
-   :fields      (compare-fingerprints opts a b)})
+   :fields      (map (partial fingerprint opts) [a b])})
+
+(def magnitude
+  "Transducer that claclulates magnitude (Euclidean norm) of given vector."
+  (redux/post-complete (redux/pre-step + math/sq) math/sqrt))
+
+(defmulti difference
+  "Difference between two features.
+   Confined to [0, 1] with 0 being same, and 1 orthogonal."
+  #(mapv type %&))
+
+(defmethod difference [Number Number]
+  [a b]
+  (cond
+    (= a b 0)         0
+    (zero? (max a b)) 1
+    :else             (- 1 (/ (- (max a b) (min a b))
+                              (max a b)))))
+
+(defmethod difference [Boolean Boolean]
+  [a b]
+  (if (= a b) 0 1))
+
+(defmethod difference [Histogram Histogram]
+  [a b]
+  (- 1 (jensen-shannon-divergence (vals (pmf a)) (vals (pmf b)))))
+
+(defn pairwise-differences
+  "Pairwise differences of (feature) vectors `a` and `b`."
+  [a b]
+  (map difference a b))
+
+(defn distance
+  "Distance metric between (feature) vectors."
+  [a b]
+  (/ (transduce identity magnitude (pairwise-differences a b))
+     (math/sqrt (count a))))
