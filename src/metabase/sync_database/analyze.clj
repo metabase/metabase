@@ -29,13 +29,11 @@
  "If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
   types of valid JSON values as :json (e.g. a string representation of a number or boolean)"
   [value]
-  (try
+  (u/ignore-exceptions
     (if (and value (not (s/blank? value)))
       (let [json-val (json/parse-string value)]
         (or (map? json-val)
             (sequential? json-val)))
-      false)
-    (catch Throwable _
       false)))
 
 (defn- value-is-valid-email?

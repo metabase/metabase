@@ -3,8 +3,7 @@
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
-             [events :as events]]
-            [metabase.util :as u]))
+             [events :as events]]))
 
 (def ^:const ^:private driver-notifications-topics
   "The `Set` of event topics which are subscribed to for use in driver notifications."

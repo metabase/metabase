@@ -1,4 +1,6 @@
 (ns metabase.sync-database.classify
+  "'Classification' looks at the fingerprints (i.e., a sample of values) for various Fields and determines what special type
+   those fields should be given."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [metabase
@@ -14,7 +16,12 @@
              [infer-special-type :as infer-special-type]
              [interface :as i]]
             [schema.core :as schema]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.sync.util :as sync-util]))
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                              VARIOUS SPECIAL TYPE "TESTS"                                              |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const ^Float percent-valid-url-threshold
   "Fields that have at least this percent of values that are valid URLs should be given a special type of `:type/URL`."
@@ -39,10 +46,10 @@
   (if (and (not is_fk) (not is_pk )
            (nil? (:special-type field-stats))
            (< 0 (:cardinality fingerprint) low-cardinality-threshold)
-           (field-values/field-should-have-field-values? {:base_type base_type
-                                                          :special_type special-type
+           (field-values/field-should-have-field-values? {:base_type       base_type
+                                                          :special_type    special-type
                                                           :visibility_type visibility_type
-                                                          :name name}))
+                                                          :name            name}))
     (assoc field-stats :special-type :type/Category)
     field-stats))
 
@@ -131,25 +138,31 @@
     (assoc field-stats :special-type :type/FK)
     field-stats))
 
-(defn test:new-field
-  "Do the various tests that should only be done for a new `Field`.
-   We only run most of the field analysis work when the field is NEW in order to favor performance of the sync process."
-  [fingerprint field-stats]
-  (->> field-stats
-       (test:initial-guess      fingerprint)
-       (test:no-preview-display fingerprint)
-       (test:url-special-type   fingerprint)
-       (test:json-special-type  fingerprint)
-       (test:email-special-type fingerprint)
-       (test:category-type      fingerprint)
-       (test:primary-key        fingerprint)
-       (test:foreign-key        fingerprint)))
+(defn test-fingerprint
+  "Perform all tests for a field FINGERPRINT, and return the resulting field stats."
+  [fingerprint]
+  (let [initial-field-stats {:id (u/get-id fingerprint)}]
+    (->> initial-field-stats
+         (test:initial-guess      fingerprint)
+         (test:no-preview-display fingerprint)
+         (test:url-special-type   fingerprint)
+         (test:json-special-type  fingerprint)
+         (test:email-special-type fingerprint)
+         (test:category-type      fingerprint)
+         (test:primary-key        fingerprint)
+         (test:foreign-key        fingerprint))))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                        LOGIC FOR TAKING FIELD STATS ("TEST" RESULTS) AND UPDATING SPECIAL TYPES                        |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn classify-table-fields
   "Classify a table fingerprint along with all it's fields"
   [table-fingerprint field-fingerprints]
   {:row_count (:row_count table-fingerprint)
-   :fields (map #(test:new-field % {:id (:id %)}) field-fingerprints)})
+   :fields    (for [field-fingerprint field-fingerprints]
+                (test-fingerprint field-fingerprint))})
 
 (defn classify-table!
   "Analyze the data shape for a single `Table`."
@@ -172,25 +185,18 @@
                                    :visibility_type [:not= "retired"]}
       :last_analyzed (u/new-sql-timestamp))))
 
-(defn classify-tables!
+(defn classify-database!
   "classify and save all previously saved fingerprints for tables in this database"
   [{database-id :id, :as database}]
-  (let [start-time-ns         (System/nanoTime)
-        tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
-        tables-count          (count tables)
-        finished-tables-count (atom 0)]
-    (doseq [{table-name :name, :as table} tables]
-      (try
-        (classify-table! table)
-        (catch Throwable t
-          (log/error "Unexpected error classifying table" t))
-        (finally
-          (u/prog1 (swap! finished-tables-count inc)
-            (log/info (u/format-color 'blue "%s Classified table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
-
-    (log/info (u/format-color 'blue "Classification of %s database '%s' completed (%s)." (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
-
-(defn classify-database!
-  "analyze all the tables in one database"
-  [db]
-  (classify-tables! db))
+  (sync-util/with-start-and-finish-logging (format "Classify %s database '%s'" (:name database))
+    (let [tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
+          tables-count          (count tables)
+          finished-tables-count (atom 0)]
+      (doseq [{table-name :name, :as table} tables]
+        (try
+          (classify-table! table)
+          (catch Throwable t
+            (log/error "Unexpected error classifying table" t))
+          (finally
+            (u/prog1 (swap! finished-tables-count inc)
+              (log/info (u/format-color 'blue "%s Classified table '%s'." (u/emoji-progress-bar <> tables-count) table-name)))))))))

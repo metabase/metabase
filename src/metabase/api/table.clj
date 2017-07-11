@@ -79,9 +79,10 @@
           old-visibility (visible-state? original-visibility-type)
           table-now-visible? (and (not= new-visibility
                                          old-visibility)
-                                   (= :show new-visibility))]
+                                  (= :show new-visibility))]
       (when table-now-visible?
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type table-now-visible?)
+        ;; TODO - maybe make this a combined function and put it somewhere?
         (sync-database/sync-table! updated-table)
         (cached-values/cache-table-data-shape! driver updated-table)
         (analyze/analyze-table-data-shape!     driver updated-table)
