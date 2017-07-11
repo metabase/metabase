@@ -22,9 +22,11 @@
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host     (i/db-test-env-var-or-throw :postgresql :host "localhost")
           :port     (i/db-test-env-var-or-throw :postgresql :port 5432)
-          :user     (i/db-test-env-var :postgresql :user)
-          :password (i/db-test-env-var :postgresql :password)
           :timezone :America/Los_Angeles}
+         (when-let [user (i/db-test-env-var :postgresql :user)]
+           {:user user})
+         (when-let [password (i/db-test-env-var :postgresql :password)]
+           {:password password})
          (when (= context :db)
            {:db database-name})))
 
