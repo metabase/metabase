@@ -136,13 +136,13 @@
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
-(defn- get-field-id-or-explode [table-id field-name & {:keys [parent-id]}]
+(defn- get-field-id-or-explode [table-id field-name table-name & {:keys [parent-id]}]
   (let [field-name (format-name field-name)]
     (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-        (throw (Exception. (format "Couldn't find Field %s for Table %d.\nFound: %s"
+        (throw (Exception. (format "Couldn't find Field %s for Table %s.\nFound: %s"
                                    (str \' field-name \' (when parent-id
                                                            (format " (parent: %d)" parent-id)))
-                                   table-id
+                                   (name table-name)
                                    (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id))))))))
 
 (defn id
@@ -157,7 +157,7 @@
 
   ([table-name field-name & nested-field-names]
    (let [table-id (id table-name)]
-     (loop [parent-id (get-field-id-or-explode table-id field-name), [nested-field-name & more] nested-field-names]
+     (loop [parent-id (get-field-id-or-explode table-id field-name table-name ), [nested-field-name & more] nested-field-names]
        (if-not nested-field-name
          parent-id
          (recur (get-field-id-or-explode table-id nested-field-name, :parent-id parent-id) more))))))
