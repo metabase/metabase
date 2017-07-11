@@ -45,7 +45,7 @@ export async function login() {
         )
     }
 
-    loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
+    loginSession = await SessionApi.create({ email: "bob@metabase.com", password: "12341234"});
 }
 
 /**
@@ -295,4 +295,3 @@ export const createSavedQuestion = async (unsavedQuestion) => {
 }
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
-
