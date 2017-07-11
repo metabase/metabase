@@ -9,6 +9,7 @@
              [raw-column :refer [RawColumn]]
              [raw-table :refer [RawTable]]]
             [metabase.sync-database.interface :as i]
+            [metabase.sync.util :as sync-util]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -142,8 +143,7 @@
 (defn- introspect-tables!
   "Introspect each table and save off the schema details we find."
   [driver database tables existing-tables]
-  (let [tables-count          (count tables)
-        finished-tables-count (atom 0)]
+  (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
     (doseq [{table-schema :schema, table-name :name, :as table-def} tables]
       (try
         (let [table-def (if (contains? (driver/features driver) :dynamic-schema)
@@ -158,8 +158,7 @@
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error introspecting table schema: %s" (named-table table-schema table-name)) t))
         (finally
-          (swap! finished-tables-count inc)
-          (log/info (u/format-color 'magenta "%s Synced table '%s'." (u/emoji-progress-bar @finished-tables-count tables-count) (named-table table-schema table-name))))))))
+          (log/info (u/format-color 'magenta "%s Synced table '%s'." (emoji-progress-bar) (named-table table-schema table-name))))))))
 
 (defn- disable-old-tables!
   "Any tables/columns that previously existed but aren't included any more get disabled."
@@ -199,13 +198,9 @@
   "Introspect a `Database` and persist the results as `RawTables` and `RawColumns`.
    Uses the various `describe-*` functions on the IDriver protocol to gather information."
   [driver database]
-  (log/info (u/format-color 'magenta "Introspecting schema on %s database '%s' ..." (name driver) (:name database)))
-  (let [start-time-ns      (System/nanoTime)
-        tables             (db->tables driver database)
-        name+schema->table (db->name+schema->table database)]
-
-    (introspect-tables! driver database tables name+schema->table)
-    (disable-old-tables! tables name+schema->table)
-    (sync-fks! driver database tables)
-
-    (log/info (u/format-color 'magenta "Introspection completed on %s database '%s' (%s)" (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+  (sync-util/with-start-and-finish-logging (format "Introspect schema on %s database '%s'" (name driver) (:name database))
+    (let [tables             (db->tables driver database)
+          name+schema->table (db->name+schema->table database)]
+      (introspect-tables! driver database tables name+schema->table)
+      (disable-old-tables! tables name+schema->table)
+      (sync-fks! driver database tables))))

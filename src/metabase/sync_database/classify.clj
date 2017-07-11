@@ -3,9 +3,6 @@
    those fields should be given."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
             [metabase.models
              [field :as field]
              [field-fingerprint :refer [FieldFingerprint]]
@@ -15,9 +12,10 @@
             [metabase.sync-database
              [infer-special-type :as infer-special-type]
              [interface :as i]]
+            [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [schema.core :as schema]
-            [toucan.db :as db]
-            [metabase.sync.util :as sync-util]))
+            [toucan.db :as db]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                              VARIOUS SPECIAL TYPE "TESTS"                                              |
@@ -189,14 +187,12 @@
   "classify and save all previously saved fingerprints for tables in this database"
   [{database-id :id, :as database}]
   (sync-util/with-start-and-finish-logging (format "Classify %s database '%s'" (:name database))
-    (let [tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
-          tables-count          (count tables)
-          finished-tables-count (atom 0)]
-      (doseq [{table-name :name, :as table} tables]
-        (try
-          (classify-table! table)
-          (catch Throwable t
-            (log/error "Unexpected error classifying table" t))
-          (finally
-            (u/prog1 (swap! finished-tables-count inc)
-              (log/info (u/format-color 'blue "%s Classified table '%s'." (u/emoji-progress-bar <> tables-count) table-name)))))))))
+    (let [tables (sync-util/db->sfc-tables database-id)]
+      (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+        (doseq [{table-name :name, :as table} tables]
+          (try
+            (classify-table! table)
+            (catch Throwable t
+              (log/error "Unexpected error classifying table" t))
+            (finally
+              (log/info (u/format-color 'blue "%s Classified table '%s'." (emoji-progress-bar) table-name)))))))))

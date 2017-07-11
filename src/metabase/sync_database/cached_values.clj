@@ -6,15 +6,15 @@
              [util :as u]]
             [metabase.db.metadata-queries :as queries]
             [metabase.models
-             [field :refer [Field] :as field]
+             [field :as field :refer [Field]]
              [field-values :as field-values]
              [table :as table]]
             [metabase.sync-database
              [classify :as classify]
              [interface :as i]]
+            [metabase.sync.util :as sync-util]
             [schema.core :as schema]
-            [toucan.db :as db]
-            [metabase.sync.util :as sync-util]))
+            [toucan.db :as db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Drivers use these to get field values
@@ -101,14 +101,12 @@
   [{database-id :id, :as database}]
   (let [driver (driver/database-id->driver database-id)]
     (sync-util/with-start-and-finish-logging (format "Cache field values for %s database '%s'" (name driver) (:name database))
-      (let [tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
-            tables-count          (count tables)
-            finished-tables-count (atom 0)]
-        (doseq [{table-name :name, :as table} tables]
-          (try
-            (cache-table-data-shape! driver table)
-            (catch Throwable t
-              (log/error "Unexpected error caching field values for table" t))
-            (finally
-              (u/prog1 (swap! finished-tables-count inc)
-                (log/info (u/format-color 'blue "%s Caching Field Values for table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))))))
+      (let [tables (sync-util/db->sfc-tables database)]
+        (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+          (doseq [{table-name :name, :as table} tables]
+            (try
+              (cache-table-data-shape! driver table)
+              (catch Throwable t
+                (log/error "Unexpected error caching field values for table" t))
+              (finally
+                (log/info (u/format-color 'blue "%s Caching Field Values for table '%s'." (emoji-progress-bar) table-name))))))))))

@@ -1,9 +1,10 @@
 (ns metabase.sync.util
-  "Utility functions and macros to abstract away some common patterns and operations across various sync-like processes, such as syncing and value caching."
+  "Utility functions and macros to abstract away some common patterns and operations across the SFC process, such as logging start/end messages "
   (:require [clojure.tools.logging :as log]
             [metabase
              [events :as events]
              [util :as u]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.interface :as i]
             [toucan.db :as db]))
 
@@ -23,11 +24,11 @@
   `(do-with-start-and-finish-logging ~message (fn [] ~@body)))
 
 
-(defn do-with-sync-events
-  "Impl for `with-sync-events`. Don't use this directly; use that instead."
+(defn do-with-sfc-events
+  "Impl for `with-sfc-events`. Don't use this directly; use that instead."
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-id f]
-   (do-with-sync-events
+   (do-with-sfc-events
     (keyword (str (name event-name-prefix) "-begin"))
     (keyword (str (name event-name-prefix) "-end"))
     database-id
@@ -43,12 +44,12 @@
                                               :custom_id    tracking-hash
                                               :running_time total-time-ms})))))
 
-(defmacro with-sync-events
+(defmacro with-sfc-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a DATABASE-ID.
    BODY is executed between the logging of the two events."
   {:style/indent 2}
   [event-name-prefix database-id & body]
-  `(do-with-sync-events ~event-name-prefix ~database-id (fn [] ~@body)))
+  `(do-with-sfc-events ~event-name-prefix ~database-id (fn [] ~@body)))
 
 
 (defmacro with-logging-disabled
@@ -91,3 +92,18 @@
   {:style/indent 2}
   [operation database-id & body]
   `(do-with-duplicate-ops-prevented ~operation ~database-id (fn [] ~@body)))
+
+
+(defmacro with-emoji-progress-bar
+  {:style/indent 1}
+  [[emoji-progress-fn-binding total-count] & body]
+  `(let [finished-count#            (atom 0)
+         total-count#               ~total-count
+         ~emoji-progress-fn-binding (fn [] (u/emoji-progress-bar (swap! finished-count# inc) total-count#))]
+     ~@body))
+
+
+(defn db->sfc-tables
+  "Return all the Tables that should go the SFC process for DATABASE-OR-ID."
+  [database-or-id]
+  (db/select Table, :db_id (u/get-id database-or-id), :active true, :visibility_type nil))

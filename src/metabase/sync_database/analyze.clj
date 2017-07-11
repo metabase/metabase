@@ -7,13 +7,13 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models
              [field :as field]
              [field-fingerprint :refer [FieldFingerprint]]
-             [table :as table ]
+             [table :as table]
              [table-fingerprint :refer [TableFingerprint]]]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.sync-database.classify :as classify]
+            [metabase.sync.util :as sync-util]
             [toucan.db :as db]))
 
 (defn- table-row-count
@@ -150,25 +150,19 @@
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
   [driver {database-id :id, :as database}]
-  (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
-  (let [start-time-ns         (System/nanoTime)
-        tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
-        tables-count          (count tables)
-        finished-tables-count (atom 0)]
-    (doseq [{table-name :name, :as table} tables]
-      (try
-        (analyze-table-data-shape! driver table)
-        (catch Throwable t
-          (log/error "Unexpected error analyzing table" t))
-        (finally
-          (u/prog1 (swap! finished-tables-count inc)
-            (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
-    (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+  (sync-util/with-start-and-finish-logging (format "Analyze data in %s database '%s'" (name driver) (:name database))
+    (let [tables (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)]
+      (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+        (doseq [{table-name :name, :as table} tables]
+          (try
+            (analyze-table-data-shape! driver table)
+            (catch Throwable t
+              (log/error "Unexpected error analyzing table" t))
+            (finally
+              (log/info (u/format-color 'blue "%s Analyzed table '%s'." (emoji-progress-bar) table-name)))))))))
 
 (defn analyze-database!
   "analyze all the tables in one database"
   [db]
-  (analyze-data-shape-for-tables! (->> db
-                                       :id
-                                       driver/database-id->driver)
+  (analyze-data-shape-for-tables! (driver/database-id->driver (u/get-id db))
                                   db))

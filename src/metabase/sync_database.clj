@@ -54,7 +54,7 @@
 
 (defn- -sync-database! [driver database full-sync?]
   (sync-util/with-start-and-finish-logging (format "Sync %s database '%s'..." (name driver) (:name database))
-    (sync-util/with-sync-events :database-sync (u/get-id database)
+    (sync-util/with-sfc-events :database-sync (u/get-id database)
       (sync-util/with-logging-disabled
         ;; start with capturing a full introspection of the database
         (introspect/introspect-database-and-update-raw-tables! driver database)
