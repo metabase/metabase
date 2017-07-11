@@ -10,7 +10,7 @@
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
 
-(resolve-private-vars metabase.driver.presto details->uri details->request parse-presto-results quote-name quote+combine-names apply-page)
+(resolve-private-vars metabase.driver.presto details->uri details->request parse-presto-results quote-name quote+combine-names rename-duplicates apply-page)
 
 ;;; HELPERS
 
@@ -54,12 +54,21 @@
                         [["2017-04-03", "2017-04-03 10:19:17.417 America/Toronto", "2017-04-03 10:19:17.417", "3.1416", "test"]]))
 
 (expect
+  [[0, false, "", nil]]
+  (parse-presto-results [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}]
+                        [[0, false, "", nil]]))
+
+(expect
   "\"weird.table\"\" name\""
   (quote-name "weird.table\" name"))
 
 (expect
   "\"weird . \"\"schema\".\"weird.table\"\" name\""
   (quote+combine-names "weird . \"schema" "weird.table\" name"))
+
+(expect
+  ["name" "count" "count_2" "sum", "sum_2", "sum_3"]
+  (rename-duplicates ["name" "count" "count" "sum" "sum" "sum"]))
 
 ;; DESCRIBE-DATABASE
 (datasets/expect-with-engine :presto

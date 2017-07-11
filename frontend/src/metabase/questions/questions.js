@@ -26,7 +26,7 @@ const card = new schema.Entity('cards', {
 
 import { CardApi, CollectionsApi } from "metabase/services";
 
-const LOAD_ENTITIES = 'metabase/questions/LOAD_ENTITIES';
+export const LOAD_ENTITIES = 'metabase/questions/LOAD_ENTITIES';
 const SET_SEARCH_TEXT = 'metabase/questions/SET_SEARCH_TEXT';
 const SET_ITEM_SELECTED = 'metabase/questions/SET_ITEM_SELECTED';
 const SET_ALL_SELECTED = 'metabase/questions/SET_ALL_SELECTED';
