@@ -88,9 +88,13 @@ export const SlackApi = {
     updateSettings:              PUT("/api/slack/settings"),
 };
 
+export const LdapApi = {
+    updateSettings:              PUT("/api/ldap/settings")
+};
+
 export const MetabaseApi = {
     db_list:                     GET("/api/database"),
-    db_list_with_tables:         GET("/api/database?include_tables=true"),
+    db_list_with_tables:         GET("/api/database?include_tables=true&include_cards=true"),
     db_create:                  POST("/api/database"),
     db_add_sample_dataset:      POST("/api/database/sample_dataset"),
     db_get:                      GET("/api/database/:dbId"),
@@ -125,8 +129,10 @@ export const MetabaseApi = {
     // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
     field_update:                PUT("/api/field/:id"),
     dataset:                    POST("/api/dataset"),
-    dataset_duration:           POST("/api/dataset/duration"),
+    dataset_duration:           POST("/api/dataset/duration")
+};
 
+export const XRayApi = {
     // X-Rays
     field_fingerprint:           GET("api/fingerprint/field/:fieldId"),
     table_fingerprint:           GET("api/fingerprint/table/:tableId"),

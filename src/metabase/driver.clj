@@ -138,7 +138,8 @@
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
-  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
+  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"
+  *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples are CTEs or subselects in SQL queries.")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -283,7 +284,10 @@
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
-    (require ns-symb)))
+    (require ns-symb)
+    (if-let [register-driver-fn (ns-resolve ns-symb (symbol "-init-driver"))]
+      (register-driver-fn)
+      (log/warn (format "No -init-driver function found for '%s'" (name ns-symb))))))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
@@ -327,8 +331,8 @@
   "Given a sequence of VALUES, return the most common base type."
   [values]
   (->> values
+       (take 100)                                   ; take up to 100 values
        (filter (complement nil?))                   ; filter out `nil` values
-       (take 1000)                                  ; take up to 1000 values
        (group-by (comp class->base-type class))     ; now group by their base-type
        (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
        ffirst))                                     ; take the base-type from the first pair
@@ -361,7 +365,8 @@
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
       {:pre [db-id]}
-      (engine->driver (db-id->engine db-id)))))
+      (when-let [engine (db-id->engine db-id)]
+        (engine->driver engine)))))
 
 
 ;; ## Implementation-Agnostic Driver API

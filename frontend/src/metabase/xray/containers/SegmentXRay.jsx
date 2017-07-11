@@ -3,7 +3,6 @@ import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 
-import type { Field } from 'metabase/meta/types/Field'
 import { fetchSegmentFingerPrint } from 'metabase/reference/reference'
 
 type Props = {

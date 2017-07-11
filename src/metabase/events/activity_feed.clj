@@ -1,12 +1,16 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.events :as events]
+            [metabase
+             [events :as events]
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.models
              [activity :as activity :refer [Activity]]
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [table :as table]]
+            [metabase.query-processor.util :as qputil]
             [toucan.db :as db]))
 
 (def ^:const activity-feed-topics
@@ -36,11 +40,20 @@
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
+(defn- inner-query->source-table-id
+  "Recurse through INNER-QUERY source-queries as needed until we can return the ID of this query's source-table."
+  [inner-query]
+  (or (when-let [source-table (qputil/get-normalized inner-query :source-table)]
+        (u/get-id source-table))
+      (when-let [source-query (qputil/get-normalized inner-query :source-query)]
+        (recur source-query))))
 
 (defn- process-card-activity! [topic object]
   (let [details-fn  #(select-keys % [:name :description])
-        database-id (get-in object [:dataset_query :database])
-        table-id    (get-in object [:dataset_query :query :source_table])]
+        query       (u/ignore-exceptions (qp/expand (:dataset_query object)))
+        database-id (when-let [database (:database query)]
+                      (u/get-id database))
+        table-id    (inner-query->source-table-id (:query query))]
     (activity/record-activity!
       :topic       topic
       :object      object

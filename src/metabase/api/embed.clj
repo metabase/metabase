@@ -108,13 +108,13 @@
   "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the EMBEDDING-PARAMS whitelist,
    or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user can't set."
   [dashboard-or-card, embedding-params :- su/EmbeddingParams]
-  (let [params-to-remove (into #{} (concat (for [[param status] embedding-params
-                                                 :when          (not= status "enabled")]
-                                             param)
-                                           (for [{slug :slug} (:parameters dashboard-or-card)
-                                                 :let         [param (keyword slug)]
-                                                 :when        (not (contains? embedding-params param))]
-                                             param)))]
+  (let [params-to-remove (set (concat (for [[param status] embedding-params
+                                            :when          (not= status "enabled")]
+                                        param)
+                                      (for [{slug :slug} (:parameters dashboard-or-card)
+                                            :let         [param (keyword slug)]
+                                            :when        (not (contains? embedding-params param))]
+                                        param)))]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters

@@ -2,11 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import moment from "moment";
 
-import visualizations from "metabase/visualizations";
 import { isQueryable } from "metabase/lib/table";
-import * as Urls from "metabase/lib/urls";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -15,18 +12,14 @@ import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    separateTablesBySchema
-} from '../utils';
-
-import {
-    getSection,
-    getData,
-    getUser,
+    getDatabase,
+    getTablesByDatabase,
     getHasSingleSchema,
     getError,
     getLoading
@@ -34,10 +27,15 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 
+
+const emptyStateData = {
+    message: `Tables in this database will appear here as they're added`,
+    icon: "table2"
+}
+
 const mapStateToProps = (state, props) => ({
-    section: getSection(state, props),
-    entities: getData(state, props),
-    user: getUser(state, props),
+    database: getDatabase(state, props),
+    entities: getTablesByDatabase(state, props),
     hasSingleSchema: getHasSingleSchema(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
@@ -47,37 +45,53 @@ const mapDispatchToProps = {
     ...metadataActions
 };
 
-const createListItem = (entity, index, section) =>
+const createListItem = (entity, index) =>
     <li className="relative" key={entity.id}>
         <ListItem
             id={entity.id}
             index={index}
             name={entity.display_name || entity.name}
-            description={section.type !== 'questions' ?
-                entity.description :
-                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
-            }
-            url={section.type !== 'questions' ?
-                `${section.id}/${entity.id}` :
-                Urls.question(entity.id)
-            }
-            icon={section.type === 'questions' ?
-                visualizations.get(entity.display).iconName :
-                section.icon
-            }
+            description={ entity.description }
+            url={ `/reference/databases/${entity.db_id}/tables/${entity.id}` }
+            icon="table2"
         />
     </li>;
+
 
 const createSchemaSeparator = (entity) =>
     <li className={R.schemaSeparator}>{entity.schema}</li>;
 
+
+export const separateTablesBySchema = (
+    tables,
+    createSchemaSeparator,
+    createListItem
+) => Object.values(tables)
+    .sort((table1, table2) => table1.schema > table2.schema ? 1 :
+        table1.schema === table2.schema ? 0 : -1
+    )
+    .map((table, index, sortedTables) => {
+        if (!table || !table.id || !table.name) {
+            return;
+        }
+        // add schema header for first element and if schema is different from previous
+        const previousTableId = Object.keys(sortedTables)[index - 1];
+        return index === 0 ||
+            sortedTables[previousTableId].schema !== table.schema ?
+                [
+                    createSchemaSeparator(table),
+                    createListItem(table, index)
+                ] :
+                createListItem(table, index);
+    });
+
+
 @connect(mapStateToProps, mapDispatchToProps)
-export default class ReferenceEntityList extends Component {
+export default class TableList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        user: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
+        database: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object
@@ -86,9 +100,8 @@ export default class ReferenceEntityList extends Component {
     render() {
         const {
             entities,
-            user,
             style,
-            section,
+            database,
             hasSingleSchema,
             loadingError,
             loading
@@ -96,46 +109,31 @@ export default class ReferenceEntityList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader section={section} />
+                <ReferenceHeader 
+                    name={`Tables in ${database.name}`}
+                    type="tables"
+                    headerIcon="database"
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { section.type === "tables" && !hasSingleSchema ?
+                            { !hasSingleSchema ?
                                 separateTablesBySchema(
                                     entities,
-                                    section,
                                     createSchemaSeparator,
                                     createListItem
                                 ) :
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
-                                        createListItem(entity, index, section)
+                                        createListItem(entity, index)
                                 )
                             }
                         </List>
                     </div>
                     :
                     <div className={S.empty}>
-                        { section.empty &&
-                            <EmptyState
-                                title={section.empty.title}
-                                message={user.is_superuser ?
-                                    section.empty.adminMessage || section.empty.message :
-                                    section.empty.message
-                                }
-                                icon={section.empty.icon}
-                                image={section.empty.image}
-                                action={user.is_superuser ?
-                                    section.empty.adminAction || section.empty.action :
-                                    section.empty.action
-                                }
-                                link={user.is_superuser ?
-                                    section.empty.adminLink || section.empty.link :
-                                    section.empty.link
-                                }
-                            />
-                        }
+                        <EmptyState {...emptyStateData}/>
                     </div>
                 }
                 </LoadingAndErrorWrapper>
