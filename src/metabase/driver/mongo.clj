@@ -13,7 +13,7 @@
              [database :refer [Database]]
              [field :as field]
              [table :as table]]
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util.ssh :as ssh]
             [monger
              [collection :as mc]
@@ -147,13 +147,6 @@
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
-(defn- analyze-table [table new-field-ids]
-  ;; We only care about 1) table counts and 2) field values
-  {:row_count (analyze/table-row-count table)
-   :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (analyze/test:cardinality-and-extract-field-values field {:id id}))})
-
 (defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
                (delay? qualified-name-components)
@@ -177,8 +170,7 @@
 (u/strict-extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table                     (u/drop-first-arg analyze-table)
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
           :details-fields                    (constantly (ssh/with-tunnel-config

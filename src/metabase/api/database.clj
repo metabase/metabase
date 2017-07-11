@@ -317,7 +317,8 @@
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event. Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is-full-sync?))
-        (events/publish-event! :database-create <>))
+        (events/publish-event! :database-create <>)
+        (events/publish-event! :database-schedule-update <>))
       ;; failed to connect, return error
       {:status 400
        :body   details-or-error})))
@@ -337,7 +338,8 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
+  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest
+                   cache_field_values_schedule sync_schedule analyze_schedule classify_schedule]} :body}]
   {name    su/NonBlankString
    engine  DBEngine
    details su/Map}
@@ -355,14 +357,20 @@
           ;; TODO: is there really a reason to let someone change the engine on an existing database?
           ;;       that seems like the kind of thing that will almost never work in any practical way
           (api/check-500 (db/update-non-nil-keys! Database id
-                           :name               name
-                           :engine             engine
-                           :details            details
-                           :is_full_sync       is_full_sync
-                           :description        description
-                           :caveats            caveats
-                           :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
-          (events/publish-event! :database-update (Database id)))
+                           :name                        name
+                           :engine                      engine
+                           :details                     details
+                           :is_full_sync                is_full_sync
+                           :sync_schedule               sync_schedule
+                           :cache_field_values_schedule cache_field_values_schedule
+                           :analyze_schedule            analyze_schedule
+                           :classify_schedule           classify_schedule
+                           :description                 description
+                           :caveats                     caveats
+                           :points_of_interest          points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
+          (let [db (Database id)]
+            (events/publish-event! :database-update db)
+            (events/publish-event! :database-schedule-update db)))
         ;; failed to connect, return error
         {:status 400
          :body   conn-error}))))
@@ -375,18 +383,42 @@
   (api/let-404 [db (Database id)]
     (api/write-check db)
     (db/delete! Database :id id)
-    (events/publish-event! :database-delete db))
+    (events/publish-event! :database-delete db)
+    (events/publish-event! :database-schedule-delete db))
   api/generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
 
+
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
+;; NOTE Atte: This becomes maybe obsolete
 (api/defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
   [id]
   ;; just publish a message and let someone else deal with the logistics
   (events/publish-event! :database-trigger-sync (api/write-check Database id))
+  {:status :ok})
+
+;; NOTE Atte Keinänen: If you think that these endpoints could have more descriptive names, please change them.
+;; Currently these match the titles of the admin UI buttons that call these endpoints
+
+;; Should somehow trigger sync-database/sync-database!
+(api/defendpoint POST "/:id/sync_schema"
+  "Trigger a manual update of the schema metadata for this `Database`."
+  [id]
+  {:status :ok})
+
+;; Should somehow trigger cached-values/cache-field-values-for-database!
+(api/defendpoint POST "/:id/rescan_values"
+  "Trigger a manual scan of the field values for this `Database`."
+  [id]
+  {:status :ok})
+
+;; "Discard saved field values" action in db UI
+(api/defendpoint POST "/:id/discard_values"
+  "Discards all saved field values for this `Database`."
+  [id]
   {:status :ok})
 
 

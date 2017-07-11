@@ -21,7 +21,7 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
@@ -470,8 +470,7 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table            analyze/generic-analyze-table
-          :can-connect?             (u/drop-first-arg can-connect?)
+         {:can-connect?             (u/drop-first-arg can-connect?)
           :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
           :describe-database        (u/drop-first-arg describe-database)
           :describe-table           (u/drop-first-arg describe-table)

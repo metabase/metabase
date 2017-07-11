@@ -5,6 +5,7 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.test
              [data :refer :all]
              [util :refer [resolve-private-vars]]]
@@ -19,7 +20,7 @@
 (def ^:private generic-sql-engines
   (delay (set (for [engine datasets/all-valid-engines
                     :let   [driver (driver/engine->driver engine)]
-                    :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
+                    ;; :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
                     :when  (extends? ISQLDriver (class driver))]
                 (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
                     engine)))))
@@ -68,26 +69,19 @@
 
 
 ;; ANALYZE-TABLE
-
+;; This test needs to be re-thought, after splitting sync and analyze it's become somewhat circular in it's reasoning
 (expect
-  {:row_count 100,
-   :fields    [{:id (id :venues :category_id)}
-               {:id (id :venues :id)}
-               {:id (id :venues :latitude)}
-               {:id (id :venues :longitude)}
-               {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
-               {:id (id :venues :price), :values [1 2 3 4]}]}
-  (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
+  (do (cached-values/cache-field-values-for-table! @venues-table)
+      {:fields    [{:id (id :venues :category_id)}
+                   {:id (id :venues :id)}
+                   {:id (id :venues :latitude)}
+                   {:id (id :venues :longitude)}
+                   {:id (id :venues :name), :values (sort-by :id (db/select-one-field :values 'FieldValues, :field_id (id :venues :name)))}
+                   {:id (id :venues :price), :values [1 2 3 4]}]})
+  (-> (#'cached-values/extract-field-values-for-fields (set (map :id (table/fields @venues-table))))
+      (update :fields (partial sort-by :id))))
 
-(resolve-private-vars metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
-
-;;; FIELD-AVG-LENGTH
-(datasets/expect-with-engines @generic-sql-engines
-  ;; Not sure why some databases give different values for this but they're close enough that I'll allow them
-  (if (contains? #{:redshift :sqlserver} datasets/*engine*)
-    15
-    16)
-  (field-avg-length datasets/*driver* (db/select-one 'Field :id (id :venues :name))))
+(resolve-private-vars metabase.driver.generic-sql field-values-lazy-seq table-rows-seq)
 
 ;;; FIELD-VALUES-LAZY-SEQ
 (datasets/expect-with-engines @generic-sql-engines
@@ -114,15 +108,6 @@
         (update :price int)
         (update :category_id int)
         (update :id int))))
-
-;;; FIELD-PERCENT-URLS
-(datasets/expect-with-engines @generic-sql-engines
-  (if (= datasets/*engine* :oracle)
-    ;; Oracle considers empty strings to be NULL strings; thus in this particular test `percent-valid-urls` gives us 4/7 valid valid where other DBs give us 4/8
-    0.5714285714285714
-    0.5)
-  (dataset half-valid-urls
-    (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
 (expect

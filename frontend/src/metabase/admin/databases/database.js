@@ -9,14 +9,16 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
 
-const RESET = "metabase/admin/databases/RESET";
-const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
-const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
-const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
-const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
-const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
-const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
-const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
+export const RESET = "metabase/admin/databases/RESET";
+export const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
+export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
+export const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
+export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
+export const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
+export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
+export const SYNC_DATABASE_SCHEMA = "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
+export const RESCAN_DATABASE_FIELDS = "metabase/admin/databases/RESCAN_DATABASE_FIELDS";
+export const DISCARD_SAVED_FIELD_VALUES = "metabase/admin/databases/DISCARD_SAVED_FIELD_VALUES";
 
 export const reset = createAction(RESET);
 
@@ -126,11 +128,11 @@ export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databa
     };
 });
 
-// syncDatabase
-export const syncDatabase = createThunkAction(SYNC_DATABASE, function(databaseId) {
-    return function(dispatch, getState) {
+// syncDatabaseSchema
+export const syncDatabaseSchema = createThunkAction(SYNC_DATABASE_SCHEMA, function(databaseId) {
+    return async function(dispatch, getState) {
         try {
-            let call = MetabaseApi.db_sync_metadata({"dbId": databaseId});
+            let call = await MetabaseApi.db_sync_schema({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
             return call;
         } catch(error) {
@@ -139,6 +141,31 @@ export const syncDatabase = createThunkAction(SYNC_DATABASE, function(databaseId
     };
 });
 
+// rescanDatabaseFields
+export const rescanDatabaseFields = createThunkAction(RESCAN_DATABASE_FIELDS, function(databaseId) {
+    return async function(dispatch, getState) {
+        try {
+            let call = await MetabaseApi.db_rescan_values({"dbId": databaseId});
+            MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
+            return call;
+        } catch(error) {
+            console.log('error syncing database', error);
+        }
+    };
+});
+
+// discardSavedFieldValues
+export const discardSavedFieldValues = createThunkAction(DISCARD_SAVED_FIELD_VALUES, function(databaseId) {
+    return async function(dispatch, getState) {
+        try {
+            let call = await MetabaseApi.db_discard_values({"dbId": databaseId});
+            MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
+            return call;
+        } catch(error) {
+            console.log('error syncing database', error);
+        }
+    };
+});
 
 // reducers
 

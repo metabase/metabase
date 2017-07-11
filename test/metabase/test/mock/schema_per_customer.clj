@@ -47,8 +47,7 @@
 (extend SchemaPerCustomerDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table       (constantly nil)
-          :describe-database   (fn [_ _]
+         {:describe-database   (fn [_ _]
                                  {:tables (conj (->> (for [schema ["s1" "s2" "s3"]]
                                                        (for [table (keys (get schema-per-customer-tables nil))]
                                                          {:schema schema, :name table}))

@@ -540,6 +540,7 @@
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
 
+;; TODO - maybe move this to sync util?
 (def emoji-progress-bar
   "Create a string that shows progress for something, e.g. a database sync process.
 

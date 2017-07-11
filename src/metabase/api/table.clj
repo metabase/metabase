@@ -4,6 +4,7 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [sync-database :as sync-database]
              [util :as u]]
             [metabase.api.common :as api]
@@ -13,6 +14,10 @@
              [field :refer [Field]]
              [interface :as mi]
              [table :as table :refer [Table]]]
+            [metabase.sync-database
+             [analyze :as analyze]
+             [cached-values :as cached-values]
+             [classify :as classify]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -69,14 +74,19 @@
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
     (let [updated-table (Table id)
+          driver (driver/database-id->driver (:db_id updated-table))
           new-visibility (visible-state? (:visibility_type updated-table))
           old-visibility (visible-state? original-visibility-type)
-          visibility-changed? (and (not= new-visibility
+          table-now-visible? (and (not= new-visibility
                                          old-visibility)
-                                   (= :show new-visibility))]
-      (when visibility-changed?
-        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
-        (sync-database/sync-table! updated-table))
+                                  (= :show new-visibility))]
+      (when table-now-visible?
+        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type table-now-visible?)
+        ;; TODO - maybe make this a combined function and put it somewhere?
+        (sync-database/sync-table! updated-table)
+        (cached-values/cache-table-data-shape! driver updated-table)
+        (analyze/analyze-table-data-shape!     driver updated-table)
+        (classify/classify-table!               updated-table))
       updated-table)))
 
 
