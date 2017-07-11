@@ -17,6 +17,7 @@ import Select from 'metabase/components/Select'
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as datamodelActions from "../datamodel"
+import { isDate } from "metabase/lib/schema_metadata";
 
 import Metadata from "metabase/meta/metadata/Metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -375,17 +376,31 @@ export class FieldRemapping extends Component {
         ]
     }
 
-    // dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_i
+    getFKTargetTableEntityNameOrNull = () => {
+        const fks = this.getForeignKeys()
+        const fkTargetFields = fks[0] && fks[0].fields;
+
+        if (fkTargetFields) {
+            // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in schema_metadata.js?
+            const nameField = fkTargetFields.find((field) => field.special_type === "type/Name")
+            return nameField ? nameField.id : null;
+        } else {
+            throw new Error("Current field isn't a foreign key")
+        }
+    }
+
     onSetMappingType = async (mappingType) => {
         const { table, field, fetchTableMetadata, updateFieldDimension, deleteFieldDimension } = this.props;
 
         if (mappingType.type === "original") {
             await deleteFieldDimension(field.id)
         } else if (mappingType.type === "foreign") {
+            // Try to find a entity name field from target table and choose it as remapping target field if it exists
+
             await updateFieldDimension(field.id, {
                 type: "external",
                 name: field.display_name,
-                human_readable_field_id: null
+                human_readable_field_id: this.getFKTargetTableEntityNameOrNull()
             })
 
             await fetchTableMetadata(table.id, true);
@@ -399,6 +414,8 @@ export class FieldRemapping extends Component {
             throw new Error("Unrecognized mapping type");
         }
 
+        // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
+        // has been updated; would be nicer to just fetch a single field. MetabaseApi.field_get seems to exist for that
         await fetchTableMetadata(table.id, true);
     }
 
@@ -427,10 +444,21 @@ export class FieldRemapping extends Component {
         await updateFieldValues(field.id, Array.from(remappings));
     }
 
+    // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
+    isValidFKRemappingTarget = (field) => !isDate(field)
+
     getForeignKeys = () => {
         const { table, field } = this.props;
+
+        // this method has a little odd structure due to using getFieldOptions; basically filteredFKs should
+        // always be an array with a single value in format `{ field: {...}, fields: [{...}, ...] }`
         const unfilteredFks = Query.getFieldOptions(table.fields, true).fks
-        return unfilteredFks.filter(fk => fk.field.id === field.id);
+        const filteredFKs = unfilteredFks.filter(fk => fk.field.id === field.id);
+
+        return filteredFKs.map(filteredFK => ({
+            field: filteredFK.field,
+            fields: filteredFK.fields.filter(this.isValidFKRemappingTarget)
+        }));
     }
 
     render () {

@@ -211,7 +211,7 @@ describe("FieldApp", () => {
             expect(pickerOptions.length).toBe(1);
         })
 
-        it("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
+        fit("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
@@ -225,13 +225,13 @@ describe("FieldApp", () => {
             useFKButton.simulate('click');
             store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
             store.resetDispatchedActions();
-            // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
+            // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
             await delay(500);
 
             const fkFieldSelect = section.find(SelectButton);
 
             // TODO: Change the expectation to the first named field
-            expect(fkFieldSelect.text()).toBe("Choose a field");
+            expect(fkFieldSelect.text()).toBe("Title");
             fkFieldSelect.simulate('click');
 
             const sourceField = fkFieldSelect.parent().find(TestPopover)
@@ -241,9 +241,26 @@ describe("FieldApp", () => {
 
             sourceField.simulate('click')
             store.waitForActions([FETCH_TABLE_METADATA])
-            // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
+            // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
             await delay(500);
             expect(fkFieldSelect.text()).toBe("Vendor");
+        })
+
+        fit("doesn't show date fields in fk options", async () => {
+            const { fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
+            const section = fieldApp.find(FieldRemapping)
+            const mappingTypePicker = section.find(Select);
+            expect(mappingTypePicker.text()).toBe('Use foreign key')
+
+            const fkFieldSelect = section.find(SelectButton);
+            fkFieldSelect.simulate('click');
+
+            const popover = fkFieldSelect.parent().find(TestPopover);
+            expect(popover.length).toBe(1);
+
+            //
+            const dateFieldIcons = popover.find("svg.Icon-calendar")
+            expect(dateFieldIcons.length).toBe(0);
         })
 
         it("lets you switch back to Use original value after changing to some other value", async () => {
@@ -272,7 +289,7 @@ describe("FieldApp", () => {
         });
 
         // TODO: Make sure that product rating is a Category and that a sync has been run
-        fit("lets you enter custom remappings for a field with numeral values", async () => {
+        it("lets you enter custom remappings for a field with numeral values", async () => {
             const { store, fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
@@ -311,7 +328,7 @@ describe("FieldApp", () => {
             store.waitForActions([UPDATE_FIELD_VALUES]);
         });
         
-        fit("shows the updated values after page reload", async () => {
+        it("shows the updated values after page reload", async () => {
             const { fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
