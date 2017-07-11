@@ -278,7 +278,7 @@ export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(f
 // Docstring from m.api.field:
 // Update the human-readable values for a `Field` whose special type is
 // `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."
-const UPDATE_FIELD_VALUES = "metabase/metadata/UPDATE_FIELD_VALUES";
+export const UPDATE_FIELD_VALUES = "metabase/metadata/UPDATE_FIELD_VALUES";
 export const updateFieldValues = createThunkAction(UPDATE_FIELD_VALUES, function(fieldId, fieldValuePairs) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", fieldId, "dimension"];

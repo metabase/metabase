@@ -5,15 +5,24 @@ import {
 
 import {
     DELETE_FIELD_DIMENSION,
-    deleteFieldDimension, FETCH_TABLE_METADATA, fetchTableMetadata, UPDATE_FIELD, UPDATE_FIELD_DIMENSION,
-    updateField
+    deleteFieldDimension,
+    FETCH_TABLE_METADATA,
+    fetchTableMetadata,
+    UPDATE_FIELD,
+    UPDATE_FIELD_DIMENSION,
+    UPDATE_FIELD_VALUES,
+    updateField,
+    updateFieldValues
 } from "metabase/redux/metadata"
 
 import React from 'react';
 import { mount } from "enzyme";
 import { FETCH_IDFIELDS } from "metabase/admin/datamodel/datamodel";
 import { delay } from "metabase/lib/promise"
-import FieldApp, { FieldHeader, FieldRemapping } from "metabase/admin/datamodel/containers/FieldApp";
+import FieldApp, {
+    FieldHeader, FieldRemapping, FieldValueMapping,
+    ValueRemappings
+} from "metabase/admin/datamodel/containers/FieldApp";
 import Input from "metabase/components/Input";
 import {
     FieldVisibilityPicker,
@@ -22,6 +31,7 @@ import {
 import { TestPopover } from "metabase/components/Popover";
 import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
+import Button from "metabase/components/Button";
 
 const getRawFieldWithId = (store, fieldId) => store.getState().metadata.fields[fieldId];
 
@@ -32,11 +42,15 @@ const getRawFieldWithId = (store, fieldId) => store.getState().metadata.fields[f
 const CREATED_AT_ID = 1;
 const PRODUCT_ID_FK_ID = 3;
 // enumeration with values 1, 2, 3, 4 or 5
-// const PRODUCT_RATING_FK = 33;
+const USER_SOURCE_TABLE_ID = 2;
+const USER_SOURCE_ID = 18;
 
-const initFieldApp = async ({ fieldId }) => {
+const PRODUCT_RATING_TABLE_ID = 4;
+const PRODUCT_RATING_ID = 33;
+
+const initFieldApp = async ({ tableId = 1, fieldId }) => {
     const store = await createTestStore()
-    store.pushPath(`/admin/datamodel/database/1/table/1/${fieldId}`);
+    store.pushPath(`/admin/datamodel/database/1/table/${tableId}/${fieldId}`);
     const fieldApp = mount(store.connectContainer(<FieldApp />));
     await store.waitForActions([FETCH_IDFIELDS]);
     store.resetDispatchedActions();
@@ -169,14 +183,11 @@ describe("FieldApp", () => {
         })
 
         afterAll(async () => {
-            // add afterAll block that uses updateField to reset the field to plain state
-            // additionally updateFieldValues should be maybe used for clearing all current field values
-
             const store = await createTestStore()
             await store.dispatch(fetchTableMetadata(1));
             const createdAtField = getRawFieldWithId(store, CREATED_AT_ID)
 
-            // TODO: Could the metabase-lib static fixture be used for resetting the field?
+            // TODO: Could the metabase-lib static fixture be used for resetting the field to the original state?
             await store.dispatch(updateField({
                 ...createdAtField,
                 name: "Created At",
@@ -185,9 +196,6 @@ describe("FieldApp", () => {
                 special_type: null,
                 fk_target_field_id: null
             }))
-
-
-            // await store.dispatch(deleteFieldDimension(createdAtField.id));
         })
     })
 
@@ -202,7 +210,7 @@ describe("FieldApp", () => {
             const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
             expect(pickerOptions.length).toBe(1);
         })
-        // should 'Use foreign key' be shown by default for foreign keys?
+
         it("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
@@ -217,7 +225,8 @@ describe("FieldApp", () => {
             useFKButton.simulate('click');
             store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
             store.resetDispatchedActions();
-            await delay(500); // TODO: WHY NEEDED ???
+            // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
+            await delay(500);
 
             const fkFieldSelect = section.find(SelectButton);
 
@@ -232,12 +241,11 @@ describe("FieldApp", () => {
 
             sourceField.simulate('click')
             store.waitForActions([FETCH_TABLE_METADATA])
-            await delay(500); // TODO: WHY NEEDED ???
+            // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
+            await delay(500);
             expect(fkFieldSelect.text()).toBe("Vendor");
         })
 
-
-        // just making sure that 'Use original value' option actually saves the value
         it("lets you switch back to Use original value after changing to some other value", async () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
@@ -252,10 +260,78 @@ describe("FieldApp", () => {
             store.waitForActions([DELETE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
         })
 
-        afterAll(async () => {
+        it("doesn't let you enter custom remappings for a field with string values", async () => {
+            const { fieldApp } = await initFieldApp({ tableId: USER_SOURCE_TABLE_ID, fieldId: USER_SOURCE_ID });
+            const section = fieldApp.find(FieldRemapping)
+            const mappingTypePicker = section.find(Select);
 
+            expect(mappingTypePicker.text()).toBe('Use original value')
+            mappingTypePicker.simulate('click');
+            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            expect(pickerOptions.length).toBe(1);
+        });
+
+        // TODO: Make sure that product rating is a Category and that a sync has been run
+        fit("lets you enter custom remappings for a field with numeral values", async () => {
+            const { store, fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
+            const section = fieldApp.find(FieldRemapping)
+            const mappingTypePicker = section.find(Select);
+
+            expect(mappingTypePicker.text()).toBe('Use original value')
+            mappingTypePicker.simulate('click');
+            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            expect(pickerOptions.length).toBe(2);
+
+            const customMappingButton = pickerOptions.at(1).children().first()
+            customMappingButton.simulate('click');
+
+            store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
+            // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
+            await delay(500);
+
+            const valueRemappingsSection = section.find(ValueRemappings);
+            expect(valueRemappingsSection.length).toBe(1);
+
+            const fieldValueMappings = valueRemappingsSection.find(FieldValueMapping);
+            expect(fieldValueMappings.length).toBe(5);
+
+            const firstMapping = fieldValueMappings.at(0);
+            expect(firstMapping.find("h3").text()).toBe("1");
+            expect(firstMapping.find(Input).props().value).toBe("1");
+            firstMapping.find(Input).simulate('change', {target: {value: "Terrible"}});
+
+            const lastMapping = fieldValueMappings.last();
+            expect(lastMapping.find("h3").text()).toBe("5");
+            expect(lastMapping.find(Input).props().value).toBe("5");
+            lastMapping.find(Input).simulate('change', {target: {value: "Extraordinarily awesome"}});
+
+            const saveButton = valueRemappingsSection.find(Button)
+            saveButton.simulate("click");
+
+            store.waitForActions([UPDATE_FIELD_VALUES]);
+        });
+        
+        fit("shows the updated values after page reload", async () => {
+            const { store, fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
+            const section = fieldApp.find(FieldRemapping)
+            const mappingTypePicker = section.find(Select);
+
+            expect(mappingTypePicker.text()).toBe('Custom mapping');
+            const fieldValueMappings = section.find(FieldValueMapping);
+            expect(fieldValueMappings.first().find(Input).props().value).toBe("Terrible");
+            expect(fieldValueMappings.last().find(Input).props().value).toBe("Extraordinarily awesome");
+        });
+
+        afterAll(async () => {
             const store = await createTestStore()
+
             await store.dispatch(deleteFieldDimension(PRODUCT_ID_FK_ID));
+            await store.dispatch(deleteFieldDimension(PRODUCT_RATING_ID));
+
+            // TODO: This is a little hacky – could there be a way to simply reset the user-defined valued?
+            await store.dispatch(updateFieldValues(PRODUCT_RATING_ID, [
+                [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']
+            ]));
         })
     })
 
