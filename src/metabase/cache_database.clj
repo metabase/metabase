@@ -17,7 +17,7 @@
     ;; TODO - why is the event name `database-analysis` for CACHING?
     (sync-util/with-sync-events :database-analysis (u/get-id database)
       (sync-util/with-logging-disabled
-        (cached-values/cache-data-shape-for-tables! driver database)))))
+        (cached-values/cache-field-values-for-database! database)))))
 
 (defn- cache-table-with-tracking! [driver database table]
   (sync-util/with-start-and-finish-logging (format "Cache data shape for table '%s' from %s database '%s'" (:display_name table) (name driver) (:name database))

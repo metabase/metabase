@@ -13,7 +13,8 @@
              [classify :as classify]
              [interface :as i]]
             [schema.core :as schema]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.sync.util :as sync-util]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Drivers use these to get field values
@@ -92,36 +93,22 @@
 (defn cache-field-values-for-table!
   "Save the field values for each field in this database"
   [table]
-  (cache-table-data-shape! (->> table
-                                :db_id
-                                driver/database-id->driver)
-                           table))
-
-(defn cache-data-shape-for-tables!
-  "Cache field values for all `Tables` in a given DATABASE.
-   This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
-  [driver {database-id :id, :as database}]
-  (log/info (u/format-color 'blue "Caching field values in %s database '%s' (this may take a while) ..."
-              (name driver) (:name database)))
-  (let [start-time-ns         (System/nanoTime)
-        tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
-        tables-count          (count tables)
-        finished-tables-count (atom 0)]
-    (doseq [{table-name :name, :as table} tables]
-      (try
-        (cache-table-data-shape! driver table)
-        (catch Throwable t
-          (log/error "Unexpected error caching field values for table" t))
-        (finally
-          (u/prog1 (swap! finished-tables-count inc)
-            (log/info (u/format-color 'blue "%s Caching Field Values for table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
-    (log/info (u/format-color 'blue "Caching field values for %s database '%s' completed (%s)."
-                (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+  (cache-table-data-shape! (driver/database-id->driver (:db_id table)) table))
 
 (defn cache-field-values-for-database!
-  "Save the field values for each field of each table in this database"
-  [db]
-  (cache-data-shape-for-tables! (->> db
-                                     :id
-                                     driver/database-id->driver)
-                                db))
+  "Cache field values for all `Tables` in a given DATABASE.
+   This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
+  [{database-id :id, :as database}]
+  (let [driver (driver/database-id->driver database-id)]
+    (sync-util/with-start-and-finish-logging (format "Cache field values for %s database '%s'" (name driver) (:name database))
+      (let [tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
+            tables-count          (count tables)
+            finished-tables-count (atom 0)]
+        (doseq [{table-name :name, :as table} tables]
+          (try
+            (cache-table-data-shape! driver table)
+            (catch Throwable t
+              (log/error "Unexpected error caching field values for table" t))
+            (finally
+              (u/prog1 (swap! finished-tables-count inc)
+                (log/info (u/format-color 'blue "%s Caching Field Values for table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))))))

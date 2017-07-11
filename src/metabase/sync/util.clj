@@ -62,20 +62,24 @@
 
 ;; This looks something like {:sync #{1 2}, :cache #{2 3}} when populated.
 ;; Key is a type of sync operation, e.g. `:sync` or `:cache`; vals are sets of DB IDs undergoing that operation.
-(defonce ^:private operation->currently-syncing-db-ids (atom {}))
+(defonce ^:private operation->db-ids (atom {}))
 
 (defn do-with-duplicate-ops-prevented
   "Implementation for `with-duplicate-ops-prevented`; prefer that instead."
   [operation database-id f]
-  (when-not (contains? (@operation->currently-syncing-db-ids operation) database-id)
+  (println "@operation->db-ids [precheck]:" @operation->db-ids) ; NOCOMMIT
+  (when-not (contains? (@operation->db-ids operation) database-id)
     (try
       ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
-      (swap! operation->currently-syncing-db-ids update operation #(conj (or % #{}) database-id))
+      (swap! operation->db-ids update operation #(conj (or % #{}) database-id))
+      (println "@operation->db-ids [during]:" @operation->db-ids) ; NOCOMMIT
       ;; do our work
       (f)
       ;; always cleanup our tracking when we are through
       (finally
-        (swap! operation->currently-syncing-db-ids update operation #(disj % database-id))))))
+        (swap! operation->db-ids update operation #(disj % database-id))))
+      (println "@operation->db-ids [after]:" @operation->db-ids) ; NOCOMMIT
+    ))
 
 (defmacro with-duplicate-ops-prevented
   "Run BODY in a way that will prevent it from simultaneously being ran more for a single database more than once for a given OPERATION.
