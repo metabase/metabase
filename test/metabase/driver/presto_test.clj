@@ -90,10 +90,11 @@
 ;;; ANALYZE-TABLE
 (datasets/expect-with-engine :presto
   {:row_count 100
-   :fields    [{:id (data/id :venues :category_id), :values [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]}
-               {:id (data/id :venues :id)}
-               {:id (data/id :venues :latitude)}
-               {:id (data/id :venues :longitude)}
+   :fields    [{:id        (data/id :venues :category_id), :values    [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]
+                :min-value 2.0,                            :max-value 74.0}
+               {:id (data/id :venues :id), :min-value 1.0, :max-value 100.0}
+               {:id (data/id :venues :latitude), :min-value 10.0646, :max-value 40.7794}
+               {:id (data/id :venues :longitude), :min-value -165.374, :max-value -73.9533}
                {:id (data/id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (data/id :venues :name))}
                {:id (data/id :venues :price), :values [1 2 3 4]}]}
   (let [venues-table (db/select-one 'Table :id (data/id :venues))]
