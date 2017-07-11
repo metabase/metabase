@@ -10,7 +10,7 @@
             [metabase.models
              [field :as field]
              [field-fingerprint :refer [FieldFingerprint]]
-             [table :as table]
+             [table :as table ]
              [table-fingerprint :refer [TableFingerprint]]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.sync-database.classify :as classify]
@@ -39,10 +39,8 @@
 (defn- value-is-valid-email?
   "`true` if this looks somewhat like an email address"
   [value]
-  (try
-    (u/is-email? value)
-    (catch Throwable _
-      false)))
+  (u/ignore-exceptions
+    (u/is-email? value)))
 
 (defn- percent-match
   "Return the percentage of VALUES that satisfy PREDICATE."
@@ -159,7 +157,6 @@
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]
       (try
-        #_(cached-values/cache-table-data-shape! driver table)
         (analyze-table-data-shape! driver table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
