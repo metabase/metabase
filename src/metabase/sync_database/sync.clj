@@ -281,7 +281,7 @@
     ;; HACK! we can't sync the _metabase_metadata table until all the "Raw" Tables/Columns are backed
     (maybe-sync-metabase-metadata-table! database raw-tables)))
 
-(defn future-sync-and-analyze-table
+(defn sync-and-analyze-table-async!
   "run the entire sync process for a table in a future"
   [table]
   (try

@@ -18,9 +18,9 @@
                 driver (driver/engine->driver (:engine database))]
     (cond
       table_id (when-let [table (Table :db_id id, :id (int table_id))]
-                 (sync/future-sync-and-analyze-table table))
+                 (sync/sync-and-analyze-table-async! table))
       table_name (when-let [table (Table :db_id id, :name table_name)]
-                   (sync/future-sync-and-analyze-table table))
+                   (sync/sync-and-analyze-table-async! table))
       :else (sync/future-sync-and-analyze-database database)))
   {:success true})
 
