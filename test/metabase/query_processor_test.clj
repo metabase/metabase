@@ -116,6 +116,15 @@
             :name         (data/format-name "name")
             :display_name "Name"})))
 
+(defn- add-min-max
+  "For databases that support binning, min/max values will be
+  populated, otherwise it will remain nil"
+  [min-val max-val original-map]
+  (merge original-map
+         (when (data/binning-supported?)
+           {:min_value min-val
+            :max_value max-val})))
+
 ;; #### users
 (defn users-col
   "Return column information for the `users` column named by keyword COL."
@@ -125,12 +134,11 @@
    {:table_id (data/id :users)
     :id       (data/id :users col)}
    (case col
-     :id         {:special_type :type/PK
-                  :base_type    (data/id-field-type)
-                  :name         (data/format-name "id")
-                  :display_name "ID"
-                  :min_value    1.0
-                  :max_value    15.0}
+     :id         (add-min-max 1.0 15.0
+                              {:special_type :type/PK
+                               :base_type    (data/id-field-type)
+                               :name         (data/format-name "id")
+                               :display_name "ID"})
      :name       {:special_type :type/Name
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
@@ -155,12 +163,11 @@
    {:table_id (data/id :venues)
     :id       (data/id :venues col)}
    (case col
-     :id          {:special_type :type/PK
-                   :base_type    (data/id-field-type)
-                   :name         (data/format-name "id")
-                   :display_name "ID"
-                   :min_value    1.0
-                   :max_value    100.0}
+     :id          (add-min-max 1.0 100.0
+                               {:special_type :type/PK
+                                :base_type    (data/id-field-type)
+                                :name         (data/format-name "id")
+                                :display_name "ID"})
      :category_id {:extra_info   (if (data/fks-supported?)
                                    {:target_table_id (data/id :categories)}
                                    {})
@@ -170,33 +177,24 @@
                                    :type/Category)
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "category_id")
-                   :display_name "Category ID"
-                   :min_value    nil
-                   :max_value    nil}
-     :price       {:special_type :type/Category
-                   :base_type    (data/expected-base-type->actual :type/Integer)
-                   :name         (data/format-name "price")
-                   :display_name "Price"
-                   :min_value    1.0
-                   :max_value    4.0}
+                   :display_name "Category ID"}
+     :price       (add-min-max 1.0 4.0
+                               {:special_type :type/Category
+                                :base_type    (data/expected-base-type->actual :type/Integer)
+                                :name         (data/format-name "price")
+                                :display_name "Price"})
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
-                   :display_name "Longitude"
-                   :min_value    nil
-                   :max_value    nil}
+                   :display_name "Longitude"}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "latitude")
-                   :display_name "Latitude"
-                   :min_value    nil
-                   :max_value    nil}
+                   :display_name "Latitude"}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
-                   :display_name "Name"
-                   :min_value    nil
-                   :max_value    nil})))
+                   :display_name "Name"})))
 
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
@@ -217,29 +215,27 @@
                 :base_type    (data/id-field-type)
                 :name         (data/format-name "id")
                 :display_name "ID"}
-     :venue_id {:extra_info   (if (data/fks-supported?)
-                                {:target_table_id (data/id :venues)}
-                                {})
-                :target       (target-field (venues-col :id))
-                :special_type (if (data/fks-supported?)
-                                :type/FK
-                                :type/Category)
-                :base_type    (data/expected-base-type->actual :type/Integer)
-                :name         (data/format-name "venue_id")
-                :display_name "Venue ID"
-                :min_value    1.0
-                :max_value    100.0}
-     :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
-                                  {})
-                :target       (target-field (users-col :id))
-                :special_type (if (data/fks-supported?)
-                                :type/FK
-                                :type/Category)
-                :base_type    (data/expected-base-type->actual :type/Integer)
-                :name         (data/format-name "user_id")
-                :display_name "User ID"
-                :min_value     1.0
-                :max_value     15.0})))
+     :venue_id (add-min-max 1.0 100.0
+                            {:extra_info   (if (data/fks-supported?)
+                                             {:target_table_id (data/id :venues)}
+                                             {})
+                             :target       (target-field (venues-col :id))
+                             :special_type (if (data/fks-supported?)
+                                             :type/FK
+                                             :type/Category)
+                             :base_type    (data/expected-base-type->actual :type/Integer)
+                             :name         (data/format-name "venue_id")
+                             :display_name "Venue ID"})
+     :user_id  (add-min-max 1.0 15.0
+                            {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
+                                               {})
+                             :target       (target-field (users-col :id))
+                             :special_type (if (data/fks-supported?)
+                                             :type/FK
+                                             :type/Category)
+                             :base_type    (data/expected-base-type->actual :type/Integer)
+                             :name         (data/format-name "user_id")
+                             :display_name "User ID"}))))
 
 
 ;;; #### aggregate columns
