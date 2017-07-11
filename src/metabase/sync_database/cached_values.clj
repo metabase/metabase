@@ -93,8 +93,7 @@
   "Save the field values for each field in this database"
   [table]
   (cache-table-data-shape! (->> table
-                                table/database
-                                :id
+                                :db_id
                                 driver/database-id->driver)
                            table))
 
