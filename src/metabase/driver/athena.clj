@@ -1,9 +1,12 @@
 (ns metabase.driver.athena
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [clojure
              [string :as str]
              [walk :as walk]]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
             [metabase
              [config :as config]
              [db :as db]
@@ -62,7 +65,9 @@
   (assert password)
   (assert s3_staging_dir)
   (assert log_path)
-  (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs))))]
+  (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs {:identifiers identity}))))]
+    ;(println "DEBUG::::run-query: " query)
+    (log/info (format "Running Athena query : '%s'..." query))
     (with-open [con (DriverManager/getConnection url (get-properties (dissoc details :url)))]
                (let [athena-stmt (.createStatement con)]
                  (->> (.executeQuery athena-stmt query)
@@ -143,8 +148,8 @@
 (def features
   #{:basic-aggregations
     :standard-deviation-aggregations
-    :expressions
-    :expression-aggregations
+    ;:expressions
+    ;:expression-aggregations
     :native-parameters})
 
 (defn- string-length-fn [field-key]
@@ -172,18 +177,18 @@
      :hour (trunc-with-format "%Y-%m-%d %H" expr)
      :hour-of-day (hsql/call :hour expr)
      :day (trunc-with-format "%Y-%m-%d" expr)
-     :day-of-week (hx/->integer (date-format "u"
+     :day-of-week (hx/->integer (date-format "%w"
                                              (hx/+ expr
                                                    (hsql/raw "interval '1' day"))))
-     :day-of-month (hsql/call :dayofmonth expr)
-     :day-of-year (hx/->integer (date-format "D" expr))
+     :day-of-month (hx/->integer (date-format "%d" expr)); (hsql/call :dayofmonth expr)
+     :day-of-year (hx/->integer (date-format "%j" expr))
      :week (hsql/call :date_sub
                       (hx/+ expr
                             (hsql/raw "interval 1 day"))
                       (hsql/call :date_format
                                  (hx/+ expr
                                        (hsql/raw "interval 1 day"))
-                                 "u"))
+                                 "%w"))
      :week-of-year (hsql/call :weekofyear expr)
      :month (hsql/call :trunc expr (hx/literal :MM))
      :month-of-year (hsql/call :month expr)
@@ -268,6 +273,13 @@
       {:query  athena-sql
        :params args})))
 
+(defn apply-page
+  "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers.
+   WORKAROUND : not supported by Athena, TODO: how to disable this feature ?"
+  [_ honeysql-form {{:keys [items page]} :page}]
+  (-> honeysql-form
+      (h/limit items)))
+
 (defrecord AthenaDriver []
   clojure.lang.Named
   (getName [_] "Athena"))
@@ -308,7 +320,8 @@
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:active-tables             sql/post-filtered-active-tables
+         {:apply-page                apply-page
+          :active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)

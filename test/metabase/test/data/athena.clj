@@ -74,12 +74,13 @@
         (json/generate-stream row writer)
         (.append writer \newline)))))
 
-
 (defn table->maps [dbdef table-name]
   (let [db (i/flatten-dbdef dbdef table-name)
-        ks (map :field-name (:field-definitions (first (:table-definitions db))))
-        rows (:rows (first (:table-definitions db)))]
-    (map #(zipmap ks %) rows)))
+        {:keys [field-definitions rows]} (i/get-tabledef dbdef table-name)
+        ks (map :field-name field-definitions)
+        rows-maps (map #(zipmap ks %) rows)
+        rows-ids (map-indexed (fn [i e] (assoc e :id (inc i))) rows-maps)]
+    rows-ids))
 
 (defn dataset->json! [root-path dbdef]
   (let [tables (i/gettables dbdef)]
@@ -88,5 +89,8 @@
        (table->maps dbdef table)
        (str root-path "/" table ".json")))))
 
-;(dataset->json! "/tmp/test" defs/test-data)
-;(dataset->json! "/tmp/tupac" defs/tupac-sightings)
+; (dataset->json! "/tmp/test" defs/test-data)
+; (dataset->json! "/tmp/tupac" defs/tupac-sightings)
+; (dataset->json! "/tmp/toucan" defs/sad-toucan-incidents)
+; (dataset->json! "/tmp/urls" defs/half-valid-urls)
+; (dataset->json! "/tmp/places" defs/places-cam-likes)
