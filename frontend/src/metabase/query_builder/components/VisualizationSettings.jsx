@@ -10,7 +10,6 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx"
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 
 import cx from "classnames";
-import { extractRemappings } from "metabase/visualizations/lib/utils";
 
 export default class VisualizationSettings extends React.Component {
     constructor(props, context) {
@@ -105,7 +104,7 @@ export default class VisualizationSettings extends React.Component {
                         ref="popover"
                     >
                         <ChartSettings
-                            series={extractRemappings([{ card: this.props.card, data: this.props.result.data }])}
+                            series={[{ card: this.props.card, data: this.props.result.data }]}
                             onChange={this.props.onReplaceAllVisualizationSettings}
                         />
                     </ModalWithTrigger>
