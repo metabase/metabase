@@ -54,21 +54,15 @@
                  distinct) ; driver can return twice the partitioning fields
             (recur
              (conj result (describe-database->clj rs))
-             (.next rs)))))
+             (.next rs))))
 
-(defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
-  [{:keys [user password s3_staging_dir log_path url] :as details} query {:keys [read-fn] :as options}]
-  (assert url)
-  (assert user)
-  (assert password)
-  (assert s3_staging_dir)
-  (assert log_path)
+  [database query {:keys [read-fn] :as options}]
   (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs {:identifiers identity}))))]
     ;(println "DEBUG::::run-query: " query)
     (log/info (format "Running Athena query : '%s'..." query))
-    (with-open [con (DriverManager/getConnection url (get-properties (dissoc details :url)))]
+    (with-open [con (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
                (let [athena-stmt (.createStatement con)]
                  (->> (.executeQuery athena-stmt query)
                       current-read-fn)))))
@@ -95,50 +89,54 @@
 (defn- connection-details->spec
   "Create a database specification for an Athena database. DETAILS should include keys for `:user`,
    `:password`, `:s3_staging_dir` `:log_path` and `region`"
-  [{:keys [log_path  password s3_staging_dir region user]
-    :as   details}]
+  [{:keys [log_path  password s3_staging_dir region user] :as details}]
   (assert (or user password s3_staging_dir log_path region))
-  (merge {:url (str "jdbc:awsathena://athena." region ".amazonaws.com:443")}
-         (select-keys details [:log_path :s3_staging_dir :user :password])))
+  {:classname "com.amazonaws.athena.jdbc.AthenaDriver"
+   :log_path log_path
+   :subprotocol "awsathena"
+   :subname (str "//athena." region ".amazonaws.com:443")
+   :user user
+   :password password
+   :s3_staging_dir s3_staging_dir})
 
 (defn- can-connect? [driver details]
-  (let [details-with-tunnel (ssh/include-ssh-tunnel details)
-        connection (connection-details->spec details-with-tunnel)]
-    (= 1 (first (vals (first (run-query connection "SELECT 1" {})))))))
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details)]
+    (with-open [connection (jdbc/get-connection (connection-details->spec details-with-tunnel))]
+               (let [athena-stmt (.createStatement connection)
+                     result (->> (.executeQuery athena-stmt "SELECT 1")
+                                 jdbc/result-set-seq)]
+                 (= 1 (first (vals (first result))))))))
 
 (defn- describe-database
   [driver {:keys [details] :as database}]
-  (let [conn (connection-details->spec details)
-        databases (->> (run-query conn "SHOW DATABASES" {})
+  (let [databases (->> (run-query database "SHOW DATABASES" {})
                        (remove #(= (:database_name %) "default")) ; this table have permission issue if you use a role with limited permission
                        (map (fn [{:keys [database_name]}]
                               {:name database_name :schema nil}))
                        set)
         tables (->> databases
                     (map (fn [{:keys [name] :as table}]
-                           (let [tables (run-query conn (str "SHOW TABLES IN " name) {})]
+                           (let [tables (run-query database (str "SHOW TABLES IN " name) {})]
                              (map (fn [{:keys [tab_name]}] (assoc table :schema name :name tab_name))
                                   tables))))
                     flatten
                     set)]
-    (println "DEBUG::describe-database: " tables)
     {:tables tables}))
 
 (defn- describe-table-fields
-  [conn {:keys [name schema]}]
-  (set (for [{:keys [name type]} (run-query conn (str "DESCRIBE " schema "." name ";") {:read-fn describe-all-database->clj})]
+  [database {:keys [name schema]}]
+  (set (for [{:keys [name type]} (run-query database (str "DESCRIBE " schema "." name ";") {:read-fn describe-all-database->clj})]
          {:name name :base-type (or (column->base-type (keyword type))
                                     :type/*)})))
 
 (defn- describe-table [driver database table]
-  (let [conn (connection-details->spec (:details database))]
-    (assoc (select-keys table [:name :schema]) :fields (describe-table-fields conn table))))
+  (assoc (select-keys table [:name :schema]) :fields (describe-table-fields database table)))
 
 (defn- execute-query
   [driver {:keys [database settings], query :native, :as outer-query}]
   (let [final-query (str "-- " (qputil/query->remark outer-query) "\n"
                                (unprepare/unprepare (concat [(:query query)] (:params query)) :quote-escape "'"))
-        results (run-query (connection-details->spec (:details database)) final-query {})
+        results (run-query database final-query {})
         columns (into [] (keys (first results)))
         rows (->> results
                   (map vals)
@@ -276,7 +274,7 @@
 
 (defn apply-page
   "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers.
-   WORKAROUND : not supported by Athena, TODO: how to disable this feature ?"
+   WORKAROUND : not supported by Athena, TODO: how to do it with hive ?"
   [_ honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
       (h/limit items)))
