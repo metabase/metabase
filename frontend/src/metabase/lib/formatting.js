@@ -211,16 +211,23 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     // "column" may also be a field object
     // $FlowFixMe: remapping is a special field added by Visualization.jsx or getMetadata selector
     if (column && column.remapping && column.remapping.size > 0) {
-        // $FlowFixMe
-        if (column.remapping.has(value)) {
-            return column.remapping.get(value);
-        }
+        const remappedValueSample = column.remapping.values().next().value
 
-        // $FlowFixMe
-        const remappedValueIsString = typeof column.remapping.values().next().value === "string"
-        if (remappedValueIsString) {
-            // A simple way to hide intermediate ticks for a numeral value that has been remapped to a string
-            return null;
+        // Even if the column only has a list of analyzed values without remappings, those values
+        // are keys in `remapping` array with value `undefined`
+        const hasSetRemappings = remappedValueSample !== undefined
+        if (hasSetRemappings) {
+            // $FlowFixMe
+            if (column.remapping.has(value)) {
+                return column.remapping.get(value);
+            }
+
+            // $FlowFixMe
+            const remappedValueIsString = typeof remappedValueSample
+            if (remappedValueIsString) {
+                // A simple way to hide intermediate ticks for a numeral value that has been remapped to a string
+                return null;
+            }
         }
     }
 
