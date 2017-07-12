@@ -339,7 +339,7 @@
 (defn- field->identifier [{table-id :table_id, :as field}]
   (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
         dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
-    (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
+    (hsql/raw (get (field/qualified-name-components field) 1))))
 
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
 ;; BAD:
