@@ -1,11 +1,10 @@
-(ns metabase.sync-database-test
+(ns metabase.sfc.sync-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [expectations :refer :all]
             [metabase
              [db :as mdb]
              [driver :as driver]
-             [sync-database :refer :all]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.models
@@ -14,10 +13,11 @@
              [field-values :refer [FieldValues]]
              [raw-table :refer [RawTable]]
              [table :refer [Table]]]
-            [metabase.sync-database
+            [metabase.sfc
              [analyze :as analyze]
-             [cached-values :as cached-values]
-             [classify :as classify]]
+             [classify :as classify]
+             [fingerprint :as fingerprint]
+             [sync :refer :all]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
@@ -147,13 +147,13 @@
   (tt/with-temp Database [db {:engine :sync-test}]
     (Thread/sleep 60)
     (sync-database! db)
-    (cached-values/cache-field-values-for-database! db)
+    (fingerprint/cache-field-values-for-database! db)
     (analyze/analyze-database! db)
     (classify/classify-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
     ;; on resync of a database, such as adding tables that already exist or duplicating fields
     (sync-database! db)
-    (cached-values/cache-field-values-for-database! db)
+    (fingerprint/cache-field-values-for-database! db)
     (analyze/analyze-database! db)
     (classify/classify-database! db)
     (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
@@ -188,7 +188,7 @@
                                        :schema       "default"
                                        :db_id        (u/get-id db)}]]
     (sync-table! table)
-    (cached-values/cache-field-values-for-table! table)
+    (fingerprint/cache-field-values-for-table! table)
     (analyze/analyze-table-data-shape! table)
     (classify/classify-table! table)
     (table-details (Table (:id table)))))
@@ -264,7 +264,7 @@
          (get-special-type))
      ;; Calling sync-table! should set the special type again
      (do (sync-table! @venues-table)
-         (cached-values/cache-field-values-for-table! @venues-table)
+         (fingerprint/cache-field-values-for-table! @venues-table)
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
      (do (db/update! Field (id :venues :id), :special_type :type/Latitude)
@@ -272,7 +272,7 @@
      ;; Make sure that sync-table runs set-table-pks-if-needed!
      (do (db/update! Field (id :venues :id), :special_type nil)
          (sync-table! @venues-table)
-         (cached-values/cache-field-values-for-table! @venues-table)
+         (fingerprint/cache-field-values-for-table! @venues-table)
          (get-special-type))]))
 
 ;; ## FK SYNCING
@@ -306,7 +306,7 @@
        (sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
-;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.classify/low-cardinality-threshold` (currently 300) (#3215) --------------------
+;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sfc.classify/low-cardinality-threshold` (currently 300) (#3215) --------------------
 (defn- insert-range-sql [rang]
   (str "INSERT INTO blueberries_consumed_rating (num) VALUES "
        (str/join ", " (for [n rang]
@@ -325,14 +325,14 @@
           (exec! ["CREATE TABLE blueberries_consumed_rating (num INTEGER NOT NULL);"
                   (insert-range-sql (range 100))])
           (sync-database! db, :full-sync? true)
-          (cached-values/cache-field-values-for-database! db)
+          (fingerprint/cache-field-values-for-database! db)
           (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                 field-id (db/select-one-id Field :table_id table-id)]
             ;; field values should exist...
             (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                        100))
             ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
-            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.classify/low-cardinality-threshold))))])
+            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sfc.classify/low-cardinality-threshold))))])
             (sync-database! db, :full-sync? true)
-            (cached-values/cache-field-values-for-database! db)
+            (fingerprint/cache-field-values-for-database! db)
             (db/exists? FieldValues :field_id field-id)))))))

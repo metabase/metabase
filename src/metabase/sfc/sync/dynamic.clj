@@ -1,4 +1,4 @@
-(ns metabase.sync-database.sync-dynamic
+(ns metabase.sfc.sync.dynamic
   "Functions for syncing drivers with `:dynamic-schema` which have no fixed definition of their data."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
@@ -9,9 +9,8 @@
              [field :as field :refer [Field]]
              [raw-table :as raw-table :refer [RawTable]]
              [table :as table :refer [Table]]]
-            [metabase.sync-database
-             [interface :as i]
-             [sync-schema :as sync-schema]]
+            [metabase.sfc.interface :as i]
+            [metabase.sfc.introspect.sync :as introspect-sync]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -24,17 +23,15 @@
     (u/prog1 (set/difference (set (map :name nested-field-defs)) (set (keys existing-field-name->field)))
       (when (seq <>)
         (log/debug (u/format-color 'blue "Found new nested fields for field '%s': %s" (:name parent-field) <>))))
-
     (doseq [nested-field-def nested-field-defs]
       (let [{:keys [nested-fields], :as nested-field-def} (assoc nested-field-def :parent-id parent-id)]
         ;; NOTE: this recursively creates fields until we hit the end of the nesting
-        (if-let [existing-field (existing-field-name->field (:name nested-field-def))]
-          ;; field already exists, so we UPDATE it
-          (cond-> (field/update-field-from-field-def! existing-field nested-field-def)
-                  nested-fields (save-nested-fields! nested-fields))
-          ;; looks like a new field, so we CREATE it
-          (cond-> (field/create-field-from-field-def! table-id nested-field-def)
-                  nested-fields (save-nested-fields! nested-fields)))))))
+        (cond-> (if-let [existing-field (existing-field-name->field (:name nested-field-def))]
+                  ;; field already exists, so we UPDATE it
+                  (field/update-field-from-field-def! existing-field nested-field-def)
+                  ;; looks like a new field, so we CREATE it
+                  (field/create-field-from-field-def! table-id nested-field-def))
+          nested-fields (save-nested-fields! nested-fields))))))
 
 
 (defn- save-table-fields!
@@ -48,13 +45,12 @@
     ;; NOTE: with dynamic schemas we never disable fields
     ;; create/update the fields
     (doseq [{field-name :name, :keys [nested-fields], :as field-def} field-defs]
-      (if-let [existing-field (get field-name->field field-name)]
-        ;; field already exists, so we UPDATE it
-        (cond-> (field/update-field-from-field-def! existing-field field-def)
-                nested-fields (save-nested-fields! nested-fields))
-        ;; looks like a new field, so we CREATE it
-        (cond-> (field/create-field-from-field-def! table-id field-def)
-                nested-fields (save-nested-fields! nested-fields))))))
+      (cond-> (if-let [existing-field (get field-name->field field-name)]
+                ;; field already exists, so we UPDATE it
+                (field/update-field-from-field-def! existing-field field-def)
+                ;; looks like a new field, so we CREATE it
+                (field/create-field-from-field-def! table-id field-def))
+        nested-fields (save-nested-fields! nested-fields)))))
 
 
 (defn scan-table-and-update-data-model!
@@ -85,14 +81,14 @@
     (throw (IllegalStateException. "This function cannot be called on databases which are not :dynamic-schema")))
 
   ;; retire any tables which are no longer with us
-  (sync-schema/retire-tables! database)
+  (introspect-sync/retire-tables! database)
 
   (let [raw-tables          (raw-table/active-tables database-id)
         raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-table} raw-tables
-            :when                             (not (sync-schema/is-metabase-metadata-table? raw-table))]
+            :when                             (not (introspect-sync/is-metabase-metadata-table? raw-table))]
       (try
         (let [table-def (u/prog1 (driver/describe-table driver database (select-keys raw-table [:name :schema]))
                           (schema/validate i/DescribeTable <>))]
@@ -109,5 +105,5 @@
     ;; NOTE: dynamic schemas don't have FKs
 
     ;; NOTE: if per chance there were multiple _metabase_metadata tables in different schemas, we just take the first
-    (when-let [metabase-metadata-table (first (filter sync-schema/is-metabase-metadata-table? raw-tables))]
-      (sync-schema/sync-metabase-metadata-table! driver database metabase-metadata-table))))
+    (when-let [metabase-metadata-table (first (filter introspect-sync/is-metabase-metadata-table? raw-tables))]
+      (introspect-sync/sync-metabase-metadata-table! driver database metabase-metadata-table))))

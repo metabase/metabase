@@ -7,7 +7,7 @@
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
-            [metabase.sync-database.infer-special-type :as infer-special-type]
+            [metabase.sfc.classify.infer-special-type :as infer-special-type]
             [metabase.util :as u]
             [toucan
              [db :as db]

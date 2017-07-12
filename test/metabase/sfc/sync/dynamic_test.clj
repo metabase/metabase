@@ -1,22 +1,18 @@
-(ns metabase.sync-database.sync-dynamic-test
+(ns metabase.sfc.sync.dynamic-test
   (:require [expectations :refer :all]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [raw-table :refer [RawTable]]
              [table :refer [Table]]]
-            [metabase.sync-database
-             [introspect :as introspect]
-             [sync-dynamic :refer :all]]
+            [metabase.sfc.introspect :as introspect]
+            [metabase.sfc.sync.dynamic :as dynamic :refer :all]
             [metabase.test.mock.toucanery :as toucanery]
             [metabase.test.util :as tu]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
-
-(tu/resolve-private-vars metabase.sync-database.sync-dynamic
-  save-table-fields!)
 
 (defn- get-tables [database-id]
   (->> (hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
@@ -37,7 +33,7 @@
    :created_at         true
    :updated_at         true})
 
-;; save-table-fields!  (also covers save-nested-fields!)
+;; #'dynamic/save-table-fields!  (also covers save-nested-fields!)
 (expect
   [[]
    ;; initial sync
@@ -115,7 +111,7 @@
                            (dissoc (tu/boolean-ids-and-timestamps field)
                                    :active :position :preview_display)))
           save-fields! (fn [& fields]
-                         (save-table-fields! table fields)
+                         (#'dynamic/save-table-fields! table fields)
                          (get-fields))]
       ;; start with no fields
       [(get-fields)

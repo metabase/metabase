@@ -1,22 +1,18 @@
-(ns metabase.sync-database
+(ns metabase.sfc.sync
   "The logic for doing DB and Table syncing itself."
-  (:require [clojure.tools.logging :as log]
-            [metabase
+  (:require [metabase
              [driver :as driver]
              [events :as events]
              [util :as u]]
             [metabase.models
              [raw-table :as raw-table]
              [table :as table]]
-            [metabase.query-processor.interface :as i]
-            [metabase.sync.util :as sync-util]
-            [metabase.sync-database
+            [metabase.sfc
              [analyze :as analyze]
              [introspect :as introspect]
-             [sync-dynamic :as sync-dynamic]
-             [sync-schema :as sync-schema]]
-            [toucan.db :as db]))
-
+             [util :as sync-util]]
+            [metabase.sfc.introspect.sync :as introspect-sync]
+            [metabase.sfc.sync.dynamic :as sync-dynamic]))
 
 ;;; ------------------------------------------------------------ Sync Table ------------------------------------------------------------
 
@@ -26,7 +22,7 @@
       ;; if the Table has a RawTable backing it then do an introspection and sync
       (when-let [raw-table (raw-table/RawTable (:raw_table_id table))]
         (introspect/introspect-raw-table-and-update! driver database raw-table)
-        (sync-schema/update-data-models-for-table! table))
+        (introspect-sync/update-data-models-for-table! table))
       ;; if this table comes from a dynamic schema db then run that sync process now
       (when (driver/driver-supports? driver :dynamic-schema)
         (sync-dynamic/scan-table-and-update-data-model! driver database table)))
@@ -61,7 +57,7 @@
         ;; use the introspected schema information and update our working data models
         (if (driver/driver-supports? driver :dynamic-schema)
           (sync-dynamic/scan-database-and-update-data-model! driver database)
-          (sync-schema/update-data-models-from-raw-tables! database))
+          (introspect-sync/update-data-models-from-raw-tables! database))
         ;; now do any in-depth data analysis which requires querying the tables (if enabled)
         (when full-sync?
           (analyze/analyze-data-shape-for-tables! driver database))))))

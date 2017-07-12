@@ -1,4 +1,4 @@
-(ns metabase.sync-database.interface
+(ns metabase.sfc.interface
   "Schemas describing the output expected from different DB sync functions."
   (:require [metabase.util.schema :as su]
             [schema.core :as s]))

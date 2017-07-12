@@ -5,7 +5,7 @@
             [medley.core :as m]
             [metabase
              [driver :as driver]
-             [sync-database :as sync-database]
+             [sfc :as sfc]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
@@ -14,10 +14,6 @@
              [field :refer [Field]]
              [interface :as mi]
              [table :as table :refer [Table]]]
-            [metabase.sync-database
-             [analyze :as analyze]
-             [cached-values :as cached-values]
-             [classify :as classify]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -73,20 +69,17 @@
                      :entity_type             entity_type
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
-    (let [updated-table (Table id)
-          driver (driver/database-id->driver (:db_id updated-table))
-          new-visibility (visible-state? (:visibility_type updated-table))
-          old-visibility (visible-state? original-visibility-type)
+    (let [updated-table      (Table id)
+          driver             (driver/database-id->driver (:db_id updated-table))
+          new-visibility     (visible-state? (:visibility_type updated-table))
+          old-visibility     (visible-state? original-visibility-type)
           table-now-visible? (and (not= new-visibility
-                                         old-visibility)
+                                        old-visibility)
                                   (= :show new-visibility))]
+      (println "table-now-visible?:" table-now-visible?) ; NOCOMMIT
       (when table-now-visible?
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type table-now-visible?)
-        ;; TODO - maybe make this a combined function and put it somewhere?
-        (sync-database/sync-table! updated-table)
-        (cached-values/cache-table-data-shape! driver updated-table)
-        (analyze/analyze-table-data-shape!     driver updated-table)
-        (classify/classify-table!               updated-table))
+        (sfc/sync-fingerprint-classify-table! updated-table))
       updated-table)))
 
 

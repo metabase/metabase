@@ -5,7 +5,7 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.sync-database.cached-values :as cached-values]
+            [metabase.sfc.fingerprint :as fingerprint]
             [metabase.test
              [data :refer :all]
              [util :refer [resolve-private-vars]]]
@@ -71,14 +71,14 @@
 ;; ANALYZE-TABLE
 ;; This test needs to be re-thought, after splitting sync and analyze it's become somewhat circular in it's reasoning
 (expect
-  (do (cached-values/cache-field-values-for-table! @venues-table)
+  (do (fingerprint/cache-field-values-for-table! @venues-table)
       {:fields    [{:id (id :venues :category_id)}
                    {:id (id :venues :id)}
                    {:id (id :venues :latitude)}
                    {:id (id :venues :longitude)}
                    {:id (id :venues :name), :values (sort-by :id (db/select-one-field :values 'FieldValues, :field_id (id :venues :name)))}
                    {:id (id :venues :price), :values [1 2 3 4]}]})
-  (-> (#'cached-values/extract-field-values-for-fields (set (map :id (table/fields @venues-table))))
+  (-> (#'fingerprint/extract-field-values-for-fields (set (map :id (table/fields @venues-table))))
       (update :fields (partial sort-by :id))))
 
 (resolve-private-vars metabase.driver.generic-sql field-values-lazy-seq table-rows-seq)

@@ -1,4 +1,4 @@
-(ns metabase.sync-database.analyze
+(ns metabase.sfc.analyze
   "Functions which handle the in-depth data shape analysis portion of the sync process."
   (:require [cheshire.core :as json]
             [clojure.math.numeric-tower :as math]
@@ -13,7 +13,7 @@
              [field-fingerprint :refer [FieldFingerprint]]
              [table :as table]
              [table-fingerprint :refer [TableFingerprint]]]
-            [metabase.sync.util :as sync-util]
+            [metabase.sfc.util :as sync-util]
             [toucan.db :as db]))
 
 (defn- table-row-count

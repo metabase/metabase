@@ -10,10 +10,10 @@
              [task :as task]
              [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database
+            [metabase.sfc
              [analyze :as analyze]
-             [cached-values :as cached-values]
-             [classify :as classify]]
+             [classify :as classify]
+             [fingerprint :as fingerprint]]
             [toucan.db :as db]))
 
 (def ^:private ^:const classify-databases-job-key     "metabase.task.%s-databases.job-%s")
@@ -45,7 +45,7 @@
         database (Database db-id)]
     (try
       (log/debug (u/format-color 'green "running scheduled caching of field values for database-id: %s: %s" db-id database))
-      (cached-values/cache-field-values-for-database! database)
+      (fingerprint/cache-field-values-for-database! database)
       (catch Throwable e
         (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
 

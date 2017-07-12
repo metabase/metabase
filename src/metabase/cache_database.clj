@@ -1,28 +1,26 @@
 (ns metabase.cache-database
   "The logic for doing DB and Table syncing itself.
    TODO: move this file under the sync_database directory"
-  (:require [clojure.tools.logging :as log]
-            [metabase
+  (:require [metabase
              [driver :as driver]
              [events :as events]
              [util :as u]]
             [metabase.models.table :as table]
-            [metabase.query-processor.interface :as i]
-            [metabase.sync-database.cached-values :as cached-values]
-            [metabase.sync.util :as sync-util]
-            [toucan.db :as db]))
+            [metabase.sfc
+             [fingerprint :as fingerprint]
+             [util :as sync-util]]))
 
 (defn- cache-database-with-tracking! [driver database]
   (sync-util/with-start-and-finish-logging (format "Cache data shape for %s database '%s'" (name driver) (:name database))
     ;; TODO - why is the event name `database-analysis` for CACHING?
     (sync-util/with-sfc-events :database-analysis (u/get-id database)
       (sync-util/with-logging-disabled
-        (cached-values/cache-field-values-for-database! database)))))
+        (fingerprint/cache-field-values-for-database! database)))))
 
 (defn- cache-table-with-tracking! [driver database table]
   (sync-util/with-start-and-finish-logging (format "Cache data shape for table '%s' from %s database '%s'" (:display_name table) (name driver) (:name database))
     (sync-util/with-logging-disabled
-      (cached-values/cache-table-data-shape! driver table))
+      (fingerprint/cache-table-data-shape! driver table))
     (events/publish-event! :table-sync {:table_id (:id table)})))
 
 (defn cache-database-field-values!

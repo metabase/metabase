@@ -5,16 +5,14 @@
             [metabase
              [driver :as driver]
              [query-processor-test :refer [rows]]
-             [sync-database :as sync-db]
              [util :as u]]
-            [metabase.driver
-             [generic-sql :as sql]
-             postgres]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.expand :as ql]
+            [metabase.sfc.sync :as sync]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -221,7 +219,7 @@
     (drop-if-exists-and-create-db! "dropped_views_test")
     ;; create the DB object
     (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
-      (let [sync! #(sync-db/sync-database! database, :full-sync? true)]
+      (let [sync! #(sync/sync-database! database, :full-sync? true)]
         ;; populate the DB and create a view
         (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                 "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"

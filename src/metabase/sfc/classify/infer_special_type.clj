@@ -1,4 +1,4 @@
-(ns metabase.sync-database.infer-special-type
+(ns metabase.sfc.classify.infer-special-type
   (:require [clojure.string :as s]
             [metabase
              [config :as config]

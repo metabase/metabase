@@ -1,4 +1,4 @@
-(ns metabase.sync-database.classify
+(ns metabase.sfc.classify
   "'Classification' looks at the fingerprints (i.e., a sample of values) for various Fields and determines what special type
    those fields should be given."
   (:require [clojure.math.numeric-tower :as math]
@@ -9,10 +9,10 @@
              [field-values :as field-values]
              [table :as table]
              [table-fingerprint :refer [TableFingerprint]]]
-            [metabase.sync-database
-             [infer-special-type :as infer-special-type]
-             [interface :as i]]
-            [metabase.sync.util :as sync-util]
+            [metabase.sfc
+             [interface :as i]
+             [util :as sync-util]]
+            [metabase.sfc.classify.infer-special-type :as infer-special-type]
             [metabase.util :as u]
             [schema.core :as schema]
             [toucan.db :as db]))

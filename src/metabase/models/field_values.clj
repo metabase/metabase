@@ -1,6 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [metabase.sync-database.infer-special-type :as infer-special-type]
+            [metabase.sfc.classify.infer-special-type :as infer-special-type]
             [metabase.util :as u]
             [toucan
              [db :as db]

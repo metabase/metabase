@@ -239,11 +239,11 @@
   If no `:default` param is specified and the var isn't found, throw.
 
      (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`"
-  ([database-name env-var]
-   (db-test-env-var database-name env-var nil))
-  ([database-name env-var default]
+  ([engine env-var]
+   (db-test-env-var engine env-var nil))
+  ([engine env-var default]
    (get env
-        (keyword (format "mb-%s-test-%s" (name database-name) (name env-var)))
+        (keyword (format "mb-%s-test-%s" (name engine) (name env-var)))
         default)))
 
 (defn- to-system-env-var-str
@@ -259,10 +259,11 @@
 
 (defn db-test-env-var-or-throw
   "Same as `db-test-env-var` but will throw an exception if the variable is nil"
-  ([database-name env-var]
-   (db-test-env-var-or-throw database-name env-var nil))
-  ([database-name env-var default]
-   (or (db-test-env-var database-name env-var default)
+  ([engine env-var]
+   (db-test-env-var-or-throw engine env-var nil))
+  ([engine env-var default]
+   (or (db-test-env-var engine env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
-                                  (name database-name)
+                                  (name engine)
+                                  (str/upper-case (name engine))
                                   (to-system-env-var-str env-var)))))))

@@ -16,7 +16,6 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])

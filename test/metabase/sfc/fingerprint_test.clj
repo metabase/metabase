@@ -1,16 +1,14 @@
-(ns metabase.sync-database.cached-values-test
+(ns metabase.sfc.fingerprint-test
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [expectations :refer :all]
-            [metabase
-             [driver :as driver]
-             [sync-database :as sync-database]
-             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.models
              [field-values :refer [FieldValues]]
              [table :as table :refer [Table]]]
-            [metabase.sync-database.cached-values :refer :all, :as cached-values]
+            [metabase.sfc
+             [fingerprint :as fingerprint :refer :all]
+             [sync :as sync]]
             [metabase.test.data :refer :all]
             [toucan.db :as db]))
 
@@ -18,13 +16,13 @@
 (expect
   {:values       [1 2 3 4]}
   (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [1 2 3 4])}
-    #(#'cached-values/extract-field-values {:base_type :type/Text :name "type"})))
+    #(#'fingerprint/extract-field-values {:base_type :type/Text :name "type"})))
 
 ;; unless they have really large values that would be unreasonable to display
 (expect
   {}
   (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])}
-    #(#'cached-values/extract-field-values {:base_type :type/Text :name "type"})))
+    #(#'fingerprint/extract-field-values {:base_type :type/Text :name "type"})))
 
 (def ^:private venues-table (delay (Table (id :venues))))
 
@@ -37,14 +35,14 @@
      nil        ; 2
      [1 2 3 4]] ; 3
     [ ;; 1. Check that we have expected field values to start with
-     (do (sync-database/sync-table! @venues-table)
+     (do (sync/sync-table! @venues-table)
          (cache-table-data-shape! (venues-driver) @venues-table)
          (get-field-values))
      ;; 2. Delete the Field values, make sure they're gone
      (do (db/delete! FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
-     (do (sync-database/sync-table! @venues-table)
+     (do (sync/sync-table! @venues-table)
          (cache-table-data-shape! (venues-driver) @venues-table)
          (get-field-values))])
 

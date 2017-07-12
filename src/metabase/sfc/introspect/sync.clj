@@ -1,4 +1,7 @@
-(ns metabase.sync-database.sync
+(ns ^:deprecated metabase.sfc.introspect.sync
+  "Logic for copying over the RawTable and RawColumn information to corresponding Tables and Fields.
+   Most of this namespace will eventually be scrapped when we get rid of the RawTable and RawColumn models.
+   Other parts, such as `sync-metabase-metadata-table!`, don't belong here, and will be moved to some other `sync` namespace in the near future."
   (:require [clojure
              [set :as set]
              [string :as s]]
@@ -6,17 +9,12 @@
             [metabase
              [db :as mdb]
              [driver :as driver]
-             [sync-database :as sync-database]
              [util :as u]]
             [metabase.models
              [field :as field :refer [Field]]
              [raw-column :refer [RawColumn]]
              [raw-table :as raw-table :refer [RawTable]]
              [table :as table :refer [Table]]]
-            [metabase.sync-database
-             [analyze :as analyze]
-             [cached-values :as cached-values]
-             [classify :as classify]]
             [toucan.db :as db])
   (:import metabase.models.raw_table.RawTableInstance))
 
@@ -280,25 +278,3 @@
     (set-fk-relationships! database)
     ;; HACK! we can't sync the _metabase_metadata table until all the "Raw" Tables/Columns are backed
     (maybe-sync-metabase-metadata-table! database raw-tables)))
-
-(defn sync-and-analyze-table-async!
-  "run the entire sync process for a table in a future"
-  [table]
-  (try
-    (future (sync-database/sync-table! table)
-            (cached-values/cache-field-values-for-table! table)
-            (analyze/analyze-table-data-shape! table)
-            (classify/classify-table! table))
-    (catch Throwable e
-        (log/error (format "Error syncing Table: %d" (:id table))))))
-
-(defn future-sync-and-analyze-database
-  "run the entire sync process for a database in a future"
-  [database]
-  (try
-    (future (sync-database/sync-database! database)
-            (cached-values/cache-field-values-for-database! database)
-            (analyze/analyze-database! database)
-            (classify/classify-database! database))
-    (catch Throwable e
-        (log/error (format "Error syncing Database: %d" (:id database))))))

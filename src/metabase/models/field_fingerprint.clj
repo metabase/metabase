@@ -1,17 +1,9 @@
 (ns metabase.models.field-fingerprint
-  (:require [clojure
-             [data :as d]
-             [string :as s]]
-            [metabase.models
-             [field-values :refer [FieldValues]]
-             [humanization :as humanization]
+  (:require [metabase.models
              [interface :as i]
              [permissions :as perms]]
-            [metabase.sync-database.infer-special-type :as infer-special-type]
             [metabase.util :as u]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.models :as models]))
 
 (models/defmodel FieldFingerprint :field_fingerprint)
 

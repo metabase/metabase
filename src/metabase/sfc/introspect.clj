@@ -1,5 +1,7 @@
-(ns metabase.sync-database.introspect
-  "Functions which handle the raw sync process."
+(ns ^:deprecated metabase.sfc.introspect
+  "Code for saving RawTables and RawColumns, and then updating the corresponding Tables and Fields from them.
+   (This operation is pointless -- it was originally meant to help power a never-finished 'virtual tables' feature.
+   This entire namespace and the corresponding models will be removed in the near future.)"
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase
@@ -8,8 +10,9 @@
             [metabase.models
              [raw-column :refer [RawColumn]]
              [raw-table :refer [RawTable]]]
-            [metabase.sync-database.interface :as i]
-            [metabase.sync.util :as sync-util]
+            [metabase.sfc
+             [interface :as i]
+             [util :as sync-util]]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -79,11 +82,11 @@
   {:pre [(integer? database-id) (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
   (let [table (db/insert! RawTable
-                :database_id  database-id
-                :schema       table-schema
-                :name         table-name
-                :details      (or details {})
-                :active       true)]
+                :database_id database-id
+                :schema      table-schema
+                :name        table-name
+                :details     (or details {})
+                :active      true)]
     (save-all-table-columns! table fields)))
 
 (defn- update-raw-table!

@@ -14,7 +14,6 @@
             [metabase.models
              [field :as field]
              [table :as table]]
-            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])

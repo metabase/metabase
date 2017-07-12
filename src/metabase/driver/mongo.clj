@@ -11,9 +11,7 @@
              [util :refer [*mongo-connection* with-mongo-connection]]]
             [metabase.models
              [database :refer [Database]]
-             [field :as field]
-             [table :as table]]
-            [metabase.sync-database.cached-values :as cached-values]
+             [field :as field]]
             [metabase.util.ssh :as ssh]
             [monger
              [collection :as mc]

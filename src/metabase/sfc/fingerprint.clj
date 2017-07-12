@@ -1,4 +1,4 @@
-(ns metabase.sync-database.cached-values
+(ns metabase.sfc.fingerprint
   "Functions discover and save the fields in a table."
   (:require [clojure.tools.logging :as log]
             [metabase
@@ -9,10 +9,10 @@
              [field :as field :refer [Field]]
              [field-values :as field-values]
              [table :as table]]
-            [metabase.sync-database
+            [metabase.sfc
              [classify :as classify]
-             [interface :as i]]
-            [metabase.sync.util :as sync-util]
+             [interface :as i]
+             [util :as sync-util]]
             [schema.core :as schema]
             [toucan.db :as db]))
 

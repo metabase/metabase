@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
-            [metabase.sync-database.sync :as sync]
+            [metabase.sfc :as sfc]
             [metabase.task.sync :as schedule-sync]))
 
 (def ^:const sync-database-topics
@@ -38,7 +38,7 @@
 (defn- process-sync-database-event
   "Handle processing for a single event notification received on the sync-database-channel"
   [sync-database-event]
-  (process-event-with-database sync/future-sync-and-analyze-database "sync-database" sync-database-event))
+  (process-event-with-database sfc/sync-fingerprint-classify-database-async! "sync-database" sync-database-event))
 
 (defn- process-create-update-event
   "clean up sync schedules when a database is deleted"

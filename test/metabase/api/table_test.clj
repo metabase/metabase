@@ -5,7 +5,6 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
-             [sync-database :as sync-database]
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
@@ -14,10 +13,11 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
-            [metabase.sync-database
+            [metabase.sfc
              [analyze :as analyze]
-             [cached-values :as cached-values]
-             [classify :as classify]]
+             [classify :as classify]
+             [fingerprint :as fingerprint]
+             [sync :as sync]]
             [metabase.test
              [data :as data :refer :all]
              [util :as tu :refer [match-$ resolve-private-vars]]]
@@ -286,7 +286,7 @@
                              "Szymon Theutrich"]}
              :created_at   $})))
   (do
-    (cached-values/cache-field-values-for-table! (Table (id :users)))
+    (fingerprint/cache-field-values-for-table! (Table (id :users)))
     (analyze/analyze-table-data-shape! (Table (id :users)))
     (classify/classify-table! (Table (id :users)))
     (dissoc-time-based-keys
@@ -356,7 +356,7 @@
                              "Spiros Teofil"
                              "Szymon Theutrich"]}
              :created_at   $})))
-  (do (cached-values/cache-field-values-for-table! (Table (id :users)))
+  (do (fingerprint/cache-field-values-for-table! (Table (id :users)))
       (analyze/analyze-table-data-shape! (Table (id :users)))
       (classify/classify-table! (Table (id :users)))
       (dissoc-time-based-keys
@@ -408,11 +408,11 @@
 
 (tt/expect-with-temp [Table [table {:rows 15}]]
   2
-  (let [original-sync-table! sync-database/sync-table!
+  (let [original-sync-table! sync/sync-table!
         called (atom 0)
         test-fun (fn [state]
-                   (with-redefs [sync-database/sync-table! (fn [& args] (swap! called inc)
-                                                             (apply original-sync-table! args))]
+                   (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
+                                                    (apply original-sync-table! args))]
                      ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
                                                                                           :entity_type     "person"
                                                                                           :visibility_type state
@@ -485,7 +485,7 @@
                                                               :id           $
                                                               :raw_table_id $
                                                               :created_at   $}))}))}]))
-(do (cached-values/cache-field-values-for-table! (Table (id :users)))
+(do (fingerprint/cache-field-values-for-table! (Table (id :users)))
       (analyze/analyze-table-data-shape! (Table (id :users)))
       (classify/classify-table! (Table (id :users)))
       (dissoc-time-based-keys ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))))

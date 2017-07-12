@@ -1,19 +1,16 @@
-(ns metabase.sync-database.introspect-test
+(ns metabase.sfc.introspect-test
   (:require [expectations :refer :all]
             [metabase.models
              [database :refer [Database]]
              [raw-column :refer [RawColumn]]
              [raw-table :refer [RawTable]]]
-            [metabase.sync-database.introspect :as introspect]
+            [metabase.sfc.introspect :as introspect]
             [metabase.test.mock.moviedb :as moviedb]
             [metabase.test.util :as tu]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
-
-(tu/resolve-private-vars metabase.sync-database.introspect
-  save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
 
 (defn get-tables [database-id]
   (->> (hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
@@ -60,19 +57,19 @@
       [(get-columns)
        ;; now add a fk
        (do
-         (save-all-table-fks! table [{:fk-column-name   "user_id"
-                                      :dest-table       {:schema nil, :name "users"}
-                                      :dest-column-name "id"}])
+         (#'introspect/save-all-table-fks! table [{:fk-column-name   "user_id"
+                                                   :dest-table       {:schema nil, :name "users"}
+                                                   :dest-column-name "id"}])
          (get-columns))
        ;; now remove the fk
        (do
-         (save-all-table-fks! table [])
+         (#'introspect/save-all-table-fks! table [])
          (get-columns))
        ;; now add back a different fk
        (do
-         (save-all-table-fks! table [{:fk-column-name   "user_id"
-                                      :dest-table       {:schema "customer1", :name "photos"}
-                                      :dest-column-name "id"}])
+         (#'introspect/save-all-table-fks! table [{:fk-column-name   "user_id"
+                                                   :dest-table       {:schema "customer1", :name "photos"}
+                                                   :dest-column-name "id"}])
          (get-columns))])))
 
 ;; save-all-table-columns
@@ -109,21 +106,21 @@
       [(get-columns)
        ;; now add a column
        (do
-         (save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 7}, :pk? true, :special-type "type/Category"}])
+         (#'introspect/save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 7}, :pk? true, :special-type "type/Category"}])
          (get-columns))
        ;; now add another column and modify the first
        (do
-         (save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 8}}
-                                         {:name "num_feathers", :base-type :type/Integer, :details {:count 10000}}])
+         (#'introspect/save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 8}}
+                                                      {:name "num_feathers", :base-type :type/Integer, :details {:count 10000}}])
          (get-columns))
        ;; now remove the first column
        (do
-         (save-all-table-columns! table [{:name "num_feathers", :base-type :type/Integer, :details {:count 12000}}])
+         (#'introspect/save-all-table-columns! table [{:name "num_feathers", :base-type :type/Integer, :details {:count 12000}}])
          (get-columns))
        ;; lastly, resurrect the first column (this ensures uniqueness by name)
        (do
-         (save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 8}}
-                                         {:name "num_feathers", :base-type :type/Integer, :details {:count 12000}}])
+         (#'introspect/save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 8}}
+                                                      {:name "num_feathers", :base-type :type/Integer, :details {:count 12000}}])
          (get-columns))])))
 
 ;; create-raw-table
@@ -159,20 +156,20 @@
     [(get-tables database-id)
      ;; now add a table
      (do
-       (create-raw-table! database-id {:schema  nil
-                                       :name    "users"
-                                       :details {:a "b"}
-                                       :fields  []})
+       (#'introspect/create-raw-table! database-id {:schema  nil
+                                                    :name    "users"
+                                                    :details {:a "b"}
+                                                    :fields  []})
        (get-tables database-id))
      ;; now add another table, this time with a couple columns and some fks
      (do
-       (create-raw-table! database-id {:schema  "aviary"
-                                       :name    "toucanery"
-                                       :details {:owner "Cam"}
-                                       :fields  [{:name      "beak_size"
-                                                  :base-type :type/Integer
-                                                  :pk?       true
-                                                  :details   {:inches 7}}]})
+       (#'introspect/create-raw-table! database-id {:schema  "aviary"
+                                                    :name    "toucanery"
+                                                    :details {:owner "Cam"}
+                                                    :fields  [{:name      "beak_size"
+                                                               :base-type :type/Integer
+                                                               :pk?       true
+                                                               :details   {:inches 7}}]})
        (get-tables database-id))]))
 
 
@@ -198,13 +195,13 @@
     [(get-tables database-id)
      ;; now update the table
      (do
-       (update-raw-table! table {:schema  "aviary"
-                                 :name    "toucanery"
-                                 :details {:owner "Cam", :sqft 10000}
-                                 :fields [{:name      "beak_size"
-                                           :base-type :type/Integer
-                                           :pk?       true
-                                           :details   {:inches 7}}]})
+       (#'introspect/update-raw-table! table {:schema  "aviary"
+                                              :name    "toucanery"
+                                              :details {:owner "Cam", :sqft 10000}
+                                              :fields [{:name      "beak_size"
+                                                        :base-type :type/Integer
+                                                        :pk?       true
+                                                        :details   {:inches 7}}]})
        (get-tables database-id))]))
 
 
@@ -235,7 +232,7 @@
                   RawColumn [c2 {:raw_table_id (:id t2), :name "beak_size", :fk_target_column_id (:id c1)}]]
     [(get-tables database-id)
      (do
-       (disable-raw-tables! [(:id t1) (:id t2)])
+       (#'introspect/disable-raw-tables! [(:id t1) (:id t2)])
        (get-tables database-id))]))
 
 

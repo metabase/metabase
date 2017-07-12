@@ -1,4 +1,4 @@
-(ns metabase.sync.util
+(ns metabase.sfc.util
   "Utility functions and macros to abstract away some common patterns and operations across the SFC process, such as logging start/end messages "
   (:require [clojure.tools.logging :as log]
             [metabase
