@@ -130,7 +130,7 @@
    field values are stored separately"
   [fingerprint]
   (or (db/update! TableFingerprint {:where [:= :table_id (:table_id fingerprint)]
-                                    :set fingerprint})
+                                    :set   fingerprint})
       (db/insert! TableFingerprint fingerprint)))
 
 (defn analyze-table-data-shape!
@@ -140,29 +140,24 @@
   ([driver {table-id :id, :as table}]
    (let [fields             (table/fields table)
          rows               (table-row-count table)
-         field-fingerprints (map #(field-fingerprint driver table %) fields)
+         field-fingerprints (map (partial field-fingerprint driver table) fields)
          table-fingerprint  (table-fingerprint table)]
      (db/update! table/Table table-id :rows rows)
      (save-field-fingerprints! field-fingerprints)
      (save-table-fingerprint! table-fingerprint))))
 
-(defn analyze-data-shape-for-tables!
+(defn analyze-database!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
-  [driver {database-id :id, :as database}]
-  (sync-util/with-start-and-finish-logging (format "Analyze data in %s database '%s'" (name driver) (:name database))
-    (let [tables (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)]
-      (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
-        (doseq [{table-name :name, :as table} tables]
-          (try
-            (analyze-table-data-shape! driver table)
-            (catch Throwable t
-              (log/error "Unexpected error analyzing table" t))
-            (finally
-              (log/info (u/format-color 'blue "%s Analyzed table '%s'." (emoji-progress-bar) table-name)))))))))
-
-(defn analyze-database!
-  "analyze all the tables in one database"
-  [db]
-  (analyze-data-shape-for-tables! (driver/database-id->driver (u/get-id db))
-                                  db))
+  [{database-id :id, :as database}]
+  (let [driver (driver/database-id->driver database-id)]
+    (sync-util/with-start-and-finish-logging (format "Analyze data in %s database '%s'" (name driver) (:name database))
+      (let [tables (sync-util/db->sfc-tables database-id)]
+        (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+          (doseq [{table-name :name, :as table} tables]
+            (try
+              (analyze-table-data-shape! driver table)
+              (catch Throwable t
+                (log/error "Unexpected error analyzing table" t))
+              (finally
+                (log/info (u/format-color 'blue "%s Analyzed table '%s'." (emoji-progress-bar) table-name))))))))))

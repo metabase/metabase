@@ -60,7 +60,7 @@
           (introspect-sync/update-data-models-from-raw-tables! database))
         ;; now do any in-depth data analysis which requires querying the tables (if enabled)
         (when full-sync?
-          (analyze/analyze-data-shape-for-tables! driver database))))))
+          (analyze/analyze-database! database))))))
 
 (defn sync-database!
   "Sync DATABASE and all its Tables and Fields.

@@ -95,7 +95,7 @@
 
 (defn- analyze! [table]
   (let [db-id (:db_id table)]
-    (analyze-data-shape-for-tables! (driver/database-id->driver db-id) {:id db-id})))
+    (analyze-database! {:id db-id})))
 
 ;; expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing
 (expect
