@@ -408,13 +408,13 @@
   "Transuce each column in given dataset with corresponding fingerprinter."
   [opts {:keys [rows cols]}]
   (transduce identity
-             (redux/juxt (map-indexed (fn [i field]
-                                        (redux/post-complete
-                                         (redux/pre-step
-                                          (fingerprinter opts field)
-                                          #(nth % i))
-                                         #(assoc % :field field)))
-                                      cols))
+             (apply redux/juxt (map-indexed (fn [i field]
+                                              (redux/post-complete
+                                               (redux/pre-step
+                                                (fingerprinter opts field)
+                                                #(nth % i))
+                                               #(assoc % :field field)))
+                                            cols))
              rows))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
@@ -456,10 +456,15 @@
 
 (defmethod fingerprint (type Card)
   [opts card]
-  (fingerprint-query opts (metadata/query-values
-                           (:database_id card)
-                           (merge (extract-query-opts opts)
-                                  (-> card :dataset_query :query)))))
+  (let [{:keys [rows cols]} (metadata/query-values
+                             (:database_id card)
+                             (merge (extract-query-opts opts)
+                                    (-> card :dataset_query :query)))
+        {:keys [breakout aggregation]} (group-by :source cols)
+        fields [(first breakout) (or (first aggregation) (second breakout))]]
+    {:fingerprint (fingerprint-field opts fields rows)
+     :fields      [(fingerprint-field opts (first fields) (map first rows))
+                   (fingerprint-field opts (second fields) (map second rows))]}))
 
 (defmethod fingerprint (type Segment)
   [opts segment]
