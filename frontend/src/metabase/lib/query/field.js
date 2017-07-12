@@ -67,7 +67,16 @@ export function getFieldValues(field: ?Field): FieldValues {
         }
     } else if (values && Array.isArray(values.values)) {
         console.warn("deprecated field values object!", values);
-        return _.zip(values.values, values.human_readable_values);
+
+        if (Array.isArray(values.human_readable_values)) {
+            return _.zip(values.values, values.human_readable_values || {});
+        } else if (Array.isArray(values.values)) {
+            // TODO Atte Keinänen 7/12/17: I don't honestly know why we can have a field in `values` property.
+            return getFieldValues(values);
+        } else {
+            console.warn("missing field values", field);
+            return [];
+        }
     } else {
         console.warn("missing field values", field);
         return [];
