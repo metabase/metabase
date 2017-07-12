@@ -1,4 +1,5 @@
 (ns metabase.task.sync
+  ;; TODO - this should probably be renamed to something like `metabase.task.sfc`
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite
              [conversion :as qc]
@@ -14,11 +15,6 @@
              [classify :as classify]
              [fingerprint :as fingerprint]]
             [toucan.db :as db]))
-
-(def ^:private ^:const classify-databases-job-key     "metabase.task.%s-databases.job-%s")
-(def ^:private ^:const classify-databases-trigger-key "metabase.task.%s-databases.trigger-%s")
-
-(defonce ^:private classify-databases-job (atom nil))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    TASK DEFINITIONS                                                    |
@@ -52,6 +48,7 @@
       (catch Throwable e
         (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
 
+;; TODO - WHY. DOESN'T. THIS. SYNC!
 (jobs/defjob SyncDatabase [job-context]
   (let [db-id    (get (qc/from-job-data job-context) "db-id")
         database (Database db-id)]
@@ -72,6 +69,10 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/UNSCHEDULING THE TASKS                                            |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(def ^:private ^:const classify-databases-job-key     "metabase.task.%s-databases.job-%s")
+(def ^:private ^:const classify-databases-trigger-key "metabase.task.%s-databases.trigger-%s")
+
 
 (defn- db-task-names
   "makes DB task and trigger names based on DB id."
@@ -139,6 +140,8 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                       TASK INIT                                                        |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defonce ^:private classify-databases-job (atom nil))
 
 (defn task-init
   "classify called during startup; start the job for classify databases."

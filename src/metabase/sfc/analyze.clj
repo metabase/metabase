@@ -85,7 +85,7 @@
                                (reduce +))
                           field-values-count))))))
 
-(defn field-fingerprint [driver table field]
+(defn- field-fingerprint [driver table field]
   (let [values      (->> (driver/field-values-lazy-seq driver field)
                          (take driver/max-sync-lazy-seq-results))
         field-id    (:id field)
@@ -98,7 +98,7 @@
                      :field_percent_email (percent-email values)
                      :field_avg_length    (field-avg-length values)
                      :field_id            field-id
-                     :table_id            (:id table)
+                     :table_id            (u/get-id table)
                      :name                (:name field)
                      :qualified_name      (field/qualified-name field)
                      :visibility_type     (:visibility_type field)}]
