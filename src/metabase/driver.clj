@@ -184,7 +184,7 @@
          (fn [query]
            (qp query)))")
 
-  (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
+  (^{:style/indent 2} sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
      operation itself is encapsulated as the lambda F, which must be called with no arguments.
 

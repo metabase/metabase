@@ -14,7 +14,7 @@
              [table-fingerprint :refer [TableFingerprint]]]
             [metabase.sfc
              [interface :as i]
-             [util :as sync-util]]
+             [util :as sfc-util]]
             [metabase.sfc.classify.infer-special-type :as infer-special-type]
             [schema.core :as schema]
             [toucan.db :as db]))
@@ -189,9 +189,9 @@
   "classify and save all previously saved fingerprints for tables in this database"
   [{database-id :id, :as database}]
   (let [driver (driver/database-id->driver database-id)]
-    (sync-util/with-start-and-finish-logging (format "Classify %s database '%s'" (name driver) (:name database))
-      (let [tables (sync-util/db->sfc-tables database-id)]
-        (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+    (sfc-util/with-start-and-finish-logging (format "Classify %s database '%s'" (name driver) (:name database))
+      (let [tables (sfc-util/db->sfc-tables database-id)]
+        (sfc-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
           (doseq [{table-name :name, :as table} tables]
             (try
               (classify-table! table)

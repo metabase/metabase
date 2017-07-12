@@ -12,7 +12,7 @@
              [raw-table :refer [RawTable]]]
             [metabase.sfc
              [interface :as i]
-             [util :as sync-util]]
+             [util :as sfc-util]]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -146,7 +146,7 @@
 (defn- introspect-tables!
   "Introspect each table and save off the schema details we find."
   [driver database tables existing-tables]
-  (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+  (sfc-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
     (doseq [{table-schema :schema, table-name :name, :as table-def} tables]
       (try
         (let [table-def (if (contains? (driver/features driver) :dynamic-schema)
@@ -201,7 +201,7 @@
   "Introspect a `Database` and persist the results as `RawTables` and `RawColumns`.
    Uses the various `describe-*` functions on the IDriver protocol to gather information."
   [driver database]
-  (sync-util/with-start-and-finish-logging (format "Introspect schema on %s database '%s'" (name driver) (:name database))
+  (sfc-util/with-start-and-finish-logging (format "Introspect schema on %s database '%s'" (name driver) (:name database))
     (let [tables             (db->tables driver database)
           name+schema->table (db->name+schema->table database)]
       (introspect-tables! driver database tables name+schema->table)

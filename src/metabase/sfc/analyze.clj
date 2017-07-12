@@ -13,7 +13,7 @@
              [field-fingerprint :refer [FieldFingerprint]]
              [table :as table]
              [table-fingerprint :refer [TableFingerprint]]]
-            [metabase.sfc.util :as sync-util]
+            [metabase.sfc.util :as sfc-util]
             [toucan.db :as db]))
 
 (defn- table-row-count
@@ -151,9 +151,9 @@
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
   [{database-id :id, :as database}]
   (let [driver (driver/database-id->driver database-id)]
-    (sync-util/with-start-and-finish-logging (format "Analyze data in %s database '%s'" (name driver) (:name database))
-      (let [tables (sync-util/db->sfc-tables database-id)]
-        (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+    (sfc-util/with-start-and-finish-logging (format "Analyze data in %s database '%s'" (name driver) (:name database))
+      (let [tables (sfc-util/db->sfc-tables database-id)]
+        (sfc-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
           (doseq [{table-name :name, :as table} tables]
             (try
               (analyze-table-data-shape! driver table)

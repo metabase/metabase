@@ -10,15 +10,15 @@
             [metabase.sfc
              [analyze :as analyze]
              [introspect :as introspect]
-             [util :as sync-util]]
+             [util :as sfc-util]]
             [metabase.sfc.introspect.sync :as introspect-sync]
             [metabase.sfc.sync.dynamic :as sync-dynamic]))
 
 ;;; ------------------------------------------------------------ Sync Table ------------------------------------------------------------
 
 (defn- -sync-table! [driver database table full-sync?]
-  (sync-util/with-start-and-finish-logging (format "Sync table '%s' from %s database '%s'..." (:display_name table) (name driver) (:name database))
-    (sync-util/with-logging-disabled
+  (sfc-util/with-start-and-finish-logging (format "Sync table '%s' from %s database '%s'..." (:display_name table) (name driver) (:name database))
+    (sfc-util/with-logging-disabled
       ;; if the Table has a RawTable backing it then do an introspection and sync
       (when-let [raw-table (raw-table/RawTable (:raw_table_id table))]
         (introspect/introspect-raw-table-and-update! driver database raw-table)
@@ -37,7 +37,7 @@
    then we default to using the `:is_full_sync` attribute of the tables parent database."
   [table & {:keys [full-sync?]}]
   {:pre [(map? table)]}
-  (sync-util/with-logging-disabled
+  (sfc-util/with-logging-disabled
     (let [database   (table/database table)
           db-driver  (driver/engine->driver (:engine database))
           full-sync? (if-not (nil? full-sync?)
@@ -49,9 +49,9 @@
 ;;; ------------------------------------------------------------ Sync Database ------------------------------------------------------------
 
 (defn- -sync-database! [driver database full-sync?]
-  (sync-util/with-start-and-finish-logging (format "Sync %s database '%s'..." (name driver) (:name database))
-    (sync-util/with-sfc-events :database-sync (u/get-id database)
-      (sync-util/with-logging-disabled
+  (sfc-util/with-start-and-finish-logging (format "Sync %s database '%s'..." (name driver) (:name database))
+    (sfc-util/with-sfc-events :database-sync (u/get-id database)
+      (sfc-util/with-logging-disabled
         ;; start with capturing a full introspection of the database
         (introspect/introspect-database-and-update-raw-tables! driver database)
         ;; use the introspected schema information and update our working data models
@@ -70,8 +70,8 @@
   [{database-id :id, :as database} & {:keys [full-sync?]}]
   {:pre [(map? database)]}
   ;; if this database is already being synced then bail now
-  (sync-util/with-duplicate-ops-prevented :sync database-id
-    (sync-util/with-logging-disabled
+  (sfc-util/with-duplicate-ops-prevented :sync database-id
+    (sfc-util/with-logging-disabled
       (let [db-driver  (driver/database-id->driver database-id)
             full-sync? (if-not (nil? full-sync?)
                          full-sync?

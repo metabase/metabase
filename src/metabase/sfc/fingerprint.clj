@@ -12,7 +12,7 @@
             [metabase.sfc
              [classify :as classify]
              [interface :as i]
-             [util :as sync-util]]
+             [util :as sfc-util]]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -100,9 +100,9 @@
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting."
   [{database-id :id, :as database}]
   (let [driver (driver/database-id->driver database-id)]
-    (sync-util/with-start-and-finish-logging (format "Cache field values for %s database '%s'" (name driver) (:name database))
-      (let [tables (sync-util/db->sfc-tables database)]
-        (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+    (sfc-util/with-start-and-finish-logging (format "Cache field values for %s database '%s'" (name driver) (:name database))
+      (let [tables (sfc-util/db->sfc-tables database)]
+        (sfc-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
           (doseq [{table-name :name, :as table} tables]
             (try
               (cache-table-data-shape! driver table)
@@ -110,3 +110,23 @@
                 (log/error "Unexpected error caching field values for table" t))
               (finally
                 (log/info (u/format-color 'blue "%s Caching Field Values for table '%s'." (emoji-progress-bar) table-name))))))))))
+
+
+;;; ------------------------------------------------------------ Mystery Functions ------------------------------------------------------------
+
+;; These functions are used by the `SyncDatabase` task. But it's not really clear what the difference is between these and the functions they call.
+;; They're also *not* Sync operations, which makes things CONFUSING
+
+(defn- cache-database-with-tracking! [database]
+  (sfc-util/with-sfc-events :database-analysis (u/get-id database)
+    (sfc-util/with-logging-disabled
+      (cache-field-values-for-database! database))))
+
+(defn cache-database-field-values!
+  "Analyze DATABASE and all its Tables and Fields."
+  [{database-id :id, :as database} & {:keys [full-sync?]}]
+  {:pre [(map? database)]}
+  (sfc-util/with-duplicate-ops-prevented :cache database-id
+    (sfc-util/with-logging-disabled
+      (driver/sync-in-context (driver/engine->driver (:engine database)) database
+        (partial cache-database-with-tracking! database)))))

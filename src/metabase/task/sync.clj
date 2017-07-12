@@ -6,7 +6,6 @@
              [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [metabase
-             [cache-database :as cache-database]
              [task :as task]
              [util :as u]]
             [metabase.models.database :refer [Database]]
@@ -54,7 +53,7 @@
         database (Database db-id)]
     (try
       (log/debug (u/format-color 'green "running scheduled caching of field values for database-id: %s: %s" db-id database))
-      (cache-database/cache-database-field-values! database :full-sync? true)
+      (fingerprint/cache-database-field-values! database :full-sync? true)
       (catch Throwable e
         (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
 

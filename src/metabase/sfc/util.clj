@@ -68,6 +68,7 @@
 (defn do-with-duplicate-ops-prevented
   "Implementation for `with-duplicate-ops-prevented`; prefer that instead."
   [operation database-id f]
+  (println "Current operations:" @operation->db-ids) ; NOCOMMIT
   (when-not (contains? (@operation->db-ids operation) database-id)
     (try
       ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)

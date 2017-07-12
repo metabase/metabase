@@ -41,6 +41,5 @@
                               (render-file 1)
                               (resolve-private-vars 1)
                               (select 1)
-                              (sync-in-context 2)
                               (when-testing-engine 1)
                               (with-redefs-fn 1)))))))
