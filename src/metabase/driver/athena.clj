@@ -121,6 +121,7 @@
                                   tables))))
                     flatten
                     set)]
+    (println "DEBUG::describe-database: " tables)
     {:tables tables}))
 
 (defn- describe-table-fields
@@ -180,7 +181,7 @@
      :day-of-week (hx/->integer (date-format "%w"
                                              (hx/+ expr
                                                    (hsql/raw "interval '1' day"))))
-     :day-of-month (hx/->integer (date-format "%d" expr)); (hsql/call :dayofmonth expr)
+     :day-of-month (hx/->integer (date-format "%d" expr))
      :day-of-year (hx/->integer (date-format "%j" expr))
      :week (hsql/call :date_sub
                       (hx/+ expr
@@ -324,6 +325,7 @@
           :active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"default"})
           :quote-style               (constantly :ansi)
