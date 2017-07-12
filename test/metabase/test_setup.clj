@@ -29,12 +29,12 @@
 (defn- format-failure [e a str-e str-a]
   {:type             :fail
    :expected-message (when-let [in-e (first (clojure.data/diff e a))]
-                       (format "\nin expected, not actual:\n%s" (u/pprint-to-str 'green in-e)))
+                       (format "\nin expected, not actual:\n%s" (u/pprint-to-str 'cyan in-e)))
    :actual-message   (when-let [in-a (first (clojure.data/diff a e))]
                        (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
    :raw              [str-e str-a]
    :result           ["\nexpected:\n"
-                      (u/pprint-to-str 'green e)
+                      (u/pprint-to-str 'cyan e)
                       "\nwas:\n"
                       (u/pprint-to-str 'red a)]})
 
@@ -99,3 +99,31 @@
   []
   (log/info "Shutting down Metabase unit test runner")
   (core/stop-jetty!))
+
+;; NOCOMMIT
+(def current-test-name (atom nil))
+(defonce my-redef
+  (do (let [orig-fn @#'expectations/test-name]
+        (intern 'expectations 'test-name
+                (fn [metta]
+                  (u/prog1 (orig-fn metta)
+                    (reset! current-test-name <>)
+                    (println "Now we're going to run:" <>)))))
+      :ok))
+
+(defn in-context
+  {:expectations-options :in-context}
+  [f]
+  (u/prog1 (deref (future (f))
+                  (* 15 1000)
+                  ::timeout)
+    (when (= ::timeout <>)
+      (println (format "Test %s timed out after 15 seconds." @current-test-name))
+      (println "STACKTRACES:")
+      (doseq [[^Thread thread, stacktrace] (Thread/getAllStackTraces)]
+        (when (seq stacktrace)
+          (println (u/pprint-to-str 'blue (cons (.getName thread) stacktrace)))))
+      #_(doseq [[^Thread thread, stacktrace] (Thread/getAllStackTraces)]
+          (when-let [filtered-stacktrace (seq (u/filtered-stacktrace stacktrace))]
+            (println (u/pprint-to-str 'blue (cons (.getName thread) filtered-stacktrace)))))
+      (System/exit -1))))

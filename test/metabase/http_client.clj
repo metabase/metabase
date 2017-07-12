@@ -98,12 +98,11 @@
         (log/error (u/pprint-to-str 'red body))
         (throw (ex-info message {:status-code actual-status-code}))))))
 
-(defn- method->request-fn [method]
-  (case method
-    :get    client/get
-    :post   client/post
-    :put    client/put
-    :delete client/delete))
+(def ^:private method->request-fn
+  {:get    client/get
+   :post   client/post
+   :put    client/put
+   :delete client/delete})
 
 (defn- -client [credentials method expected-status url http-body url-param-kwargs request-options]
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -118,8 +117,9 @@
         request-fn  (method->request-fn method)
         url         (build-url url url-param-kwargs)
         method-name (s/upper-case (name method))
+        _           (println "DOING API REQUEST:" url) ; NOCOMMIT
         ;; Now perform the HTTP request
-        {:keys [status body]} (try (request-fn url request-map)
+        {:keys [status body]} (try (request-fn url request-map)         ;; <---------- THIS IS WHERE IT KEEPS HANGING </3
                                    (catch clojure.lang.ExceptionInfo e
                                      (log/debug method-name url)
                                      (:object (ex-data e))))]

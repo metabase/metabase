@@ -14,7 +14,7 @@
 
 ;; fields with detected names should get values cached
 (expect
-  {:values       [1 2 3 4]}
+  {:values [1 2 3 4]}
   (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [1 2 3 4])}
     #(#'fingerprint/extract-field-values {:base_type :type/Text :name "type"})))
 

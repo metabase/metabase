@@ -407,6 +407,7 @@
           ;; the output channel will be closed by the adapter when the incoming connection is closed.
           (future
             (loop []
+              (println "(Thread/sleep streaming-response-keep-alive-interval-ms)") ; NOCOMMIT
               (Thread/sleep streaming-response-keep-alive-interval-ms)
               (when-not (realized? response)
                 (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))

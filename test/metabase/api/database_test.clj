@@ -102,14 +102,14 @@
   (merge default-db-details
          sync-schedules
          (match-$ db
-           {:created_at         $
-            :engine             :postgres
-            :is_full_sync       false
-            :id                 $
-            :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-            :updated_at         $
-            :name               $
-            :features           (driver/features (driver/engine->driver :postgres))}))
+           {:created_at   $
+            :engine       :postgres
+            :is_full_sync false
+            :id           $
+            :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+            :updated_at   $
+            :name         $
+            :features     (driver/features (driver/engine->driver :postgres))}))
   (Database (:id db)))
 
 
@@ -134,11 +134,6 @@
       (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
               :features)))
 
-:description             nil
-                               :entity_type             nil
-                               :caveats                 nil
-                               :points_of_interest      nil
-                               :visibility_type         nil
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil

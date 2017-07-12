@@ -583,6 +583,11 @@
   IFilteredStacktrace {:filtered-stacktrace (fn [^Throwable this]
                                               (filtered-stacktrace (.getStackTrace this)))})
 
+(extend Thread
+  IFilteredStacktrace {:filtered-stacktrace (fn [^Thread this]
+                                              (filtered-stacktrace (.getStackTrace this)))})
+
+;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
 (extend (Class/forName "[Ljava.lang.StackTraceElement;")
   IFilteredStacktrace {:filtered-stacktrace (fn [this]
                                               (vec (for [frame this
