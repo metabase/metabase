@@ -43,12 +43,12 @@
 (defn- process-create-update-event
   "clean up sync schedules when a database is deleted"
   [create-database-event]
-  (process-event-with-database schedule-sync/schedule-db-sync-actions "create/update" create-database-event))
+  (process-event-with-database schedule-sync/schedule-db-sync-actions! "create/update" create-database-event))
 
 (defn- process-delete-event
   "clean up sync schedules when a database is deleted"
   [delete-database-event]
-  (process-event-with-database schedule-sync/unschedule-all-tasks-for-db "delete" delete-database-event))
+  (process-event-with-database schedule-sync/unschedule-all-tasks-for-db! "delete" delete-database-event))
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
