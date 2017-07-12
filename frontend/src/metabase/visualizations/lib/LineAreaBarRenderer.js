@@ -861,6 +861,18 @@ function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMa
     }
 }
 
+export function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
+    const column = cols[i];
+
+    if (column.remapping && column.remapping.size > 0) {
+        // We have remapped values, so check their type for determining whether the dimension is numeric
+        // ES6 Map makes the lookup of first value a little verbose
+        return typeof column.remapping.values().next().value === "string";
+    } else {
+        return false
+    }
+}
+
 type LineAreaBarProps = VisualizationProps & {
     chartType: "line" | "area" | "bar" | "scatter",
     isScalarSeries: boolean,
@@ -889,7 +901,6 @@ export default function lineAreaBar(element: Element, {
     const isMultiCardSeries = series.length > 1 &&
         getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
 
-    const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card));
 
     // find the first nonempty single series
     // $FlowFixMe
@@ -897,6 +908,9 @@ export default function lineAreaBar(element: Element, {
 
     const isDimensionTimeseries = dimensionIsTimeseries(firstSeries.data);
     const isDimensionNumeric = dimensionIsNumeric(firstSeries.data);
+    const isRemappedToString = hasRemappingAndValuesAreStrings(firstSeries.data);
+
+    const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card) && !isRemappedToString);
 
     if (firstSeries.data.cols.length < 2) {
         throw new Error("This chart type requires at least 2 columns.");

@@ -13,9 +13,9 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { getVisualizationTransformed } from "metabase/visualizations";
+import { getVisualizationTransformed, extractRemappings } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
-import { extractRemappings, isSameSeries } from "metabase/visualizations/lib/utils";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
