@@ -57,7 +57,7 @@
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (fn [& _]
                                           @db-connection-details)
-          :default-schema               (:schema @db-connection-details)
+          :default-schema               (constantly (:schema @db-connection-details))
           :engine                       (constantly :athena)}))
 
 
