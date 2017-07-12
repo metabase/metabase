@@ -59,7 +59,7 @@
 ;;
 ;;     return " ".join(reversed(out))
 (defn infer-spaces
-  "Splits a string with no spaces into words using magic"
+  "Splits a string with no spaces into words using magic" ; what a great explanation. TODO - make this code readable
   [input]
   (let [s (s/lower-case input)
         cost (build-cost-array s)]

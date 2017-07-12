@@ -570,15 +570,29 @@
              (s/join (repeat blanks "·"))
              (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
 
-(defn filtered-stacktrace
-  "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
-  [^Throwable e]
-  (when e
-    (when-let [stacktrace (.getStackTrace e)]
-      (vec (for [frame stacktrace
-                 :let  [s (str frame)]
-                 :when (re-find #"metabase" s)]
-             (s/replace s #"^metabase\." ""))))))
+
+(defprotocol ^:private IFilteredStacktrace
+  (filtered-stacktrace [this]
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
+
+(extend nil
+  IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
+
+(extend Throwable
+  IFilteredStacktrace {:filtered-stacktrace (fn [^Throwable this]
+                                              (filtered-stacktrace (.getStackTrace this)))})
+
+(extend Thread
+  IFilteredStacktrace {:filtered-stacktrace (fn [^Thread this]
+                                              (filtered-stacktrace (.getStackTrace this)))})
+
+;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
+(extend (Class/forName "[Ljava.lang.StackTraceElement;")
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (vec (for [frame this
+                                                         :let  [s (str frame)]
+                                                         :when (re-find #"metabase" s)]
+                                                     (s/replace s #"^metabase\." ""))))})
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
