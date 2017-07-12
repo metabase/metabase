@@ -177,13 +177,15 @@
 (defn- pre-insert [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
-    (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
+    (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))
+    (log/debug (u/format-color 'green (u/pprint-to-str (u/filtered-stacktrace (.getStackTrace (Thread/currentThread)))))))) ; NOCOMMIT
 
 (defn- pre-update [_]
   (throw (Exception. "You cannot update a permissions entry! Delete it and create a new one.")))
 
 (defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
+  (log/debug (u/format-color 'red (u/pprint-to-str (u/filtered-stacktrace (.getStackTrace (Thread/currentThread)))))) ; NOCOMMIT
   (assert-not-admin-group permissions))
 
 
@@ -339,7 +341,6 @@
    (grant-permissions! group-or-id (apply object-path db-id schema more)))
   ([group-or-id path]
    (try
-     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (u/get-id group-or-id) path))
      (db/insert! Permissions
        :group_id (u/get-id group-or-id)
        :object   path)
