@@ -3,6 +3,9 @@
    those fields should be given."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.models
              [field :as field]
              [field-fingerprint :refer [FieldFingerprint]]
@@ -13,7 +16,6 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.sfc.classify.infer-special-type :as infer-special-type]
-            [metabase.util :as u]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -186,13 +188,14 @@
 (defn classify-database!
   "classify and save all previously saved fingerprints for tables in this database"
   [{database-id :id, :as database}]
-  (sync-util/with-start-and-finish-logging (format "Classify %s database '%s'" (:name database))
-    (let [tables (sync-util/db->sfc-tables database-id)]
-      (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
-        (doseq [{table-name :name, :as table} tables]
-          (try
-            (classify-table! table)
-            (catch Throwable t
-              (log/error "Unexpected error classifying table" t))
-            (finally
-              (log/info (u/format-color 'blue "%s Classified table '%s'." (emoji-progress-bar) table-name)))))))))
+  (let [driver (driver/database-id->driver database-id)]
+    (sync-util/with-start-and-finish-logging (format "Classify %s database '%s'" (name driver) (:name database))
+      (let [tables (sync-util/db->sfc-tables database-id)]
+        (sync-util/with-emoji-progress-bar [emoji-progress-bar (count tables)]
+          (doseq [{table-name :name, :as table} tables]
+            (try
+              (classify-table! table)
+              (catch Throwable t
+                (log/error "Unexpected error classifying table" t))
+              (finally
+                (log/info (u/format-color 'blue "%s Classified table '%s'." (emoji-progress-bar) table-name))))))))))

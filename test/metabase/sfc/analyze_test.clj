@@ -73,9 +73,9 @@
 
 ;; Tests to avoid analyzing hidden tables
 (defn- unanalyzed-fields-count [table]
-  (assert (pos? ;; don't let ourselves be fooled if the test passes because the table is
-           ;; totally broken or has no fields. Make sure we actually test something
-           (db/count Field :table_id (u/get-id table))))
+  ;; don't let ourselves be fooled if the test passes because the table is
+  ;; totally broken or has no fields. Make sure we actually test something
+  (assert (pos? (db/count Field :table_id (u/get-id table))))
   (db/count Field :last_analyzed nil, :table_id (u/get-id table)))
 
 (defn- latest-sync-time [table]
@@ -85,7 +85,7 @@
     {:order-by [[:last_analyzed :desc]]}))
 
 (defn- set-table-visibility-type! [table visibility-type]
-  ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+  ((user->client :crowberto) :put 200 (format "table/%d" (u/get-id table)) {:display_name    "hiddentable"
                                                                        :entity_type     "person"
                                                                        :visibility_type visibility-type
                                                                        :description     "What a nice table!"}))
@@ -101,7 +101,7 @@
 (expect
   1
   (tt/with-temp* [Table [table {:rows 15}]
-                  Field [field {:table_id (:id table)}]]
+                  Field [field {:table_id (u/get-id table)}]]
     (set-table-visibility-type! table "hidden")
     (api-sync! table)
     (set-table-visibility-type! table "cruft")
@@ -118,7 +118,7 @@
 (expect
   1
   (tt/with-temp* [Table [table {:rows 15}]
-                  Field [field {:table_id (:id table)}]]
+                  Field [field {:table_id (u/get-id table)}]]
     (set-table-visibility-type! table "hidden")
     (analyze! table)
     (set-table-visibility-type! table "cruft")
@@ -134,8 +134,8 @@
 ;; un-hiding a table should cause it to be analyzed
 (expect
   0
-  (tt/with-temp* [Table [table {:rows 15}]
-                  Field [field {:table_id (:id table)}]]
+  (tt/with-temp* [Table [table {:name "VENUES", :rows 15}]
+                  Field [field {:name "NAME", :table_id (u/get-id table)}]]
     (set-table-visibility-type! table "hidden")
     (set-table-visibility-type! table nil)
     (unanalyzed-fields-count table)))
@@ -143,8 +143,8 @@
 ;; re-hiding a table should not cause it to be analyzed
 (expect
   ;; create an initially hidden table
-  (tt/with-temp* [Table [table {:rows 15, :visibility_type "hidden"}]
-                  Field [field {:table_id (:id table)}]]
+  (tt/with-temp* [Table [table {:name "VENUES", :rows 15, :visibility_type "hidden"}]
+                  Field [field {:name "NAME", :table_id (u/get-id table)}]]
     ;; switch the table to visible (triggering a sync) and get the last sync time
     (let [last-sync-time (do (set-table-visibility-type! table nil)
                              (latest-sync-time table))]

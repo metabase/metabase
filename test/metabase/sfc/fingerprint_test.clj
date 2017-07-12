@@ -20,9 +20,9 @@
 
 ;; unless they have really large values that would be unreasonable to display
 (expect
-  {}
+  nil
   (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])}
-    #(#'fingerprint/extract-field-values {:base_type :type/Text :name "type"})))
+    #(#'fingerprint/extract-field-values {:base_type :type/Text, :name "type"})))
 
 (def ^:private venues-table (delay (Table (id :venues))))
 
