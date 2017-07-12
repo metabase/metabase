@@ -4,7 +4,8 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
-             [sync-database :as sync-database]
+             [driver :as driver]
+             [sfc :as sfc]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
@@ -68,15 +69,17 @@
                      :entity_type             entity_type
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
-    (let [updated-table (Table id)
-          new-visibility (visible-state? (:visibility_type updated-table))
-          old-visibility (visible-state? original-visibility-type)
-          visibility-changed? (and (not= new-visibility
-                                         old-visibility)
-                                   (= :show new-visibility))]
-      (when visibility-changed?
-        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
-        (sync-database/sync-table! updated-table))
+    (let [updated-table      (Table id)
+          driver             (driver/database-id->driver (:db_id updated-table))
+          new-visibility     (visible-state? (:visibility_type updated-table))
+          old-visibility     (visible-state? original-visibility-type)
+          table-now-visible? (and (not= new-visibility
+                                        old-visibility)
+                                  (= :show new-visibility))]
+      (println "table-now-visible?:" table-now-visible?) ; NOCOMMIT
+      (when table-now-visible?
+        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type table-now-visible?)
+        (sfc/sync-fingerprint-classify-table! updated-table))
       updated-table)))
 
 

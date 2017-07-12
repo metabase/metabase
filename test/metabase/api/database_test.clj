@@ -22,6 +22,12 @@
 
 ;; HELPER FNS
 
+(def ^:private sync-schedules
+  {:sync_schedule               "0 00 * * * ? *"
+   :cache_field_values_schedule "1 10 * * * ? *"
+   :analyze_schedule            "2 30 * * * ? *"
+   :classify_schedule           "3 50 * * * ? *"})
+
 (defn- create-db-via-api! [options]
   ((user->client :crowberto) :post 200 "database" (merge {:engine       :postgres
                                                           :name         (tu/random-name)
@@ -68,6 +74,7 @@
    (db-details (db)))
   ([db]
    (merge default-db-details
+          sync-schedules
           (match-$ db
             {:created_at $
              :id         $
@@ -93,15 +100,16 @@
 ;; Check that we can create a Database
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (merge default-db-details
+         sync-schedules
          (match-$ db
-           {:created_at         $
-            :engine             :postgres
-            :is_full_sync       false
-            :id                 $
-            :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-            :updated_at         $
-            :name               $
-            :features           (driver/features (driver/engine->driver :postgres))}))
+           {:created_at   $
+            :engine       :postgres
+            :is_full_sync false
+            :id           $
+            :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+            :updated_at   $
+            :name         $
+            :features     (driver/features (driver/engine->driver :postgres))}))
   (Database (:id db)))
 
 
@@ -180,6 +188,7 @@
   (set (filter identity (conj (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
                                   (merge default-db-details
+                                         sync-schedules
                                          (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
                                            {:created_at         $
                                             :engine             (name $engine)
@@ -189,6 +198,7 @@
                                             :native_permissions "write"
                                             :features           (map name (driver/features (driver/engine->driver engine)))}))))
                               (merge default-db-details
+                                     sync-schedules
                                      (match-$ (Database db-id)
                                        {:created_at         $
                                         :engine             "postgres"
@@ -206,6 +216,7 @@
 ;; GET /api/databases (include tables)
 (expect-with-temp-db-created-via-api [{db-id :id}]
   (set (cons (merge default-db-details
+                    sync-schedules
                     (match-$ (Database db-id)
                       {:created_at         $
                        :engine             "postgres"
@@ -219,6 +230,7 @@
                                 (datasets/when-testing-engine engine
                                   (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
                                     (merge default-db-details
+                                           sync-schedules
                                            (match-$ database
                                              {:created_at         $
                                               :engine             (name $engine)
@@ -247,6 +259,7 @@
 ;; TODO - add in example with Field :values
 (expect
   (merge default-db-details
+         sync-schedules
          (match-$ (db)
            {:created_at $
             :engine     "h2"

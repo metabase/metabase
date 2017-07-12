@@ -1,14 +1,13 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
-            [metabase
-             [sync-database :as sync-db]
-             [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
+            [metabase.sfc.sync :as sync]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import metabase.driver.mysql.MySQLDriver))
@@ -67,5 +66,5 @@
     (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]
-      (sync-db/sync-database! db)
+      (sync/sync-database! db)
       (db->fields db))))

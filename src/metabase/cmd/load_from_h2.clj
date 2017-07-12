@@ -36,6 +36,7 @@
              [database :refer [Database]]
              [dependency :refer [Dependency]]
              [field :refer [Field]]
+             [field-fingerprint :refer [FieldFingerprint]]
              [field-values :refer [FieldValues]]
              [label :refer [Label]]
              [metric :refer [Metric]]
@@ -55,6 +56,7 @@
              [session :refer [Session]]
              [setting :refer [Setting]]
              [table :refer [Table]]
+             [table-fingerprint :refer [TableFingerprint]]
              [user :refer [User]]
              [view-log :refer [ViewLog]]]))
 
@@ -100,6 +102,8 @@
    Collection
    CollectionRevision
    DashboardFavorite
+   FieldFingerprint
+   TableFingerprint
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

@@ -1,4 +1,7 @@
-(ns metabase.sync-database.sync
+(ns ^:deprecated metabase.sfc.introspect.sync
+  "Logic for copying over the RawTable and RawColumn information to corresponding Tables and Fields.
+   Most of this namespace will eventually be scrapped when we get rid of the RawTable and RawColumn models.
+   Other parts, such as `sync-metabase-metadata-table!`, don't belong here, and will be moved to some other `sync` namespace in the near future."
   (:require [clojure
              [set :as set]
              [string :as s]]
