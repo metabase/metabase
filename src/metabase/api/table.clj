@@ -76,7 +76,6 @@
           table-now-visible? (and (not= new-visibility
                                         old-visibility)
                                   (= :show new-visibility))]
-      (println "table-now-visible?:" table-now-visible?) ; NOCOMMIT
       (when table-now-visible?
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type table-now-visible?)
         (sfc/sync-fingerprint-classify-table! updated-table))

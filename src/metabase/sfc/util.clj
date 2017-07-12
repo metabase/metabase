@@ -68,19 +68,15 @@
 (defn do-with-duplicate-ops-prevented
   "Implementation for `with-duplicate-ops-prevented`; prefer that instead."
   [operation database-id f]
-  (println "@operation->db-ids [precheck]:" @operation->db-ids) ; NOCOMMIT
   (when-not (contains? (@operation->db-ids operation) database-id)
     (try
       ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
       (swap! operation->db-ids update operation #(conj (or % #{}) database-id))
-      (println "@operation->db-ids [during]:" @operation->db-ids) ; NOCOMMIT
       ;; do our work
       (f)
       ;; always cleanup our tracking when we are through
       (finally
-        (swap! operation->db-ids update operation #(disj % database-id))))
-      (println "@operation->db-ids [after]:" @operation->db-ids) ; NOCOMMIT
-    ))
+        (swap! operation->db-ids update operation #(disj % database-id))))))
 
 (defmacro with-duplicate-ops-prevented
   "Run BODY in a way that will prevent it from simultaneously being ran more for a single database more than once for a given OPERATION.
