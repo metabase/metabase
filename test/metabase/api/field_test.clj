@@ -88,25 +88,28 @@
 ;; ## PUT /api/field/:id
 
 (defn- simple-field-details [field]
-  (select-keys field [:name :display_name :description :visibility_type :special_type]))
+  (select-keys field [:name :display_name :description :visibility_type :special_type :fk_target_field_id]))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
 (expect
-  [{:name            "Field Test"
-    :display_name    "Field Test"
-    :description     nil
-    :special_type    nil
-    :visibility_type :normal}
-   {:name            "Field Test"
-    :display_name    "yay"
-    :description     "foobar"
-    :special_type    :type/Name
-    :visibility_type :sensitive}
-   {:name            "Field Test"
-    :display_name    "yay"
-    :description     nil
-    :special_type    nil
-    :visibility_type :sensitive}]
+  [{:name               "Field Test"
+    :display_name       "Field Test"
+    :description        nil
+    :special_type       nil
+    :visibility_type    :normal
+    :fk_target_field_id nil}
+   {:name               "Field Test"
+    :display_name       "yay"
+    :description        "foobar"
+    :special_type       :type/Name
+    :visibility_type    :sensitive
+    :fk_target_field_id nil}
+   {:name               "Field Test"
+    :display_name       "yay"
+    :description        nil
+    :special_type       nil
+    :visibility_type    :sensitive
+    :fk_target_field_id nil}]
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [original-val (simple-field-details (Field field-id))]
       ;; set it
@@ -306,6 +309,7 @@
       [before-creation
        (tu/boolean-ids-and-timestamps new-dim)])))
 
+;; Ensure we can delete a dimension
 (expect
   [{:id true
     :created_at true
@@ -323,3 +327,71 @@
       ((user->client :crowberto) :delete 204 (format "field/%d/dimension" field-id))
       [(tu/boolean-ids-and-timestamps new-dim)
        (dimension-for-field field-id)])))
+
+;; When an FK field gets it's special_type removed, we should clear the external dimension
+(expect
+  [{:id true
+    :created_at true
+    :updated_at true
+    :type :external
+    :name "fk-remove-dimension"
+    :human_readable_field_id true
+    :field_id true}
+   []]
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"
+                                           :special_type :type/FK}]
+                  Field [{field-id-2 :id} {:name "Field Test 2"}]]
+
+    (dimension-post field-id-1 {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
+
+    (let [new-dim          (dimension-for-field field-id-1)
+          _                ((user->client :crowberto) :put 200 (format "field/%d" field-id-1) {:special_type nil})
+          dim-after-update (dimension-for-field field-id-1)]
+      [(tu/boolean-ids-and-timestamps new-dim)
+       (tu/boolean-ids-and-timestamps dim-after-update)])))
+
+;; The dimension should stay as long as the FK didn't change
+(expect
+  (repeat 2 {:id true
+             :created_at true
+             :updated_at true
+             :type :external
+             :name "fk-remove-dimension"
+             :human_readable_field_id true
+             :field_id true})
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"
+                                           :special_type :type/FK}]
+                  Field [{field-id-2 :id} {:name "Field Test 2"}]]
+
+    (dimension-post field-id-1 {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
+
+    (let [new-dim          (dimension-for-field field-id-1)
+          _                ((user->client :crowberto) :put 200 (format "field/%d" field-id-1) {:description "something diffrent"})
+          dim-after-update (dimension-for-field field-id-1)]
+      [(tu/boolean-ids-and-timestamps new-dim)
+       (tu/boolean-ids-and-timestamps dim-after-update)])))
+
+;; When removing the FK special type, the fk_target_field_id should be cleared as well
+(expect
+  [{:name               "Field Test 2",
+    :display_name       "Field Test 2",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       :type/FK,
+    :fk_target_field_id true}
+   {:name               "Field Test 2",
+    :display_name       "Field Test 2",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       nil,
+    :fk_target_field_id false}]
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
+                  Field [{field-id-2 :id} {:name               "Field Test 2"
+                                           :special_type       :type/FK
+                                           :fk_target_field_id field-id-1}]]
+
+    (let [before-change (simple-field-details (Field field-id-2))
+          _             ((user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:special_type nil})
+          after-change  (simple-field-details (Field field-id-2))]
+      [(tu/boolean-ids-and-timestamps before-change)
+       (tu/boolean-ids-and-timestamps after-change)])))
