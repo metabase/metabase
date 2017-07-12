@@ -32,7 +32,7 @@ import {
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 
-const SelectClasses = 'h3 border-dark shadowed p2 inline-block'
+const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
 const mapStateToProps = (state, props) => {
     return {
@@ -131,7 +131,7 @@ export default class FieldApp extends Component {
                                 <SectionHeader title="Visibility"
                                                description="Where this field will appear throughout Metabase"/>
                                 <FieldVisibilityPicker
-                                    className={SelectClasses}
+                                    triggerClasses={SelectClasses}
                                     // Enter the unwrapped object without cyclical structure
                                     field={{ ...field._object, table: undefined, target: undefined }}
                                     updateField={updateField}
@@ -141,7 +141,7 @@ export default class FieldApp extends Component {
                             <Section>
                                 <SectionHeader title="Type" />
                                 <SpecialTypeAndTargetPicker
-                                    className={SelectClasses}
+                                    triggerClasses={SelectClasses}
                                     // Enter the unwrapped object without cyclical structure
                                     field={{ ...field._object, table: undefined, target: undefined }}
                                     updateField={updateField}
@@ -476,7 +476,7 @@ export class FieldRemapping extends Component {
                     description="Choose to show the original value from the database, or have this field display associated or custom information."
                 />
                 <Select
-                    className={SelectClasses}
+                    triggerClasses={SelectClasses}
                     value={mappingType}
                     onChange={this.onSetMappingType}
                     options={this.getAvailableMappingTypes()}

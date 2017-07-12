@@ -119,6 +119,7 @@ export class FieldVisibilityPicker extends Component {
                 value={_.find(MetabaseCore.field_visibility_types, (type) => { return type.id === field.visibility_type })}
                 options={MetabaseCore.field_visibility_types}
                 onChange={this.onVisibilityChange}
+                triggerClasses={this.props.triggerClasses}
             />
         )
     }
@@ -178,10 +179,12 @@ export class SpecialTypeAndTargetPicker extends Component {
                     value={_.find(MetabaseCore.field_special_types, (type) => type.id === field.special_type)}
                     options={specialTypes}
                     onChange={this.onSpecialTypeChange}
+                    triggerClasses={this.props.triggerClasses}
                 />
                 { showFKTargetSelect && selectSeparator }
                 { showFKTargetSelect && <Select
                     className={cx("TableEditor-field-target", className)}
+                    triggerClasses={this.props.triggerClasses}
                     placeholder="Select a target"
                     value={field.fk_target_field_id && _.find(idfields, (idField) => idField.id === field.fk_target_field_id)}
                     options={idfields}
