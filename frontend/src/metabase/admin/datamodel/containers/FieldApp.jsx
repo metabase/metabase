@@ -73,8 +73,9 @@ export default class FieldApp extends Component {
     async componentWillMount() {
         const {databaseId, tableId, fetchTableMetadata, fetchDatabaseIdfields} = this.props;
 
-        // Only fetchTableMetadata hydrates `dimensions` and user-defined `values` in the field object
-        await fetchTableMetadata(tableId);
+        // Only fetchTableMetadata hydrates `dimension` in the field object
+        // Force reload to ensure that we are not showing stale information
+        await fetchTableMetadata(tableId, true);
 
         // TODO Atte Keinänen 7/10/17: Migrate this to redux/metadata
         await fetchDatabaseIdfields(databaseId);
