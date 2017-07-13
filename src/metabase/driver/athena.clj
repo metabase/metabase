@@ -54,8 +54,9 @@
                  distinct) ; driver can return twice the partitioning fields
             (recur
              (conj result (describe-database->clj rs))
-             (.next rs))))
+             (.next rs)))))
 
+(defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query {:keys [read-fn] :as options}]
