@@ -211,6 +211,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     // "column" may also be a field object
     // $FlowFixMe: remapping is a special field added by Visualization.jsx or getMetadata selector
     if (column && column.remapping && column.remapping.size > 0) {
+        // $FlowFixMe
         const remappedValueSample = column.remapping.values().next().value
 
         // Even if the column only has a list of analyzed values without remappings, those values
@@ -219,10 +220,10 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         if (hasSetRemappings) {
             // $FlowFixMe
             if (column.remapping.has(value)) {
+                // $FlowFixMe
                 return column.remapping.get(value);
             }
 
-            // $FlowFixMe
             const remappedValueIsString = typeof remappedValueSample
             if (remappedValueIsString) {
                 // A simple way to hide intermediate ticks for a numeral value that has been remapped to a string
