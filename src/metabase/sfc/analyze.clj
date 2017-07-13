@@ -1,5 +1,6 @@
-(ns metabase.sfc.analyze
-  "Functions which handle the in-depth data shape analysis portion of the sync process."
+(ns ^:deprecated metabase.sfc.analyze
+  "The 'Analyze' step calculates a few stats for fields, such as percent URLs and percent JSON, and saves those stats as fingerprints."
+  ;; TODO - This should be combined with the `fingerprint` namespace since the two are essentially the same concept.
   (:require [cheshire.core :as json]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
@@ -17,7 +18,7 @@
             [toucan.db :as db]))
 
 (defn- table-row-count
-  "Determine the count of rows in TABLE by running a simple structured MBQL query."
+  "Determine the count of rows in TABLE by running a simple MBQL query."
   [table]
   {:pre [(integer? (:id table))]}
   (try

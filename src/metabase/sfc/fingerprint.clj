@@ -1,5 +1,8 @@
 (ns metabase.sfc.fingerprint
-  "Functions discover and save the fields in a table."
+  "Functions discover and save the FieldValues for Fields in a Table."
+  ;; TODO - This namespace is acually named COMPLETELY wrong. This is my own (cam)'s doing, as I struggled to understand the
+  ;; PR I inherited. This should probably be called something like `metabase.sfc.fingerprint.field-values` or the like
+  ;; since under the new 'SFC' model it would be considered part of the fingerprint stage.
   (:require [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]

@@ -14,7 +14,8 @@
             [metabase.sfc
              [analyze :as analyze]
              [classify :as classify]
-             [fingerprint :as fingerprint]]
+             [fingerprint :as fingerprint]
+             [sync :as sync]]
             [toucan.db :as db]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -22,8 +23,7 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn- do-with-job-logging-and-error-handling [job-name {database-name :name, :as database} f]
-  (let [job-name    (str/upper-case (name job-name))
-        driver-name (str (name (driver/database-id->driver (u/get-id database))))]
+  (let [driver-name (str (name (driver/database-id->driver (u/get-id database))))]
     (try
       (log/debug (u/format-color 'green "Running scheduled %s for %s database '%s'" job-name driver-name database-name))
       (f)
@@ -38,26 +38,25 @@
   (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
 
 
-(jobs/defjob ClassifyDatabase [job-context]
-  (let [database (job-context->database)]
-    (with-job-logging-and-error-handling :classification database
-      (classify/classify-database! database))))
+(defmacro def-sfc-job [job-name sfc-fn & additional-args]
+  `(jobs/defjob ~job-name [job-context#]
+     (let [database# (job-context->database job-context#)]
+       (with-job-logging-and-error-handling ~(name job-name) database#
+         (~sfc-fn database# ~@additional-args)))))
 
-(jobs/defjob AnalyzeDatabase [job-context]
-  (let [database (job-context->database)]
-    (with-job-logging-and-error-handling :analysis database
-      (analyze/analyze-database! database))))
 
-(jobs/defjob CacheFieldValuesForDatabase [job-context]
-  (let [database (job-context->database)]
-    (with-job-logging-and-error-handling :fingerprint database
-      (fingerprint/cache-field-values-for-database! database))))
+;; (1) Sync: fetches the schema of a database and then saves/updates corresponding Metabase objects.
+;; TODO - I think this is supposed to be a not-full sync because `full-sync?` runs the Analyze step, which is a separate job
+(def-sfc-job SyncDatabase sync/sync-database! :full-sync false)
 
-(jobs/defjob SyncDatabase [job-context]
-  (let [database (job-context->database)]
-    ;; TODO - this is clearly WRONG
-    (with-job-logging-and-error-handling :sync database
-      (fingerprint/cache-database-field-values! database :full-sync? true))))
+;; (2) Analyze: gets stats about tables/fields and stores them as FieldFingerprint/TableFingerprint objects <--+ Due to me (@camsaul) not fully understanding the refactor PR I inherited these both
+(def-sfc-job AnalyzeDatabase analyze/analyze-database!)                                                      ; | are considered part of the 'Fingerprint' stage in SFC. That may be subject to change
+                                                                                                             ; | in the future (SFFC (Sync-Fingerprint-FieldValues-Classify)?)
+;; (3) CacheFieldValues: gets DISTINCT values for fields and records them as FieldValues                    <--+ Or perhaps not since they are fundamentally similar operations and could be combined-ish
+(def-sfc-job CacheFieldValuesForDatabase fingerprint/cache-field-values-for-database!)
+
+;; (4) Classify: Looks at the FieldFingerprints and updates special types for fields based on them.
+(def-sfc-job ClassifyDatabase classify/classify-database!)
 
 
 (def ^:private sfc-job-definitions
@@ -148,6 +147,5 @@
   "classify called during startup; start the job for classify databases."
   []
   ;; build one job and one trigger for each database.
-  (let [triggers (doseq [database (db/select Database, :is_sample false)]
-                   (schedule-db-sync-actions! database))] ;; we're building a sequence of these jobs so they can be stopped later
-    (reset! classify-databases-job triggers)))
+  (doseq [database (db/select Database, :is_sample false)]
+    (schedule-db-sync-actions! database)))
