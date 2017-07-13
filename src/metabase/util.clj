@@ -575,16 +575,26 @@
   (filtered-stacktrace [this]
     "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
 
+;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
+;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
+;; a VerifyError. Adding a layer of indirection here avoids the problem. Once we upgrade to Clojure 1.9
+;; we should be able to remove this code.
+(defn- throwable-get-stack-trace [^Throwable t]
+  (.getStackTrace t))
+
+(defn- thread-get-stack-trace [^Thread t]
+  (.getStackTrace t))
+
 (extend nil
   IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
 
 (extend Throwable
-  IFilteredStacktrace {:filtered-stacktrace (fn [^Throwable this]
-                                              (filtered-stacktrace (.getStackTrace this)))})
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
 
 (extend Thread
-  IFilteredStacktrace {:filtered-stacktrace (fn [^Thread this]
-                                              (filtered-stacktrace (.getStackTrace this)))})
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (filtered-stacktrace (thread-get-stack-trace this)))})
 
 ;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
 (extend (Class/forName "[Ljava.lang.StackTraceElement;")
