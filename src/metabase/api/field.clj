@@ -50,39 +50,29 @@
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)}
-  (try
-    (let [field              (hydrate (api/write-check Field id) :dimensions)
-          new-special-type   (get body :special_type (:special_type field))
-          removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
-          fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
+  (let [field              (hydrate (api/write-check Field id) :dimensions)
+        new-special-type   (get body :special_type (:special_type field))
+        removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
+        fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
-      ;; validate that fk_target_field_id is a valid Field
-      ;; TODO - we should also check that the Field is within the same database as our field
-      (when fk_target_field_id
-        (api/checkp (db/exists? Field :id fk_target_field_id)
-          :fk_target_field_id "Invalid target field"))
-      ;; everything checks out, now update the field
-      (api/check-500
-       (try
-         (db/transaction
-           (and
-            (if removed-fk?
-              (clear-dimension-on-fk-change! field)
-              true)
-            (db/update! Field id
-              (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk_target_field_id))
-                :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
-                :non-nil #{:display_name}))))
-         (catch Exception e
-           (println "error " (.getMessage e))
-           (.printStackTrace e)
-           (throw e))))
-      ;; return updated field
-      (Field id))
-    (catch Exception e
-      (println "ERROR!" (.getMessage e))
-      (.printStackTrace e)
-      (throw e))))
+    ;; validate that fk_target_field_id is a valid Field
+    ;; TODO - we should also check that the Field is within the same database as our field
+    (when fk-target-field-id
+      (api/checkp (db/exists? Field :id fk-target-field-id)
+        :fk_target_field_id "Invalid target field"))
+    ;; everything checks out, now update the field
+    (api/check-500
+     (db/transaction
+       (and
+        (if removed-fk?
+          (clear-dimension-on-fk-change! field)
+          true)
+        (db/update! Field id
+          (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
+            :non-nil #{:display_name})))))
+    ;; return updated field
+    (Field id)))
 
 (api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."

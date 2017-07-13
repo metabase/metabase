@@ -395,3 +395,81 @@
           after-change  (simple-field-details (Field field-id-2))]
       [(tu/boolean-ids-and-timestamps before-change)
        (tu/boolean-ids-and-timestamps after-change)])))
+
+;; Checking update of the fk_target_field_id
+(expect
+  [{:name               "Field Test 3",
+    :display_name       "Field Test 3",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       :type/FK,
+    :fk_target_field_id true}
+   {:name               "Field Test 3",
+    :display_name       "Field Test 3",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       :type/FK,
+    :fk_target_field_id true}
+   true]
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
+                  Field [{field-id-2 :id} {:name "Field Test 2"}]
+                  Field [{field-id-3 :id} {:name               "Field Test 3"
+                                           :special_type       :type/FK
+                                           :fk_target_field_id field-id-1}]]
+
+    (let [before-change (simple-field-details (Field field-id-3))
+          _             ((user->client :crowberto) :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
+          after-change  (simple-field-details (Field field-id-3))]
+      [(tu/boolean-ids-and-timestamps before-change)
+       (tu/boolean-ids-and-timestamps after-change)
+       (not= (:fk_target_field_id before-change)
+             (:fk_target_field_id after-change))])))
+
+;; Checking update of the fk_target_field_id along with an FK change
+(expect
+  [{:name               "Field Test 2",
+    :display_name       "Field Test 2",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       nil
+    :fk_target_field_id false}
+   {:name               "Field Test 2",
+    :display_name       "Field Test 2",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       :type/FK,
+    :fk_target_field_id true}]
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
+                  Field [{field-id-2 :id} {:name "Field Test 2"}]]
+
+    (let [before-change (simple-field-details (Field field-id-2))
+          _             ((user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:special_type :type/FK
+                                                                                            :fk_target_field_id field-id-1})
+          after-change  (simple-field-details (Field field-id-2))]
+      [(tu/boolean-ids-and-timestamps before-change)
+       (tu/boolean-ids-and-timestamps after-change)])))
+
+;; Checking update of the fk_target_field_id and FK remain unchanged on updates of other fields
+(expect
+  [{:name               "Field Test 2",
+    :display_name       "Field Test 2",
+    :description        nil,
+    :visibility_type    :normal,
+    :special_type       :type/FK
+    :fk_target_field_id true}
+   {:name               "Field Test 2",
+    :display_name       "Field Test 2",
+    :description        "foo",
+    :visibility_type    :normal,
+    :special_type       :type/FK,
+    :fk_target_field_id true}]
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
+                  Field [{field-id-2 :id} {:name               "Field Test 2"
+                                           :special_type       :type/FK
+                                           :fk_target_field_id field-id-1}]]
+
+    (let [before-change (simple-field-details (Field field-id-2))
+          _             ((user->client :crowberto) :put 200 (format "field/%d" field-id-2) {:description "foo"})
+          after-change  (simple-field-details (Field field-id-2))]
+      [(tu/boolean-ids-and-timestamps before-change)
+       (tu/boolean-ids-and-timestamps after-change)])))
