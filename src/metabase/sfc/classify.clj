@@ -76,7 +76,7 @@
     ;; this field isn't suited for this test
     field-stats
     ;; test for url values
-    (let [percent-urls (:field-percent-urls fingerprint)]
+    (let [percent-urls (:field_percent_urls fingerprint)]
       (if-not (and (float? percent-urls)
                    (>= percent-urls 0.0)
                    (<= percent-urls 100.0)
