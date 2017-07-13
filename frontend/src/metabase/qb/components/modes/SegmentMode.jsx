@@ -2,6 +2,7 @@
 
 import { DEFAULT_ACTIONS } from "../actions";
 import { DEFAULT_DRILLS } from "../drill";
+import XRaySegment from "../actions/XRaySegment";
 
 import SummarizeBySegmentMetricAction
     from "../actions/SummarizeBySegmentMetricAction";
@@ -18,6 +19,7 @@ const SegmentMode: QueryMode = {
     name: "segment",
     actions: [
         ...DEFAULT_ACTIONS,
+        XRaySegment,
         CommonMetricsAction,
         CountByTimeAction,
         SummarizeBySegmentMetricAction

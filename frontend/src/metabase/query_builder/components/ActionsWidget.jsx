@@ -88,7 +88,11 @@ export default class ActionsWidget extends Component {
         const action = getModeActions(mode, card, tableMetadata)[index];
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
-        } else if (action && action.card) {
+        } else if (action && action.url) {
+          const nextUrl = action.url();
+          this.props.onChangeLocation(nextUrl);
+        }
+        else if (action && action.card) {
             const nextCard = action.card();
             if (nextCard) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
