@@ -211,7 +211,7 @@ describe("FieldApp", () => {
             expect(pickerOptions.length).toBe(1);
         })
 
-        fit("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
+        it("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
@@ -230,8 +230,7 @@ describe("FieldApp", () => {
 
             const fkFieldSelect = section.find(SelectButton);
 
-            // TODO: Change the expectation to the first named field
-            expect(fkFieldSelect.text()).toBe("Title");
+            expect(fkFieldSelect.text()).toBe("Ean");
             fkFieldSelect.simulate('click');
 
             const sourceField = fkFieldSelect.parent().find(TestPopover)
@@ -246,7 +245,7 @@ describe("FieldApp", () => {
             expect(fkFieldSelect.text()).toBe("Vendor");
         })
 
-        fit("doesn't show date fields in fk options", async () => {
+        it("doesn't show date fields in fk options", async () => {
             const { fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
@@ -258,7 +257,6 @@ describe("FieldApp", () => {
             const popover = fkFieldSelect.parent().find(TestPopover);
             expect(popover.length).toBe(1);
 
-            //
             const dateFieldIcons = popover.find("svg.Icon-calendar")
             expect(dateFieldIcons.length).toBe(0);
         })
