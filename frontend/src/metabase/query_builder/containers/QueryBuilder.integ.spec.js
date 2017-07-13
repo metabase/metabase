@@ -67,6 +67,7 @@ describe("QueryBuilder", () => {
         describe("for Category field in Products table", () =>  {
             // TODO: Update the sample dataset fixture so that it recognizes Category field as Category
             // and has run a database sync so that Category field contains the expected field values
+            pending();
 
             let store = null;
             let qb = null;
