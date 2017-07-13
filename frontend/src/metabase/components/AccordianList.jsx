@@ -66,7 +66,7 @@ export default class AccordianList extends Component {
     componentDidMount() {
         // when the component is mounted and an item is selected then scroll to it
         const element = this.refs.selected && ReactDOM.findDOMNode(this.refs.selected);
-        if (element && !elementIsInView(element)) {
+        if (element && element.scrollIntoView && !elementIsInView(element)) {
             element.scrollIntoView();
         }
     }

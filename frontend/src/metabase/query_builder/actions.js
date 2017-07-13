@@ -835,18 +835,22 @@ export const removeQueryBreakout = createQueryAction(
     Query.removeBreakout,
     ["QueryBuilder", "Remove GroupBy"]
 );
+// Exported for integration tests
+export const ADD_QUERY_FILTER = "metabase/qb/ADD_QUERY_FILTER"
 export const addQueryFilter = createQueryAction(
-    "metabase/qb/ADD_QUERY_FILTER",
+    ADD_QUERY_FILTER,
     Query.addFilter,
     ["QueryBuilder", "Add Filter"]
 );
+export const UPDATE_QUERY_FILTER = "metabase/qb/UPDATE_QUERY_FILTER";
 export const updateQueryFilter = createQueryAction(
-    "metabase/qb/UPDATE_QUERY_FILTER",
+    UPDATE_QUERY_FILTER,
     Query.updateFilter,
     ["QueryBuilder", "Modify Filter"]
 );
+export const REMOVE_QUERY_FILTER = "metabase/qb/REMOVE_QUERY_FILTER";
 export const removeQueryFilter = createQueryAction(
-    "metabase/qb/REMOVE_QUERY_FILTER",
+    REMOVE_QUERY_FILTER,
     Query.removeFilter,
     ["QueryBuilder", "Remove Filter"]
 );

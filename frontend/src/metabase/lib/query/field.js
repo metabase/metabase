@@ -74,11 +74,11 @@ export function getFieldValues(field: ?Field): FieldValues {
             // TODO Atte Keinänen 7/12/17: I don't honestly know why we can have a field in `values` property.
             return getFieldValues(values);
         } else {
-            console.warn("missing field values", field);
+            console.warn("missing field values", field.name);
             return [];
         }
     } else {
-        console.warn("missing field values", field);
+        console.warn("missing field values", field.name);
         return [];
     }
 }
