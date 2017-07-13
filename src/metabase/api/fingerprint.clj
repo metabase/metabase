@@ -41,7 +41,8 @@
   (->> id
        (api/read-check Field)
        (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
-                                                        max_computation_cost)})))
+                                                        max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/table/:id"
   "Get fingerprint for a `Tield` with ID."
@@ -51,7 +52,8 @@
   (->> id
        (api/read-check Table)
        (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
-                                                        max_computation_cost)})))
+                                                        max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/segment/:id"
   "Get fingerprint for a `Segment` with ID."
@@ -61,7 +63,8 @@
   (->> id
        (api/read-check Segment)
        (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
-                                                        max_computation_cost)})))
+                                                        max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/card/:id"
   "Get fingerprint for a `Card` with ID."
@@ -71,7 +74,8 @@
   (->> id
        (api/read-check Card)
        (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
-                                                        max_computation_cost)})))
+                                                        max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/metric/:mid/field/:fid"
   "Get fingerprint for `Metric` by Field."
@@ -79,11 +83,12 @@
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost
    scale                Scale}
-  (fingerprinting/multifield-fingerprint
-   {:max-cost (max-cost max_query_cost max_computation_cost)
-    :scale    (or (keyword scale) :day)}
-   (api/read-check Field fid)
-   (api/read-check Metric mid)))
+  (fingerprinting/prettify
+   (fingerprinting/multifield-fingerprint
+    {:max-cost (max-cost max_query_cost max_computation_cost)
+     :scale    (or (keyword scale) :day)}
+    (api/read-check Field fid)
+    (api/read-check Metric mid))))
 
 (api/defendpoint GET "/fields/:id1/:id2"
   "Get a multi-field fingerprint for `Field`s with ID1 and ID2."
@@ -95,7 +100,8 @@
        (map (partial api/read-check Field))
        (apply fingerprinting/multifield-fingerprint
               {:max-cost (max-cost max_query_cost max_computation_cost)
-               :scale    (or (keyword scale) :day)})))
+               :scale    (or (keyword scale) :day)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"
   "Get comparison fingerprints for `Field`s with ID1 and ID2."
@@ -105,7 +111,8 @@
   (->> [id1 id2]
        (map (partial api/read-check Field))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost (max-cost max_query_cost max_computation_cost)})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/compare/tables/:id1/:id2"
   "Get comparison fingerprints for `Table`s with ID1 and ID2."
@@ -115,7 +122,8 @@
   (->> [id1 id2]
        (map (partial api/read-check Table))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost (max-cost max_query_cost max_computation_cost)})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/compare/cards/:id1/:id2"
   "Get comparison fingerprints for `Card`s with ID1 and ID2."
@@ -125,7 +133,8 @@
   (->> [id1 id2]
        (map (partial api/read-check Card))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost (max-cost max_query_cost max_computation_cost)})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/defendpoint GET "/compare/segments/:id1/:id2"
   "Get comparison fingerprints for `Segment`s with ID1 and ID2."
@@ -135,6 +144,7 @@
   (->> [id1 id2]
        (map (partial api/read-check Segment))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost (max-cost max_query_cost max_computation_cost)})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})
+       fingerprinting/prettify))
 
 (api/define-routes)

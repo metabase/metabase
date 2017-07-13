@@ -7,6 +7,9 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
+            [clojure
+             [set :as set]
+             [string :as s]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -27,14 +30,14 @@
 (defn histogram
   "Transducer that summarizes numerical data with a histogram."
   ([] (hist/create))
-  ([acc] acc)
-  ([acc x] (hist/insert! acc x)))
+  ([histogram] histogram)
+  ([histogram x] (hist/insert-simple! histogram x)))
 
 (defn histogram-categorical
   "Transducer that summarizes categorical data with a histogram."
   ([] (hist/create))
-  ([acc] acc)
-  ([acc x] (hist/insert-categorical! acc (when x 1) x)))
+  ([histogram] histogram)
+  ([histogram x] (hist/insert-categorical! histogram (when x 1) x)))
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
@@ -65,19 +68,33 @@
   (when (every? some? [x2 x1])
     (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
 
-(defn bins
-  "Return centers of bins and thier frequencies of a given histogram."
-  [histogram]
-  (let [bins (hist/bins histogram)]
-    (or (some->> bins first :target :counts (into {}))
-        (into {}
-          (map (juxt :mean :count))
-          bins))))
+(def ^:private ^:const ^Long pdf-sample-points 100)
 
-(defn pmf
-  "Probability mass function for given histogram."
+(defn pdf
+  "Probability density function for given histogram.
+   Obtained by sampling density at `pdf-sample-points` from the histogram."
   [histogram]
-  (m/map-vals (partial * (/ (hist/total-count histogram))) (bins histogram)))
+  (or (some->> (hist/bins histogram)
+               first
+               :target
+               :counts
+               (map (let [norm (/ (hist/total-count histogram))]
+                      (fn [[target count]]
+                        [target (* count norm)]))))
+      (let [{:keys [min max]} (hist/bounds histogram)
+            step (/ (- max min) pdf-sample-points)]
+        (transduce (take pdf-sample-points)
+                   (fn
+                     ([] {:total-count 0
+                          :densities   (transient [])})
+                     ([{:keys [total-count densities]}]
+                      (for [[x count] (persistent! densities)]
+                        [x (/ count total-count)]))
+                     ([{:keys [total-count densities]} i]
+                      (let [d (hist/density histogram i)]
+                        {:densities   (conj! densities [i d])
+                         :total-count (+ total-count d)})))
+                   (iterate (partial + step) min)))))
 
 (def ^{:arglists '([histogram])} nil-count
   "Return number of nil values histogram holds."
@@ -89,23 +106,6 @@
   (+ (hist/total-count histogram)
      (nil-count histogram)))
 
-(defn kl-divergence
-  "Kullback-Leibler divergence of discrete probability distributions `p` and `q`.
-   https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence"
-  [p q]
-  (reduce + (map (fn [pi qi]
-                   (* pi (math/log (/ pi qi))))
-                 p q)))
-
-(defn jensen-shannon-divergence
-  "Jensen-Shannon divergence of discrete probability distributions `p` and `q`.
-   Note returned is the square root of JS-divergence, so that it obeys the
-   metric laws.
-   https://en.wikipedia.org/wiki/Jensen%E2%80%93Shannon_divergence"
-  [p q]
-  (let [m (map + p q)]
-    (math/sqrt (+ (* 0.5 (kl-divergence p m)) (* 0.5 (kl-divergence q m))))))
-
 (def ^:private ^:const ^Double cardinality-error 0.01)
 
 (defn cardinality
@@ -114,12 +114,14 @@
   ([acc] (hyper-loglog/distinct-count acc))
   ([acc x] (hyper-loglog/insert acc x)))
 
-(defn binned-entropy
+(defn entropy
   "Calculate entropy of given histogram."
   [histogram]
-  (transduce (map #(* % (math/log %)))
+  (transduce (comp (map second)
+                   (remove zero?)
+                   (map #(* % (math/log %))))
              (redux/post-complete + -)
-             (vals (pmf histogram))))
+             (pdf histogram)))
 
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
@@ -165,6 +167,22 @@
    approximate."
   #(field-type %2))
 
+(defmulti prettify
+  "Make fingerprint human readable."
+  :type)
+
+(defmethod prettify :default
+  [fingerprint]
+  fingerprint)
+
+(defmulti comparison-vector
+  "Fingerprint feature vector for comparison/difference purposes."
+  :type)
+
+(defmethod comparison-vector :default
+  [fingerprtin]
+  (dissoc fingerprint :type :field :has-nils?))
+
 (defmethod fingerprinter Num
   [_ _]
   (redux/post-complete
@@ -187,7 +205,7 @@
              mean        (hist/mean histogram)
              median      (hist/median histogram)
              span        (- max min)]
-         {:histogram            (pmf histogram)
+         {:histogram            histogram
           :percentiles          (apply hist/percentiles histogram percentiles)
           :sum                  sum
           :sum-of-squares       sum-of-squares
@@ -195,7 +213,7 @@
           :%>mean               (- 1 ((hist/cdf histogram) mean))
           :cardinality-vs-count unique%
           :var>sd?              (> var sd)
-          :nil-conunt           nil-count
+          :nil%                 (/ nil-count (clojure.core/max total-count 1))
           :has-nils?            (pos? nil-count)
           :0<=x<=1?             (<= 0 min max 1)
           :-1<=x<=1?            (<= -1 min max 1)
@@ -214,16 +232,28 @@
           :kurtosis             kurtosis
           :skewness             skewness
           :all-distinct?        (>= unique% (- 1 cardinality-error))
-          :entropy              (binned-entropy histogram)
+          :entropy              (entropy histogram)
           :type                 Num})
        {:count 0
         :type  Num}))))
 
+(defmethod comparison-vector Num
+  [fingerprint]
+  (select-keys fingerprint
+               [:histogram :mean :median :min :max :sd :count :kurtosis
+                :skewness :entropy :nil% :cardinality-vs-count :span]))
+
+(defmethod prettify Num
+  [fingerprint]
+  (update fingerprint :histogram pdf))
+
 (defmethod fingerprinter [Num Num]
   [_ _]
-  (redux/fuse {:correlation       (stats/correlation first second)
-               :covariance        (stats/covariance first second)
-               :linear-regression (stats/simple-linear-regression first second)}))
+  (redux/post-complete
+   (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                :correlation       (stats/correlation first second)
+                :covariance        (stats/covariance first second)})
+   #(assoc % :type [Num Num])))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."
@@ -279,8 +309,9 @@
         [(-> x t.format/parse to-double) y]))
      (fn [{:keys [series linear-regression]}]
        (let [ys-r (->> series (map second) reverse not-empty)]
-         (merge {:series                 (for [[x y] series]
-                                           [(from-double x) y])
+         (merge {:scale                  scale
+                 :type                   [DateTime Num]
+                 :series                 series
                  :linear-regression      linear-regression
                  :seasonal-decomposition
                  (when (and (not= scale :raw)
@@ -299,23 +330,39 @@
                           :DoD-previous (growth (second ys-r) (nth ys-r 2))}
                   :raw   nil)))))))
 
-(defmethod fingerprinter [Category Any]
-  [opts [x y]]
-  (rollup (redux/pre-step (fingerprinter opts y) second) first))
+(defmethod comparison-vector [DateTime Num]
+  [fingerprint]
+  (dissoc fingerprint :type :scale :field))
+
+(defmethod prettify [DateTime Num]
+  [fingerprint]
+  (update fingerprint :series #(for [[x y] %]
+                                 [(from-double x) y])))
+
+;; This one needs way more thinking
+;;
+;; (defmethod fingerprinter [Category Any]
+;;   [opts [x y]]
+;;   (rollup (redux/pre-step (fingerprinter opts y) second) first))
 
 (defmethod fingerprinter Text
   [_ _]
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step histogram (stats/somef count))})
    (fn [{:keys [histogram]}]
-     (let [nil-count (nil-count histogram)]
+     (let [nil-count   (nil-count histogram)
+           total-count (total-count histogram)]
        {:min        (hist/minimum histogram)
         :max        (hist/maximum histogram)
-        :histogram  (pmf histogram)
-        :count      (total-count histogram)
-        :nil-conunt nil-count
+        :histogram  histogram
+        :count      total-count
+        :nil%       (/ nil-count (max total-count 1))
         :has-nils?  (pos? nil-count)
         :type       Text}))))
+
+(defmethod prettify Text
+  [fingerprint]
+  (update fingerprint :histogram pdf))
 
 (defn- quarter
   [dt]
@@ -337,22 +384,37 @@
     t.format/parse)
    (fn [{:keys [histogram histogram-hour histogram-day histogram-month
                 histogram-quarter]}]
-     (let [nil-count (nil-count histogram)]
-       {:min               (from-double (hist/minimum histogram))
-        :max               (from-double (hist/maximum histogram))
-        :histogram         (m/map-keys from-double (pmf histogram))
-        :percentiles       (m/map-vals from-double
-                                       (apply hist/percentiles histogram
-                                              percentiles))
-        :histogram-hour    (pmf histogram-hour)
-        :histogram-day     (pmf histogram-day)
-        :histogram-month   (pmf histogram-month)
-        :histogram-quarter (pmf histogram-quarter)
-        :count             (total-count histogram)
-        :nil-conunt        nil-count
+     (let [nil-count   (nil-count histogram)
+           total-count (total-count histogram)]
+       {:min               (hist/minimum histogram)
+        :max               (hist/maximum histogram)
+        :histogram         histogram
+        :percentiles       (apply hist/percentiles histogram percentiles)
+        :histogram-hour    histogram-hour
+        :histogram-day     histogram-day
+        :histogram-month   histogram-month
+        :histogram-quarter histogram-quarter
+        :count             total-count
+        :nil%              (/ nil-count (max total-count 1))
         :has-nils?         (pos? nil-count)
-        :entropy           (binned-entropy histogram)
+        :entropy           (entropy histogram)
         :type              DateTime}))))
+
+(defmethod comparison-vector DateTime
+  [fingerprint]
+  (dissoc fingerprint :type :percentiles :field :has-nils?))
+
+(defmethod prettify DateTime
+  [fingerprint]
+  (-> fingerprint
+      (update :min               from-double)
+      (update :max               from-double)
+      (update :histogram         (comp (partial m/map-keys from-double) pdf))
+      (update :percentiles       (partial m/map-vals from-double))
+      (update :hisotogram-hour   pdf)
+      (update :hisotogram-day    pdf)
+      (update :histogram-month   pdf)
+      (update :histogram-quarter pdf)))
 
 (defmethod fingerprinter Category
   [_ _]
@@ -363,15 +425,22 @@
      (let [nil-count   (nil-count histogram)
            total-count (total-count histogram)
            unique%     (/ cardinality (max total-count 1))]
-       {:histogram            (pmf histogram)
+       {:histogram            histogram
         :cardinality-vs-count unique%
-        :nil-conunt           nil-count
+        :nil%                 (/ nil-count (max total-count 1))
         :has-nils?            (pos? nil-count)
         :cardinality          cardinality
         :count                total-count
-        :all-distinct?        (>= unique% (- 1 cardinality-error))
-        :entropy              (binned-entropy histogram)
+        :entropy              (entropy histogram)
         :type                 Category}))))
+
+(defmethod comparison-vector Category
+  [fingerprint]
+  (dissoc fingerprint :type :cardinality :field :has-nils?))
+
+(defmethod prettify Category
+  [fingerprint]
+  (update fingerprint :histogram pdf))
 
 (defmethod fingerprinter :default
   [_ field]
@@ -379,24 +448,13 @@
    (redux/fuse {:total-count stats/count
                 :nil-count   (redux/with-xform stats/count (filter nil?))})
    (fn [{:keys [total-count nil-count]}]
-     {:count       total-count
-      :nil-count   nil-count
-      :has-nils?   (pos? nil-count)
-      :type        nil
-      :actual-type (field-type field)})))
+     {:count     total-count
+      :nil%      (/ nil-count (max total-count 1))
+      :has-nils? (pos? nil-count)
+      :type      [nil (field-type field)]})))
 
 (prefer-method fingerprinter Category Text)
 (prefer-method fingerprinter Num Category)
-
-(defmulti comparison-vector
-  "Fingerprint feature vector for comparison/difference purposes."
-  :type)
-
-(defmethod comparison-vector Num
-  [fingerprint]
-  (select-keys fingerprint
-               [:histogram :mean :median :min :max :sd :count :kurtosis
-                :skewness :entropy :nil-count :cardinality-vs-count :span]))
 
 (defn- fingerprint-field
   "Transduce given column with corresponding fingerprinter."
@@ -444,15 +502,15 @@
 
 (defmethod fingerprint (type Field)
   [opts field]
-  (->> (metadata/field-values field (extract-query-opts opts))
-       (fingerprint-field opts field)))
+  {:fingerprint (->> (metadata/field-values field (extract-query-opts opts))
+                     (fingerprint-field opts field))})
 
 (defmethod fingerprint (type Table)
   [opts table]
-  (fingerprint-query opts (metadata/query-values
-                           (:db_id table)
-                           (merge (extract-query-opts opts)
-                                  {:source-table (:id table)}))))
+  {:constituents (fingerprint-query opts (metadata/query-values
+                                          (:db_id table)
+                                          (merge (extract-query-opts opts)
+                                                 {:source-table (:id table)})))})
 
 (defmethod fingerprint (type Card)
   [opts card]
@@ -462,26 +520,20 @@
                                     (-> card :dataset_query :query)))
         {:keys [breakout aggregation]} (group-by :source cols)
         fields [(first breakout) (or (first aggregation) (second breakout))]]
-    {:fingerprint (fingerprint-field opts fields rows)
-     :fields      [(fingerprint-field opts (first fields) (map first rows))
-                   (fingerprint-field opts (second fields) (map second rows))]}))
+    {:constituents [(fingerprint-field opts (first fields) (map first rows))
+                    (fingerprint-field opts (second fields) (map second rows))]
+     :fingerprint  (fingerprint-field opts fields rows)}))
 
 (defmethod fingerprint (type Segment)
   [opts segment]
-  (fingerprint-query opts (metadata/query-values
-                           (metadata/db-id segment)
-                           (merge (extract-query-opts opts)
-                                  (:definition segment)))))
+  {:constituents (fingerprint-query opts (metadata/query-values
+                                          (metadata/db-id segment)
+                                          (merge (extract-query-opts opts)
+                                                 (:definition segment))))})
 
 (defmethod fingerprint (type Metric)
   [_ metric]
   {:metric metric})
-
-(defn compare-fingerprints
-  "Compare fingerprints of two models."
-  [opts a b]
-  {:models [(fingerprint opts a)
-            (fingerprint opts b)]})
 
 (defn- build-query
   [{:keys [scale] :as opts} a b]
@@ -511,15 +563,11 @@
    is aggregated. Possible values: `:month`, `week`, `:day`, `:raw`."
   [opts a b]
   (assert (= (:table_id a) (:table_id b)))
-  {:fingerprint (->> (metadata/query-values (metadata/db-id a)
+  {:fingerprint  (->> (metadata/query-values (metadata/db-id a)
                                             (build-query opts a b))
                      :rows
                      (fingerprint-field opts [a b]))
-   :fields      (map (partial fingerprint opts) [a b])})
-
-(def magnitude
-  "Transducer that claclulates magnitude (Euclidean norm) of given vector."
-  (redux/post-complete (redux/pre-step + math/sq) math/sqrt))
+   :constituents (map (partial fingerprint opts) [a b])})
 
 (defmulti difference
   "Difference between two features.
@@ -529,26 +577,109 @@
 (defmethod difference [Number Number]
   [a b]
   (cond
-    (= a b 0)         0
-    (zero? (max a b)) 1
-    :else             (- 1 (/ (- (max a b) (min a b))
-                              (max a b)))))
+    (every? zero? [a b]) 0
+    (zero? (max a b))    1
+    :else                (/ (- (max a b) (min a b))
+                            (max a b))))
 
 (defmethod difference [Boolean Boolean]
   [a b]
   (if (= a b) 0 1))
 
+(defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
+  [a b]
+  (/ (cosine-distance a b) 2))
+
+(def magnitude
+  "Transducer that claclulates magnitude (Euclidean norm) of given vector.
+   https://en.wikipedia.org/wiki/Euclidean_distance"
+  (redux/post-complete (redux/pre-step + math/sq) math/sqrt))
+
+(defn cosine-distance
+  "Cosine distance between vectors `a` and `b`.
+   https://en.wikipedia.org/wiki/Cosine_similarity"
+  [a b]
+  (- 1 (/ (reduce + (map * a b))
+          (transduce identity magnitude a)
+          (transduce identity magnitude b))))
+
+(defn chi-squared-distance
+  "Chi-squared distane between empirical probability distributions `p` and `q`.
+   https://stats.stackexchange.com/questions/184101/comparing-two-histograms-using-chi-square-distance"
+  [p q]
+  (reduce + (map (fn [pi qi]
+                   (if (zero? (+ pi qi))
+                     0
+                     (/ (math/sq (- pi qi))
+                        (+ pi qi))))
+                 p q)))
+
+(defn- unify-categories
+  "Given two PMFs add missing categories and align them so they both cover the
+   same set of categories."
+  [pmf-a pmf-b]
+  (let [categories-a (into #{} (map first) pmf-a)
+        categories-b (into #{} (map first) pmf-b)]
+    [(->> (set/difference categories-a categories-b)
+          (map #(vector % 0))
+          (concat pmf-a)
+          (sort-by first))
+     (->> (set/difference categories-b categories-a)
+          (map #(vector % 0))
+          (concat pmf-b)
+          (sort-by first))]))
+
 (defmethod difference [Histogram Histogram]
   [a b]
-  (- 1 (jensen-shannon-divergence (vals (pmf a)) (vals (pmf b)))))
+  (if (hist/target-type a)
+    (let [[pdf-a pdf-b] (unify-categories (pdf a) (pdf b))]
+      (chi-squared-distance (map second pdf-a) (map second pdf-b)))
+    ;; We are only interested in the shape, hence scale-free comparison
+    (chi-squared-distance (map second (pdf a)) (map second (pdf b)))))
+
+(defn- flatten-map
+  ([m] (flatten-map nil m))
+  ([prefix m]
+   (into {}
+     (mapcat (fn [[k v]]
+               (let [k (keyword (some-> prefix str (subs 1)) (name k))]
+                 (if (map? v)
+                   (flatten-map k v)
+                   [[k v]]))))
+     m)))
 
 (defn pairwise-differences
   "Pairwise differences of (feature) vectors `a` and `b`."
   [a b]
-  (map difference a b))
+  (into {}
+    (map (fn [[k a] [_ b]]
+           [k (difference a b)])
+         (flatten-map (comparison-vector a))
+         (flatten-map (comparison-vector b)))))
 
-(defn distance
-  "Distance metric between (feature) vectors."
+(def ^:private ^:const ^Double interestingness-thershold 0.2)
+
+(defn fingerprint-distance
+  "Distance metric between fingerprints `a` and `b`."
   [a b]
-  (/ (transduce identity magnitude (pairwise-differences a b))
-     (math/sqrt (count a))))
+  (let [differences (pairwise-differences a b)]
+    {:distance   (transduce (map val)
+                            (redux/post-complete
+                             magnitude
+                             #(/ % (math/sqrt (count differences))))
+                            differences)
+     :components (sort-by val > differences)
+     :thereshold interestingness-thershold}))
+
+(defn compare-fingerprints
+  "Compare fingerprints of two models."
+  [opts a b]
+  (assert (= (keys a) (keys b)))
+  (let [[a b] (map (partial fingerprint opts) [a b])]
+    {:constituents [a b]
+     :comparison   (into {}
+                     (map (fn [[k a] [_ b]]
+                            [k (if (sequential? a)
+                                 (map fingerprint-distance a b)
+                                 (fingerprint-distance a b))])
+                          a b))}))
