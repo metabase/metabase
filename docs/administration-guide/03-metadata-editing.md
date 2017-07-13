@@ -79,6 +79,19 @@ One thing that happens commonly in tables is that you'll have a foreign key fiel
 
 To do this in Metabase, click on the gear icon to the right of a field's Type dropdown in the Data Model section of the Admin Panel. You'll see a form with these options:
 
+![Remapping form](./images/remapping/form.png)
+
+`Visibility` and `Type` are the same as on the main Data Model page, but `Display values` lets you choose to swap out a field's values with something else.
+
+Foreign key remapping lets you swap out a foreign key's values with the values of any other field in the connected table. In this example, we're swapping out the `Product ID` field's values with the values in the `Title` field in the Product table:
+
+![Remapping form](./images/remapping/fk-mapping.png)
+
+Another option is custom remapping, which is currently only possible for numeric fields. This lets you map every number that occurs in this field to either a different numeric value or even to a text value, like in this example:
+
+![Remapping form](./images/remapping/custom-mapping.png)
+
+
 ---
 
 ## Next: managing users
