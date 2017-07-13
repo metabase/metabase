@@ -1,12 +1,13 @@
 (ns metabase.task.sync
-  ;; TODO - this should probably be renamed to something like `metabase.task.sfc`
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojurewerkz.quartzite
              [conversion :as qc]
              [jobs :as jobs]
              [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [metabase
+             [driver :as driver]
              [task :as task]
              [util :as u]]
             [metabase.models.database :refer [Database]]
@@ -20,43 +21,43 @@
 ;;; |                                                    TASK DEFINITIONS                                                    |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-;; simple job which looks up all databases and runs a classify on any saved fingerprints for them
-(jobs/defjob ClassifyDatabase [job-context]
-  (let [db-id    (get (qc/from-job-data job-context) "db-id")
-        database (Database db-id)]
+(defn- do-with-job-logging-and-error-handling [job-name {database-name :name, :as database} f]
+  (let [job-name    (str/upper-case (name job-name))
+        driver-name (str (name (driver/database-id->driver (u/get-id database))))]
     (try
-      (log/debug (u/format-color 'green "running scheduled classification for database-id: %s: %s" db-id database))
-      (classify/classify-database! database)
+      (log/debug (u/format-color 'green "Running scheduled %s for %s database '%s'" job-name driver-name database-name))
+      (f)
       (catch Throwable e
-        (log/error (format "Error classifying database %d: (%s)" db-id (:name database)) e)))))
+        (log/error (format "Error running scheduled %s for %s database '%s'" job-name driver-name database-name)
+                   e)))))
+
+(defmacro ^:private with-job-logging-and-error-handling {:style/indent 2} [job-name database & body]
+  `(do-with-job-logging-and-error-handling ~job-name ~database (fn [] ~@body)))
+
+(defn- job-context->database [job-context]
+  (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
+
+
+(jobs/defjob ClassifyDatabase [job-context]
+  (let [database (job-context->database)]
+    (with-job-logging-and-error-handling :classification database
+      (classify/classify-database! database))))
 
 (jobs/defjob AnalyzeDatabase [job-context]
-  (let [db-id    (get (qc/from-job-data job-context) "db-id")
-        database (Database db-id)]
-    (try
-      (log/debug (u/format-color 'green "running scheduled analysis for database-id: %s: %s" db-id database))
-      (analyze/analyze-database! database)
-      (catch Throwable e
-        (log/error (format "Error analyzing database %d: (%s)" db-id (:name database)) e)))))
+  (let [database (job-context->database)]
+    (with-job-logging-and-error-handling :analysis database
+      (analyze/analyze-database! database))))
 
 (jobs/defjob CacheFieldValuesForDatabase [job-context]
-  (let [db-id    (get (qc/from-job-data job-context) "db-id")
-        database (Database db-id)]
-    (try
-      (log/debug (u/format-color 'green "running scheduled caching of field values for database-id: %s: %s" db-id database))
-      (fingerprint/cache-field-values-for-database! database)
-      (catch Throwable e
-        (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
+  (let [database (job-context->database)]
+    (with-job-logging-and-error-handling :fingerprint database
+      (fingerprint/cache-field-values-for-database! database))))
 
-;; TODO - WHY. DOESN'T. THIS. SYNC!
 (jobs/defjob SyncDatabase [job-context]
-  (let [db-id    (get (qc/from-job-data job-context) "db-id")
-        database (Database db-id)]
-    (try
-      (log/debug (u/format-color 'green "running scheduled caching of field values for database-id: %s: %s" db-id database))
-      (fingerprint/cache-database-field-values! database :full-sync? true)
-      (catch Throwable e
-        (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
+  (let [database (job-context->database)]
+    ;; TODO - this is clearly WRONG
+    (with-job-logging-and-error-handling :sync database
+      (fingerprint/cache-database-field-values! database :full-sync? true))))
 
 
 (def ^:private sfc-job-definitions

@@ -92,6 +92,12 @@
 
 
 (defmacro with-emoji-progress-bar
+  "Run BODY with access to a function that makes using our amazing emoji-progress-bar easy like Sunday morning.
+   Calling the function will return the approprate string output for logging and automatically increment an internal counter as needed.
+
+     (with-emoji-progress-bar [progress-bar 10]
+       (dotimes [i 10]
+         (println (progress-bar))))"
   {:style/indent 1}
   [[emoji-progress-fn-binding total-count] & body]
   `(let [finished-count#            (atom 0)

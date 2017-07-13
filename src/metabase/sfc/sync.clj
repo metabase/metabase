@@ -51,16 +51,15 @@
 (defn- -sync-database! [driver database full-sync?]
   (sfc-util/with-start-and-finish-logging (format "Sync %s database '%s'..." (name driver) (:name database))
     (sfc-util/with-sfc-events :database-sync (u/get-id database)
-      (sfc-util/with-logging-disabled
-        ;; start with capturing a full introspection of the database
-        (introspect/introspect-database-and-update-raw-tables! driver database)
-        ;; use the introspected schema information and update our working data models
-        (if (driver/driver-supports? driver :dynamic-schema)
-          (sync-dynamic/scan-database-and-update-data-model! driver database)
-          (introspect-sync/update-data-models-from-raw-tables! database))
-        ;; now do any in-depth data analysis which requires querying the tables (if enabled)
-        (when full-sync?
-          (analyze/analyze-database! database))))))
+      ;; start with capturing a full introspection of the database
+      (introspect/introspect-database-and-update-raw-tables! driver database)
+      ;; use the introspected schema information and update our working data models
+      (if (driver/driver-supports? driver :dynamic-schema)
+        (sync-dynamic/scan-database-and-update-data-model! driver database)
+        (introspect-sync/update-data-models-from-raw-tables! database))
+      ;; now do any in-depth data analysis which requires querying the tables (if enabled)
+      (when full-sync?
+        (analyze/analyze-database! database)))))
 
 (defn sync-database!
   "Sync DATABASE and all its Tables and Fields.
