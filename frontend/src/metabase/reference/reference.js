@@ -171,6 +171,17 @@ export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, 
     }
 })
 
+const FETCH_CARD_COMPARISON = 'metabase/reference/FETCH_CARD_COMPARISON';
+export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, function(cardId1, cardId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.card_compare({ cardId1, cardId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
 // Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
 
 const fetchDataWrapper = (props, fn) => {

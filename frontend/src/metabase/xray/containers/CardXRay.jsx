@@ -126,7 +126,7 @@ class CardXRay extends Component {
     }
 
     componentDidMount () {
-        this.props.fetchCardFingerPrint(this.props.params.tableId)
+        this.props.fetchCardFingerPrint(this.props.params.cardId)
     }
 
 
