@@ -88,16 +88,16 @@ The migration process involves 2 main steps:
 
 Using a Postgres container as the target, here's an example invocation:
 
-  docker run --name metabase-migration \
-    -v /path/metabase/data:/metabase-data \
-    -e "MB_DB_FILE=/metabase-data/metabase.db" \
-    -e "MB_DB_TYPE=postgres" \
-    -e "MB_DB_DBNAME=metabase" \
-    -e "MB_DB_PORT=5432" \
-    -e "MB_DB_USER=<username>" \
-    -e "MB_DB_PASS=<password>" \
-    -e "MB_DB_HOST=my-database-host" \
-    metabase/metabase load-from-h2
+    docker run --name metabase-migration \
+        -v /path/metabase/data:/metabase-data \
+        -e "MB_DB_FILE=/metabase-data/metabase.db" \
+        -e "MB_DB_TYPE=postgres" \
+        -e "MB_DB_DBNAME=metabase" \
+        -e "MB_DB_PORT=5432" \
+        -e "MB_DB_USER=<username>" \
+        -e "MB_DB_PASS=<password>" \
+        -e "MB_DB_HOST=my-database-host" \
+        metabase/metabase load-from-h2
 
 To further explain the example: in addition to specifying the target database connection details, set the `MB_DB_FILE` environment variable for the source H2 database location, and pass the argument `load-from-h2` to begin migrating.
 
