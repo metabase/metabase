@@ -19,9 +19,7 @@ import { VisualizationEmptyState } from "metabase/query_builder/components/Query
 import Visualization from "metabase/visualizations/components/Visualization";
 import RunButton from "metabase/query_builder/components/RunButton";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
-import { INITIALIZE_QB } from "metabase/query_builder/actions";
 import QueryHeader from "metabase/query_builder/components/QueryHeader";
-import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {

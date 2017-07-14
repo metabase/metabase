@@ -7,9 +7,6 @@ export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
 export const MONGO_DATABASE_ID = 3;
 
-export const DATABASE_ID = 1;
-export const ANOTHER_DATABASE_ID = 2;
-
 export const ORDERS_TABLE_ID = 1;
 export const PEOPLE_TABLE_ID = 2;
 export const PRODUCT_TABLE_ID = 3;

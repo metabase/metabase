@@ -15,27 +15,36 @@ import { delay } from "metabase/lib/promise"
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { orders_past_30_days_segment } from "metabase/__support__/sample_dataset_fixture";
-import { createSegment } from "metabase/admin/datamodel/datamodel";
+import { createSegment, deleteSegment } from "metabase/admin/datamodel/datamodel";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table";
 import UseForButton from "metabase/query_builder/components/dataref/UseForButton";
+import { SegmentApi } from "metabase/services";
 
 // Currently a lot of duplication with SegmentPane tests
 describe("SegmentPane", () => {
     let store = null;
     let queryBuilder = null;
+    let segment = null;
 
     beforeAll(async () => {
         await login();
-        await createSegment(orders_past_30_days_segment);
+        segment = await SegmentApi.create(orders_past_30_days_segment);
         store = await createTestStore()
 
         store.pushPath("/question");
         queryBuilder = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
+    })
+
+    afterAll(async() => {
+        await SegmentApi.delete({
+            segmentId: segment.id,
+            revision_message: "Please"
+        });
     })
 
     // NOTE: These test cases are intentionally stateful
