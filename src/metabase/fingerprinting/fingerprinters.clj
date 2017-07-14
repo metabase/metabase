@@ -324,10 +324,12 @@
   (-> fingerprint
       (update :min               from-double)
       (update :max               from-double)
-      (update :histogram         (comp (partial m/map-keys from-double) h/pdf))
+      (update :histogram         (comp (partial map (fn [[k v]]
+                                                      [(from-double k) v]))
+                                       h/pdf))
       (update :percentiles       (partial m/map-vals from-double))
-      (update :hisotogram-hour   h/pdf)
-      (update :hisotogram-day    h/pdf)
+      (update :histogram-hour    h/pdf)
+      (update :histogram-day     h/pdf)
       (update :histogram-month   h/pdf)
       (update :histogram-quarter h/pdf)))
 

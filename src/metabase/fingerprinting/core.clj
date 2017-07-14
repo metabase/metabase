@@ -5,6 +5,7 @@
              [comparison :as comparison]
              [costs :as costs]
              [fingerprinters :as f]]
+            [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -132,3 +133,10 @@
                                  (map comparison/fingerprint-distance a b)
                                  (comparison/fingerprint-distance a b))])
                           a b))}))
+
+(defn prettify
+  "Walk the fingerprint structure and prettify all fingerprints within."
+  [fingerprint]
+  (-> fingerprint
+      (update :fingerprint f/prettify)
+      (update :constituents (partial map prettify))))
