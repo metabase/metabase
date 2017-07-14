@@ -52,7 +52,8 @@
 (defn update-field-values!
   "Update the `FieldValues` for FIELD, creating them if needed"
   [{field-id :id, :as field}]
-  {:pre [(integer? field-id)]}
+  {:pre [(integer? field-id)
+         (field-should-have-field-values? field)]}
   (if-let [field-values (FieldValues :field_id field-id)]
     (db/update! FieldValues (u/get-id field-values)
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
@@ -72,8 +73,9 @@
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
-  (or (FieldValues :field_id field-id)
-      (create-field-values! field human-readable-values)))
+  (when (field-should-have-field-values? field)
+    (or (FieldValues :field_id field-id)
+        (create-field-values! field human-readable-values))))
 
 (defn save-field-values!
   "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."

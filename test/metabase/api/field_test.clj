@@ -166,6 +166,11 @@
     ;; now update the values via the API
     (tu/boolean-ids-and-timestamps ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price))))))
 
+;; Should return nothing for a field whose special_type is *not* :type/Category
+(expect
+  {:values []}
+  ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
+
 (defn- num->$ [num-seq]
   (mapv (fn [idx]
           (vector idx (apply str (repeat idx \$))))
