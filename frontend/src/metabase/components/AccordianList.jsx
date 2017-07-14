@@ -231,12 +231,11 @@ export default class AccordianList extends Component {
                                         className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex), 'List-item--disabled': !this.itemIsClickable(item) }, this.getItemClasses(item, itemIndex))}
                                     >
                                         <a
-                                            className={cx("flex-full flex align-center px1", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
-                                            style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
+                                            className={cx("p1 flex-full flex align-center", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
                                             onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
                                         >
-                                            { this.renderItemIcon(item, itemIndex) }
-                                            <h4 className="List-item-title ml2">{item.name}</h4>
+                                            <span className="flex align-center">{ this.renderItemIcon(item, itemIndex) }</span>
+                                            <h4 className="List-item-title ml1">{item.name}</h4>
                                         </a>
                                         { this.renderItemExtra(item, itemIndex) }
                                         { showItemArrows &&
