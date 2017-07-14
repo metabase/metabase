@@ -72,7 +72,7 @@
             :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
             :non-nil #{:display_name})))))
     ;; return updated field
-    (Field id)))
+    (hydrate (Field id) :dimensions)))
 
 (api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
