@@ -326,7 +326,7 @@ export default class DataSelector extends Component {
                     { isSavedQuestionList && (
                         <div className="bg-slate-extra-light p2 text-centered">
                             Is a question missing?
-                            <a href="http://metabase.com/docs/users-guide/04-asking-questions.md#source-data" className="block link">Learn more about nested queries</a>
+                            <a href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data" className="block link">Learn more about nested queries</a>
                         </div>
                     )}
                 </div>
