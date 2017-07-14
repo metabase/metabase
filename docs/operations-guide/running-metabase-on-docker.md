@@ -77,25 +77,27 @@ To migrate an existing Metabase container from an H2 application database to ano
 
 * The target database container must be accessible (i.e. on an available network)
 * The target database container must be supported (e.g. MySQL, Postgres)
-* The existing H2 storage should be mapped outside the running container (refer to the [Docker guide](http://www.metabase.com/docs/latest/operations-guide/running-metabase-on-docker.html#mounting-a-mapped-file-storage-volume) for more information)
+* The existing H2 database should be [mapped outside the running container](#mounting-a-mapped-file-storage-volume)
 
 The migration process involves 2 main steps:
 
-* Stop the existing Metabase container
-* Run a new, temporary Metabase container to perform the migration
+1. Stop the existing Metabase container
+2. Run a new, temporary Metabase container to perform the migration
 
 Using a Postgres container as the target, here's an example invocation:
 
-  docker run
+  docker run --name metabase-migration \
     -v /path/metabase/data:/metabase-data \
+    -e "MB_DB_FILE=/metabase-data/metabase.db" \
     -e "MB_DB_TYPE=postgres" \
     -e "MB_DB_DBNAME=metabase" \
     -e "MB_DB_PORT=5432" \
     -e "MB_DB_USER=<username>" \
     -e "MB_DB_PASS=<password>" \
     -e "MB_DB_HOST=my-database-host" \
-    -e "MB_DB_FILE=/metabase-data/metabase.db" \
-    --name metabase-migration metabase/metabase load-from-h2
+    metabase/metabase load-from-h2
+
+To further explain the example: in addition to specifying the target database connection details, set the `MB_DB_FILE` environment variable for the source H2 database location, and pass the argument `load-from-h2` to begin migrating.
 
 ### Setting the Java Timezone
 
@@ -129,6 +131,7 @@ The DB contents will be left in a directory named metabase.db.
 Note that some older versions of metabase stored their db in a different default location.
 
     docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
+
 
 ### Fixing OutOfMemoryErrors in some hosted environments
 
