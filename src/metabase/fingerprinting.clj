@@ -569,6 +569,19 @@
                      (fingerprint-field opts [a b]))
    :constituents (map (partial fingerprint opts) [a b])})
 
+(def magnitude
+  "Transducer that claclulates magnitude (Euclidean norm) of given vector.
+   https://en.wikipedia.org/wiki/Euclidean_distance"
+  (redux/post-complete (redux/pre-step + math/sq) math/sqrt))
+
+(defn cosine-distance
+  "Cosine distance between vectors `a` and `b`.
+   https://en.wikipedia.org/wiki/Cosine_similarity"
+  [a b]
+  (- 1 (/ (reduce + (map * a b))
+          (transduce identity magnitude a)
+          (transduce identity magnitude b))))
+
 (defmulti difference
   "Difference between two features.
    Confined to [0, 1] with 0 being same, and 1 orthogonal."
@@ -590,18 +603,6 @@
   [a b]
   (/ (cosine-distance a b) 2))
 
-(def magnitude
-  "Transducer that claclulates magnitude (Euclidean norm) of given vector.
-   https://en.wikipedia.org/wiki/Euclidean_distance"
-  (redux/post-complete (redux/pre-step + math/sq) math/sqrt))
-
-(defn cosine-distance
-  "Cosine distance between vectors `a` and `b`.
-   https://en.wikipedia.org/wiki/Cosine_similarity"
-  [a b]
-  (- 1 (/ (reduce + (map * a b))
-          (transduce identity magnitude a)
-          (transduce identity magnitude b))))
 
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
