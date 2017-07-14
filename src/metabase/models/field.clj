@@ -7,13 +7,14 @@
              [util :as u]]
             [metabase.models
              [dimension :refer [Dimension]]
-             [field-values :refer [FieldValues]]
+             [field-values :refer [FieldValues] :as fv]
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]]
+            [metabase.models.field-values :as fv]))
 
 ;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
 
@@ -114,7 +115,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids (filter #(= :normal (:visibility_type %)) fields)
+  (let [id->field-values (keyed-by-field-ids (filter fv/field-should-have-field-values? fields)
                                              [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))

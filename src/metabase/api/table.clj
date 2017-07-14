@@ -10,7 +10,7 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database]
-             [field :refer [Field]]
+             [field :refer [Field with-normal-values]]
              [field-values :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
@@ -18,7 +18,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]]
+            [metabase.query :as q]))
 
 ;; TODO - I don't think this is used for anything any more
 (def ^:private ^:deprecated TableEntityType
@@ -97,7 +98,8 @@
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
   (-> (api/read-check Table id)
-      (hydrate :db [:fields :target :normal_values :dimensions] :segments :metrics)
+      (hydrate :db [:fields :target :dimensions] :segments :metrics)
+      (update :fields with-normal-values)
       (m/dissoc-in [:db :details])
       format-fields-for-response
       (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)

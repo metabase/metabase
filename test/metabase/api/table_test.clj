@@ -20,6 +20,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :refer :all]]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
@@ -496,6 +497,17 @@
                                 (dissoc dim :id :created_at :updated_at)
                                 dim))))))
 
+(defn- category-id-special-type
+  "Field values will only be returned when the field's special type is
+  set to type/Category. This function will change that for
+  category_id, then invoke `F` and roll it back afterwards"
+  [f]
+  (try
+    (db/update! Field (id :venues :category_id) {:special_type :type/Category})
+    (f)
+    (finally
+      (db/update! Field (id :venues :category_id) {:special_type nil}))))
+
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure internal remapped dimensions and human_readable_values are returned
 (expect
@@ -511,8 +523,10 @@
     :dimensions []}]
   (with-data
     (create-venue-category-remapping "Foo")
-    (narrow-fields ["PRICE" "CATEGORY_ID"]
-                   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))
+    (category-id-special-type
+     (fn []
+       (narrow-fields ["PRICE" "CATEGORY_ID"]
+                      ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))))
 
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure FK remappings are returned
@@ -529,5 +543,7 @@
     :dimensions []}]
   (with-data
     (create-venue-category-fk-remapping "Foo")
-    (narrow-fields ["PRICE" "CATEGORY_ID"]
-                   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))
+    (category-id-special-type
+     (fn []
+       (narrow-fields ["PRICE" "CATEGORY_ID"]
+                      ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))))
