@@ -9,10 +9,11 @@ import { Link } from 'react-router'
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import Button from 'metabase/components/Button'
 import Icon from 'metabase/components/Icon'
 import Input from 'metabase/components/Input'
 import Select from 'metabase/components/Select'
+import SaveStatus from "metabase/components/SaveStatus";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
@@ -31,8 +32,6 @@ import {
     SpecialTypeAndTargetPicker
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
-import SaveStatus from "metabase/components/SaveStatus";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
@@ -124,7 +123,6 @@ export default class FieldApp extends Component {
             databaseId,
             tableId,
             idfields,
-            updateField,
             fetchTableMetadata
         } = this.props;
 
@@ -376,18 +374,19 @@ export class FieldRemapping extends Component {
         const { field } = this.props;
 
         const shouldResetFKRemappingAfterTargetFieldChange =
-            this.getMappingType().type === "foreign" &&
+            // we already have a fk dimension
+            this.getMappingTypeForField(field).type === "foreign" &&
+            // the new field's special type is fk and the target field id has changed
+            newProps.field.special_type === "type/FK" &&
             newProps.field.fk_target_field_id !== field.fk_target_field_id
 
         if (shouldResetFKRemappingAfterTargetFieldChange) {
-            // Setting the mapping again will reset its FK remapping target
+            // Setting the mapping again will reset its FK remapping target field to match the new fk target table
             this.onSetMappingType(MAP_OPTIONS.foreign);
         }
     }
 
-    getMappingType = () => {
-        const { field } = this.props;
-
+    getMappingTypeForField = (field) => {
         if (_.isEmpty(field.dimensions)) return MAP_OPTIONS.original;
         if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
         if (field.dimensions.type === "internal") return MAP_OPTIONS.custom;
@@ -501,7 +500,7 @@ export class FieldRemapping extends Component {
     render () {
         const { field, table, fields} = this.props;
 
-        const mappingType = this.getMappingType()
+        const mappingType = this.getMappingTypeForField(field)
         const isFKMapping = mappingType === MAP_OPTIONS.foreign;
         const hasFKMappingValue = isFKMapping && field.dimensions.human_readable_field_id !== null;
         const fkMappingField = hasFKMappingValue && fields[field.dimensions.human_readable_field_id];
