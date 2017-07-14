@@ -12,17 +12,15 @@ import _ from "underscore";
 import cx from "classnames";
 
 export default class DataSelector extends Component {
-    constructor(props, context) {
-        super(props, context);
 
+    constructor(props) {
+        super()
         this.state = {
             databases: null,
             selectedSchema: null,
             showTablePicker: true,
             showSegmentPicker: props.segments && props.segments.length > 0
         }
-
-        _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onChangeSegment", "onBack");
     }
 
     static propTypes = {
@@ -84,7 +82,7 @@ export default class DataSelector extends Component {
         }
     }
 
-    onChangeTable(item) {
+    onChangeTable = (item) => {
         if (item.table != null) {
             this.props.setSourceTableFn(item.table.id);
         } else if (item.database != null) {
@@ -93,7 +91,7 @@ export default class DataSelector extends Component {
         this.refs.popover.toggle();
     }
 
-    onChangeSegment(item) {
+    onChangeSegment = (item) => {
         if (item.segment != null) {
             this.props.setSourceSegmentFn(item.segment.id);
         }
@@ -101,27 +99,27 @@ export default class DataSelector extends Component {
         this.refs.popover.toggle();
     }
 
-    onChangeSchema(schema) {
+    onChangeSchema = (schema) => {
         this.setState({
             selectedSchema: schema,
             showTablePicker: true
         });
     }
 
-    onChangeSegmentSection() {
+    onChangeSegmentSection = () => {
         this.setState({
             showSegmentPicker: true
         });
     }
 
-    onBack() {
+    onBack = () => {
         this.setState({
             showTablePicker: false,
             showSegmentPicker: false
         });
     }
 
-    onChangeDatabase(index) {
+    onChangeDatabase = (index) => {
         let database = this.state.databases[index];
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
         if (database && database.tables.length === 0) {
@@ -172,35 +170,59 @@ export default class DataSelector extends Component {
     }
 
     renderDatabaseSchemaPicker() {
-        const { selectedSchema } = this.state;
+        const { databases, selectedSchema } = this.state;
 
-        let sections = this.state.databases.map(database => {
-            return {
+        let sections = databases
+            .filter(database =>
+                // filter out the saved questions "db" so we can present it
+                // differently
+                !database.is_saved_questions
+            )
+            .map(database => ({
                 name: database.name,
                 items: database.schemas.length > 1 ? database.schemas : []
-            };
-        });
+            }));
 
-        let openSection = selectedSchema && _.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema));
-        if (openSection >= 0 && this.state.databases[openSection] && this.state.databases[openSection].schemas.length === 1) {
+        // do the opposite of what we just did and get a reference to the saved question "db"
+        // there will only ever be one of these hence [0]
+        const savedQuestionSection = databases.filter(db => db.is_saved_questions)[0]
+
+        // some of the change functions need the index in the databases array
+        const savedQuestionSectionIndex = databases.indexOf(savedQuestionSection)
+
+        let openSection = selectedSchema && _.findIndex(databases, (db) => _.find(db.schemas, selectedSchema));
+        if (openSection >= 0 && databases[openSection] && databases[openSection].schemas.length === 1) {
             openSection = -1;
         }
 
         return (
-            <AccordianList
-                id="DatabaseSchemaPicker"
-                key="schemaPicker"
-                className="text-brand"
-                sections={sections}
-                onChange={this.onChangeSchema}
-                onChangeSection={this.onChangeDatabase}
-                itemIsSelected={(schema) => this.state.selectedSchema === schema}
-                renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
-                renderItemIcon={() => <Icon name="folder" size={16} />}
-                initiallyOpenSection={openSection}
-                showItemArrows={true}
-                alwaysTogglable={true}
-            />
+            <div>
+                <AccordianList
+                    id="DatabaseSchemaPicker"
+                    key="schemaPicker"
+                    className="text-brand"
+                    sections={sections}
+                    onChange={this.onChangeSchema}
+                    onChangeSection={this.onChangeDatabase}
+                    itemIsSelected={(schema) => this.state.selectedSchema === schema}
+                    renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
+                    renderItemIcon={() => <Icon name="folder" size={16} />}
+                    initiallyOpenSection={openSection}
+                    showItemArrows={true}
+                    alwaysTogglable={true}
+                />
+                { savedQuestionSection && (
+                    <div
+                        className="List-section p2 cursor-pointer text-brand-hover bg-slate-extra-light"
+                        onClick={() => this.onChangeDatabase(savedQuestionSectionIndex)}
+                    >
+                        <div className="List-section-header flex align-center">
+                            <Icon className="Icon text-default mr2" size={18} name="all" />
+                            <h3 className="List-section-title">Saved questions</h3>
+                        </div>
+                    </div>
+                )}
+            </div>
         );
     }
 
@@ -245,6 +267,8 @@ export default class DataSelector extends Component {
     renderTablePicker() {
         const schema = this.state.selectedSchema;
 
+        const isSavedQuestionList = schema.database.is_saved_questions;
+
         const hasMultipleDatabases = this.props.databases.length > 1;
         const hasMultipleSchemas = schema && schema.database && _.uniq(schema.database.tables, (t) => t.schema).length > 1;
         const hasSegments = !!this.props.segments;
@@ -252,7 +276,7 @@ export default class DataSelector extends Component {
 
         let header = (
             <span className="flex align-center">
-                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
+                <span className={cx("flex align-center text-brand-hover text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
                     { hasMultipleSources && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
@@ -265,7 +289,7 @@ export default class DataSelector extends Component {
         if (schema.tables.length === 0) {
             // this is a database with no tables!
             return (
-                <section className="List-section List-section--open" style={{width: '300px'}}>
+                <section className="List-section List-section--open" style={{width: 300}}>
                     <div className="p1 border-bottom">
                         <div className="px1 py1 flex align-center">
                             <h3 className="text-default">{header}</h3>
@@ -286,18 +310,26 @@ export default class DataSelector extends Component {
                     }))
             }];
             return (
-                <AccordianList
-                    id="TablePicker"
-                    key="tablePicker"
-                    className="text-brand"
-                    sections={sections}
-                    searchable={true}
-                    onChange={this.onChangeTable}
-                    itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
-                    itemIsClickable={(item) => item.table && !item.disabled}
-                    renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
-                    hideSingleSectionTitle={true}
-                />
+                <div style={{ width: 300 }}>
+                    <AccordianList
+                        id="TablePicker"
+                        key="tablePicker"
+                        className="text-brand"
+                        sections={sections}
+                        searchable={true}
+                        onChange={this.onChangeTable}
+                        itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
+                        itemIsClickable={(item) => item.table && !item.disabled}
+                        renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
+                        hideSingleSectionTitle={true}
+                    />
+                    { isSavedQuestionList && (
+                        <div className="bg-slate-extra-light p2 text-centered">
+                            Is a question missing?
+                            <a href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data" className="block link">Learn more about nested queries</a>
+                        </div>
+                    )}
+                </div>
             );
         }
     }
