@@ -533,6 +533,7 @@
    function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
+  {:style/indent 1}
   (^String [x]
    (when x
      (with-out-str (pprint x))))
@@ -569,15 +570,39 @@
              (s/join (repeat blanks "·"))
              (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
 
-(defn filtered-stacktrace
-  "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
-  [^Throwable e]
-  (when e
-    (when-let [stacktrace (.getStackTrace e)]
-      (vec (for [frame stacktrace
-                 :let  [s (str frame)]
-                 :when (re-find #"metabase" s)]
-             (s/replace s #"^metabase\." ""))))))
+
+(defprotocol ^:private IFilteredStacktrace
+  (filtered-stacktrace [this]
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
+
+;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
+;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
+;; a VerifyError. Adding a layer of indirection here avoids the problem. Once we upgrade to Clojure 1.9
+;; we should be able to remove this code.
+(defn- throwable-get-stack-trace [^Throwable t]
+  (.getStackTrace t))
+
+(defn- thread-get-stack-trace [^Thread t]
+  (.getStackTrace t))
+
+(extend nil
+  IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
+
+(extend Throwable
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
+
+(extend Thread
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (filtered-stacktrace (thread-get-stack-trace this)))})
+
+;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
+(extend (Class/forName "[Ljava.lang.StackTraceElement;")
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (vec (for [frame this
+                                                         :let  [s (str frame)]
+                                                         :when (re-find #"metabase" s)]
+                                                     (s/replace s #"^metabase\." ""))))})
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged

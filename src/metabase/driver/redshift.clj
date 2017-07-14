@@ -108,4 +108,7 @@
                                                 (str "schema_" i))
                                               "public")))))})))
 
-(driver/register-driver! :redshift (RedshiftDriver.))
+(defn -init-driver
+  "Register the Redshift driver"
+  []
+  (driver/register-driver! :redshift (RedshiftDriver.)))

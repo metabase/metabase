@@ -218,5 +218,7 @@
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :sync-in-context                   (u/drop-first-arg sync-in-context)}))
 
-
-(driver/register-driver! :mongo (MongoDriver.))
+(defn -init-driver
+  "Register the MongoDB driver"
+  []
+  (driver/register-driver! :mongo (MongoDriver.)))

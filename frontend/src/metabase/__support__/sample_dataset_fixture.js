@@ -7,6 +7,9 @@ export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
 export const MONGO_DATABASE_ID = 3;
 
+export const DATABASE_ID = 1;
+export const ANOTHER_DATABASE_ID = 2;
+
 export const ORDERS_TABLE_ID = 1;
 export const PEOPLE_TABLE_ID = 2;
 export const PRODUCT_TABLE_ID = 3;
@@ -451,7 +454,7 @@ export const state = {
         values: []
       },
       '2': {
-        description: 'This is a unique ID for the product. It is also called the “Invoice number" or “Confirmation number" in customer facing emails and screens.',
+        description: 'This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.',
         table_id: 1,
         special_type: 'type/PK',
         name: 'ID',

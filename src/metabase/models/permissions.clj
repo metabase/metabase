@@ -339,7 +339,6 @@
    (grant-permissions! group-or-id (apply object-path db-id schema more)))
   ([group-or-id path]
    (try
-     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (u/get-id group-or-id) path))
      (db/insert! Permissions
        :group_id (u/get-id group-or-id)
        :object   path)

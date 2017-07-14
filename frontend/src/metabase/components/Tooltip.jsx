@@ -82,8 +82,8 @@ export default class Tooltip extends Component {
     _onMouseUp = (e) => {
         // This is in a timeout to ensure the component has a chance to fully unmount
         this.timer = setTimeout(() =>
-            this.setState({ isOpen: this.state.isHovered })
-        , 0);
+                this.setState({ isOpen: this.state.isHovered })
+            , 0);
     }
 
     render() {

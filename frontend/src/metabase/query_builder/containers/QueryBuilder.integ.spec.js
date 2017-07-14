@@ -1,8 +1,8 @@
 import {
     login,
     whenOffline,
+    createSavedQuestion,
     createTestStore,
-    createSavedQuestion
 } from "metabase/__support__/integrated_tests";
 
 import React from 'react';
@@ -13,13 +13,15 @@ import {
     unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
 import { CANCEL_QUERY, INITIALIZE_QB, QUERY_COMPLETED, QUERY_ERRORED, RUN_QUERY } from "metabase/query_builder/actions";
-import QueryHeader from "metabase/query_builder/components/QueryHeader";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
 import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 import Visualization from "metabase/visualizations/components/Visualization";
 import RunButton from "metabase/query_builder/components/RunButton";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
+import { INITIALIZE_QB } from "metabase/query_builder/actions";
+import QueryHeader from "metabase/query_builder/components/QueryHeader";
+import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
@@ -159,5 +161,4 @@ describe("QueryBuilder", () => {
             });
         });
     });
-
 });

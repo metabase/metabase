@@ -29,8 +29,10 @@ jest.mock("ace/snippets/json", () => {}, {virtual: true});
 jest.mock("ace/ext-language_tools", () => {}, {virtual: true});
 
 import * as modal from "metabase/components/Modal";
-const MockedModal = () => <div className="mocked-modal" />;
-modal.default = MockedModal;
+modal.default = modal.TestModal;
 
 import * as tooltip from "metabase/components/Tooltip";
 tooltip.default = tooltip.TestTooltip
+
+import * as popover from "metabase/components/Popover";
+popover.default = popover.TestPopover

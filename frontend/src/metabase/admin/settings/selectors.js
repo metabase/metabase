@@ -149,6 +149,7 @@ const SECTIONS = [
     },
     {
         name: "Single Sign-On",
+        sidebar: false,
         settings: [
             {
                 key: "google-auth-client-id"
@@ -159,7 +160,12 @@ const SECTIONS = [
         ]
     },
     {
+        name: "Authentication",
+        settings: []
+    },
+    {
         name: "LDAP",
+        sidebar: false,
         settings: [
             {
                 key: "ldap-enabled",
@@ -193,14 +199,12 @@ const SECTIONS = [
             {
                 key: "ldap-bind-dn",
                 display_name: "Username or DN",
-                type: "string",
-                required: true
+                type: "string"
             },
             {
                 key: "ldap-password",
                 display_name: "Password",
-                type: "password",
-                required: true
+                type: "password"
             },
             {
                 key: "ldap-user-base",

@@ -9,7 +9,9 @@
              [events :as events]
              [sample-data :as sample-data]
              [util :as u]]
-            [metabase.api.common :as api]
+            [metabase.api
+             [common :as api]
+             [table :as table-api]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -40,7 +42,10 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info [dbs]
+(defn- add-native-perms-info
+  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running native (e.g. SQL) queries.
+   Will be one of `:write`, `:read`, or `:none`."
+  [dbs]
   (for [db dbs]
     (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
@@ -95,26 +100,22 @@
     (filter card-database-supports-nested-queries? <>)
     (remove card-uses-unnestable-aggregation? <>)
     (remove card-has-ambiguous-columns? <>)
-    (map #(dissoc % :result_metadata) <>)      ; frontend has no use for result_metadata just yet so strip it out because it can be big
     (hydrate <> :collection)))
 
 (defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query Builder.)"
-  []
+  [& {:keys [include-fields?]}]
   (for [card (source-query-cards)]
-    {:id           (str "card__" (u/get-id card))
-     :db_id        database/virtual-id
-     :display_name (:name card)
-     :schema       (get-in card [:collection :name] "All questions")
-     :description  (:description card)}))
+    (table-api/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata []
-  (when-let [virtual-tables (seq (cards-virtual-tables))]
-    {:name     "Saved Questions"
-     :id       database/virtual-id
-     :features #{:basic-aggregations}
-     :tables   virtual-tables}))
+(defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
+  (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
+    {:name               "Saved Questions"
+     :id                 database/virtual-id
+     :features           #{:basic-aggregations}
+     :tables             virtual-tables
+     :is_saved_questions true}))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-virtual-tables-for-saved-cards [dbs]
@@ -156,7 +157,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata))
+  (saved-cards-virtual-db-metadata :include-fields? true))
 
 
 (defn- db-metadata [id]
