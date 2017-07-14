@@ -31,7 +31,7 @@ import {
 import { TestPopover } from "metabase/components/Popover";
 import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
-import Button from "metabase/components/Button";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 const getRawFieldWithId = (store, fieldId) => store.getState().metadata.fields[fieldId];
 
@@ -41,6 +41,7 @@ const getRawFieldWithId = (store, fieldId) => store.getState().metadata.fields[f
 
 const CREATED_AT_ID = 1;
 const PRODUCT_ID_FK_ID = 3;
+const USER_ID_FK_ID = 7;
 // enumeration with values 1, 2, 3, 4 or 5
 const USER_SOURCE_TABLE_ID = 2;
 const USER_SOURCE_ID = 18;
@@ -172,14 +173,14 @@ describe("FieldApp", () => {
             const fkFieldSelect = picker.find(Select).at(1)
             fkFieldSelect.simulate('click');
 
-            const birthDateFkField = fkFieldSelect.find(TestPopover)
+            const productIdField = fkFieldSelect.find(TestPopover)
                 .find("li")
-                .filterWhere(li => /The name of the product as it should be displayed to customers/.test(li.text()))
+                .filterWhere(li => /The numerical product number./.test(li.text()))
                 .first().children().first();
 
-            birthDateFkField.simulate('click')
+            productIdField.simulate('click')
             await store.waitForActions([UPDATE_FIELD])
-            expect(picker.text()).toMatch(/Foreign KeyPublic.Products → Title/);
+            expect(picker.text()).toMatch(/Foreign KeyPublic.Products → ID/);
         })
 
         afterAll(async () => {
@@ -212,7 +213,7 @@ describe("FieldApp", () => {
         })
 
         it("lets you change to 'Use foreign key' and change the target for field with fk", async () => {
-            const { store, fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
+            const { store, fieldApp } = await initFieldApp({ fieldId: USER_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
             expect(mappingTypePicker.text()).toBe('Use original value')
@@ -230,23 +231,23 @@ describe("FieldApp", () => {
 
             const fkFieldSelect = section.find(SelectButton);
 
-            expect(fkFieldSelect.text()).toBe("Ean");
+            expect(fkFieldSelect.text()).toBe("Name");
             fkFieldSelect.simulate('click');
 
             const sourceField = fkFieldSelect.parent().find(TestPopover)
                 .find("li")
-                .filterWhere(li => /Vendor/.test(li.text()))
+                .filterWhere(li => /Source/.test(li.text()))
                 .first().children().first();
 
             sourceField.simulate('click')
             store.waitForActions([FETCH_TABLE_METADATA])
             // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
             await delay(500);
-            expect(fkFieldSelect.text()).toBe("Vendor");
+            expect(fkFieldSelect.text()).toBe("Source");
         })
 
         it("doesn't show date fields in fk options", async () => {
-            const { fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
+            const { fieldApp } = await initFieldApp({ fieldId: USER_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
             expect(mappingTypePicker.text()).toBe('Use foreign key')
@@ -262,7 +263,7 @@ describe("FieldApp", () => {
         })
 
         it("lets you switch back to Use original value after changing to some other value", async () => {
-            const { store, fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
+            const { store, fieldApp } = await initFieldApp({ fieldId: USER_ID_FK_ID });
             const section = fieldApp.find(FieldRemapping)
             const mappingTypePicker = section.find(Select);
             expect(mappingTypePicker.text()).toBe('Use foreign key')
@@ -320,7 +321,7 @@ describe("FieldApp", () => {
             expect(lastMapping.find(Input).props().value).toBe("5");
             lastMapping.find(Input).simulate('change', {target: {value: "Extraordinarily awesome"}});
 
-            const saveButton = valueRemappingsSection.find(Button)
+            const saveButton = valueRemappingsSection.find(ButtonWithStatus)
             saveButton.simulate("click");
 
             store.waitForActions([UPDATE_FIELD_VALUES]);
@@ -340,7 +341,7 @@ describe("FieldApp", () => {
         afterAll(async () => {
             const store = await createTestStore()
 
-            await store.dispatch(deleteFieldDimension(PRODUCT_ID_FK_ID));
+            await store.dispatch(deleteFieldDimension(USER_ID_FK_ID));
             await store.dispatch(deleteFieldDimension(PRODUCT_RATING_ID));
 
             // TODO: This is a little hacky – could there be a way to simply reset the user-defined valued?
