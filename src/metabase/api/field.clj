@@ -51,7 +51,7 @@
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
-        new-special-type   (get body :special_type (:special_type field))
+        new-special-type   (keyword (get body :special_type (:special_type field)))
         removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
