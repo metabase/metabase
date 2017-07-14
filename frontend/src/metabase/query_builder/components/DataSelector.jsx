@@ -12,17 +12,15 @@ import _ from "underscore";
 import cx from "classnames";
 
 export default class DataSelector extends Component {
-    constructor(props, context) {
-        super(props, context);
 
+    constructor(props) {
+        super()
         this.state = {
             databases: null,
             selectedSchema: null,
             showTablePicker: true,
             showSegmentPicker: props.segments && props.segments.length > 0
         }
-
-        _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onChangeSegment", "onBack");
     }
 
     static propTypes = {
@@ -84,7 +82,7 @@ export default class DataSelector extends Component {
         }
     }
 
-    onChangeTable(item) {
+    onChangeTable = (item) => {
         if (item.table != null) {
             this.props.setSourceTableFn(item.table.id);
         } else if (item.database != null) {
@@ -93,7 +91,7 @@ export default class DataSelector extends Component {
         this.refs.popover.toggle();
     }
 
-    onChangeSegment(item) {
+    onChangeSegment = (item) => {
         if (item.segment != null) {
             this.props.setSourceSegmentFn(item.segment.id);
         }
@@ -101,27 +99,27 @@ export default class DataSelector extends Component {
         this.refs.popover.toggle();
     }
 
-    onChangeSchema(schema) {
+    onChangeSchema = (schema) => {
         this.setState({
             selectedSchema: schema,
             showTablePicker: true
         });
     }
 
-    onChangeSegmentSection() {
+    onChangeSegmentSection = () => {
         this.setState({
             showSegmentPicker: true
         });
     }
 
-    onBack() {
+    onBack = () => {
         this.setState({
             showTablePicker: false,
             showSegmentPicker: false
         });
     }
 
-    onChangeDatabase(index) {
+    onChangeDatabase = (index) => {
         let database = this.state.databases[index];
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
         if (database && database.tables.length === 0) {
@@ -273,6 +271,8 @@ export default class DataSelector extends Component {
     renderTablePicker() {
         const schema = this.state.selectedSchema;
 
+        const isSavedQuestionList = schema.database.id === -1337
+
         const hasMultipleDatabases = this.props.databases.length > 1;
         const hasMultipleSchemas = schema && schema.database && _.uniq(schema.database.tables, (t) => t.schema).length > 1;
         const hasSegments = !!this.props.segments;
@@ -280,7 +280,7 @@ export default class DataSelector extends Component {
 
         let header = (
             <span className="flex align-center">
-                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
+                <span className={cx("flex align-center text-brand-hover text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
                     { hasMultipleSources && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
@@ -293,7 +293,7 @@ export default class DataSelector extends Component {
         if (schema.tables.length === 0) {
             // this is a database with no tables!
             return (
-                <section className="List-section List-section--open" style={{width: '300px'}}>
+                <section className="List-section List-section--open" style={{width: 300}}>
                     <div className="p1 border-bottom">
                         <div className="px1 py1 flex align-center">
                             <h3 className="text-default">{header}</h3>
@@ -314,18 +314,26 @@ export default class DataSelector extends Component {
                     }))
             }];
             return (
-                <AccordianList
-                    id="TablePicker"
-                    key="tablePicker"
-                    className="text-brand"
-                    sections={sections}
-                    searchable={true}
-                    onChange={this.onChangeTable}
-                    itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
-                    itemIsClickable={(item) => item.table && !item.disabled}
-                    renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
-                    hideSingleSectionTitle={true}
-                />
+                <div style={{ width: 300 }}>
+                    <AccordianList
+                        id="TablePicker"
+                        key="tablePicker"
+                        className="text-brand"
+                        sections={sections}
+                        searchable={true}
+                        onChange={this.onChangeTable}
+                        itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
+                        itemIsClickable={(item) => item.table && !item.disabled}
+                        renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
+                        hideSingleSectionTitle={true}
+                    />
+                    { isSavedQuestionList && (
+                        <div className="bg-slate-extra-light p2 text-centered">
+                            Is a question missing?
+                            <a href="" className="block link">Learn more about nested queries</a>
+                        </div>
+                    )}
+                </div>
             );
         }
     }
