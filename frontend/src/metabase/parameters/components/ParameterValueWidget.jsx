@@ -20,7 +20,7 @@ import S from "./ParameterWidget.css";
 
 import cx from "classnames";
 
-const WIDGETS = {
+const DATE_WIDGETS = {
     "date/single": DateSingleWidget,
     "date/range": DateRangeWidget,
     "date/relative": DateRelativeWidget,
@@ -67,8 +67,8 @@ export default class ParameterValueWidget extends Component {
     };
 
     static getWidget(parameter, values) {
-        if (WIDGETS[parameter.type]) {
-            return WIDGETS[parameter.type];
+        if (DATE_WIDGETS[parameter.type]) {
+            return DATE_WIDGETS[parameter.type];
         } else if (values && values.length > 0) {
             return CategoryWidget;
         } else {
