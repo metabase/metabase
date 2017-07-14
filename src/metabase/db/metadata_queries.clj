@@ -59,7 +59,7 @@
   [x]
   (db/select-one-field :db_id 'Table :id (:table_id x)))
 
-(defn field-values 
+(defn field-values
   "Return all the values of FIELD for QUERY."
   [field query]
   (->> (qp/process-query
