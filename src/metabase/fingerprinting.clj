@@ -180,7 +180,7 @@
   :type)
 
 (defmethod comparison-vector :default
-  [fingerprtin]
+  [fingerprint]
   (dissoc fingerprint :type :field :has-nils?))
 
 (defmethod fingerprinter Num
