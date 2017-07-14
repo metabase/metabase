@@ -67,10 +67,10 @@ export default class ParameterValueWidget extends Component {
     };
 
     static getWidget(parameter, values) {
-        if (values && values.length > 0) {
-            return CategoryWidget;
-        } else if (WIDGETS[parameter.type]) {
+        if (WIDGETS[parameter.type]) {
             return WIDGETS[parameter.type];
+        } else if (values && values.length > 0) {
+            return CategoryWidget;
         } else {
             return TextWidget;
         }
