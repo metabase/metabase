@@ -2,6 +2,8 @@
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
 
+If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](./start.md#upgrading-metabase).
+
 ### Launching Metabase on a new container
 
 Here's a quick one-liner to get you off the ground (please note, we recommend further configuration for production deployments below):

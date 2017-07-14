@@ -27,6 +27,11 @@
   {:status :SUCCESS}
   (ldap/test-ldap-connection (get-ldap-details)))
 
+;; The connection test should allow anonymous binds
+(expect-with-ldap-server
+  {:status :SUCCESS}
+  (ldap/test-ldap-connection (dissoc (get-ldap-details) :bind-dn)))
+
 ;; The connection test should fail with an invalid user search base
 (expect-with-ldap-server
   :ERROR
