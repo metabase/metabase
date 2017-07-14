@@ -191,10 +191,4 @@ describe("QueryBuilder", () => {
             // very well together with Enzyme
         })
     })
-
-    describe("raw data visuaization")
-    describe("for Orders table with remapped fields", () => {
-        it("should be ")
-        pending();
-    });
 });

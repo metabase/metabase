@@ -31,6 +31,8 @@ import {
     SpecialTypeAndTargetPicker
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
+import SaveStatus from "metabase/components/SaveStatus";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
@@ -45,6 +47,7 @@ const mapStateToProps = (state, props) => {
 }
 
 const mapDispatchToProps = {
+    fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
     fetchTableMetadata: metadataActions.fetchTableMetadata,
     updateField: metadataActions.updateField,
     updateFieldValues: metadataActions.updateFieldValues,
@@ -55,6 +58,8 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class FieldApp extends Component {
+    saveStatus: null
+
     props: {
         databaseId: number,
         tableId: number,
@@ -62,6 +67,7 @@ export default class FieldApp extends Component {
         metadata: Metadata,
         idfields: Object[],
 
+        fetchDatabaseMetadata: (number) => Promise<void>,
         fetchTableMetadata: (number) => Promise<void>,
         updateField: (any) => Promise<void>,
         updateFieldValues: (any) => Promise<void>,
@@ -71,7 +77,11 @@ export default class FieldApp extends Component {
     }
 
     async componentWillMount() {
-        const {databaseId, tableId, fetchTableMetadata, fetchDatabaseIdfields} = this.props;
+        const {databaseId, tableId, fetchDatabaseMetadata, fetchTableMetadata, fetchDatabaseIdfields} = this.props;
+
+        // A complete database metadata is needed in case that foreign key is changed
+        // and then we need to show FK remapping options for a new table
+        await fetchDatabaseMetadata(databaseId);
 
         // Only fetchTableMetadata hydrates `dimension` in the field object
         // Force reload to ensure that we are not showing stale information
@@ -81,7 +91,17 @@ export default class FieldApp extends Component {
         await fetchDatabaseIdfields(databaseId);
     }
 
-    onUpdateFieldProperties = async (fieldProps) => {
+    linkWithSaveStatus = (saveMethod) => {
+        const self = this;
+        return async (...params) => {
+            self.saveStatus && self.saveStatus.setSaving();
+            await saveMethod(...params);
+            self.saveStatus && self.saveStatus.setSaved();
+        }
+    }
+
+    onUpdateField = this.linkWithSaveStatus(this.props.updateField)
+    onUpdateFieldProperties = this.linkWithSaveStatus(async (fieldProps) => {
         const { metadata, fieldId } = this.props;
         const field = metadata.fields[fieldId];
 
@@ -92,7 +112,10 @@ export default class FieldApp extends Component {
         } else {
             console.warn("Updating field properties in fields settings failed because of missing field metadata")
         }
-    }
+    })
+    onUpdateFieldValues = this.linkWithSaveStatus(this.props.updateFieldValues)
+    onUpdateFieldDimension = this.linkWithSaveStatus(this.props.updateFieldDimension)
+    onDeleteFieldDimension = this.linkWithSaveStatus(this.props.deleteFieldDimension)
 
     render () {
         const {
@@ -102,9 +125,6 @@ export default class FieldApp extends Component {
             tableId,
             idfields,
             updateField,
-            updateFieldValues,
-            updateFieldDimension,
-            deleteFieldDimension,
             fetchTableMetadata
         } = this.props;
 
@@ -120,6 +140,9 @@ export default class FieldApp extends Component {
                     <div className="relative">
                         <div className="wrapper wrapper--trim">
                             <BackButton databaseId={databaseId} tableId={tableId} />
+                            <div className="absolute top right mt4 mr4">
+                                <SaveStatus ref={(ref) => this.saveStatus = ref}/>
+                            </div>
 
                             <Section>
                                 <FieldHeader
@@ -135,7 +158,7 @@ export default class FieldApp extends Component {
                                     triggerClasses={SelectClasses}
                                     // Enter the unwrapped object without cyclical structure
                                     field={{ ...field._object, table: undefined, target: undefined }}
-                                    updateField={updateField}
+                                    updateField={this.onUpdateField}
                                 />
                             </Section>
 
@@ -145,7 +168,7 @@ export default class FieldApp extends Component {
                                     triggerClasses={SelectClasses}
                                     // Enter the unwrapped object without cyclical structure
                                     field={{ ...field._object, table: undefined, target: undefined }}
-                                    updateField={updateField}
+                                    updateField={this.onUpdateField}
                                     idfields={idfields}
                                     selectSeparator={<SelectSeparator />}
                                 />
@@ -157,9 +180,9 @@ export default class FieldApp extends Component {
                                     table={table}
                                     fields={metadata.fields}
                                     updateFieldProperties={this.onUpdateFieldProperties}
-                                    updateFieldValues={updateFieldValues}
-                                    updateFieldDimension={updateFieldDimension}
-                                    deleteFieldDimension={deleteFieldDimension}
+                                    updateFieldValues={this.onUpdateFieldValues}
+                                    updateFieldDimension={this.onUpdateFieldDimension}
+                                    deleteFieldDimension={this.onDeleteFieldDimension}
                                     fetchTableMetadata={fetchTableMetadata}
                                 />
                             </Section>
@@ -265,7 +288,8 @@ export class ValueRemappings extends Component {
     }
 
     onSaveClick = () => {
-        this.props.updateRemappings(this.state.editingRemappings);
+        // Returns the promise so that ButtonWithStatus can show the saving status
+        return this.props.updateRemappings(this.state.editingRemappings);
     }
 
     customValuesAreNonEmpty = () => {
@@ -294,14 +318,13 @@ export class ValueRemappings extends Component {
                     )}
                 </ol>
                 <div className="flex align-center">
-                    <Button
+                    <ButtonWithStatus
                         className="ml-auto"
-                        primary
                         disabled={!this.customValuesAreNonEmpty()}
-                        onClick={this.onSaveClick}
+                        onClickOperation={this.onSaveClick}
                     >
                         Save
-                    </Button>
+                    </ButtonWithStatus>
                 </div>
             </div>
         )
@@ -349,6 +372,19 @@ export class FieldRemapping extends Component {
         super(props, context);
     }
 
+    componentWillReceiveProps(newProps: Props) {
+        const { field } = this.props;
+
+        const shouldResetFKRemappingAfterTargetFieldChange =
+            this.getMappingType().type === "foreign" &&
+            newProps.field.fk_target_field_id !== field.fk_target_field_id
+
+        if (shouldResetFKRemappingAfterTargetFieldChange) {
+            // Setting the mapping again will reset its FK remapping target
+            this.onSetMappingType(MAP_OPTIONS.foreign);
+        }
+    }
+
     getMappingType = () => {
         const { field } = this.props;
 
@@ -386,7 +422,7 @@ export class FieldRemapping extends Component {
             const nameField = fkTargetFields.find((field) => field.special_type === "type/Name")
             return nameField ? nameField.id : null;
         } else {
-            throw new Error("Current field isn't a foreign key")
+            throw new Error("Current field isn't a foreign key or FK target table metadata is missing")
         }
     }
 
@@ -440,9 +476,9 @@ export class FieldRemapping extends Component {
 
     }
 
-    onUpdateRemappings = async (remappings) => {
+    onUpdateRemappings = (remappings) => {
         const { field, updateFieldValues } = this.props;
-        await updateFieldValues(field.id, Array.from(remappings));
+        return updateFieldValues(field.id, Array.from(remappings));
     }
 
     // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
@@ -502,6 +538,7 @@ export class FieldRemapping extends Component {
                             fieldOptions={{ count: 0, fields: [], fks: this.getForeignKeys() }}
                             tableMetadata={table}
                             onFieldChange={this.onForeignKeyFieldChange}
+                            hideSectionHeader
                         />
                     </PopoverWithTrigger>
                 ]}

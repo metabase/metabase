@@ -32,7 +32,8 @@ export default class FieldList extends Component {
         onFieldChange: PropTypes.func.isRequired,
         onFilterChange: PropTypes.func,
         enableTimeGrouping: PropTypes.bool,
-        tableMetadata: PropTypes.object.isRequired
+        tableMetadata: PropTypes.object.isRequired,
+        hideSectionHeader: PropTypes.bool
     };
 
     componentWillMount() {
@@ -40,7 +41,7 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, field, fieldOptions, customFieldOptions, segmentOptions } = newProps;
+        let { tableMetadata, field, fieldOptions, customFieldOptions, segmentOptions, hideSectionHeader } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
@@ -61,7 +62,7 @@ export default class FieldList extends Component {
         }
 
         let mainSection = {
-            name: singularize(tableName),
+            name: hideSectionHeader ? null : singularize(tableName),
             items: specialOptions.concat(fieldOptions.fields.map(field => ({
                 name: Query.getFieldPathName(field.id, tableMetadata),
                 value: typeof field.id === "number" ? ["field-id", field.id] : field.id,
@@ -70,7 +71,7 @@ export default class FieldList extends Component {
         };
 
         let fkSections = fieldOptions.fks.map(fk => ({
-            name: stripId(fk.field.display_name),
+            name: hideSectionHeader ? null : stripId(fk.field.display_name),
             items: fk.fields.map(field => {
                 const value = ["fk->", fk.field.id, field.id];
                 const target = Query.getFieldTarget(value, tableMetadata);
@@ -83,7 +84,7 @@ export default class FieldList extends Component {
         }));
 
         let sections = []
-        if (mainSection.items.length > 0) {
+        if (mainSection.items.length > 0 ) {
             sections.push(mainSection);
         }
         sections.push(...fkSections);
