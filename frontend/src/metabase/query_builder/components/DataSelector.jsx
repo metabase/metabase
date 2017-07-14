@@ -170,17 +170,13 @@ export default class DataSelector extends Component {
     }
 
     renderDatabaseSchemaPicker() {
-        const { selectedSchema } = this.state;
+        const { databases, selectedSchema } = this.state;
 
-        // for nested queries we want to present some different styling so we need
-        // a way to identify this "database"
-        // for now we use it's unique ID that the backend specifies
-        // TODO (@kdoh) - have a nice heart to heart with whoever chose this value
-        const savedQuestionId = -1337
-
-        let sections = this.state.databases
+        let sections = databases
             .filter(database =>
-                database.id !== savedQuestionId
+                // filter out the saved questions "db" so we can present it
+                // differently
+                !database.is_saved_questions
             )
             .map(database => ({
                 name: database.name,
@@ -189,13 +185,13 @@ export default class DataSelector extends Component {
 
         // do the opposite of what we just did and get a reference to the saved question "db"
         // there will only ever be one of these hence [0]
-        const savedQuestionSection = this.state.databases.filter(db => db.id === savedQuestionId)[0]
+        const savedQuestionSection = databases.filter(db => db.is_saved_questions)[0]
 
         // some of the change functions need the index in the databases array
-        const savedQuestionSectionIndex = this.state.databases.indexOf(savedQuestionSection)
+        const savedQuestionSectionIndex = databases.indexOf(savedQuestionSection)
 
-        let openSection = selectedSchema && _.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema));
-        if (openSection >= 0 && this.state.databases[openSection] && this.state.databases[openSection].schemas.length === 1) {
+        let openSection = selectedSchema && _.findIndex(databases, (db) => _.find(db.schemas, selectedSchema));
+        if (openSection >= 0 && databases[openSection] && databases[openSection].schemas.length === 1) {
             openSection = -1;
         }
 
@@ -271,7 +267,7 @@ export default class DataSelector extends Component {
     renderTablePicker() {
         const schema = this.state.selectedSchema;
 
-        const isSavedQuestionList = schema.database.id === -1337
+        const isSavedQuestionList = schema.database.is_saved_questions;
 
         const hasMultipleDatabases = this.props.databases.length > 1;
         const hasMultipleSchemas = schema && schema.database && _.uniq(schema.database.tables, (t) => t.schema).length > 1;
@@ -330,7 +326,7 @@ export default class DataSelector extends Component {
                     { isSavedQuestionList && (
                         <div className="bg-slate-extra-light p2 text-centered">
                             Is a question missing?
-                            <a href="" className="block link">Learn more about nested queries</a>
+                            <a href="http://metabase.com/docs/users-guide/04-asking-questions.md#source-data" className="block link">Learn more about nested queries</a>
                         </div>
                     )}
                 </div>
