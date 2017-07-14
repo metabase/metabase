@@ -58,23 +58,23 @@
 (extend MovieDbDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table       (constantly nil)
-          :describe-database   (fn [_ {:keys [exclude-tables]}]
-                                 (let [tables (for [table (vals moviedb-tables)
-                                                    :when (not (contains? exclude-tables (:name table)))]
-                                                (select-keys table [:schema :name]))]
-                                   {:tables (set tables)}))
-          :describe-table      (fn [_ _ table]
-                                 (-> (get moviedb-tables (:name table))
-                                     (dissoc :fks)))
-          :describe-table-fks  (fn [_ _ table]
-                                 (-> (get moviedb-tables (:name table))
-                                     :fks
-                                     set))
-          :features            (constantly #{:foreign-keys})
-          :details-fields      (constantly [])
-          :table-rows-seq      (constantly [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
-                                            {:keypath "movies.description", :value "A cinematic adventure."}])}))
+         {:analyze-table      (constantly nil)
+          :describe-database  (fn [_ {:keys [exclude-tables]}]
+                                (let [tables (for [table (vals moviedb-tables)
+                                                   :when (not (contains? exclude-tables (:name table)))]
+                                               (select-keys table [:schema :name]))]
+                                  {:tables (set tables)}))
+          :describe-table     (fn [_ _ table]
+                                (-> (get moviedb-tables (:name table))
+                                    (dissoc :fks)))
+          :describe-table-fks (fn [_ _ table]
+                                (-> (get moviedb-tables (:name table))
+                                    :fks
+                                    set))
+          :features           (constantly #{:foreign-keys})
+          :details-fields     (constantly [])
+          :table-rows-seq     (constantly [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
+                                           {:keypath "movies.description", :value "A cinematic adventure."}])}))
 
 (driver/register-driver! :moviedb (MovieDbDriver.))
 

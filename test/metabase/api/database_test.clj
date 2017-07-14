@@ -134,11 +134,6 @@
       (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
               :features)))
 
-:description             nil
-                               :entity_type             nil
-                               :caveats                 nil
-                               :points_of_interest      nil
-                               :visibility_type         nil
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil
