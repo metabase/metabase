@@ -131,6 +131,7 @@
           :has-nils?            (pos? nil-count)
           :0<=x<=1?             (<= 0 min max 1)
           :-1<=x<=1?            (<= -1 min max 1)
+          :cv                   (safe-divide mean sd)
           :span-vs-sd           (safe-divide span sd)
           :mean-median-spread   (safe-divide span (- mean median))
           :min-vs-max           (safe-divide min max)

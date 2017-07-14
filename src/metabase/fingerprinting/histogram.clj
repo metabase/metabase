@@ -21,7 +21,7 @@
 
 (def ^{:arglists '([^Histogram histogram])} categorical?
   "Returns true if given histogram holds categorical values."
-  (comp some? impl/target-type))
+  (comp (complement #{:none}) impl/target-type))
 
 (defn pdf
   "Probability density function of given histogram.

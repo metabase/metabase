@@ -124,7 +124,6 @@
 (defn compare-fingerprints
   "Compare fingerprints of two models."
   [opts a b]
-  (assert (= (keys a) (keys b)))
   (let [[a b] (map (partial fingerprint opts) [a b])]
     {:constituents [a b]
      :comparison   (into {}

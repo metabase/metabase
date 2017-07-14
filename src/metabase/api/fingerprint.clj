@@ -149,4 +149,15 @@
               {:max-cost (max-cost max_query_cost max_computation_cost)})
        fingerprinters/prettify))
 
+(api/defendpoint GET "/compare/segment/:sid/table/:tid"
+  "Compare `Segment` with `Table`."
+  [sid tid max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (fingerprinters/prettify
+   (fingerprinting/compare-fingerprints
+    {:max-cost (max-cost max_query_cost max_computation_cost)}
+    (api/read-check Segment sid)
+    (api/read-check Table tid))))
+
 (api/define-routes)
