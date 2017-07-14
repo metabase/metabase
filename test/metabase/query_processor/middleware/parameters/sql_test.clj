@@ -437,8 +437,9 @@
            (quote-name table-name)))))
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
+;; Athena failed because the timestamp keyword is not supported
 (def ^:private ^:const sql-parameters-engines
-  (disj (engines-that-support :native-parameters) :redshift :crate))
+  (disj (engines-that-support :native-parameters) :redshift :crate :athena))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query

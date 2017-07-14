@@ -132,7 +132,7 @@
   (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
     (= v "information_schema")))
 
-(defn- date-interval [unit amount]
+(defn date-interval [unit amount]
   (hsql/call :date_add (hx/literal unit) amount :%now))
 
 (defn- describe-schema [{{:keys [catalog] :as details} :details} {:keys [schema]}]
@@ -178,8 +178,8 @@
      :fields (set (for [[name type] rows]
                     {:name name, :base-type (presto-type->base-type type)}))}))
 
-(defprotocol ^:private IPrepareValue
-  (^:private prepare-value [this]))
+(defprotocol IPrepareValue
+  (prepare-value [this]))
 (extend-protocol IPrepareValue
   nil           (prepare-value [_] nil)
   DateTimeValue (prepare-value [{:keys [value]}] (prepare-value value))
@@ -234,7 +234,7 @@
 
 ;;; ISQLDriver implementation
 
-(defn- apply-page [honeysql-query {{:keys [items page]} :page}]
+(defn apply-page [honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
@@ -249,7 +249,7 @@
             (h/where [:> :__rownum__ offset])
             (h/limit items))))))
 
-(defn- date [unit expr]
+(defn date [unit expr]
   (case unit
     :default         expr
     :minute          (hsql/call :date_trunc (hx/literal :minute) expr)
@@ -271,10 +271,10 @@
     :quarter-of-year (hsql/call :quarter expr)
     :year            (hsql/call :year expr)))
 
-(defn- string-length-fn [field-key]
+(defn string-length-fn [field-key]
   (hsql/call :length field-key))
 
-(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
+(defn unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :from_unixtime expr)
     :milliseconds (recur (hx// expr 1000.0) :seconds)))

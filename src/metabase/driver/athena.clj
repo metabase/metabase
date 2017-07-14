@@ -15,10 +15,16 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sql-qp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.driver.presto :as presto]
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             [metabase.query-processor.util :as qputil]
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
+
   (:import [java.sql DriverManager]
            [java.util Properties]))
 
@@ -61,7 +67,6 @@
    Such as prepare statement"
   [database query {:keys [read-fn] :as options}]
   (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs {:identifiers identity}))))]
-    ;(println "DEBUG::::run-query: " query)
     (log/info (format "Running Athena query : '%s'..." query))
     (with-open [con (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
                (let [athena-stmt (.createStatement con)]
@@ -155,54 +160,6 @@
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
 
-(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
-  (case seconds-or-milliseconds
-    :seconds      (hsql/call :from_unixtime expr)
-    :milliseconds (recur (hx// expr 1000) :seconds)))
-
-(defn- date-format [format-str expr]
-  (hsql/call :date_format expr (hx/literal format-str)))
-
-(defn- str-to-date [format-str expr]
-  (hsql/call :date_parse expr (hx/literal format-str)))
-
-(defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str expr)))
-
-(defn- date [unit expr]
-   (case unit
-     :default expr
-     :minute (trunc-with-format "%Y-%m-%d %H:%i" expr)
-     :minute-of-hour (hsql/call :minute expr)
-     :hour (trunc-with-format "%Y-%m-%d %H" expr)
-     :hour-of-day (hsql/call :hour expr)
-     :day (trunc-with-format "%Y-%m-%d" expr)
-     :day-of-week (hx/->integer (date-format "%w"
-                                             (hx/+ expr
-                                                   (hsql/raw "interval '1' day"))))
-     :day-of-month (hx/->integer (date-format "%d" expr))
-     :day-of-year (hx/->integer (date-format "%j" expr))
-     :week (hsql/call :date_sub
-                      (hx/+ expr
-                            (hsql/raw "interval 1 day"))
-                      (hsql/call :date_format
-                                 (hx/+ expr
-                                       (hsql/raw "interval 1 day"))
-                                 "%w"))
-     :week-of-year (hsql/call :weekofyear expr)
-     :month (hsql/call :trunc expr (hx/literal :MM))
-     :month-of-year (hsql/call :month expr)
-     :quarter (hsql/call :add_months
-                         (hsql/call :trunc expr (hx/literal :year))
-                         (hx/* (hx/- (hsql/call :quarter expr)
-                                     1)
-                               3))
-     :quarter-of-year (hsql/call :quarter expr)
-     :year (hsql/call :year expr)))
-
-(defn- date-interval [unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d' %s)" (int amount) (name unit))))
-
 (defn- unqualify-honey-fields [form-str form-length fields]
   (mapv (fn [[f v]]
           (if (str/starts-with? (str f) form-str)
@@ -217,7 +174,7 @@
   (let [from-str (str (first from))
         from-length (inc (count from-str))]
     (cond-> honey-query
-            true
+            (not-empty (:select honey-query))
             (update :select (fn [selects]
                               (mapv (fn [[f v]]
                                       (if (str/starts-with? (str f) from-str)
@@ -273,12 +230,51 @@
       {:query  athena-sql
        :params args})))
 
-(defn apply-page
-  "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers.
-   WORKAROUND : not supported by Athena, TODO: how to do it with hive ?"
-  [_ honeysql-form {{:keys [items page]} :page}]
-  (-> honeysql-form
-      (h/limit items)))
+(defn- quote-name [nm]
+  (str \" (str/replace nm "\"" "\"\"") \"))
+
+(defn- quote+combine-names [& names]
+  (str/join \. (map quote-name names)))
+
+(defn- field-avg-length [{field-name :name, :as field}]
+  (let [table             (field/table field)
+        {:keys [details]} (table/database table)
+        sql               (format "SELECT cast(round(avg(length(%s))) AS integer) FROM %s WHERE %s IS NOT NULL"
+                            (quote-name field-name)
+                            (quote+combine-names (:schema table) (:name table))
+                            (quote-name field-name))
+        result     (run-query {:details details :engine :athena} sql {})
+        v (:_col0 (first result))]
+    (or v 0)))
+
+(defn- field-percent-urls [{field-name :name, :as field}]
+  (let [table             (field/table field)
+        {:keys [details]} (table/database table)
+        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
+                            (quote-name field-name)
+                            (quote+combine-names (:schema table) (:name table))
+                            (quote-name field-name))
+        result            (run-query {:details details :engine :athena} sql {})
+        v (:_col0 (first result))]
+    (if (= v "NaN") 0.0 v)))
+
+;; It take a really long time. I'm not sure that feature is worth it for thris driver
+(defn- analyze-table
+  [driver table new-table-ids]
+  ((analyze/make-analyze-table driver
+     :field-avg-length-fn   field-avg-length
+     :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
+
+(defn- field-values-lazy-seq [{field-name :name, :as field}]
+  (let [table             (field/table field)
+        {:keys [details]} (table/database table)
+        sql               (format "SELECT %s FROM %s LIMIT %d"
+                            (quote-name field-name)
+                            (quote+combine-names (:schema table) (:name table))
+                            driver/max-sync-lazy-seq-results)
+        {:keys [rows]}    (run-query {:details details :engine :athena} sql {})]
+    (for [row rows]
+      (first row))))
 
 (defrecord AthenaDriver []
   clojure.lang.Named
@@ -287,12 +283,12 @@
 (u/strict-extend AthenaDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?              can-connect?
-          :date-interval             (u/drop-first-arg date-interval)
+         {:analyze-table             (constantly nil) ;analyze-table)
+          :can-connect?              can-connect?
+          :date-interval             (u/drop-first-arg presto/date-interval)
           :describe-database         describe-database
           :describe-table            describe-table
           :describe-table-fks        (constantly nil)
-
           :details-fields (constantly (ssh/with-tunnel-config
                                        [{:name         "region"
                                          :display-name "Region"
@@ -314,22 +310,26 @@
                                          :placeholder  "*******"
                                          :required     true}]))
           :execute-query             execute-query
-          :features (constantly features)
-          :field-values-lazy-seq (resolve 'metabase.driver.generic-sql.query-processor/field-values-lazy-seq)
-          :mbql->native mbql->native})
+          :features                 (constantly features)
+          :field-values-lazy-seq    (u/drop-first-arg field-values-lazy-seq)
+          :mbql->native mbql->native
+          :table-rows-seq (constantly nil)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:apply-page                apply-page
+         {:apply-page                (u/drop-first-arg presto/apply-page)
           :active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly :%current_timestamp)
-          :date                      (u/drop-first-arg date)
+          :current-datetime-fn       (constantly :%now);(constantly :%current_timestamp)
+          ;:date                      (u/drop-first-arg date)
+          :date                      (u/drop-first-arg metabase.driver.presto/date)
           :excluded-schemas          (constantly #{"default"})
+          :field-percent-urls        (u/drop-first-arg field-percent-urls)
+          :prepare-value             (u/drop-first-arg presto/prepare-value)
           :quote-style               (constantly :ansi)
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+          :string-length-fn          (u/drop-first-arg presto/string-length-fn)
+          :unix-timestamp->timestamp (u/drop-first-arg presto/unix-timestamp->timestamp)}))
 
 (when (u/ignore-exceptions
        (Class/forName "com.amazonaws.athena.jdbc.AthenaDriver"))
