@@ -174,12 +174,27 @@ export default class DataSelector extends Component {
     renderDatabaseSchemaPicker() {
         const { selectedSchema } = this.state;
 
-        let sections = this.state.databases.map(database => {
-            return {
+        // for nested queries we want to present some different styling so we need
+        // a way to identify this "database"
+        // for now we use it's unique ID that the backend specifies
+        // TODO (@kdoh) - have a nice heart to heart with whoever chose this value
+        const savedQuestionId = -1337
+
+        let sections = this.state.databases
+            .filter(database =>
+                database.id !== savedQuestionId
+            )
+            .map(database => ({
                 name: database.name,
                 items: database.schemas.length > 1 ? database.schemas : []
-            };
-        });
+            }));
+
+        // do the opposite of what we just did and get a reference to the saved question "db"
+        // there will only ever be one of these hence [0]
+        const savedQuestionSection = this.state.databases.filter(db => db.id === savedQuestionId)[0]
+
+        // some of the change functions need the index in the databases array
+        const savedQuestionSectionIndex = this.state.databases.indexOf(savedQuestionSection)
 
         let openSection = selectedSchema && _.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema));
         if (openSection >= 0 && this.state.databases[openSection] && this.state.databases[openSection].schemas.length === 1) {
@@ -187,20 +202,33 @@ export default class DataSelector extends Component {
         }
 
         return (
-            <AccordianList
-                id="DatabaseSchemaPicker"
-                key="schemaPicker"
-                className="text-brand"
-                sections={sections}
-                onChange={this.onChangeSchema}
-                onChangeSection={this.onChangeDatabase}
-                itemIsSelected={(schema) => this.state.selectedSchema === schema}
-                renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
-                renderItemIcon={() => <Icon name="folder" size={16} />}
-                initiallyOpenSection={openSection}
-                showItemArrows={true}
-                alwaysTogglable={true}
-            />
+            <div>
+                <AccordianList
+                    id="DatabaseSchemaPicker"
+                    key="schemaPicker"
+                    className="text-brand"
+                    sections={sections}
+                    onChange={this.onChangeSchema}
+                    onChangeSection={this.onChangeDatabase}
+                    itemIsSelected={(schema) => this.state.selectedSchema === schema}
+                    renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
+                    renderItemIcon={() => <Icon name="folder" size={16} />}
+                    initiallyOpenSection={openSection}
+                    showItemArrows={true}
+                    alwaysTogglable={true}
+                />
+                { savedQuestionSection && (
+                    <div
+                        className="List-section p2 cursor-pointer text-brand-hover bg-slate-extra-light"
+                        onClick={() => this.onChangeDatabase(savedQuestionSectionIndex)}
+                    >
+                        <div className="List-section-header flex align-center">
+                            <Icon className="Icon text-default mr2" size={18} name="all" />
+                            <h3 className="List-section-title">Saved questions</h3>
+                        </div>
+                    </div>
+                )}
+            </div>
         );
     }
 
