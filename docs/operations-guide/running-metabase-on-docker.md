@@ -134,7 +134,6 @@ Note that some older versions of metabase stored their db in a different default
 
     docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
 
-
 ### Fixing OutOfMemoryErrors in some hosted environments
 
 On some hosts Metabase can fail to start with an error message like:
