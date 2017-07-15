@@ -40,6 +40,11 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     }
 };
 
+export const nestThisQuery = (card: CardObject): ?CardObject => {
+    const newCard = startNewCard("query", -1337, "card__" + card.id);
+    return newCard;
+};
+
 export const getFieldRefFromColumn = col => {
     if (col.fk_field_id != null) {
         return ["fk->", col.fk_field_id, col.id];
