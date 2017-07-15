@@ -6,7 +6,7 @@
              [fingerprinters :as fingerprinters]
              [histogram :as h]]
             [redux.core :as redux])
-  (import com.bigml.histogram.Histogram))
+  (:import com.bigml.histogram.Histogram))
 
 (def magnitude
   "Transducer that claclulates magnitude (Euclidean norm) of given vector.

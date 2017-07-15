@@ -1,9 +1,9 @@
 (ns metabase.fingerprinting.histogram
-  ""
+  "Wrappers and additional functionality for `bigml.histogram`."
   (:require [bigml.histogram.core :as impl]
             [kixi.stats.math :as math]
             [redux.core :as redux])
-  (import com.bigml.histogram.Histogram))
+  (:import com.bigml.histogram.Histogram))
 
 (defn histogram
   "Transducer that summarizes numerical data with a histogram."
