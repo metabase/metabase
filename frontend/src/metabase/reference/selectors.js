@@ -14,11 +14,13 @@ import {
 
 // import { getDatabases, getTables, getFields, getMetrics, getSegments } from "metabase/selectors/metadata";
 
-import { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
+import {
+    getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields,
+    getShallowMetrics as getMetrics, getShallowSegments as getSegments
+} from "metabase/selectors/metadata";
 export { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
 
 import _ from "underscore";
-
 
 export const getUser = (state, props) => state.currentUser;
 

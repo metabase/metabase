@@ -4,8 +4,7 @@ import React from "react";
 
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
-
-import { filter } from "metabase/qb/lib/actions";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,
@@ -28,10 +27,10 @@ function getFiltersForColumn(column) {
     }
 }
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
     if (
+        !(query instanceof StructuredQuery) ||
         !clicked ||
         !clicked.column ||
         clicked.column.id == null ||
@@ -44,7 +43,8 @@ export default (
 
     if (isPK(column.special_type)) {
         return [];
-    } else if (isFK(column.special_type)) {
+    }
+    if (isFK(column.special_type)) {
         return [
             {
                 name: "view-fks",
@@ -56,10 +56,10 @@ export default (
                         {singularize(stripId(column.display_name))}
                         's
                         {" "}
-                        {pluralize(tableMetadata.display_name)}
+                        {pluralize(query.table().display_name)}
                     </span>
                 ),
-                card: () => filter(card, "=", column, value)
+                question: () => question.filter("=", column, value)
             }
         ];
     }
@@ -69,6 +69,6 @@ export default (
         name: operator,
         section: "filter",
         title: <span className="h2">{name}</span>,
-        card: () => filter(card, operator, column, value)
+        question: () => question.filter(operator, column, value)
     }));
 };

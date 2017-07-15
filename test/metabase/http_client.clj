@@ -98,12 +98,11 @@
         (log/error (u/pprint-to-str 'red body))
         (throw (ex-info message {:status-code actual-status-code}))))))
 
-(defn- method->request-fn [method]
-  (case method
-    :get    client/get
-    :post   client/post
-    :put    client/put
-    :delete client/delete))
+(def ^:private method->request-fn
+  {:get    client/get
+   :post   client/post
+   :put    client/put
+   :delete client/delete})
 
 (defn- -client [credentials method expected-status url http-body url-param-kwargs request-options]
   ;; Since the params for this function can get a little complicated make sure we validate them

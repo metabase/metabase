@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import cx from "classnames";
 
-const DetailPane = ({ name, description, error, usefulQuestions, useForCurrentQuestion, extra }) =>
+const DetailPane = ({ name, description, usefulQuestions, useForCurrentQuestion, extra }) =>
     <div>
         <h1>{name}</h1>
         <p className={cx({ "text-grey-3": !description })}>
@@ -35,7 +35,6 @@ const DetailPane = ({ name, description, error, usefulQuestions, useForCurrentQu
             </div>
         : null }
         {extra}
-        <div>{error}</div>
     </div>
 
 DetailPane.propTypes = {

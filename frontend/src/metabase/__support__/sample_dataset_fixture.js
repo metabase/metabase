@@ -1,7 +1,11 @@
+import Question from "metabase-lib/lib/Question";
 import { getMetadata } from "metabase/selectors/metadata";
+import { assocIn } from "icepick";
+import _ from "underscore";
 
 export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
+export const MONGO_DATABASE_ID = 3;
 
 export const ORDERS_TABLE_ID = 1;
 export const PEOPLE_TABLE_ID = 2;
@@ -153,6 +157,28 @@ export const state = {
         engine: 'h2',
         created_at: '2017-06-14T23:22:55.349Z',
         points_of_interest: null
+      },
+      '3':{
+          description: null,
+          features: [
+              "basic-aggregations",
+              "nested-fields",
+              "dynamic-schema"
+          ],
+          name: "test-data",
+          caveats: null,
+          tables: [],
+          is_full_sync: true,
+          updated_at: "2017-06-22T00:33:36.681Z",
+          details: {
+              dbname: "test-data",
+              host: "localhost"
+          },
+          is_sample: false,
+          id: 3,
+          engine: "mongo",
+          created_at: "2017-06-22T00:33:36.681Z",
+          points_of_interest: null
       }
     },
     tables: {
@@ -1369,3 +1395,182 @@ export const state = {
 
 export const metadata = getMetadata(state);
 
+export const card = {
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            source_table: ORDERS_TABLE_ID
+        }
+    }
+};
+
+export const product_card = {
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            source_table: PRODUCT_TABLE_ID
+        }
+    }
+};
+
+export const orders_raw_card = {
+    id: 1,
+    name: "Raw orders data",
+    display: 'table',
+    visualization_settings: {},
+    can_write: true,
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            source_table: ORDERS_TABLE_ID
+        }
+    }
+};
+
+export const orders_count_card = {
+    id: 2,
+    name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            aggregation: [["count"]],
+            source_table: ORDERS_TABLE_ID
+        }
+    }
+};
+
+export const native_orders_count_card = {
+    id: 2,
+    name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "native",
+        database: DATABASE_ID,
+        native: {
+            query: "SELECT count(*) FROM orders"
+        }
+    }
+};
+
+export const invalid_orders_count_card = {
+    id: 2,
+    name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "nosuchqueryprocessor",
+        database: DATABASE_ID,
+        query: {
+            query: "SELECT count(*) FROM orders"
+        }
+    }
+};
+
+export const orders_count_by_id_card = {
+    id: 2,
+    name: "# orders data",
+    can_write: false,
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            aggregation: [["count"]],
+            source_table: ORDERS_TABLE_ID,
+            breakout: [["field-id", ORDERS_PK_FIELD_ID]]
+        }
+    }
+};
+
+export const clickedFloatHeader = {
+    column: {
+        ...metadata.fields[ORDERS_TOTAL_FIELD_ID],
+        source: "fields"
+    }
+};
+
+export const clickedCategoryHeader = {
+    column: {
+        ...metadata.fields[PRODUCT_CATEGORY_FIELD_ID],
+        source: "fields"
+    }
+};
+
+export const clickedFloatValue = {
+    column: {
+        ...metadata.fields[ORDERS_TOTAL_FIELD_ID],
+        source: "fields"
+    },
+    value: 1234
+};
+
+export const clickedPKValue = {
+    column: {
+        ...metadata.fields[ORDERS_PK_FIELD_ID],
+        source: "fields"
+    },
+    value: 42
+};
+
+export const clickedFKValue = {
+    column: {
+        ...metadata.fields[ORDERS_PRODUCT_FK_FIELD_ID],
+        source: "fields"
+    },
+    value: 43
+};
+
+export const tableMetadata = metadata.tables[ORDERS_TABLE_ID];
+
+export function makeQuestion(fn = (card, state) => ({ card, state })) {
+    const result = fn(card, state);
+    return new Question(getMetadata(result.state), result.card);
+}
+
+export const question = new Question(metadata, card);
+export const unsavedOrderCountQuestion = new Question(metadata, _.omit(orders_count_card, 'id'));
+export const productQuestion = new Question(metadata, product_card);
+const NoFieldsMetadata = getMetadata(assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "fields"], []))
+export const questionNoFields = new Question(NoFieldsMetadata, card);
+
+export const orders_past_30_days_segment = {
+    "id": null,
+    "name": "Past 30 days",
+    "description": "Past 30 days created at",
+    "table_id": 1,
+    "definition": {
+        "source_table": 1,
+        "filter": ["time-interval", ["field-id", 1], -30, "day"]
+    }
+};
+
+export const vendor_count_metric = {
+    "id": null,
+    "name": "Vendor count",
+    "description": "Tells how many vendors we have",
+    "table_id": 3,
+    "definition": {
+        "aggregation": [
+            [
+                "distinct",
+                [
+                    "field-id",
+                    28
+                ]
+            ]
+        ],
+        "source_table": 3
+    }
+};

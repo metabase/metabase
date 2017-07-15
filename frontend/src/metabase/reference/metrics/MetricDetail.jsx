@@ -212,7 +212,6 @@ export default class MetricDetail extends Component {
                                     <Formula
                                         type="metric"
                                         entity={entity}
-                                        table={table}
                                         isExpanded={isFormulaExpanded}
                                         expandFormula={expandFormula}
                                         collapseFormula={collapseFormula}

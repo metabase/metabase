@@ -7,16 +7,46 @@ import { spawn } from "child_process";
 // use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./e2e/support/backend.js").BackendResource
 const server = BackendResource.get({});
+const apiHost = process.env.E2E_HOST || server.host;
+
+const login = async () => {
+    const loginFetchOptions = {
+        method: "POST",
+        headers: new Headers({
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({ username: "bob@metabase.com", password: "12341234"})
+    };
+    const result = await fetch(apiHost + "/api/session", loginFetchOptions);
+
+    let resultBody = null
+    try {
+        resultBody = await result.text();
+        resultBody = JSON.parse(resultBody);
+    } catch (e) {}
+
+    if (result.status >= 200 && result.status <= 299) {
+        console.log(`Successfully created a shared login with id ${resultBody.id}`)
+        return resultBody
+    } else {
+        const error = {status: result.status, data: resultBody }
+        console.log('A shared login attempt failed with the following error:');
+        console.log(error, {depth: null});
+        throw error
+    }
+}
 
 const init = async() => {
     await BackendResource.start(server)
+    const sharedLoginSession = await login()
 
-    const userArgs = process.argv.slice(2);
     const env = {
         ...process.env,
-        "E2E_HOST": process.env.E2E_HOST || server.host
+        "E2E_HOST": apiHost,
+        "SHARED_LOGIN_SESSION_ID": sharedLoginSession.id
     }
-
+    const userArgs = process.argv.slice(2);
     const jestProcess = spawn(
         "yarn",
         ["run", "jest", "--", "--maxWorkers=1", "--config", "jest.integ.conf.json", ...userArgs],

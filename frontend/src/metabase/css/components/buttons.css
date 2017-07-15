@@ -117,6 +117,13 @@
   color: color(var(--base-grey) shade(50%));
 }
 
+.Button--onlyIcon {
+    border: none;
+    background: transparent;
+    color: var(--default-font-color);
+    padding: 0;
+}
+
 .Button-group {
   display: inline-block;
   border-radius: var(--default-button-border-radius);

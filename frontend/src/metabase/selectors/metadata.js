@@ -2,7 +2,12 @@
 
 import { createSelector } from "reselect";
 
-import Metadata from "metabase/meta/metadata/Metadata";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Database from "metabase-lib/lib/metadata/Database";
+import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
+import Metric from "metabase-lib/lib/metadata/Metric";
+import Segment from "metabase-lib/lib/metadata/Segment";
 
 import { getIn } from "icepick";
 import { getFieldValues } from "metabase/lib/query/field";
@@ -14,9 +19,6 @@ import {
 } from "metabase/lib/schema_metadata";
 
 export const getNormalizedMetadata = state => state.metadata;
-
-export const getMeta = createSelector([getNormalizedMetadata], metadata =>
-    Metadata.fromEntities(metadata));
 
 // fully denomalized, raw "entities"
 export const getNormalizedDatabases = state => state.metadata.databases;
@@ -59,14 +61,13 @@ export const getMetadata = createSelector(
         getNormalizedSegments,
         getNormalizedMetrics
     ],
-    (databases, tables, fields, segments, metrics) => {
-        const meta = {
-            databases: copyObjects(databases),
-            tables: copyObjects(tables),
-            fields: copyObjects(fields),
-            segments: copyObjects(segments),
-            metrics: copyObjects(metrics)
-        };
+    (databases, tables, fields, segments, metrics): Metadata => {
+        const meta = new Metadata();
+        meta.databases = copyObjects(meta, databases, Database)
+        meta.tables    = copyObjects(meta, tables, Table)
+        meta.fields    = copyObjects(meta, fields, Field)
+        meta.segments  = copyObjects(meta, segments, Segment)
+        meta.metrics   = copyObjects(meta, metrics, Metric)
 
         hydrateList(meta.databases, "tables", meta.tables);
 
@@ -127,11 +128,13 @@ export const getParameterFieldValues = (state, props) => {
 // UTILS:
 
 // clone each object in the provided mapping of objects
-function copyObjects(objects) {
+export function copyObjects(metadata, objects, Klass) {
     let copies = {};
     for (const object of Object.values(objects)) {
         // $FlowFixMe
-        copies[object.id] = { ...object };
+        copies[object.id] = new Klass(object);
+        // $FlowFixMe
+        copies[object.id].metadata = metadata;
     }
     return copies;
 }

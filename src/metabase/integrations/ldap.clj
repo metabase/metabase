@@ -35,7 +35,7 @@
              (setting/set-string! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
-  "The Distinguished Name to bind as, this user will be used to lookup information about other users.")
+  "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.")
 
 (defsetting ldap-password
   "The password to bind with for the lookup user.")
@@ -78,8 +78,6 @@
   []
   (boolean (and (ldap-enabled)
                 (ldap-host)
-                (ldap-bind-dn)
-                (ldap-password)
                 (ldap-user-base))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]

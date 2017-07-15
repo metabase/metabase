@@ -14,7 +14,8 @@ export default class LoadingAndErrorWrapper extends Component {
         noBackground:   PropTypes.bool,
         noWrapper:      PropTypes.bool,
         children:       PropTypes.any,
-        style:          PropTypes.object
+        style:          PropTypes.object,
+        showSpinner:    PropTypes.bool
     };
 
     static defaultProps = {
@@ -23,6 +24,7 @@ export default class LoadingAndErrorWrapper extends Component {
         loading:        false,
         noBackground:   false,
         noWrapper:      false,
+        showSpinner:    true
     };
 
     getErrorMessage() {
@@ -50,7 +52,7 @@ export default class LoadingAndErrorWrapper extends Component {
     }
 
     render() {
-        const { loading, error, noBackground, noWrapper } = this.props;
+        const { loading, error, noBackground, noWrapper, showSpinner } = this.props;
         const contentClassName = cx("wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered", {
             "bg-white": !noBackground
         });
@@ -64,10 +66,12 @@ export default class LoadingAndErrorWrapper extends Component {
                         <h2 className="text-normal text-grey-2 ie-wrap-content-fix">{this.getErrorMessage()}</h2>
                     </div>
                 : loading ?
-                    <div className={contentClassName}>
-                        <LoadingSpinner />
-                        <h2 className="text-normal text-grey-2 mt1">Loading...</h2>
-                     </div>
+                        showSpinner &&
+                        <div className={contentClassName}>
+                            <LoadingSpinner />
+                            <h2 className="text-normal text-grey-2 mt1">Loading...</h2>
+                        </div>
+
                 :
                     this.getChildren()
                 }

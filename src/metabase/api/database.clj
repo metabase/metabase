@@ -42,7 +42,10 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info [dbs]
+(defn- add-native-perms-info
+  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running native (e.g. SQL) queries.
+   Will be one of `:write`, `:read`, or `:none`."
+  [dbs]
   (for [db dbs]
     (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
@@ -108,10 +111,11 @@
 
 (defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
   (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
-    {:name     "Saved Questions"
-     :id       database/virtual-id
-     :features #{:basic-aggregations}
-     :tables   virtual-tables}))
+    {:name               "Saved Questions"
+     :id                 database/virtual-id
+     :features           #{:basic-aggregations}
+     :tables             virtual-tables
+     :is_saved_questions true}))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-virtual-tables-for-saved-cards [dbs]
