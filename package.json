@@ -91,6 +91,7 @@
     "banner-webpack-plugin": "^0.2.3",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.0",
+    "documentation": "^4.0.0-rc.1",
     "enzyme": "^2.7.0",
     "eslint": "^3.5.0",
     "eslint-import-resolver-webpack": "^0.8.0",
@@ -147,7 +148,7 @@
     "dev": "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
     "lint": "yarn run lint-eslint && yarn run lint-prettier",
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
-    "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/{qb,new_question}/**/*.js*' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
+    "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/{qb,new_question}/**/*.js*' 'frontend/src/metabase-lib/**/*.js' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
     "flow": "flow check",
     "test": "yarn run test-jest && yarn run test-karma",
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",
@@ -165,10 +166,15 @@
     "start": "yarn run build && lein ring server",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
-    "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/{qb,new_question}/**/*.js*'"
+    "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/{qb,new_question}/**/*.js*' 'frontend/src/metabase-lib/**/*.js'",
+    "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**"
   },
   "lint-staged": {
     "frontend/src/metabase/{qb,new_question}/**/*.js*": [
+      "prettier --tab-width 4 --write",
+      "git add"
+    ],
+    "frontend/src/metabase-lib/**/*.js*": [
       "prettier --tab-width 4 --write",
       "git add"
     ]

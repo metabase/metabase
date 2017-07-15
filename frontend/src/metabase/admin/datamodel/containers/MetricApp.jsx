@@ -9,14 +9,22 @@ import MetricForm from "./MetricForm.jsx";
 import { metricEditSelectors } from "../selectors";
 import * as actions from "../datamodel";
 import { clearRequestState } from "metabase/redux/requests";
+import { fetchTableMetadata } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 const mapDispatchToProps = {
     ...actions,
+    fetchTableMetadata,
     clearRequestState,
-    onChangeLocation: push
+    onChangeLocation: push,
 };
 
-@connect(metricEditSelectors, mapDispatchToProps)
+const mapStateToProps = (state, props) => ({
+    ...metricEditSelectors(state, props),
+    metadata: getMetadata(state, props)
+})
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;
@@ -31,7 +39,9 @@ export default class MetricApp extends Component {
         }
 
         if (tableId != null) {
+            // TODO Atte Keinänen 6/8/17: Use only global metadata (`fetchTableMetadata`)
             this.props.loadTableMetadata(tableId);
+            this.props.fetchTableMetadata(tableId);
         }
     }
 

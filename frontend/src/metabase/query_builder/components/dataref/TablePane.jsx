@@ -120,7 +120,7 @@ export default class TablePane extends Component {
                             name="Metrics"
                             type="metrics"
                             show={this.props.show.bind(null, "metric")}
-                            items={table.metrics}
+                            items={table.metrics.filter((metric) => metric.is_active === true)}
                         />
                     }
                     { table.segments && (table.segments.length > 0) &&
@@ -128,7 +128,7 @@ export default class TablePane extends Component {
                             name="Segments"
                             type="segments"
                             show={this.props.show.bind(null, "segment")}
-                            items={table.segments}
+                            items={table.segments.filter((segment) => segment.is_active === true)}
                         />
                     }
                     <div className="Button-group Button-group--brand text-uppercase">

@@ -155,8 +155,8 @@ export default class DashboardList extends Component {
         const {dashboards, isArchivePage, setFavorited, setArchived} = this.props;
 
         return (
-            <ol className="Grid Grid--guttersXl Grid--full small-Grid--1of2 md-Grid--1of3">
-                { dashboards.map(dash =>
+        <ol className="Grid Grid--guttersXl Grid--full small-Grid--1of2 md-Grid--1of3">
+            { dashboards.map(dash =>
                     <DashboardListItem key={dash.id} dashboard={dash}
                                        setFavorited={setFavorited}
                                        setArchived={setArchived}
