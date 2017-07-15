@@ -16,7 +16,7 @@ import {
 
 import {
     getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields,
-    getShallowMetrics as getMetrics, getShallowSegments as getSegments, getMetadata
+    getShallowMetrics as getMetrics, getShallowSegments as getSegments
 } from "metabase/selectors/metadata";
 export { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
 

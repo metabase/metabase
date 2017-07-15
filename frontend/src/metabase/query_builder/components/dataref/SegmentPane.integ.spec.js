@@ -15,7 +15,6 @@ import { delay } from "metabase/lib/promise"
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { orders_past_30_days_segment } from "metabase/__support__/sample_dataset_fixture";
-import { createSegment, deleteSegment } from "metabase/admin/datamodel/datamodel";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
