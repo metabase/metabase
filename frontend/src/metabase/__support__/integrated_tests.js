@@ -44,7 +44,11 @@ export async function login() {
         )
     }
 
-    loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
+    if (process.env.SHARED_LOGIN_SESSION_ID) {
+        loginSession = { id: process.env.SHARED_LOGIN_SESSION_ID }
+    } else {
+        loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
+    }
 }
 
 /**
@@ -221,8 +225,6 @@ const testStoreEnhancer = (createStore, history) => {
             getPath: () => urlFormat(history.getCurrentLocation()),
 
             connectContainer: (reactContainer) => {
-                // exploratory approach, not sure if this can ever work:
-                // return store._connectWithStore(reactContainer)
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
                 return store._connectWithStore(
                     <Router
@@ -265,4 +267,4 @@ export const createSavedQuestion = async (unsavedQuestion) => {
     return savedQuestion
 }
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;

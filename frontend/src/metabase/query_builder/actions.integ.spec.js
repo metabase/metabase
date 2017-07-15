@@ -24,7 +24,7 @@ describe("QueryBuilder", () => {
 
     beforeAll(async () => {
         await login();
-        store = createTestStore()
+        store = await createTestStore()
     })
 
     describe("initializeQb", () => {

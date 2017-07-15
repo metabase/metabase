@@ -80,6 +80,6 @@ describe('FieldList', () => {
         expect(tooltipContent.length).toBe(1)
 
         // eslint-disable-next-line no-irregular-whitespace
-        expect(tooltipContent.find(FilterWidget).text()).toMatch(/Created At -30day/);
+        expect(tooltipContent.find(FilterWidget).last().text()).toMatch(/Created At -30day/);
     })
 });
