@@ -1,20 +1,22 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
+import { normal as defaultColors } from "metabase/lib/colors";
 
 export default class CheckBox extends Component {
     static propTypes = {
         checked: PropTypes.bool,
-        onChange: PropTypes.func
+        onChange: PropTypes.func.isRequired,
+        color: PropTypes.oneOf(defaultColors),
+        size: PropTypes.number,  // TODO - this should probably be a concrete set of options
+        padding: PropTypes.number// TODO - the component should pad itself properly based on the size
     };
 
     static defaultProps = {
         size: 16,
         padding: 2,
-        borderColor: "#ddd",
-        checkColor: "currentColor"
+        color: 'blue'
     };
 
     onClick() {
@@ -25,21 +27,31 @@ export default class CheckBox extends Component {
     }
 
     render() {
-        const { checked, size, padding, borderColor, checkColor, className, invertChecked, style } = this.props;
+        const {
+            checked,
+            color,
+            padding,
+            size,
+        } = this.props;
+
+        const themeColor = defaultColors[color];
+
         const checkboxStyle = {
             width:              size,
             height:             size,
-            backgroundColor:    (invertChecked && checked) ? checkColor : "white",
-            border:             (invertChecked && checked) ? ("2px solid " + checkColor) : ("2px solid " + borderColor),
-            borderRadius:       4,
-            display:            "flex",
-            alignItems:         "center",
-            justifyContent:     "center",
+            backgroundColor:    checked ? themeColor : "white",
+            border:             `2px solid ${ checked ? themeColor : '#ddd' }`,
         };
         return (
-            <div style={style} className={cx("cursor-pointer", className)} onClick={() => this.onClick()}>
-                <div style={checkboxStyle}>
-                    { checked ? <Icon style={{ color: invertChecked ? "white" : checkColor }} name="check"  size={size - padding * 2} /> : null }
+            <div className="cursor-pointer" onClick={() => this.onClick()}>
+                <div style={checkboxStyle} className="flex align-center justify-center rounded">
+                    { checked && (
+                        <Icon
+                            style={{ color: checked ? 'white' : themeColor }}
+                            name="check"
+                            size={size - padding * 2}
+                        />
+                    )}
                 </div>
             </div>
         )
