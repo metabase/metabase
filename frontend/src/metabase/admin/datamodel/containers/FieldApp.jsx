@@ -31,6 +31,8 @@ import {
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Question from "metabase-lib/lib/Question";
+import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
@@ -106,7 +108,7 @@ export default class FieldApp extends Component {
         if (field) {
             // `table` and `target` propertes is part of the fully connected metadata graph; drop it because it
             // makes conversion to JSON impossible due to cyclical data structure
-            await this.props.updateField({ ...field, ...fieldProps, table: undefined, target: undefined });
+            await this.props.updateField({ ...field.getPlainObject(), ...fieldProps });
         } else {
             console.warn("Updating field properties in fields settings failed because of missing field metadata")
         }
@@ -152,8 +154,7 @@ export default class FieldApp extends Component {
                                                description="Where this field will appear throughout Metabase"/>
                                 <FieldVisibilityPicker
                                     triggerClasses={SelectClasses}
-                                    // Enter the unwrapped object without cyclical structure
-                                    field={{ ...field._object, table: undefined, target: undefined }}
+                                    field={field.getPlainObject()}
                                     updateField={this.onUpdateField}
                                 />
                             </Section>
@@ -162,8 +163,7 @@ export default class FieldApp extends Component {
                                 <SectionHeader title="Type" />
                                 <SpecialTypeAndTargetPicker
                                     triggerClasses={SelectClasses}
-                                    // Enter the unwrapped object without cyclical structure
-                                    field={{ ...field._object, table: undefined, target: undefined }}
+                                    field={field.getPlainObject()}
                                     updateField={this.onUpdateField}
                                     idfields={idfields}
                                     selectSeparator={<SelectSeparator />}
@@ -380,7 +380,8 @@ export class FieldRemapping extends Component {
 
         if (shouldResetFKRemappingAfterTargetFieldChange) {
             // Setting the mapping again will reset its FK remapping target field to match the new fk target table
-            this.onSetMappingType(MAP_OPTIONS.foreign);
+            // TODO: How to get rid of the timeout that is needed for having the new props available?
+            setTimeout(() => this.onSetMappingType(MAP_OPTIONS.foreign), 0);
         }
     }
 
@@ -412,10 +413,10 @@ export class FieldRemapping extends Component {
 
     getFKTargetTableEntityNameOrNull = () => {
         const fks = this.getForeignKeys()
-        const fkTargetFields = fks[0] && fks[0].fields;
+        const fkTargetFields = fks[0] && fks[0].dimensions.map((dim) => dim.field());
 
         if (fkTargetFields) {
-            // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in schema_metadata.js?
+            // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
             const nameField = fkTargetFields.find((field) => field.special_type === "type/Name")
             return nameField ? nameField.id : null;
         } else {
@@ -479,19 +480,22 @@ export class FieldRemapping extends Component {
     }
 
     // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
-    isValidFKRemappingTarget = (field) => !isDate(field)
+    isValidFKRemappingTarget = (dimension) => !(dimension.defaultDimension() instanceof DatetimeFieldDimension)
 
     getForeignKeys = () => {
         const { table, field } = this.props;
 
-        // this method has a little odd structure due to using getFieldOptions; basically filteredFKs should
-        // always be an array with a single value in format `{ field: {...}, fields: [{...}, ...] }`
-        const unfilteredFks = Query.getFieldOptions(table.fields, true).fks
+        // this method has a little odd structure due to using fieldQuestions(); basically filteredFKs should
+        // always be an array with a single value
+        const metadata = table.metadata;
+        const fieldOptions = Question.create({ metadata, databaseId: table.db.id, tableId: table.id }).query().fieldOptions();
+        const unfilteredFks = fieldOptions.fks
         const filteredFKs = unfilteredFks.filter(fk => fk.field.id === field.id);
 
         return filteredFKs.map(filteredFK => ({
             field: filteredFK.field,
-            fields: filteredFK.fields.filter(this.isValidFKRemappingTarget)
+            dimension: filteredFK.dimension,
+            dimensions: filteredFK.dimensions.filter(this.isValidFKRemappingTarget)
         }));
     }
 
@@ -532,7 +536,7 @@ export class FieldRemapping extends Component {
                         <FieldList
                             className="text-purple"
                             field={fkMappingField}
-                            fieldOptions={{ count: 0, fields: [], fks: this.getForeignKeys() }}
+                            fieldOptions={{ count: 0, dimensions: [], fks: this.getForeignKeys() }}
                             tableMetadata={table}
                             onFieldChange={this.onForeignKeyFieldChange}
                             hideSectionHeader

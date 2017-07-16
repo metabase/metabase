@@ -235,7 +235,7 @@ describe("QueryBuilder", () => {
 
     describe("editor bar", async() => {
         describe("for Category field in Products table", () =>  {
-            // TODO: Update the sample dataset fixture so that it recognizes Category field as Category
+            // TODO: Update the test H2 database fixture so that it recognizes Category field as Category
             // and has run a database sync so that Category field contains the expected field values
             pending();
 

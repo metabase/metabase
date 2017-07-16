@@ -80,7 +80,7 @@ export default class FieldList extends Component {
         };
 
         let fkSections = fieldOptions.fks.map(fkOptions => ({
-            name: stripId(fkOptions.field.display_name),
+            name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
             items: getSectionItems(fkOptions)
         }));
 
