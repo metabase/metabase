@@ -126,11 +126,6 @@
       (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
               :features)))
 
-:description             nil
-                               :entity_type             nil
-                               :caveats                 nil
-                               :points_of_interest      nil
-                               :visibility_type         nil
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil
@@ -338,10 +333,11 @@
                    :query    inner-query-clauses}})
 
 (defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
-  {:name     "Saved Questions"
-   :id       database/virtual-id
-   :features ["basic-aggregations"]
-   :tables   card-tables})
+  {:name               "Saved Questions"
+   :id                 database/virtual-id
+   :features           ["basic-aggregations"]
+   :tables             card-tables
+   :is_saved_questions true})
 
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge {:id           (format "card__%d" (u/get-id card))

@@ -1,4 +1,3 @@
-/* @flow */
 
 import type { ISO8601Time } from ".";
 
@@ -17,7 +16,7 @@ export type Table = {
     id:                      TableId,
     db_id:                   DatabaseId,
 
-    schema:                  ?string,
+    schema:                  ?SchemaName,
     name:                    string,
     display_name:            string,
 

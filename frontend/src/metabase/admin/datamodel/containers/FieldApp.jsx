@@ -20,9 +20,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as datamodelActions from "../datamodel"
 import { isDate } from "metabase/lib/schema_metadata";
 
-import Metadata from "metabase/meta/metadata/Metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Field from "metabase/meta/metadata/Field";
 import Query from "metabase/lib/query";
 import SelectButton from "metabase/components/SelectButton";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -32,6 +30,7 @@ import {
     SpecialTypeAndTargetPicker
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
@@ -126,9 +125,8 @@ export default class FieldApp extends Component {
             fetchTableMetadata
         } = this.props;
 
-        // Provide the Field and Table wrappers to child components as metadata lib doesn't wrap them automatically before metabase-lib
-        const field = metadata.fields[fieldId] && new Field(metadata.fields[fieldId]);
-        const table = metadata.tables[tableId] && new Field(metadata.tables[tableId]);
+        const field = metadata.fields[fieldId]
+        const table = metadata.tables[tableId]
 
         const isLoading = !field || !table || !idfields
 

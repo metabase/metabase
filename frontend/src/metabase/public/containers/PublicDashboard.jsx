@@ -110,7 +110,7 @@ export default class PublicDashboard extends Component {
                         {...this.props}
                         className={"spread"}
                         // Don't allow clicking titles on public dashboards
-                        navigateToNewCard={null}
+                        navigateToNewCardFromDashboard={null}
                     />
                 }
                 </LoadingAndErrorWrapper>

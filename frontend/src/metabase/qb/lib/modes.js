@@ -9,7 +9,6 @@ import {
 } from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
-import Utils from "metabase/lib/utils";
 
 import ObjectMode from "../components/modes/ObjectMode";
 import SegmentMode from "../components/modes/SegmentMode";
@@ -22,12 +21,7 @@ import DefaultMode from "../components/modes/DefaultMode";
 
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type {
-    QueryMode,
-    ClickAction,
-    ClickActionProps,
-    ClickObject
-} from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase/meta/types/Visualization";
 
 import _ from "underscore";
 
@@ -110,38 +104,3 @@ export function getMode(
 
     return DefaultMode;
 }
-
-export const getModeActions = (
-    mode: ?QueryMode,
-    card: ?CardObject,
-    tableMetadata: ?TableMetadata
-): ClickAction[] => {
-    if (mode && card && tableMetadata) {
-        // FIXME: copy card because it may be frozen and action may mutate it :-/
-        card = Utils.copy(card);
-        const props: ClickActionProps = { card, tableMetadata };
-        // flatten array of arrays
-        return [].concat(
-            ...mode.actions.map(actionCreator => actionCreator(props))
-        );
-    }
-    return [];
-};
-
-export const getModeDrills = (
-    mode: ?QueryMode,
-    card: ?CardObject,
-    tableMetadata: ?TableMetadata,
-    clicked: ?ClickObject
-): ClickAction[] => {
-    if (mode && card && tableMetadata && clicked) {
-        // FIXME: copy card because it may be frozen and action may mutate it :-/
-        card = Utils.copy(card);
-        const props: ClickActionProps = { card, tableMetadata, clicked };
-        // flatten array of arrays
-        return [].concat(
-            ...mode.drills.map(actionCreator => actionCreator(props))
-        );
-    }
-    return [];
-};

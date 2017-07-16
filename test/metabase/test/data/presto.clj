@@ -1,6 +1,5 @@
 (ns metabase.test.data.presto
   (:require [clojure.string :as s]
-            [environ.core :refer [env]]
             [honeysql
              [core :as hsql]
              [helpers :as h]]

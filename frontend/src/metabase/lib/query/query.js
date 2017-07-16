@@ -63,8 +63,9 @@ export const clearOrderBy  = (query: SQ)                                   => se
 
 // LIMIT
 
+export const getLimit    = (query: SQ)                     => L.getLimit(query.limit);
 export const updateLimit = (query: SQ, limit: LimitClause) => setLimitClause(query, L.updateLimit(query.limit, limit));
-export const clearLimit = (query: SQ) => setLimitClause(query, L.clearLimit(query.limit));
+export const clearLimit  = (query: SQ)                     => setLimitClause(query, L.clearLimit(query.limit));
 
 // EXPRESSIONS
 
@@ -120,9 +121,9 @@ function setExpressionClause(query: SQ, expressionClause: ?ExpressionClause): SQ
     return setClause("expressions", query, expressionClause);
 }
 
-// TODO: remove mutation
 type FilterClauseName = "filter"|"aggregation"|"breakout"|"order_by"|"limit"|"expressions";
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
+    query = { ...query };
     if (clause == null) {
         delete query[clauseName];
     } else {

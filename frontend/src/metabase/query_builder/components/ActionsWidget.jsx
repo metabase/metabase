@@ -5,29 +5,28 @@ import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
-import { getModeActions } from "metabase/qb/lib/modes";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
 import _ from "underscore";
 
-import type { Card, UnsavedCard} from "metabase/meta/types/Card";
-import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { Card, UnsavedCard } from "metabase/meta/types/Card";
+import type { ClickAction } from "metabase/meta/types/Visualization";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     className?: string,
-    mode: QueryMode,
     card: Card,
-    tableMetadata: TableMetadata,
-    navigateToNewCardInsideQB: any => void
+    question: Question,
+    setCardAndRun: (card: Card) => void,
+    navigateToNewCardInsideQB: (any) => void
 };
 
 type State = {
     isVisible: boolean,
     isOpen: boolean,
-    selectedActionIndex: ?number
+    isClosing: boolean,
+    selectedActionIndex: ?number,
 };
 
 const CIRCLE_SIZE = 48;
@@ -39,6 +38,7 @@ export default class ActionsWidget extends Component {
     state: State = {
         isVisible: false,
         isOpen: false,
+        isClosing: false,
         selectedActionIndex: null
     };
 
@@ -59,16 +59,23 @@ export default class ActionsWidget extends Component {
 
     handleMouseStoppedMoving = _.debounce(
         () => {
-            this.setState({ isVisible: false });
+            if (this.state.isVisible) {
+                this.setState({ isVisible: false });
+            }
         },
         1000
     );
 
     close = () => {
-        this.setState({ isOpen: false, selectedActionIndex: null });
+        this.setState({ isClosing: true, isOpen: false, selectedActionIndex: null });
+        // Needed because when closing the action widget by clicking compass, this is triggered first
+        // on mousedown (by OnClickOutsideWrapper) and toggle is triggered on mouseup
+        setTimeout(() => this.setState({ isClosing: false }), 500);
     };
 
     toggle = () => {
+        if (this.state.isClosing) return;
+
         if (!this.state.isOpen) {
             MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");
         }
@@ -79,29 +86,36 @@ export default class ActionsWidget extends Component {
     };
 
     handleOnChangeCardAndRun = ({ nextCard }: { nextCard: Card|UnsavedCard}) => {
+        // TODO: move lineage logic to Question?
         const { card: previousCard } = this.props;
         this.props.navigateToNewCardInsideQB({ nextCard, previousCard });
     }
 
     handleActionClick = (index: number) => {
-        const { mode, card, tableMetadata } = this.props;
-        const action = getModeActions(mode, card, tableMetadata)[index];
-        if (action && action.popover) {
-            this.setState({ selectedActionIndex: index });
-        } else if (action && action.card) {
-            const nextCard = action.card();
-            if (nextCard) {
-                MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun({ nextCard });
+        const { question } = this.props;
+        const mode = question.mode()
+        if (mode) {
+            const action = mode.actions()[index];
+            if (action && action.popover) {
+                this.setState({ selectedActionIndex: index });
+            } else if (action && action.question) {
+                const nextQuestion = action.question();
+                if (nextQuestion) {
+                    MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
+                    this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
+                }
+                this.close();
             }
-            this.close();
+        } else {
+            console.warn("handleActionClick: Question mode is missing")
         }
     };
     render() {
-        const { className, mode, card, tableMetadata } = this.props;
+        const { className, question } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions: ClickAction[] = getModeActions(mode, card, tableMetadata);
+        const mode = question.mode();
+        const actions = mode ? mode.actions() : [];
         if (actions.length === 0) {
             return null;
         }
@@ -113,7 +127,7 @@ export default class ActionsWidget extends Component {
         return (
             <div className={cx(className, "relative")}>
                 <div
-                    className="circular bg-brand flex layout-centered m4 cursor-pointer"
+                    className="circular bg-brand flex layout-centered m3 cursor-pointer"
                     style={{
                         width: CIRCLE_SIZE,
                         height: CIRCLE_SIZE,

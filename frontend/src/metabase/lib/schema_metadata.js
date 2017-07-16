@@ -1,7 +1,6 @@
 import _ from "underscore";
 
-import { isa, isFK as isFKType, isPK as isPKType, TYPE } from "metabase/lib/types";
-
+import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
 import { getFieldValues, getHumanReadableValue } from "metabase/lib/query/field";
 
 // primary field types used for picking operators, etc
@@ -110,6 +109,9 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
 
+export const isFK = (field) => field && isTypeFK(field.special_type);
+export const isPK = (field) => field && isTypePK(field.special_type);
+
 export const isAny = (col) => true;
 
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
@@ -124,8 +126,6 @@ export const isCoordinate   = (field) => isa(field && field.special_type, TYPE.C
 export const isLatitude     = (field) => isa(field && field.special_type, TYPE.Latitude);
 export const isLongitude    = (field) => isa(field && field.special_type, TYPE.Longitude);
 
-export const isFK           = (field) => isFKType(field && field.special_type);
-export const isPK           = (field) => isPKType(field && field.special_type);
 export const isID           = (field) => isFK(field) || isPK(field);
 
 // operator argument constructors:
