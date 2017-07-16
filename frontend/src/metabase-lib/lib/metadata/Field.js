@@ -21,7 +21,8 @@ import {
     getIconForField,
     getFieldType
 } from "metabase/lib/schema_metadata";
-import { FieldValues } from "metabase/meta/types/Field";
+
+import type { FieldValues } from "metabase/meta/types/Field";
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.

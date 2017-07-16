@@ -18,10 +18,8 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as datamodelActions from "../datamodel"
-import { isDate } from "metabase/lib/schema_metadata";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Query from "metabase/lib/query";
 import SelectButton from "metabase/components/SelectButton";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";

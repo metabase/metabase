@@ -20,7 +20,7 @@ export type AccordianListItem = {
 }
 
 export type AccordianListSection = {
-    name: string;
+    name: ?string;
     items: AccordianListItem[]
 }
 
@@ -38,7 +38,7 @@ type Props = {
     alwaysExpanded?: boolean,
     enableSubDimensions?: boolean,
 
-    hideSectionHeader: boolean
+    hideSectionHeader?: boolean
 }
 
 type State = {
