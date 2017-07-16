@@ -69,6 +69,7 @@ export default class DashCardCardParameterMapper extends Component {
     componentDidMount() {
         const { card } = this.props;
         // Type check for Flow
+
         card.dataset_query instanceof AtomicQuery && this.props.fetchDatabaseMetadata(card.dataset_query.database);
     }
 

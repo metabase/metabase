@@ -31,6 +31,7 @@ type Props = VisualizationProps & {
     height: number,
     sort: any,
     isPivoted: boolean,
+    onActionDismissal: () => void
 }
 type State = {
     columnWidths: number[],
@@ -362,7 +363,10 @@ export default class TableInteractive extends Component {
                         rowCount={rows.length}
                         rowHeight={ROW_HEIGHT}
                         cellRenderer={this.cellRenderer}
-                        onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                        onScroll={({ scrollLeft }) => {
+                            this.props.onActionDismissal()
+                            return onScroll({ scrollLeft })}
+                        }
                         scrollLeft={scrollLeft}
                         tabIndex={null}
                         overscanRowCount={20}

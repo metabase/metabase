@@ -116,6 +116,8 @@ export function getParametersWithExtras(card: Card, parameterValues?: ParameterV
     })
 }
 
+// NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
+// Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
     card: Card,
     parameters: Parameter[],

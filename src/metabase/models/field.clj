@@ -70,7 +70,12 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
-          :pre-delete     pre-delete})
+          :pre-delete     pre-delete
+          :post-select    (fn [{:keys [min_value max_value] :as row}]
+                            (let [round-value #(u/round-to-decimals 4 %)]
+                              (cond-> row
+                                min_value (update :min_value round-value)
+                                max_value (update :max_value round-value))))})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set  perms-objects-set

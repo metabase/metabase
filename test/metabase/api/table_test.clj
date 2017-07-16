@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   (:require [clojure.walk :as walk]
             [expectations :refer :all]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [http-client :as http]
@@ -9,13 +10,14 @@
              [sync-database :as sync-database]
              [util :as u]]
             [metabase.models
-             [database :refer [Database]]
+             [card :refer [Card]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu :refer [match-$ resolve-private-vars]]]
             [metabase.test.data
              [dataset-definitions :as defs]
@@ -23,8 +25,7 @@
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
-            [toucan.util.test :as tt]
-            [medley.core :as m]))
+            [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 (resolve-private-vars metabase.api.table dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes)
@@ -488,6 +489,40 @@
                                                               :created_at   $}))}))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
 
+;; Make sure metadata for 'virtual' tables comes back as expected from GET /api/table/:id/query_metadata
+(tt/expect-with-temp [Card [card {:name          "Go Dubs!"
+                                  :database_id   (data/id)
+                                  :dataset_query {:database (data/id)
+                                                  :type     :native
+                                                  :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
+  (let [card-virtual-table-id (str "card__" (u/get-id card))]
+    {:display_name "Go Dubs!"
+     :schema       "All questions"
+     :db_id        database/virtual-id
+     :id           card-virtual-table-id
+     :description  nil
+     :fields       (for [[field-name display-name base-type] [["NAME"     "Name"     "type/Text"]
+                                                              ["ID"       "ID"       "type/Integer"]
+                                                              ["PRICE"    "Price"    "type/Integer"]
+                                                              ["LATITUDE" "Latitude" "type/Float"]]]
+                     {:name         field-name
+                      :display_name display-name
+                      :base_type    base-type
+                      :table_id     card-virtual-table-id
+                      :id           ["field-literal" field-name base-type]
+                      :special_type nil})})
+  (do
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ;; Now fetch the metadata for this "table"
+    ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+
+
+;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
+(expect
+  []
+  ((user->client :crowberto) :get 200 "table/card__1000/fks"))
+
 ;; Ensure dimensions options are sorted numerically, but returned as strings
 (expect
   (map str (sort (map #(Long/parseLong %) (var-get datetime-dimension-indexes))))
@@ -524,13 +559,17 @@
 
 ;; Lat/Long fields should use bin-width rather than num-bins
 (expect
-  #{"bin-width" "default"}
+  (if (binning-supported?)
+    #{"bin-width" "default"}
+    #{})
   (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues)))]
     (extract-dimension-options response "LATITUDE")))
 
 ;; Number columns without a special type should use "num-bins"
 (expect
-  #{"num-bins" "default"}
+  (if (binning-supported?)
+    #{"num-bins" "default"}
+    #{})
   (let [{:keys [special_type]} (Field (id :venues :price))]
     (try
       (db/update! Field (id :venues :price) :special_type nil)

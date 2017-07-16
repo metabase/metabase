@@ -52,7 +52,6 @@ describe("SummarizeBySegmentMetricAction", () => {
                 component
                     .find('.List-item-title[children="Sum of ..."]')
                     .simulate("click");
-                console.log(component.debug());
 
                 component
                     .find('.List-item-title[children="Subtotal"]')

@@ -6,10 +6,8 @@ import { initializeQB, navigateToNewCardInsideQB } from "metabase/query_builder/
 import { parse as urlParse } from "url";
 
 import {
-    linkContainerToGlobalReduxStore,
     login,
-    globalReduxStore as store,
-    globalBrowserHistory as history
+    createTestStore
 } from "metabase/__support__/integrated_tests";
 
 import Question from "metabase-lib/lib/Question";
@@ -20,8 +18,10 @@ import {
 } from "metabase/__support__/sample_dataset_fixture";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
+const store = createTestStore()
+
 const getVisualization = (question, results, onChangeCardAndRun) =>
-    linkContainerToGlobalReduxStore(
+    store.connectContainer(
         <Visualization
             series={[{card: question.card(), data: results[0].data}]}
             onChangeCardAndRun={navigateToNewCardInsideQB}

@@ -11,8 +11,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
 
 import {
-    getSection,
-    getData,
+    getSegmentRevisions,
     getMetric,
     getSegment,
     getTables,
@@ -26,10 +25,13 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import EmptyState from "metabase/components/EmptyState.jsx";
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
+const emptyStateData =  {
+    message: "There are no revisions for this segment"
+}
+
 const mapStateToProps = (state, props) => {
     return {
-        section: getSection(state, props),
-        revisions: getData(state, props),
+        revisions: getSegmentRevisions(state, props),
         metric: getMetric(state, props),
         segment: getSegment(state, props),
         tables: getTables(state, props),
@@ -44,10 +46,9 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-export default class RevisionHistoryApp extends Component {
+export default class SegmentRevisions extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
         metric: PropTypes.object.isRequired,
         segment: PropTypes.object.isRequired,
@@ -60,7 +61,6 @@ export default class RevisionHistoryApp extends Component {
     render() {
         const {
             style,
-            section,
             revisions,
             metric,
             segment,
@@ -72,11 +72,6 @@ export default class RevisionHistoryApp extends Component {
 
         const entity = metric.id ? metric : segment;
 
-        const empty = {
-            icon: 'mine',
-            message: 'You haven\'t added any databases yet.'
-        };
-
         const userColorAssignments = user && Object.keys(revisions).length > 0 ?
             assignUserColors(
                 Object.values(revisions)
@@ -86,7 +81,10 @@ export default class RevisionHistoryApp extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader section={section} />
+                <ReferenceHeader 
+                    name={`Revision history for ${this.props.segment.name}`}
+                    headerIcon="segment"
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                     { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
@@ -109,7 +107,7 @@ export default class RevisionHistoryApp extends Component {
                         </div>
                         :
                         <div className={S.empty}>
-                          <EmptyState message={empty.message} icon={empty.icon} />
+                          <EmptyState {...emptyStateData}/>
                         </div>
                     }
                 </LoadingAndErrorWrapper>

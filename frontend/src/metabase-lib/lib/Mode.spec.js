@@ -56,39 +56,31 @@ describe("Mode", () => {
 
     describe("actions()", () => {
         describe("for a new question with Orders table and Raw data aggregation", () => {
+            pending();
             it("returns a correct number of mode actions", () => {
-                expect(rawDataQuestionMode.actions().length).toBe(4);
+                expect(rawDataQuestionMode.actions().length).toBe(3);
             });
-            it("returns 'View this as a table' as mode action 1", () => {
+            it("returns a defined metric as mode action 1", () => {
                 expect(rawDataQuestionMode.actions()[0].name).toBe(
-                    "underlying-data"
-                );
-                expect(rawDataQuestionMode.actions()[0].icon).toBe("table");
-                expect(rawDataQuestionMode.actions()[0].title).toBe(
-                    "View this as a table"
-                );
-            });
-            it("returns a defined metric as mode action 2", () => {
-                expect(rawDataQuestionMode.actions()[1].name).toBe(
                     "common-metric"
                 );
                 // TODO: Sameer 6/16/17
                 // This is wack and not really testable. We shouldn't be passing around react components in this imo
                 // expect(question.actions()[1].title.props.children).toBe("Total Order Value");
             });
-            it("returns a count timeseries as mode action 3", () => {
-                expect(rawDataQuestionMode.actions()[2].name).toBe(
+            it("returns a count timeseries as mode action 2", () => {
+                expect(rawDataQuestionMode.actions()[1].name).toBe(
                     "count-by-time"
                 );
-                expect(rawDataQuestionMode.actions()[2].icon).toBe("line");
+                expect(rawDataQuestionMode.actions()[1].icon).toBe("line");
                 // TODO: Sameer 6/16/17
                 // This is wack and not really testable. We shouldn't be passing around react components in this imo
                 // expect(question.actions()[2].title.props.children).toBe("Count of rows by time");
             });
-            it("returns summarize as mode action 4", () => {
-                expect(rawDataQuestionMode.actions()[3].name).toBe("summarize");
-                expect(rawDataQuestionMode.actions()[3].icon).toBe("sum");
-                expect(rawDataQuestionMode.actions()[3].title).toBe(
+            it("returns summarize as mode action 3", () => {
+                expect(rawDataQuestionMode.actions()[2].name).toBe("summarize");
+                expect(rawDataQuestionMode.actions()[2].icon).toBe("sum");
+                expect(rawDataQuestionMode.actions()[2].title).toBe(
                     "Summarize this segment"
                 );
             });

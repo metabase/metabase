@@ -15,6 +15,7 @@
              [geojson :as geojson]
              [getting-started :as getting-started]
              [label :as label]
+             [ldap :as ldap]
              [metric :as metric]
              [notify :as notify]
              [permissions :as permissions]
@@ -63,6 +64,7 @@
   (context "/getting_started" [] (+auth getting-started/routes))
   (context "/geojson"         [] (+auth geojson/routes))
   (context "/label"           [] (+auth label/routes))
+  (context "/ldap"            [] (+auth ldap/routes))
   (context "/metric"          [] (+auth metric/routes))
   (context "/notify"          [] (+apikey notify/routes))
   (context "/permissions"     [] (+auth permissions/routes))

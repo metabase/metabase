@@ -33,7 +33,6 @@ describe("ObjectDetailDrill", () => {
             source_table: ORDERS_TABLE_ID,
             filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 42]
         });
-        expect(newCard.display).toEqual(undefined);
     });
     it("should be return correct new card for FKs", () => {
         const actions = ObjectDetailDrill({
@@ -46,6 +45,5 @@ describe("ObjectDetailDrill", () => {
             source_table: PRODUCT_TABLE_ID,
             filter: ["=", ["field-id", PRODUCT_PK_FIELD_ID], 43]
         });
-        expect(newCard.display).toEqual(undefined);
     });
 });

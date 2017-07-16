@@ -56,6 +56,7 @@ declare module "underscore" {
   declare function pick(o: {[key: any]: any}, ...properties: string[]): {[key: any]: any};
   declare function pick(o: {[key: any]: any}, predicate: (val: any, key: any, object: {[key: any]: any})=>boolean): {[key: any]: any};
   declare function pluck(o: Array<{[key: any]: any}>, propertyNames: string): Array<any>;
+  declare function has(o: {[key: any]: any}, ...properties: string[]): boolean;
 
   declare function difference<T>(array: T[], ...others: T[][]): T[];
 

@@ -183,14 +183,18 @@ export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
         if (mbqlEq(field[0], "datetime-field")) {
             if (field.length === 4) {
-                // Deprecated legacy format, see DatetimeFieldDimension
+                // Deprecated legacy format [datetime-field field "as" unit], see DatetimeFieldDimension for more info
                 return field[3];
             } else {
+                // Current format [datetime-field field unit]
                 return field[2]
             }
         } if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
             return defaultUnit;
-        } else {
+        } if (mbqlEq(field[0], "field-literal")) {
+            return defaultUnit;
+        }
+        else {
             console.warn("Unknown field format", field);
         }
     }
@@ -213,6 +217,7 @@ export function parseFieldTargetId(field) {
         if (mbqlEq(field[0], "field-id"))       return field[1];
         if (mbqlEq(field[0], "fk->"))           return field[1];
         if (mbqlEq(field[0], "datetime-field")) return parseFieldTargetId(field[1]);
+        if (mbqlEq(field[0], "field-literal"))  return field;
     }
 
     console.warn("Unknown field format", field);

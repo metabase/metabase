@@ -1,6 +1,7 @@
 import Question from "metabase-lib/lib/Question";
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
+import _ from "underscore";
 
 export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
@@ -450,7 +451,7 @@ export const state = {
         values: []
       },
       '2': {
-        description: 'This is a unique ID for the product. It is also called the “Invoice number" or “Confirmation number" in customer facing emails and screens.',
+        description: 'This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.',
         table_id: 1,
         special_type: 'type/PK',
         name: 'ID',
@@ -1395,6 +1396,8 @@ export const state = {
 export const metadata = getMetadata(state);
 
 export const card = {
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1405,6 +1408,8 @@ export const card = {
 };
 
 export const product_card = {
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1417,6 +1422,8 @@ export const product_card = {
 export const orders_raw_card = {
     id: 1,
     name: "Raw orders data",
+    display: 'table',
+    visualization_settings: {},
     can_write: true,
     dataset_query: {
         type: "query",
@@ -1430,6 +1437,8 @@ export const orders_raw_card = {
 export const orders_count_card = {
     id: 2,
     name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1443,6 +1452,8 @@ export const orders_count_card = {
 export const native_orders_count_card = {
     id: 2,
     name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "native",
         database: DATABASE_ID,
@@ -1455,6 +1466,8 @@ export const native_orders_count_card = {
 export const invalid_orders_count_card = {
     id: 2,
     name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "nosuchqueryprocessor",
         database: DATABASE_ID,
@@ -1468,6 +1481,8 @@ export const orders_count_by_id_card = {
     id: 2,
     name: "# orders data",
     can_write: false,
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1525,6 +1540,37 @@ export function makeQuestion(fn = (card, state) => ({ card, state })) {
 }
 
 export const question = new Question(metadata, card);
+export const unsavedOrderCountQuestion = new Question(metadata, _.omit(orders_count_card, 'id'));
 export const productQuestion = new Question(metadata, product_card);
 const NoFieldsMetadata = getMetadata(assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "fields"], []))
 export const questionNoFields = new Question(NoFieldsMetadata, card);
+
+export const orders_past_30_days_segment = {
+    "id": null,
+    "name": "Past 30 days",
+    "description": "Past 30 days created at",
+    "table_id": 1,
+    "definition": {
+        "source_table": 1,
+        "filter": ["time-interval", ["field-id", 1], -30, "day"]
+    }
+};
+
+export const vendor_count_metric = {
+    "id": null,
+    "name": "Vendor count",
+    "description": "Tells how many vendors we have",
+    "table_id": 3,
+    "definition": {
+        "aggregation": [
+            [
+                "distinct",
+                [
+                    "field-id",
+                    28
+                ]
+            ]
+        ],
+        "source_table": 3
+    }
+};
