@@ -368,23 +368,6 @@ export class FieldRemapping extends Component {
         super(props, context);
     }
 
-    componentWillReceiveProps(newProps: Props) {
-        const { field } = this.props;
-
-        const shouldResetFKRemappingAfterTargetFieldChange =
-            // we already have a fk dimension
-            this.getMappingTypeForField(field).type === "foreign" &&
-            // the new field's special type is fk and the target field id has changed
-            newProps.field.special_type === "type/FK" &&
-            newProps.field.fk_target_field_id !== field.fk_target_field_id
-
-        if (shouldResetFKRemappingAfterTargetFieldChange) {
-            // Setting the mapping again will reset its FK remapping target field to match the new fk target table
-            // TODO: How to get rid of the timeout that is needed for having the new props available?
-            setTimeout(() => this.onSetMappingType(MAP_OPTIONS.foreign), 0);
-        }
-    }
-
     getMappingTypeForField = (field) => {
         if (_.isEmpty(field.dimensions)) return MAP_OPTIONS.original;
         if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
