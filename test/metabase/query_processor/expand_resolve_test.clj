@@ -23,6 +23,12 @@
   {:fk-field-id      nil, :datetime-unit nil,
    :binning-strategy nil, :binning-param nil})
 
+(def ^:private field-defaults
+  {:visibility-type :normal, :fk-field-id nil
+   :position        nil,     :description nil
+   :parent-id       nil,     :parent      nil
+   :min-value       nil,     :max-value   nil})
+
 ;; basic rows query w/ filter
 (expect
   [ ;; expanded form
@@ -42,39 +48,29 @@
                                   :name   "VENUES"
                                   :id     (id :venues)}
                    :filter       {:filter-type :>
-                                  :field       {:field-id           (id :venues :price)
-                                                :fk-field-id        nil
-                                                :field-name         "PRICE"
-                                                :field-display-name "Price"
-                                                :base-type          :type/Integer
-                                                :special-type       :type/Category
-                                                :visibility-type    :normal
-                                                :table-id           (id :venues)
-                                                :schema-name        "PUBLIC"
-                                                :table-name         "VENUES"
-                                                :position           nil
-                                                :description        nil
-                                                :parent-id          nil
-                                                :parent             nil
-                                                :min-value          1.0
-                                                :max-value          4.0}
+                                  :field       (merge field-defaults
+                                                      {:field-id           (id :venues :price)
+                                                       :field-name         "PRICE"
+                                                       :field-display-name "Price"
+                                                       :base-type          :type/Integer
+                                                       :special-type       :type/Category
+                                                       :table-id           (id :venues)
+                                                       :schema-name        "PUBLIC"
+                                                       :table-name         "VENUES"
+                                                       :min-value          1.0
+                                                       :max-value          4.0})
                                   :value       {:value 1
-                                                :field {:field-id           (id :venues :price)
-                                                        :fk-field-id        nil
-                                                        :field-name         "PRICE"
-                                                        :field-display-name "Price"
-                                                        :base-type          :type/Integer
-                                                        :special-type       :type/Category
-                                                        :visibility-type    :normal
-                                                        :table-id           (id :venues)
-                                                        :schema-name        "PUBLIC"
-                                                        :table-name         "VENUES"
-                                                        :position           nil
-                                                        :description        nil
-                                                        :parent-id          nil
-                                                        :parent             nil
-                                                        :min-value          1.0
-                                                        :max-value          4.0}}}
+                                                :field (merge field-defaults
+                                                              {:field-id           (id :venues :price)
+                                                               :field-name         "PRICE"
+                                                               :field-display-name "Price"
+                                                               :base-type          :type/Integer
+                                                               :special-type       :type/Category
+                                                               :table-id           (id :venues)
+                                                               :schema-name        "PUBLIC"
+                                                               :table-name         "VENUES"
+                                                               :min-value          1.0
+                                                               :max-value          4.0})}}
                    :join-tables  nil}
     :fk-field-ids #{}
     :table-ids    #{(id :venues)}}]
@@ -105,39 +101,27 @@
                                   :name   "VENUES"
                                   :id     (id :venues)}
                    :filter       {:filter-type :=
-                                  :field       {:field-id           (id :categories :name)
-                                                :fk-field-id        (id :venues :category_id)
-                                                :field-name         "NAME"
-                                                :field-display-name "Name"
-                                                :base-type          :type/Text
-                                                :special-type       :type/Name
-                                                :visibility-type    :normal
-                                                :table-id           (id :categories)
-                                                :schema-name        nil
-                                                :table-name         "CATEGORIES__via__CATEGORY_ID"
-                                                :position           nil
-                                                :description        nil
-                                                :parent-id          nil
-                                                :parent             nil
-                                                :min-value          nil
-                                                :max-value          nil}
+                                  :field       (merge field-defaults
+                                                      {:field-id           (id :categories :name)
+                                                       :fk-field-id        (id :venues :category_id)
+                                                       :field-name         "NAME"
+                                                       :field-display-name "Name"
+                                                       :base-type          :type/Text
+                                                       :special-type       :type/Name
+                                                       :table-id           (id :categories)
+                                                       :schema-name        nil
+                                                       :table-name         "CATEGORIES__via__CATEGORY_ID"})
                                   :value       {:value "abc"
-                                                :field {:field-id           (id :categories :name)
-                                                        :fk-field-id        (id :venues :category_id)
-                                                        :field-name         "NAME"
-                                                        :field-display-name "Name"
-                                                        :base-type          :type/Text
-                                                        :special-type       :type/Name
-                                                        :visibility-type    :normal
-                                                        :table-id           (id :categories)
-                                                        :schema-name        nil
-                                                        :table-name         "CATEGORIES__via__CATEGORY_ID"
-                                                        :position           nil
-                                                        :description        nil
-                                                        :parent-id          nil
-                                                        :parent             nil
-                                                        :min-value          nil
-                                                        :max-value          nil}}}
+                                                :field (merge field-defaults
+                                                              {:field-id           (id :categories :name)
+                                                               :fk-field-id        (id :venues :category_id)
+                                                               :field-name         "NAME"
+                                                               :field-display-name "Name"
+                                                               :base-type          :type/Text
+                                                               :special-type       :type/Name
+                                                               :table-id           (id :categories)
+                                                               :schema-name        nil
+                                                               :table-name         "CATEGORIES__via__CATEGORY_ID"})}}
                    :join-tables  [{:source-field {:field-id   (id :venues :category_id)
                                                   :field-name "CATEGORY_ID"}
                                    :pk-field     {:field-id   (id :categories :id)
@@ -149,8 +133,8 @@
     :fk-field-ids #{(id :venues :category_id)}
     :table-ids    #{(id :categories)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query venues
-                                                          (ql/filter (ql/= $category_id->categories.name
-                                                                           "abc")))))]
+                                                     (ql/filter (ql/= $category_id->categories.name
+                                                                      "abc")))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))
 
@@ -178,40 +162,28 @@
                                   :name   "CHECKINS"
                                   :id     (id :checkins)}
                    :filter       {:filter-type :>
-                                  :field       {:field {:field-id           (id :users :last_login)
-                                                        :fk-field-id        (id :checkins :user_id)
-                                                        :field-name         "LAST_LOGIN"
-                                                        :field-display-name "Last Login"
-                                                        :base-type          :type/DateTime
-                                                        :special-type       nil
-                                                        :visibility-type    :normal
-                                                        :table-id           (id :users)
-                                                        :schema-name        nil
-                                                        :table-name         "USERS__via__USER_ID"
-                                                        :position           nil
-                                                        :description        nil
-                                                        :parent-id          nil
-                                                        :parent             nil
-                                                        :min-value          nil
-                                                        :max-value          nil}
+                                  :field       {:field (merge field-defaults
+                                                              {:field-id           (id :users :last_login)
+                                                               :fk-field-id        (id :checkins :user_id)
+                                                               :field-name         "LAST_LOGIN"
+                                                               :field-display-name "Last Login"
+                                                               :base-type          :type/DateTime
+                                                               :special-type       nil
+                                                               :table-id           (id :users)
+                                                               :schema-name        nil
+                                                               :table-name         "USERS__via__USER_ID"})
                                                 :unit  :year}
                                   :value       {:value (u/->Timestamp "1980-01-01")
-                                                :field {:field {:field-id           (id :users :last_login)
-                                                                :fk-field-id        (id :checkins :user_id)
-                                                                :field-name         "LAST_LOGIN"
-                                                                :field-display-name "Last Login"
-                                                                :base-type          :type/DateTime
-                                                                :special-type       nil
-                                                                :visibility-type    :normal
-                                                                :table-id           (id :users)
-                                                                :schema-name        nil
-                                                                :table-name         "USERS__via__USER_ID"
-                                                                :position           nil
-                                                                :description        nil
-                                                                :parent-id          nil
-                                                                :parent             nil
-                                                                :min-value          nil
-                                                                :max-value          nil}
+                                                :field {:field (merge field-defaults
+                                                                      {:field-id           (id :users :last_login)
+                                                                       :fk-field-id        (id :checkins :user_id)
+                                                                       :field-name         "LAST_LOGIN"
+                                                                       :field-display-name "Last Login"
+                                                                       :base-type          :type/DateTime
+                                                                       :special-type       nil
+                                                                       :table-id           (id :users)
+                                                                       :schema-name        nil
+                                                                       :table-name         "USERS__via__USER_ID"})
                                                         :unit  :year}}}
                    :join-tables  [{:source-field {:field-id   (id :checkins :user_id)
                                                   :field-name "USER_ID"}
@@ -252,38 +224,28 @@
                                   :id     (id :checkins)}
                    :aggregation  [{:aggregation-type    :sum
                                    :custom-name         nil
-                                   :field               {:description        nil
-                                                         :base-type          :type/Integer
-                                                         :parent             nil
-                                                         :table-id           (id :venues)
-                                                         :special-type       :type/Category
-                                                         :field-name         "PRICE"
-                                                         :field-display-name "Price"
-                                                         :parent-id          nil
-                                                         :visibility-type    :normal
-                                                         :position           nil
-                                                         :field-id           (id :venues :price)
-                                                         :fk-field-id        (id :checkins :venue_id)
-                                                         :table-name         "VENUES__via__VENUE_ID"
-                                                         :schema-name        nil
-                                                         :min-value          1.0
-                                                         :max-value          4.0}}]
-                   :breakout     [{:field {:description        nil
-                                           :base-type          :type/Date
-                                           :parent             nil
-                                           :table-id           (id :checkins)
-                                           :special-type       nil
-                                           :field-name         "DATE"
-                                           :field-display-name "Date"
-                                           :parent-id          nil
-                                           :visibility-type    :normal
-                                           :position           nil
-                                           :field-id           (id :checkins :date)
-                                           :fk-field-id        nil
-                                           :table-name         "CHECKINS"
-                                           :schema-name        "PUBLIC"
-                                           :min-value          nil
-                                           :max-value          nil}
+                                   :field               (merge field-defaults
+                                                               {:base-type          :type/Integer
+                                                                :table-id           (id :venues)
+                                                                :special-type       :type/Category
+                                                                :field-name         "PRICE"
+                                                                :field-display-name "Price"
+                                                                :field-id           (id :venues :price)
+                                                                :fk-field-id        (id :checkins :venue_id)
+                                                                :table-name         "VENUES__via__VENUE_ID"
+                                                                :schema-name        nil
+                                                                :min-value          1.0
+                                                                :max-value          4.0})}]
+                   :breakout     [{:field (merge field-defaults
+                                                 {:description        nil
+                                                  :base-type          :type/Date
+                                                  :table-id           (id :checkins)
+                                                  :special-type       nil
+                                                  :field-name         "DATE"
+                                                  :field-display-name "Date"
+                                                  :field-id           (id :checkins :date)
+                                                  :table-name         "CHECKINS"
+                                                  :schema-name        "PUBLIC"})
                                    :unit  :day-of-week}]
                    :join-tables  [{:source-field {:field-id   (id :checkins :venue_id)
                                                   :field-name "VENUE_ID"}

@@ -65,11 +65,13 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                         tableMetadata={tableMetadata}
                         fieldOptions={breakoutOptions}
                         onCommitBreakout={breakout => {
-                            onChangeCardAndRun({
-                                nextCard: question
-                                    .pivot([breakout], dimensions)
-                                    .card()
-                            });
+                            const nextCard = question
+                                .pivot([breakout], dimensions)
+                                .card();
+
+                            if (nextCard) {
+                                onChangeCardAndRun({ nextCard });
+                            }
                         }}
                         onClose={onClose}
                     />

@@ -4,6 +4,7 @@ import moment from "moment";
 import _ from "underscore";
 
 import Q from "metabase/lib/query"; // legacy query lib
+import { fieldIdsEq } from "metabase/lib/query/util";
 import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
@@ -17,6 +18,7 @@ import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
+import { parseTimestamp } from "metabase/lib/time";
 
 // TODO: use icepick instead of mutation, make they handle frozen cards
 
@@ -94,7 +96,7 @@ const drillFilter = (card, value, column) => {
                 "as",
                 column.unit
             ],
-            moment(value).toISOString()
+            parseTimestamp(value, column.unit).toISOString()
         ];
     } else {
         const range = rangeForValue(value, column);
@@ -141,8 +143,10 @@ export const addOrUpdateBreakout = (card, breakout) => {
     let breakouts = Query.getBreakouts(newCard.dataset_query.query);
     for (let index = 0; index < breakouts.length; index++) {
         if (
-            Field.getFieldTargetId(breakouts[index]) ===
-            Field.getFieldTargetId(breakout)
+            fieldIdsEq(
+                Field.getFieldTargetId(breakouts[index]),
+                Field.getFieldTargetId(breakout)
+            )
         ) {
             newCard.dataset_query.query = Query.updateBreakout(
                 newCard.dataset_query.query,
@@ -217,7 +221,7 @@ export const breakout = (card, breakout, tableMetadata) => {
 // min number of points when switching units
 const MIN_INTERVALS = 4;
 
-export const updateDateTimeFilter = (card, column, start, end) => {
+export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     let newCard = clone(card);
 
     let fieldRef = getFieldRefFromColumn(column);
@@ -312,7 +316,7 @@ export const pivot = (
             tableMetadata
         );
         for (const [index, field] of breakoutFields.entries()) {
-            if (field && field.id === dimension.column.id) {
+            if (field && fieldIdsEq(field.id, dimension.column.id)) {
                 newCard.dataset_query.query = Query.removeBreakout(
                     newCard.dataset_query.query,
                     index

@@ -218,6 +218,7 @@ export function fieldFilterForParameterType(parameterType: ParameterType): Field
         case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
     }
+
     switch (parameterType) {
         case "location/city":     return (field: Field) => isa(field.special_type, TYPE.City);
         case "location/state":    return (field: Field) => isa(field.special_type, TYPE.State);

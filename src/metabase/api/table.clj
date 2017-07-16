@@ -4,10 +4,13 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [sync-database :as sync-database]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
+             [card :refer [Card]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
              [interface :as mi]
              [table :as table :refer [Table]]]
@@ -138,29 +141,35 @@
 (def ^:private coordinate-dimension-indexes
   (create-dim-index-seq :type/Coordinate))
 
-(defn- assoc-dimension-options [resp]
-  (-> resp
-      (assoc :dimension_options dimension-options-for-response)
-      (update :fields (fn [fields]
-                        (for [{:keys [base_type special_type min_value max_value] :as field} fields]
-                          (assoc field
-                            :dimension_options
-                            (cond
+(defn- assoc-field-dimension-options [{:keys [base_type special_type min_value max_value] :as field}]
+  (assoc field
+    :dimension_options
+    (cond
 
-                              (isa? base_type :type/DateTime)
-                              datetime-dimension-indexes
+      (isa? base_type :type/DateTime)
+      datetime-dimension-indexes
 
-                              (and min_value max_value
-                                   (isa? special_type :type/Coordinate))
-                              coordinate-dimension-indexes
+      (and min_value max_value
+           (isa? special_type :type/Coordinate))
+      coordinate-dimension-indexes
 
-                              (and min_value max_value
-                                   (isa? base_type :type/Number)
-                                   (or (nil? special_type) (isa? special_type :type/Number)))
-                              numeric-dimension-indexes
+      (and min_value max_value
+           (isa? base_type :type/Number)
+           (or (nil? special_type) (isa? special_type :type/Number)))
+      numeric-dimension-indexes
 
-                              :else
-                              [])))))))
+      :else
+      [])))
+
+(defn- assoc-dimension-options [resp driver]
+  (if (and driver (contains? (driver/features driver) :binning))
+    (-> resp
+        (assoc :dimension_options dimension-options-for-response)
+        (update :fields #(mapv assoc-field-dimension-options %)))
+    (-> resp
+        (assoc :dimension_options [])
+        (update :fields (fn [fields]
+                          (mapv #(assoc % :dimension_options []) fields))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -170,16 +179,56 @@
   will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
-  (-> (api/read-check Table id)
-      (hydrate :db [:fields :target] :field_values :segments :metrics)
-      (m/dissoc-in [:db :details])
-      assoc-dimension-options
-      (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
-                             ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                             identity
-                             ;; Otherwise filter out all :sensitive fields
-                             (partial filter (fn [{:keys [visibility_type]}]
-                                               (not= (keyword visibility_type) :sensitive)))))))
+  (let [table (api/read-check Table id)
+        driver (driver/engine->driver (db/select-one-field :engine Database :id (:db_id table)))]
+    (-> table
+        (hydrate :db [:fields :target] :field_values :segments :metrics)
+        (m/dissoc-in [:db :details])
+        (assoc-dimension-options driver)
+        (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
+                               ;; If someone passes include_sensitive_fields return hydrated :fields as-is
+                               identity
+                               ;; Otherwise filter out all :sensitive fields
+                               (partial filter (fn [{:keys [visibility_type]}]
+                                                 (not= (keyword visibility_type) :sensitive))))))))
+
+(defn- card-result-metadata->virtual-fields
+  "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual' database."
+  [card-id metadata]
+  (for [col metadata]
+    (assoc col
+      :table_id     (str "card__" card-id)
+      :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
+      ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be used that way IRL
+      :special_type (when-let [special-type (keyword (:special_type col))]
+                      (when-not (or (isa? special-type :type/PK)
+                                    (isa? special-type :type/FK))
+                        special-type)))))
+
+(defn card->virtual-table
+  "Return metadata for a 'virtual' table for a CARD in the Saved Questions 'virtual' database. Optionally include 'virtual' fields as well."
+  [card & {:keys [include-fields?]}]
+  ;; if collection isn't already hydrated then do so
+  (let [card (hydrate card :colllection)]
+    (cond-> {:id           (str "card__" (u/get-id card))
+             :db_id        database/virtual-id
+             :display_name (:name card)
+             :schema       (get-in card [:collection :name] "All questions")
+             :description  (:description card)}
+      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card) (:result_metadata card))))))
+
+(api/defendpoint GET "/card__:id/query_metadata"
+  "Return metadata for the 'virtual' table for a Card."
+  [id]
+  (-> (db/select-one [Card :id :dataset_query :result_metadata :name :description :collection_id], :id id)
+      api/read-check
+      (card->virtual-table :include-fields? true)))
+
+(api/defendpoint GET "/card__:id/fks"
+  "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
+   serves mainly as a placeholder to avoid having to change anything on the frontend."
+  []
+  []) ; return empty array
 
 
 (api/defendpoint GET "/:id/fks"

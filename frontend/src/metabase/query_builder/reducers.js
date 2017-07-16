@@ -154,8 +154,8 @@ export const queryResults = handleActions({
 }, null);
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
-export const queryExecutionPromise = handleActions({
-    [RUN_QUERY]: { next: (state, { cancelQueryDeferred }) => cancelQueryDeferred},
+export const cancelQueryDeferred = handleActions({
+    [RUN_QUERY]: { next: (state, { payload: { cancelQueryDeferred } }) => cancelQueryDeferred},
     [CANCEL_QUERY]: { next: (state, { payload }) => null},
     [QUERY_COMPLETED]: { next: (state, { payload }) => null},
     [QUERY_ERRORED]: { next: (state, { payload }) => null},

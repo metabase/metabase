@@ -9,13 +9,17 @@
              [events :as events]
              [sample-data :as sample-data]
              [util :as u]]
-            [metabase.api.common :as api]
+            [metabase.api
+             [common :as api]
+             [table :as table-api]]
             [metabase.models
+             [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
              [field :refer [Field]]
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
+            [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -30,16 +34,18 @@
 
 ;;; ------------------------------------------------------------ GET /api/database ------------------------------------------------------------
 
-
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
-                                                                  :active true
-                                                                  :db_id  [:in (map :id dbs)]
-                                                                  {:order-by [[:%lower.display_name :asc]]})))]
+                                                              :active true
+                                                              :db_id  [:in (map :id dbs)]
+                                                              {:order-by [[:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info [dbs]
+(defn- add-native-perms-info
+  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running native (e.g. SQL) queries.
+   Will be one of `:write`, `:read`, or `:none`."
+  [dbs]
   (for [db dbs]
     (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
@@ -47,16 +53,89 @@
                                       (user-has-perms? perms/native-read-path)      :read
                                       :else                                         :none)))))
 
-(defn- dbs-list [include-tables?]
+(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
+  (when database-id
+    (when-let [driver (driver/database-id->driver database-id)]
+      (driver/driver-supports? driver :nested-queries)
+      (mi/can-read? card))))
+
+(defn- card-has-ambiguous-columns?
+  "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
+   clojure.java.jdbc 'helpfully' does for us automatically.
+   Presence of ambiguous columns disqualifies a query for use as a source query because something like
+
+     SELECT name
+     FROM (
+       SELECT x.name, y.name
+       FROM x
+       LEFT JOIN y on x.id = y.id
+     )
+
+   would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
+   supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
+   trickier if the source query uses `SELECT *`)."
+  [{result-metadata :result_metadata}]
+  (some (partial re-find #"_2$")
+        (map (comp name :name) result-metadata)))
+
+(defn- card-uses-unnestable-aggregation?
+  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that
+   use queries with those aggregations as source queries. This function determines whether CARD is using one
+   of those queries so we can filter it out in Clojure-land."
+  [{{{aggregations :aggregation} :query} :dataset_query}]
+  (when (seq aggregations)
+    (some (fn [[ag-type]]
+            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
+          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate over list of ags
+          (if-not (sequential? (first aggregations))
+            [aggregations]
+            aggregations))))
+
+(defn- source-query-cards
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
+  []
+  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
+          :result_metadata [:not= nil]
+          {:order-by [[:%lower.name :asc]]}) <>
+    (filter card-database-supports-nested-queries? <>)
+    (remove card-uses-unnestable-aggregation? <>)
+    (remove card-has-ambiguous-columns? <>)
+    (hydrate <> :collection)))
+
+(defn- cards-virtual-tables
+  "Return a sequence of 'virtual' Table metadata for eligible Cards.
+   (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query Builder.)"
+  [& {:keys [include-fields?]}]
+  (for [card (source-query-cards)]
+    (table-api/card->virtual-table card :include-fields? include-fields?)))
+
+(defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
+  (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
+    {:name               "Saved Questions"
+     :id                 database/virtual-id
+     :features           #{:basic-aggregations}
+     :tables             virtual-tables
+     :is_saved_questions true}))
+
+;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
+(defn- add-virtual-tables-for-saved-cards [dbs]
+  (if-let [virtual-db-metadata (saved-cards-virtual-db-metadata)]
+    ;; only add the 'Saved Questions' DB if there are Cards that can be used
+    (conj (vec dbs) virtual-db-metadata)
+    dbs))
+
+(defn- dbs-list [include-tables? include-cards?]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name]})))]
-    (add-native-perms-info (if-not include-tables?
-                             dbs
-                             (add-tables dbs)))))
+    (cond-> (add-native-perms-info dbs)
+      include-tables? add-tables
+      include-cards?  add-virtual-tables-for-saved-cards)))
 
 (api/defendpoint GET "/"
   "Fetch all `Databases`."
-  [include_tables]
-  (or (dbs-list include_tables)
+  [include_tables include_cards]
+  {include_tables (s/maybe su/BooleanString)
+   include_cards  (s/maybe su/BooleanString)}
+  (or (dbs-list include_tables include_cards)
       []))
 
 
@@ -69,6 +148,17 @@
 
 
 ;;; ------------------------------------------------------------ GET /api/database/:id/metadata ------------------------------------------------------------
+
+;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
+;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
+;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
+;; match the virtual ID (and nothing else).
+(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str database/virtual-id))]
+  "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
+   and allowing it to treat the Saved Questions virtual DB just like any other database."
+  []
+  (saved-cards-virtual-db-metadata :include-fields? true))
+
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)

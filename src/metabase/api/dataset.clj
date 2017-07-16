@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
@@ -12,7 +13,8 @@
             [metabase.api.common :as api]
             [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.models
-             [database :refer [Database]]
+             [card :refer [Card]]
+             [database :as database :refer [Database]]
              [query :as query]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
@@ -37,14 +39,28 @@
 
 ;;; ------------------------------------------------------------ Running a Query Normally ------------------------------------------------------------
 
+(defn- query->source-card-id
+  "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
+   Used so `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate."
+  [outer-query]
+  (let [source-table (qputil/get-in-normalized outer-query [:query :source-table])]
+    (when (string? source-table)
+      (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
+        (log/info (str "Source query for this query is Card " card-id-str))
+        (u/prog1 (Integer/parseInt card-id-str)
+          (api/read-check Card <>))))))
+
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format."
   [:as {{:keys [database], :as query} :body}]
   {database s/Int}
-  (api/read-check Database database)
+  ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
+  (when-not (= database database/virtual-id)
+    (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
-  (let [query (assoc query :constraints default-query-constraints)]
-    (qp/process-query-and-save-execution! query {:executed-by api/*current-user-id*, :context :ad-hoc})))
+  (let [source-card-id (query->source-card-id query)]
+    (qp/process-query-and-save-execution! (assoc query :constraints default-query-constraints)
+      {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))
 
 
 ;;; ------------------------------------------------------------ Downloading Query Results in Other Formats ------------------------------------------------------------

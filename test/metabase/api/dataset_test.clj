@@ -1,6 +1,7 @@
 (ns metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints."
   (:require [expectations :refer :all]
+            [medley.core :as m]
             [metabase.api.dataset :refer [default-query-constraints]]
             [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.query-processor.expand :as ql]
@@ -36,7 +37,7 @@
                    [k (f v)]))))))
 
 (defn format-response [m]
-  (into {} (for [[k v] m]
+  (into {} (for [[k v] (m/dissoc-in m [:data :results_metadata])]
              (cond
                (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)

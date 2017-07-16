@@ -338,7 +338,9 @@
             :foreign-keys
             :expressions
             :expression-aggregations
-            :native-parameters}
+            :native-parameters
+            :nested-queries
+            :binning}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 

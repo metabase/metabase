@@ -112,12 +112,10 @@
 
     (arg-type :id) -> :int"
   [arg]
-  (-> auto-parse-arg-name-patterns
-      ((fn [[[pattern type] & rest-patterns]]
-         (or (when (re-find pattern (name arg))
-               type)
-             (when rest-patterns
-               (recur rest-patterns)))))))
+  (some (fn [[pattern type]]
+          (when (re-find pattern (name arg))
+            type))
+        auto-parse-arg-name-patterns))
 
 
 ;;; ## TYPIFY-ROUTE

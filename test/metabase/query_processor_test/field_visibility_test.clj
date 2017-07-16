@@ -18,15 +18,11 @@
   [(set (venues-cols))
    #{(venues-col :category_id)
      (venues-col :name)
-     (assoc (venues-col :latitude)
-       :min_value nil
-       :max_value nil)
+     (venues-col :latitude)
      (assoc (venues-col :id)
        :min_value nil
        :max_value nil)
-     (assoc (venues-col :longitude)
-       :min_value nil
-       :max_value nil)
+     (venues-col :longitude)
      (assoc (venues-col :price) :visibility_type :details-only
             :min_value nil
             :max_value nil)}

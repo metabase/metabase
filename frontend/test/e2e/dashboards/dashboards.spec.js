@@ -17,6 +17,7 @@ describeE2E("dashboards/dashboards", () => {
             await ensureLoggedIn(server, driver, "bob@metabase.com", "12341234");
         });
 
+        // TODO Atte Keinänen 6/22/17: Failing test, disabled until converted to use Jest and Enzyme
         xit("should let you create new dashboards, see them, filter them and enter them", async () => {
             await d.get("/dashboards");
             await d.screenshot("screenshots/dashboards.png");

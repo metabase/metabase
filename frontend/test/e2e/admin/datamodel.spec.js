@@ -15,8 +15,9 @@ describeE2E("admin/datamodel", () => {
         ensureLoggedIn(server, driver, "bob@metabase.com", "12341234")
     );
 
+    // TODO Atte Keinänen 6/22/17: Data model specs are easy to convert to Enzyme, disabled until conversion has been done
     describe("data model editor", () => {
-        it("should allow admin to edit data model", async () => {
+        xit("should allow admin to edit data model", async () => {
             await driver.get(`${server.host}/admin/datamodel/database`);
 
             // hide orders table
@@ -45,7 +46,7 @@ describeE2E("admin/datamodel", () => {
             //TODO: verify tables and fields are hidden in query builder
         });
 
-        it("should allow admin to create segments and metrics", async () => {
+        xit("should allow admin to create segments and metrics", async () => {
             await driver.get(`${server.host}/admin/datamodel/database/1/table/2`);
 
             // add a segment

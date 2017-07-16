@@ -35,7 +35,7 @@ describe("Question", () => {
                 expect(question.canRun()).toBe(true);
             });
             it("has correct display settings", () => {
-                expect(question.display()).toBeUndefined();
+                expect(question.display()).toBe("table");
             });
             it("has correct mode", () => {
                 expect(question.mode().name()).toBe("segment");
@@ -162,6 +162,24 @@ describe("Question", () => {
         });
     });
 
+    describe("CARD METHODS", () => {
+        describe("card()", () => {
+            it("A question wraps a query/card and you can see the underlying card with card()", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+            });
+        });
+
+        describe("setCard(card)", () => {
+            it("changes the underlying card", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                const newQustion = question.setCard(orders_count_by_id_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                expect(newQustion.card()).toEqual(orders_count_by_id_card);
+            });
+        });
+    });
     describe("RESETTING METHODS", () => {
         describe("withoutNameAndId()", () => {
             it("unsets the name and id", () => {
@@ -535,7 +553,16 @@ describe("Question", () => {
         });
     });
 
-    fdescribe("COMPARISON TO OTHER QUESTIONS", () => {
+    describe("QUESTION EXECUTION", () => {
+        describe("getResults()", () => {
+            it("executes correctly a native query with field filter parameters", () => {
+                pending();
+                // test also here a combo of parameter with a value + parameter without a value + parameter with a default value
+            });
+        });
+    });
+
+    describe("COMPARISON TO OTHER QUESTIONS", () => {
         describe("isDirtyComparedTo(question)", () => {
             it("New questions are automatically dirty", () => {
                 const question = new Question(metadata, orders_raw_card);
@@ -559,7 +586,7 @@ describe("Question", () => {
             it("returns a question with hash for an unsaved question", () => {
                 const question = new Question(metadata, orders_raw_card);
                 expect(question.getUrl()).toBe(
-                    "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlX3RhYmxlIjoxfX19"
+                    "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlX3RhYmxlIjoxfX0sImRpc3BsYXkiOiJ0YWJsZSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ=="
                 );
             });
         });

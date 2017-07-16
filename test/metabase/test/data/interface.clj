@@ -4,6 +4,7 @@
    Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as str]
+            [environ.core :refer [env]]
             [metabase
              [db :as db]
              [driver :as driver]
@@ -113,7 +114,7 @@
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
      can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
+     For example, Oracle has no `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
 
   (format-name ^String [this, ^String table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
@@ -232,3 +233,37 @@
      (for [fielddef (nest-fielddefs dbdef table-name)]
        (update fielddef :field-name flatten-field-name))
      (flatten-rows dbdef table-name)]))
+
+(defn db-test-env-var
+  "Look up test environment var `:ENV-VAR` for the given `:DATABASE-NAME` containing connection related parameters.
+  If no `:default` param is specified and the var isn't found, throw.
+
+     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`"
+  ([engine env-var]
+   (db-test-env-var engine env-var nil))
+  ([engine env-var default]
+   (get env
+        (keyword (format "mb-%s-test-%s" (name engine) (name env-var)))
+        default)))
+
+(defn- to-system-env-var-str
+  "Converts the clojure environment variable form (a keyword) to a
+  stringified version that will be specified at the system level
+
+  i.e. :foo-bar -> FOO_BAR"
+  [env-var-kwd]
+  (-> env-var-kwd
+      name
+      (str/replace "-" "_")
+      str/upper-case))
+
+(defn db-test-env-var-or-throw
+  "Same as `db-test-env-var` but will throw an exception if the variable is nil"
+  ([engine env-var]
+   (db-test-env-var-or-throw engine env-var nil))
+  ([engine env-var default]
+   (or (db-test-env-var engine env-var default)
+       (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
+                                  (name engine)
+                                  (str/upper-case (name engine))
+                                  (to-system-env-var-str env-var)))))))

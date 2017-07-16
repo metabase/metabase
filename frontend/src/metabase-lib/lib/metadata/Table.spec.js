@@ -24,12 +24,10 @@ describe("Table", () => {
     });
 
     describe("dimensions", () => {
-        /*
-        it('returns dimension fields', () => {
-            console.log(metadata)
-            expect(table.dimensions().length)
-        })
-        */
+        it("returns dimension fields", () => {
+            pending();
+            // expect(table.dimensions().length)
+        });
     });
 
     describe("date fields", () => {

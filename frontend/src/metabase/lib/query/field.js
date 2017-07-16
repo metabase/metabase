@@ -21,6 +21,8 @@ export function getFieldTargetId(field: FieldReference): ?FieldId {
     } else if (isBinningStrategy(field)) {
         // $FlowFixMe
         return getFieldTargetId(field[1]);
+    } else if (isFieldLiteral(field)) {
+        return field;
     }
     console.warn("Unknown field type: ", field);
 }
@@ -43,6 +45,10 @@ export function isDatetimeField(field: FieldReference): boolean {
 
 export function isBinningStrategy(field: FieldReference): boolean {
     return Array.isArray(field) && mbqlEq(field[0], "binning-strategy");
+}
+
+export function isFieldLiteral(field: FieldReference): boolean {
+    return Array.isArray(field) && field.length === 3 && mbqlEq(field[0], "field-literal");
 }
 
 export function isExpressionField(field: FieldReference): boolean {

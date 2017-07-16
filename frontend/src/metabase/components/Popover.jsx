@@ -104,7 +104,7 @@ export default class Popover extends Component {
                 >
                     { typeof this.props.children === "function" ?
                         this.props.children()
-                    :
+                        :
                         this.props.children
                     }
                 </div>
@@ -274,3 +274,22 @@ export default class Popover extends Component {
         return <span className="hide" />;
     }
 }
+
+/**
+ * A modified version of TestPopover for Jest/Enzyme tests.
+ * Simply renders the popover body inline instead of mutating DOM root.
+ */
+export const TestPopover = (props) =>
+    props.isOpen ?
+        <div
+            id={props.id}
+            className={cx("TestPopover TestPopoverBody", props.className)}
+            style={props.style}
+        >
+            { typeof props.children === "function" ?
+                props.children()
+                :
+                props.children
+            }
+        </div>
+        : null
