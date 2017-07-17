@@ -88,15 +88,13 @@
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
-  (try
-    (let [field (api/read-check Field id)]
-      (if-let [field-values (and (field-should-have-field-values? field)
-                                 (create-field-values-if-needed! field))]
-        (-> field-values
-            (assoc :values (field-values->pairs field-values))
-            (dissoc :human_readable_values))
-        {:values []}))
-    (catch Exception e (.printStackTrace e) (throw e))))
+  (let [field (api/read-check Field id)]
+    (if-let [field-values (and (field-should-have-field-values? field)
+                               (create-field-values-if-needed! field))]
+      (-> field-values
+          (assoc :values (field-values->pairs field-values))
+          (dissoc :human_readable_values))
+      {:values []})))
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
