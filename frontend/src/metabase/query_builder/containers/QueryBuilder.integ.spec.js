@@ -9,16 +9,14 @@ import React from 'react';
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { mount } from "enzyme";
 import {
-    ADD_QUERY_FILTER,
     INITIALIZE_QB,
     QUERY_COMPLETED,
     QUERY_ERRORED,
     RUN_QUERY,
     CANCEL_QUERY,
-    REMOVE_QUERY_FILTER,
-    UPDATE_QUERY_FILTER,
+    SET_DATASET_QUERY,
     setQueryDatabase,
-    setQuerySourceTable,
+    setQuerySourceTable
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
@@ -44,7 +42,7 @@ import {
     unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
 
-const initQBWithProductsTable = async () => {
+const initQBWithReviewsTable = async () => {
     const store = await createTestStore()
     store.pushPath("/question");
     const qb = mount(store.connectContainer(<QueryBuilder />));
@@ -52,8 +50,9 @@ const initQBWithProductsTable = async () => {
 
     // Use Products table
     store.dispatch(setQueryDatabase(1));
-    store.dispatch(setQuerySourceTable(3));
+    store.dispatch(setQuerySourceTable(4));
     await store.waitForActions([FETCH_TABLE_METADATA]);
+    store.resetDispatchedActions();
 
     return { store, qb }
 }
@@ -82,7 +81,7 @@ describe("QueryBuilder", () => {
 
     describe("visualization settings", () => {
         it("lets you hide a field for a raw data table", async () => {
-            const { store, qb } = await initQBWithProductsTable();
+            const { store, qb } = await initQBWithReviewsTable();
 
             // Run the raw data query
             qb.find(RunButton).simulate("click");
@@ -234,15 +233,14 @@ describe("QueryBuilder", () => {
     });
 
     describe("editor bar", async() => {
-        describe("for Category field in Products table", () =>  {
+        fdescribe("for Category field in Products table", () =>  {
             // TODO: Update the test H2 database fixture so that it recognizes Category field as Category
             // and has run a database sync so that Category field contains the expected field values
-            pending();
 
             let store = null;
             let qb = null;
             beforeAll(async () => {
-                ({ store, qb } = await initQBWithProductsTable());
+                ({ store, qb } = await initQBWithReviewsTable());
             })
 
             // NOTE: Sequential tests; these may fail in a cascading way but shouldn't affect other tests
@@ -256,23 +254,23 @@ describe("QueryBuilder", () => {
 
                 const filterPopover = filterSection.find(FilterPopover);
 
-                const categoryFieldButton = filterPopover.find(FieldList).find('h4[children="Category"]')
-                expect(categoryFieldButton.length).toBe(1);
-                categoryFieldButton.simulate('click');
+                const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="Rating"]')
+                expect(ratingFieldButton.length).toBe(1);
+                ratingFieldButton.simulate('click');
             })
 
             it("lets you see its field values in filter popover", () => {
                 // Same as before applies to FilterPopover too: individual list items could be in their own components
                 const filterPopover = qb.find(FilterPopover);
                 const fieldItems = filterPopover.find('li');
-                expect(fieldItems.length).toBe(4);
+                expect(fieldItems.length).toBe(5);
 
                 // should be in alphabetical order
-                expect(fieldItems.first().text()).toBe("Doohickey")
-                expect(fieldItems.last().text()).toBe("Widget")
+                expect(fieldItems.first().text()).toBe("1")
+                expect(fieldItems.last().text()).toBe("5")
             })
 
-            it("lets you set 'Category is Widget' filter", async () => {
+            it("lets you set 'Rating is 5' filter", async () => {
                 const filterPopover = qb.find(FilterPopover);
                 const fieldItems = filterPopover.find('li');
                 const widgetFieldItem = fieldItems.last();
@@ -285,23 +283,23 @@ describe("QueryBuilder", () => {
                 const addFilterButton = filterPopover.find('button[children="Add filter"]')
                 addFilterButton.simulate("click");
 
-                await store.waitForActions([ADD_QUERY_FILTER])
+                await store.waitForActions([SET_DATASET_QUERY])
                 store.resetDispatchedActions();
 
                 expect(qb.find(FilterPopover).length).toBe(0);
                 const filterWidget = qb.find(FilterWidget);
                 expect(filterWidget.length).toBe(1);
-                expect(filterWidget.text()).toBe("Category isWidget");
+                expect(filterWidget.text()).toBe("Rating is equal to5");
             })
 
-            it("lets you set 'Category is Gadget or Gizmo", async () => {
+            it("lets you set 'Rating is 5 or 4' filter", async () => {
                 // reopen the filter popover by clicking filter widget
                 const filterWidget = qb.find(FilterWidget);
                 filterWidget.find(FieldName).simulate('click');
 
                 const filterPopover = qb.find(FilterPopover);
                 const fieldItems = filterPopover.find('li');
-                const widgetFieldItem = fieldItems.at(2);
+                const widgetFieldItem = fieldItems.at(3);
                 const gadgetCheckbox = widgetFieldItem.find(CheckBox);
 
                 expect(gadgetCheckbox.props().checked).toBe(false);
@@ -311,16 +309,16 @@ describe("QueryBuilder", () => {
                 const addFilterButton = filterPopover.find('button[children="Update filter"]')
                 addFilterButton.simulate("click");
 
-                await store.waitForActions([UPDATE_QUERY_FILTER])
+                await store.waitForActions([SET_DATASET_QUERY])
 
                 expect(qb.find(FilterPopover).length).toBe(0);
-                expect(filterWidget.text()).toBe("Category is2 selections");
+                expect(filterWidget.text()).toBe("Rating is equal to2 selections");
             })
 
             it("lets you remove the added filter", async () => {
                 const filterWidget = qb.find(FilterWidget);
                 filterWidget.find(".Icon-close").simulate('click');
-                await store.waitForActions([REMOVE_QUERY_FILTER])
+                await store.waitForActions([SET_DATASET_QUERY])
 
                 expect(qb.find(FilterWidget).length).toBe(0);
             })
