@@ -1,11 +1,13 @@
 (ns metabase.driver.sqlserver
   (:require [honeysql.core :as hsql]
             [metabase
+             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (defn- column->base-type
   "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
@@ -51,21 +53,25 @@
 (defn- connection-details->spec [{:keys [user password db host port instance domain ssl]
                                   :or   {user "dbuser", password "dbpassword", db "", host "localhost", port 1433}
                                   :as   details}]
-  {:classname    "net.sourceforge.jtds.jdbc.Driver"
-   :subprotocol  "jtds:sqlserver"
-   :loginTimeout 5 ; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
-   :subname      (str "//" host ":" port "/" db)
-   ;; everything else gets passed as `java.util.Properties` to the JDBC connection. See full list of properties here: `http://jtds.sourceforge.net/faq.html#urlFormat`
-   ;; (passing these as Properties instead of part of the `:subname` is preferable because they support things like passwords with special characters)
-   :user         user
-   :password     password
-   :instance     instance
-   :domain       domain
-   :useNTLMv2    (boolean domain) ; if domain is specified, send LMv2/NTLMv2 responses when using Windows authentication
-   ;; for whatever reason `ssl=request` doesn't work with RDS (it hangs indefinitely), so just set ssl=off (disabled) if SSL isn't being used
-   :ssl          (if ssl
-                   "require"
-                   "off")})
+  (-> {:appName      config/mb-app-id-string
+       :classname    "net.sourceforge.jtds.jdbc.Driver"
+       :subprotocol  "jtds:sqlserver"
+       :loginTimeout 5 ; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
+       :subname      (str "//" host ":" port "/" db)
+       ;; everything else gets passed as `java.util.Properties` to the JDBC connection. See full list of properties here: `http://jtds.sourceforge.net/faq.html#urlFormat`
+       ;; (passing these as Properties instead of part of the `:subname` is preferable because they support things like passwords with special characters)
+       :user         user
+       :password     password
+       :instance     instance
+       :domain       domain
+       :useNTLMv2    (boolean domain) ; if domain is specified, send LMv2/NTLMv2 responses when using Windows authentication
+       ;; for whatever reason `ssl=request` doesn't work with RDS (it hangs indefinitely), so just set ssl=off (disabled) if SSL isn't being used
+       :ssl          (if ssl
+                       "require"
+                       "off")}
+      ;; jTDS additional options are here: http://jtds.sourceforge.net/faq.html
+      ;; TODO - if we switch over to the official Microsoft driver options are here: https://technet.microsoft.com/en-us/library/ms378988(v=sql.105).aspx
+      (sql/handle-additional-options details, :seperator-style :semicolon)))
 
 
 (defn- date-part [unit expr]
@@ -175,7 +181,10 @@
                                          {:name         "ssl"
                                           :display-name "Use a secure connection (SSL)?"
                                           :type         :boolean
-                                          :default      false}]))})
+                                          :default      false}
+                                         {:name         "additional-options"
+                                          :display-name "Additional JDBC connection string options"
+                                          :placeholder  "trustServerCertificate=false"}]))})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
