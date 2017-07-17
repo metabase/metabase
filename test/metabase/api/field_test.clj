@@ -314,6 +314,12 @@
       [before-creation
        (tu/boolean-ids-and-timestamps new-dim)])))
 
+;; External remappings require a human readable field id
+(expect
+  clojure.lang.ExceptionInfo
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]]
+    (dimension-post field-id-1 {:name "some dimension name", :type "external"})))
+
 ;; Ensure we can delete a dimension
 (expect
   [{:id true

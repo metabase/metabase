@@ -103,16 +103,20 @@
    dimension-name         su/NonBlankString
    human_readable_field_id (s/maybe su/IntGreaterThanZero)}
   (let [field (api/read-check Field id)]
+    (api/check (or (= dimension-type "internal")
+                   (and (= dimension-type "external")
+                        human_readable_field_id))
+      [400 "Foreign key based remappings require a human readable field id"])
     (if-let [dimension (Dimension :field_id id)]
       (db/update! Dimension (:id dimension)
         {:type dimension-type
          :name dimension-name
          :human_readable_field_id human_readable_field_id})
       (db/insert! Dimension
-                  {:field_id id
-                   :type dimension-type
-                   :name dimension-name
-                   :human_readable_field_id human_readable_field_id}))
+        {:field_id id
+         :type dimension-type
+         :name dimension-name
+         :human_readable_field_id human_readable_field_id}))
     (Dimension :field_id id)))
 
 (api/defendpoint DELETE "/:id/dimension"
