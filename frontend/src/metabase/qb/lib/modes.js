@@ -87,13 +87,10 @@ export const getModeActions = (
     tableMetadata: ?TableMetadata
 ): ClickAction[] => {
     // We need a table selected for provide actions for GUI questions, but not for native
-    const shouldCheckForActions = mode &&
-        card &&
-        (tableMetadata || mode.name == "native");
-    if (shouldCheckForActions) {
+    if (mode && card && (tableMetadata || mode.name == "native")) {
         // FIXME: copy card because it may be frozen and action may mutate it :-/
         card = Utils.copy(card);
-        const props: ClickActionProps = { card, tableMetadata };
+        const props = { card, tableMetadata };
         // flatten array of arrays
         return [].concat(
             ...mode.actions.map(actionCreator => actionCreator(props))
