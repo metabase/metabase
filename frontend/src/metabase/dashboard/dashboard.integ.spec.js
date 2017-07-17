@@ -2,7 +2,6 @@ import { PublicApi } from "metabase/services";
 import { fetchDashboard } from "./dashboard"
 
 import {
-    createSavedQuestion,
     createTestStore,
     login
 } from "metabase/__support__/integrated_tests";
