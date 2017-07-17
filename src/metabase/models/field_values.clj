@@ -36,7 +36,8 @@
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
        (not (isa? (keyword base_type) :type/DateTime))
        (or (isa? (keyword base_type) :type/Boolean)
-           (isa? (keyword special_type) :type/Category))))
+           (isa? (keyword special_type) :type/Category)
+           (isa? (keyword special_type) :type/Enum))))
 
 (defn- create-field-values!
   "Create `FieldValues` for a `Field`."

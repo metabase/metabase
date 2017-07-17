@@ -501,10 +501,10 @@
   "Field values will only be returned when the field's special type is
   set to type/Category. This function will change that for
   category_id, then invoke `F` and roll it back afterwards"
-  [f]
+  [special-type f]
   (let [original-special-type (:special_type (Field (id :venues :category_id)))]
     (try
-      (db/update! Field (id :venues :category_id) {:special_type :type/Category})
+      (db/update! Field (id :venues :category_id) {:special_type special-type})
       (f)
       (finally
         (db/update! Field (id :venues :category_id) {:special_type original-special-type})))))
@@ -525,6 +525,28 @@
   (with-data
     (create-venue-category-remapping "Foo")
     (category-id-special-type
+     :type/Category
+     (fn []
+       (narrow-fields ["PRICE" "CATEGORY_ID"]
+                      ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))))
+
+;; ## GET /api/table/:id/query_metadata
+;; Ensure internal remapped dimensions and human_readable_values are returned when type is enum
+(expect
+  [{:table_id (id :venues)
+    :id (id :venues :category_id)
+    :name "CATEGORY_ID"
+    :values (map-indexed (fn [idx [category]] [idx category]) venue-categories)
+    :dimensions {:name "Foo", :field_id (id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+   {:id (id :venues :price)
+    :table_id (id :venues)
+    :name "PRICE"
+    :values [[1] [2] [3] [4]]
+    :dimensions []}]
+  (with-data
+    (create-venue-category-remapping "Foo")
+    (category-id-special-type
+     :type/Enum
      (fn []
        (narrow-fields ["PRICE" "CATEGORY_ID"]
                       ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))))
@@ -545,6 +567,7 @@
   (with-data
     (create-venue-category-fk-remapping "Foo")
     (category-id-special-type
+     :type/Category
      (fn []
        (narrow-fields ["PRICE" "CATEGORY_ID"]
                       ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))))
