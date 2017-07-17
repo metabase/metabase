@@ -45,10 +45,24 @@ import {
 
 import {
     getQuestionUrl,
-    has,
-    isGuideEmpty,
-    tryUpdateGuide
+    has
 } from '../utils';
+
+const isGuideEmpty = ({
+    things_to_know,
+    contact,
+    most_important_dashboard,
+    important_metrics,
+    important_segments,
+    important_tables
+} = {}) => things_to_know ? false :
+    contact && contact.name ? false :
+    contact && contact.email ? false :
+    most_important_dashboard ? false :
+    important_metrics && important_metrics.length !== 0 ? false :
+    important_segments && important_segments.length !== 0 ? false :
+    important_tables && important_tables.length !== 0 ? false :
+    true;
 
 const mapStateToProps = (state, props) => {
     const guide = getGuide(state, props);
@@ -200,7 +214,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateGuide(fields, this.props)
+            await actions.tryUpdateGuide(fields, this.props)
         );
 
         const getSelectedIds = fields => fields

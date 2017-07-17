@@ -32,7 +32,7 @@ type DimensionOption = {
 /**
  * Dimension base class, represents an MBQL field reference.
  *
- * Used for displaying fields (like Created At) and their "sub-dimensions" (like Hour of day)
+ * Used for displaying fields (like Created At) and their "sub-dimensions" (like Created At by Day)
  * in field lists and active value widgets for filters, aggregations and breakouts.
  *
  * @abstract
@@ -61,7 +61,6 @@ export default class Dimension {
      */
     static parseMBQL(mbql: ConcreteField, metadata?: Metadata): ?Dimension {
         for (const D of DIMENSION_TYPES) {
-
             const dimension = D.parseMBQL(mbql, metadata);
             if (dimension != null) {
                 return dimension;
@@ -339,7 +338,8 @@ export class FieldIDDimension extends FieldDimension {
     }
 
     field() {
-        return this._metadata.fields[this._args[0]] || new Field();
+        return (this._metadata && this._metadata.fields[this._args[0]]) ||
+            new Field();
     }
 }
 
@@ -376,7 +376,8 @@ export class FKDimension extends FieldDimension {
     }
 
     field() {
-        return this._metadata.fields[this._args[0]] || new Field();
+        return (this._metadata && this._metadata.fields[this._args[0]]) ||
+            new Field();
     }
 
     render() {

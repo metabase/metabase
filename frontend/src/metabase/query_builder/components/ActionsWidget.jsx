@@ -25,7 +25,8 @@ type Props = {
 type State = {
     isVisible: boolean,
     isOpen: boolean,
-    selectedActionIndex: ?number
+    isClosing: boolean,
+    selectedActionIndex: ?number,
 };
 
 const CIRCLE_SIZE = 48;
@@ -92,23 +93,29 @@ export default class ActionsWidget extends Component {
 
     handleActionClick = (index: number) => {
         const { question } = this.props;
-        const action = question.mode().actions()[index];
-        if (action && action.popover) {
-            this.setState({ selectedActionIndex: index });
-        } else if (action && action.question) {
-            const nextQuestion = action.question();
-            if (nextQuestion) {
-                MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
+        const mode = question.mode()
+        if (mode) {
+            const action = mode.actions()[index];
+            if (action && action.popover) {
+                this.setState({ selectedActionIndex: index });
+            } else if (action && action.question) {
+                const nextQuestion = action.question();
+                if (nextQuestion) {
+                    MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
+                    this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
+                }
+                this.close();
             }
-            this.close();
+        } else {
+            console.warn("handleActionClick: Question mode is missing")
         }
     };
     render() {
         const { className, question } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions = question.mode().actions();
+        const mode = question.mode();
+        const actions = mode ? mode.actions() : [];
         if (actions.length === 0) {
             return null;
         }

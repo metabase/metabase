@@ -10,21 +10,25 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 export default class Mode {
-    _question: Question
-    _queryMode: QueryMode
+    _question: Question;
+    _queryMode: QueryMode;
 
     constructor(question: Question, queryMode: QueryMode) {
         this._question = question;
-        this._queryMode = queryMode
+        this._queryMode = queryMode;
     }
 
     static forQuestion(question: Question): ?Mode {
-        // TODO: Move getMode here and refactor it after writing tests
+        // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
         const card = question.card();
         const tableMetadata = question.tableMetadata();
-        const queryMode = getMode(card, tableMetadata)
+        const queryMode = getMode(card, tableMetadata);
 
-        return new Mode(question, queryMode);
+        if (queryMode) {
+            return new Mode(question, queryMode);
+        } else {
+            return null;
+        }
     }
 
     queryMode() {
@@ -38,14 +42,14 @@ export default class Mode {
     actions(): ClickAction[] {
         return _.flatten(
             this._queryMode.actions.map(actionCreator =>
-                actionCreator({question: this._question}))
+                actionCreator({ question: this._question }))
         );
     }
 
     actionsForClick(clicked: ?ClickObject): ClickAction[] {
         return _.flatten(
             this._queryMode.drills.map(actionCreator =>
-                actionCreator({question: this._question, clicked}))
+                actionCreator({ question: this._question, clicked }))
         );
     }
 }

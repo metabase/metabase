@@ -62,21 +62,20 @@
   (let [parsers (map (comp field-type->parser :type) columns)]
     (for [row data]
       (for [[value parser] (partition 2 (interleave row parsers))]
-        (when value
+        (when (some? value)
           (parser value))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
-  (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details-with-tunnel) :as :json))]
-      (when error
-        (throw (ex-info (or (:message error) "Error running query.") error)))
-      (let [rows    (parse-presto-results columns data)
-            results {:columns (or columns prev-columns)
-                     :rows    (vec (concat prev-rows rows))}]
-        (if (nil? nextUri)
-          results
-          (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
-              (fetch-presto-results! details-with-tunnel results nextUri)))))))
+  (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
+    (when error
+      (throw (ex-info (or (:message error) "Error running query.") error)))
+    (let [rows    (parse-presto-results columns data)
+          results {:columns (or columns prev-columns)
+                   :rows    (vec (concat prev-rows rows))}]
+      (if (nil? nextUri)
+        results
+        (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
+            (fetch-presto-results! details results nextUri))))))
 
 (defn- execute-presto-query! [details query]
   (ssh/with-ssh-tunnel [details-with-tunnel details]
@@ -100,6 +99,13 @@
 (defn- quote+combine-names [& names]
   (str/join \. (map quote-name names)))
 
+(defn- rename-duplicates [values]
+  ;; Appends _2, _3 and so on to duplicated values
+  (loop [acc [], [h & tail] values, seen {}]
+    (let [value (if (seen h) (str h "_" (inc (seen h))) h)]
+      (if tail
+        (recur (conj acc value) tail (assoc seen h (inc (get seen h 0))))
+        (conj acc value)))))
 
 ;;; IDriver implementation
 
@@ -192,10 +198,13 @@
 
 (defn- execute-query [{:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
   (let [sql                    (str "-- " (qputil/query->remark outer-query) "\n"
-                                          (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn  :from_iso8601_timestamp))
+                                          (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
         details                (merge (:details database) settings)
-        {:keys [columns rows]} (execute-presto-query! details sql)]
-    {:columns (map (comp keyword :name) columns)
+        {:keys [columns rows]} (execute-presto-query! details sql)
+        columns                (for [[col name] (map vector columns (rename-duplicates (map :name columns)))]
+                                 {:name name, :base_type (presto-type->base-type (:type col))})]
+    {:cols    columns
+     :columns (map (comp keyword :name) columns)
      :rows    rows}))
 
 (defn- field-values-lazy-seq [{field-name :name, :as field}]
@@ -348,5 +357,7 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-
-(driver/register-driver! :presto (PrestoDriver.))
+(defn -init-driver
+  "Register the Presto driver"
+  []
+  (driver/register-driver! :presto (PrestoDriver.)))

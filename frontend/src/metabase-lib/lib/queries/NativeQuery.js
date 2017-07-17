@@ -46,8 +46,7 @@ export default class NativeQuery extends AtomicQuery {
     ) {
         super(question, datasetQuery);
 
-        // $FlowFixMe
-        this._nativeDatasetQuery = datasetQuery;
+        this._nativeDatasetQuery = (datasetQuery: NativeDatasetQuery);
     }
 
     static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
@@ -63,7 +62,7 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     isEmpty() {
-        return this.databaseId() == null || this.queryText().length == 0
+        return this.databaseId() == null || this.queryText().length == 0;
     }
 
     databases(): Database[] {

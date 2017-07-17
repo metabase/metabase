@@ -9,11 +9,9 @@ import {
     PRODUCT_CATEGORY_FIELD_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
-import { BackendResource } from "../../../../../test/e2e/support/backend.js";
-
 describe("CountByColumnDrill", () => {
     it("should not be valid for top level actions", () => {
-        expect(CountByColumnDrill({productQuestion})).toHaveLength(0);
+        expect(CountByColumnDrill({ productQuestion })).toHaveLength(0);
     });
     it("should be valid for click on numeric column header", () => {
         expect(

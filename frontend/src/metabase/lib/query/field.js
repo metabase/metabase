@@ -18,6 +18,8 @@ export function getFieldTargetId(field: FieldReference): ?FieldId {
     } else if (isDatetimeField(field)) {
         // $FlowFixMe
         return getFieldTargetId(field[1]);
+    } else if (isFieldLiteral(field)) {
+        return field;
     }
     console.warn("Unknown field type: ", field);
 }
@@ -36,6 +38,10 @@ export function isForeignKeyField(field: FieldReference): boolean {
 
 export function isDatetimeField(field: FieldReference): boolean {
     return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
+}
+
+export function isFieldLiteral(field: FieldReference): boolean {
+    return Array.isArray(field) && field.length === 3 && mbqlEq(field[0], "field-literal");
 }
 
 export function isExpressionField(field: FieldReference): boolean {

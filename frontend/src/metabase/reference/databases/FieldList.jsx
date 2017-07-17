@@ -14,23 +14,21 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
 
 import cx from "classnames";
 
 import {
-    getSection,
-    getData,
+    getTable,
+    getFieldsByTable,
     getForeignKeys,
     getError,
     getLoading,
     getUser,
     getIsEditing,
-    getHasRevisionHistory,
 } from "../selectors";
 
 import {
-    tryUpdateFields,
     fieldsToFormFields
 } from '../utils';
 
@@ -39,17 +37,23 @@ import { getIconForField } from "metabase/lib/schema_metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
 
+
+const emptyStateData = {
+    message: `Fields in this table will appear here as they're added`,
+    icon: "fields"
+}
+
+
 const mapStateToProps = (state, props) => {
-    const data = getData(state, props);
+    const data = getFieldsByTable(state, props);
     return {
-        section: getSection(state, props),
+        table: getTable(state, props),
         entities: data,
         foreignKeys: getForeignKeys(state, props),
         loading: getLoading(state, props),
         loadingError: getError(state, props),
         user: getUser(state, props),
         isEditing: getIsEditing(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
         fields: fieldsToFormFields(data)
     };
 }
@@ -68,13 +72,12 @@ const validate = (values, props) => {
     form: 'fields',
     validate
 })
-export default class ReferenceEntityList extends Component {
+export default class FieldList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object.isRequired,
         isEditing: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -84,7 +87,7 @@ export default class ReferenceEntityList extends Component {
         handleSubmit: PropTypes.func.isRequired,
         user: PropTypes.object.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
+        table: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -97,12 +100,11 @@ export default class ReferenceEntityList extends Component {
             entities,
             fields,
             foreignKeys,
-            section,
+            table,
             loadingError,
             loading,
             user,
             isEditing,
-            hasRevisionHistory,
             startEditing,
             endEditing,
             resetForm,
@@ -113,18 +115,24 @@ export default class ReferenceEntityList extends Component {
         return (
             <form style={style} className="full"
                 onSubmit={handleSubmit(async (formFields) =>
-                    await tryUpdateFields(formFields, this.props)
+                    await actions.rUpdateFields(this.props.entities, formFields, this.props)
                 )}
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={false}
                         reinitializeForm={resetForm}
                         endEditing={endEditing}
                         submitting={submitting}
                     />
                 }
-                <ReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
+                <EditableReferenceHeader 
+                    headerIcon="table2"
+                    name={`Fields in ${table.display_name}`}
+                    user={user} 
+                    isEditing={isEditing} 
+                    startEditing={startEditing} 
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
@@ -148,7 +156,7 @@ export default class ReferenceEntityList extends Component {
                                         <Field
                                             field={entity}
                                             foreignKeys={foreignKeys}
-                                            url={`${section.id}/${entity.id}`}
+                                            url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
                                             icon={getIconForField(entity)}
                                             isEditing={isEditing}
                                             formField={fields[entity.id]}
@@ -159,25 +167,7 @@ export default class ReferenceEntityList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        { section.empty &&
-                            <EmptyState
-                                title={section.empty.title}
-                                message={user.is_superuser ?
-                                    section.empty.adminMessage || section.empty.message :
-                                    section.empty.message
-                                }
-                                icon={section.empty.icon}
-                                image={section.empty.image}
-                                action={user.is_superuser ?
-                                    section.empty.adminAction || section.empty.action :
-                                    section.empty.action
-                                }
-                                link={user.is_superuser ?
-                                    section.empty.adminLink || section.empty.link :
-                                    section.empty.link
-                                }
-                            />
-                        }
+                        <EmptyState {...emptyStateData} />
                     </div>
                 }
                 </LoadingAndErrorWrapper>

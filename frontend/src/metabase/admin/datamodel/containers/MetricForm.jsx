@@ -18,7 +18,6 @@ import Query from "metabase/lib/query";
 import cx from "classnames";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Table from "metabase-lib/lib/metadata/Table";
-import { getIn } from "icepick";
 
 @reduxForm({
     form: "metric",

@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 
 import querystring from "querystring";
 
@@ -82,8 +82,10 @@ class Api extends EventEmitter {
         }
     }
 
+    // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
     _makeRequest(method, url, headers, body, data, options) {
         return new Promise((resolve, reject) => {
+            let isCancelled = false;
             let xhr = new XMLHttpRequest();
             xhr.open(method, this.basename + url);
             for (let headerName in headers) {
@@ -102,7 +104,8 @@ class Api extends EventEmitter {
                     } else {
                         reject({
                             status: xhr.status,
-                            data: body
+                            data: body,
+                            isCancelled: isCancelled
                         });
                     }
                     if (!options.noEvent) {
@@ -113,7 +116,10 @@ class Api extends EventEmitter {
             xhr.send(body);
 
             if (options.cancelled) {
-                options.cancelled.then(() => xhr.abort());
+                options.cancelled.then(() => {
+                    isCancelled = true;
+                    xhr.abort()
+                });
             }
         });
     }

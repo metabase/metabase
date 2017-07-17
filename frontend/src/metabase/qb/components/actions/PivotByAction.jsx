@@ -23,7 +23,8 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
             return [];
         }
 
-        const tableMetadata = query.table();
+        // $FlowFixMe
+        const tableMetadata: TableMetadata = query.table();
 
         // Click target types: metric value
         if (
@@ -64,9 +65,13 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                         tableMetadata={tableMetadata}
                         fieldOptions={breakoutOptions}
                         onCommitBreakout={breakout => {
-                            onChangeCardAndRun({
-                                nextCard: question.pivot(breakout, dimensions).card()
-                            })
+                            const nextCard = question
+                                .pivot(breakout, dimensions)
+                                .card();
+
+                            if (nextCard) {
+                                onChangeCardAndRun({ nextCard });
+                            }
                         }}
                         onClose={onClose}
                     />

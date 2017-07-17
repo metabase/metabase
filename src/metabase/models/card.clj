@@ -53,10 +53,12 @@
 
 (defn- query->source-and-join-tables
   "Return a sequence of all Tables (as TableInstance maps) referenced by QUERY."
-  [{:keys [source-table join-tables native], :as query}]
+  [{:keys [source-table join-tables source-query native], :as query}]
   (cond
     ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to add native permissions to the complete set below.
     native       [::native]
+    ;; if we have a source-query just recur until we hit either the native source or the MBQL source
+    source-query (recur source-query)
     ;; for root MBQL queries just return source-table + join-tables
     :else        (cons source-table join-tables)))
 
@@ -86,6 +88,7 @@
 
 ;; it takes a lot of DB calls and function calls to expand/resolve a query, and since they're pure functions we can save ourselves some a lot of DB calls
 ;; by caching the results. Cache the permissions reqquired to run a given query dictionary for up to 6 hours
+;; TODO - what if the query uses a source query, and that query changes? Not sure if that will cause an issue or not. May need to revisit this
 (defn- query-perms-set* [{query-type :type, database :database, :as query} read-or-write]
   (cond
     (= query {})                     #{}
@@ -135,12 +138,15 @@
 ;;; ------------------------------------------------------------ Lifecycle ------------------------------------------------------------
 
 (defn- query->database-and-table-ids
-  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card."
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use other queries as their source
+   (ones that come in with a `:source-table` like `card__100`) recursively, as well as normal queries."
   [outer-query]
-  (let [database     (qputil/get-normalized outer-query :database)
+  (let [database-id  (qputil/get-normalized outer-query :database)
         source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (when source-table
-      {:database-id (u/get-id database), :table-id (u/get-id source-table)})))
+    (cond
+      (integer? source-table) {:database-id database-id, :table-id source-table}
+      (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
+                                (db/select-one [Card [:table_id :table-id] [:database_id :database-id]] :id (Integer/parseInt card-id))))))
 
 (defn- populate-query-fields [{{query-type :type, :as outer-query} :dataset_query, :as card}]
   (merge (when query-type
@@ -184,6 +190,7 @@
                                        :display                :keyword
                                        :embedding_params       :json
                                        :query_type             :keyword
+                                       :result_metadata        :json
                                        :visualization_settings :json})
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)

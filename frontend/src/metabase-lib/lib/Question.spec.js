@@ -6,13 +6,17 @@ import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
     ORDERS_PRODUCT_FK_FIELD_ID,
+    card,
     orders_raw_card,
     orders_count_card,
-    orders_count_by_id_card
+    orders_count_by_id_card,
+    native_orders_count_card,
+    invalid_orders_count_card
 } from "metabase/__support__/sample_dataset_fixture";
 
 import Question from "./Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 describe("Question", () => {
     describe("CREATED WITH", () => {
@@ -31,8 +35,8 @@ describe("Question", () => {
                 expect(question.canRun()).toBe(true);
             });
             it("has correct display settings", () => {
-                expect(question.display()).toBeUndefined();
-            })
+                expect(question.display()).toBe("table");
+            });
             it("has correct mode", () => {
                 expect(question.mode().name()).toBe("segment");
             });
@@ -43,7 +47,7 @@ describe("Question", () => {
                 metadata,
                 databaseId: DATABASE_ID,
                 tableId: ORDERS_TABLE_ID
-            })
+            });
 
             it("contains an empty structured query", () => {
                 expect(question.query().constructor).toBe(StructuredQuery);
@@ -54,81 +58,165 @@ describe("Question", () => {
                 expect(question.display()).toEqual("table");
             });
         });
-    })
+    });
 
     describe("STATUS METHODS", () => {
         describe("canRun()", () => {
-            pending();
-        })
+            it("You should be able to run a newly created query", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.canRun()).toBe(true);
+            });
+        });
         describe("canWrite()", () => {
-            pending();
-        })
+            it("You should be able to write to a question you have permissions to", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.canWrite()).toBe(true);
+            });
+            it("You should not be able to write to a question you dont  have permissions to", () => {
+                const question = new Question(
+                    metadata,
+                    orders_count_by_id_card
+                );
+                expect(question.canWrite()).toBe(false);
+            });
+        });
         describe("isSaved()", () => {
-            pending();
-        })
+            it("A newly created query doesn't have an id and shouldn't be marked as isSaved()", () => {
+                const question = new Question(metadata, card);
+                expect(question.isSaved()).toBe(false);
+            });
+            it("A saved question does have an id and should be marked as isSaved()", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.isSaved()).toBe(true);
+            });
+        });
     });
 
     describe("CARD METHODS", () => {
         describe("card()", () => {
-            it("returns the underlying card", () => {
-                pending();
-            })
-        })
+            it("A question wraps a query/card and you can see the underlying card with card()", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+            });
+        });
 
         describe("setCard(card)", () => {
-            it("returns the underlying card", () => {
-                pending();
-            })
-        })
+            it("changes the underlying card", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                const newQustion = question.setCard(orders_count_by_id_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                expect(newQustion.card()).toEqual(orders_count_by_id_card);
+            });
+        });
     });
 
-    describe("QUERY METHODS", () => {
+    describe("At the heart of a question is an MBQL query.", () => {
         describe("query()", () => {
             it("returns a correct class instance for structured query", () => {
-                pending();
+                const question = new Question(metadata, orders_raw_card);
+                // This is a bit wack, and the repetitive naming is pretty confusing.
+                const query = question.query();
+                expect(query instanceof StructuredQuery).toBe(true);
             });
             it("returns a correct class instance for native query", () => {
-                pending();
+                const question = new Question(
+                    metadata,
+                    native_orders_count_card
+                );
+                const query = question.query();
+                expect(query instanceof NativeQuery).toBe(true);
             });
             it("throws an error for invalid queries", () => {
-                pending();
+                const question = new Question(
+                    metadata,
+                    invalid_orders_count_card
+                );
+                expect(question.query).toThrow();
             });
-        })
+        });
         describe("setQuery(query)", () => {
             it("updates the dataset_query of card", () => {
-                pending();
-            })
-        })
+                const question = new Question(metadata, orders_raw_card);
+                const rawQuery = new Question(
+                    metadata,
+                    native_orders_count_card
+                ).query();
+
+                const newRawQuestion = question.setQuery(rawQuery);
+
+                expect(newRawQuestion.query() instanceof NativeQuery).toBe(
+                    true
+                );
+            });
+        });
         describe("setDatasetQuery(datasetQuery)", () => {
             it("updates the dataset_query of card", () => {
-                pending();
-            })
-        })
+                const question = new Question(metadata, orders_raw_card);
+                const rawQuestion = question.setDatasetQuery(
+                    native_orders_count_card.dataset_query
+                );
+
+                expect(rawQuestion.query() instanceof NativeQuery).toBe(true);
+            });
+        });
     });
 
+    describe("CARD METHODS", () => {
+        describe("card()", () => {
+            it("A question wraps a query/card and you can see the underlying card with card()", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+            });
+        });
+
+        describe("setCard(card)", () => {
+            it("changes the underlying card", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                const newQustion = question.setCard(orders_count_by_id_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                expect(newQustion.card()).toEqual(orders_count_by_id_card);
+            });
+        });
+    });
     describe("RESETTING METHODS", () => {
         describe("withoutNameAndId()", () => {
             it("unsets the name and id", () => {
-                pending();
+                const question = new Question(metadata, orders_raw_card);
+                const newQuestion = question.withoutNameAndId();
+
+                expect(newQuestion.id()).toBeUndefined();
+                expect(newQuestion.displayName()).toBeUndefined();
             });
             it("retains the dataset query", () => {
-                pending();
+                const question = new Question(metadata, orders_raw_card);
+
+                expect(question.id()).toBeDefined();
+                expect(question.displayName()).toBeDefined();
             });
-        })
-    })
+        });
+    });
 
     describe("VISUALIZATION METHODS", () => {
         describe("display()", () => {
             it("returns the card's visualization type", () => {
-                pending();
+                const question = new Question(metadata, orders_raw_card);
+                // this forces a table view
+                const tableQuestion = question.toUnderlyingData();
+                // Not sure I'm a huge fan of magic strings here.
+                expect(tableQuestion.display()).toBe("table");
             });
         });
         describe("setDisplay(display)", () => {
             it("sets the card's visualization type", () => {
-                pending();
+                const question = new Question(metadata, orders_raw_card);
+                // Not sure I'm a huge fan of magic strings here.
+                const scalarQuestion = question.setDisplay("scalar");
+                expect(scalarQuestion.display()).toBe("scalar");
             });
-        })
-    })
+        });
+    });
 
     // TODO: These are mode-dependent and should probably be tied to modes
     // At the same time, the choice that which actions are visible depend on the question's properties
@@ -149,15 +237,17 @@ describe("Question", () => {
         describe("mode()", () => {
             describe("for a new question with Orders table and Raw data aggregation", () => {
                 it("returns the correct mode", () => {
-                    expect(rawDataQuestion.mode().name()).toBe("segment")
-                })
-            })
+                    expect(rawDataQuestion.mode().name()).toBe("segment");
+                });
+            });
             describe("for a question with an aggregation and a time breakout", () => {
                 it("returns the correct mode", () => {
-                    expect(timeBreakoutQuestion.mode().name()).toBe("timeseries")
-                })
-            })
-        })
+                    expect(timeBreakoutQuestion.mode().name()).toBe(
+                        "timeseries"
+                    );
+                });
+            });
+        });
 
         describe("summarize(...)", async () => {
             const question = new Question(metadata, orders_raw_card);
@@ -169,7 +259,7 @@ describe("Question", () => {
                     orders_count_card.dataset_query
                 );
             });
-        })
+        });
 
         describe("breakout(...)", async () => {
             it("works with a datetime field reference", () => {
@@ -226,10 +316,13 @@ describe("Question", () => {
                     aggregation: [["count"]]
                 });
             });
-        })
+        });
 
         describe("pivot(...)", async () => {
-            const ordersCountQuestion = new Question(metadata, orders_count_card);
+            const ordersCountQuestion = new Question(
+                metadata,
+                orders_count_card
+            );
             it("works with a datetime dimension ", () => {
                 const pivotedCard = ordersCountQuestion.pivot([
                     "field-id",
@@ -276,15 +369,18 @@ describe("Question", () => {
                     aggregation: [["count"]]
                 });
             });
-        })
+        });
 
         describe("filter(...)", async () => {
-            const questionForFiltering = new Question(metadata, orders_raw_card);
+            const questionForFiltering = new Question(
+                metadata,
+                orders_raw_card
+            );
 
             it("works with an id filter", () => {
                 const filteringQuestion = questionForFiltering.filter(
                     "=",
-                    {id: ORDERS_PK_FIELD_ID},
+                    { id: ORDERS_PK_FIELD_ID },
                     1
                 );
 
@@ -328,7 +424,7 @@ describe("Question", () => {
             it("works with a time filter", () => {
                 const filteringQuestion = questionForFiltering.filter(
                     "=",
-                    {id: ORDERS_CREATED_DATE_FIELD_ID},
+                    { id: ORDERS_CREATED_DATE_FIELD_ID },
                     "12/12/2012"
                 );
 
@@ -345,7 +441,7 @@ describe("Question", () => {
                     }
                 });
             });
-        })
+        });
 
         describe("drillUnderlyingRecords(...)", async () => {
             const ordersCountQuestion = new Question(
@@ -356,7 +452,7 @@ describe("Question", () => {
             // ???
             it("applies a filter to a given filterspec", () => {
                 const dimensions = [
-                    {value: 1, column: metadata.fields[ORDERS_PK_FIELD_ID]}
+                    { value: 1, column: metadata.fields[ORDERS_PK_FIELD_ID] }
                 ];
 
                 const drilledQuestion = ordersCountQuestion.drillUnderlyingRecords(
@@ -373,12 +469,14 @@ describe("Question", () => {
                     }
                 });
             });
-        })
+        });
 
         describe("toUnderlyingRecords(...)", async () => {
             const question = new Question(metadata, orders_raw_card);
-            const ordersCountQuestion = new Question(metadata, orders_count_card);
-
+            const ordersCountQuestion = new Question(
+                metadata,
+                orders_count_card
+            );
 
             it("returns underlying records correctly for a raw data query", () => {
                 const underlyingRecordsQuestion = question.toUnderlyingRecords();
@@ -408,10 +506,13 @@ describe("Question", () => {
                     source_table: ORDERS_TABLE_ID
                 });
             });
-        })
+        });
 
         describe("toUnderlyingData()", async () => {
-            const ordersCountQuestion = new Question(metadata, orders_count_card);
+            const ordersCountQuestion = new Question(
+                metadata,
+                orders_count_card
+            );
 
             it("returns underlying data correctly for table query", () => {
                 const underlyingDataQuestion = ordersCountQuestion
@@ -427,7 +528,7 @@ describe("Question", () => {
 
                 expect(underlyingDataQuestion.display()).toBe("table");
             });
-        })
+        });
 
         describe("drillPK(...)", async () => {
             const question = new Question(metadata, orders_raw_card);
@@ -449,23 +550,45 @@ describe("Question", () => {
                     }
                 });
             });
-        })
+        });
+    });
+
+    describe("QUESTION EXECUTION", () => {
+        describe("getResults()", () => {
+            it("executes correctly a native query with field filter parameters", () => {
+                pending();
+                // test also here a combo of parameter with a value + parameter without a value + parameter with a default value
+            });
+        });
     });
 
     describe("COMPARISON TO OTHER QUESTIONS", () => {
         describe("isDirtyComparedTo(question)", () => {
-            pending();
-        })
+            it("New questions are automatically dirty", () => {
+                const question = new Question(metadata, orders_raw_card);
+                const newQuestion = question.withoutNameAndId();
+                expect(newQuestion.isDirtyComparedTo(question)).toBe(true);
+            });
+            it("Changing vis settings makes something dirty", () => {
+                const question = new Question(metadata, orders_count_card);
+                const underlyingDataQuestion = question.toUnderlyingRecords();
+                expect(underlyingDataQuestion.isDirtyComparedTo(question)).toBe(
+                    true
+                );
+            });
+        });
     });
 
-    describe("ULRS", () => {
+    describe("URLs", () => {
         // Covered a lot in query_builder/actions.spec.js, just very basic cases here
         // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
         describe("getUrl(originalQuestion?)", () => {
             it("returns a question with hash for an unsaved question", () => {
                 const question = new Question(metadata, orders_raw_card);
-                expect(question.getUrl()).toBe("/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlX3RhYmxlIjoxfX19")
-            })
-        })
+                expect(question.getUrl()).toBe(
+                    "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlX3RhYmxlIjoxfX0sImRpc3BsYXkiOiJ0YWJsZSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ=="
+                );
+            });
+        });
     });
 });

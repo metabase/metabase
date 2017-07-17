@@ -4,7 +4,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.models
-             [database :refer [Database]]
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.test
@@ -15,7 +17,8 @@
              [users :refer :all]]
             [toucan
              [db :as db]
-             [hydrate :as hydrate]]))
+             [hydrate :as hydrate]]
+            [toucan.util.test :as tt]))
 
 ;; HELPER FNS
 
@@ -123,11 +126,6 @@
       (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
               :features)))
 
-:description             nil
-                               :entity_type             nil
-                               :caveats                 nil
-                               :points_of_interest      nil
-                               :visibility_type         nil
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil
@@ -315,3 +313,117 @@
   [["CATEGORIES" "Table"]
    ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
   ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "cat"))
+
+
+;;; GET /api/database?include_cards=true
+;; Check that we get back 'virtual' tables for Saved Questions
+(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+  (merge {:name          card-name
+          :database_id   (data/id)
+          :dataset_query {:database (data/id)
+                          :type     :native
+                          :native   {:query (format "SELECT * FROM VENUES")}}}
+         kvs))
+
+(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+  {:name          card-name
+   :database_id   (data/id)
+   :dataset_query {:database (data/id)
+                   :type     :query
+                   :query    inner-query-clauses}})
+
+(defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
+  {:name               "Saved Questions"
+   :id                 database/virtual-id
+   :features           ["basic-aggregations"]
+   :tables             card-tables
+   :is_saved_questions true})
+
+(defn- virtual-table-for-card [card & {:as kvs}]
+  (merge {:id           (format "card__%d" (u/get-id card))
+          :db_id        database/virtual-id
+          :display_name (:name card)
+          :schema       "All questions"
+          :description  nil}
+         kvs))
+
+(tt/expect-with-temp [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card card))
+  (do
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
+    (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
+
+;; make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS
+(tt/expect-with-temp [Collection [stamp-collection {:name "Stamps"}]
+                      Collection [coin-collection  {:name "Coins"}]
+                      Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
+                      Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card coin-card  :schema "Coins")
+    (virtual-table-for-card stamp-card :schema "Stamps"))
+  (do
+    ;; run the Cards which will populate their result_metadata columns
+    (doseq [card [stamp-card coin-card]]
+      ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
+    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their Collection name as their Schema
+    (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
+
+(defn- fetch-virtual-database []
+  (some #(when (= (:name %) "Saved Questions")
+           %)
+        ((user->client :crowberto) :get 200 "database" :include_cards true)))
+
+;; make sure that GET /api/database?include_cards=true removes Cards that have ambiguous columns
+(tt/expect-with-temp [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
+                      Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
+
+
+;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count aggregations
+(defn- ok-mbql-card []
+  (assoc (card-with-mbql-query "OK Card"
+           :source-table (data/id :checkins))
+    :result_metadata [{:name "num_toucans"}]))
+
+;; cum count using the new-style multiple aggregation syntax
+(tt/expect-with-temp [Card [ok-card (ok-mbql-card)]
+                      Card [_ (assoc (card-with-mbql-query "Cum Count Card"
+                                       :source-table (data/id :checkins)
+                                       :aggregation  [[:cum-count]]
+                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date) :month]]])
+                                :result_metadata [{:name "num_toucans"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
+
+;; cum sum using old-style single aggregation syntax
+(tt/expect-with-temp [Card [ok-card (ok-mbql-card)]
+                      Card [_ (assoc (card-with-mbql-query "Cum Sum Card"
+                                       :source-table (data/id :checkins)
+                                       :aggregation  [:cum-sum]
+                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date) :month]]])
+                                :result_metadata [{:name "num_toucans"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
+
+
+;; make sure that GET /api/database/:id/metadata works for the Saved Questions 'virtual' database
+(tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card") :result_metadata [{:name "age_in_bird_years"}])]]
+  (saved-questions-virtual-db
+    (assoc (virtual-table-for-card card)
+      :fields [{:name         "age_in_bird_years"
+                :table_id     (str "card__" (u/get-id card))
+                :id           ["field-literal" "age_in_bird_years" "type/*"]
+                :special_type nil}]))
+  ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
+
+;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`
+(expect
+  nil
+  ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))

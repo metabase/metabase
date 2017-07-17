@@ -70,12 +70,12 @@ export function label(label) {
 }
 
 export function publicCard(uuid, type = null) {
-    const siteUrl = MetabaseSettings.get("site-url");
+    const siteUrl = MetabaseSettings.get("site_url");
     return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
 }
 
 export function publicDashboard(uuid) {
-    const siteUrl = MetabaseSettings.get("site-url");
+    const siteUrl = MetabaseSettings.get("site_url");
     return `${siteUrl}/public/dashboard/${uuid}`;
 }
 

@@ -2,14 +2,11 @@
 import "metabase-lib/lib/Question";
 
 import {
-    metadata,
     question,
     DATABASE_ID,
-    MONGO_DATABASE_ID,
-    ORDERS_TABLE_ID
+    MONGO_DATABASE_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
-import StructuredQuery from "./StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
@@ -163,7 +160,6 @@ describe("NativeQuery", () => {
                 const newQuery = makeQuery().updateQueryText(
                     "SELECT * from ORDERS where total < {{max_price}}"
                 );
-                console.log(newQuery.templateTags());
                 expect(newQuery.templateTags().length).toBe(1);
             });
         });

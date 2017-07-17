@@ -179,4 +179,7 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-(driver/register-driver! :sqlite (SQLiteDriver.))
+(defn -init-driver
+  "Register the SQLite driver"
+  []
+  (driver/register-driver! :sqlite (SQLiteDriver.)))

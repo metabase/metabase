@@ -116,6 +116,8 @@ export function getParametersWithExtras(card: Card, parameterValues?: ParameterV
     })
 }
 
+// NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
+// Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
     card: Card,
     parameters: Parameter[],
@@ -135,7 +137,6 @@ export function applyParameters(
         }
 
         const mapping = _.findWhere(parameterMappings, {
-            // $FlowFixMe original_card_id not included in the flow type of card
             card_id: card.id || card.original_card_id,
             parameter_id: parameter.id
         });

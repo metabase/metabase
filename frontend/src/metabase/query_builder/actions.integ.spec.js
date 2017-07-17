@@ -1,72 +1,50 @@
 import {
-    DATABASE_ID, ORDERS_TABLE_ID, metadata,
-    ORDERS_TOTAL_FIELD_ID
+    ORDERS_TOTAL_FIELD_ID,
+    unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
 import { parse as urlParse } from "url";
 import {
-    login,
-    startServer,
-    stopServer,
-    globalReduxStore as store,
-    globalBrowserHistory as history
+    createSavedQuestion,
+    createTestStore,
+    login
 } from "metabase/__support__/integrated_tests";
 import { initializeQB } from "./actions";
-import { getCard, getOriginalCard } from "./selectors";
-import { CardApi } from "metabase/services";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { getQueryResults } from "metabase/query_builder/selectors";
+import { getCard, getOriginalCard, getQueryResults } from "./selectors";
+import _ from "underscore";
 
 jest.mock('metabase/lib/analytics');
 
+// TODO: Convert completely to modern style
 
 describe("QueryBuilder", () => {
-    let unsavedQuestion: Question = null;
     let savedCleanQuestion: Question = null;
     let dirtyQuestion: Question = null;
+    let store = null;
 
     beforeAll(async () => {
-        await startServer();
         await login();
-    })
-
-    afterAll(async () => {
-        await stopServer();
+        store = await createTestStore()
     })
 
     describe("initializeQb", () => {
         beforeAll(async () => {
-            // Question initialization has to be in beforeAll block due to the CardApi.create api call
-            await store.dispatch(refreshSiteSettings());
-
-            unsavedQuestion = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
-                .query()
-                .addAggregation(["count"])
-                .question()
-
-            unsavedQuestion._card = { ...unsavedQuestion._card, name: "Order count" }
-
-            const savedCleanQuestionCard = await CardApi.create(unsavedQuestion.card())
-            savedCleanQuestion = unsavedQuestion.setCard({
-                ...savedCleanQuestionCard
-            });
+            savedCleanQuestion = await createSavedQuestion(unsavedOrderCountQuestion)
 
             dirtyQuestion = savedCleanQuestion
                 .query()
                 .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
                 .question()
-
-            dirtyQuestion._card = { ...dirtyQuestion._card, original_card_id: dirtyQuestion.id() }
         })
 
         describe("for unsaved questions", () => {
             it("completes successfully", async () => {
-                const location = urlParse(unsavedQuestion.getUrl())
+                const location = urlParse(unsavedOrderCountQuestion.getUrl())
                 await store.dispatch(initializeQB(location, {}))
             });
 
             it("results in the correct card object in redux state", async () => {
-                expect(getCard(store.getState())).toMatchObject(unsavedQuestion.card())
+                expect(getCard(store.getState())).toMatchObject(unsavedOrderCountQuestion.card())
             })
 
             it("results in an empty original_card object in redux state", async () => {
@@ -74,11 +52,7 @@ describe("QueryBuilder", () => {
             })
 
             it("keeps the url same after initialization is finished", async () => {
-                const location = urlParse(unsavedQuestion.getUrl())
-
-                // can't get the location from Redux state for some reason so just query the emulated history object directly
-                expect(history.getCurrentLocation().pathname).toBe(location.pathname)
-                expect(history.getCurrentLocation().hash).toBe(location.hash)
+                expect(store.getPath()).toBe(unsavedOrderCountQuestion.getUrl())
             })
 
             // TODO: setTimeout for
@@ -95,18 +69,14 @@ describe("QueryBuilder", () => {
                 });
 
                 it("results in the correct card object in redux state", async () => {
-                    expect(getCard(store.getState())).toMatchObject(savedCleanQuestion.card())
+                    expect(getCard(store.getState())).toMatchObject(_.omit(savedCleanQuestion.card(), "original_card_id"))
                 })
 
                 it("results in the correct original_card object in redux state", async () => {
-                    expect(getOriginalCard(store.getState())).toMatchObject(savedCleanQuestion.card())
+                    expect(getOriginalCard(store.getState())).toMatchObject(_.omit(savedCleanQuestion.card(), "original_card_id"))
                 })
                 it("keeps the url same after initialization is finished", async () => {
-                    const location = urlParse(savedCleanQuestion.getUrl(savedCleanQuestion))
-
-                    // can't get the location from Redux state for some reason so just query the emulated history object directly
-                    expect(history.getCurrentLocation().pathname).toBe(location.pathname)
-                    expect(history.getCurrentLocation().hash).toBe(location.hash || "")
+                    expect(store.getPath()).toBe(savedCleanQuestion.getUrl(savedCleanQuestion))
                 })
             })
             describe("with dirty state", () => {
@@ -120,14 +90,10 @@ describe("QueryBuilder", () => {
                 })
 
                 it("results in the correct original_card object in redux state", async () => {
-                    expect(getOriginalCard(store.getState())).toMatchObject(savedCleanQuestion.card())
+                    expect(getOriginalCard(store.getState())).toMatchObject(_.omit(savedCleanQuestion.card(), "original_card_id"))
                 })
                 it("keeps the url same after initialization is finished", async () => {
-                    const location = urlParse(dirtyQuestion.getUrl(savedCleanQuestion))
-
-                    // can't get the location from Redux state for some reason so just query the emulated history object directly
-                    expect(history.getCurrentLocation().pathname).toBe(location.pathname)
-                    expect(history.getCurrentLocation().hash).toBe(location.hash || "")
+                    expect(store.getPath()).toBe(dirtyQuestion.getUrl())
                 })
             })
         })

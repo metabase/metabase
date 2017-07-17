@@ -23,6 +23,8 @@ export default class DeleteDatabaseModal extends Component {
     async deleteDatabase() {
         try {
             this.props.onDelete(this.props.database);
+            // immediately call on close because database deletion should be non blocking
+            this.props.onClose()
         } catch (error) {
             this.setState({ error });
         }

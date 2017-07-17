@@ -29,7 +29,8 @@ import {
     getQuestion,
     getOriginalQuestion,
     getOriginalCard,
-    getIsEditing
+    getIsEditing,
+    getIsShowingDataReference
 } from "./selectors";
 
 import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
@@ -207,7 +208,6 @@ export const initializeQB = (location, params) => {
                     // deserialized card contains the card id, so just populate originalCard
                     originalCard = await loadCard(card.original_card_id);
                     // if the cards are equal then show the original
-                    // $FlowFixMe:
                     if (cardIsEquivalent(card, originalCard)) {
                         card = Utils.copy(originalCard);
                     }
@@ -237,7 +237,7 @@ export const initializeQB = (location, params) => {
 
                 preserveParameters = true;
             } catch(error) {
-                console.warn(error);
+                console.warn('initializeQb failed because of an error:', error);
                 card = null;
                 dispatch(setErrorPage(error));
             }
@@ -251,8 +251,8 @@ export const initializeQB = (location, params) => {
 
         } else {
             // we are starting a new/empty card
-
-            card = startNewCard("query");
+            const databaseId = (options.db) ? parseInt(options.db) : undefined;
+            card = startNewCard("query", databaseId);
 
             // initialize parts of the query based on optional parameters supplied
             if (options.table != undefined && card.dataset_query.query) {
@@ -280,9 +280,8 @@ export const initializeQB = (location, params) => {
         });
 
         // Fetch the question metadata
-        dispatch(loadMetadataForCard(card));
+        card && dispatch(loadMetadataForCard(card));
 
-        // $FlowFixMe
         const question = card && new Question(getMetadata(getState()), card);
 
         // if we have loaded up a card that we can run then lets kick that off as well
@@ -370,18 +369,18 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
 
         const query = card && new Question(getMetadata(getState()), card).query();
 
-        function loadMetadataForAtomicQuery(singleQuery) {
+        async function loadMetadataForAtomicQuery(singleQuery) {
             if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
-                dispatch(loadTableMetadata(singleQuery.tableId()));
+                await dispatch(loadTableMetadata(singleQuery.tableId()));
             }
 
             if (singleQuery instanceof NativeQuery && singleQuery.databaseId() != null) {
-                dispatch(loadDatabaseFields(singleQuery.databaseId()));
+                await dispatch(loadDatabaseFields(singleQuery.databaseId()));
             }
         }
 
         if (query) {
-            loadMetadataForAtomicQuery(query);
+            await loadMetadataForAtomicQuery(query);
         }
     }
 });
@@ -401,6 +400,7 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
     };
 });
 
+// TODO Atte Keinänen 7/5/17: Move the API call to redux/metadata for being able to see the db fields in the new metadata object
 export const LOAD_DATABASE_FIELDS = "metabase/qb/LOAD_DATABASE_FIELDS";
 export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId) => {
     return async (dispatch, getState) => {
@@ -620,14 +620,13 @@ export const updateQuestion = (newQuestion) => {
         dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
         // See if the template tags editor should be shown/hidden
-
         const oldQuestion = getQuestion(getState());
         const oldTagCount = getTemplateTagCount(oldQuestion);
         const newTagCount = getTemplateTagCount(newQuestion);
 
         if (newTagCount > oldTagCount) {
             dispatch(setIsShowingTemplateTagsEditor(true));
-        } else if (newTagCount === 0) {
+        } else if (newTagCount === 0 && !getIsShowingDataReference(getState())) {
             dispatch(setIsShowingTemplateTagsEditor(false));
         }
     };
@@ -1020,7 +1019,7 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) => {
     return async (dispatch, getState) => {
-        if (error && error.status === 0) {
+        if (error && error.isCancelled) {
             // cancelled, do nothing
             return null;
         } else {
@@ -1033,10 +1032,10 @@ export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) 
 export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     return async (dispatch, getState) => {
-        const { qb: { uiControls, queryExecutionPromise } } = getState();
+        const { qb: { uiControls, cancelQueryDeferred } } = getState();
 
-        if (uiControls.isRunning && queryExecutionPromise) {
-            queryExecutionPromise.resolve();
+        if (uiControls.isRunning && cancelQueryDeferred) {
+            cancelQueryDeferred.resolve();
         }
     };
 });
@@ -1060,11 +1059,8 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             // action is on a PK column
             let newCard: Card = startNewCard("query", card.dataset_query.database);
 
-            // $FlowFixMe
             newCard.dataset_query.query.source_table = coldef.table_id;
-            // $FlowFixMe
             newCard.dataset_query.query.aggregation = ["rows"];
-            // $FlowFixMe
             newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it

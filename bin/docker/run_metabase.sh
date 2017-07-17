@@ -119,4 +119,4 @@ fi
 # Launch the application
 # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
 # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit
-exec su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar"
+exec su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $@"

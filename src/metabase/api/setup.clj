@@ -153,7 +153,7 @@
       :triggered   (>= num-cards 30)}
      {:title       "Create segments"
       :group       "Curate your data"
-      :description "Keep everyone on the same page by creating canonnical sets of filters anyone can use while asking questions."
+      :description "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions."
       :link        "/admin/datamodel/database"
       :completed   has-segments?
       :triggered   (>= num-cards 30)}]))

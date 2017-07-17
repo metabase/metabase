@@ -1,17 +1,13 @@
 import React from 'react';
-import { mount, shallow } from 'enzyme';
+import { shallow } from 'enzyme';
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { initializeQB, navigateToNewCardInsideQB } from "metabase/query_builder/actions";
 import { parse as urlParse } from "url";
 
 import {
-    linkContainerToGlobalReduxStore,
     login,
-    startServer,
-    stopServer,
-    globalReduxStore as store,
-    globalBrowserHistory as history
+    createTestStore
 } from "metabase/__support__/integrated_tests";
 
 import Question from "metabase-lib/lib/Question";
@@ -22,8 +18,10 @@ import {
 } from "metabase/__support__/sample_dataset_fixture";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
+const store = createTestStore()
+
 const getVisualization = (question, results, onChangeCardAndRun) =>
-    linkContainerToGlobalReduxStore(
+    store.connectContainer(
         <Visualization
             series={[{card: question.card(), data: results[0].data}]}
             onChangeCardAndRun={navigateToNewCardInsideQB}
@@ -38,12 +36,7 @@ const question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE
 
 describe('Visualization', () => {
     beforeAll(async () => {
-        await startServer();
         await login();
-    });
-
-    afterAll(async () => {
-        await stopServer();
     });
 
     // NOTE: Should this be here or somewhere in QB directory?

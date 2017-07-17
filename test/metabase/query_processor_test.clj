@@ -8,7 +8,8 @@
              [driver :as driver]
              [util :as u]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [medley.core :as m]))
 
 ;; make sure all the driver test extension namespaces are loaded <3
 ;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
@@ -256,10 +257,14 @@
 (defn breakout-col [column]
   (assoc column :source :breakout))
 
+;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier."
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier.
+   Remove `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled."
   [m]
-  (update-in m [:data :native_form] boolean))
+  (-> m
+      (update-in [:data :native_form] boolean)
+      (m/dissoc-in [:data :results_metadata])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.

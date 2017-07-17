@@ -39,17 +39,21 @@ const query = makeQuery({});
 
 describe("StructuredQuery behavioral tests", () => {
     it("is able to filter by field which is already used for the query breakout", () => {
-         const breakoutDimensionOptions = query.breakoutOptions().dimensions;
-         const breakoutDimension = breakoutDimensionOptions.find((d) => d.field().id === ORDERS_TOTAL_FIELD_ID);
+        const breakoutDimensionOptions = query.breakoutOptions().dimensions;
+        const breakoutDimension = breakoutDimensionOptions.find(
+            d => d.field().id === ORDERS_TOTAL_FIELD_ID
+        );
 
-         expect(breakoutDimension).toBeDefined();
+        expect(breakoutDimension).toBeDefined();
 
-         const queryWithBreakout = query.addBreakout(breakoutDimension.mbql());
+        const queryWithBreakout = query.addBreakout(breakoutDimension.mbql());
 
-         const filterDimensionOptions = queryWithBreakout.filterFieldOptions().dimensions;
-         const filterDimension = filterDimensionOptions.find((d) => d.field().id === ORDERS_TOTAL_FIELD_ID);
+        const filterDimensionOptions = queryWithBreakout.filterFieldOptions().dimensions;
+        const filterDimension = filterDimensionOptions.find(
+            d => d.field().id === ORDERS_TOTAL_FIELD_ID
+        );
 
-         expect(filterDimension).toBeDefined();
+        expect(filterDimension).toBeDefined();
     });
 });
 
@@ -84,7 +88,7 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.engine()).toBe("h2");
             });
         });
-    })
+    });
 
     describe("SIMPLE QUERY MANIPULATION METHODS", () => {
         describe("reset", () => {
@@ -129,7 +133,7 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.tableId()).toBe(ORDERS_TABLE_ID);
             });
         });
-    })
+    });
 
     describe("QUERY STATUS METHODS", () => {
         describe("canRun", () => {
@@ -147,7 +151,7 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.isEmpty()).toBe(false);
             });
         });
-    })
+    });
 
     describe("AGGREGATION METHODS", () => {
         describe("aggregations", () => {
@@ -155,14 +159,14 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.aggregations().length).toBe(0);
             });
             it("should return a list of one item after adding an aggregation", () => {
-                expect(query.addAggregation(["count"]).aggregations().length).toBe(
-                    1
-                );
+                expect(
+                    query.addAggregation(["count"]).aggregations().length
+                ).toBe(1);
             });
             it("should return an actual count aggregation after trying to add it", () => {
-                expect(query.addAggregation(["count"]).aggregations()[0]).toEqual([
-                    "count"
-                ]);
+                expect(
+                    query.addAggregation(["count"]).aggregations()[0]
+                ).toEqual(["count"]);
             });
         });
         describe("aggregationsWrapped", () => {
@@ -198,10 +202,10 @@ describe("StructuredQuery unit tests", () => {
         describe("aggregationFieldOptions()", () => {
             it("includes expressions to the results without a field filter", () => {
                 pending();
-            })
+            });
             it("includes expressions to the results with a field filter", () => {
                 pending();
-            })
+            });
         });
 
         describe("canRemoveAggregation", () => {
@@ -209,9 +213,9 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.canRemoveAggregation()).toBe(false);
             });
             it("returns false for a single aggregation", () => {
-                expect(query.addAggregation(["count"]).canRemoveAggregation()).toBe(
-                    false
-                );
+                expect(
+                    query.addAggregation(["count"]).canRemoveAggregation()
+                ).toBe(false);
             });
             it("returns true for two aggregations", () => {
                 expect(
@@ -231,7 +235,9 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.isBareRows()).toBe(true);
             });
             it("is false for a count aggregation", () => {
-                expect(query.addAggregation(["count"]).isBareRows()).toBe(false);
+                expect(query.addAggregation(["count"]).isBareRows()).toBe(
+                    false
+                );
             });
         });
 
@@ -245,9 +251,9 @@ describe("StructuredQuery unit tests", () => {
                 ).toBe("Total Order Value");
             });
             it("returns a standard aggregation name", () => {
-                expect(makeQueryWithAggregation(["count"]).aggregationName()).toBe(
-                    "Count of rows"
-                );
+                expect(
+                    makeQueryWithAggregation(["count"]).aggregationName()
+                ).toBe("Count of rows");
             });
             it("returns a standard aggregation name with field", () => {
                 expect(
@@ -261,7 +267,11 @@ describe("StructuredQuery unit tests", () => {
                 expect(
                     makeQueryWithAggregation([
                         "sum",
-                        ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID]
+                        [
+                            "fk->",
+                            ORDERS_PRODUCT_FK_FIELD_ID,
+                            PRODUCT_TILE_FIELD_ID
+                        ]
                     ]).aggregationName()
                 ).toBe("Sum of Title");
             });
@@ -326,19 +336,30 @@ describe("StructuredQuery unit tests", () => {
         });
         describe("breakoutOptions", () => {
             it("returns the correct count of dimensions", () => {
-                expect(query.breakoutOptions().dimensions.length).toBe(5)
+                expect(query.breakoutOptions().dimensions.length).toBe(5);
             });
 
             it("excludes the already used breakouts", () => {
-                const queryWithBreakout = query.addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID]);
-                expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(4)
+                const queryWithBreakout = query.addBreakout([
+                    "field-id",
+                    ORDERS_TOTAL_FIELD_ID
+                ]);
+                expect(
+                    queryWithBreakout.breakoutOptions().dimensions.length
+                ).toBe(4);
             });
 
             it("includes an explicitly provided breakout although it has already been used", () => {
-                const breakout = ["field-id", ORDERS_TOTAL_FIELD_ID]
+                const breakout = ["field-id", ORDERS_TOTAL_FIELD_ID];
                 const queryWithBreakout = query.addBreakout(breakout);
-                expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(4)
-                expect(queryWithBreakout.breakoutOptions(breakout).dimensions.length).toBe(5)
+                expect(
+                    queryWithBreakout.breakoutOptions().dimensions.length
+                ).toBe(4);
+                expect(
+                    queryWithBreakout.breakoutOptions(
+                        breakout
+                    ).dimensions.length
+                ).toBe(5);
             });
         });
         describe("canAddBreakout", () => {
@@ -363,7 +384,7 @@ describe("StructuredQuery unit tests", () => {
         describe("clearBreakouts", () => {
             pending();
         });
-    })
+    });
 
     // FILTERS:
     describe("FILTER METHODS", () => {
@@ -412,7 +433,10 @@ describe("StructuredQuery unit tests", () => {
             it("return an array with the sort clause", () => {
                 expect(
                     makeQuery({
-                        order_by: [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]
+                        order_by: [
+                            ["field-id", ORDERS_TOTAL_FIELD_ID],
+                            "ascending"
+                        ]
                     }).sorts()
                 ).toEqual([["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]);
             });
@@ -420,19 +444,28 @@ describe("StructuredQuery unit tests", () => {
 
         describe("sortOptions", () => {
             it("returns the correct count of dimensions", () => {
-                expect(query.sortOptions().dimensions.length).toBe(5)
+                expect(query.sortOptions().dimensions.length).toBe(5);
             });
 
             it("excludes the already used sorts", () => {
-                const queryWithBreakout = query.addSort([["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]);
-                expect(queryWithBreakout.sortOptions().dimensions.length).toBe(4)
+                const queryWithBreakout = query.addSort([
+                    ["field-id", ORDERS_TOTAL_FIELD_ID],
+                    "ascending"
+                ]);
+                expect(queryWithBreakout.sortOptions().dimensions.length).toBe(
+                    4
+                );
             });
 
             it("includes an explicitly provided sort although it has already been used", () => {
                 const sort = [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"];
                 const queryWithBreakout = query.addSort(sort);
-                expect(queryWithBreakout.sortOptions().dimensions.length).toBe(4)
-                expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(5)
+                expect(queryWithBreakout.sortOptions().dimensions.length).toBe(
+                    4
+                );
+                expect(
+                    queryWithBreakout.sortOptions(sort).dimensions.length
+                ).toBe(5);
             });
         });
 
@@ -465,8 +498,7 @@ describe("StructuredQuery unit tests", () => {
                 pending();
             });
         });
-
-    })
+    });
     // LIMIT
 
     describe("LIMIT METHODS", () => {
@@ -489,7 +521,7 @@ describe("StructuredQuery unit tests", () => {
                 pending();
             });
         });
-    })
+    });
 
     describe("EXPRESSION METHODS", () => {
         describe("expressions", () => {
@@ -510,7 +542,7 @@ describe("StructuredQuery unit tests", () => {
                 pending();
             });
         });
-    })
+    });
 
     describe("DIMENSION METHODS", () => {
         describe("fieldOptions", () => {
@@ -520,7 +552,9 @@ describe("StructuredQuery unit tests", () => {
             });
             it("does not include foreign key fields in the dimensions list", () => {
                 const dimensions = query.fieldOptions().dimensions;
-                const fkDimensions = dimensions.filter(dim => dim.field() && dim.field().isFK());
+                const fkDimensions = dimensions.filter(
+                    dim => dim.field() && dim.field().isFK()
+                );
                 expect(fkDimensions.length).toBe(0);
             });
 
@@ -546,7 +580,7 @@ describe("StructuredQuery unit tests", () => {
         describe("metricDimensions", () => {
             pending();
         });
-    })
+    });
 
     describe("FIELD REFERENCE METHODS", () => {
         describe("fieldReferenceForColumn", () => {
@@ -556,7 +590,7 @@ describe("StructuredQuery unit tests", () => {
         describe("parseFieldReference", () => {
             pending();
         });
-    })
+    });
 
     describe("DATASET QUERY METHODS", () => {
         describe("setDatasetQuery", () => {
@@ -566,10 +600,10 @@ describe("StructuredQuery unit tests", () => {
                     aggregation: [["count"]]
                 });
 
-                expect(query.setDatasetQuery(newDatasetQuery).datasetQuery()).toBe(
-                    newDatasetQuery
-                );
+                expect(
+                    query.setDatasetQuery(newDatasetQuery).datasetQuery()
+                ).toBe(newDatasetQuery);
             });
         });
-    })
+    });
 });
