@@ -502,11 +502,12 @@
   set to type/Category. This function will change that for
   category_id, then invoke `F` and roll it back afterwards"
   [f]
-  (try
-    (db/update! Field (id :venues :category_id) {:special_type :type/Category})
-    (f)
-    (finally
-      (db/update! Field (id :venues :category_id) {:special_type nil}))))
+  (let [original-special-type (:special_type (Field (id :venues :category_id)))]
+    (try
+      (db/update! Field (id :venues :category_id) {:special_type :type/Category})
+      (f)
+      (finally
+        (db/update! Field (id :venues :category_id) {:special_type original-special-type})))))
 
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure internal remapped dimensions and human_readable_values are returned
