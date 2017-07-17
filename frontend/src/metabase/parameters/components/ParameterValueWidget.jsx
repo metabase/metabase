@@ -19,6 +19,7 @@ import TextWidget from "./widgets/TextWidget.jsx";
 import S from "./ParameterWidget.css";
 
 import cx from "classnames";
+import _ from "underscore"
 
 const WIDGETS = {
     "date/single": DateSingleWidget,
@@ -86,7 +87,11 @@ export default class ParameterValueWidget extends Component {
     state = { isFocused: false };
 
     componentWillMount() {
-        this.updateFieldValues(this.props);
+        // In public dashboards we receive field values before mounting this component and
+        // without need to call `fetchFieldValues` separately
+        if (_.isEmpty(this.props.values)) {
+            this.updateFieldValues(this.props);
+        }
     }
 
     componentWillReceiveProps(nextProps) {
