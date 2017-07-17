@@ -1,17 +1,20 @@
 /* @flow */
 
-import { drillUnderlyingRecords } from "metabase/qb/lib/actions";
-
 import { inflect } from "metabase/lib/formatting";
+
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery)) {
+        return [];
+    }
+
     const dimensions = (clicked && clicked.dimensions) || [];
     if (!clicked || dimensions.length === 0) {
         return [];
@@ -27,8 +30,8 @@ export default (
             title: "View " +
                 inflect("these", count, "this", "these") +
                 " " +
-                inflect(tableMetadata.display_name, count),
-            card: () => drillUnderlyingRecords(card, dimensions)
+                inflect(query.table().display_name, count),
+            question: () => question.drillUnderlyingRecords(dimensions)
         }
     ];
 };

@@ -1,29 +1,27 @@
-/* eslint "react/prop-types": "warn" */
+/* @flow weak */
+
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import Toggle from "metabase/components/Toggle.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
-import Field from "metabase/meta/metadata/Field";
 
 import _ from "underscore";
 
+import type { TemplateTag } from "metabase/meta/types/Query"
+
+import Field from "metabase-lib/lib/metadata/Field";
+
+type Props = {
+    tag: TemplateTag,
+    onUpdate: (tag: TemplateTag) => void,
+    databaseFields: Field[]
+}
+
 export default class TagEditorParam extends Component {
-
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {};
-    }
-
-    static propTypes = {
-        tag: PropTypes.object.isRequired,
-        onUpdate: PropTypes.func.isRequired,
-        databaseFields: PropTypes.array
-    };
+    props: Props;
 
     setParameterAttribute(attr, val) {
         // only register an update if the value actually changes
@@ -61,6 +59,9 @@ export default class TagEditorParam extends Component {
         const dimension = ["field-id", fieldId];
         if (!_.isEqual(tag.dimension !== dimension)) {
             const field = _.findWhere(databaseFields, { id: fieldId });
+            if (!field) {
+                return;
+            }
             const options = parameterOptionsForField(new Field(field));
             let widget_type;
             if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
@@ -86,7 +87,7 @@ export default class TagEditorParam extends Component {
         }
 
         let widgetOptions;
-        if (tag.type === "dimension" && tag.dimension) {
+        if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
             if (field) {
                 widgetOptions = parameterOptionsForField(new Field(field));

@@ -26,6 +26,7 @@ function hasArg(arg) {
 }
 
 var SRC_PATH = __dirname + '/frontend/src/metabase';
+var LIB_SRC_PATH = __dirname + '/frontend/src/metabase-lib';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
 // default NODE_ENV to development
@@ -125,6 +126,7 @@ var config = module.exports = {
         extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH,
+            'metabase-lib':         LIB_SRC_PATH,
             'style':                SRC_PATH + '/css/core/index.css',
             'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
         }
@@ -251,11 +253,15 @@ if (NODE_ENV !== "production") {
     config.output.devtoolModuleFilenameTemplate = '[absolute-resource-path]';
     config.output.pathinfo = true;
 } else {
-    // this is required to ensure we don't minify Chevrotain token identifiers
-    // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
     config.plugins.push(new webpack.optimize.UglifyJsPlugin({
-        warnings: false,
+        // suppress uglify warnings in production
+        // output from these warnings was causing Heroku builds to fail (#5410)
+        compress: {
+            warnings: false,
+        },
         mangle: {
+            // this is required to ensure we don't minify Chevrotain token identifiers
+            // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
             except: allTokens.map(function(currTok) {
                 return chevrotain.tokenName(currTok);
             })

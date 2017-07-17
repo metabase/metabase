@@ -1,7 +1,6 @@
 /* @flow */
 
-import { summarize, getFieldRefFromColumn } from "metabase/qb/lib/actions";
-import * as Card from "metabase/meta/Card";
+import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 import type {
@@ -32,13 +31,8 @@ const AGGREGATIONS = {
     }
 };
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
-    const query = Card.getQuery(card);
-
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     if (
-        !query ||
         !clicked ||
         !clicked.column ||
         clicked.value !== undefined ||
@@ -56,11 +50,7 @@ export default (
     }]) => ({
         name: action.title.toLowerCase(),
         ...action,
-        card: () =>
-            summarize(
-                card,
-                [aggregation, getFieldRefFromColumn(column)],
-                tableMetadata
-            )
+        question: () =>
+            question.summarize([aggregation, getFieldRefFromColumn(column)])
     }));
 };

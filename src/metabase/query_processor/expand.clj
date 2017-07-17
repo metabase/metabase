@@ -10,8 +10,8 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter Expression ExpressionRef
-            FieldPlaceholder RelativeDatetime StringFilter Value ValuePlaceholder]))
+  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue DateTimeField Expression
+            ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime RelativeDateTimeValue StringFilter Value ValuePlaceholder]))
 
 ;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
 
@@ -24,10 +24,17 @@
   [index :- s/Int]
   (i/map->AgFieldRef {:index index}))
 
-(s/defn ^:ql ^:always-validate field-id :- FieldPlaceholder
+(s/defn ^:ql ^:always-validate field-id :- i/AnyField
   "Create a generic reference to a `Field` with ID."
-  [id :- su/IntGreaterThanZero]
-  (i/map->FieldPlaceholder {:field-id id}))
+  [id]
+  ;; If for some reason we were passed a field literal (e.g. [field-id [field-literal ...]])
+  ;; we should technically barf but since we know what people meant we'll be nice for once and fix it for them :D
+  (if (instance? FieldLiteral id)
+    (do
+      (log/warn (u/format-color 'yellow (str "It doesn't make sense to use `field-literal` forms inside `field-id` forms.\n"
+                                             "Instead of [field-id [field-literal ...]], just do [field-literal ...].")))
+      id)
+    (i/map->FieldPlaceholder {:field-id id})))
 
 (s/defn ^:private ^:always-validate field :- i/AnyField
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
@@ -37,6 +44,12 @@
         (field-id f))
     f))
 
+(s/defn ^:ql ^:always-validate field-literal :- FieldLiteral
+  "Generic reference to a Field by FIELD-NAME. This is intended for use when using nested queries so as to allow one to refer to the fields coming back from
+   the source query."
+  [field-name :- su/KeywordOrString, field-type :- su/KeywordOrString]
+  (i/map->FieldLiteral {:field-name (u/keyword->qualified-name field-name), :base-type (keyword field-type)}))
+
 (s/defn ^:ql ^:always-validate named :- i/Aggregation
   "Specify a CUSTOM-NAME to use for a top-level AGGREGATION-OR-EXPRESSION in the results.
    (This will probably be extended to support Fields in the future, but for now, only the `:aggregation` clause is supported.)"
@@ -44,12 +57,19 @@
   [aggregation-or-expression :- i/Aggregation, custom-name :- su/NonBlankString]
   (assoc aggregation-or-expression :custom-name custom-name))
 
-(s/defn ^:ql ^:always-validate datetime-field :- FieldPlaceholder
+(s/defn ^:ql ^:always-validate datetime-field :- i/AnyField
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
-  ([f _ unit] (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. [:datetime-field <field> :as <unit>] is deprecated. "
-                                                     "Prefer [:datetime-field <field> <unit>] instead.")))
-              (datetime-field f unit))
-  ([f unit]   (assoc (field f) :datetime-unit (qputil/normalize-token unit))))
+  ([f _ unit]
+   (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. [:datetime-field <field> :as <unit>] is deprecated. "
+                                          "Prefer [:datetime-field <field> <unit>] instead.")))
+   (datetime-field f unit))
+  ([f unit]
+   (cond
+     (instance? DateTimeField f) f
+     (instance? FieldLiteral f)  (i/map->DateTimeField {:field f, :unit (qputil/normalize-token unit)})
+     ;; if it already has a datetime unit don't replace it with a new one (?)
+     ;; (:datetime-unit f)          f
+     :else                       (assoc (field f) :datetime-unit (qputil/normalize-token unit)))))
 
 (s/defn ^:ql ^:always-validate fk-> :- FieldPlaceholder
   "Reference to a `Field` that belongs to another `Table`. DEST-FIELD-ID is the ID of this Field, and FK-FIELD-ID is the ID of the foreign key field
@@ -62,18 +82,34 @@
   (i/assert-driver-supports :foreign-keys)
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
 
+(defn- datetime-unit
+  "Determine the appropriate datetime unit that should be used for a field F and a value V.
+   (Sometimes the value may already have a 'default' value that should be replaced with the
+   value from the field it is being used with, e.g. in a filter clause.
+   For example when filtering by minute it is important both F and V are bucketed as minutes,
+   and thus both most have the same unit."
+  [f v]
+  (qputil/normalize-token (core/or (:datetime-unit f)
+                                   (:unit f)
+                                   (:unit v))))
 
-(s/defn ^:private ^:always-validate value :- (s/cond-pre Value ValuePlaceholder)
+(s/defn ^:private ^:always-validate value :- i/AnyValue
   "Literal value. F is the `Field` it relates to, and V is `nil`, or a boolean, string, numerical, or datetime value."
   [f v]
   (cond
-    (instance? ValuePlaceholder v) v
-    (instance? Value v)            v
-    :else                          (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
+    (instance? ValuePlaceholder v)      v
+    (instance? Value v)                 v
+    (instance? RelativeDateTimeValue v) v
+    (instance? DateTimeValue v)         v
+    (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
+    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
+    (instance? FieldLiteral f)          (i/map->Value {:value v, :field f})
+    :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
 (s/defn ^:private ^:always-validate field-or-value
   "Use instead of `value` when something may be either a field or a value."
   [f v]
+
   (if (core/or (instance? FieldPlaceholder v)
                (instance? ExpressionRef v))
     v
@@ -372,12 +408,26 @@
 ;;; ## source-table
 
 (s/defn ^:ql ^:always-validate source-table
-  "Specify the ID of the table to query (required).
+  "Specify the ID of the table to query.
+   Queries must specify *either* `:source-table` or `:source-query`.
 
      (source-table {} 100)"
   [query, table-id :- s/Int]
   (assoc query :source-table table-id))
 
+(declare expand-inner)
+
+(s/defn ^:ql ^:always-validate source-query
+  "Specify a query to use as the source for this query (e.g., as a `SUBSELECT`).
+   Queries must specify *either* `:source-table` or `:source-query`.
+
+     (source-query {} (-> (source-table {} 100)
+                          (limit 10)))"
+  {:added "0.25.0"}
+  [query, source-query :- su/Map]
+  (assoc query :source-query (if (:native source-query)
+                               source-query
+                               (expand-inner source-query))))
 
 
 ;;; ## calculated columns

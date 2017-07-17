@@ -3,6 +3,7 @@
 import moment from "moment";
 
 import Q from "metabase/lib/query"; // legacy query lib
+import { fieldIdsEq } from "metabase/lib/query/util";
 import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
@@ -11,16 +12,17 @@ import { startNewCard } from "metabase/lib/card";
 import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
+import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
+import { parseTimestamp } from "metabase/lib/time";
 
 // TODO: use icepick instead of mutation, make they handle frozen cards
 
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.display = "table";
     newCard.original_card_id = card.id;
     return newCard;
@@ -28,7 +30,7 @@ export const toUnderlyingData = (card: CardObject): ?CardObject => {
 
 export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     if (card.dataset_query.type === "query") {
-        const query: StructuredQuery = card.dataset_query.query;
+        const query: StructuredQuery = Utils.copy(card.dataset_query).query;
         const newCard = startNewCard(
             "query",
             card.dataset_query.database,
@@ -52,7 +54,14 @@ const clone = card => {
 
     newCard.display = card.display;
     newCard.dataset_query = Utils.copy(card.dataset_query);
-    newCard.visualization_settings = Utils.copy(card.visualization_settings);
+
+    // The Question lib doesn't always set a viz setting. Placing a check here, but we should probably refactor this
+    // into a separate test + clean up the question lib.
+    if (card.visualization_settings) {
+        newCard.visualization_settings = Utils.copy(
+            card.visualization_settings
+        );
+    }
 
     return newCard;
 };
@@ -60,6 +69,7 @@ const clone = card => {
 // Adds a new filter with the specified operator, column, and value
 export const filter = (card, operator, column, value) => {
     const newCard = clone(card);
+
     // $FlowFixMe:
     const filter: FieldFilter = [
         operator,
@@ -84,7 +94,7 @@ const drillFilter = (card, value, column) => {
                 "as",
                 column.unit
             ],
-            moment(value).toISOString()
+            parseTimestamp(value, column.unit).toISOString()
         ];
     } else {
         filter = ["=", getFieldRefFromColumn(column), value];
@@ -126,8 +136,10 @@ export const addOrUpdateBreakout = (card, breakout) => {
     let breakouts = Query.getBreakouts(newCard.dataset_query.query);
     for (let index = 0; index < breakouts.length; index++) {
         if (
-            Field.getFieldTargetId(breakouts[index]) ===
-            Field.getFieldTargetId(breakout)
+            fieldIdsEq(
+                Field.getFieldTargetId(breakouts[index]),
+                Field.getFieldTargetId(breakout)
+            )
         ) {
             newCard.dataset_query.query = Query.updateBreakout(
                 newCard.dataset_query.query,
@@ -164,7 +176,7 @@ export const drillDownForDimensions = dimensions => {
                 breakout: [
                     "datetime-field",
                     getFieldRefFromColumn(column),
-                    "as",
+                    "as", // TODO - this is deprecated and should be removed. See https://github.com/metabase/metabase/wiki/Query-Language-'98#datetime-field
                     nextUnit
                 ]
             };
@@ -207,13 +219,13 @@ export const drillRecord = (databaseId, tableId, fieldId, value) => {
 export const plotSegmentField = card => {
     const newCard = startNewCard("query");
     newCard.display = "scatter";
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     return newCard;
 };
 
 export const summarize = (card, aggregation, tableMetadata) => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.dataset_query.query = Query.addAggregation(
         newCard.dataset_query.query,
         aggregation
@@ -224,7 +236,7 @@ export const summarize = (card, aggregation, tableMetadata) => {
 
 export const breakout = (card, breakout, tableMetadata) => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.dataset_query.query = Query.addBreakout(
         newCard.dataset_query.query,
         breakout
@@ -236,7 +248,7 @@ export const breakout = (card, breakout, tableMetadata) => {
 // min number of points when switching units
 const MIN_INTERVALS = 4;
 
-export const updateDateTimeFilter = (card, column, start, end) => {
+export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     let newCard = clone(card);
 
     let fieldRef = getFieldRefFromColumn(column);
@@ -306,7 +318,7 @@ export const updateNumericFilter = (card, column, start, end) => {
 export const pivot = (
     card: CardObject,
     breakout,
-    tableMetadata: TableMetadata,
+    tableMetadata: Table,
     dimensions: DimensionValue[] = []
 ): ?CardObject => {
     if (card.dataset_query.type !== "query") {
@@ -314,7 +326,7 @@ export const pivot = (
     }
 
     let newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
 
     for (const dimension of dimensions) {
         newCard = drillFilter(newCard, dimension.value, dimension.column);
@@ -323,7 +335,7 @@ export const pivot = (
             tableMetadata
         );
         for (const [index, field] of breakoutFields.entries()) {
-            if (field && field.id === dimension.column.id) {
+            if (field && fieldIdsEq(field.id, dimension.column.id)) {
                 newCard.dataset_query.query = Query.removeBreakout(
                     newCard.dataset_query.query,
                     index
@@ -333,7 +345,6 @@ export const pivot = (
     }
 
     newCard.dataset_query.query = Query.addBreakout(
-        // $FlowFixMe
         newCard.dataset_query.query,
         breakout
     );
@@ -353,7 +364,7 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: CardObject, tableMetadata: TableMetadata) => {
+const guessVisualization = (card: CardObject, tableMetadata: Table) => {
     const query = Card.getQuery(card);
     if (!query) {
         return;
