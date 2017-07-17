@@ -19,6 +19,8 @@ import type { DimensionValue } from "metabase/meta/types/Visualization";
 
 // TODO: use icepick instead of mutation, make they handle frozen cards
 
+const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
+
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
     newCard.dataset_query = card.dataset_query;
@@ -41,7 +43,11 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
 };
 
 export const nestThisQuery = (card: CardObject): ?CardObject => {
-    const newCard = startNewCard("query", -1337, "card__" + card.id);
+    const newCard = startNewCard(
+        "query",
+        SAVED_QUESTIONS_FAUX_DATABASE,
+        "card__" + card.id
+    );
     return newCard;
 };
 
