@@ -63,6 +63,34 @@ export const card = {
     }
 };
 
+export const nativeCard = {
+    dataset_query: {
+        type: "native",
+        native: {
+            query: "SELECT count(*) from ORDERS"
+        }
+    }
+};
+
+export const savedCard = {
+    id: 1,
+    dataset_query: {
+        type: "query",
+        query: {
+            source_table: 10
+        }
+    }
+};
+export const savedNativeCard = {
+    id: 2,
+    dataset_query: {
+        type: "native",
+        native: {
+            query: "SELECT count(*) from ORDERS"
+        }
+    }
+};
+
 export const clickedFloatHeader = {
     column: {
         ...FLOAT_FIELD,
