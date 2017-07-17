@@ -12,7 +12,7 @@
              [interface :refer [def-database-definition]]]))
 
 ;;; ------------------------------------------------------------ VARCHAR(MAX) ------------------------------------------------------------
-;; VARCHAR(MAX) comes back from jTDS as a "ClobImpl" so make sure it gets encoded like a normal string by Cheshire
+;; Make sure something long doesn't come back as some weird type like `ClobImpl`
 (def ^:private ^:const a-gene
   "Really long string representing a gene like \"GGAGCACCTCCACAAGTGCAGGCTATCCTGTCGAGTAAGGCCT...\""
   (apply str (repeatedly 1000 (partial rand-nth [\A \G \C \T]))))
@@ -31,17 +31,17 @@
 
 ;;; Test that additional connection string options work (#5296)
 (expect
-  {:ssl          "off"
-   :instance     nil
-   :appName      "Metabase <version>"
-   :password     "toucans"
-   :classname    "net.sourceforge.jtds.jdbc.Driver"
-   :subprotocol  "jtds:sqlserver"
-   :useNTLMv2    false
-   :domain       nil
-   :loginTimeout 5
-   :user         "cam"
-   :subname      "//localhost:1433/birddb;trustServerCertificate=false"}
+  {:classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+   :subprotocol     "sqlserver"
+   :applicationName "Metabase <version>"
+   :subname         "//localhost;trustServerCertificate=false"
+   :database        "birddb"
+   :port            1433
+   :instanceName    nil
+   :user            "cam"
+   :password        "toucans"
+   :encrypt         false
+   :loginTimeout    10}
   (-> (sql/connection-details->spec
        (sqlserver/->SQLServerDriver)
        {:user               "cam"
@@ -51,4 +51,4 @@
         :port               1433
         :additional-options "trustServerCertificate=false"})
       ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with `<version>`
-      (update :appName #(str/replace % #"\s.*$" " <version>"))))
+      (update :applicationName #(str/replace % #"\s.*$" " <version>"))))
