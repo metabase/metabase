@@ -173,22 +173,11 @@ export default class DataSelector extends Component {
         const { databases, selectedSchema } = this.state;
 
         let sections = databases
-            .filter(database =>
-                // filter out the saved questions "db" so we can present it
-                // differently
-                !database.is_saved_questions
-            )
             .map(database => ({
                 name: database.name,
-                items: database.schemas.length > 1 ? database.schemas : []
+                items: database.schemas.length > 1 ? database.schemas : [],
+                className: database.is_saved_questions ? "bg-slate-extra-light" : null
             }));
-
-        // do the opposite of what we just did and get a reference to the saved question "db"
-        // there will only ever be one of these hence [0]
-        const savedQuestionSection = databases.filter(db => db.is_saved_questions)[0]
-
-        // some of the change functions need the index in the databases array
-        const savedQuestionSectionIndex = databases.indexOf(savedQuestionSection)
 
         let openSection = selectedSchema && _.findIndex(databases, (db) => _.find(db.schemas, selectedSchema));
         if (openSection >= 0 && databases[openSection] && databases[openSection].schemas.length === 1) {
@@ -211,17 +200,6 @@ export default class DataSelector extends Component {
                     showItemArrows={true}
                     alwaysTogglable={true}
                 />
-                { savedQuestionSection && (
-                    <div
-                        className="List-section p2 cursor-pointer text-brand-hover bg-slate-extra-light"
-                        onClick={() => this.onChangeDatabase(savedQuestionSectionIndex)}
-                    >
-                        <div className="List-section-header flex align-center">
-                            <Icon className="Icon text-default mr2" size={18} name="all" />
-                            <h3 className="List-section-title">Saved questions</h3>
-                        </div>
-                    </div>
-                )}
             </div>
         );
     }

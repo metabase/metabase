@@ -177,7 +177,7 @@ export default class AccordianList extends Component {
         return (
             <div id={id} className={this.props.className} style={{ width: '300px', ...style }}>
                 {sections.map((section, sectionIndex) =>
-                    <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
+                    <section key={sectionIndex} className={cx("List-section", section.className, { "List-section--open": sectionIsOpen(sectionIndex) })}>
                         { section.name && alwaysExpanded ?
                             (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable) &&
                                 <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
