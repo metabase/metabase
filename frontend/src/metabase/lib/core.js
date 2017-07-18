@@ -41,7 +41,7 @@ export const field_special_types = [{
     'section': 'Common'
 }, {
     'id': TYPE.Enum,
-    'name': 'Email',
+    'name': 'Enum',
     'section': 'Common'
 }, {
     'id': TYPE.ImageURL,
