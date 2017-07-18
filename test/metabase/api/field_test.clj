@@ -501,3 +501,38 @@
           after-change  (simple-field-details (Field field-id-2))]
       [(tu/boolean-ids-and-timestamps before-change)
        (tu/boolean-ids-and-timestamps after-change)])))
+
+;; Changing a remapped field's type to something that can't be remapped will clear the dimension
+(expect
+  [{:id true
+    :created_at true
+    :updated_at true
+    :type :internal
+    :name "some dimension name"
+    :human_readable_field_id false
+    :field_id true}
+   []]
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"
+                                         :base_type "type/Integer"}]]
+    (dimension-post field-id {:name "some dimension name", :type "internal"})
+    (let [new-dim (dimension-for-field field-id)]
+      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Text"})
+      [(tu/boolean-ids-and-timestamps new-dim)
+       (dimension-for-field field-id)])))
+
+;; Change from supported type to supported type will leave the dimension
+(expect
+  (repeat 2 {:id true
+             :created_at true
+             :updated_at true
+             :type :internal
+             :name "some dimension name"
+             :human_readable_field_id false
+             :field_id true})
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"
+                                         :base_type "type/Integer"}]]
+    (dimension-post field-id {:name "some dimension name", :type "internal"})
+    (let [new-dim (dimension-for-field field-id)]
+      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Category"})
+      [(tu/boolean-ids-and-timestamps new-dim)
+       (tu/boolean-ids-and-timestamps (dimension-for-field field-id))])))
