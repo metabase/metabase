@@ -107,7 +107,7 @@
 
 (def ^:private example-query
   {:query
-   {:order-by []
+   {:order-by nil
     :fields
     (mapv #(merge field-defaults %)
           [{:description "A unique internal identifier for the review. Should not be used externally.",
