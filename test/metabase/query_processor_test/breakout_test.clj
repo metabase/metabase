@@ -111,3 +111,23 @@
            (ql/limit 5))
          booleanize-native-form
          (format-rows-by [int int str]))))
+
+(expect-with-non-timeseries-dbs
+  [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
+   ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
+  (data/with-data
+    (fn []
+      [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                              :name "Foo"
+                              :type :external
+                              :human_readable_field_id (data/id :categories :name)})])
+    [(->> (data/run-query venues
+             (ql/order-by (ql/desc $category_id))
+             (ql/limit 10))
+           rows
+           (map last))
+     (->> (data/run-query venues
+             (ql/order-by (ql/asc $category_id))
+             (ql/limit 10))
+           rows
+           (map last))]))

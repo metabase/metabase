@@ -107,7 +107,8 @@
 
 (def ^:private example-query
   {:query
-   {:fields
+   {:order-by []
+    :fields
     (mapv #(merge field-defaults %)
           [{:description "A unique internal identifier for the review. Should not be used externally.",
             :base-type :type/BigInteger,
@@ -154,6 +155,24 @@
                                             :remapped-to nil
                                             :field-display-name "Product"}))
   (add-fk-remaps example-query))
+
+(expect
+  (-> example-query
+      (assoc-in [:query :order-by] [{:direction :ascending
+                                     :field (i/map->FieldPlaceholder {:fk-field-id 32
+                                                                      :field-id 27
+                                                                      :remapped-from "PRODUCT_ID"
+                                                                      :remapped-to nil
+                                                                      :field-display-name "Product"})}])
+      (update-in [:query :fields]
+                 conj (i/map->FieldPlaceholder {:fk-field-id 32
+                                                :field-id 27
+                                                :remapped-from "PRODUCT_ID"
+                                                :remapped-to nil
+                                                :field-display-name "Product"})))
+  (-> example-query
+      (assoc-in [:query :order-by] [{:direction :ascending :field {:field-id 32}}])
+      add-fk-remaps))
 
 (def ^:private external-remapped-result
   (-> example-resultset

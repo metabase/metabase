@@ -73,21 +73,42 @@
        :new-column (create-remapped-col remap-to remap-from)
        :dimension-type remap-type})))
 
+(defn- create-remap-col-pairs
+  "Return pairs of field id and the new remapped column that the field
+  should be remapped to. This is a list of pairs as we want to
+  preserve order"
+  [fields]
+  (for [{{:keys [field-id human-readable-field-id dimension-type dimension-name]} :dimensions,
+         field-name :field-name, source-field-id :field-id} fields
+        :when (= :external dimension-type)]
+    [source-field-id (create-fk-remap-col field-id
+                                          human-readable-field-id
+                                          field-name
+                                          dimension-name)]))
+
+(defn- update-remapped-order-by
+  "Order by clauses that include an external remapped column should be
+  replace that original column in the order by with the newly remapped
+  column. This should order by the text of the remapped column vs. the
+  id of the source column before the remapping"
+  [remap-cols-by-id order-by-seq]
+  (mapv (fn [{{:keys [field-id]} :field :as order-by-clause}]
+          (if-let [remapped-col (get remap-cols-by-id field-id)]
+            (assoc order-by-clause :field remapped-col)
+            order-by-clause))
+        order-by-seq))
+
 (defn- add-fk-remaps
   "Function that will include FK references needed for external
   remappings. This will then flow through to the resolver to get the
   new tables included in the join."
   [query]
-  (update-in query [:query :fields]
-             (fn [fields]
-               (concat fields
-                       (for [{{:keys [field-id human-readable-field-id dimension-type dimension-name]} :dimensions,
-                              :keys [field-name]} fields
-                             :when (= :external dimension-type)]
-                         (create-fk-remap-col field-id
-                                              human-readable-field-id
-                                              field-name
-                                              dimension-name))))))
+  (let [remap-col-pairs (create-remap-col-pairs (get-in query [:query :fields]))]
+    (if (seq remap-col-pairs)
+      (-> query
+          (update-in [:query :order-by] #(update-remapped-order-by (into {} remap-col-pairs) %))
+          (update-in [:query :fields] concat (map second remap-col-pairs)))
+      query)))
 
 (defn- remap-results
   "Munges results for remapping after the query has been executed. For
