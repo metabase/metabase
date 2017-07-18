@@ -19,7 +19,8 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
+           org.apache.poi.ss.usermodel.Cell))
 
 ;;; ------------------------------------------------------------ Constants ------------------------------------------------------------
 
@@ -65,17 +66,29 @@
 
 ;;; ------------------------------------------------------------ Downloading Query Results in Other Formats ------------------------------------------------------------
 
-(defn- export-to-csv [columns rows]
-  (with-out-str
-    ;; turn keywords into strings, otherwise we get colons in our output
-    (csv/write-csv *out* (into [(mapv name columns)] rows))))
+;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the implementations
+;; we've already defined for encoding things as JSON. These implementations live in `metabase.middleware`.
+(defmethod spreadsheet/set-cell! Object [^Cell cell, value]
+  (when (= (.getCellType cell) Cell/CELL_TYPE_FORMULA)
+    (.setCellType cell Cell/CELL_TYPE_STRING))
+  ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and use the resulting value
+  ;; as the cell's new String value.
+  ;; There might be some more efficient way of doing this but I'm not sure what it is.
+  (.setCellValue cell (str (-> (json/generate-string {:v value})
+                               (json/parse-string keyword)
+                               :v))))
 
 (defn- export-to-xlsx [columns rows]
-  (let [wb  (spreadsheet/create-workbook "Query result" (conj rows (mapv name columns)))
+  (let [wb  (spreadsheet/create-workbook "Query result" (cons (mapv name columns) rows))
         ;; note: byte array streams don't need to be closed
         out (ByteArrayOutputStream.)]
     (spreadsheet/save-workbook! out wb)
     (ByteArrayInputStream. (.toByteArray out))))
+
+(defn- export-to-csv [columns rows]
+  (with-out-str
+    ;; turn keywords into strings, otherwise we get colons in our output
+    (csv/write-csv *out* (into [(mapv name columns)] rows))))
 
 (defn- export-to-json [columns rows]
   (for [row rows]
