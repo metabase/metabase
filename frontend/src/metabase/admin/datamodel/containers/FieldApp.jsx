@@ -127,6 +127,7 @@ export default class FieldApp extends Component {
             fetchTableMetadata
         } = this.props;
 
+        const db = metadata.databases[databaseId]
         const field = metadata.fields[fieldId]
         const table = metadata.tables[tableId]
 
@@ -141,9 +142,9 @@ export default class FieldApp extends Component {
                             <div className="my4 py1 ml-auto mr-auto">
                                 <Breadcrumbs
                                     crumbs={[
-                                        table.display_name,
-                                        field.display_name,
-                                        'Field Settings',
+                                        [db.name, `/admin/datamodel/database/${db.id}`],
+                                        [table.display_name, `/admin/datamodel/database/${db.id}/table/${table.id}`],
+                                        `${field.display_name} – Field Settings`,
                                     ]}
                                 />
                             </div>
@@ -575,7 +576,7 @@ export class FieldRemapping extends Component {
                         />
                     </PopoverWithTrigger>,
                     dismissedInitialFkTargetPopover && <div className="text-danger my2">Please select a column to use for display.</div>,
-                    hasChanged && <RemappingNamingTip />
+                    hasChanged && hasFKMappingValue && <RemappingNamingTip />
                 ]}
                 { mappingType === MAP_OPTIONS.custom && (
                     <div className="mt3">
