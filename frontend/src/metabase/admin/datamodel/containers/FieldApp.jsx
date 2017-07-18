@@ -361,6 +361,9 @@ const MAP_OPTIONS = {
 }
 
 export class FieldRemapping extends Component {
+    state = {
+        fkPopoverInitiallyOpen: false
+    }
 
     constructor(props, context) {
         super(props, context);
@@ -377,7 +380,7 @@ export class FieldRemapping extends Component {
     getAvailableMappingTypes = () => {
         const { field } = this.props;
 
-        const hasForeignKeys = field.special_type === "type/FK" && !!field.fk_target_field_id;
+        const hasForeignKeys = field.special_type === "type/FK" && this.getForeignKeys().length > 0;
 
         // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
         // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -392,14 +395,15 @@ export class FieldRemapping extends Component {
         ]
     }
 
-    getFKTargetTableEntityNameOrNull = () => {
+    // If a field with entity name special type is found, returns it; otherwise simply returns the FK key
+    getDefaultFKTargetTableField = () => {
         const fks = this.getForeignKeys()
         const fkTargetFields = fks[0] && fks[0].dimensions.map((dim) => dim.field());
 
-        if (fkTargetFields) {
+        if (fkTargetFields && fkTargetFields.length > 0) {
             // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
             const nameField = fkTargetFields.find((field) => field.special_type === "type/Name")
-            return nameField ? nameField.id : null;
+            return nameField ? nameField.id : fkTargetFields[0];
         } else {
             throw new Error("Current field isn't a foreign key or FK target table metadata is missing")
         }
@@ -411,15 +415,15 @@ export class FieldRemapping extends Component {
         if (mappingType.type === "original") {
             await deleteFieldDimension(field.id)
         } else if (mappingType.type === "foreign") {
-            // Try to find a entity name field from target table and choose it as remapping target field if it exists
+            // Pop up the FK target popover immediately after prop update has been finished
+            this.setState({ fkPopoverInitiallyOpen: true });
 
+            // Try to find a entity name field from target table and choose it as remapping target field if it exists
             await updateFieldDimension(field.id, {
                 type: "external",
                 name: field.display_name,
-                human_readable_field_id: this.getFKTargetTableEntityNameOrNull()
+                human_readable_field_id: this.getDefaultFKTargetTableField()
             })
-
-            await fetchTableMetadata(table.id, true);
         } else if (mappingType.type === "custom") {
             await updateFieldDimension(field.id, {
                 type: "internal",
@@ -466,7 +470,7 @@ export class FieldRemapping extends Component {
     getForeignKeys = () => {
         const { table, field } = this.props;
 
-        // this method has a little odd structure due to using fieldQuestions(); basically filteredFKs should
+        // this method has a little odd structure due to using fieldOptions(); basically filteredFKs should
         // always be an array with a single value
         const metadata = table.metadata;
         const fieldOptions = Question.create({ metadata, databaseId: table.db.id, tableId: table.id }).query().fieldOptions();
@@ -482,6 +486,7 @@ export class FieldRemapping extends Component {
 
     render () {
         const { field, table, fields} = this.props;
+        const { fkPopoverInitiallyOpen } = this.state;
 
         const mappingType = this.getMappingTypeForField(field)
         const isFKMapping = mappingType === MAP_OPTIONS.foreign;
@@ -512,7 +517,7 @@ export class FieldRemapping extends Component {
                                 {fkMappingField ? fkMappingField.display_name : "Choose a field"}
                             </SelectButton>
                         }
-                        isInitiallyOpen={false}
+                        isInitiallyOpen={fkPopoverInitiallyOpen}
                     >
                         <FieldList
                             className="text-purple"
