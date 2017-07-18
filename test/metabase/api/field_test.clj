@@ -171,6 +171,11 @@
   {:values []}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
+;; Sensisitive fields do not have field values and should return empty
+(expect
+  {:values []}
+  ((user->client :rasta) :get 200 (format "field/%d/values" (id :users :password))))
+
 (defn- num->$ [num-seq]
   (mapv (fn [idx]
           (vector idx (apply str (repeat idx \$))))
@@ -247,10 +252,10 @@
 
 ;; Should throw when human readable values are present but not for every value
 (expect
-  clojure.lang.ExceptionInfo
+  "If remapped values are specified, they must be specified for all field values"
   (tt/with-temp* [Field [{field-id :id} {:name "Field Test" :base_type :type/Integer :special_type :type/Category}]]
-    [((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-      {:values [[1 "$"] [2 "$$"] [3] [4]]})]))
+    ((user->client :crowberto) :post 400 (format "field/%d/values" field-id)
+     {:values [[1 "$"] [2 "$$"] [3] [4]]})))
 
 ;; ## PUT /api/field/:id/dimension
 
