@@ -15,6 +15,8 @@ import {
     updateFieldValues
 } from "metabase/redux/metadata"
 
+import { metadata as staticFixtureMetadata } from "metabase/__support__/sample_dataset_fixture"
+
 import React from 'react';
 import { mount } from "enzyme";
 import { FETCH_IDFIELDS } from "metabase/admin/datamodel/datamodel";
@@ -94,6 +96,18 @@ describe("FieldApp", () => {
             expect(nameInput.props().value).toBe(newTitle);
             expect(descriptionInput.props().value).toBe(newDescription);
         })
+
+        afterAll(async () => {
+            const store = await createTestStore()
+            await store.dispatch(fetchTableMetadata(1));
+            const createdAtField = getRawFieldWithId(store, CREATED_AT_ID)
+
+            await store.dispatch(updateField({
+                ...createdAtField,
+                name: staticFixtureMetadata.fields[1].name,
+                description: staticFixtureMetadata.fields[1].description,
+            }))
+        })
     })
 
     describe("visibility settings", () => {
@@ -118,6 +132,17 @@ describe("FieldApp", () => {
 
             const picker = fieldApp.find(FieldVisibilityPicker);
             expect(picker.text()).toMatch(/Only in Detail Views/);
+        })
+
+        afterAll(async () => {
+            const store = await createTestStore()
+            await store.dispatch(fetchTableMetadata(1));
+            const createdAtField = getRawFieldWithId(store, CREATED_AT_ID)
+
+            await store.dispatch(updateField({
+                ...createdAtField,
+                visibility_type: "normal",
+            }))
         })
     })
 
@@ -188,12 +213,8 @@ describe("FieldApp", () => {
             await store.dispatch(fetchTableMetadata(1));
             const createdAtField = getRawFieldWithId(store, CREATED_AT_ID)
 
-            // TODO: Could the metabase-lib static fixture be used for resetting the field to the original state?
             await store.dispatch(updateField({
                 ...createdAtField,
-                name: "Created At",
-                description: "The date and time an order was submitted.",
-                visibility_type: "normal",
                 special_type: null,
                 fk_target_field_id: null
             }))

@@ -102,7 +102,7 @@
   {dimension-type         (s/enum "internal" "external")
    dimension-name         su/NonBlankString
    human_readable_field_id (s/maybe su/IntGreaterThanZero)}
-  (let [field (api/read-check Field id)]
+  (let [field (api/write-check Field id)]
     (api/check (or (= dimension-type "internal")
                    (and (= dimension-type "external")
                         human_readable_field_id))
@@ -122,7 +122,7 @@
 (api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
-  (let [field (api/read-check Field id)]
+  (let [field (api/write-check Field id)]
     (db/delete! Dimension :field_id id)
     api/generic-204-no-content))
 
