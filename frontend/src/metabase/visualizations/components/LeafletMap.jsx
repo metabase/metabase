@@ -75,10 +75,12 @@ export default class LeafletMap extends Component {
                     settings["map.center_longitude"]
                 ], settings["map.zoom"]);
             } else {
-                // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible 
+                // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible
                 const latZoom = this.map.getBoundsZoom(L.latLngBounds([[bounds.getSouth(), 0], [bounds.getNorth(), 0]]))
                 const lonZoom = this.map.getBoundsZoom(L.latLngBounds([[0, bounds.getWest()], [0, bounds.getEast()]]))
                 const zoom = Math.min(latZoom, lonZoom);
+                // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work 
+                this.map.fitBounds(bounds);
                 this.map.setZoom(zoom);
                 this.map.fitBounds(bounds);
             }

@@ -108,18 +108,18 @@
                      :mbql (apply vector "binning-strategy" nil params)
                      :type :type/Number})
                   [default-entry
-                   ["Quantized by the 10 equally sized bins"  ["num-bins" 10]]
-                   ["Quantized by the 50 equally sized bins"  ["num-bins" 50]]
-                   ["Quantized by the 100 equally sized bins" ["num-bins" 100]]])
+                   ["Quantized by 10 equally sized bins"  ["num-bins" 10]]
+                   ["Quantized by 50 equally sized bins"  ["num-bins" 50]]
+                   ["Quantized by 100 equally sized bins" ["num-bins" 100]]])
              (map (fn [[name params]]
                     {:name name
                      :mbql (apply vector "binning-strategy" nil params)
                      :type :type/Coordinate})
                   [default-entry
-                   ["Quantized by the 1 degree"  ["bin-width" 1.0]]
-                   ["Quantized by the 10 degree" ["bin-width" 10.0]]
-                   ["Quantized by the 20 degree" ["bin-width" 20.0]]
-                   ["Quantized by the 50 degree" ["bin-width" 50.0]]])))))
+                   ["Quantized by 1 degree"  ["bin-width" 1.0]]
+                   ["Quantized by 10 degree" ["bin-width" 10.0]]
+                   ["Quantized by 20 degree" ["bin-width" 20.0]]
+                   ["Quantized by 50 degree" ["bin-width" 50.0]]])))))
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]

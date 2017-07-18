@@ -7,20 +7,27 @@ import {
     isDate,
     isAny
 } from "metabase/lib/schema_metadata";
+import { getFieldRefFromColumn } from "./actions";
 
 import _ from "underscore";
 import { getIn } from "icepick";
 
-const CategoryDrillDown = type => [field => isa(field.special_type, type)];
-
-const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
-
+// Helpers for defining drill-down progressions
+const CategoryDrillDown = type => [
+    field => isa(field.special_type, type)
+];
+const DateTimeDrillDown = unit => [
+    ["datetime-field", isDate, unit]
+];
 const LatLonDrillDown = binWidth => [
     ["binning-strategy", isLatitude, "bin-width", binWidth],
     ["binning-strategy", isLongitude, "bin-width", binWidth]
 ];
 
-const DEFAULT_DRILL_DOWNS = [
+/**
+ * Defines the built-in drill-down progressions
+ */
+const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
     // DateTime drill downs
     [
         DateTimeDrillDown("year"),
@@ -35,27 +42,35 @@ const DEFAULT_DRILL_DOWNS = [
     [
         CategoryDrillDown(TYPE.Country),
         CategoryDrillDown(TYPE.State),
-        CategoryDrillDown(TYPE.City)
+        // CategoryDrillDown(TYPE.City)
     ],
-    // Country => LatLon
-    [CategoryDrillDown(TYPE.Country), LatLonDrillDown(10)],
-    // State => LatLon
-    [CategoryDrillDown(TYPE.State), LatLonDrillDown(1)],
-    [CategoryDrillDown(TYPE.City), LatLonDrillDown(0.1)],
-    // LatLon drill downs
+    // Country, State, or City => LatLon
     [
-        [
-            ["binning-strategy", isLatitude, "num-bins", () => true],
-            ["binning-strategy", isLongitude, "num-bins", () => true]
-        ],
+        CategoryDrillDown(TYPE.Country),
+        LatLonDrillDown(10)
+    ],
+    [
+        CategoryDrillDown(TYPE.State),
         LatLonDrillDown(1)
     ],
+    [
+        CategoryDrillDown(TYPE.City),
+        LatLonDrillDown(0.1)
+    ],
+    // LatLon drill downs
     [
         LatLonDrillDown(30),
         LatLonDrillDown(10),
         LatLonDrillDown(1),
         LatLonDrillDown(0.1),
         LatLonDrillDown(0.01)
+    ],
+    [
+        [
+            ["binning-strategy", isLatitude, "num-bins", () => true],
+            ["binning-strategy", isLongitude, "num-bins", () => true]
+        ],
+        LatLonDrillDown(1)
     ],
     // generic num-bins drill down
     [
@@ -69,8 +84,36 @@ const DEFAULT_DRILL_DOWNS = [
     ]
 ];
 
+/**
+ * Returns the next drill down for the current dimension objects
+ */
+export function drillDownForDimensions(dimensions, metadata) {
+    const table = metadata && tableForDimensions(dimensions, metadata);
+
+    for (const drillProgression of DEFAULT_DRILL_DOWN_PROGRESSIONS) {
+        for (let index = 0; index < drillProgression.length - 1; index++) {
+            const currentDrillBreakoutTemplates = drillProgression[index];
+            const nextDrillBreakoutTemplates = drillProgression[index + 1];
+            if (breakoutTemplatesMatchDimensions(currentDrillBreakoutTemplates, dimensions)) {
+                const breakouts = breakoutsForBreakoutTemplates(
+                    nextDrillBreakoutTemplates,
+                    dimensions,
+                    table
+                );
+                if (breakouts) {
+                    return {
+                        breakouts: breakouts
+                    };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+// Returns true if the supplied dimension object matches the supplied breakout template.
 function breakoutTemplateMatchesDimension(breakoutTemplate, dimension) {
-    const breakout = HACK_columnToBreakout(dimension.column);
+    const breakout = columnToBreakout(dimension.column);
     if (Array.isArray(breakoutTemplate) !== Array.isArray(breakout)) {
         return false;
     }
@@ -95,9 +138,10 @@ function breakoutTemplateMatchesDimension(breakoutTemplate, dimension) {
     }
 }
 
-function drillMatchesDimensions(drill, dimensions) {
+// Returns true if all breakout templates having a matching dimension object, but disregarding order
+function breakoutTemplatesMatchDimensions(breakoutTemplates, dimensions) {
     dimensions = [...dimensions];
-    return _.all(drill, breakoutTemplate => {
+    return _.all(breakoutTemplates, breakoutTemplate => {
         const index = _.findIndex(dimensions, dimension =>
             breakoutTemplateMatchesDimension(breakoutTemplate, dimension));
         if (index >= 0) {
@@ -109,13 +153,13 @@ function drillMatchesDimensions(drill, dimensions) {
     });
 }
 
-import { getFieldRefFromColumn } from "./actions";
-
+// Evaluates a breakout template, returning a completed breakout clause
 function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
     let fieldFilter = Array.isArray(breakoutTemplate)
         ? breakoutTemplate[1]
         : breakoutTemplate;
-    let field = _.find(table.fields, fieldFilter);
+    let dimensionColumns = dimensions.map(d => d.column)
+    let field = _.find(dimensionColumns, fieldFilter) || _.find(table.fields, fieldFilter);
     if (!field) {
         return null;
     }
@@ -130,7 +174,7 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
                 if (!prevDimension) {
                     return null;
                 }
-                const prevBreakout = HACK_columnToBreakout(
+                const prevBreakout = columnToBreakout(
                     prevDimension.column
                 );
                 breakout.push(arg(prevBreakout[i]));
@@ -144,9 +188,10 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
     }
 }
 
-function breakoutsForDrill(drill, dimensions, table) {
+// Evaluates all the breakout templates of a drill
+function breakoutsForBreakoutTemplates(breakoutTemplates, dimensions, table) {
     const breakouts = [];
-    for (const breakoutTemplate of drill) {
+    for (const breakoutTemplate of breakoutTemplates) {
         const breakout = breakoutForBreakoutTemplate(
             breakoutTemplate,
             dimensions,
@@ -160,30 +205,8 @@ function breakoutsForDrill(drill, dimensions, table) {
     return breakouts;
 }
 
-export function drillDownForDimensions(dimensions, metadata) {
-    const table = metadata && tableForDimensions(dimensions, metadata);
-
-    for (const drillSeries of DEFAULT_DRILL_DOWNS) {
-        for (let index = 0; index < drillSeries.length - 1; index++) {
-            const currentDrill = drillSeries[index];
-            const nextDrill = drillSeries[index + 1];
-            if (drillMatchesDimensions(currentDrill, dimensions)) {
-                const breakouts = breakoutsForDrill(
-                    nextDrill,
-                    dimensions,
-                    table
-                );
-                if (breakouts) {
-                    return {
-                        breakouts: breakouts
-                    };
-                }
-            }
-        }
-    }
-}
-
-function HACK_columnToBreakout(column) {
+// Guesses the breakout corresponding to the provided columm object
+function columnToBreakout(column) {
     if (column.unit) {
         return ["datetime-field", column.id, column.unit];
     } else if (column.binning_info) {
@@ -225,6 +248,7 @@ function HACK_columnToBreakout(column) {
     }
 }
 
+// returns the table metadata for a dimension
 function tableForDimensions(dimensions, metadata) {
     const fieldId = getIn(dimensions, [0, "column", "id"]);
     const field = metadata.fields[fieldId];

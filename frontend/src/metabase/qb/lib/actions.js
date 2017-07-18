@@ -285,7 +285,7 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
 
 export function updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds) {
     return addOrUpdateFilter(card, [
-        "inside",
+        "INSIDE",
         latitudeColumn.id, longitudeColumn.id,
         bounds.getNorth(), bounds.getWest(), bounds.getSouth(), bounds.getEast()
     ]);
