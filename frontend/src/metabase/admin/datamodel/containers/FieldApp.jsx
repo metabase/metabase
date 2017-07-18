@@ -433,6 +433,7 @@ export class FieldRemapping extends Component {
 
         if (mappingType.type === "original") {
             await deleteFieldDimension(field.id)
+            this.setState({ hasChanged: false })
         } else if (mappingType.type === "foreign") {
             // Try to find a entity name field from target table and choose it as remapping target field if it exists
             const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
@@ -445,7 +446,10 @@ export class FieldRemapping extends Component {
                 })
             } else {
                 // Enter a special state where we are choosing an initial value for FK target
-                this.setState({ isChoosingInitialFkTarget: true });
+                this.setState({
+                    hasChanged: true,
+                    isChoosingInitialFkTarget: true
+                });
             }
 
         } else if (mappingType.type === "custom") {
@@ -454,6 +458,7 @@ export class FieldRemapping extends Component {
                 name: field.display_name,
                 human_readable_field_id: null
             })
+            this.setState({ hasChanged: true })
         } else {
             throw new Error("Unrecognized mapping type");
         }
@@ -520,7 +525,7 @@ export class FieldRemapping extends Component {
 
     render () {
         const { field, table, fields} = this.props;
-        const { isChoosingInitialFkTarget, dismissedInitialFkTargetPopover } = this.state;
+        const { isChoosingInitialFkTarget, hasChanged, dismissedInitialFkTargetPopover } = this.state;
 
         const mappingType = this.getMappingTypeForField(field)
         const isFKMapping = mappingType === MAP_OPTIONS.foreign;
@@ -569,10 +574,12 @@ export class FieldRemapping extends Component {
                             hideSectionHeader
                         />
                     </PopoverWithTrigger>,
-                    dismissedInitialFkTargetPopover && <div className="text-danger my2">Please select a column to use for display.</div>
+                    dismissedInitialFkTargetPopover && <div className="text-danger my2">Please select a column to use for display.</div>,
+                    hasChanged && <RemappingNamingTip />
                 ]}
                 { mappingType === MAP_OPTIONS.custom && (
                     <div className="mt3">
+                        { hasChanged && <RemappingNamingTip /> }
                         <ValueRemappings
                             remappings={field && field.remapping}
                             updateRemappings={this.onUpdateRemappings}
@@ -583,4 +590,10 @@ export class FieldRemapping extends Component {
         )
     }
 }
+
+const RemappingNamingTip = () =>
+    <div className="bordered rounded p1 mt1 mb2 border-brand">
+        <span className="text-brand text-bold">Tip:</span> You might want to update the field name to make sure it still makes sense based on your remapping choices.
+    </div>
+
 
