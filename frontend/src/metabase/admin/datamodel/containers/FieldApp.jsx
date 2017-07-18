@@ -14,6 +14,7 @@ import Icon from 'metabase/components/Icon'
 import Input from 'metabase/components/Input'
 import Select from 'metabase/components/Select'
 import SaveStatus from "metabase/components/SaveStatus";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -137,6 +138,15 @@ export default class FieldApp extends Component {
                     <div className="relative">
                         <div className="wrapper wrapper--trim">
                             <BackButton databaseId={databaseId} tableId={tableId} />
+                            <div className="my4 py1 ml-auto mr-auto">
+                                <Breadcrumbs
+                                    crumbs={[
+                                        table.display_name,
+                                        field.display_name,
+                                        'Field Settings',
+                                    ]}
+                                />
+                            </div>
                             <div className="absolute top right mt4 mr4">
                                 <SaveStatus ref={(ref) => this.saveStatus = ref}/>
                             </div>
