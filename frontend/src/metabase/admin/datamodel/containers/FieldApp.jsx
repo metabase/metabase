@@ -362,7 +362,8 @@ const MAP_OPTIONS = {
 
 export class FieldRemapping extends Component {
     state = {
-        fkPopoverInitiallyOpen: false
+        isChoosingInitialFkTarget: false,
+        dismissedInitialFkTargetPopover: false
     }
 
     constructor(props, context) {
@@ -370,6 +371,8 @@ export class FieldRemapping extends Component {
     }
 
     getMappingTypeForField = (field) => {
+        if (this.state.isChoosingInitialFkTarget) return MAP_OPTIONS.foreign;
+
         if (_.isEmpty(field.dimensions)) return MAP_OPTIONS.original;
         if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
         if (field.dimensions.type === "internal") return MAP_OPTIONS.custom;
@@ -395,35 +398,45 @@ export class FieldRemapping extends Component {
         ]
     }
 
-    // If a field with entity name special type is found, returns it; otherwise simply returns the FK key
-    getDefaultFKTargetTableField = () => {
+    getFKTargetTableEntityNameOrNull = () => {
         const fks = this.getForeignKeys()
         const fkTargetFields = fks[0] && fks[0].dimensions.map((dim) => dim.field());
 
-        if (fkTargetFields && fkTargetFields.length > 0) {
+        if (fkTargetFields) {
             // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
             const nameField = fkTargetFields.find((field) => field.special_type === "type/Name")
-            return nameField ? nameField.id : fkTargetFields[0];
+            return nameField ? nameField.id : null;
         } else {
             throw new Error("Current field isn't a foreign key or FK target table metadata is missing")
         }
     }
 
+    clearEditingStates = () => {
+        this.setState({ isChoosingInitialFkTarget: false, dismissedInitialFkTargetPopover: false });
+    }
+
     onSetMappingType = async (mappingType) => {
         const { table, field, fetchTableMetadata, updateFieldDimension, deleteFieldDimension } = this.props;
+
+        this.clearEditingStates();
 
         if (mappingType.type === "original") {
             await deleteFieldDimension(field.id)
         } else if (mappingType.type === "foreign") {
-            // Pop up the FK target popover immediately after prop update has been finished
-            this.setState({ fkPopoverInitiallyOpen: true });
-
             // Try to find a entity name field from target table and choose it as remapping target field if it exists
-            await updateFieldDimension(field.id, {
-                type: "external",
-                name: field.display_name,
-                human_readable_field_id: this.getDefaultFKTargetTableField()
-            })
+            const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
+
+            if (entityNameFieldId) {
+                await updateFieldDimension(field.id, {
+                    type: "external",
+                    name: field.display_name,
+                    human_readable_field_id: entityNameFieldId
+                })
+            } else {
+                // Enter a special state where we are choosing an initial value for FK target
+                this.setState({ isChoosingInitialFkTarget: true });
+            }
+
         } else if (mappingType.type === "custom") {
             await updateFieldDimension(field.id, {
                 type: "internal",
@@ -441,6 +454,8 @@ export class FieldRemapping extends Component {
 
     onForeignKeyFieldChange = async (foreignKeyClause) => {
         const { table, field, fetchTableMetadata, updateFieldDimension } = this.props;
+
+        this.clearEditingStates();
 
         // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
         if (foreignKeyClause.length === 3 && foreignKeyClause[0] === "fk->") {
@@ -484,9 +499,17 @@ export class FieldRemapping extends Component {
         }));
     }
 
+    onFkPopoverDismiss = () => {
+        const { isChoosingInitialFkTarget } = this.state;
+
+        if (isChoosingInitialFkTarget) {
+            this.setState({ dismissedInitialFkTargetPopover: true })
+        }
+    }
+
     render () {
         const { field, table, fields} = this.props;
-        const { fkPopoverInitiallyOpen } = this.state;
+        const { isChoosingInitialFkTarget, dismissedInitialFkTargetPopover } = this.state;
 
         const mappingType = this.getMappingTypeForField(field)
         const isFKMapping = mappingType === MAP_OPTIONS.foreign;
@@ -517,7 +540,8 @@ export class FieldRemapping extends Component {
                                 {fkMappingField ? fkMappingField.display_name : "Choose a field"}
                             </SelectButton>
                         }
-                        isInitiallyOpen={fkPopoverInitiallyOpen}
+                        isInitiallyOpen={isChoosingInitialFkTarget}
+                        onClose={this.onFkPopoverDismiss}
                     >
                         <FieldList
                             className="text-purple"
@@ -527,7 +551,8 @@ export class FieldRemapping extends Component {
                             onFieldChange={this.onForeignKeyFieldChange}
                             hideSectionHeader
                         />
-                    </PopoverWithTrigger>
+                    </PopoverWithTrigger>,
+                    dismissedInitialFkTargetPopover && <div>You should choose a foreign key.</div>
                 ]}
                 { mappingType === MAP_OPTIONS.custom && (
                     <div className="mt3">

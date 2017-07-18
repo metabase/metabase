@@ -232,8 +232,8 @@ describe("FieldApp", () => {
             const fkFieldSelect = section.find(SelectButton);
 
             expect(fkFieldSelect.text()).toBe("Name");
+            fkFieldSelect.simulate('click');
 
-            // Popover should automatically open
             const sourceField = fkFieldSelect.parent().find(TestPopover)
                 .find("li")
                 .filterWhere(li => /Source/.test(li.text()))
