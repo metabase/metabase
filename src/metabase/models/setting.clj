@@ -380,7 +380,7 @@
      :env_name       (env-var-name setting)
      :description    (:description setting)
      :default        (or (when env-value
-                           (format "Using $%s" env-value))
+                           (format "Using $%s" (env-var-name setting)))
                          (:default setting))}))
 
 (defn all
