@@ -320,6 +320,12 @@
   (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]]
     (dimension-post field-id-1 {:name "some dimension name", :type "external"})))
 
+;; Non-admin users can't update dimensions
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test 1"}]]
+    ((user->client :rasta) :post 403 (format "field/%d/dimension" field-id) {:name "some dimension name", :type "external"})))
+
 ;; Ensure we can delete a dimension
 (expect
   [{:id true
@@ -338,6 +344,12 @@
       ((user->client :crowberto) :delete 204 (format "field/%d/dimension" field-id))
       [(tu/boolean-ids-and-timestamps new-dim)
        (dimension-for-field field-id)])))
+
+;; Non-admin users can't delete a dimension
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test 1"}]]
+    ((user->client :rasta) :delete 403 (format "field/%d/dimension" field-id))))
 
 ;; When an FK field gets it's special_type removed, we should clear the external dimension
 (expect
