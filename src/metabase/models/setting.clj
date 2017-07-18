@@ -370,11 +370,14 @@
 
 (defn- user-facing-info [setting]
   (let [k (:name setting)
-        v (get k)]
+        v (get k)
+        set-by-env (not (nil? (env-var-value setting)))]
     {:key         k
      :value       (when (and (not= v (env-var-value setting))
                              (not= v (:default setting)))
                     v)
+     :envsetting  set-by-env
+     :envname   (env-var-name setting)
      :description (:description setting)
      :default     (or (when (env-var-value setting)
                         (format "Using $%s" (env-var-name setting)))
