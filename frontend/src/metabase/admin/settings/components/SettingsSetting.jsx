@@ -22,7 +22,7 @@ const SETTING_WIDGET_MAP = {
 
 const updatePlaceholderForEnvironmentVars = (props) => {
     if (props && props.setting && props.setting.envsetting){
-        return assocIn(props, ["setting", "placeholder"], "Using : " + props.setting.envname) 
+        return assocIn(props, ["setting", "placeholder"], "Using " + props.setting.envname) 
     }
     return props
 }
