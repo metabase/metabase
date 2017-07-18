@@ -40,6 +40,23 @@
        (or (nil? new-special-type)
            (not (isa? new-special-type :type/FK)))))
 
+(defn- internal-remapping-allowed? [base-type special-type]
+  (and (isa? base-type :type/Integer)
+       (or
+        (nil? special-type)
+        (isa? special-type :type/Category)
+        (isa? special-type :type/Enum))))
+
+(defn- clear-dimension-on-type-change!
+  "Removes a related dimension if the field is moving to a type that
+  does not support remapping"
+  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as old-field} base-type new-special-type]
+  (when (and old-dim-id
+             (= :internal old-dim-type)
+             (not (internal-remapping-allowed? base-type new-special-type)))
+    (db/delete! Dimension :id old-dim-id))
+  true)
+
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type visibility_type], :as body} :body}]
@@ -67,6 +84,7 @@
         (if removed-fk?
           (clear-dimension-on-fk-change! field)
           true)
+        (clear-dimension-on-type-change! field (:base_type field) new-special-type)
         (db/update! Field id
           (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
             :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
