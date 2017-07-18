@@ -362,8 +362,6 @@ describe("FieldApp", () => {
         afterAll(async () => {
             const store = await createTestStore()
 
-            await store.dispatch(updateField)
-
             await store.dispatch(deleteFieldDimension(USER_ID_FK_ID));
             await store.dispatch(deleteFieldDimension(PRODUCT_RATING_ID));
 
