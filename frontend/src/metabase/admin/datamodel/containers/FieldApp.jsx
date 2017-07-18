@@ -8,6 +8,7 @@ import React, { Component } from 'react'
 import { Link } from 'react-router'
 import { connect } from "react-redux";
 import _ from "underscore";
+import cx from "classnames";
 
 import Icon from 'metabase/components/Icon'
 import Input from 'metabase/components/Input'
@@ -535,9 +536,15 @@ export class FieldRemapping extends Component {
                         triggerElement={
                             <SelectButton
                                 hasValue={hasFKMappingValue}
-                                className="border-dark flex inline-block no-decoration h3 p2 shadowed"
+                                className={cx(
+                                    "flex inline-block no-decoration h3 p2 shadowed",
+                                    {
+                                        "border-error": dismissedInitialFkTargetPopover,
+                                        "border-dark": !dismissedInitialFkTargetPopover
+                                    }
+                                )}
                             >
-                                {fkMappingField ? fkMappingField.display_name : "Choose a field"}
+                                {fkMappingField ? fkMappingField.display_name : <span className="text-grey-1">Choose a field</span>}
                             </SelectButton>
                         }
                         isInitiallyOpen={isChoosingInitialFkTarget}
@@ -552,7 +559,7 @@ export class FieldRemapping extends Component {
                             hideSectionHeader
                         />
                     </PopoverWithTrigger>,
-                    dismissedInitialFkTargetPopover && <div>You should choose a foreign key.</div>
+                    dismissedInitialFkTargetPopover && <div className="text-danger my2">Please select a column to use for display.</div>
                 ]}
                 { mappingType === MAP_OPTIONS.custom && (
                     <div className="mt3">
