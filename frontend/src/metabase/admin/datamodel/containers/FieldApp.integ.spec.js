@@ -74,8 +74,11 @@ describe("FieldApp", () => {
 
             const header = fieldApp.find(FieldHeader)
             expect(header.length).toBe(1)
+
             const nameInput = header.find(Input).at(0);
+            expect(nameInput.props().value).toBe(staticFixtureMetadata.fields['1'].display_name);
             const descriptionInput = header.find(Input).at(1);
+            expect(descriptionInput.props().value).toBe(staticFixtureMetadata.fields['1'].description);
 
             nameInput.simulate('change', {target: {value: newTitle}});
             await store.waitForActions([UPDATE_FIELD])
@@ -104,7 +107,7 @@ describe("FieldApp", () => {
 
             await store.dispatch(updateField({
                 ...createdAtField,
-                name: staticFixtureMetadata.fields[1].name,
+                display_name: staticFixtureMetadata.fields[1].display_name,
                 description: staticFixtureMetadata.fields[1].description,
             }))
         })
