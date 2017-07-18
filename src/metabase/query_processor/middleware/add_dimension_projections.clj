@@ -92,11 +92,12 @@
   column. This should order by the text of the remapped column vs. the
   id of the source column before the remapping"
   [remap-cols-by-id order-by-seq]
-  (mapv (fn [{{:keys [field-id]} :field :as order-by-clause}]
-          (if-let [remapped-col (get remap-cols-by-id field-id)]
-            (assoc order-by-clause :field remapped-col)
-            order-by-clause))
-        order-by-seq))
+  (when (seq order-by-seq)
+    (mapv (fn [{{:keys [field-id]} :field :as order-by-clause}]
+            (if-let [remapped-col (get remap-cols-by-id field-id)]
+              (assoc order-by-clause :field remapped-col)
+              order-by-clause))
+          order-by-seq)))
 
 (defn- add-fk-remaps
   "Function that will include FK references needed for external
