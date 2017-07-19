@@ -14,7 +14,10 @@ import GroupSummary from "./GroupSummary.jsx";
 const GroupOption = ({ name, color, selected, disabled, onChange }) =>
     <div className={cx("flex align-center p1 px2", { "cursor-pointer": !disabled })} onClick={() => !disabled && onChange(!selected) }>
         <span className={cx("pr1", color, { disabled })}>
-            <CheckBox checked={selected} borderColor="currentColor" size={18} />
+            <CheckBox
+                checked={selected}
+                size={18}
+            />
         </span>
         {name}
     </div>

@@ -44,7 +44,7 @@ describe("The Reference Section", () => {
     describe("The Data Reference for the Sample Database", async () => {
         
         // database list
-        it("should see a single database", async ()=>{
+        it("should see databases", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
             var container = mount(store.connectContainer(<DatabaseListContainer />));
@@ -55,7 +55,7 @@ describe("The Reference Section", () => {
             expect(container.find(AdminAwareEmptyState).length).toBe(0)
             
             expect(container.find(List).length).toBe(1)
-            expect(container.find(ListItem).length).toBe(1)
+            expect(container.find(ListItem).length).toBeGreaterThanOrEqual(1)
         })
         
         // database detail

@@ -50,7 +50,8 @@ export const fieldsToFormFields = (fields) => Object.keys(fields)
     .reduce((array, keys) => array.concat(keys), []);
 
 
-export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
+// TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
+export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization, metadata}) => {
     const newQuestion = startNewCard('query', dbId, tableId);
 
     // consider taking a look at Ramda as a possible underscore alternative?
@@ -63,7 +64,11 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
         .updateIn(['display'], display => visualization || display)
         .updateIn(
             ['dataset_query', 'query', 'breakout'],
-            breakout => fieldId ? [fieldId] : breakout
+            (oldBreakout) => {
+                if (fieldId && metadata && metadata.fields[fieldId]) return [metadata.fields[fieldId].getDefaultBreakout()]
+                if (fieldId) return [fieldId];
+                return oldBreakout;
+            }
         )
         .value();
 

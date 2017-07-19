@@ -369,8 +369,8 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
                 .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
         }
 
-        if (dashboard.param_values) {
-            dispatch(addParamValues(dashboard.param_values));
+        if (result.param_values) {
+            dispatch(addParamValues(result.param_values));
         }
 
         return {

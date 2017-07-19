@@ -1,10 +1,10 @@
-(ns metabase.models.raw-column
+(ns ^:deprecated metabase.models.raw-column
   (:require [metabase.util :as u]
             [toucan
              [db :as db]
              [models :as models]]))
 
-(models/defmodel RawColumn :raw_column)
+(models/defmodel ^:deprecated RawColumn :raw_column)
 
 (defn- pre-insert [table]
   (let [defaults {:active  true
