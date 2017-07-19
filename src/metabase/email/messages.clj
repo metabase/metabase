@@ -2,6 +2,7 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
+            [clojure.string :as string]
             [hiccup.core :refer [html]]
             [medley.core :as m]
             [metabase
@@ -11,13 +12,14 @@
              [util :as u]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [format :as fmt]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
              [core :as stencil]
              [loader :as stencil-loader]]
             [toucan.db :as db])
-  (:import [java.io File FileOutputStream]
+  (:import [java.io File FileOutputStream ByteArrayInputStream]
            java.util.Arrays))
 
 ;; Dev only -- disable template caching
@@ -186,6 +188,13 @@
     (with-open [fos (FileOutputStream. <>)]
       (.write fos img-bytes))))
 
+(defn- write-stream-to-temp-file
+  [write]
+  (u/prog1 (doto (File/createTempFile "metabase_pulse_tmp_" ".tmp")
+             .deleteOnExit)
+    (with-open [fos (FileOutputStream. <>)]
+      (write fos))))
+
 (defn- hash-bytes
   "Generate a hash to be used in a Content-ID"
   [^bytes img-bytes]
@@ -202,6 +211,18 @@
    :content-id   content-id
    :content-type "image/png"
    :content      (write-byte-array-to-temp-file bytes)})
+
+(defn- write-pulse-attachment [export-format {:keys [card result]}]
+  (let [content       (fmt/as-format export-format result)
+        card-name     (-> (:name card)
+                          (string/replace #" " "_")
+                          (string/replace #"[^A-Za-z_]" "")
+                          (string/replace #"_+" "_"))]
+    {:type :attachment
+     :content-type (:content-type content)
+     :file-name (str card-name "_" (u/date->iso-8601) "." (:ext content))
+     :content (write-stream-to-temp-file
+                (fn [out] ((:to-stream content) out)))}))
 
 (defn- pulse-context [body pulse]
   (merge {:emailType    "pulse"
@@ -221,6 +242,17 @@
                        (vec (cons :div (for [result results]
                                          (render/render-pulse-section result)))))
         message-body (stencil/render-file "metabase/email/pulse"
-                       (pulse-context body pulse))]
+                       (pulse-context body pulse))
+        attachments (concat (if (:attach_csv pulse)
+                              (mapv (partial write-pulse-attachment "csv") results)
+                              [])
+                            (if (:attach_xlsx pulse)
+                              (mapv (partial write-pulse-attachment "xlsx") results)
+                              [])
+                            (if (:attach_json pulse)
+                              (mapv (partial write-pulse-attachment "json") results)
+                              []))]
     (vec (cons {:type "text/html; charset=utf-8" :content message-body}
-               (mapv write-image-content (seq @images))))))
+               (concat
+                 (mapv write-image-content (seq @images))
+                 attachments)))))

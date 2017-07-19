@@ -3670,3 +3670,29 @@ databaseChangeLog:
                   name: result_metadata
                   type: text
                   remarks: 'Serialized JSON containing metadata about the result columns from running the query.'
+  - changeSet:
+      id: 58
+      author: vilppuvuorinen
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: attach_csv
+                  type: boolean
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attach_xlsx
+                  type: boolean
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attach_json
+                  type: boolean
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+
