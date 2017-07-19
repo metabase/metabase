@@ -24,6 +24,7 @@ const mapStateToProps = (state, props) => {
         databases:            getDatabasesSorted(state),
         hasSampleDataset:     hasSampleDataset(state),
         engines:              MetabaseSettings.get('engines'),
+        adds:                 state.admin.databases.adds,
         deletes:              state.admin.databases.deletes
     }
 }
@@ -42,6 +43,12 @@ export default class DatabaseList extends Component {
 
     componentWillMount() {
         this.props.fetchDatabases();
+    }
+
+    componentWillReceiveProps(newProps) {
+        if (!this.props.created && newProps.created) {
+            this.refs.createdDatabaseModal.open()
+        }
     }
 
     render() {
@@ -63,8 +70,24 @@ export default class DatabaseList extends Component {
                             </tr>
                         </thead>
                         <tbody>
+                            { this.props.adds.map((database) =>
+                                <tr
+                                    key={database.name}
+                                    className={'disabled'}
+                                >
+                                    <td>
+                                        <Link to={"/admin/databases/" + database.id} className="text-bold link">
+                                            {database.name}
+                                        </Link>
+                                    </td>
+                                    <td>
+                                        {engines && engines[database.engine] ? engines[database.engine]['driver-name'] : database.engine}
+                                    </td>
+                                    <td className="text-right">Adding...</td>
+                                </tr>
+                            ) }
                             { databases ?
-                                databases.map(database => {
+                                [ databases.map(database => {
                                     const isDeleting = this.props.deletes.indexOf(database.id) !== -1
                                     return (
                                         <tr
@@ -98,7 +121,8 @@ export default class DatabaseList extends Component {
                                                 )
                                             }
                                         </tr>
-                                    )})
+                                    )}),
+                                ]
                             :
                                 <tr>
                                     <td colSpan={4}>
