@@ -21,7 +21,6 @@ const thunkWithDispatchAction = ({ dispatch, getState }) => next => action => {
 
         return action(dispatchAugmented, getState);
     }
-
     return next(action);
 };
 

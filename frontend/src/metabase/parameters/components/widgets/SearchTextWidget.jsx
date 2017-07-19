@@ -11,12 +11,12 @@ import { defer } from "metabase/lib/promise";
 
 import { debounce } from "underscore";
 
-import { getMeta as getMetadata } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
 import type { FieldId } from "metabase/meta/types/Field";
 
-import Metadata from "metabase/meta/metadata/Metadata";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -112,17 +112,17 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             return;
         }
 
-        const valueField = metadata.field(fieldId);
+        const valueField = metadata.fields[fieldId];
         if (!valueField) {
             return;
         }
 
-        const table = valueField.table();
+        const table = valueField.table;
         if (!table) {
             return;
         }
 
-        const database = table.database();
+        const database = table.database;
         if (!database) {
             return;
         }
@@ -132,7 +132,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         let nameField;
         if (isEntityId) {
             // assumes there is only one entity name field
-            nameField = table.fields().filter(f => f.isEntityName())[0];
+            nameField = table.fields.filter(f => f.isEntityName())[0];
         } else {
             nameField = valueField;
         }

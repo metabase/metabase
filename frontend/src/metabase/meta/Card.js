@@ -19,6 +19,9 @@ declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
 
+// TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
+// Is there any reason behind keeping them in a central place?
+
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
     type: "query",
     database: null,
@@ -98,7 +101,7 @@ export function getParameters(card: ?Card): Parameter[] {
     return getTemplateTagParameters(tags);
 }
 
-export function getParametersWithExtras(card: Card, parameterValues?: ParameterValues) {
+export function getParametersWithExtras(card: Card, parameterValues?: ParameterValues): Parameter[] {
     return getParameters(card).map(parameter => {
         // if we have a parameter value for this parameter, set "value"
         if (parameterValues && parameter.id in parameterValues) {
@@ -113,6 +116,8 @@ export function getParametersWithExtras(card: Card, parameterValues?: ParameterV
     })
 }
 
+// NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
+// Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
     card: Card,
     parameters: Parameter[],
@@ -132,7 +137,6 @@ export function applyParameters(
         }
 
         const mapping = _.findWhere(parameterMappings, {
-            // $FlowFixMe original_card_id not included in the flow type of card
             card_id: card.id || card.original_card_id,
             parameter_id: parameter.id
         });

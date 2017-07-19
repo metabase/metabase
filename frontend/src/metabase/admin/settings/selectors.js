@@ -199,14 +199,12 @@ const SECTIONS = [
             {
                 key: "ldap-bind-dn",
                 display_name: "Username or DN",
-                type: "string",
-                required: true
+                type: "string"
             },
             {
                 key: "ldap-password",
                 display_name: "Password",
-                type: "password",
-                required: true
+                type: "password"
             },
             {
                 key: "ldap-user-base",

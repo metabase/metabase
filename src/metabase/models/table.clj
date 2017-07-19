@@ -23,7 +23,8 @@
   #{:person :event :photo :place})
 
 (def ^:const visibility-types
-  "Valid values for `Table.visibility_type` (field may also be `nil`)."
+  "Valid values for `Table.visibility_type` (field may also be `nil`).
+   (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
 

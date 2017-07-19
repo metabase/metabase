@@ -26,6 +26,8 @@ const STATE = {
         databases: {},
         tables: {},
         fields: {},
+        metrics: {},
+        segments: {}
     }
 }
 
