@@ -18,10 +18,7 @@ type Props = {
 };
 
 const AggregationPopover = (props: Props) => (
-    <AggPopover
-        {...props}
-        aggregation={props.aggregation || []}
-    />
+    <AggPopover {...props} aggregation={props.aggregation || []} />
 );
 
 export default AggregationPopover;
