@@ -12,11 +12,16 @@ type Props = {
     tableMetadata: TableMetadata,
     customFields: { [key: ExpressionName]: any },
     onCommitAggregation: (aggregation: Aggregation) => void,
-    onClose?: () => void
+    onClose?: () => void,
+    availableAggregations: [Aggregation],
+    showOnlyProvidedAggregations: boolean
 };
 
 const AggregationPopover = (props: Props) => (
-    <AggPopover {...props} aggregation={props.aggregation || []} />
+    <AggPopover
+        {...props}
+        aggregation={props.aggregation || []}
+    />
 );
 
 export default AggregationPopover;
