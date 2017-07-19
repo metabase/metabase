@@ -3,7 +3,7 @@
   (:require [metabase
              [query-processor :as qp]
              [query-processor-test :refer :all]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]))
 
 (expect-with-non-timeseries-dbs

@@ -224,13 +224,26 @@
     (render-to-png html os width)
     (.toByteArray os)))
 
+(defn- create-remapping-lookup [cols col-indexes]
+  (into {}
+        (for [col-index col-indexes
+              :let [{:keys [remapped_from]} (nth cols col-index)]
+              :when remapped_from]
+          [remapped_from col-index])))
+
 (defn- render-table
   [card rows cols col-indexes bar-column]
-  (let [max-value (if bar-column (apply max (map bar-column rows)))]
+  (let [max-value (if bar-column (apply max (map bar-column rows)))
+        remapping-lookup (create-remapping-lookup cols col-indexes)]
     [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
      [:thead
       [:tr
-       (for [col-idx col-indexes :let [col (nth cols col-idx)]]
+       (for [col-idx col-indexes
+             :let [col-at-index (nth cols col-idx)
+                   col (if (:remapped_to col-at-index)
+                         (nth cols (get remapping-lookup (:name col-at-index)))
+                         col-at-index)]
+             :when (not (:remapped_from col-at-index))]
          [:th {:style (style bar-td-style bar-th-style {:min-width :60px})}
           (h (s/upper-case (name (or (:display_name col) (:name col)))))])
        (when bar-column
@@ -238,9 +251,14 @@
      [:tbody
       (map-indexed (fn [row-idx row]
                      [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
-                      (for [col-idx col-indexes :let [col (nth cols col-idx)]]
+                      (for [col-idx col-indexes
+                            :let [col (nth cols col-idx)]
+                            :when (not (:remapped_from col))]
                         [:td {:style (style bar-td-style (when (and bar-column (= col-idx 1)) {:font-weight 700}))}
-                         (-> row (nth col-idx) (format-cell col) h)])
+                         (if-let [remapped-index (and (:remapped_to col)
+                                                      (get remapping-lookup (:name col)))]
+                           (-> row (nth remapped-index) (format-cell (nth cols remapped-index)) h)
+                           (-> row (nth col-idx) (format-cell col) h))])
                       (when bar-column
                         [:td {:style (style bar-td-style {:width :99%})}
                          [:div {:style (style {:background-color color-purple

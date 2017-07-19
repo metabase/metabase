@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 
 import React from "react";
-import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -17,10 +16,7 @@ type Props = {
 }
 const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, navigateToNewCardInsideQB, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
-
-    if (isObjectDetail) {
-        return <QueryVisualizationObjectDetailTable data={result.data} {...props} />
-    } else if (noResults) {
+    if (noResults) {
         // successful query but there were 0 rows returned with the result
         return <VisualizationErrorMessage
                   type='noRows'
@@ -39,6 +35,7 @@ const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, nav
         const series = question.atomicQueries().map((metricQuery, index) => ({
             card: {
                 ...question.card(),
+                display: isObjectDetail ? "object" : question.card().display,
                 dataset_query: lastRunDatasetQuery
             },
             data: results[index] && results[index].data

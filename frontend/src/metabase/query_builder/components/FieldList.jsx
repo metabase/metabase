@@ -20,7 +20,7 @@ export type AccordianListItem = {
 }
 
 export type AccordianListSection = {
-    name: string;
+    name: ?string;
     items: AccordianListItem[]
 }
 
@@ -36,7 +36,9 @@ type Props = {
     tableMetadata: Table,
 
     alwaysExpanded?: boolean,
-    enableSubDimensions?: boolean
+    enableSubDimensions?: boolean,
+
+    hideSectionHeader?: boolean
 }
 
 type State = {
@@ -54,7 +56,7 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, fieldOptions, segmentOptions } = newProps;
+        let { tableMetadata, fieldOptions, segmentOptions, hideSectionHeader } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
@@ -73,17 +75,17 @@ export default class FieldList extends Component {
             }))
 
         let mainSection = {
-            name: singularize(tableName),
+            name: hideSectionHeader ? null : singularize(tableName),
             items: specialOptions.concat(getSectionItems(fieldOptions))
         };
 
         let fkSections = fieldOptions.fks.map(fkOptions => ({
-            name: stripId(fkOptions.field.display_name),
+            name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
             items: getSectionItems(fkOptions)
         }));
 
         let sections = []
-        if (mainSection.items.length > 0) {
+        if (mainSection.items.length > 0 ) {
             sections.push(mainSection);
         }
         sections.push(...fkSections);

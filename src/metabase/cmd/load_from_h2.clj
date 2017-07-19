@@ -35,6 +35,7 @@
              [dashboard-favorite :refer [DashboardFavorite]]
              [database :refer [Database]]
              [dependency :refer [Dependency]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [label :refer [Label]]
@@ -100,6 +101,7 @@
    Collection
    CollectionRevision
    DashboardFavorite
+   Dimension
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

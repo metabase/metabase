@@ -64,7 +64,6 @@ describe("The Reference Section", () => {
                 
                 metricIds.push(metric.id)
                 metricIds.push(metric2.id)
-                console.log(metricIds)
                 })
 
             afterAll(async () => {

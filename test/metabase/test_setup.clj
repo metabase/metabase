@@ -99,3 +99,17 @@
   []
   (log/info "Shutting down Metabase unit test runner")
   (core/stop-jetty!))
+
+(defn call-with-test-scaffolding
+  "Runs `test-startup` and ensures `test-teardown` is always
+  called. This function is useful for running a test (or test
+  namespace) at the repl with the appropriate environment setup for
+  the test to pass."
+  [f]
+  (try
+    (test-startup)
+    (f)
+    (catch Exception e
+      (throw e))
+    (finally
+      (test-teardown))))

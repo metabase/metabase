@@ -1,4 +1,4 @@
-(ns metabase.query-processor.resolve
+(ns metabase.query-processor.middleware.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary."
   (:refer-clojure :exclude [resolve])
   (:require [clojure
@@ -10,10 +10,14 @@
              [util :as u]]
             [metabase.models
              [field :as field]
-             [table :refer [Table]]]
-            [metabase.query-processor.interface :as i]
+             [table :refer [Table]]
+             [database :refer [Database]]]
+            [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
@@ -29,6 +33,41 @@
                                     :base_type       :base-type
                                     :table_id        :table-id
                                     :parent_id       :parent-id}))
+
+(defn- rename-dimension-keys
+  [dimension]
+  (set/rename-keys (into {} dimension)
+                   {:id                      :dimension-id
+                    :name                    :dimension-name
+                    :type                    :dimension-type
+                    :field_id                :field-id
+                    :human_readable_field_id :human-readable-field-id
+                    :created_at              :created-at
+                    :updated_at              :updated-at}))
+
+(defn- rename-field-value-keys
+  [field-values]
+  (set/rename-keys (into {} field-values)
+                   {:id                      :field-value-id
+                    :field_id                :field-id
+                    :human_readable_values   :human-readable-values
+                    :updated_at              :updated-at
+                    :created_at              :created-at}))
+
+(defn convert-db-field
+  "Converts a field map from that database to a Field instance"
+  [db-field]
+  (-> db-field
+      rename-mb-field-keys
+      i/map->Field
+      (update :values (fn [vals]
+                        (if (seq vals)
+                          (-> vals rename-field-value-keys i/map->FieldValues)
+                          vals)))
+      (update :dimensions (fn [dims]
+                            (if (seq dims)
+                              (-> dims rename-dimension-keys i/map->Dimensions )
+                              dims)))))
 
 ;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL ------------------------------------------------------------
 
@@ -98,10 +137,15 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
-(defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id], :as this} field-id->field]
+(defn- merge-non-nils
+  "Like `clojure.core/merge` but only merges non-nil values"
+  [& maps]
+  (apply merge-with #(or %2 %1) maps))
+
+(defn- field-ph-resolve-field [{:keys [field-id datetime-unit], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
-                                                               i/map->Field
-                                                               (assoc :fk-field-id fk-field-id))]
+                                                               convert-db-field
+                                                               (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
     ;; try to resolve the Field with the ones available in field-id->field
     (let [datetime-field? (or (isa? base-type :type/DateTime)
                               (isa? special-type :type/DateTime))]
@@ -192,9 +236,11 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
-                                          :visibility_type [:not= "sensitive"]
-                                          :id              [:in field-ids]))
+        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                                              :visibility_type [:not= "sensitive"]
+                                              :id              [:in field-ids])
+                                            (hydrate :values)
+                                            (hydrate :dimensions)))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
                                                           (i/map->FieldPlaceholder {:field-id parent-id})))))]
@@ -244,7 +290,7 @@
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
+  [{{{ source-table-id :id :as source-table} :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   (if-not source-table-id
     ;; if we have a `source-query`, recurse and resolve tables in that
     (update-in expanded-query-dict [:query :source-query] (fn [source-query]
@@ -253,18 +299,14 @@
                                                               (:query (resolve-tables (assoc expanded-query-dict :query source-query))))))
     ;; otherwise we can resolve tables in the (current) top-level
     (let [table-ids             (conj table-ids source-table-id)
-          source-table          (or (db/select-one [Table :schema :name :id], :id source-table-id)
-                                    (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id))))
           joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
           fk-id+table-id->table (into {[nil source-table-id] source-table}
                                       (for [{:keys [source-field table-id join-alias]} joined-tables]
                                         {[(:field-id source-field) table-id] {:name join-alias
                                                                               :id   table-id}}))]
       (as-> expanded-query-dict <>
-        (assoc-in <> [:query :source-table] source-table)
         (assoc-in <> [:query :join-tables]  joined-tables)
         (walk/postwalk #(resolve-table % fk-id+table-id->table) <>)))))
-
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
 
@@ -275,3 +317,13 @@
           record-fk-field-ids
           resolve-fields
           resolve-tables))
+
+(defn resolve-middleware
+  "Wraps the `resolve` function in a query-processor middleware"
+  [qp]
+  (fn [{database-id :database, :as query}]
+    (let [resolved-db (db/select-one [Database :name :id :engine :details], :id database-id)
+          query       (if (qputil/mbql-query? query)
+                        (resolve query)
+                        query)]
+      (qp (assoc query :database resolved-db)))))
