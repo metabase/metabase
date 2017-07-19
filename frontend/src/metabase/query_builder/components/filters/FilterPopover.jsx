@@ -9,6 +9,7 @@ import DatePicker from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
+import SearchPicker from "./pickers/SearchPicker.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -200,6 +201,18 @@ export default class FilterPopover extends Component {
                         placeholder={placeholder}
                         multi={operator.multi}
                         onCommit={this.onCommit}
+                    />
+                );
+            } else if (operator.name === "=" && field) {
+                return (
+                    <SearchPicker
+                        // $FlowFixMe
+                        values={(values: Array<string>)}
+                        onValuesChange={onValuesChange}
+                        placeholder={placeholder}
+                        multi={operator.multi}
+                        onCommit={this.onCommit}
+                        field={field}
                     />
                 );
             } else if (operatorField.type === "text") {
