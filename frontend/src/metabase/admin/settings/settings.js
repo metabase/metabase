@@ -1,7 +1,7 @@
 
 import { createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 
-import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
+import { SettingsApi, EmailApi, SlackApi, LdapApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -70,6 +70,19 @@ export const updateSlackSettings = createThunkAction(UPDATE_SLACK_SETTINGS, func
         }
     };
 }, {});
+
+export const UPDATE_LDAP_SETTINGS = "metabase/admin/settings/UPDATE_LDAP_SETTINGS";
+export const updateLdapSettings = createThunkAction(UPDATE_LDAP_SETTINGS, function(settings) {
+    return async function(dispatch, getState) {
+        try {
+            await LdapApi.updateSettings(settings);
+            await dispatch(refreshSiteSettings());
+        } catch(error) {
+            console.log("error updating LDAP settings", settings, error);
+            throw error;
+        }
+    };
+});
 
 export const RELOAD_SETTINGS = "metabase/admin/settings/RELOAD_SETTINGS";
 export const reloadSettings = createThunkAction(RELOAD_SETTINGS, function() {

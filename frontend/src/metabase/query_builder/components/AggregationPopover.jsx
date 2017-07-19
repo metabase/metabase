@@ -78,22 +78,13 @@ export default class AggregationPopover extends Component {
     }
 
     getAvailableAggregations() {
-        const { availableAggregations, tableMetadata } = this.props;
-        return availableAggregations || (tableMetadata && tableMetadata.aggregation_options)
+        const { availableAggregations, query } = this.props;
+        return availableAggregations || query.table().aggregations();
     }
 
     getCustomFields() {
         const { customFields, datasetQuery } = this.props;
         return customFields || (datasetQuery && Query.getExpressions(datasetQuery.query));
-    }
-
-    getAggregationFieldOptions(aggOperator) {
-        const availableAggregations = this.getAvailableAggregations();
-        // NOTE: we don't use getAggregator() here because availableAggregations has the table.fields populated on the aggregation options
-        const aggOptions = availableAggregations.filter((o) => o.short === aggOperator);
-        if (aggOptions && aggOptions.length > 0) {
-            return Query.getFieldOptions(this.props.tableMetadata.fields, true, aggOptions[0].validFieldsFilters[0])
-        }
     }
 
     itemIsSelected(item) {
@@ -127,7 +118,7 @@ export default class AggregationPopover extends Component {
     }
 
     render() {
-        const { tableMetadata } = this.props;
+        const { query, tableMetadata } = this.props;
 
         const customFields = this.getCustomFields();
         const availableAggregations = this.getAvailableAggregations();
@@ -246,10 +237,10 @@ export default class AggregationPopover extends Component {
                         className={"text-green"}
                         tableMetadata={tableMetadata}
                         field={fieldId}
-                        fieldOptions={this.getAggregationFieldOptions(agg)}
+                        fieldOptions={query.aggregationFieldOptions(agg)}
                         customFieldOptions={customFields}
                         onFieldChange={this.onPickField}
-                        enableTimeGrouping={false}
+                        enableSubDimensions={false}
                     />
                 </div>
             );

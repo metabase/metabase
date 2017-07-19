@@ -1,7 +1,6 @@
 (ns metabase.test.data.postgres
   "Code for creating / destroying a Postgres database from a `DatabaseDefinition`."
-  (:require [environ.core :refer [env]]
-            [metabase.test.data
+  (:require [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
             [metabase.util :as u])
@@ -21,11 +20,13 @@
    :type/UUID       "UUID"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host     "localhost"
-          :port     5432
+  (merge {:host     (i/db-test-env-var-or-throw :postgresql :host "localhost")
+          :port     (i/db-test-env-var-or-throw :postgresql :port 5432)
           :timezone :America/Los_Angeles}
-         (when (env :circleci)
-           {:user "ubuntu"})
+         (when-let [user (i/db-test-env-var :postgresql :user)]
+           {:user user})
+         (when-let [password (i/db-test-env-var :postgresql :password)]
+           {:password password})
          (when (= context :db)
            {:db database-name})))
 

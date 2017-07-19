@@ -24,7 +24,7 @@ import _ from "underscore";
 
 import type {
     Card as CardObject,
-    DatasetQuery
+    StructuredDatasetQuery
 } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { FieldFilter } from "metabase/meta/types/Query";
@@ -34,7 +34,7 @@ type Props = {
     card: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (
-        datasetQuery: DatasetQuery,
+        datasetQuery: StructuredDatasetQuery,
         options: { run: boolean }
     ) => void
 };
@@ -106,6 +106,10 @@ export default class TimeseriesFilterWidget extends Component {
                 currentDescription = "After " + currentDescription;
             } else if (currentFilter[0] === "<") {
                 currentDescription = "Before " + currentDescription;
+            } else if (currentFilter[0] === "IS_NULL") {
+                currentDescription = "Is Empty";
+            } else if (currentFilter[0] === "NOT_NULL") {
+                currentDescription = "Not Empty";
             }
         } else {
             currentDescription = "All Time";
@@ -146,8 +150,7 @@ export default class TimeseriesFilterWidget extends Component {
                                 } else {
                                     query = Query.addFilter(query, filter);
                                 }
-                                // $FlowFixMe
-                                const datasetQuery: DatasetQuery = {
+                                const datasetQuery: StructuredDatasetQuery = {
                                     ...card.dataset_query,
                                     query
                                 };

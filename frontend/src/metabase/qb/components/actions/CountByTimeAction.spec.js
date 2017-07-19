@@ -1,33 +1,36 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
+import {
+    question,
+    questionNoFields,
+    ORDERS_TABLE_ID,
+    ORDERS_CREATED_DATE_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
+
 import CountByTimeAction from "./CountByTimeAction";
-
-import { card, tableMetadata } from "../__support__/fixtures";
-
-const tableMetadata0TimeFields = { ...tableMetadata, fields: [] };
-const tableMetadata1TimeField = tableMetadata;
 
 describe("CountByTimeAction", () => {
     it("should not be valid if the table has no metrics", () => {
-        expect(
-            CountByTimeAction({
-                card,
-                tableMetadata: tableMetadata0TimeFields
-            })
-        ).toHaveLength(0);
+        expect(CountByTimeAction({ question: questionNoFields })).toHaveLength(
+            0
+        );
     });
     it("should return a scalar card for the metric", () => {
-        const actions = CountByTimeAction({
-            card,
-            tableMetadata: tableMetadata1TimeField
-        });
+        const actions = CountByTimeAction({ question: question });
         expect(actions).toHaveLength(1);
-        const newCard = actions[0].card();
+        const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: 10,
+            source_table: ORDERS_TABLE_ID,
             aggregation: [["count"]],
-            breakout: [["datetime-field", ["field-id", 3], "as", "day"]]
+            breakout: [
+                [
+                    "datetime-field",
+                    ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+                    "as",
+                    "day"
+                ]
+            ]
         });
-        expect(newCard.display).toEqual("line");
+        expect(newCard.display).toEqual("bar");
     });
 });

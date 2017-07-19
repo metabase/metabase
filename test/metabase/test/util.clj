@@ -217,7 +217,7 @@
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
 
-(defn resolve-private-vars* [source-namespace target-namespace symbols]
+(defn ^:deprecated resolve-private-vars* [source-namespace target-namespace symbols]
   {:pre [(namespace-or-symbol? source-namespace)
          (namespace-or-symbol? target-namespace)
          (every? symbol? symbols)]}
@@ -227,11 +227,15 @@
                          (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]
     (intern target-namespace symb varr)))
 
-(defmacro resolve-private-vars
+(defmacro ^:deprecated resolve-private-vars
   "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
 
     (resolve-private-vars metabase.driver.generic-sql.sync
-      field-avg-length field-percent-urls)"
+      field-avg-length field-percent-urls)
+
+   DEPRECATED: Just refer to vars directly using `#'` syntax instead of using this macro.
+
+     (#'some-ns/field-avg-length ...)"
   [namespc & symbols]
   `(resolve-private-vars* (quote ~namespc) *ns* (quote ~symbols)))
 

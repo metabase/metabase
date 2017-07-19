@@ -11,11 +11,11 @@ import { MetabaseApi } from "metabase/services";
 
 const RESET = "metabase/admin/databases/RESET";
 const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
-const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
+export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
 const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
 const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
-const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
+export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
 
 export const reset = createAction(RESET);
@@ -110,15 +110,18 @@ export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, 
     };
 });
 
+const START_DELETE = 'metabase/admin/databases/START_DELETE'
+const startDelete = createAction(START_DELETE)
+
+
 // deleteDatabase
-export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databaseId, redirect=false) {
+export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databaseId, redirect=true) {
     return async function(dispatch, getState) {
         try {
+            dispatch(startDelete(databaseId))
+            dispatch(push('/admin/databases/'));
             await MetabaseApi.db_delete({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Delete", redirect ? "Using Detail" : "Using List");
-            if (redirect) {
-                dispatch(push('/admin/databases/'));
-            }
             return databaseId;
         } catch(error) {
             console.log('error deleting database', error);
@@ -156,6 +159,15 @@ const editingDatabase = handleActions({
     [SELECT_ENGINE]: { next: (state, { payload }) => ({...state, engine: payload }) }
 }, null);
 
+const deletes = handleActions({
+    [START_DELETE]: {
+        next: (state, { payload }) => state.concat([payload])
+    },
+    [DELETE_DATABASE]: {
+        next: (state, { payload }) => state.splice(state.indexOf(payload), 1)
+    }
+}, []);
+
 const DEFAULT_FORM_STATE = { formSuccess: null, formError: null };
 const formState = handleActions({
     [RESET]: { next: () => DEFAULT_FORM_STATE },
@@ -165,5 +177,6 @@ const formState = handleActions({
 export default combineReducers({
     databases,
     editingDatabase,
-    formState
+    formState,
+    deletes
 });

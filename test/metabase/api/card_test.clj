@@ -40,7 +40,8 @@
    :made_public_by_id nil
    :public_uuid       nil
    :query_type        "query"
-   :cache_ttl         nil})
+   :cache_ttl         nil
+   :result_metadata   nil})
 
 (defn- do-with-self-cleaning-random-card-name
   "Generate a random card name (or use CARD-NAME), pass it to F, then delete any Cards with that name afterwords."
@@ -181,12 +182,11 @@
   [card-2-id]
   (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))                 ; filtering is done by slug
 
-(defn- mbql-count-query [database-id table-id]
-  {:database database-id
-   :type     "query"
-   :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}})
 
-;; ## POST /api/card
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    CREATING A CARD                                                     |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Test that we can make a card
 (let [card-name (random-name)]
   (tt/expect-with-temp [Database [{database-id :id}]
@@ -199,11 +199,44 @@
             :database_id            database-id ; these should be inferred automatically
             :table_id               table-id})
     (with-self-cleaning-random-card-name [_ card-name]
-      (dissoc ((user->client :rasta) :post 200 "card" {:name                   card-name
-                                                       :display                "scalar"
-                                                       :dataset_query          (mbql-count-query database-id table-id)
-                                                       :visualization_settings {:global {:title nil}}})
+      (dissoc ((user->client :rasta) :post 200 "card" (card-with-name-and-query card-name (mbql-count-query database-id table-id)))
               :created_at :updated_at :id))))
+
+;; Make sure when saving a Card the query metadata is saved (if correct)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "Count Chocula"
+    :name         "count_chocula"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (with-self-cleaning-random-card-name [card-name]
+      ;; create a card with the metadata
+      ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                :result_metadata    metadata
+                                                :metadata_checksum  ((resolve 'metabase.query-processor.middleware.results-metadata/metadata-checksum) metadata)))
+      ;; now check the metadata that was saved in the DB
+      (db/select-one-field :result_metadata Card :name card-name))))
+
+;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "count"
+    :name         "count"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (with-self-cleaning-random-card-name [card-name]
+      ;; create a card with the metadata
+      ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                :result_metadata    metadata
+                                                :metadata_checksum  "ABCDEF")) ; bad checksum
+      ;; now check the correct metadata was fetched and was saved in the DB
+      (db/select-one-field :result_metadata Card :name card-name))))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -323,7 +356,50 @@
     (tu/with-temporary-setting-values [enable-embedding false]
       ((user->client :crowberto) :put 400 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))
 
-;; ## DELETE /api/card/:id
+;; make sure when updating a Card the query metadata is saved (if correct)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "Count Chocula"
+    :name         "count_chocula"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (tt/with-temp Card [card]
+      ;; update the Card's query
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id card))
+       {:dataset_query (mbql-count-query (data/id) (data/id :venues))
+        :result_metadata    metadata
+        :metadata_checksum  ((resolve 'metabase.query-processor.middleware.results-metadata/metadata-checksum) metadata)})
+      ;; now check the metadata that was saved in the DB
+      (db/select-one-field :result_metadata Card :id (u/get-id card)))))
+
+;; Make sure when updating a Card the correct query metadata is fetched (if incorrect)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "count"
+    :name         "count"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (tt/with-temp Card [card]
+      ;; update the Card's query
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id card))
+       {:dataset_query (mbql-count-query (data/id) (data/id :venues))
+        :result_metadata    metadata
+        :metadata_checksum  "ABC123"})  ; invalid checksum
+      ;; now check the metadata that was saved in the DB
+      (db/select-one-field :result_metadata Card :id (u/get-id card)))))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                              DELETING A CARD (DEPRECATED)                                              |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;; Deprecated because you're not supposed to delete cards anymore. Archive them instead
+
 ;; Check that we can delete a card
 (expect
   nil

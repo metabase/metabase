@@ -15,7 +15,8 @@
             [metabase.test.data.users :refer :all]
             [ring.mock.request :as mock]
             [ring.util.response :as resp]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [clojure.string :as string]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -217,12 +218,12 @@
               _ (Thread/sleep 1000)
               second-second (async/poll! connection)
               eventually (apply str (async/<!! (async/into [] connection)))]
-          [first-second second-second eventually])))))
+          [first-second second-second (string/trim eventually)])))))
 
 
 ;;slow success
 (expect
-  [\newline \newline "\n\n\n{\"success\":true}"]
+  [\newline \newline "{\"success\":true}"]
   (test-streaming-endpoint streaming-slow-success))
 
 ;; immediate success should have no padding
@@ -232,7 +233,7 @@
 
 ;; we know delayed failures (exception thrown) will just drop the connection
 (expect
-  [\newline \newline "\n\n\n"]
+  [\newline \newline ""]
   (test-streaming-endpoint streaming-slow-failure))
 
 ;; immediate failures (where an exception is thown will return a 500
