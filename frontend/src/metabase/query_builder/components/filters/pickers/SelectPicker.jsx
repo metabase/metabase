@@ -128,7 +128,10 @@ export default class SelectPicker extends Component {
                            {validOptions.map((option, index) =>
                                <li key={index}>
                                    <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked.has(option.key))}>
-                                       <CheckBox checked={checked.has(option.key)} />
+                                       <CheckBox
+                                           checked={checked.has(option.key)}
+                                           color='purple'
+                                       />
                                        <h4 className="ml1">{this.nameForOption(option)}</h4>
                                    </label>
                                </li>

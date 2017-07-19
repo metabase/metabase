@@ -261,7 +261,7 @@ export default class FilterPopover extends Component {
                     minWidth: 300
                 }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
-                        <a className="cursor-pointer flex align-center" onClick={this.clearField}>
+                        <a className="cursor-pointer text-purple-hover transition-color flex align-center" onClick={this.clearField}>
                             <Icon name="chevronleft" size={18}/>
                             <h3 className="inline-block">{singularize(table.display_name)}</h3>
                         </a>
