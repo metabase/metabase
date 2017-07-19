@@ -50,8 +50,8 @@
         fields))
 
     metabase.query_processor.interface.BinnedField
-    (let [{{:keys [min-value max-value] :as nested-field} :field} this]
-      [(assoc nested-field :binning_info {:binning_strategy "num-bins"
+    (let [{:keys [strategy], {:keys [min-value max-value] :as nested-field} :field} this]
+      [(assoc nested-field :binning_info {:binning_strategy strategy
                                           :bin_width (:bin-width this)
                                           :num_bins (:num-bins this)
                                           :min_value min-value

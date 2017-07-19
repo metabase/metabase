@@ -154,12 +154,25 @@
 (datasets/expect-with-engines (engines-that-support :binning)
   (merge (venues-col :latitude)
          {:min_value 10.0646, :source :breakout,
-          :max_value 40.7794, :binning_info {:binning_strategy "num-bins", :bin_width 10.0,
+          :max_value 40.7794, :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
                                              :num_bins         4.0,        :min_value 10.0646,
                                              :max_value        40.7794}})
   (-> (data/run-query venues
                       (ql/aggregation (ql/count))
                       (ql/breakout (ql/binning-strategy $latitude :default)))
+      (get-in [:data :cols])
+      first
+      round-binning-decimals))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+  (merge (venues-col :latitude)
+         {:min_value 10.0646, :source       :breakout,
+          :max_value 40.7794, :binning_info {:binning_strategy :num-bins, :bin_width 6.14296,
+                                             :num_bins         5,         :min_value 10.0646,
+                                             :max_value        40.7794}})
+  (-> (data/run-query venues
+                      (ql/aggregation (ql/count))
+                      (ql/breakout (ql/binning-strategy $latitude :num-bins 5)))
       (get-in [:data :cols])
       first
       round-binning-decimals))
