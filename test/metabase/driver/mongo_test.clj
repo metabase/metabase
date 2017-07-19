@@ -11,6 +11,7 @@
              [field-values :refer [FieldValues]]
              [table :as table :refer [Table]]]
             [metabase.query-processor.expand :as ql]
+            [metabase.sfc.fingerprint :as fingerprint]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -123,7 +124,7 @@
                {:id (data/id :venues :name),       :values (db/select-one-field :values FieldValues, :field_id (data/id :venues :name))}
                {:id (data/id :venues :price),      :values [1 2 3 4]}]}
   (let [venues-table (Table (data/id :venues))]
-    (driver/analyze-table (MongoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
+    (#'fingerprint/extract-field-values-for-fields (set (mapv :id (table/fields venues-table))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 

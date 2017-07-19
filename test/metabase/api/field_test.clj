@@ -14,20 +14,27 @@
             [toucan.util.test :as tt]))
 
 ;; Helper Fns
+(def ^:private sync-schedules
+  {:sync_schedule               "0 00 * * * ? *"
+   :cache_field_values_schedule "1 10 * * * ? *"
+   :analyze_schedule            "2 30 * * * ? *"
+   :classify_schedule           "3 50 * * * ? *"})
 
 (defn- db-details []
-  (tu/match-$ (db)
-    {:created_at         $
-     :engine             "h2"
-     :caveats            nil
-     :points_of_interest nil
-     :id                 $
-     :updated_at         $
-     :name               "test-data"
-     :is_sample          false
-     :is_full_sync       true
-     :description        nil
-     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
+  (merge
+   sync-schedules
+   (tu/match-$ (db)
+     {:created_at         $
+      :engine             "h2"
+      :caveats            nil
+      :points_of_interest nil
+      :id                 $
+      :updated_at         $
+      :name               "test-data"
+      :is_sample          false
+      :is_full_sync       true
+      :description        nil
+      :features           (mapv name (driver/features (driver/engine->driver :h2)))})))
 
 
 ;; ## GET /api/field/:id

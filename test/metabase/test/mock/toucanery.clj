@@ -45,8 +45,7 @@
 (extend ToucaneryDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table     (constantly nil)
-          :describe-database (fn [_ {:keys [exclude-tables]}]
+         {:describe-database (fn [_ {:keys [exclude-tables]}]
                                (let [tables (for [table (vals toucanery-tables)
                                                   :when (not (contains? exclude-tables (:name table)))]
                                               (select-keys table [:schema :name]))]

@@ -1,10 +1,10 @@
-(ns metabase.sync-database.interface
+(ns metabase.sfc.interface
   "Schemas describing the output expected from different DB sync functions."
   (:require [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def AnalyzeTable
-  "Schema for the expected output of `analyze-table`."
+  "Schema for the expected output of `classify-table-fields` and `extract-field-values-for-fields`."
   {(s/optional-key :row_count) (s/maybe s/Int)
    (s/optional-key :fields)    [{:id                               su/IntGreaterThanZero
                                  (s/optional-key :special-type)    su/FieldType

@@ -1,4 +1,4 @@
-(ns metabase.sync-database.sync-test
+(ns metabase.sfc.introspect.sync-test
   (:require [expectations :refer :all]
             [metabase.models
              [database :refer [Database]]
@@ -6,9 +6,8 @@
              [raw-column :refer [RawColumn]]
              [raw-table :refer [RawTable]]
              [table :refer [Table]]]
-            [metabase.sync-database
-             [introspect :as introspect]
-             [sync :refer :all]]
+            [metabase.sfc.introspect :as introspect]
+            [metabase.sfc.introspect.sync :as introspect-sync :refer :all]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -21,15 +20,12 @@
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
-(tu/resolve-private-vars metabase.sync-database.sync
-  save-fks! save-table-fields!)
-
 (defn- get-tables [database-id]
   (->> (hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
        (mapv tu/boolean-ids-and-timestamps)))
 
 
-;; save-fks!
+;; #'introspect-sync/save-fks!
 (expect
   [[{:special_type nil, :name "fk1", :fk_target_field_id false}]
    [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]
@@ -53,31 +49,31 @@
        (get-fields t1)
        ;; now add a fk
        (do
-         (save-fks! [{:source-column raw-fk1, :target-column raw-target1}])
+         (#'introspect-sync/save-fks! [{:source-column raw-fk1, :target-column raw-target1}])
          (get-fields t1))
        ;; if the source/target is wack nothing bad happens
        (do
-         (save-fks! [{:source-column raw-fk1, :target-column 87893243}
+         (#'introspect-sync/save-fks! [{:source-column raw-fk1, :target-column 87893243}
                      {:source-column 987234, :target-column raw-target1}])
          (get-fields t1))
        ;; replacing an existing fk
        (do
-         (save-fks! [{:source-column raw-fk1, :target-column raw-target2}])
+         (#'introspect-sync/save-fks! [{:source-column raw-fk1, :target-column raw-target2}])
          (get-fields t1))])))
 
 
 ;; sync-metabase-metadata-table!
 (expect
-  [{:name "movies"
+  [{:name        "movies"
     :description nil
-    :id true
-    :fields [{:name "filming"
-              :description nil}]}
-   {:name "movies"
+    :id          true
+    :fields      [{:name        "filming"
+                   :description nil}]}
+   {:name        "movies"
     :description "A cinematic adventure."
-    :id true
-    :fields [{:name "filming"
-              :description "If the movie is currently being filmed."}]}]
+    :id          true
+    :fields      [{:name        "filming"
+                   :description "If the movie is currently being filmed."}]}]
   (tt/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
@@ -90,7 +86,7 @@
           get-table    #(-> (db/select-one [Table :id :name :description], :id (:id table))
                             (hydrate :fields)
                             (update :fields (fn [fields]
-                                              (for [f fields
+                                              (for [f     fields
                                                     :when (= "filming" (:name f))]
                                                 (select-keys f [:name :description]))))
                             tu/boolean-ids-and-timestamps)]
@@ -118,7 +114,7 @@
    :created_at         true
    :updated_at         true})
 
-;; save-table-fields!
+;; #'introspect-sync/save-table-fields!
 ;; this test also covers create-field-from-field-def! and update-field-from-field-def!
 (expect
   [[]
@@ -179,7 +175,7 @@
                                    (dissoc m :active :position :preview_display))))
           initial-fields (get-fields)
           first-sync     (do
-                           (save-table-fields! tbl)
+                           (#'introspect-sync/save-table-fields! tbl)
                            (get-fields))]
       (tt/with-temp* [RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "type/Integer"}}]]
         ;; start with no fields
@@ -189,13 +185,13 @@
          ;; now add another column and modify the first
          (do
            (db/update! RawColumn raw-column-id1, :is_pk false, :details {:base-type "type/Decimal"})
-           (save-table-fields! tbl)
+           (#'introspect-sync/save-table-fields! tbl)
            (get-fields))
          ;; now disable the first column
          (do
            (db/update! RawColumn raw-column-id1, :active false)
            (db/update! RawColumn raw-column-id3, :is_pk true)
-           (save-table-fields! tbl)
+           (#'introspect-sync/save-table-fields! tbl)
            (get-fields))]))))
 
 
@@ -376,6 +372,6 @@
 (expect
   #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft}
     {:name "ACQUIRED_TOUCANS",       :visibility_type nil}}
-  (data/dataset metabase.sync-database.sync-test/db-with-some-cruft
+  (data/dataset metabase.sfc.introspect.sync-test/db-with-some-cruft
     (set (for [table (db/select [Table :name :visibility_type], :db_id (data/id))]
            (into {} table)))))
