@@ -461,7 +461,7 @@
                                                   :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name "Go Dubs!"
-     :schema       "All questions"
+     :schema       "Everything else"
      :db_id        database/virtual-id
      :id           card-virtual-table-id
      :description  nil
