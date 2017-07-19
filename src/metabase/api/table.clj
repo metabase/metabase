@@ -87,7 +87,7 @@
              (map (fn [[name param]]
                     {:name name
                      :mbql ["datetime-field" nil param]
-                     :type :type/DateTime})
+                     :type "type/DateTime"})
                   [["Minute" "minute"]
                    ["Minute of Hour" "minute-of-hour"]
                    ["Hour" "hour"]
@@ -106,7 +106,7 @@
              (map (fn [[name params]]
                     {:name name
                      :mbql (apply vector "binning-strategy" nil params)
-                     :type :type/Number})
+                     :type "type/Number"})
                   [default-entry
                    ["Quantized by the 10 equally sized bins"  ["num-bins" 10]]
                    ["Quantized by the 50 equally sized bins"  ["num-bins" 50]]
@@ -114,7 +114,7 @@
              (map (fn [[name params]]
                     {:name name
                      :mbql (apply vector "binning-strategy" nil params)
-                     :type :type/Coordinate})
+                     :type "type/Coordinate"})
                   [default-entry
                    ["Quantized by the 1 degree"  ["bin-width" 1.0]]
                    ["Quantized by the 10 degree" ["bin-width" 10.0]]
@@ -123,7 +123,7 @@
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]
-              [(str k) (dissoc v :type)]) dimension-options))
+              [(str k) v]) dimension-options))
 
 (defn- create-dim-index-seq [dim-type]
   (->> dimension-options
@@ -133,33 +133,48 @@
        (map str)))
 
 (def ^:private datetime-dimension-indexes
-  (create-dim-index-seq :type/DateTime))
+  (create-dim-index-seq "type/DateTime"))
 
 (def ^:private numeric-dimension-indexes
-  (create-dim-index-seq :type/Number))
+  (create-dim-index-seq "type/Number"))
 
 (def ^:private coordinate-dimension-indexes
-  (create-dim-index-seq :type/Coordinate))
+  (create-dim-index-seq "type/Coordinate"))
+
+(defn- dimension-index-for-type [dim-type pred]
+  (first (m/find-first (fn [[k v]]
+                         (and (= dim-type (:type v))
+                              (pred v))) dimension-options-for-response)))
+
+(def ^:private date-default-index
+  (dimension-index-for-type "type/DateTime" #(= "Day" (:name %))))
+
+(def ^:private numeric-default-index
+  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) "default binning")))
+
+(def ^:private coordinate-default-index
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "default binning")))
 
 (defn- assoc-field-dimension-options [{:keys [base_type special_type min_value max_value] :as field}]
-  (assoc field
-    :dimension_options
-    (cond
+  (let [[default-option all-options] (cond
 
-      (isa? base_type :type/DateTime)
-      datetime-dimension-indexes
+                                       (isa? base_type :type/DateTime)
+                                       [date-default-index datetime-dimension-indexes]
 
-      (and min_value max_value
-           (isa? special_type :type/Coordinate))
-      coordinate-dimension-indexes
+                                       (and min_value max_value
+                                            (isa? special_type :type/Coordinate))
+                                       [coordinate-default-index coordinate-dimension-indexes]
 
-      (and min_value max_value
-           (isa? base_type :type/Number)
-           (or (nil? special_type) (isa? special_type :type/Number)))
-      numeric-dimension-indexes
+                                       (and min_value max_value
+                                            (isa? base_type :type/Number)
+                                            (or (nil? special_type) (isa? special_type :type/Number)))
+                                       [numeric-default-index numeric-dimension-indexes]
 
-      :else
-      [])))
+                                       :else
+                                       [nil []])]
+    (assoc field
+      :default_dimension_option default-option
+      :dimension_options all-options)))
 
 (defn- assoc-dimension-options [resp driver]
   (if (and driver (contains? (driver/features driver) :binning))
@@ -169,7 +184,9 @@
     (-> resp
         (assoc :dimension_options [])
         (update :fields (fn [fields]
-                          (mapv #(assoc % :dimension_options []) fields))))))
+                          (mapv #(assoc %
+                                   :dimension_options []
+                                   :default_dimension_option nil) fields))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

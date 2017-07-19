@@ -28,7 +28,9 @@
             [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
-(resolve-private-vars metabase.api.table dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes)
+(resolve-private-vars metabase.api.table
+  dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes
+  numeric-default-index date-default-index coordinate-default-index)
 
 
 ;; ## /api/org/* AUTHENTICATION Tests
@@ -71,17 +73,19 @@
    :metrics                 []})
 
 (def ^:private ^:const field-defaults
-  {:description        nil
-   :active             true
-   :position           0
-   :target             nil
-   :preview_display    true
-   :visibility_type    "normal"
-   :caveats            nil
-   :points_of_interest nil
-   :parent_id          nil
-   :min_value          nil
-   :max_value          nil})
+  {:description              nil
+   :active                   true
+   :position                 0
+   :target                   nil
+   :preview_display          true
+   :visibility_type          "normal"
+   :caveats                  nil
+   :points_of_interest       nil
+   :parent_id                nil
+   :min_value                nil
+   :max_value                nil
+   :dimension_options        []
+   :default_dimension_option nil})
 
 
 ;; ## GET /api/table
@@ -150,33 +154,31 @@
             :display_name "Categories"
             :fields       (let [defaults (assoc field-defaults :table_id (id :categories))]
                             [(merge defaults (match-$ (Field (id :categories :id))
-                                               {:special_type       "type/PK"
-                                                :name               "ID"
-                                                :display_name       "ID"
-                                                :updated_at         $
-                                                :id                 $
-                                                :position           0
-                                                :created_at         $
-                                                :base_type          "type/BigInteger"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :min_value          1.0
-                                                :max_value          75.0
-                                                :dimension_options  []}))
+                                               {:special_type             "type/PK"
+                                                :name                     "ID"
+                                                :display_name             "ID"
+                                                :updated_at               $
+                                                :id                       $
+                                                :position                 0
+                                                :created_at               $
+                                                :base_type                "type/BigInteger"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $
+                                                :min_value                1.0
+                                                :max_value                75.0}))
                              (merge defaults (match-$ (Field (id :categories :name))
-                                               {:special_type       "type/Name"
-                                                :name               "NAME"
-                                                :display_name       "Name"
-                                                :updated_at         $
-                                                :id                 $
-                                                :position           0
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :dimension_options  []}))])
+                                               {:special_type             "type/Name"
+                                                :name                     "NAME"
+                                                :display_name             "Name"
+                                                :updated_at               $
+                                                :id                       $
+                                                :position                 0
+                                                :created_at               $
+                                                :base_type                "type/Text"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $}))])
             :rows         75
             :updated_at   $
             :id           (id :categories)
@@ -214,59 +216,57 @@
             :display_name "Users"
             :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
                             [(merge defaults (match-$ (Field (id :users :id))
-                                               {:special_type       "type/PK"
-                                                :name               "ID"
-                                                :display_name       "ID"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/BigInteger"
-                                                :visibility_type    "normal"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :min_value          1.0
-                                                :max_value          15.0
-                                                :dimension_options  []}))
+                                               {:special_type             "type/PK"
+                                                :name                     "ID"
+                                                :display_name             "ID"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/BigInteger"
+                                                :visibility_type          "normal"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $
+                                                :min_value                1.0
+                                                :max_value                15.0}))
                              (merge defaults (match-$ (Field (id :users :last_login))
-                                               {:special_type       nil
-                                                :name               "LAST_LOGIN"
-                                                :display_name       "Last Login"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/DateTime"
-                                                :visibility_type    "normal"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :dimension_options  (var-get datetime-dimension-indexes)}))
+                                               {:special_type             nil
+                                                :name                     "LAST_LOGIN"
+                                                :display_name             "Last Login"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/DateTime"
+                                                :visibility_type          "normal"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $
+                                                :dimension_options        (var-get datetime-dimension-indexes)
+                                                :default_dimension_option (var-get date-default-index)}))
                              (merge defaults (match-$ (Field (id :users :name))
-                                               {:special_type       "type/Name"
-                                                :name               "NAME"
-                                                :display_name       "Name"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :visibility_type    "normal"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :dimension_options  []}))
+                                               {:special_type             "type/Name"
+                                                :name                     "NAME"
+                                                :display_name             "Name"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/Text"
+                                                :visibility_type          "normal"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $}))
                              (merge defaults (match-$ (Field :table_id (id :users), :name "PASSWORD")
-                                               {:special_type       "type/Category"
-                                                :name               "PASSWORD"
-                                                :display_name       "Password"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :visibility_type    "sensitive"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :dimension_options  []}))])
+                                               {:special_type             "type/Category"
+                                                :name                     "PASSWORD"
+                                                :display_name             "Password"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/Text"
+                                                :visibility_type          "sensitive"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $}))])
             :rows         15
             :updated_at   $
             :id           (id :users)
@@ -300,43 +300,42 @@
             :display_name "Users"
             :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
                             [(merge defaults (match-$ (Field (id :users :id))
-                                               {:special_type       "type/PK"
-                                                :name               "ID"
-                                                :display_name       "ID"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/BigInteger"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :min_value          1.0
-                                                :max_value          15.0
-                                                :dimension_options  []}))
+                                               {:special_type             "type/PK"
+                                                :name                     "ID"
+                                                :display_name             "ID"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/BigInteger"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $
+                                                :min_value                1.0
+                                                :max_value                15.0}))
                              (merge defaults (match-$ (Field (id :users :last_login))
-                                               {:special_type       nil
-                                                :name               "LAST_LOGIN"
-                                                :display_name       "Last Login"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/DateTime"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :dimension_options  (var-get datetime-dimension-indexes)}))
+                                               {:special_type             nil
+                                                :name                     "LAST_LOGIN"
+                                                :display_name             "Last Login"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/DateTime"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $
+                                                :dimension_options        (var-get datetime-dimension-indexes)
+                                                :default_dimension_option (var-get date-default-index)}))
                              (merge defaults (match-$ (Field (id :users :name))
-                                               {:special_type       "type/Name"
-                                                :name               "NAME"
-                                                :display_name       "Name"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $
-                                                :dimension_options  []}))])
+                                               {:special_type             "type/Name"
+                                                :name                     "NAME"
+                                                :display_name             "Name"
+                                                :updated_at               $
+                                                :id                       $
+                                                :created_at               $
+                                                :base_type                "type/Text"
+                                                :fk_target_field_id       $
+                                                :raw_column_id            $
+                                                :last_analyzed            $}))])
             :rows         15
             :updated_at   $
             :id           (id :users)
@@ -429,11 +428,12 @@
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
   (let [checkins-user-field (Field (id :checkins :user_id))
-        users-id-field      (Field (id :users :id))]
+        users-id-field      (Field (id :users :id))
+        fk-field-defaults   (dissoc field-defaults :target :dimension_options :default_dimension_option)]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
-      :origin         (merge (dissoc field-defaults :target)
+      :origin         (merge fk-field-defaults
                              (match-$ checkins-user-field
                                {:id                 $
                                 :table_id           $
@@ -460,7 +460,7 @@
                                                               :id           $
                                                               :raw_table_id $
                                                               :created_at   $}))}))
-      :destination    (merge (dissoc field-defaults :target)
+      :destination    (merge fk-field-defaults
                              (match-$ users-id-field
                                {:id                 $
                                 :table_id           $
