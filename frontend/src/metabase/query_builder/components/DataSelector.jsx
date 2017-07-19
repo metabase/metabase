@@ -176,7 +176,8 @@ export default class DataSelector extends Component {
             .map(database => ({
                 name: database.name,
                 items: database.schemas.length > 1 ? database.schemas : [],
-                className: database.is_saved_questions ? "bg-slate-extra-light" : null
+                className: database.is_saved_questions ? "bg-slate-extra-light" : null,
+                icon: database.is_saved_questions ? 'all' : 'database'
             }));
 
         let openSection = selectedSchema && _.findIndex(databases, (db) => _.find(db.schemas, selectedSchema));
@@ -194,7 +195,13 @@ export default class DataSelector extends Component {
                     onChange={this.onChangeSchema}
                     onChangeSection={this.onChangeDatabase}
                     itemIsSelected={(schema) => this.state.selectedSchema === schema}
-                    renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
+                    renderSectionIcon={item =>
+                        <Icon
+                            className="Icon text-default"
+                            name={item.icon}
+                            size={18}
+                        />
+                    }
                     renderItemIcon={() => <Icon name="folder" size={16} />}
                     initiallyOpenSection={openSection}
                     showItemArrows={true}
