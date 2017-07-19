@@ -6,22 +6,31 @@ import Question from "metabase-lib/lib/Question";
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
-    metadata, ORDERS_TOTAL_FIELD_ID
+    PEOPLE_TABLE_ID,
+    metadata,
+    ORDERS_TOTAL_FIELD_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
 const createFnMock = jest.fn();
-const saveFnMock = jest.fn();
+let saveFnMock;
 
-const getSaveQuestionModal = (question, originalQuestion) => <SaveQuestionModal
-    card={question.card()}
-    originalCard={originalQuestion && originalQuestion.card()}
-    tableMetadata={question.tableMetadata()}
-    createFn={createFnMock}
-    saveFn={saveFnMock}
-    onClose={() => {}}
-/>
+const getSaveQuestionModal = (question, originalQuestion) =>
+    <SaveQuestionModal
+        card={question.card()}
+        originalCard={originalQuestion && originalQuestion.card()}
+        tableMetadata={question.tableMetadata()}
+        createFn={createFnMock}
+        saveFn={saveFnMock}
+        onClose={() => {}}
+    />
 
 describe('SaveQuestionModal', () => {
+    beforeEach(() => {
+        // we need to create a new save mock before each test to ensure that each
+        // test has its own instance
+        saveFnMock = jest.fn();
+    })
+
     it("should call createFn correctly for a new question", async () => {
         const newQuestion = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
             .query()
@@ -52,4 +61,26 @@ describe('SaveQuestionModal', () => {
         await component.instance().formSubmitted();
         expect(saveFnMock.mock.calls.length).toBe(1);
     });
+
+    it("should preserve the collection_id of a question in overwrite mode", async () => {
+        let originalQuestion = Question.create({databaseId: DATABASE_ID, tableId: PEOPLE_TABLE_ID, metadata})
+            .query()
+            .addAggregation(["count"])
+            .question()
+
+        // set the collection_id of the original question
+        originalQuestion = originalQuestion.setCard({
+            ...originalQuestion.card(),
+            collection_id: 5
+        })
+
+        let dirtyQuestion = originalQuestion
+            .query()
+            .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
+            .question()
+
+        const component = shallow(getSaveQuestionModal(dirtyQuestion, originalQuestion))
+        await component.instance().formSubmitted();
+        expect(saveFnMock.mock.calls[0][0].collection_id).toEqual(5);
+    })
 });
