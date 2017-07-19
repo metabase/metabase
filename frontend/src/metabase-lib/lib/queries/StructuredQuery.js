@@ -11,6 +11,7 @@ import Q_deprecated, {
 } from "metabase/lib/query";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 import { getAggregator } from "metabase/lib/schema_metadata";
+import { isDatetimeField } from "metabase/lib/query/field";
 
 import _ from "underscore";
 import { chain, assoc, updateIn } from "icepick";
@@ -397,6 +398,9 @@ export default class StructuredQuery extends AtomicQuery {
         const usedFields = new Set(
             this.breakouts()
                 .filter(b => !_.isEqual(b, includedBreakout))
+                // As datetimes breakouts can have different granularities, allow the same datetime field
+                // to be used multiple times in breakouts of a query
+                .filter(b => !isDatetimeField(b))
                 .map(b => Q_deprecated.getFieldTargetId(b))
         );
 
