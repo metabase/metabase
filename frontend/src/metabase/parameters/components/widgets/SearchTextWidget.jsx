@@ -25,6 +25,21 @@ function getEntityName(fieldId, entityId) {
     return "TODO";
 }
 
+import Remapped from "metabase/hoc/Remapped";
+
+const RemappedValue = Remapped(({ value, column, displayValue, displayColumn }) => {
+    if (displayValue != null) {
+        return (
+            <span>
+                <span className="text-bold">{displayValue}</span>
+                <span style={{ opacity: 0.5 }}>{" - " + value}</span>
+            </span>
+        );
+    } else {
+        return <span>{value}</span>;
+    }
+})
+
 export default class SearchTextWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
@@ -39,17 +54,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
     static noPopover = true;
 
     static format(entityId, fieldId) {
-        const entityName = fieldId != null ? getEntityName(fieldId, entityId) : null;
-        if (entityName != null) {
-            return (
-                <span>
-                    <span className="text-bold">{entityName}</span>
-                    <span style={{ opacity: 0.5 }}>{" - " + entityId}</span>
-                </span>
-            );
-        } else {
-            return entityId;
-        }
+        return <RemappedValue value={entityId} column={{ id: fieldId }} />
     }
 
     render() {

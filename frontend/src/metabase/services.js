@@ -130,6 +130,44 @@ export const MetabaseApi = {
     field_update:                PUT("/api/field/:id"),
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration"),
+
+    field_search: async ({ value, field, searchField = field, maxResults = 100 }, options) => {
+        const datasetQuery = {
+            database: field.table.database.id,
+            type: "query",
+            query: {
+                source_table: field.table.id,
+                // TODO: case-insensitivity
+                filter: ["starts-with", ["field-id", searchField.id], value],
+                breakout: [["field-id", field.id]],
+                fields: [
+                    ["field-id", field.id],
+                    ["field-id", searchField.id]
+                ],
+                limit: maxResults,
+            }
+        };
+        const result = await MetabaseApi.dataset(datasetQuery, options);
+        return result && result.data && result.data.rows;
+    },
+
+    field_remapping: async ({ value, field, remappedField }, options) => {
+        const datasetQuery = {
+            database: field.table.database.id,
+            type: "query",
+            query: {
+                source_table: field.table.id,
+                filter: ["=", ["field-id", field.id], value],
+                fields: [
+                    ["field-id", field.id],
+                    ["field-id", remappedField.id]
+                ],
+                limit: 1,
+            }
+        };
+        const result = await MetabaseApi.dataset(datasetQuery, options);
+        return result && result.data && result.data.rows && result.data.rows[0];
+    }
 };
 
 export const PulseApi = {

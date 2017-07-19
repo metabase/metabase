@@ -12,8 +12,10 @@ import {
 import { normalize } from "normalizr";
 import { DatabaseSchema, TableSchema, FieldSchema, SegmentSchema, MetricSchema } from "metabase/schema";
 
-import { getIn, assocIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { MetabaseApi, MetricApi, SegmentApi, RevisionsApi } from "metabase/services";
 
@@ -397,6 +399,25 @@ export const fetchDatabasesWithMetadata = createThunkAction(FETCH_DATABASES_WITH
     };
 });
 
+const ADD_REMAPPINGS = "metabase/metadata/ADD_REMAPPINGS";
+export const addRemappings = createAction(ADD_REMAPPINGS, (fieldId, remappings) => ({ fieldId, remappings }));
+
+const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
+export const fetchRemapping = createThunkAction(FETCH_REMAPPING, (value, fieldId) =>
+    async (dispatch, getState) => {
+        // TODO: use fetchData to ensure we don't try loading the same remapping multiple times
+        const metadata = getMetadata(getState());
+        const field = metadata.fields[fieldId];
+        const remappedField = field && field.remappedField();
+        if (field && remappedField) {
+            const remapping = await MetabaseApi.field_remapping({ value, field, remappedField });
+            if (remapping) {
+                dispatch(addRemappings(fieldId, [remapping]));
+            }
+        }
+    }
+);
+
 const databases = handleActions({
 }, {});
 
@@ -415,7 +436,11 @@ const fields = handleActions({
             state = assocIn(state, [fieldValues.field_id, "values"], fieldValues);
         }
         return state;
-    }}
+    }},
+    [ADD_REMAPPINGS]: (state, { payload: { fieldId, remappings }}) =>
+        updateIn(state, [fieldId, "remappings"], (existing = []) =>
+            Array.from(new Map(existing.concat(remappings)))
+        ),
 }, {});
 
 const metrics = handleActions({

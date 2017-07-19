@@ -13,6 +13,7 @@ import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { addRemappings } from "metabase/redux/metadata";
 
 import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
 import type { FieldId } from "metabase/meta/types/Field";
@@ -26,6 +27,10 @@ type LoadingState = "INIT" | "LOADING" | "LOADED";
 const mapStateToProps = (state, props) => ({
     metadata: getMetadata(state, props)
 });
+
+const mapDispatchToProps = {
+    addRemappings
+}
 
 type Props = {
     className?: string,
@@ -58,7 +63,7 @@ function getEntityName(fieldId, entityId) {
     return entityNameCache[fieldId] && entityNameCache[fieldId][entityId];
 }
 
-@connect(mapStateToProps)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class SearchTextWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
@@ -77,7 +82,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
     }
 
     componentWillReceiveProps(nextProps: Props) {
-        if (nextProps.value !== this.state.value) {
+        if (nextProps.value !== this.props.value) {
             this.setState({ value: nextProps.value || "" });
         }
     }
@@ -113,51 +118,15 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         const { metadata, fieldId } = this.props;
         const { value, lastValue, suggestions } = this.state;
 
-        const valueField = metadata.fields[fieldId];
-        if (!valueField) {
+        const field = metadata.fields[fieldId];
+        if (!field) {
             return;
         }
 
-        const table = valueField.table;
-        if (!table) {
-            return;
-        }
-
-        const database = table.database;
-        if (!database) {
-            return;
-        }
-
-        const isEntityId = valueField.isID();
-
-        let nameField;
-        if (isEntityId) {
-            // assumes there is only one entity name field
-            nameField = table.fields.filter(f => f.isEntityName())[0];
-        } else {
-            nameField = valueField;
-        }
-
-        if (!nameField) {
-            return;
-        }
-
-        const nameFieldRef = ["field-id", nameField.id];
-        const valueFieldRef = ["field-id", valueField.id];
-
-        const datasetQuery: StructuredDatasetQuery = {
-            database: database.id,
-            type: "query",
-            query: {
-                source_table: table.id,
-                filter: ["starts-with", nameFieldRef, value],
-                breakout: [valueFieldRef],
-                fields: [
-                    valueFieldRef,
-                    nameFieldRef
-                ],
-                limit: MAX_SEARCH_RESULTS,
-            }
+        let searchField = field.remappedField();
+        // even if there's no remapping allow the user to search the values
+        if (!searchField && field.isString()) {
+            searchField = field;
         }
 
         this.setState({
@@ -170,18 +139,22 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             cancelDeferred.resolve();
         }
 
-        let result = await MetabaseApi.dataset(datasetQuery, { cancelled: cancelDeferred.promise });
+        let results = await MetabaseApi.field_search({
+            value,
+            field,
+            searchField,
+            maxResults: MAX_SEARCH_RESULTS
+        }, { cancelled: cancelDeferred.promise });
+
         this._cancel = null;
 
-        if (result && result.data && result.data.rows) {
-            if (isEntityId) {
-                for (const [entityId, entityName] of result.data.rows) {
-                    setEntityName(fieldId, entityId, entityName)
-                }
+        if (results) {
+            if (field !== searchField) {
+                this.props.addRemappings(field.id, results);
             }
             this.setState({
                 loadingState: "LOADED",
-                suggestions: result.data.rows,
+                suggestions: results,
                 lastValue: value
             });
         }
