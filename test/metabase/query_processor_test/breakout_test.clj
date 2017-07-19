@@ -1,18 +1,18 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
   (:require [cheshire.core :as json]
-            [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.middleware
-             [expand :as ql]
-             [add-dimension-projections :as dim-proj]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
             [metabase.models
              [dimension :refer [Dimension]]
              [field-values :refer [FieldValues]]]
-            [toucan.db :as db]
-            [metabase.test.data.dataset-definitions :as defs]))
+            [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]]
+            [toucan.db :as db]))
 
 (tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
 
@@ -112,7 +112,7 @@
          booleanize-native-form
          (format-rows-by [int int str]))))
 
-(expect-with-non-timeseries-dbs
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
    ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
   (data/with-data
