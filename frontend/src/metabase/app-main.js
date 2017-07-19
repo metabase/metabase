@@ -2,7 +2,8 @@
 import { push } from 'react-router-redux'
 
 import { init } from "metabase/app";
-import { getRoutes } from "metabase/routes.jsx";
+
+import { getRoutes } from "metabase/routes-main";
 import reducers from 'metabase/reducers-main';
 
 import api from "metabase/lib/api";

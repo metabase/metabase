@@ -1,0 +1,68 @@
+#!/usr/bin/env node
+
+const fs = require("fs")
+const inflection = require("inflection")
+
+const BASE = "frontend/src/metabase";
+
+const action = process.argv[2];
+const args = process.argv.slice(3);
+
+const actions = {
+    ["frontend-crud"]: (args) => {
+        const name = args[0];
+        if (!name) {
+            throw new Error(`USAGE: generate crud-frontend NAME`);
+        }
+
+        const namePlural = inflection.pluralize(name);
+        const templateVariables = {
+            object_name: inflection.underscore(name),
+            OBJECT_NAME: inflection.underscore(name).toUpperCase(),
+            objectName: inflection.camelize(name),
+            ObjectName: inflection.camelize(name, false),
+            object_name_plural: inflection.underscore(namePlural),
+            OBJECT_NAME_PLURAL: inflection.underscore(namePlural).toUpperCase(),
+            objectNamePlural: inflection.camelize(namePlural),
+            ObjectNamePlural: inflection.camelize(namePlural, false)
+        }
+
+        const template = (filename) =>
+          evaluateTemplate(__dirname + "/generate-templates/frontend-crud/" + filename, templateVariables);
+
+        const { ObjectName } = templateVariables;
+
+        // root directory
+        fs.mkdirSync(`${BASE}/${name}`, 0744);
+
+        // routes, ducks
+        fs.writeFileSync(`${BASE}/${name}/routes.jsx`, template("routes.jsx"));
+        fs.writeFileSync(`${BASE}/${name}/duck.js`, template("duck.js"));
+
+        // services (appended to existing services.js)
+        fs.appendFileSync(`${BASE}/services.js`, template("services.js"));
+
+        // container components
+        fs.mkdirSync(`${BASE}/${name}/containers`, 0744);
+        for (const ContainerName of ["Create", "Edit", "Form", "List"]) {
+            fs.writeFileSync(`${BASE}/${name}/containers/${ObjectName}${ContainerName}.jsx`, template(`containers/ObjectName${ContainerName}.jsx`));
+        }
+    }
+}
+
+// simple templating system using dynamically evaluated ES6 template literals
+function evaluateTemplate(path, templateVariables) {
+    const template = fs.readFileSync(path);
+
+    const argNames = Object.keys(templateVariables);
+    const argValues = Object.values(templateVariables);
+    const functionBody = "return `" + template + "`";
+
+    return new Function(...argNames.concat(functionBody))(...argValues);
+}
+
+if (actions[action]) {
+    actions[action](args);
+} else {
+    throw new Error("Possible actions: " + Object.keys(actions).join(", "))
+}

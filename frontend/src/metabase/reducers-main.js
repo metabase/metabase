@@ -32,8 +32,24 @@ import reference from "metabase/reference/reference";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
+
+// dynamically require "duck.js" files
+const duckRequire = require.context(
+    "metabase",
+    true,
+    /^\.\/[^\/]+\/duck\.js$/
+);
+const ducks = {};
+duckRequire.keys().map(key => {
+    const duckName = key.match(/^\.\/([^\/]+)\/duck\.js$/)[1];
+    ducks[duckName] = duckRequire(key).default;
+});
+
+
 export default {
     ...commonReducers,
+
+    ...ducks,
 
     // main app reducers
     dashboards,

@@ -56,7 +56,7 @@ import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
-// Reference Metrics 
+// Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
@@ -86,6 +86,15 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx"
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+
+
+// dynamically require "routes.jsx" files
+const routesRequire = require.context(
+    "metabase",
+    true,
+    /^\.\/[^\/]+\/routes\.jsx$/
+);
+const routeGetters = routesRequire.keys().map(key => routesRequire(key).default);
 
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
@@ -282,6 +291,9 @@ export const getRoutes = (store) =>
 
                 {getAdminPermissionsRoutes(store)}
             </Route>
+
+            {/* DYNAMICALLY REQUIRED */}
+            { routeGetters.map(getRoutes => getRoutes(store))}
 
             {/* INTERNAL */}
             <Route

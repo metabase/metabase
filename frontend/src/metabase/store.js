@@ -41,7 +41,7 @@ export function getStore(reducers, history, intialState, enhancer = (a) => a) {
 
     middleware.push(routerMiddleware(history));
 
-    return createStore(reducer, intialState, compose(
+    return window.store = createStore(reducer, intialState, compose(
         applyMiddleware(...middleware),
         devToolsExtension,
         enhancer,
