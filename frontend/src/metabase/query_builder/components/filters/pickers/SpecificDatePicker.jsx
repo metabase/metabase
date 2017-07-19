@@ -8,7 +8,7 @@ import Input from "metabase/components/Input";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import Tooltip from "metabase/components/Tooltip";
-import NumericInput from "./NumericInput.jsx";
+import NumericInput from "metabase/components/NumericInput";
 
 import moment from "moment";
 import cx from "classnames";

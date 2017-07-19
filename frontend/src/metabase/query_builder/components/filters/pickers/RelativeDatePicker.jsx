@@ -6,7 +6,7 @@ import { pluralize, titleCase, capitalize } from "humanize-plus";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import NumericInput from "./NumericInput.jsx";
+import NumericInput from "metabase/components/NumericInput";
 
 import type { TimeIntervalFilter, RelativeDatetimeUnit } from "metabase/meta/types/Query";
 
