@@ -68,7 +68,9 @@ export default class LeafletMap extends Component {
 
     componentDidUpdate(prevProps) {
         const { bounds, settings } = this.props;
-        if (!prevProps || prevProps.points !== this.props.points) {
+        if (!prevProps || prevProps.points !== this.props.points || prevProps.width !== this.props.width || prevProps.height !== this.props.height) {
+            this.map.invalidateSize();
+
             if (settings["map.center_latitude"] != null || settings["map.center_longitude"] != null || settings["map.zoom"] != null) {
                 this.map.setView([
                     settings["map.center_latitude"],
