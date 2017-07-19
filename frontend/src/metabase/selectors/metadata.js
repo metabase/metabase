@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import { createSelector } from "reselect";
+import { createSelector, createSelectorCreator, defaultMemoize } from "reselect";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -9,7 +9,8 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
-import { getIn } from "icepick";
+import _ from "underscore";
+import { shallowEqual } from "recompose";
 import { getFieldValues } from "metabase/lib/query/field";
 
 import {
@@ -123,8 +124,36 @@ export const getSegments = createSelector(
 
 // MISC
 
-export const getParameterFieldValues = (state, props) => {
-    return getFieldValues(getIn(state, ["metadata", "fields", props.parameter.field_id]));
+// Returns a dictionary of field id:s mapped to matching field values
+const getParameterFieldValuesByFieldId = (state, props) => _.chain(getFields(state))
+    .pick(getFields(state), ...props.parameter.field_ids)
+    .mapObject(getFieldValues)
+    .value()
+
+// Check if the lengths of field value arrays equal for each field
+// TODO: Why can't we use plain shallowEqual, i.e. why the field value arrays change very often?
+const createFieldValuesEqualSelector = createSelectorCreator(defaultMemoize, (a, b) => {
+    return shallowEqual(_.mapObject(a, (values) => values.length), _.mapObject(b, (values) => values.length));
+})
+
+// Merges the field values of fields linked to a parameter and removes duplicates
+// TODO Atte Keinänen 7/20/17: How should this work for remapped values?
+// TODO Atte Keinänen 7/20/17: Should we have any thresholds if the count of field values is high or we have many (>2?) fields?
+export const makeGetMergedParameterFieldValues = () => {
+    return createFieldValuesEqualSelector(getParameterFieldValuesByFieldId, (fieldValues) => {
+        const fieldIds = Object.keys(fieldValues)
+
+        if (fieldIds.length === 0) {
+            return [];
+        } else if (fieldIds.length === 1) {
+            return fieldValues[fieldIds[0]];
+        } else {
+            const sortedMergedValues = _.flatten(Object.values(fieldValues), true).sort()
+            // run the uniqueness comparision always against a non-remapped value
+            // we can use `isSorted = true` flag to speed up _.uniq as we just sorted the values
+            return _.uniq(sortedMergedValues, true, (fieldValue) => fieldValue[0]);
+        }
+    });
 }
 
 // UTILS:
