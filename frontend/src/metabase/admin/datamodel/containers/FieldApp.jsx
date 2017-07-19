@@ -156,6 +156,7 @@ export default class FieldApp extends Component {
                                 <FieldHeader
                                     field={field}
                                     updateFieldProperties={this.onUpdateFieldProperties}
+                                    updateFieldDimension={this.onUpdateFieldDimension}
                                 />
                             </Section>
 
@@ -220,17 +221,35 @@ const SelectSeparator = () =>
 
 export class FieldHeader extends Component {
     onNameChange = (e) => {
-        const { updateFieldProperties } = this.props;
-        const display_name = e.target.value;
-        // todo: how to treat empty / too long strings? see how this is done in Column
-        updateFieldProperties({ display_name })
+        this.updateNameDebounced(e.target.value);
+    }
+    onDescriptionChange = (e) => {
+        this.updateDescriptionDebounced(e.target.value)
     }
 
-    onDescriptionChange = (e) => {
+    // Separate update methods because of throttling the input
+    updateNameDebounced = _.debounce(async (name) => {
+        const { field, updateFieldProperties, updateFieldDimension } = this.props;
+
+        // Update the dimension name if it exists
+        // TODO: Have a separate input field for the dimension name?
+        if (!_.isEmpty(field.dimensions)) {
+            await updateFieldDimension(field.id, {
+                type: field.dimensions.type,
+                human_readable_field_id: field.dimensions.human_readable_field_id,
+                name
+            })
+        }
+
+        // todo: how to treat empty / too long strings? see how this is done in Column
+        updateFieldProperties({ display_name: name })
+    }, 300)
+
+    updateDescriptionDebounced = _.debounce((description) => {
         const { updateFieldProperties } = this.props
-        const description = e.target.value;
         updateFieldProperties({ description })
-    }
+    }, 300);
+
 
     render () {
         return (
@@ -596,5 +615,3 @@ const RemappingNamingTip = () =>
     <div className="bordered rounded p1 mt1 mb2 border-brand">
         <span className="text-brand text-bold">Tip:</span> You might want to update the field name to make sure it still makes sense based on your remapping choices.
     </div>
-
-
