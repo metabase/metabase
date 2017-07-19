@@ -78,21 +78,21 @@
        (format-rows-by [int int int])))
 
 (datasets/expect-with-engines (engines-that-support :binning)
-  [[10.1 1] [33.1 61] [37.7 29] [39.2 8] [40.8 1]]
+  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :num-bins 20))))))
 
 (datasets/expect-with-engines (engines-that-support :binning)
- [[10.1 1] [30.5 99]]
+ [[0.0 1] [20.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :num-bins 3))))))
 
 (datasets/expect-with-engines (engines-that-support :binning)
-  [[10.1 -165.4 1] [33.1 -119.7 61] [37.7 -124.2 29] [39.2 -78.5 8] [40.8 -78.5 1]]
+   [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -102,14 +102,14 @@
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (datasets/expect-with-engines (engines-that-support :binning)
- [[10.1 1] [30.1 90] [40.1 9]]
+  [[10.0 1] [30.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default))))))
 
 (datasets/expect-with-engines (engines-that-support :binning)
- [[10.1 1] [30.1 61] [35.1 29] [40.1 9]]
+  [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
       (rows (data/run-query venues
@@ -118,7 +118,7 @@
 
 ;; Testing bin-width
 (datasets/expect-with-engines (engines-that-support :binning)
-  [[10.1 1] [33.1 25] [34.1 36] [37.1 29] [40.1 9]]
+  [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -126,7 +126,7 @@
 
 ;; Testing bin-width using a float
 (datasets/expect-with-engines (engines-that-support :binning)
-   [[10.1 1] [32.6 61] [37.6 29] [40.1 9]]
+  [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -155,7 +155,7 @@
   (merge (venues-col :latitude)
          {:min_value 10.0646, :source :breakout,
           :max_value 40.7794, :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
-                                             :num_bins         4.0,        :min_value 10.0646,
+                                             :num_bins         4,          :min_value 10.0646,
                                              :max_value        40.7794}})
   (-> (data/run-query venues
                       (ql/aggregation (ql/count))
@@ -167,7 +167,7 @@
 (datasets/expect-with-engines (engines-that-support :binning)
   (merge (venues-col :latitude)
          {:min_value 10.0646, :source       :breakout,
-          :max_value 40.7794, :binning_info {:binning_strategy :num-bins, :bin_width 6.14296,
+          :max_value 40.7794, :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
                                              :num_bins         5,         :min_value 10.0646,
                                              :max_value        40.7794}})
   (-> (data/run-query venues
