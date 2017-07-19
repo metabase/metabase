@@ -107,9 +107,10 @@ export default class CardPicker extends Component {
             .uniq(c => c && c.id)
             .filter(c => c)
             .sortBy("name")
+            // add "Everything else" as the last option for cards without a
+            // collection
+            .concat([{ id: null, name: "Everything else"}])
             .value();
-
-        collections.unshift({ id: null, name: "None" });
 
         let visibleCardList;
         if (inputValue) {
