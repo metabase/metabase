@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
 import Popover from "metabase/components/Popover";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { MetabaseApi } from "metabase/services";
 import { defer } from "metabase/lib/promise";
@@ -20,6 +21,8 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 const MAX_SEARCH_RESULTS = 100;
 
+type LoadingState = "INIT" | "LOADING" | "LOADED";
+
 const mapStateToProps = (state, props) => ({
     metadata: getMetadata(state, props)
 });
@@ -32,12 +35,18 @@ type Props = {
 
     fieldId: FieldId,
     metadata: Metadata,
+
+    autoFocus?: boolean,
+    placeholder?: string,
+    onFocus?: () => void,
+    onBlur?: () => void,
 };
 
 type State = {
     value: string,
     lastValue: ?string,
-    suggestions: Array<[string, string]>
+    suggestions: Array<[string, string]>,
+    loadingState: LoadingState,
 };
 
 const entityNameCache = {};
@@ -62,7 +71,8 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         this.state = {
             value: props.value || "",
             lastValue: null,
-            suggestions: []
+            suggestions: [],
+            loadingState: "INIT",
         };
     }
 
@@ -79,9 +89,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         this.setState({ value }, this._search);
     }
 
-    // $FlowFixMe
-    _search = debounce(async (): void => {
-        const { metadata, fieldId } = this.props;
+    _search = () => {
         const { value, lastValue, suggestions } = this.state;
 
         // if this search is just an extension of the previous search, and the previous search
@@ -92,6 +100,18 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         ) {
             return;
         }
+
+        this.setState({
+            loadingState: "INIT"
+        });
+
+        this._searchDebounced();
+    }
+
+    // $FlowFixMe
+    _searchDebounced = debounce(async (): void => {
+        const { metadata, fieldId } = this.props;
+        const { value, lastValue, suggestions } = this.state;
 
         const valueField = metadata.fields[fieldId];
         if (!valueField) {
@@ -122,21 +142,27 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             return;
         }
 
+        const nameFieldRef = ["field-id", nameField.id];
+        const valueFieldRef = ["field-id", valueField.id];
+
         const datasetQuery: StructuredDatasetQuery = {
             database: database.id,
             type: "query",
             query: {
                 source_table: table.id,
-                filter: ["starts-with",["field-id", nameField.id], value],
-                breakout: [["field-id", valueField.id]],
-                // order_by: [[["field-id", nameField.id], "ascending"]],
+                filter: ["starts-with", nameFieldRef, value],
+                breakout: [valueFieldRef],
                 fields: [
-                    ["field-id", valueField.id],
-                    ["field-id", nameField.id]
+                    valueFieldRef,
+                    nameFieldRef
                 ],
                 limit: MAX_SEARCH_RESULTS,
             }
         }
+
+        this.setState({
+            loadingState: "LOADING"
+        });
 
         const cancelDeferred = defer();
         this._cancel = () => {
@@ -154,6 +180,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                 }
             }
             this.setState({
+                loadingState: "LOADED",
                 suggestions: result.data.rows,
                 lastValue: value
             });
@@ -162,7 +189,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
 
     render() {
         const { className, onChange } = this.props;
-        const { suggestions, value } = this.state;
+        const { suggestions, value, loadingState } = this.state;
 
         return (
             <div>
@@ -187,9 +214,15 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                 <TypeaheadPopover
                     value={value}
                     options={suggestions}
+                    loadingState={loadingState}
                     onSuggestionAccepted={(suggestion) => {
                         onChange(suggestion[0]);
-                        this.setState({ suggestions: [] });
+                        this.setState({
+                            // set the value to the display value of the selected suggestion
+                            value: suggestion[1],
+                            suggestions: [],
+                            loadingState: "INIT",
+                        });
                         if (this._input) {
                             ReactDOM.findDOMNode(this._input).blur();
                         }
@@ -205,25 +238,69 @@ import cx from "classnames";
 
 const TypeaheadPopover = Typeahead({
     optionFilter: (value, option) => option[1].slice(0, value.length) === value,
-    optionIsEqual: ([idA], [idB]) => idA === idB
-})(({ value, suggestions, onSuggestionAccepted, selectedSuggestion }) =>
-    suggestions && suggestions.length > 0 &&
-        <Popover targetOffsetY={15} >
+    optionIsEqual: ([idA], [idB]) => idA === idB,
+    defaultSingleSuggestion: true,
+})(({
+    value,
+    suggestions,
+    loadingState,
+    onSuggestionAccepted,
+    selectedSuggestion
+}) => (
+    <Popover
+        isOpen={
+            (loadingState === "LOADING") ||
+            (loadingState === "LOADED" && value && suggestions.length === 0) ||
+            (loadingState === "LOADED" && suggestions.length > 0)
+        }
+        targetOffsetY={15}
+        // these two props ensure the popover doesn't jump around
+        // alternatively we could give it a fixed width
+        pinInitialAttachment
+        horizontalAttachments={["left", "right"]}
+    >
+        { loadingState === "LOADING" ?
+            <div className="flex align-center m2">
+                <div className="mr2">
+                    <LoadingSpinner size={24} />
+                </div>
+                <div>Searching...</div>
+            </div>
+        : loadingState === "LOADED" && value && suggestions.length === 0 ?
+            <div className="flex align-center m2">
+                No matches
+            </div>
+        : loadingState === "LOADED" && suggestions.length > 0 ?
             <ul className="my1">
-            { suggestions.map(suggestion =>
+            {suggestions.map(suggestion => (
                 <li
-                    className={cx("bg-brand-hover text-white-hover p1 px2", {
+                    className={cx("bg-brand-hover text-white-hover cursor-pointer p1 px2", {
                         "bg-brand text-white": selectedSuggestion && suggestion[0] === selectedSuggestion[0]
                     })}
-                    onClick={() => onSuggestionAccepted(suggestion)}
+                    onMouseDown={e => {
+                        // prevents input from blurring prematurely
+                        e.preventDefault();
+                    }}
+                    onClick={() => {
+                        onSuggestionAccepted(suggestion);
+                    }}
                 >
-                    <span className="text-bold">{suggestion[1].slice(0, value.length)}</span>
-                    <span>{suggestion[1].slice(value.length)}</span>
-                    { suggestion[0] !== suggestion[1] &&
-                        <span className="ml4 float-right text-bold text-grey-2">{suggestion[0]}</span>
+                    <span className="text-bold">
+                        {suggestion[1].slice(0, value.length)}
+                    </span>
+                    <span>
+                        {suggestion[1].slice(value.length)}
+                    </span>
+                    {suggestion[0] !== suggestion[1] &&
+                        <span
+                            className="ml4 float-right text-bold text-grey-2"
+                        >
+                            {suggestion[0]}
+                        </span>
                     }
                 </li>
-            )}
+            ))}
             </ul>
-        </Popover>
-)
+        : null }
+    </Popover>
+));
