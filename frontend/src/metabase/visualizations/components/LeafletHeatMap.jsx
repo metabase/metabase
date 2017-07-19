@@ -7,9 +7,13 @@ export default class LeafletHeatMap extends LeafletMap {
     componentDidMount() {
         super.componentDidMount();
 
-        this.pinMarkerLayer = L.layerGroup([]).addTo(this.map);
-        this.heatLayer = L.heatLayer([], { radius: 25 }).addTo(this.map);
-        this.componentDidUpdate({}, {});
+        // Leaflet map may not be fully initialized
+        // https://stackoverflow.com/a/28903337/113
+        setTimeout(() => {
+            this.pinMarkerLayer = L.layerGroup([]).addTo(this.map);
+            this.heatLayer = L.heatLayer([], { radius: 25 }).addTo(this.map);
+            this.componentDidUpdate({}, {});
+        });
     }
 
     componentDidUpdate(prevProps, prevState) {
