@@ -246,6 +246,25 @@ export default class Question {
     toUnderlyingData(): Question {
         return this.setDisplay("table");
     }
+
+    composeThisQuery(): ?Question {
+        const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
+
+        if (this.id()) {
+            const card = {
+                display: "table",
+                dataset_query: {
+                    type: "query",
+                    database: SAVED_QUESTIONS_FAUX_DATABASE,
+                    query: {
+                        source_table: "card__" + this.id()
+                    }
+                }
+            };
+            return this.setCard(card);
+        }
+    }
+
     drillPK(field: Field, value: Value): ?Question {
         const query = this.query();
         if (query instanceof StructuredQuery) {

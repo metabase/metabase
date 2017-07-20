@@ -1450,7 +1450,20 @@ export const orders_count_card = {
 };
 
 export const native_orders_count_card = {
-    id: 2,
+    id: 3,
+    name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "native",
+        database: DATABASE_ID,
+        native: {
+            query: "SELECT count(*) FROM orders"
+        }
+    }
+};
+
+export const unsaved_native_orders_count_card = {
     name: "# orders data",
     display: 'table',
     visualization_settings: {},

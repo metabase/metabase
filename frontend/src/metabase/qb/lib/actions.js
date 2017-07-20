@@ -20,8 +20,6 @@ import { parseTimestamp } from "metabase/lib/time";
 
 // TODO: use icepick instead of mutation, make they handle frozen cards
 
-const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
-
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
     newCard.dataset_query = Utils.copy(card.dataset_query);
@@ -41,15 +39,6 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
         newCard.dataset_query.query.filter = query.filter;
         return newCard;
     }
-};
-
-export const nestThisQuery = question => {
-    const newCard = startNewCard(
-        "query",
-        SAVED_QUESTIONS_FAUX_DATABASE,
-        "card__" + question.id()
-    );
-    return newCard;
 };
 
 export const getFieldRefFromColumn = col => {
