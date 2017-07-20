@@ -1,15 +1,23 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [metabase
+  (:require [cheshire.core :as json]
+            [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.models
+             [dimension :refer [Dimension]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]]
             [toucan.db :as db]))
+
+(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -76,6 +84,56 @@
          (ql/limit 10))
        booleanize-native-form
        (format-rows-by [int int int])))
+
+(qp-expect-with-all-engines
+  {:rows  [[2 8 "Artisan"]
+           [3 2 "Asian"]
+           [4 2 "BBQ"]
+           [5 7 "Bakery"]
+           [6 2 "Bar"]]
+   :columns [(data/format-name "category_id")
+             "count"
+             "Foo"]
+   :cols    [(assoc (breakout-col (venues-col :category_id))
+               :remapped_to "Foo")
+             (aggregate-col :count)
+             (create-remapped-col "Foo" (data/format-name "category_id"))]
+   :native_form true}
+  (data/with-data
+    (fn []
+      (let [venue-names (defs/field-values defs/test-data-map "categories" "name")]
+        [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                                :name "Foo"
+                                :type :internal})
+         (db/insert! FieldValues {:field_id (data/id :venues :category_id)
+                                  :values (json/generate-string (range 0 (count venue-names)))
+                                  :human_readable_values (json/generate-string venue-names)})]))
+    (->> (data/run-query venues
+           (ql/aggregation (ql/count))
+           (ql/breakout $category_id)
+           (ql/limit 5))
+         booleanize-native-form
+         (format-rows-by [int int str]))))
+
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
+   ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
+  (data/with-data
+    (fn []
+      [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                              :name "Foo"
+                              :type :external
+                              :human_readable_field_id (data/id :categories :name)})])
+    [(->> (data/run-query venues
+             (ql/order-by (ql/desc $category_id))
+             (ql/limit 10))
+           rows
+           (map last))
+     (->> (data/run-query venues
+             (ql/order-by (ql/asc $category_id))
+             (ql/limit 10))
+           rows
+           (map last))]))
 
 (datasets/expect-with-engines (engines-that-support :binning)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]

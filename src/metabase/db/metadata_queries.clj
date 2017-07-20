@@ -4,7 +4,7 @@
              [query-processor :as qp]
              [util :as u]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [toucan.db :as db]))
 
 (defn- qp-query [db-id query]

@@ -1,8 +1,10 @@
 (ns metabase.query-processor.interface
   "Definitions of `Field`, `Value`, and other record types present in an expanded query.
    This namespace should just contain definitions of various protocols and record types; associated logic
-   should go in `metabase.query-processor.expand`."
-  (:require [metabase.models.field :as field]
+   should go in `metabase.query-processor.middleware.expand`."
+  (:require [metabase.models
+             [field :as field]
+             [dimension :as dim]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])
@@ -84,6 +86,22 @@
 ;;; |                                                                             FIELDS                                                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+
+(s/defrecord FieldValues [field-value-id          :- su/IntGreaterThanZero
+                          field-id                :- su/IntGreaterThanZero
+                          values                  :- (s/maybe (s/cond-pre [s/Any] {} []))
+                          human-readable-values   :- (s/maybe (s/cond-pre [s/Any] {} []))
+                          created-at              :- java.util.Date
+                          updated-at              :- java.util.Date])
+
+(s/defrecord Dimensions [dimension-id            :- su/IntGreaterThanZero
+                         field-id                :- su/IntGreaterThanZero
+                         dimension-name          :- su/NonBlankString
+                         human-readable-field-id :- (s/maybe su/IntGreaterThanZero)
+                         dimension-type          :- (apply s/enum dim/dimension-types)
+                         created-at              :- java.util.Date
+                         updated-at              :- java.util.Date])
+
 ;; Field is the "expanded" form of a Field ID (field reference) in MBQL
 (s/defrecord Field [field-id           :- su/IntGreaterThanZero
                     field-name         :- su/NonBlankString
@@ -100,6 +118,10 @@
                     parent-id          :- (s/maybe su/IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
                     parent             :- s/Any
+                    remapped-from      :- (s/maybe s/Str)
+                    remapped-to        :- (s/maybe s/Str)
+                    dimensions         :- (s/maybe (s/cond-pre Dimensions {} []))
+                    values             :- (s/maybe (s/cond-pre FieldValues {} []))
                     min-value          :- (s/maybe s/Num)
                     max-value          :- (s/maybe s/Num)]
   clojure.lang.Named
@@ -175,13 +197,16 @@
 ;;; Placeholder Types
 
 ;; Replace Field IDs with these during first pass
-(s/defrecord FieldPlaceholder [field-id         :- su/IntGreaterThanZero
-                               fk-field-id      :- (s/maybe (s/constrained su/IntGreaterThanZero
-                                                                        (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
-                                                                        "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
-                               datetime-unit    :- (s/maybe DatetimeFieldUnit)
-                               binning-strategy :- (s/maybe (apply s/enum binning-strategies))
-                               binning-param    :- (s/maybe s/Num)])
+(s/defrecord FieldPlaceholder [field-id            :- su/IntGreaterThanZero
+                               fk-field-id         :- (s/maybe (s/constrained su/IntGreaterThanZero
+                                                                              (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
+                                                                              "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
+                               datetime-unit       :- (s/maybe DatetimeFieldUnit)
+                               remapped-from       :- (s/maybe s/Str)
+                               remapped-to         :- (s/maybe s/Str)
+                               field-display-name  :- (s/maybe s/Str)
+                               binning-strategy    :- (s/maybe (apply s/enum binning-strategies))
+                               binning-param       :- (s/maybe s/Num)])
 
 (s/defrecord AgFieldRef [index :- s/Int])
 ;; TODO - add a method to get matching expression from the query?

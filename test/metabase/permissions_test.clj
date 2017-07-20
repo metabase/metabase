@@ -18,7 +18,7 @@
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]

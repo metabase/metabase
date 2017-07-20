@@ -5,7 +5,6 @@ import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
-import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
@@ -15,7 +14,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
-import { isPK, isFK } from "metabase/lib/types";
+import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
@@ -864,18 +863,22 @@ export const removeQueryBreakout = createQueryAction(
     Query.removeBreakout,
     ["QueryBuilder", "Remove GroupBy"]
 );
+// Exported for integration tests
+export const ADD_QUERY_FILTER = "metabase/qb/ADD_QUERY_FILTER"
 export const addQueryFilter = createQueryAction(
-    "metabase/qb/ADD_QUERY_FILTER",
+    ADD_QUERY_FILTER,
     Query.addFilter,
     ["QueryBuilder", "Add Filter"]
 );
+export const UPDATE_QUERY_FILTER = "metabase/qb/UPDATE_QUERY_FILTER";
 export const updateQueryFilter = createQueryAction(
-    "metabase/qb/UPDATE_QUERY_FILTER",
+    UPDATE_QUERY_FILTER,
     Query.updateFilter,
     ["QueryBuilder", "Modify Filter"]
 );
+export const REMOVE_QUERY_FILTER = "metabase/qb/REMOVE_QUERY_FILTER";
 export const removeQueryFilter = createQueryAction(
-    "metabase/qb/REMOVE_QUERY_FILTER",
+    REMOVE_QUERY_FILTER,
     Query.removeFilter,
     ["QueryBuilder", "Remove Filter"]
 );
@@ -1040,74 +1043,6 @@ export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     };
 });
 
-// cellClicked
-export const CELL_CLICKED = "metabase/qb/CELL_CLICKED";
-export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnIndex, filter) => {
-    return async (dispatch, getState) => {
-        // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-        const { qb: { card, queryResult } } = getState();
-        if (!queryResult) return false;
-
-        // lookup the coldef and cell value of the cell we are taking action on
-        var coldef          = queryResult.data.cols[columnIndex],
-            value           = queryResult.data.rows[rowIndex][columnIndex],
-            sourceTableID   = card.dataset_query.query.source_table,
-            isForeignColumn = coldef.table_id && coldef.table_id !== sourceTableID && coldef.fk_field_id,
-            fieldRefForm    = isForeignColumn ? ['fk->', coldef.fk_field_id, coldef.id] : ['field-id', coldef.id];
-
-        if (isPK(coldef.special_type)) {
-            // action is on a PK column
-            let newCard: Card = startNewCard("query", card.dataset_query.database);
-
-            newCard.dataset_query.query.source_table = coldef.table_id;
-            newCard.dataset_query.query.aggregation = ["rows"];
-            newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
-
-            // run it
-            dispatch(setCardAndRun(newCard));
-
-            MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "PK");
-        } else if (isFK(coldef.special_type)) {
-            // action is on an FK column
-            let newCard = startNewCard("query", card.dataset_query.database);
-
-            newCard.dataset_query.query.source_table = coldef.target.table_id;
-            newCard.dataset_query.query.aggregation = ["rows"];
-            newCard.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
-
-            // run it
-            dispatch(setCardAndRun(newCard));
-
-            MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "FK");
-        } else {
-            // this is applying a filter by clicking on a cell value
-            let dataset_query = Utils.copy(card.dataset_query);
-
-            if (coldef.unit && coldef.unit != "default" && filter === "=") {
-                // this is someone using quick filters on a datetime value
-                let start = moment(value).format("YYYY-MM-DD");
-                let end = start;
-                switch(coldef.unit) {
-                    case "week": end = moment(value).add(1, "weeks").subtract(1, "days").format("YYYY-MM-DD"); break;
-                    case "month": end = moment(value).add(1, "months").subtract(1, "days").format("YYYY-MM-DD"); break;
-                    case "quarter": end = moment(value).add(1, "quarters").subtract(1, "days").format("YYYY-MM-DD"); break;
-                    case "year": start = moment(value, "YYYY").format("YYYY-MM-DD");
-                                 end = moment(value, "YYYY").add(1, "years").subtract(1, "days").format("YYYY-MM-DD"); break;
-                }
-                Query.addFilter(dataset_query.query, ["BETWEEN", fieldRefForm, start, end]);
-            } else {
-                // quick filtering on a normal value (string/number)
-                Query.addFilter(dataset_query.query, [filter, fieldRefForm, value]);
-            }
-
-            // update and run the query
-            dispatch(setDatasetQuery(dataset_query, true));
-
-            MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "Quick Filter");
-        }
-    };
-});
-
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
     return async (dispatch, getState) => {
@@ -1241,5 +1176,3 @@ export const reloadCardFn = reloadCard;
 export const onRestoreOriginalQuery = reloadCard;
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
-export const cellClickedFn = cellClicked;
-export const followForeignKeyFn = followForeignKey;

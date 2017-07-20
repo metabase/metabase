@@ -275,10 +275,33 @@ export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(f
     };
 });
 
+// Docstring from m.api.field:
+// Update the human-readable values for a `Field` whose special type is
+// `category`/`city`/`state`/`country` or whose base type is `type/Boolean`."
+export const UPDATE_FIELD_VALUES = "metabase/metadata/UPDATE_FIELD_VALUES";
+export const updateFieldValues = createThunkAction(UPDATE_FIELD_VALUES, function(fieldId, fieldValuePairs) {
+    return async function(dispatch, getState) {
+        const requestStatePath = ["metadata", "fields", fieldId, "dimension"];
+        const existingStatePath = ["metadata", "fields", fieldId];
+
+        const putData = async () => {
+            return await MetabaseApi.field_values_update({ fieldId, values: fieldValuePairs })
+        };
+
+        return await updateData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            putData
+        });
+    };
+});
+
 export const ADD_PARAM_VALUES = "metabase/metadata/ADD_PARAM_VALUES";
 export const addParamValues = createAction(ADD_PARAM_VALUES);
 
-const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
+export const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
 export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", field.id];
@@ -290,6 +313,46 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
 
             const updatedField = await MetabaseApi.field_update(slimField);
             return normalize(updatedField, FieldSchema);
+        };
+
+        return await updateData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            putData
+        });
+    };
+});
+
+export const DELETE_FIELD_DIMENSION = "metabase/metadata/DELETE_FIELD_DIMENSION";
+export const deleteFieldDimension = createThunkAction(DELETE_FIELD_DIMENSION, function(fieldId) {
+    return async function(dispatch, getState) {
+        const requestStatePath = ["metadata", "fields", fieldId, "dimension"];
+        const existingStatePath = ["metadata", "fields", fieldId];
+
+        const putData = async () => {
+            return await MetabaseApi.field_dimension_delete({ fieldId });
+        };
+
+        return await updateData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            putData
+        });
+    };
+});
+
+export const UPDATE_FIELD_DIMENSION = "metabase/metadata/UPDATE_FIELD_DIMENSION";
+export const updateFieldDimension = createThunkAction(UPDATE_FIELD_DIMENSION, function(fieldId, dimension) {
+    return async function(dispatch, getState) {
+        const requestStatePath = ["metadata", "fields", fieldId, "dimension"];
+        const existingStatePath = ["metadata", "fields", fieldId];
+
+        const putData = async () => {
+            return await MetabaseApi.field_dimension_update({ fieldId, ...dimension });
         };
 
         return await updateData({

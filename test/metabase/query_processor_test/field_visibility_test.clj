@@ -1,8 +1,10 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
-  (:require [metabase.models.field :refer [Field]]
-            [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.expand :as ql]
+  (:require [metabase
+             [query-processor-test :refer :all]
+             [util :as u]]
+            [metabase.models.field :refer [Field]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [toucan.db :as db]))
 
@@ -16,16 +18,11 @@
 
 (expect-with-non-timeseries-dbs
   [(set (venues-cols))
-   #{(venues-col :category_id)
-     (venues-col :name)
-     (venues-col :latitude)
-     (assoc (venues-col :id)
-       :min_value nil
-       :max_value nil)
-     (venues-col :longitude)
-     (assoc (venues-col :price) :visibility_type :details-only
-            :min_value nil
-            :max_value nil)}
+   (set (map (fn [col]
+               (if (= (data/id :venues :price) (u/get-id col))
+                 (assoc col :visibility_type :details-only)
+                 col))
+             (venues-cols)))
    (set (venues-cols))]
   [(get-col-names)
    (do (db/update! Field (data/id :venues :price), :visibility_type :details-only)
@@ -38,9 +35,7 @@
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
   {:columns     (->columns "id" "name" "last_login")
-   :cols        [(assoc (users-col :id)
-                   :min_value nil
-                   :max_value nil)
+   :cols        [(users-col :id)
                  (users-col :name)
                  (users-col :last_login)],
    :rows        [[ 1 "Plato Yeshua"]

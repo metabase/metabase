@@ -11,7 +11,8 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
-             [field :refer [Field]]
+             [field :refer [Field with-normal-values]]
+             [field-values :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
             [metabase.util.schema :as su]
@@ -188,6 +189,14 @@
                                    :dimension_options []
                                    :default_dimension_option nil) fields))))))
 
+(defn- format-fields-for-response [resp]
+  (update resp :fields
+          (fn [fields]
+            (for [{:keys [values] :as field} fields]
+              (if (seq values)
+                (update field :values fv/field-values->pairs)
+                field)))))
+
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
@@ -199,9 +208,11 @@
   (let [table (api/read-check Table id)
         driver (driver/engine->driver (db/select-one-field :engine Database :id (:db_id table)))]
     (-> table
-        (hydrate :db [:fields :target] :field_values :segments :metrics)
+        (hydrate :db [:fields :target :dimensions] :segments :metrics)
+        (update :fields with-normal-values)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
+        format-fields-for-response
         (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
                                ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                                identity

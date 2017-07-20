@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.binning-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.binning :refer :all]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware
+             [binning :refer :all]
+             [expand :as ql]]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-vars metabase.query-processor.middleware.binning filter->field-map extract-bounds ceil-to floor-to order-of-magnitude nicer-bin-width nicer-bounds nicer-breakout)

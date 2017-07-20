@@ -126,8 +126,10 @@ export const MetabaseApi = {
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
     field_values:                GET("/api/field/:fieldId/values"),
-    // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
+    field_values_update:        POST("/api/field/:fieldId/values"),
     field_update:                PUT("/api/field/:id"),
+    field_dimension_update:     POST("/api/field/:fieldId/dimension"),
+    field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration"),
 };

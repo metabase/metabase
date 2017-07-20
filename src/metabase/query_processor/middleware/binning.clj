@@ -129,40 +129,54 @@
         :num-bins  num-bins
         :bin-width (calculate-bin-width min-value max-value num-bins)))))
 
-(defn- update-bin-width
-  "Calculates the bin width given the global min/max and user
-  specified crtieria that could impact that min/max. Throws an
-  Exception if no min/max values are found."
+(defn- update-binned-field
+  "Given a field, resolve the binning strategy (either provided or
+  found if default is specified) and calculate the number of bins and
+  bin width for this file. `FILTER-FIELD-MAP` contains related
+  criteria that could narrow the domain for the field."
+  [{:keys [field num-bins strategy bin-width] :as breakout} filter-field-map]
+  (let [[min-value max-value] (extract-bounds field filter-field-map)]
+    (when-not (and min-value max-value)
+      (throw (Exception. (format "Unable to bin field '%s' with id '%s' without a min/max value"
+                                 (get-in breakout [:field :field-name])
+                                 (get-in breakout [:field :field-id])))))
+    (let [breakout-with-min-max (assoc breakout :min-value min-value :max-value max-value)
+          resolved-breakout (case strategy
+
+                              :num-bins
+                              (assoc breakout-with-min-max
+                                :bin-width (calculate-bin-width min-value
+                                                                max-value
+                                                                num-bins))
+
+                              :bin-width
+                              (assoc breakout-with-min-max
+                                :num-bins (calculate-num-bins min-value
+                                                              max-value
+                                                              bin-width))
+
+                              :default
+                              (resolve-default-strategy breakout-with-min-max))]
+      ;; Bail out and use unmodifed version if we can't converge on a
+      ;; nice version.
+      (or (nicer-breakout resolved-breakout) resolved-breakout))))
+
+(defn- update-binned-fields
+  "Maps over `BREAKOUTS` resolving the binning strategy and
+  calculating bin widths and number of bins."
   [breakouts filter-field-map]
   (mapv (fn [{:keys [field num-bins strategy bin-width] :as breakout}]
-          (if (instance? BinnedField breakout)
-            (let [[min-value max-value] (extract-bounds field filter-field-map)
-                  updated-breakout (assoc breakout :min-value min-value :max-value max-value)]
+          (cond
 
-              (when-not (and min-value max-value)
-                (throw (Exception. (format "Unable to bin field '%s' with id '%s' without a min/max value"
-                                           (get-in breakout [:field :field-name])
-                                           (get-in breakout [:field :field-id])))))
-              (let [breakout (case strategy
+            (instance? BinnedField breakout)
+            (update-binned-field breakout filter-field-map)
 
-                               :num-bins
-                               (assoc updated-breakout
-                                 :bin-width (calculate-bin-width min-value
-                                                                 max-value
-                                                                 num-bins))
+            (and (contains? breakout :direction)
+                 (instance? BinnedField (:field breakout)))
+            (update breakout :field update-binned-field filter-field-map)
 
-                               :bin-width
-                               (assoc updated-breakout
-                                 :num-bins (calculate-num-bins min-value
-                                                               max-value
-                                                               bin-width))
-
-                               :default
-                               (resolve-default-strategy updated-breakout))]
-                ;; Bail out and use unmodifed version if we can't converge on a
-                ;; nice version.
-                (or (nicer-breakout breakout) breakout)))
-            breakouts))
+            :else
+            breakout))
         breakouts))
 
 (defn update-binning-strategy
@@ -173,7 +187,10 @@
   criteria values (or global min/max information)."
   [qp]
   (fn [query]
-    (let [binned-breakouts (filter #(instance? BinnedField %) (get-in query [:query :breakout]))]
-      (if (seq binned-breakouts)
-        (qp (update-in query [:query :breakout] update-bin-width (filter->field-map (get-in query [:query :filter]))))
-        (qp query)))))
+    (let [binned-breakouts (filter #(instance? BinnedField %) (get-in query [:query :breakout]))
+          binned-order-by  (filter #(instance? BinnedField %) (map :field (get-in query [:query :order-by])))
+          filter-field-map (filter->field-map (get-in query [:query :filter]))]
+      (qp
+       (cond-> query
+         (seq binned-breakouts) (update-in [:query :breakout] update-binned-fields filter-field-map)
+         (seq binned-order-by) (update-in [:query :order-by] update-binned-fields filter-field-map))))))
