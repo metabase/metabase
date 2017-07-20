@@ -1,6 +1,7 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
 import CompoundQueryAction from "./CompoundQueryAction";
+
 import Question from "metabase-lib/lib/Question";
 
 import {
