@@ -349,7 +349,6 @@
                                                                      ["Simcha Yan"]
                                                                      ["Spiros Teofil"]
                                                                      ["Szymon Theutrich"]]}))])
-
             :rows         15
             :updated_at   $
             :id           (id :users)
