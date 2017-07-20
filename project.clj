@@ -74,7 +74,7 @@
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
-                 [org.postgresql/postgresql "42.1.3.jre7"]            ; Postgres driver
+                 [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
                  [ring/ring-core "1.6.0"]
