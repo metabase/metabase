@@ -405,15 +405,21 @@ export const addRemappings = createAction(ADD_REMAPPINGS, (fieldId, remappings) 
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(FETCH_REMAPPING, (value, fieldId) =>
     async (dispatch, getState) => {
-        // TODO: use fetchData to ensure we don't try loading the same remapping multiple times
         const metadata = getMetadata(getState());
         const field = metadata.fields[fieldId];
         const remappedField = field && field.remappedField();
-        if (field && remappedField) {
-            const remapping = await MetabaseApi.field_remapping({ value, field, remappedField });
-            if (remapping) {
-                dispatch(addRemappings(fieldId, [remapping]));
-            }
+        if (field && remappedField && field.remappedValue(value) === undefined) {
+            fetchData({
+                dispatch,
+                getState,
+                requestStatePath: ["metadata", "remapping", fieldId, JSON.stringify(value)],
+                getData: async () => {
+                    const remapping = await MetabaseApi.field_remapping({ value, field, remappedField });
+                    if (remapping) {
+                        dispatch(addRemappings(fieldId, [remapping]));
+                    }
+                }
+            });
         }
     }
 );

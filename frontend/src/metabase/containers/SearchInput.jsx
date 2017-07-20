@@ -1,36 +1,15 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { connect } from "react-redux";
 
 import Popover from "metabase/components/Popover";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { MetabaseApi } from "metabase/services";
 import { defer } from "metabase/lib/promise";
-
 import { debounce } from "underscore";
 
-import { getMetadata } from "metabase/selectors/metadata";
-import { addRemappings } from "metabase/redux/metadata";
-
-import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
-import type { FieldId } from "metabase/meta/types/Field";
-
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-
-const MAX_SEARCH_RESULTS = 100;
-
 type LoadingState = "INIT" | "LOADING" | "LOADED";
-
-const mapStateToProps = (state, props) => ({
-    metadata: getMetadata(state, props)
-});
-
-const mapDispatchToProps = {
-    addRemappings
-}
 
 type Props = {
     className?: string,
@@ -38,13 +17,13 @@ type Props = {
     value: any,
     onChange: () => void,
 
-    fieldId: FieldId,
-    metadata: Metadata,
-
     autoFocus?: boolean,
     placeholder?: string,
     onFocus?: () => void,
     onBlur?: () => void,
+
+    maxResults: number,
+    search: (prefix: string, cancelled: Promise<void>) => ?[any, any][]
 };
 
 type State = {
@@ -54,16 +33,6 @@ type State = {
     loadingState: LoadingState,
 };
 
-const entityNameCache = {};
-function setEntityName(fieldId, entityId, entityName) {
-    entityNameCache[fieldId] = entityNameCache[fieldId] || {};
-    entityNameCache[fieldId][entityId] = entityName;
-}
-function getEntityName(fieldId, entityId) {
-    return entityNameCache[fieldId] && entityNameCache[fieldId][entityId];
-}
-
-@connect(mapStateToProps, mapDispatchToProps)
 export default class SearchTextWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
@@ -101,7 +70,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         // wasn't truncated, then we don't need to do another search because TypeaheadListing
         // will filter the previous result client-side
         if (lastValue && value.slice(0, lastValue.length) === lastValue &&
-            suggestions.length < MAX_SEARCH_RESULTS
+            suggestions.length < this.props.maxResults
         ) {
             return;
         }
@@ -115,19 +84,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
 
     // $FlowFixMe
     _searchDebounced = debounce(async (): void => {
-        const { metadata, fieldId } = this.props;
-        const { value, lastValue, suggestions } = this.state;
-
-        const field = metadata.fields[fieldId];
-        if (!field) {
-            return;
-        }
-
-        let searchField = field.remappedField();
-        // even if there's no remapping allow the user to search the values
-        if (!searchField && field.isString()) {
-            searchField = field;
-        }
+        const { value } = this.state;
 
         this.setState({
             loadingState: "LOADING"
@@ -139,19 +96,11 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             cancelDeferred.resolve();
         }
 
-        let results = await MetabaseApi.field_search({
-            value,
-            field,
-            searchField,
-            maxResults: MAX_SEARCH_RESULTS
-        }, { cancelled: cancelDeferred.promise });
+        let results = await this.props.search(value, cancelDeferred.promise);
 
         this._cancel = null;
 
         if (results) {
-            if (field !== searchField) {
-                this.props.addRemappings(field.id, results);
-            }
             this.setState({
                 loadingState: "LOADED",
                 suggestions: results,

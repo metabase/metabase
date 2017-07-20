@@ -2,10 +2,9 @@
 
 import React, { Component } from "react";
 
-import SearchInput from "metabase/containers/SearchInput";
+import FieldSearchInput from "metabase/containers/FieldSearchInput";
 
 import cx from "classnames";
-import _ from "underscore";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
@@ -26,13 +25,13 @@ export default class SearchPicker extends Component {
 
         return (
             <div className="FilterInput px1 pt1 relative">
-                <SearchInput
+                <FieldSearchInput
                     className={cx("input block full border-purple")}
                     value={values[0]}
                     onChange={value => onValuesChange([value])}
-                    fieldId={field.id}
-                    metadata={field.metadata}
                     placeholder={placeholder}
+
+                    field={field}
                 />
             </div>
         );

@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';
 import Popover from "metabase/components/Popover.jsx";
 import FilterPopover from "./FilterPopover.jsx";
+import RemappedValue from "metabase/containers/RemappedValue";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 
@@ -65,10 +66,12 @@ export default class FilterWidget extends Component {
         // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
         if (operator && operator.multi && values.length > maxDisplayValues) {
             values = [values.length + " selections"];
-        }
-
-        if (dimension.field().isDate()) {
+        } else if (dimension.field().isDate()) {
             values = generateTimeFilterValuesDescriptions(filter);
+        } else {
+            values = values.map((value, index) =>
+                <RemappedValue key={index} value={value} column={dimension.field()} />
+            )
         }
 
         return (
@@ -90,10 +93,9 @@ export default class FilterWidget extends Component {
                 { values.length > 0 && (
                     <div className="flex align-center flex-wrap">
                         {values.map((value, valueIndex) => {
-                            var valueString = value != null ? value.toString() : null;
                             return value != undefined && (
                                 <div key={valueIndex} className="Filter-section Filter-section-value">
-                                    <span className="QueryOption">{valueString}</span>
+                                    <span className="QueryOption">{value}</span>
                                 </div>
                             );
                         })}

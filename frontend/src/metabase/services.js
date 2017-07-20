@@ -131,6 +131,7 @@ export const MetabaseApi = {
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration"),
 
+    // $FlowFixMe: arg types
     field_search: async ({ value, field, searchField = field, maxResults = 100 }, options) => {
         const datasetQuery = {
             database: field.table.database.id,
@@ -151,6 +152,7 @@ export const MetabaseApi = {
         return result && result.data && result.data.rows;
     },
 
+    // $FlowFixMe: arg types
     field_remapping: async ({ value, field, remappedField }, options) => {
         const datasetQuery = {
             database: field.table.database.id,

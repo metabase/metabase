@@ -212,6 +212,7 @@ export default class FilterPopover extends Component {
                         placeholder={placeholder}
                         multi={operator.multi}
                         onCommit={this.onCommit}
+                        // $FlowFixMe
                         field={field}
                     />
                 );

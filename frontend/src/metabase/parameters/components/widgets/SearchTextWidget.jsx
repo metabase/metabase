@@ -1,11 +1,14 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import { connect } from "react-redux";
+
+import FieldSearchInput from "metabase/containers/FieldSearchInput";
+import RemappedValue from "metabase/containers/RemappedValue";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 import type { FieldId } from "metabase/meta/types/Field";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-
-import SearchInput from "metabase/containers/SearchInput";
 
 type Props = {
     value: any,
@@ -14,32 +17,17 @@ type Props = {
     isEditing: bool,
 
     fieldId: FieldId,
-    metadata: Metadata,
 };
 
 type State = {
     focused: bool,
 };
 
-function getEntityName(fieldId, entityId) {
-    return "TODO";
-}
-
-import Remapped from "metabase/hoc/Remapped";
-
-const RemappedValue = Remapped(({ value, column, displayValue, displayColumn }) => {
-    if (displayValue != null) {
-        return (
-            <span>
-                <span className="text-bold">{displayValue}</span>
-                <span style={{ opacity: 0.5 }}>{" - " + value}</span>
-            </span>
-        );
-    } else {
-        return <span>{value}</span>;
-    }
+const mapStateToProps = (state) => ({
+    metadata: getMetadata(state)
 })
 
+@connect(mapStateToProps)
 export default class SearchTextWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
@@ -58,7 +46,8 @@ export default class SearchTextWidget extends Component<*, Props, State> {
     }
 
     render() {
-        const { value, setValue, isEditing, fieldId } = this.props;
+        // $FlowFixMe: metadata provided by @connect
+        const { value, setValue, isEditing, fieldId, metadata } = this.props;
         const { focused } = this.state;
 
         if (!focused && value) {
@@ -69,7 +58,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             );
         } else {
             return (
-                <SearchInput
+                <FieldSearchInput
                     value={value}
                     onChange={setValue}
                     onFocus={() => this.setState({ focused: true })}
@@ -77,7 +66,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                     autoFocus={this.state.focused}
                     placeholder={isEditing ? "Enter a default value..." : "Enter a value..."}
 
-                    fieldId={fieldId}
+                    field={metadata.fields[fieldId]}
                 />
             )
         }
