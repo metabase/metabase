@@ -306,7 +306,7 @@ function transformSingleSeries(s, series, seriesIndex) {
                     // show series title if it's multiseries
                     series.length > 1 && card.name,
                     // always show grouping value
-                    formatValue(breakoutValue, cols[seriesColumnIndex])
+                    formatValue(breakoutValue, { column: cols[seriesColumnIndex] })
                 ].filter(n => n).join(": "),
                 _transformed: true,
                 _breakoutValue: breakoutValue,

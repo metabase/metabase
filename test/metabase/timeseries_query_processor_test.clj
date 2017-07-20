@@ -4,7 +4,7 @@
   (:require [metabase
              [query-processor-test :refer [first-row format-rows-by rows]]
              [util :as u]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data
              [dataset-definitions :as defs]

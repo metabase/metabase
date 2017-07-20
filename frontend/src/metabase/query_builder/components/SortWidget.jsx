@@ -67,6 +67,7 @@ export default class SortWidget extends Component {
         return (
             <div className="flex align-center">
                 <FieldWidget
+                    query={this.props.query}
                     className="Filter-section Filter-section-sort-field SelectionModule"
                     tableMetadata={this.props.tableMetadata}
                     field={this.state.field}
@@ -74,7 +75,7 @@ export default class SortWidget extends Component {
                     customFieldOptions={this.props.customFieldOptions}
                     setField={this.setField}
                     isInitiallyOpen={this.state.field === null}
-                    enableTimeGrouping={false}
+                    enableSubDimensions={false}
                 />
 
                 <SelectionModule

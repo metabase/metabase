@@ -1,14 +1,15 @@
 import { compile, suggest, parse } from "metabase/lib/expressions/parser";
 import _ from "underscore";
+import { TYPE } from "metabase/lib/types";
 
 const mockMetadata = {
     tableMetadata: {
         fields: [
-            {id: 1, display_name: "A"},
-            {id: 2, display_name: "B"},
-            {id: 3, display_name: "C"},
-            {id: 10, display_name: "Toucan Sam"},
-            {id: 11, display_name: "count"}
+            {id: 1, display_name: "A", base_type: TYPE.Float },
+            {id: 2, display_name: "B", base_type: TYPE.Float},
+            {id: 3, display_name: "C", base_type: TYPE.Float},
+            {id: 10, display_name: "Toucan Sam", base_type: TYPE.Float},
+            {id: 11, display_name: "count", base_type: TYPE.Float}
         ],
         metrics: [
             {id: 1, name: "foo bar"},

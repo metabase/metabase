@@ -7,7 +7,7 @@ import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
-import { stripId } from "metabase/lib/formatting";
+import { stripId, formatField } from "metabase/lib/formatting";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import * as Table from "./query/table";
@@ -435,7 +435,7 @@ var Query = {
     },
 
     getFieldPathName(fieldId, tableDef) {
-        return Query.getFieldPath(fieldId, tableDef).map(f => f && f.display_name).join(": ")
+        return Query.getFieldPath(fieldId, tableDef).map(formatField).join(": ")
     },
 
     getDatetimeUnit(field) {

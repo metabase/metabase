@@ -343,7 +343,7 @@
   (merge {:id           (format "card__%d" (u/get-id card))
           :db_id        database/virtual-id
           :display_name (:name card)
-          :schema       "All questions"
+          :schema       "Everything else"
           :description  nil}
          kvs))
 

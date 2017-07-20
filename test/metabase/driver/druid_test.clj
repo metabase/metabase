@@ -9,7 +9,7 @@
              [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
             [toucan.util.test :as tt]))
@@ -35,6 +35,9 @@
                              :database (data/id)})
           (m/dissoc-in [:data :results_metadata])))))
 
+(def ^:private col-defaults
+  {:base_type :type/Text, :remapped_from nil, :remapped_to nil})
+
 ;; test druid native queries
 (expect-with-engine :druid
   {:row_count 2
@@ -42,12 +45,13 @@
    :data      {:columns     ["timestamp" "id" "user_name" "venue_price" "venue_name" "count"]
                :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-               :cols        [{:name "timestamp",   :display_name "Timestamp",   :base_type :type/Text}
-                             {:name "id",          :display_name "ID",          :base_type :type/Text}
-                             {:name "user_name",   :display_name "User Name",   :base_type :type/Text}
-                             {:name "venue_price", :display_name "Venue Price", :base_type :type/Text}
-                             {:name "venue_name",  :display_name "Venue Name",  :base_type :type/Text}
-                             {:name "count",       :display_name "Count",       :base_type :type/Integer}]
+               :cols        (mapv #(merge col-defaults %)
+                                  [{:name "timestamp",   :display_name "Timestamp"}
+                                   {:name "id",          :display_name "ID"}
+                                   {:name "user_name",   :display_name "User Name"}
+                                   {:name "venue_price", :display_name "Venue Price"}
+                                   {:name "venue_name",  :display_name "Venue Name"}
+                                   {:name "count",       :display_name "Count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
   (process-native-query native-query-1))
 

@@ -2,7 +2,7 @@
   "Tests for behavior of fields with different visibility settings."
   (:require [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [toucan.db :as db]))
 
