@@ -1,7 +1,5 @@
 /* @flow */
 
-import { nestThisQuery } from "metabase/qb/lib/actions";
-
 import type {
     ClickAction,
     ClickActionProps
