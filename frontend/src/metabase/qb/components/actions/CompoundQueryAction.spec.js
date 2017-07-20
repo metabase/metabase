@@ -1,44 +1,42 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
 import CompoundQueryAction from "./CompoundQueryAction";
+import Question from "metabase-lib/lib/Question";
 
 import {
-    savedCard,
-    nativeCard,
-    savedNativeCard,
-    tableMetadata
-} from "../__support__/fixtures";
+    native_orders_count_card,
+    orders_count_card,
+    unsaved_native_orders_count_card,
+    metadata
+} from "metabase/__support__/sample_dataset_fixture";
 
 describe("CompoundQueryAction", () => {
     it("should not suggest a compount query for an unsaved native query", () => {
-        expect(
-            CompoundQueryAction({
-                card: nativeCard,
-                tableMetadata: tableMetadata
-            })
-        ).toHaveLength(0);
+        const question = new Question(
+            metadata,
+            unsaved_native_orders_count_card
+        );
+        expect(CompoundQueryAction({ question })).toHaveLength(0);
     });
     it("should suggest a compound query for a mbql query", () => {
-        const actions = CompoundQueryAction({
-            card: savedCard,
-            tableMetadata: tableMetadata
-        });
+        const question = new Question(metadata, orders_count_card);
+
+        const actions = CompoundQueryAction({ question });
         expect(actions).toHaveLength(1);
-        const newCard = actions[0].card();
+        const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: "card__1"
+            source_table: "card__2"
         });
     });
 
     it("should return a nested query for a saved native card", () => {
-        const actions = CompoundQueryAction({
-            card: savedNativeCard,
-            tableMetadata: tableMetadata
-        });
+        const question = new Question(metadata, native_orders_count_card);
+
+        const actions = CompoundQueryAction({ question });
         expect(actions).toHaveLength(1);
-        const newCard = actions[0].card();
+        const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: "card__2"
+            source_table: "card__3"
         });
     });
 });
