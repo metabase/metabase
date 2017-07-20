@@ -140,7 +140,6 @@ if (process.env.E2E_HOST) {
  *     * getting a React container subtree for the current route
  */
 
-// Todo: Add a safeguard against not waiting createTestStore to finish
 export const createTestStore = async () => {
     hasFinishedCreatingStore = false;
     hasStartedCreatingStore = true;
@@ -222,8 +221,8 @@ const testStoreEnhancer = (createStore, history) => {
                 }
             },
 
-            getDispatchedActions: () => {
-                return store._dispatchedActions;
+            logDispatchedActions: () => {
+                console.log(`Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`);
             },
 
             pushPath: (path) => history.push(path),

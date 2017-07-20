@@ -12,9 +12,9 @@ import { MetabaseApi } from "metabase/services";
 const RESET = "metabase/admin/databases/RESET";
 const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
 export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
-const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
+export const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
 const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
-const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
+export const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
 
@@ -73,7 +73,7 @@ export const addSampleDataset = createThunkAction(ADD_SAMPLE_DATASET, function()
     };
 });
 
-const START_ADD_DATABASE = 'metabase/admin/databases/START_ADD_DATABASE'
+export const START_ADD_DATABASE = 'metabase/admin/databases/START_ADD_DATABASE'
 const startAddDatabase = createAction(START_ADD_DATABASE)
 
 // saveDatabase
@@ -91,8 +91,8 @@ export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, 
             } else {
                 //$scope.$broadcast("form:api-success", "Successfully created!");
                 //$scope.$emit("database:created", new_database);
-                dispatch(startAddDatabase(database))
                 dispatch(push('/admin/databases'))
+                dispatch(startAddDatabase(database))
                 savedDatabase = await MetabaseApi.db_create(database);
                 MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
 
