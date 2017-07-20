@@ -11,8 +11,10 @@ import ExternalLink from "metabase/components/ExternalLink.jsx";
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
+import type { Field } from "metabase/meta/types/Field";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
@@ -199,11 +201,37 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
 
 export function formatValue(value: Value, options: FormattingOptions = {}) {
     let column = options.column;
+
     options = {
         jsx: false,
         comma: isNumber(column),
         ...options
     };
+
+    // "column" may also be a field object
+    // $FlowFixMe: remapping is a special field added by Visualization.jsx or getMetadata selector
+    if (column && column.remapping && column.remapping.size > 0) {
+        // $FlowFixMe
+        const remappedValueSample = column.remapping.values().next().value
+
+        // Even if the column only has a list of analyzed values without remappings, those values
+        // are keys in `remapping` array with value `undefined`
+        const hasSetRemappings = remappedValueSample !== undefined
+        if (hasSetRemappings) {
+            // $FlowFixMe
+            if (column.remapping.has(value)) {
+                // $FlowFixMe
+                return column.remapping.get(value);
+            }
+
+            const remappedValueIsString = typeof remappedValueSample
+            if (remappedValueIsString) {
+                // A simple way to hide intermediate ticks for a numeral value that has been remapped to a string
+                return null;
+            }
+        }
+    }
+
     if (value == undefined) {
         return null;
     } else if (column && isa(column.special_type, TYPE.URL)) {
@@ -227,6 +255,31 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         return JSON.stringify(value);
     } else {
         return String(value);
+    }
+}
+
+export function formatColumn(column: Column): string {
+    if (!column) {
+        return "";
+    } else if (column.remapped_to_column != null) {
+        // $FlowFixMe: remapped_to_column is a special field added by Visualization.jsx
+        return formatColumn(column.remapped_to_column)
+    } else {
+        let columnTitle = getFriendlyName(column);
+        if (column.unit && column.unit !== "default") {
+            columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
+        }
+        return columnTitle;
+    }
+}
+
+export function formatField(field: Field): string {
+    if (!field) {
+        return "";
+    } else if (field.dimensions && field.dimensions.name) {
+        return field.dimensions.name;
+    } else {
+        return field.display_name || field.name;
     }
 }
 

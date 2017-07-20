@@ -55,22 +55,18 @@ exports[`Button should render "with an icon" correctly 1`] = `
 </button>
 `;
 
-exports[`CheckBox should render "off" correctly 1`] = `
+exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
   className="cursor-pointer"
   onClick={[Function]}
-  style={undefined}
 >
   <div
+    className="flex align-center justify-center rounded"
     style={
       Object {
-        "alignItems": "center",
         "backgroundColor": "white",
         "border": "2px solid #ddd",
-        "borderRadius": 4,
-        "display": "flex",
         "height": 16,
-        "justifyContent": "center",
         "width": 16,
       }
     }
@@ -78,26 +74,18 @@ exports[`CheckBox should render "off" correctly 1`] = `
 </div>
 `;
 
-exports[`CheckBox should render "on inverted" correctly 1`] = `
+exports[`CheckBox should render "Green" correctly 1`] = `
 <div
   className="cursor-pointer"
   onClick={[Function]}
-  style={
-    Object {
-      "color": "#509EE3",
-    }
-  }
 >
   <div
+    className="flex align-center justify-center rounded"
     style={
       Object {
-        "alignItems": "center",
-        "backgroundColor": "currentColor",
-        "border": "2px solid currentColor",
-        "borderRadius": 4,
-        "display": "flex",
+        "backgroundColor": "#9CC177",
+        "border": "2px solid #9CC177",
         "height": 16,
-        "justifyContent": "center",
         "width": 16,
       }
     }
@@ -124,22 +112,18 @@ exports[`CheckBox should render "on inverted" correctly 1`] = `
 </div>
 `;
 
-exports[`CheckBox should render "on" correctly 1`] = `
+exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 <div
   className="cursor-pointer"
   onClick={[Function]}
-  style={undefined}
 >
   <div
+    className="flex align-center justify-center rounded"
     style={
       Object {
-        "alignItems": "center",
-        "backgroundColor": "white",
-        "border": "2px solid #ddd",
-        "borderRadius": 4,
-        "display": "flex",
+        "backgroundColor": "#509EE3",
+        "border": "2px solid #509EE3",
         "height": 16,
-        "justifyContent": "center",
         "width": 16,
       }
     }
@@ -152,7 +136,7 @@ exports[`CheckBox should render "on" correctly 1`] = `
       size={12}
       style={
         Object {
-          "color": "currentColor",
+          "color": "white",
         }
       }
       viewBox="0 0 32 32"
@@ -166,97 +150,181 @@ exports[`CheckBox should render "on" correctly 1`] = `
 </div>
 `;
 
-exports[`StackedCheckBox should render "off" correctly 1`] = `
-<span
-  className={undefined}
-  style={
-    Object {
-      "position": "relative",
-    }
-  }
+exports[`CheckBox should render "Purple" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
 >
   <div
-    className="cursor-pointer"
-    onClick={[Function]}
+    className="flex align-center justify-center rounded"
     style={
       Object {
-        "left": 3,
-        "position": "absolute",
-        "top": -3,
-        "zIndex": -1,
+        "backgroundColor": "#A989C5",
+        "border": "2px solid #A989C5",
+        "height": 16,
+        "width": 16,
       }
     }
   >
-    <div
+    <svg
+      className="Icon Icon-check"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
       style={
         Object {
-          "alignItems": "center",
-          "backgroundColor": "white",
-          "border": "2px solid #ddd",
-          "borderRadius": 4,
-          "display": "flex",
-          "height": 16,
-          "justifyContent": "center",
-          "width": 16,
+          "color": "white",
         }
       }
-    />
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
   </div>
-  <div
-    className="cursor-pointer"
-    onClick={[Function]}
-    style={Object {}}
-  >
-    <div
-      style={
-        Object {
-          "alignItems": "center",
-          "backgroundColor": "white",
-          "border": "2px solid #ddd",
-          "borderRadius": 4,
-          "display": "flex",
-          "height": 16,
-          "justifyContent": "center",
-          "width": 16,
-        }
-      }
-    />
-  </div>
-</span>
+</div>
 `;
 
-exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
-<span
-  className={undefined}
-  style={
-    Object {
-      "color": "#509EE3",
-      "position": "relative",
-    }
-  }
+exports[`CheckBox should render "Red" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
 >
   <div
-    className="cursor-pointer"
-    onClick={[Function]}
+    className="flex align-center justify-center rounded"
     style={
       Object {
-        "left": 3,
-        "position": "absolute",
-        "top": -3,
+        "backgroundColor": "#EF8C8C",
+        "border": "2px solid #EF8C8C",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`CheckBox should render "Yellow" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "#f9d45c",
+        "border": "2px solid #f9d45c",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
+<div
+  className="relative"
+>
+  <span
+    className="absolute"
+    style={
+      Object {
+        "left": 4,
+        "top": -4,
         "zIndex": -1,
       }
     }
   >
     <div
+      className="cursor-pointer"
+      onClick={[Function]}
+    >
+      <div
+        className="flex align-center justify-center rounded"
+        style={
+          Object {
+            "backgroundColor": "#A989C5",
+            "border": "2px solid #A989C5",
+            "height": 16,
+            "width": 16,
+          }
+        }
+      >
+        <svg
+          className="Icon Icon-check"
+          fill="currentcolor"
+          height={12}
+          name="check"
+          size={12}
+          style={
+            Object {
+              "color": "white",
+            }
+          }
+          viewBox="0 0 32 32"
+          width={12}
+        >
+          <path
+            d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+          />
+        </svg>
+      </div>
+    </div>
+  </span>
+  <div
+    className="cursor-pointer"
+    onClick={[Function]}
+  >
+    <div
+      className="flex align-center justify-center rounded"
       style={
         Object {
-          "alignItems": "center",
-          "backgroundColor": "currentColor",
-          "border": "2px solid currentColor",
-          "borderRadius": 4,
-          "display": "flex",
+          "backgroundColor": "#A989C5",
+          "border": "2px solid #A989C5",
           "height": 16,
-          "justifyContent": "center",
           "width": 16,
         }
       }
@@ -281,21 +349,70 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
       </svg>
     </div>
   </div>
+</div>
+`;
+
+exports[`StackedCheckBox should render "Checked" correctly 1`] = `
+<div
+  className="relative"
+>
+  <span
+    className="absolute"
+    style={
+      Object {
+        "left": 4,
+        "top": -4,
+        "zIndex": -1,
+      }
+    }
+  >
+    <div
+      className="cursor-pointer"
+      onClick={[Function]}
+    >
+      <div
+        className="flex align-center justify-center rounded"
+        style={
+          Object {
+            "backgroundColor": "#509EE3",
+            "border": "2px solid #509EE3",
+            "height": 16,
+            "width": 16,
+          }
+        }
+      >
+        <svg
+          className="Icon Icon-check"
+          fill="currentcolor"
+          height={12}
+          name="check"
+          size={12}
+          style={
+            Object {
+              "color": "white",
+            }
+          }
+          viewBox="0 0 32 32"
+          width={12}
+        >
+          <path
+            d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+          />
+        </svg>
+      </div>
+    </div>
+  </span>
   <div
     className="cursor-pointer"
     onClick={[Function]}
-    style={Object {}}
   >
     <div
+      className="flex align-center justify-center rounded"
       style={
         Object {
-          "alignItems": "center",
-          "backgroundColor": "currentColor",
-          "border": "2px solid currentColor",
-          "borderRadius": 4,
-          "display": "flex",
+          "backgroundColor": "#509EE3",
+          "border": "2px solid #509EE3",
           "height": 16,
-          "justifyContent": "center",
           "width": 16,
         }
       }
@@ -320,104 +437,57 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
       </svg>
     </div>
   </div>
-</span>
+</div>
 `;
 
-exports[`StackedCheckBox should render "on" correctly 1`] = `
-<span
-  className={undefined}
-  style={
-    Object {
-      "position": "relative",
-    }
-  }
+exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
+<div
+  className="relative"
 >
-  <div
-    className="cursor-pointer"
-    onClick={[Function]}
+  <span
+    className="absolute"
     style={
       Object {
-        "left": 3,
-        "position": "absolute",
-        "top": -3,
+        "left": 4,
+        "top": -4,
         "zIndex": -1,
       }
     }
   >
     <div
-      style={
-        Object {
-          "alignItems": "center",
-          "backgroundColor": "white",
-          "border": "2px solid #ddd",
-          "borderRadius": 4,
-          "display": "flex",
-          "height": 16,
-          "justifyContent": "center",
-          "width": 16,
-        }
-      }
+      className="cursor-pointer"
+      onClick={[Function]}
     >
-      <svg
-        className="Icon Icon-check"
-        fill="currentcolor"
-        height={12}
-        name="check"
-        size={12}
+      <div
+        className="flex align-center justify-center rounded"
         style={
           Object {
-            "color": "currentColor",
+            "backgroundColor": "white",
+            "border": "2px solid #ddd",
+            "height": 16,
+            "width": 16,
           }
         }
-        viewBox="0 0 32 32"
-        width={12}
-      >
-        <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-        />
-      </svg>
+      />
     </div>
-  </div>
+  </span>
   <div
     className="cursor-pointer"
     onClick={[Function]}
-    style={Object {}}
   >
     <div
+      className="flex align-center justify-center rounded"
       style={
         Object {
-          "alignItems": "center",
           "backgroundColor": "white",
           "border": "2px solid #ddd",
-          "borderRadius": 4,
-          "display": "flex",
           "height": 16,
-          "justifyContent": "center",
           "width": 16,
         }
       }
-    >
-      <svg
-        className="Icon Icon-check"
-        fill="currentcolor"
-        height={12}
-        name="check"
-        size={12}
-        style={
-          Object {
-            "color": "currentColor",
-          }
-        }
-        viewBox="0 0 32 32"
-        width={12}
-      >
-        <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-        />
-      </svg>
-    </div>
+    />
   </div>
-</span>
+</div>
 `;
 
 exports[`Toggle should render "off" correctly 1`] = `

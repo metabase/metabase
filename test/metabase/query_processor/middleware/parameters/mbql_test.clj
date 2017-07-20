@@ -4,7 +4,7 @@
             [metabase
              [query-processor :as qp]
              [query-processor-test :refer [first-row format-rows-by non-timeseries-engines]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))

@@ -3670,3 +3670,74 @@ databaseChangeLog:
                   name: result_metadata
                   type: text
                   remarks: 'Serialized JSON containing metadata about the result columns from running the query.'
+  - changeSet:
+      id: 58
+      author: senior
+      changes:
+        - createTable:
+            tableName: dimension
+            remarks: 'Stores references to alternate views of existing fields, such as remapping an integer to a description, like an enum'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: 'ID of the field this dimension row applies to'
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_dimension_ref_field_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: metabase_field(id)
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  remarks: 'Short description used as the display name of this new column'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  remarks: 'Either internal for a user defined remapping or external for a foreign key based remapping'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: human_readable_field_id
+                  type: int
+                  remarks: 'Only used with external type remappings. Indicates which field on the FK related table to use for display'
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_dimension_displayfk_ref_field_id
+                    initiallyDeferred: false
+                    nullable: true
+                    references: metabase_field(id)
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  remarks: 'The timestamp of when the dimension was created.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  remarks: 'The timestamp of when these dimension was last updated.'
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dimension
+            columnNames: field_id, name
+            constraintName: unique_dimension_field_id_name
+        - createIndex:
+            tableName: dimension
+            indexName: idx_dimension_field_id
+            columns:
+              - column:
+                  name: field_id

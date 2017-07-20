@@ -94,7 +94,9 @@ export default class SaveQuestionModal extends Component {
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
                     details.description ? details.description.trim() : null,
-                collection_id: details.collection_id
+                collection_id: details.saveType === "overwrite" ?
+                    originalCard.collection_id :
+                    details.collection_id
             };
 
             if (details.saveType === "create") {
@@ -105,6 +107,7 @@ export default class SaveQuestionModal extends Component {
             }
 
             await this.requestPromise;
+            this.requestPromise = null;
             this.props.onClose();
         } catch (error) {
             if (error && !error.isCanceled) {

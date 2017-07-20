@@ -2,6 +2,7 @@
 
 import type { ISO8601Time } from ".";
 import type { TableId } from "./Table";
+import type { Value } from "./Dataset";
 
 export type FieldId = number;
 
@@ -40,12 +41,16 @@ export type Field = {
     created_at:         ISO8601Time,
     updated_at:         ISO8601Time,
 
-    // Metadata field "values" type is inconsistent
-    // https://github.com/metabase/metabase/issues/3417
-    values: [] | FieldValues
+    values?:            FieldValues,
+    dimensions?:        FieldDimension
 };
 
-export type FieldValues = {
-    // incomplete
-    values: Array<string> | {}
+export type RawFieldValue = Value;
+export type HumanReadableFieldValue = string;
+
+export type FieldValue = [RawFieldValue] | [RawFieldValue, HumanReadableFieldValue];
+export type FieldValues = FieldValue[];
+
+export type FieldDimension = {
+    name: string
 }

@@ -277,11 +277,14 @@ export default class Popover extends Component {
  * Simply renders the popover body inline instead of mutating DOM root.
  */
 export const TestPopover = (props) =>
-    props.isOpen ?
+    (props.isOpen === undefined || props.isOpen) ?
         <div
             id={props.id}
             className={cx("TestPopover TestPopoverBody", props.className)}
             style={props.style}
+            // because popover is normally directly attached to body element, other elements should not need
+            // to care about clicks that happen inside the popover
+            onClick={ (e) => { e.stopPropagation(); } }
         >
             { typeof props.children === "function" ?
                 props.children()

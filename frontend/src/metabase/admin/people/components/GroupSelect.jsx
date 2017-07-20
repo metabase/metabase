@@ -12,7 +12,10 @@ const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
     return (
         <div className={cx("GroupOption flex align-center p1 px2", { "cursor-pointer": !disabled })} onClick={() => !disabled && onGroupChange(group, !selected) }>
             <span className={cx("pr1", getGroupColor(group), { disabled })}>
-                <CheckBox checked={selected} borderColor="currentColor" size={18} />
+                <CheckBox
+                    checked={selected}
+                    size={18}
+                />
             </span>
             {group.name}
         </div>

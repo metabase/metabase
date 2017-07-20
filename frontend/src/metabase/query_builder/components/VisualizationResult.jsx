@@ -1,18 +1,22 @@
 /* eslint "react/prop-types": "warn" */
 
 import React from "react";
-import PropTypes from "prop-types";
-import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
+import { DatasetQuery } from "metabase/meta/types/Card";
 
-const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, navigateToNewCardInsideQB, result, ...props}) => {
+type Props = {
+    question: Question,
+    isObjectDetail: boolean,
+    result: any,
+    results: any[],
+    lastRunDatasetQuery: DatasetQuery,
+    navigateToNewCardInsideQB: (any) => void
+}
+const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, navigateToNewCardInsideQB, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
-
-    if (isObjectDetail) {
-        return <QueryVisualizationObjectDetailTable data={result.data} {...props} />
-    } else if (noResults) {
+    if (noResults) {
         // successful query but there were 0 rows returned with the result
         return <VisualizationErrorMessage
                   type='noRows'
@@ -28,26 +32,24 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, navigat
         // we want to provide the visualization with a card containing the latest
         // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
         // BUT the last executed "dataset_query" (to ensure data matches the query)
-        let vizCard = {
-            ...card,
-            dataset_query: lastRunDatasetQuery
-        };
+        const series = question.atomicQueries().map((metricQuery, index) => ({
+            card: {
+                ...question.card(),
+                display: isObjectDetail ? "object" : question.card().display,
+                dataset_query: lastRunDatasetQuery
+            },
+            data: results[index] && results[index].data
+        }));
+
         return <Visualization
-                  series={[{ card: vizCard, data: result.data }]}
+                  series={series}
                   onChangeCardAndRun={navigateToNewCardInsideQB}
                   isEditing={true}
+                  card={question.card()}
                   // Table:
                   {...props}
               />
     }
-}
-
-VisualizationResult.propTypes = {
-    card:                     PropTypes.object.isRequired,
-    isObjectDetail:           PropTypes.bool.isRequired,
-    lastRunDatasetQuery:      PropTypes.object.isRequired,
-    result:                   PropTypes.object.isRequired,
-    navigateToNewCardInsideQB:  PropTypes.func,
-}
+};
 
 export default VisualizationResult;

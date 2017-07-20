@@ -56,7 +56,10 @@ export default class ChartSettingOrderedFields extends Component {
                         outline="list"
                     >
                         <div className={cx("flex align-center p1", { "text-grey-2": !item.enabled })} >
-                            <CheckBox checked={item.enabled} className={cx("text-brand", { "text-grey-2": !item.enabled })} onChange={(e) => this.setEnabled(i, e.target.checked)} invertChecked />
+                            <CheckBox
+                                checked={item.enabled}
+                                onChange={e => this.setEnabled(i, e.target.checked)}
+                            />
                             <span className="ml1 h4">{columnNames[item.name]}</span>
                             <Icon className="flex-align-right text-grey-2 mr1 cursor-pointer" name="grabber" width={14} height={14}/>
                         </div>

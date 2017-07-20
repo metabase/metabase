@@ -36,19 +36,18 @@ const Item = ({
                     />
                 }
                 { setItemSelected &&
-                    <CheckBox
-                        className={cx(
-                            "cursor-pointer absolute top left",
-                            { "visible text-brand": selected },
-                            { "hover-child text-brand-hover text-light-blue transition-color": !selected }
-                        )}
-                        checked={selected}
-                        onChange={(e) => setItemSelected({ [id]: e.target.checked })}
-                        size={ITEM_ICON_SIZE}
-                        padding={3}
-                        borderColor="currentColor"
-                        invertChecked
-                    />
+                    <span className={cx(
+                        "absolute top left",
+                        { "visible": selected },
+                        { "hover-child": !selected }
+                    )}>
+                        <CheckBox
+                            checked={selected}
+                            onChange={e => setItemSelected({ [id]: e.target.checked })}
+                            size={ITEM_ICON_SIZE}
+                            padding={3}
+                        />
+                    </span>
                 }
             </div>
             <ItemBody

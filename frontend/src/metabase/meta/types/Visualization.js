@@ -3,6 +3,8 @@
 import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { Field, FieldId } from "metabase/meta/types/Field";
+import Question from "metabase-lib/lib/Question";
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[]
 
@@ -40,15 +42,14 @@ export type ClickAction = {
     title: any, // React Element
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card,
+    question?: () => ?Question,
 
     section?: string,
     name?: string,
 }
 
 export type ClickActionProps = {
-    card: Card,
-    tableMetadata: TableMetadata,
+    question: Question,
     clicked?: ClickObject
 }
 
@@ -90,5 +91,27 @@ export type VisualizationProps = {
     visualizationIsClickable: (?ClickObject) => boolean,
     onChangeCardAndRun: OnChangeCardAndRun,
 
-    onUpdateVisualizationSettings: ({ [key: string]: any }) => void
+    onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
+
+    // object detail
+    tableMetadata: ?TableMetadata,
+    tableForeignKeys: ?ForeignKey[],
+    tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
+    loadObjectDetailFKReferences: () => void,
+    followForeignKey: (fk: any) => void,
 }
+
+type ForeignKeyId = number;
+type ForeignKey = {
+    id: ForeignKeyId,
+    relationship: string,
+    origin: Field,
+    origin_id: FieldId,
+    destination: Field,
+    destination_id: FieldId,
+}
+
+type ForeignKeyCountInfo = {
+    status: number,
+    value: number,
+};
