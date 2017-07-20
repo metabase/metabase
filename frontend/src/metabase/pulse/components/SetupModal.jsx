@@ -17,7 +17,9 @@ export default class SetupModal extends Component {
                 onClose={this.props.onClose}
                 title={`To send pulses, ${ this.props.user.is_superuser ? "you'll need" : "an admin needs"} to set up email or Slack integration.`}
             >
-                <SetupMessage user={this.props.user} />
+                <div className="ml-auto mb4 mr4">
+                    <SetupMessage user={this.props.user} />
+                </div>
             </ModalContent>
         );
     }
