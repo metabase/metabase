@@ -12,7 +12,6 @@ import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp
 import { delay } from "metabase/lib/promise"
 
 import { MetabaseApi } from 'metabase/services'
-import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
 
 describe('dashboard list', () => {
@@ -36,7 +35,7 @@ describe('dashboard list', () => {
 
     describe('adds', () => {
         it('should not block adding a new db', async () => {
-            MetabaseApi.db_create = async (db) => { await delay(5000); return {...db, id: 10}; };
+            MetabaseApi.db_create = async (db) => { return {...db, id: 10}; };
 
             const store = await createTestStore()
             store.pushPath("/admin/databases");
@@ -45,7 +44,6 @@ describe('dashboard list', () => {
             await store.waitForActions([FETCH_DATABASES])
 
             const listAppBeforeAdd = app.find(DatabaseListApp)
-            const dbCount = listAppBeforeAdd.find('tr').length
 
             const addDbButton = listAppBeforeAdd.find('.Button.Button--primary').first()
             clickRouterLink(addDbButton)
@@ -88,7 +86,7 @@ describe('dashboard list', () => {
     describe('deletes', () => {
         it('should not block deletes', async () => {
             // mock the db_delete method call to simulate a longer running delete
-            MetabaseApi.db_delete = () => delay(5000)
+            MetabaseApi.db_delete = () => {}
 
             const store = await createTestStore()
             store.pushPath("/admin/databases");
