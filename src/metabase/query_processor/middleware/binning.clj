@@ -3,7 +3,8 @@
             [clojure.walk :as walk]
             [metabase
              [public-settings :as public-settings]
-             [util :as u]])
+             [util :as u]]
+            [metabase.query-processor.interface])
   (:import [metabase.query_processor.interface BetweenFilter BinnedField ComparisonFilter]))
 
 (defn- update!
