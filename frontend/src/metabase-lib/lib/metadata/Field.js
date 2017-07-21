@@ -25,6 +25,8 @@ import {
 
 import type { FieldValues } from "metabase/meta/types/Field";
 
+import _ from "underscore";
+
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
@@ -157,11 +159,15 @@ export default class Field extends Base {
     /**
      * Returns the field to be searched for this field, either the remapped field or itself
      */
-    searchField(): ?Field {
+    filterSearchField(): ?Field {
         let searchField = this.remappedField();
         if (!searchField && this.isSearchable()) {
             searchField = this;
         }
         return searchField;
+    }
+
+    parameterSearchField(): ?Field {
+        return _.find(this.table.fields, field => field.isEntityName());
     }
 }

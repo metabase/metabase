@@ -57,6 +57,8 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                 </div>
             );
         } else {
+            const field = metadata.fields[fieldId];
+
             return (
                 <FieldSearchInput
                     value={value}
@@ -66,7 +68,8 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                     autoFocus={this.state.focused}
                     placeholder={isEditing ? "Enter a default value..." : "Enter a value..."}
 
-                    field={metadata.fields[fieldId]}
+                    field={field}
+                    searchField={field && field.parameterSearchField()}
                 />
             )
         }

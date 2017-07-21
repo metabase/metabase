@@ -32,6 +32,7 @@ export default class SearchPicker extends Component {
                     placeholder={placeholder}
 
                     field={field}
+                    searchField={field.filterSearchField()}
                 />
             </div>
         );

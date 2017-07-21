@@ -30,6 +30,7 @@ type Props = {
     onBlur?: () => void,
 
     field: ?Field,
+    searchField: ?Field,
     maxResults?: number,
 };
 
@@ -42,14 +43,9 @@ export default class FieldSearchInput extends Component {
     };
 
     search = async (value: String, cancelled: Promise<void>) => {
-        const { field, maxResults } = this.props;
+        const { field, searchField, maxResults } = this.props;
 
-        if (!field) {
-            return;
-        }
-
-        const searchField = field.searchField();
-        if (!searchField) {
+        if (!field || !searchField) {
             return;
         }
 
@@ -71,8 +67,7 @@ export default class FieldSearchInput extends Component {
     };
 
     render() {
-        const { field } = this.props;
-        const searchField = field.searchField();
+        const { field, searchField } = this.props;
         let placeholder;
         if (searchField && field !== searchField && field.isID()) {
             placeholder = "Enter an ID or search for a " + singularize(searchField.table.display_name);
