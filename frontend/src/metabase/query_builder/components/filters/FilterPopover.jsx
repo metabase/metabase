@@ -203,7 +203,7 @@ export default class FilterPopover extends Component {
                         onCommit={this.onCommit}
                     />
                 );
-            } else if (operator.name === "=" && field) {
+            } else if (field && field.searchField()) {
                 return (
                     <SearchPicker
                         // $FlowFixMe

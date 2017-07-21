@@ -106,6 +106,12 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                 suggestions: results,
                 lastValue: value
             });
+        } else {
+            this.setState({
+                loadingState: "INIT",
+                suggestions: [],
+                lastValue: value
+            });
         }
     }, 500)
 

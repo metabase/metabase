@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import SearchInput from "./SearchInput";
 
 import { MetabaseApi } from "metabase/services";
+import { singularize } from "metabase/lib/formatting"
 
 import { addRemappings } from "metabase/redux/metadata";
 
@@ -70,6 +71,18 @@ export default class FieldSearchInput extends Component {
     };
 
     render() {
-        return <SearchInput {...this.props} search={this.search} />;
+        const { field } = this.props;
+        const searchField = field.searchField();
+        let placeholder;
+        if (searchField && field !== searchField && field.isID()) {
+            placeholder = "Enter an ID or search for a " + singularize(searchField.table.display_name);
+        }
+        return (
+            <SearchInput
+                {...this.props}
+                search={this.search}
+                placeholder={placeholder}
+            />
+        );
     }
 }

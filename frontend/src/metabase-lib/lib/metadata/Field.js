@@ -23,8 +23,6 @@ import {
     getFieldType
 } from "metabase/lib/schema_metadata";
 
-import _ from "underscore";
-
 import type { FieldValues } from "metabase/meta/types/Field";
 
 /**
