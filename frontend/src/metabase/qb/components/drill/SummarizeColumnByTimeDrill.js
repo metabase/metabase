@@ -4,7 +4,7 @@ import React from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
-import { isNumeric, isDate } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, getAggregator, isCompatibleAggregatorForField } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
 
 import type {
@@ -30,18 +30,25 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     }
     const { column } = clicked;
 
-    return ["sum", "count"].map(aggregation => ({
-        name: "summarize-by-time",
-        section: "sum",
-        title: <span>{capitalize(aggregation)} by time</span>,
-        question: () =>
-            question
-                .summarize([aggregation, getFieldRefFromColumn(column)])
-                .pivot([
-                    "datetime-field",
-                    getFieldRefFromColumn(dateField),
-                    "as",
-                    "day"
-                ])
-    }));
+    return ["sum", "count"]
+        .map(getAggregator)
+        .filter((aggregator) => isCompatibleAggregatorForField(aggregator, column))
+        .map(aggregator => ({
+            name: "summarize-by-time",
+            section: "sum",
+            title: <span>{capitalize(aggregator.short)} by time</span>,
+            question: () =>
+                question
+                    .summarize(
+                        aggregator.requiresField
+                            ? [aggregator.short, getFieldRefFromColumn(column)]
+                            : [aggregator.short]
+                    )
+                    .pivot([
+                        "datetime-field",
+                        getFieldRefFromColumn(dateField),
+                        "as",
+                        "day"
+                    ])
+        }));
 };
