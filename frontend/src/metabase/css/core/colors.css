@@ -46,11 +46,6 @@
     color: var(--brand-color);
 }
 
-.text-brand-saturated,
-.text-brand-saturated-hover:hover {
-    color: var(--brand-saturated-color);
-}
-
 .text-brand-darken,
 .text-brand-darken-hover:hover {
     color: color(var(--brand-color) shade(20%));
