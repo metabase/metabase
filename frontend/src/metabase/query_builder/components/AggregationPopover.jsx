@@ -231,7 +231,7 @@ export default class AggregationPopover extends Component {
         } else if (choosingField) {
             const [agg, fieldId] = aggregation;
             return (
-                <div style={{width: 300}}>
+                <div style={{minWidth: 300}}>
                     <div className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
                             <Icon name="chevronleft" size={18}/>
