@@ -8,7 +8,7 @@ import Warnings from "metabase/query_builder/components/Warnings.jsx";
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { getVisualizationTransformed } from "metabase/visualizations";
+import { getVisualizationTransformed, extractRemappings } from "metabase/visualizations";
 
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
@@ -57,7 +57,7 @@ class ChartSettings extends Component {
         if (settings) {
             series = assocIn(series, [0, "card", "visualization_settings"], settings);
         }
-        const transformed = getVisualizationTransformed(series);
+        const transformed = getVisualizationTransformed(extractRemappings(series));
         return transformed.series;
     }
 

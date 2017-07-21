@@ -9,17 +9,54 @@ import React from 'react';
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { mount } from "enzyme";
 import {
+    INITIALIZE_QB,
+    QUERY_COMPLETED,
+    QUERY_ERRORED,
+    RUN_QUERY,
+    CANCEL_QUERY,
+    SET_DATASET_QUERY,
+    setQueryDatabase,
+    setQuerySourceTable
+} from "metabase/query_builder/actions";
+import { SET_ERROR_PAGE } from "metabase/redux/app";
+
+import QueryHeader from "metabase/query_builder/components/QueryHeader";
+import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
+import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
+import FieldList from "metabase/query_builder/components/FieldList";
+import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import VisualizationError from "metabase/query_builder/components/VisualizationError";
+
+import CheckBox from "metabase/components/CheckBox";
+import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
+import FieldName from "metabase/query_builder/components/FieldName";
+import RunButton from "metabase/query_builder/components/RunButton";
+
+import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
+import Visualization from "metabase/visualizations/components/Visualization";
+import TableSimple from "metabase/visualizations/components/TableSimple";
+
+
+import {
     ORDERS_TOTAL_FIELD_ID,
     unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
-import { CANCEL_QUERY, INITIALIZE_QB, QUERY_COMPLETED, QUERY_ERRORED, RUN_QUERY } from "metabase/query_builder/actions";
-import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
-import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
-import Visualization from "metabase/visualizations/components/Visualization";
-import RunButton from "metabase/query_builder/components/RunButton";
-import { SET_ERROR_PAGE } from "metabase/redux/app";
-import QueryHeader from "metabase/query_builder/components/QueryHeader";
+const initQBWithReviewsTable = async () => {
+    const store = await createTestStore()
+    store.pushPath("/question");
+    const qb = mount(store.connectContainer(<QueryBuilder />));
+    await store.waitForActions([INITIALIZE_QB]);
+
+    // Use Products table
+    store.dispatch(setQueryDatabase(1));
+    store.dispatch(setQuerySourceTable(4));
+    await store.waitForActions([FETCH_TABLE_METADATA]);
+    store.resetDispatchedActions();
+
+    return { store, qb }
+}
+
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
@@ -41,6 +78,41 @@ describe("QueryBuilder", () => {
             expect(qbWrapper.find(VisualizationEmptyState).length).toBe(1)
         });
     });
+
+    describe("visualization settings", () => {
+        it("lets you hide a field for a raw data table", async () => {
+            const { store, qb } = await initQBWithReviewsTable();
+
+            // Run the raw data query
+            qb.find(RunButton).simulate("click");
+            await store.waitForActions([QUERY_COMPLETED]);
+
+            const vizSettings = qb.find(VisualizationSettings);
+            vizSettings.find(".Icon-gear").simulate("click");
+
+            const settingsModal = vizSettings.find(".test-modal")
+            const table = settingsModal.find(TableSimple);
+
+            expect(table.find('div[children="Created At"]').length).toBe(1);
+
+            const doneButton = settingsModal.find(".Button--primary.disabled")
+            expect(doneButton.length).toBe(1)
+
+            const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
+            expect(fieldsToIncludeCheckboxes.length).toBe(8)
+
+            fieldsToIncludeCheckboxes.at(3).simulate("click");
+
+            expect(table.find('div[children="Created At"]').length).toBe(0);
+
+            // Save the settings
+            doneButton.simulate("click");
+            expect(vizSettings.find(".test-modal").length).toBe(0);
+
+            // Don't test the contents of actual table visualization here as react-virtualized doesn't seem to work
+            // very well together with Enzyme
+        })
+    })
 
     describe("for saved questions", async () => {
         let savedQuestion = null;
@@ -159,4 +231,97 @@ describe("QueryBuilder", () => {
             });
         });
     });
+
+    describe("editor bar", async() => {
+        fdescribe("for Category field in Products table", () =>  {
+            // TODO: Update the test H2 database fixture so that it recognizes Category field as Category
+            // and has run a database sync so that Category field contains the expected field values
+
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQBWithReviewsTable());
+            })
+
+            // NOTE: Sequential tests; these may fail in a cascading way but shouldn't affect other tests
+
+            it("lets you add it as a filter", async () => {
+                // TODO Atte Keinänen 7/13/17: Extracting GuiQueryEditor's contents to smaller React components
+                // would make testing with selectors more natural
+                const filterSection = qb.find('.GuiBuilder-filtered-by');
+                const addFilterButton = filterSection.find('.AddButton');
+                addFilterButton.simulate("click");
+
+                const filterPopover = filterSection.find(FilterPopover);
+
+                const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="Rating"]')
+                expect(ratingFieldButton.length).toBe(1);
+                ratingFieldButton.simulate('click');
+            })
+
+            it("lets you see its field values in filter popover", () => {
+                // Same as before applies to FilterPopover too: individual list items could be in their own components
+                const filterPopover = qb.find(FilterPopover);
+                const fieldItems = filterPopover.find('li');
+                expect(fieldItems.length).toBe(5);
+
+                // should be in alphabetical order
+                expect(fieldItems.first().text()).toBe("1")
+                expect(fieldItems.last().text()).toBe("5")
+            })
+
+            it("lets you set 'Rating is 5' filter", async () => {
+                const filterPopover = qb.find(FilterPopover);
+                const fieldItems = filterPopover.find('li');
+                const widgetFieldItem = fieldItems.last();
+                const widgetCheckbox = widgetFieldItem.find(CheckBox);
+
+                expect(widgetCheckbox.props().checked).toBe(false);
+                widgetFieldItem.children().first().simulate("click");
+                expect(widgetCheckbox.props().checked).toBe(true);
+
+                const addFilterButton = filterPopover.find('button[children="Add filter"]')
+                addFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                store.resetDispatchedActions();
+
+                expect(qb.find(FilterPopover).length).toBe(0);
+                const filterWidget = qb.find(FilterWidget);
+                expect(filterWidget.length).toBe(1);
+                expect(filterWidget.text()).toBe("Rating is equal to5");
+            })
+
+            it("lets you set 'Rating is 5 or 4' filter", async () => {
+                // reopen the filter popover by clicking filter widget
+                const filterWidget = qb.find(FilterWidget);
+                filterWidget.find(FieldName).simulate('click');
+
+                const filterPopover = qb.find(FilterPopover);
+                const fieldItems = filterPopover.find('li');
+                const widgetFieldItem = fieldItems.at(3);
+                const gadgetCheckbox = widgetFieldItem.find(CheckBox);
+
+                expect(gadgetCheckbox.props().checked).toBe(false);
+                widgetFieldItem.children().first().simulate("click");
+                expect(gadgetCheckbox.props().checked).toBe(true);
+
+                const addFilterButton = filterPopover.find('button[children="Update filter"]')
+                addFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                expect(qb.find(FilterPopover).length).toBe(0);
+                expect(filterWidget.text()).toBe("Rating is equal to2 selections");
+            })
+
+            it("lets you remove the added filter", async () => {
+                const filterWidget = qb.find(FilterWidget);
+                filterWidget.find(".Icon-close").simulate('click');
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                expect(qb.find(FilterWidget).length).toBe(0);
+            })
+        })
+    })
 });

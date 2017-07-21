@@ -36,7 +36,8 @@
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
        (not (isa? (keyword base_type) :type/DateTime))
        (or (isa? (keyword base_type) :type/Boolean)
-           (isa? (keyword special_type) :type/Category))))
+           (isa? (keyword special_type) :type/Category)
+           (isa? (keyword special_type) :type/Enum))))
 
 (defn- create-field-values!
   "Create `FieldValues` for a `Field`."
@@ -58,6 +59,14 @@
     (db/update! FieldValues (u/get-id field-values)
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
     (create-field-values! field)))
+
+(defn field-values->pairs
+  "Returns a list of pairs (or single element vectors if there are no
+  human_readable_values) for the given `FIELD-VALUES` instance"
+  [{:keys [values human_readable_values] :as field-values}]
+  (if (seq human_readable_values)
+    (map vector values human_readable_values)
+    (map vector values)))
 
 (defn create-field-values-if-needed!
   "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.

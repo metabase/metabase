@@ -47,10 +47,9 @@ export default class FieldSearchInput extends Component {
             return;
         }
 
-        let searchField = field.remappedField();
-        // even if there's no remapping allow the user to search the values
-        if (!searchField && field.isString()) {
-            searchField = field;
+        const searchField = field.searchField();
+        if (!searchField) {
+            return;
         }
 
         let results = await MetabaseApi.field_search(

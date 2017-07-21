@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';
 import Popover from "metabase/components/Popover.jsx";
 import FilterPopover from "./FilterPopover.jsx";
-import RemappedValue from "metabase/containers/RemappedValue";
+import Value from "metabase/components/Value";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 
@@ -63,15 +63,22 @@ export default class FilterWidget extends Component {
 
         const operator = dimension.operator(op);
 
+        let formattedValues;
         // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
         if (operator && operator.multi && values.length > maxDisplayValues) {
-            values = [values.length + " selections"];
+            formattedValues = [values.length + " selections"];
         } else if (dimension.field().isDate()) {
-            values = generateTimeFilterValuesDescriptions(filter);
+            formattedValues = generateTimeFilterValuesDescriptions(filter);
         } else {
-            values = values.map((value, index) =>
-                <RemappedValue key={index} value={value} column={dimension.field()} />
-            )
+            formattedValues = values
+                .filter(value => value !== undefined)
+                .map((value, index) => (
+                    <Value
+                        key={index}
+                        value={value}
+                        column={dimension.field()}
+                    />
+                ));
         }
 
         return (
@@ -90,15 +97,13 @@ export default class FilterWidget extends Component {
                         <a className="QueryOption flex align-center">{operator && operator.moreVerboseName}</a>
                     </div>
                 </div>
-                { values.length > 0 && (
+                { formattedValues.length > 0 && (
                     <div className="flex align-center flex-wrap">
-                        {values.map((value, valueIndex) => {
-                            return value != undefined && (
-                                <div key={valueIndex} className="Filter-section Filter-section-value">
-                                    <span className="QueryOption">{value}</span>
-                                </div>
-                            );
-                        })}
+                        {formattedValues.map((formattedValue, valueIndex) =>
+                            <div key={valueIndex} className="Filter-section Filter-section-value">
+                                <span className="QueryOption">{formattedValue}</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

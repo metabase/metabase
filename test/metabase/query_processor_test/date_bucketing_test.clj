@@ -4,7 +4,7 @@
              [driver :as driver]
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data
              [dataset-definitions :as defs]

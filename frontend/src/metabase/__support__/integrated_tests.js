@@ -28,7 +28,8 @@ import fetch from 'isomorphic-fetch';
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getRoutes } from "metabase/routes";
 
-let hasCreatedStore = false;
+let hasStartedCreatingStore = false;
+let hasFinishedCreatingStore = false
 let loginSession = null; // Stores the current login session
 let simulateOfflineMode = false;
 
@@ -36,7 +37,7 @@ let simulateOfflineMode = false;
  * Login to the Metabase test instance with default credentials
  */
 export async function login() {
-    if (hasCreatedStore) {
+    if (hasStartedCreatingStore) {
         console.warn(
             "Warning: You have created a test store before calling login() which means that up-to-date site settings " +
             "won't be in the store unless you call `refreshSiteSettings` action manually. Please prefer " +
@@ -139,14 +140,19 @@ if (process.env.E2E_HOST) {
  *     * getting a React container subtree for the current route
  */
 
+// Todo: Add a safeguard against not waiting createTestStore to finish
 export const createTestStore = async () => {
-    hasCreatedStore = true;
+    hasFinishedCreatingStore = false;
+    hasStartedCreatingStore = true;
 
     const history = useRouterHistory(createMemoryHistory)();
     const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history));
     store.setFinalStoreInstance(store);
 
     await store.dispatch(refreshSiteSettings());
+
+    hasFinishedCreatingStore = true;
+
     return store;
 }
 
@@ -224,7 +230,18 @@ const testStoreEnhancer = (createStore, history) => {
             goBack: () => history.goBack(),
             getPath: () => urlFormat(history.getCurrentLocation()),
 
+            warnIfStoreCreationNotComplete: () => {
+                if (!hasFinishedCreatingStore) {
+                    console.warn(
+                        "Seems that you don't wait until the store creation has completely finished. " +
+                        "This means that site settings might not have been completely loaded. " +
+                        "Please add `await` in front of createTestStore call.")
+                }
+            },
+
             connectContainer: (reactContainer) => {
+                store.warnIfStoreCreationNotComplete();
+
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
                 return store._connectWithStore(
                     <Router
@@ -236,6 +253,8 @@ const testStoreEnhancer = (createStore, history) => {
             },
 
             getAppContainer: () => {
+                store.warnIfStoreCreationNotComplete();
+
                 return store._connectWithStore(
                     <Router history={history}>
                         {getRoutes(store._finalStoreInstance)}
@@ -255,9 +274,19 @@ const testStoreEnhancer = (createStore, history) => {
     }
 }
 
-export const clickRouterLink = (linkEnzymeWrapper) =>
-    linkEnzymeWrapper.simulate('click', { button: 0 });
+export const clickRouterLink = (linkEnzymeWrapper) => {
+    // This hits an Enzyme bug so we should find some other way to warn the user :/
+    // https://github.com/airbnb/enzyme/pull/769
 
+    // if (linkEnzymeWrapper.closest(Router).length === 0) {
+    //     console.warn(
+    //         "Trying to click a link with a component mounted with `store.connectContainer(container)`. Usually " +
+    //         "you want to use `store.getAppContainer()` instead because it has a complete support for react-router."
+    //     )
+    // }
+
+    linkEnzymeWrapper.simulate('click', {button: 0});
+}
 // Commonly used question helpers that are temporarily here
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
 export const createSavedQuestion = async (unsavedQuestion) => {

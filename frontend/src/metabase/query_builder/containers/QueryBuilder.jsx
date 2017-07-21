@@ -8,7 +8,6 @@ import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { isPK, isFK } from "metabase/lib/types";
 
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
@@ -60,17 +59,6 @@ import { MetabaseApi } from "metabase/services";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-function cellIsClickable(queryResult, rowIndex, columnIndex) {
-    if (!queryResult) return false;
-
-    // lookup the coldef and cell value of the cell we are curious about
-    var coldef = queryResult.data.cols[columnIndex];
-
-    if (!coldef || !coldef.special_type) return false;
-
-    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
-}
 
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
@@ -128,7 +116,6 @@ const mapStateToProps = (state, props) => {
 
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
-        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
     }
 }
 

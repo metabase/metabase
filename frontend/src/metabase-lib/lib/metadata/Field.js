@@ -25,6 +25,8 @@ import {
 
 import _ from "underscore";
 
+import type { FieldValues } from "metabase/meta/types/Field";
+
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
@@ -89,7 +91,7 @@ export default class Field extends Base {
         return isEntityName(this);
     }
 
-    fieldValues(): Array<string> {
+    fieldValues(): FieldValues {
         return getFieldValues(this._object);
     }
 
@@ -107,27 +109,6 @@ export default class Field extends Base {
         }
     }
 
-    remappedField() {
-        // TODO: use actual remappings once branch is merged
-        let table;
-        if (this.isFK()) {
-            table = this.target && this.target.table;
-        } else if (this.isPK()) {
-            table = this.table;
-        }
-        return table && _.find(table.fields, field => field.isEntityName());
-    }
-
-    remappedValue(value) {
-        // Ugh. Should this be handled further up?
-        if (this.isNumeric() && typeof value !== "number") {
-            value = parseFloat(value);
-        }
-        // TODO: more efficient lookup (memoized Map?)
-        let remapping = _.findWhere(this.remappings, { [0]: value });
-        return remapping && remapping[1];
-    }
-
     /**
      * Returns a default breakout MBQL clause for this field
      *
@@ -143,4 +124,46 @@ export default class Field extends Base {
             return fieldIdDimension.mbql();
         }
     };
+
+
+    /**
+     * Returns the remapped field, if any
+     */
+    remappedField(): ?Field {
+        // TODO: use actual remappings once branch is merged
+        const displayFieldId = this.dimensions && this.dimensions.human_readable_field_id;
+        if (displayFieldId != null) {
+            return this.metadata.fields[displayFieldId]
+        }
+    }
+
+    /**
+     * Returns the human readable remapped value, if any
+     */
+    remappedValue(value): ?string {
+        // TODO: Ugh. Should this be handled further up by the parameter widget?
+        if (this.isNumeric() && typeof value !== "number") {
+            value = parseFloat(value);
+        }
+        return this.remapping.get(value);
+    }
+
+    /**
+     * Returns true if this field can be searched, e.x. in filter or parameter widgets
+     */
+    isSearchable(): boolean {
+        // TODO: ...?
+        return this.isString();
+    }
+
+    /**
+     * Returns the field to be searched for this field, either the remapped field or itself
+     */
+    searchField(): ?Field {
+        let searchField = this.remappedField();
+        if (!searchField && this.isSearchable()) {
+            searchField = this;
+        }
+        return searchField;
+    }
 }
