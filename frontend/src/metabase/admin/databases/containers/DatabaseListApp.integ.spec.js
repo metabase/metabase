@@ -9,7 +9,6 @@ import {
     START_ADD_DATABASE
 } from "metabase/admin/databases/database"
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
-import { delay } from "metabase/lib/promise"
 
 import { MetabaseApi } from 'metabase/services'
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
