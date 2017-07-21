@@ -67,7 +67,7 @@ describe("Dashboard redux actions", () => {
             await store.waitForActions(ADD_PARAM_VALUES)
 
             const fieldValues = await getParameterFieldValues(store.getState(), { parameter: { field_id: 21 }});
-            expect(fieldValues).toEqual(["Doohickey", "Gadget", "Gizmo", "Widget"]);
+            expect(fieldValues).toEqual([["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]]);
         })
     })
 })

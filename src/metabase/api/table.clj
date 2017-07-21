@@ -130,7 +130,7 @@
     (cond-> {:id           (str "card__" (u/get-id card))
              :db_id        database/virtual-id
              :display_name (:name card)
-             :schema       (get-in card [:collection :name] "All questions")
+             :schema       (get-in card [:collection :name] "Everything else")
              :description  (:description card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card) (:result_metadata card))))))
 
