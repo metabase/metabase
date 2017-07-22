@@ -21,7 +21,6 @@
   --gold-color: #F9D45C;
   --orange-color: #F9A354;
   --purple-color: #A989C5;
-  --purple-light-color: #C5ABDB;
   --green-color: #9CC177;
   --dark-color: #4C545B;
   --error-color: #EF8C8C;
@@ -112,11 +111,6 @@
     color: var(--purple-color);
 }
 
-.text-purple-light,
-.text-purple-light-hover:hover {
-    color: var(--purple-light-color);
-}
-
 .text-green,
 .text-green-hover:hover {
     color: var(--green-color);
@@ -132,7 +126,6 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
-.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */
