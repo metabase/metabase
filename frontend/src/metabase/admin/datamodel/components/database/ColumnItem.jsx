@@ -171,6 +171,10 @@ export class SpecialTypeAndTargetPicker extends Component {
 
         const showFKTargetSelect = isFK(field.special_type);
 
+        // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
+        // or if there are no schemas at all, omit the schema name
+        const includeSchemaName = _.uniq(idfields.map((idField) => idField.table.schema)).length > 1
+
         return (
             <div>
                 <Select
@@ -188,7 +192,11 @@ export class SpecialTypeAndTargetPicker extends Component {
                     placeholder="Select a target"
                     value={field.fk_target_field_id && _.find(idfields, (idField) => idField.id === field.fk_target_field_id)}
                     options={idfields}
-                    optionNameFn={(idField) => idField.table.schema && idField.table.schema !== "public" ? titleize(humanize(idField.table.schema)) + "." + idField.displayName : idField.displayName}
+                    optionNameFn={
+                        (idField) => includeSchemaName
+                            ? titleize(humanize(idField.table.schema)) + "." + idField.displayName
+                            : idField.displayName
+                    }
                     onChange={this.onTargetChange}
                 /> }
             </div>
