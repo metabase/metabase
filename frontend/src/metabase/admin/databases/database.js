@@ -12,9 +12,9 @@ import { MetabaseApi } from "metabase/services";
 const RESET = "metabase/admin/databases/RESET";
 const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
 export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
-const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
+export const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
 const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
-const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
+export const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
 
@@ -73,6 +73,9 @@ export const addSampleDataset = createThunkAction(ADD_SAMPLE_DATASET, function()
     };
 });
 
+export const START_ADD_DATABASE = 'metabase/admin/databases/START_ADD_DATABASE'
+const startAddDatabase = createAction(START_ADD_DATABASE)
+
 // saveDatabase
 export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, details) {
     return async function(dispatch, getState) {
@@ -88,8 +91,14 @@ export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, 
             } else {
                 //$scope.$broadcast("form:api-success", "Successfully created!");
                 //$scope.$emit("database:created", new_database);
+                dispatch(push('/admin/databases'))
+                dispatch(startAddDatabase(database))
                 savedDatabase = await MetabaseApi.db_create(database);
                 MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
+
+                // update the db metadata already here because otherwise there will be a gap between "Adding..." status
+                // and seeing the db that was just added
+                await dispatch(fetchDatabases())
                 dispatch(push('/admin/databases?created='+savedDatabase.id));
             }
 
@@ -110,15 +119,15 @@ export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, 
     };
 });
 
-const START_DELETE = 'metabase/admin/databases/START_DELETE'
-const startDelete = createAction(START_DELETE)
+const START_DELETE_DATABASE = 'metabase/admin/databases/START_DELETE_DATABASE'
+const startDeleteDatabase = createAction(START_DELETE_DATABASE)
 
 
 // deleteDatabase
 export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databaseId, redirect=true) {
     return async function(dispatch, getState) {
         try {
-            dispatch(startDelete(databaseId))
+            dispatch(startDeleteDatabase(databaseId))
             dispatch(push('/admin/databases/'));
             await MetabaseApi.db_delete({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Delete", redirect ? "Using Detail" : "Using List");
@@ -159,12 +168,21 @@ const editingDatabase = handleActions({
     [SELECT_ENGINE]: { next: (state, { payload }) => ({...state, engine: payload }) }
 }, null);
 
+const adds = handleActions({
+    [START_ADD_DATABASE]: {
+        next: (state, { payload }) => state.concat([payload])
+    },
+    [SAVE_DATABASE]: {
+        next: (state, { payload }) => state.filter((db) => db.name !== payload.database.name)
+    }
+}, []);
+
 const deletes = handleActions({
-    [START_DELETE]: {
+    [START_DELETE_DATABASE]: {
         next: (state, { payload }) => state.concat([payload])
     },
     [DELETE_DATABASE]: {
-        next: (state, { payload }) => state.splice(state.indexOf(payload), 1)
+        next: (state, { payload }) => state.filter((dbId) => dbId !== payload)
     }
 }, []);
 
@@ -178,5 +196,6 @@ export default combineReducers({
     databases,
     editingDatabase,
     formState,
+    adds,
     deletes
 });
