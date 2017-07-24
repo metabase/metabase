@@ -188,7 +188,8 @@ export class SpecialTypeAndTargetPicker extends Component {
                     placeholder="Select a target"
                     value={field.fk_target_field_id && _.find(idfields, (idField) => idField.id === field.fk_target_field_id)}
                     options={idfields}
-                    optionNameFn={(idField) => idField.table.schema && idField.table.schema !== "public" ? titleize(humanize(idField.table.schema)) + "." + idField.displayName : idField.displayName}
+                    // "PUBLIC" is the default schema name used only in the sample dataset; for truly schemaless dbs the schema value is `null`
+                    optionNameFn={(idField) => idField.table.schema && idField.table.schema !== "PUBLIC" ? titleize(humanize(idField.table.schema)) + "." + idField.displayName : idField.displayName}
                     onChange={this.onTargetChange}
                 /> }
             </div>
