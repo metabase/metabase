@@ -1,6 +1,5 @@
 {
     "codesigningIdentity": "Developer ID Application: Metabase, Inc",
-    "slackWebhookURL": "",
     "awsProfile": "metabase",
-    "awsBucket": ""
+    "awsBucket": "downloads.metabase.com"
 }
