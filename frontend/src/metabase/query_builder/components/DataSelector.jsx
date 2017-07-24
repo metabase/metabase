@@ -9,7 +9,6 @@ import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';
 
 import _ from "underscore";
-import cx from "classnames";
 
 export default class DataSelector extends Component {
 
