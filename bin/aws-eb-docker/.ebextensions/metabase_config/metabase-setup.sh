@@ -57,6 +57,10 @@ map $http_upgrade $connection_upgrade {
     ""            "";
 }
 
+log_format healthd '$msec"$uri"'
+                '$status"$request_time"$upstream_response_time"'
+                '$http_x_forwarded_for';
+
 server {
     listen 80;
 
@@ -108,6 +112,10 @@ map $http_upgrade $connection_upgrade {
     default        "upgrade";
     ""            "";
 }
+
+log_format healthd '$msec"$uri"'
+                '$status"$request_time"$upstream_response_time"'
+                '$http_x_forwarded_for';
 
 server {
     listen 80;
@@ -169,7 +177,7 @@ cp_default_server () {
 log_x_real_ip () {
     cp .ebextensions/metabase_config/nginx/log_x_real_ip.conf /etc/nginx/conf.d/log_x_real_ip.conf
     cd  /etc/nginx/sites-available
-    if ! grep -q access_log *-proxy.conf ; then 
+    if ! grep -q access_log *-proxy.conf ; then
         sed -i 's|location \/ {|location \/ {\n\n        access_log \/var\/log\/nginx\/access.log log_x_real_ip;\n|' *-proxy.conf
     fi
 }
