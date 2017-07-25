@@ -146,6 +146,27 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
     };
 });
 
+export const FETCH_REAL_DATABASES = "metabase/metadata/FETCH_REAL_DATABASES";
+export const fetchRealDatabases = createThunkAction(FETCH_REAL_DATABASES, (reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "databases"];
+        const existingStatePath = requestStatePath;
+        const getData = async () => {
+            const databases = await MetabaseApi.db_real_list_with_tables();
+            return normalize(databases, [DatabaseSchema]);
+        };
+
+        return await fetchData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
+            reload
+        });
+    };
+});
+
 export const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
