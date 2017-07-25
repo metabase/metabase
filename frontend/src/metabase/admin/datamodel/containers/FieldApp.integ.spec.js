@@ -153,7 +153,7 @@ describe("FieldApp", () => {
         it("shows the correct default special type for a foreign key", async () => {
             const { fieldApp } = await initFieldApp({ fieldId: PRODUCT_ID_FK_ID });
             const picker = fieldApp.find(SpecialTypeAndTargetPicker).text()
-            expect(picker).toMatch(/Foreign KeyPublic.Products → ID/);
+            expect(picker).toMatch(/Foreign KeyProducts → ID/);
         })
 
         it("lets you change the type to 'No special type'", async () => {
@@ -208,7 +208,7 @@ describe("FieldApp", () => {
 
             productIdField.simulate('click')
             await store.waitForActions([UPDATE_FIELD])
-            expect(picker.text()).toMatch(/Foreign KeyPublic.Products → ID/);
+            expect(picker.text()).toMatch(/Foreign KeyProducts → ID/);
         })
 
         afterAll(async () => {

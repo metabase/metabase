@@ -9,7 +9,6 @@ import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';
 
 import _ from "underscore";
-import cx from "classnames";
 
 export default class DataSelector extends Component {
 
@@ -260,15 +259,13 @@ export default class DataSelector extends Component {
         const hasMultipleSources = hasMultipleDatabases || hasMultipleSchemas || hasSegments;
 
         let header = (
-            <span className="flex align-center">
-                <span className={cx("flex align-center text-brand-hover text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
-                    { hasMultipleSources && <Icon name="chevronleft" size={18} /> }
+            <div className="flex flex-wrap align-center">
+                <span className="flex align-center text-brand-hover cursor-pointer" onClick={hasMultipleSources && this.onBack}>
+                    {hasMultipleSources && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
-                { schema.name &&
-                    <span><span className="mx1">-</span>{schema.name}</span>
-                }
-            </span>
+                { schema.name && <span className="ml1 text-slate">- {schema.name}</span>}
+            </div>
         );
 
         if (schema.tables.length === 0) {
