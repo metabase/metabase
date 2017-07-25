@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import _ from "underscore";
 import { assoc, assocIn } from "icepick";
 
@@ -229,7 +228,7 @@ export default class PulseEditChannels extends Component {
                     <ul className="bg-grey-0 px3">{channels}</ul>
                 : channels.length > 0 && !channelSpec.configured ?
                     <div className="p4 text-centered">
-                        <h3>{channelSpec.name} needs to be set up by an administrator.</h3>
+                        <h3 className="mb2">{channelSpec.name} needs to be set up by an administrator.</h3>
                         <SetupMessage user={user} channels={[channelSpec.name]} />
                     </div>
                 : null
