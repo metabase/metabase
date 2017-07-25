@@ -135,7 +135,7 @@
   [include_tables include_cards]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)}
-  (or (dbs-list include_tables include_cards)
+  (or (dbs-list (Boolean/parseBoolean include_tables) (Boolean/parseBoolean include_cards))
       []))
 
 
