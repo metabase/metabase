@@ -18,8 +18,7 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.query :as q]))
+             [hydrate :refer [hydrate]]]))
 
 ;; TODO - I don't think this is used for anything any more
 (def ^:private ^:deprecated TableEntityType
