@@ -96,7 +96,9 @@ export default class LineAreaBarChart extends Component {
         }
 
         // both or neither primary dimension must be numeric
-        if (isNumeric(initialDimensions[0]) !== isNumeric(newDimensions[0])) {
+        // a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+        if ((isNumeric(initialDimensions[0]) !== isNumeric(newDimensions[0])) &&
+            !(isDate(initialDimensions[0]) && isDate(newDimensions[0]))) {
             return false;
         }
 
