@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
 import { getFieldValues, getHumanReadableValue } from "metabase/lib/query/field";
+import Query from "metabase/lib/query";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -445,17 +446,22 @@ var BreakoutAggregator = {
 };
 
 function populateFields(aggregator, fields) {
+    // TODO Atte Keinänen 7/26/17: Would it be possible to use same logic as `aggregationFieldOptions` in StructuredQuery?
+    // Currently using it would require having both metadata object and creating a Question object which isn't used for anything else
+    const fieldOptionsForEachFilter =
+        _.map(aggregator.validFieldsFilters, (filterFn) => Query.getFieldOptions(fields, true, filterFn))
+
     return {
         name: aggregator.name,
         short: aggregator.short,
         description: aggregator.description || '',
         advanced: aggregator.advanced || false,
-        fields: _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
-            return validFieldsFilterFn(fields);
-        }),
+        fields: fieldOptionsForEachFilter.map(fieldOptions => fieldOptions.fields),
+        fks: fieldOptionsForEachFilter.map(fieldOptions => fieldOptions.fks),
+        totalFieldCount: fieldOptionsForEachFilter.reduce((sum, fieldOptions) => sum + fieldOptions.count, 0),
         validFieldsFilters: aggregator.validFieldsFilters,
         requiresField: aggregator.requiresField,
-        requiredDriverFeature: aggregator.requiredDriverFeature
+        requiredDriverFeature: aggregator.requiredDriverFeature,
     };
 }
 
@@ -471,7 +477,7 @@ export function getAggregators(table) {
 
 export function getAggregatorsWithFields(table) {
     return getAggregators(table).filter(aggregation =>
-        !aggregation.requiresField || aggregation.fields.reduce((ok, fields) => ok && fields.length > 0, true)
+        !aggregation.requiresField || aggregation.totalFieldCount > 0
     );
 }
 
