@@ -89,8 +89,8 @@
 
 (defn- datetime-field?
   [field]
-  (or (isa? (:base_type field) :type/DateTime)
-      (isa? (:base_type field) :type/DateTime)))
+  (or (isa? (:base_type field)    :type/DateTime)
+      (isa? (:special_type field) :type/DateTime)))
 
 (defn- number-field?
   [field]

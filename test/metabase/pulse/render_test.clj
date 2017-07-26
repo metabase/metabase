@@ -121,3 +121,13 @@
   (let [html-output (html (render-truncation-warning 10 100 100 10))]
     [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
      (boolean (re-find #"Showing .* of .* rows" html-output))]))
+
+(def ^:private test-columns-with-date-special-type
+  (update test-columns 2 merge {:base_type    :type/Text
+                                :special_type :type/DateTime}))
+
+(expect
+  [{:bar-width nil, :row ["1" "34.10" "Apr 1, 2014" "Stout Burgers & Beers"]}
+   {:bar-width nil, :row ["2" "34.04" "Dec 5, 2014" "The Apple Pan"]}
+   {:bar-width nil, :row ["3" "34.05" "Aug 1, 2014" "The Gorbals"]}]
+  (rest (prep-for-html-rendering test-columns-with-date-special-type test-data nil nil (count test-columns))))
