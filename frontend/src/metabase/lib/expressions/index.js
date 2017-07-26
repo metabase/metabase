@@ -1,6 +1,7 @@
 
 import _ from "underscore";
 import { mbqlEq } from "../query/util";
+import { stripId } from "../formatting";
 
 import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
@@ -37,6 +38,10 @@ export function formatFieldName(field) {
     return formatIdentifier(field.display_name);
 }
 
+export function formatFkTargetFieldName(fkField, targetField) {
+    return formatIdentifier(`${stripId(fkField.display_name)} → ${targetField.display_name}`);
+}
+
 export function formatExpressionName(name) {
     return formatIdentifier(name);
 }
@@ -49,6 +54,10 @@ export function isExpression(expr) {
 
 export function isField(expr) {
     return Array.isArray(expr) && expr.length === 2 && mbqlEq(expr[0], 'field-id') && typeof expr[1] === 'number';
+}
+
+export function isFkTargetField(expr) {
+    return Array.isArray(expr) && expr.length === 3 && mbqlEq(expr[0], 'fk->') && typeof expr[1] === 'number' && typeof expr[2] === 'number';
 }
 
 export function isMetric(expr) {
@@ -69,5 +78,5 @@ export function isExpressionReference(expr) {
 }
 
 export function isValidArg(arg) {
-    return isExpression(arg) || isField(arg) || typeof arg === 'number';
+    return isExpression(arg) || isField(arg) || isFkTargetField(arg)|| typeof arg === 'number';
 }

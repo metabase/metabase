@@ -1,8 +1,16 @@
 import { Lexer, Parser, getImage } from "chevrotain";
+import { stripId } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
-import { formatFieldName, formatExpressionName, formatAggregationName, getAggregationFromName } from "../expressions";
+import {
+    formatFieldName,
+    formatFkTargetFieldName,
+    formatExpressionName,
+    formatAggregationName,
+    getAggregationFromName
+} from "../expressions";
+
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 import {
@@ -115,6 +123,10 @@ class ExpressionsParser extends Parser {
             if (field != null) {
                 return this._fieldReference(fieldName, field.id);
             }
+            const [fkField, targetField] = this.getFkTargetFieldForName(this._toString(fieldName));
+            if (fkField != null && targetField != null) {
+                return this._fkTargetFieldReference(fieldName, fkField.id, targetField.id);
+            }
             const expression = this.getExpressionForName(this._toString(fieldName));
             if (expression != null) {
                 return this._expressionReference(fieldName, expression);
@@ -169,6 +181,23 @@ class ExpressionsParser extends Parser {
         return _.findWhere(fields, { display_name: fieldName });
     }
 
+    getFkTargetFieldForName(fieldName) {
+        const [fkFieldStrippedName, fkTargetFieldName] = fieldName.split(" → ");
+
+        if (fkTargetFieldName) {
+            const fields = this._options.tableMetadata && this._options.tableMetadata.fields;
+            const fkField = fields.find((field) => field.target && field.display_name.startsWith(fkFieldStrippedName));
+
+            if (fkField) {
+                return [
+                    fkField,
+                    _.findWhere(fkField.target.table.fields, { display_name: fkTargetFieldName })
+                ]
+            }
+        }
+        return [null, null];
+    }
+
     getExpressionForName(expressionName) {
         const customFields = this._options && this._options.customFields;
         return customFields[expressionName];
@@ -201,6 +230,9 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     }
     _fieldReference(fieldName, fieldId) {
         return ["field-id", fieldId];
+    }
+    _fkTargetFieldReference(fieldName, fkFieldId, targetFieldId) {
+        return ["fk->", fkFieldId, targetFieldId];
     }
     _expressionReference(fieldName) {
         return ["expression", fieldName];
@@ -392,10 +424,12 @@ export function suggest(source, {
         } else if (nextTokenType === Identifier || nextTokenType === StringLiteral) {
             if (!outsideAggregation) {
                 let fields = [];
+                let fks = [];
                 if (startRule === "aggregation" && currentAggregationToken) {
                     let aggregationShort = getAggregationFromName(getImage(currentAggregationToken));
                     let aggregationOption = _.findWhere(tableMetadata.aggregation_options, { short: aggregationShort });
-                    fields = aggregationOption && aggregationOption.fields && aggregationOption.fields[0] || []
+                    fields = aggregationOption && aggregationOption.fields && aggregationOption.fields[0] || [];
+                    fks = aggregationOption && aggregationOption.fks && aggregationOption.fks[0] || [];
                 } else if (startRule === "expression") {
                     fields = tableMetadata.fields.filter(isNumeric);
                 }
@@ -406,6 +440,18 @@ export function suggest(source, {
                     prefixTrim: /\w+$/,
                     postfixTrim: /^\w+\s*/
                 })));
+
+                const fkTargetFieldArrays = fks.map(fk =>
+                    fk.fields.map(targetField => ({
+                        type: "fields",
+                        name: `${stripId(fk.field.display_name)} → ${targetField.display_name}`,
+                        text: formatFkTargetFieldName(fk.field, targetField) + " ",
+                        prefixTrim: /\w+$/,
+                        postfixTrim: /^\w+\s*/
+                    }))
+                )
+                finalSuggestions.push(..._.flatten(fkTargetFieldArrays, true));
+
                 finalSuggestions.push(...Object.keys(customFields || {}).map(expressionName => ({
                     type: "fields",
                     name: expressionName,

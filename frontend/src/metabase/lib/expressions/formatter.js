@@ -3,8 +3,8 @@ import _ from "underscore";
 
 import {
     VALID_OPERATORS, VALID_AGGREGATIONS,
-    isField, isMath, isMetric, isAggregation, isExpressionReference,
-    formatMetricName, formatFieldName, formatExpressionName
+    isField, isFkTargetField, isMath, isMetric, isAggregation, isExpressionReference,
+    formatMetricName, formatFieldName,formatFkTargetFieldName, formatExpressionName
 } from "../expressions";
 
 // convert a MBQL expression back into an expression string
@@ -23,6 +23,9 @@ export function format(expr, {
     }
     if (isField(expr)) {
         return formatField(expr, info);
+    }
+    if (isFkTargetField(expr)) {
+        return formatFkTargetField(expr, info);
     }
     if (isMetric(expr)) {
         return formatMetric(expr, info);
@@ -49,6 +52,18 @@ function formatField([, fieldId], { tableMetadata: { fields } }) {
         throw 'field with ID does not exist: ' + fieldId;
     }
     return formatFieldName(field);
+}
+
+function formatFkTargetField([, fkFieldId, targetFieldId], { tableMetadata: { fields } }) {
+    const fkField = _.findWhere(fields, { id: fkFieldId });
+    if (!fkField) {
+        throw 'field with ID does not exist: ' + fkFieldId;
+    }
+    const targetField = fkField.target && _.findWhere(fkField.target.table.fields, { id: targetFieldId });
+    if (!targetField) {
+        throw 'FK target field with ID does not exist in the target table:' + targetFieldId;
+    }
+    return formatFkTargetFieldName(fkField, targetField);
 }
 
 function formatMetric([, metricId], { tableMetadata: { metrics } }) {
