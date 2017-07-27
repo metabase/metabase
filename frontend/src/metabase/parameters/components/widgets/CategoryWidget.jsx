@@ -97,7 +97,7 @@ export default class CategoryWidget extends Component {
                             })}
                             onClick={() => { setValue(rawValue); onClose(); }}
                         >
-                            {humanReadableValue || rawValue.toString()}
+                            {humanReadableValue || String(rawValue)}
                         </li>
                      )}
                 </ul>
