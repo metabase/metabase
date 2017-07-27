@@ -126,7 +126,7 @@
                         human_readable_field_id))
       [400 "Foreign key based remappings require a human readable field id"])
     (if-let [dimension (Dimension :field_id id)]
-      (db/update! Dimension (:id dimension)
+      (db/update! Dimension (u/get-id dimension)
         {:type dimension-type
          :name dimension-name
          :human_readable_field_id human_readable_field_id})
@@ -154,7 +154,7 @@
   [_ _]
   empty-field-values)
 
-(defn validate-human-readable-pairs
+(defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be
   present for each field value. Throws if invalid, returns a boolean
   indicating whether human readable values were found."
@@ -174,10 +174,10 @@
                                               (map second value-pairs))))))
 
 (defn- create-field-values!
-  [field value-pairs]
+  [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
-      :field_id (:id field)
+      :field_id (u/get-id field-or-id)
       :values (map first value-pairs)
       :human_readable_values (when human-readable-values?
                                (map second value-pairs)))))

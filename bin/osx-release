@@ -8,11 +8,9 @@ use File::Copy 'copy';
 use File::Copy::Recursive 'rcopy';   # CPAN
 use File::Path 'remove_tree';
 use File::stat 'stat';
-use JSON 'encode_json', 'from_json'; # CPAN
 use Readonly;                        # CPAN
 use String::Util 'trim';             # CPAN
 use Text::Caml;                      # CPAN
-use WWW::Curl::Simple;               # CPAN
 
 use Metabase::Util;
 
@@ -298,30 +296,6 @@ sub create_dmg {
 
 # ------------------------------------------------------------ UPLOADING ------------------------------------------------------------
 
-sub announce_on_slack {
-    Readonly my $slack_url => config('slackWebhookURL') or return;
-    Readonly my $version   => version();
-    Readonly my $awsURL    => 'https://s3.amazonaws.com/' . config('awsBucket') . '/' . upload_subdir() . '/Metabase.dmg';
-    my $text = "Metabase OS X $version 'Complexity-Embracing Toucan' Is Now Available!\n\n" .
-               "Get it here: $awsURL\n\n";
-
-    open(my $file, get_file_or_die($release_notes)) or die $!;
-    while (<$file>) {
-        m/^\s+<li>.*$/ && s|^\s+<li>(.*)</li>$|$1| && ($text .= '*  ' . $_);
-    }
-
-    my $json = encode_json {
-        channel    => '#general',
-        username   => 'OS X Bot',
-        icon_emoji => ':bird:',
-        text       => trim($text)
-    };
-
-    my $curl = WWW::Curl::Simple->new;
-    unless ((my $response = $curl->post($slack_url, $json))->code == 200) {
-        die 'Error posting to slack: ' . $response->code . ' ' . $response->content . "\n";
-    }
-}
 
 # Upload artifacts to AWS
 # Make sure to run `aws configure --profile metabase` first to set up your ~/.aws/config file correctly
@@ -351,8 +325,6 @@ sub upload {
            '--region', 'us-east-1',
            's3', 'cp', $upload_dir,
            "s3://$aws_bucket") == 0 or die "Upload failed: $!\n";
-
-    announce_on_slack;
 
     announce "Upload finished."
 }

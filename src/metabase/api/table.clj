@@ -18,8 +18,7 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.query :as q]))
+             [hydrate :refer [hydrate]]]))
 
 ;; TODO - I don't think this is used for anything any more
 (def ^:private ^:deprecated TableEntityType
@@ -46,40 +45,35 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
-(defn- visible-state?
-  "only the nil state is considered visible."
-  [state]
-  {:pre [(or (nil? state) (table/visibility-types state))]}
-  (if (nil? state)
-    :show
-    :hide))
 
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started]} :body}]
-  {display_name    (s/maybe su/NonBlankString)
-   entity_type     (s/maybe TableEntityType)
-   visibility_type (s/maybe TableVisibilityType)}
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started], :as body} :body}]
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe TableEntityType)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
   (api/write-check Table id)
-  (let [original-visibility-type (:visibility_type (Table :id id))]
-    (api/check-500 (db/update-non-nil-keys! Table id
-                     :display_name            display_name
-                     :caveats                 caveats
-                     :points_of_interest      points_of_interest
-                     :show_in_getting_started show_in_getting_started
-                     :entity_type             entity_type
-                     :description             description))
-    (api/check-500 (db/update! Table id, :visibility_type visibility_type))
-    (let [updated-table (Table id)
-          new-visibility (visible-state? (:visibility_type updated-table))
-          old-visibility (visible-state? original-visibility-type)
-          visibility-changed? (and (not= new-visibility
-                                         old-visibility)
-                                   (= :show new-visibility))]
-      (when visibility-changed?
-        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
+  (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
+    ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update description and related fields if passed in
+    (api/check-500
+     (db/update! Table id
+       (assoc (u/select-keys-when body
+                :non-nil [:display_name :show_in_getting_started :entity_type]
+                :present [:description :caveats :points_of_interest])
+         :visibility_type visibility_type)))
+    (let [updated-table   (Table id)
+          now-visible?    (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
+          was-visible?    (nil? original-visibility-type)
+          became-visible? (and now-visible? (not was-visible?))]
+      (when became-visible?
+        (log/info (u/format-color 'green "Table '%s' is now visible. Resyncing." (:name updated-table)))
         (sync-database/sync-table! updated-table))
       updated-table)))
+
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
