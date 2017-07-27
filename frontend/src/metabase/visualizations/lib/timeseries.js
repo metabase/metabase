@@ -19,8 +19,9 @@ const TIMESERIES_UNITS = new Set([
 // investigate the response from a dataset query and determine if the dimension is a timeseries
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
     return (
-        (isDate(cols[i]) && (cols[i].unit == null || TIMESERIES_UNITS.has(cols[i].unit))) ||
-        moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
+        // (isDate(cols[i]) && (cols[i].unit == null || TIMESERIES_UNITS.has(cols[i].unit))) ||
+        // moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
+        false
     );
 }
 
