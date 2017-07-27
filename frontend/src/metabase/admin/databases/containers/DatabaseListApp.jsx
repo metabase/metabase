@@ -13,10 +13,12 @@ import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 
 import {
     getDatabasesSorted,
-    hasSampleDataset
+    hasSampleDataset,
+    getDeletes,
+    getDeletionError
 } from "../selectors";
 import * as databaseActions from "../database";
-
+import FormMessage from "metabase/components/form/FormMessage";
 
 const mapStateToProps = (state, props) => {
     return {
@@ -24,8 +26,8 @@ const mapStateToProps = (state, props) => {
         databases:            getDatabasesSorted(state),
         hasSampleDataset:     hasSampleDataset(state),
         engines:              MetabaseSettings.get('engines'),
-        adds:                 state.admin.databases.adds,
-        deletes:              state.admin.databases.deletes
+        deletes:              getDeletes(state),
+        deletionError:        getDeletionError(state)
     }
 }
 
@@ -38,7 +40,9 @@ export default class DatabaseList extends Component {
     static propTypes = {
         databases: PropTypes.array,
         hasSampleDataset: PropTypes.bool,
-        engines: PropTypes.object
+        engines: PropTypes.object,
+        deletes: PropTypes.array,
+        deletionError: PropTypes.object
     };
 
     componentWillMount() {
@@ -52,7 +56,7 @@ export default class DatabaseList extends Component {
     }
 
     render() {
-        let { databases, hasSampleDataset, created, engines } = this.props;
+        let { databases, hasSampleDataset, created, engines, deletionError } = this.props;
 
         return (
             <div className="wrapper">
@@ -60,6 +64,11 @@ export default class DatabaseList extends Component {
                     <Link to="/admin/databases/create" className="Button Button--primary float-right">Add database</Link>
                     <h2 className="PageTitle">Databases</h2>
                 </section>
+                { deletionError &&
+                    <section>
+                        <FormMessage formError={deletionError} />
+                    </section>
+                }
                 <section>
                     <table className="ContentTable">
                         <thead>
@@ -70,22 +79,6 @@ export default class DatabaseList extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            { this.props.adds.map((database) =>
-                                <tr
-                                    key={database.name}
-                                    className={'disabled'}
-                                >
-                                    <td>
-                                        <Link to={"/admin/databases/" + database.id} className="text-bold link">
-                                            {database.name}
-                                        </Link>
-                                    </td>
-                                    <td>
-                                        {engines && engines[database.engine] ? engines[database.engine]['driver-name'] : database.engine}
-                                    </td>
-                                    <td className="text-right">Adding...</td>
-                                </tr>
-                            ) }
                             { databases ?
                                 [ databases.map(database => {
                                     const isDeleting = this.props.deletes.indexOf(database.id) !== -1
