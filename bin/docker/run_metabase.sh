@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# if nobody manually set a host to list on then go with $HOSTNAME
+# if nobody manually set a host to listen on then go with all available interfaces and host names
 if [ -z "$MB_JETTY_HOST" ]; then
     export MB_JETTY_HOST=0.0.0.0
 fi
