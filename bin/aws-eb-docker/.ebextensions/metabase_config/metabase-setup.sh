@@ -70,7 +70,6 @@ server {
         set $day $3;
         set $hour $4;
     }
-    access_log /var/log/nginx/healthd/application.log.$year-$month-$day-$hour healthd;
 
     access_log    /var/log/nginx/access.log;
 
@@ -122,7 +121,6 @@ server {
         set $day $3;
         set $hour $4;
     }
-    access_log /var/log/nginx/healthd/application.log.$year-$month-$day-$hour healthd;
 
     access_log    /var/log/nginx/access.log;
 
@@ -169,7 +167,7 @@ cp_default_server () {
 log_x_real_ip () {
     cp .ebextensions/metabase_config/nginx/log_x_real_ip.conf /etc/nginx/conf.d/log_x_real_ip.conf
     cd  /etc/nginx/sites-available
-    if ! grep -q access_log *-proxy.conf ; then 
+    if ! grep -q access_log *-proxy.conf ; then
         sed -i 's|location \/ {|location \/ {\n\n        access_log \/var\/log\/nginx\/access.log log_x_real_ip;\n|' *-proxy.conf
     fi
 }
