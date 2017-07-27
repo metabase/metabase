@@ -154,7 +154,7 @@
   [_ _]
   empty-field-values)
 
-(defn validate-human-readable-pairs
+(defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be
   present for each field value. Throws if invalid, returns a boolean
   indicating whether human readable values were found."

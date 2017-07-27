@@ -413,7 +413,7 @@
      (form->encoded-fn-name [:___ObjectId \"583327789137b2700a1621fb\"]) -> :ObjectId"
   [form]
   (when (vector? form)
-    (when (u/string-or-keyword? (first form))
+    (when ((some-fn keyword? string?) (first form))
       (when-let [[_ k] (re-matches #"^___(\w+$)" (name (first form)))]
         (let [k (keyword k)]
           (when (contains? fn-name->decoder k)

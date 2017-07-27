@@ -4,77 +4,96 @@
 
 
 (def ^:private ^:const moviedb-tables
-  {"movies"  {:name   "movies"
-              :schema nil
-              :fields #{{:name      "id"
-                         :base-type :type/Integer}
-                        {:name      "title"
-                         :base-type :type/Text}
-                        {:name      "filming"
-                         :base-type :type/Boolean}}}
-   "actors"  {:name   "actors"
-              :schema nil
-              :fields #{{:name      "id"
-                         :base-type :type/Integer}
-                        {:name      "name"
-                         :base-type :type/Text}}}
-   "roles"   {:name   "roles"
-              :schema nil
-              :fields #{{:name      "id"
-                         :base-type :type/Integer}
-                        {:name      "movie_id"
-                         :base-type :type/Integer}
-                        {:name      "actor_id"
-                         :base-type :type/Integer}
-                        {:name      "character"
-                         :base-type :type/Text}
-                        {:name      "salary"
-                         :base-type :type/Decimal}}
-              :fks    #{{:fk-column-name   "movie_id"
-                         :dest-table       {:name "movies"
-                                            :schema nil}
-                         :dest-column-name "id"}
-                        {:fk-column-name   "actor_id"
-                         :dest-table       {:name "actors"
-                                            :schema nil}
-                         :dest-column-name "id"}}}
-   "reviews" {:name   "reviews"
-              :schema nil
-              :fields #{{:name      "id"
-                         :base-type :type/Integer}
-                        {:name      "movie_id"
-                         :base-type :type/Integer}
-                        {:name      "stars"
-                         :base-type :type/Integer}}
-              :fks    #{{:fk-column-name   "movie_id"
-                         :dest-table       {:name   "movies"
-                                            :schema nil}
-                         :dest-column-name "id"}}}})
+  {"movies"
+   {:name   "movies"
+    :schema nil
+    :fields #{{:name      "id"
+               :base-type :type/Integer}
+              {:name      "title"
+               :base-type :type/Text}
+              {:name      "filming"
+               :base-type :type/Boolean}}}
+
+   "actors"
+   {:name   "actors"
+    :schema nil
+    :fields #{{:name      "id"
+               :base-type :type/Integer}
+              {:name      "name"
+               :base-type :type/Text}}}
+
+   "roles"
+   {:name   "roles"
+    :schema nil
+    :fields #{{:name      "id"
+               :base-type :type/Integer}
+              {:name      "movie_id"
+               :base-type :type/Integer}
+              {:name      "actor_id"
+               :base-type :type/Integer}
+              {:name      "character"
+               :base-type :type/Text}
+              {:name      "salary"
+               :base-type :type/Decimal}}
+    :fks    #{{:fk-column-name   "movie_id"
+               :dest-table       {:name   "movies"
+                                  :schema nil}
+               :dest-column-name "id"}
+              {:fk-column-name   "actor_id"
+               :dest-table       {:name   "actors"
+                                  :schema nil}
+               :dest-column-name "id"}}}
+
+   "reviews"
+   {:name   "reviews"
+    :schema nil
+    :fields #{{:name      "id"
+               :base-type :type/Integer}
+              {:name      "movie_id"
+               :base-type :type/Integer}
+              {:name      "stars"
+               :base-type :type/Integer}}
+    :fks    #{{:fk-column-name   "movie_id"
+               :dest-table       {:name   "movies"
+                                  :schema nil}
+               :dest-column-name "id"}}}})
+
 
 (defrecord MovieDbDriver []
   clojure.lang.Named
   (getName [_] "MovieDbDriver"))
 
+
+(defn- describe-database [_ {:keys [exclude-tables]}]
+  (let [tables (for [table (vals moviedb-tables)
+                     :when (not (contains? exclude-tables (:name table)))]
+                 (select-keys table [:schema :name]))]
+    {:tables (set tables)}))
+
+(defn- describe-table [_ _ table]
+  (-> (get moviedb-tables (:name table))
+      (dissoc :fks)))
+
+(defn- describe-table-fks [_ _ table]
+  (-> (get moviedb-tables (:name table))
+      :fks
+      set))
+
+(defn- table-rows-seq [_ _ table]
+  [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
+   {:keypath "movies.description", :value "A cinematic adventure."}])
+
+
 (extend MovieDbDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:analyze-table      (constantly nil)
-          :describe-database  (fn [_ {:keys [exclude-tables]}]
-                                (let [tables (for [table (vals moviedb-tables)
-                                                   :when (not (contains? exclude-tables (:name table)))]
-                                               (select-keys table [:schema :name]))]
-                                  {:tables (set tables)}))
-          :describe-table     (fn [_ _ table]
-                                (-> (get moviedb-tables (:name table))
-                                    (dissoc :fks)))
-          :describe-table-fks (fn [_ _ table]
-                                (-> (get moviedb-tables (:name table))
-                                    :fks
-                                    set))
+          :describe-database  describe-database
+          :describe-table     describe-table
+          :describe-table-fks describe-table-fks
           :features           (constantly #{:foreign-keys})
           :details-fields     (constantly [])
-          :table-rows-seq     (constantly [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
-                                           {:keypath "movies.description", :value "A cinematic adventure."}])}))
+          :table-rows-seq     table-rows-seq}))
 
 (driver/register-driver! :moviedb (MovieDbDriver.))
 
