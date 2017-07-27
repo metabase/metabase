@@ -57,6 +57,10 @@ map $http_upgrade $connection_upgrade {
     ""            "";
 }
 
+log_format healthd '$msec"$uri"'
+                '$status"$request_time"$upstream_response_time"'
+                '$http_x_forwarded_for';
+
 server {
     listen 80;
 
@@ -107,6 +111,10 @@ map $http_upgrade $connection_upgrade {
     default        "upgrade";
     ""            "";
 }
+
+log_format healthd '$msec"$uri"'
+                '$status"$request_time"$upstream_response_time"'
+                '$http_x_forwarded_for';
 
 server {
     listen 80;
