@@ -469,7 +469,7 @@
   []
   (require 'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {;:analyze-table           analyze-table
+         {:analyze-table           analyze-table
           :can-connect?            can-connect?
           :describe-database       describe-database
           :describe-table          describe-table
