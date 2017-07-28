@@ -176,10 +176,13 @@
     (cond-> honey-query
             (not-empty (:select honey-query))
             (update :select (fn [selects]
-                              (mapv (fn [[f v]]
-                                      (if (str/starts-with? (str f) from-str)
-                                        [(keyword (subs (str f) from-length)) v]
-                                        [f v]))
+                              (mapv (fn [s]
+                                      (if (sequential? s)
+                                        (let [[f v] s]
+                                          (if (str/starts-with? (str f) from-str)
+                                            [(keyword (subs (str f) from-length)) v]
+                                            [f v]))
+                                        s))
                                     selects)))
 
             (not-empty (:where honey-query))

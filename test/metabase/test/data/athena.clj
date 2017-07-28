@@ -51,7 +51,6 @@
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :load-data!                (constantly nil)
           :pk-sql-type               (constantly nil)})
-          ;:qualified-name-components (partial i/single-db-qualified-name-components "sampledb")})
 
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
@@ -59,7 +58,6 @@
                                           @db-connection-details)
           :default-schema               (constantly (:schema @db-connection-details))
           :engine                       (constantly :athena)}))
-
 
 
 ;;; Helper for generating Athena data
