@@ -69,6 +69,7 @@
    "Europe/Berlin"
    "Europe/Brussels"
    "Europe/Helsinki"
+   "Europe/Istanbul"
    "Europe/London"
    "Europe/Minsk"
    "Europe/Moscow"
