@@ -1175,7 +1175,8 @@ export default function lineAreaBar(element: Element, {
         const goalValue = settings["graph.goal_value"];
         const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
         const goalDimension = crossfilter(goalData).dimension(d => d[0]);
-        const goalGroup = goalDimension.group().reduceSum(d => d[1]);
+        // take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. single row
+        const goalGroup = goalDimension.group().reduce((p,d) => d[1], (p,d) => p, () => 0);
         const goalIndex = charts.length;
         let goalChart = dc.lineChart(parent)
             .dimension(goalDimension)
