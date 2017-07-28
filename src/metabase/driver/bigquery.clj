@@ -336,10 +336,11 @@
     :else (str schema-name \. table-name \. field-name)))
 
 ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
-(defn- field->identifier [{table-id :table_id, :as field}]
+(defn- field->identifier
+  [{table-id :table_id, :as field}]
   (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
         dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
-    (hsql/raw (get (field/qualified-name-components field) 1))))
+    (hsql/raw (last (field/qualified-name-components field)))))
 
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
 ;; BAD:
