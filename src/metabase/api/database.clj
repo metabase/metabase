@@ -184,8 +184,7 @@
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (str (str/lower-case prefix) "%")]
-                     [:or [:= :visibility_type nil]
-                          [:not= :visibility_type "hidden"]]]
+                     [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]

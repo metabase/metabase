@@ -176,7 +176,7 @@ export const wrappedFetchMetricRevisions = async (props, metricID) => {
 // }
 
 export const wrappedFetchDatabases = (props) => {
-    fetchDataWrapper(props, props.fetchDatabases)({})
+    fetchDataWrapper(props, props.fetchRealDatabases)({})
 }
 export const wrappedFetchMetrics = (props) => {
     fetchDataWrapper(props, props.fetchMetrics)({})

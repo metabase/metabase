@@ -758,12 +758,6 @@
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
 
-(defn string-or-keyword?
-  "Is X a `String` or a `Keyword`?"
-  [x]
-  (or (string? x)
-      (keyword? x)))
-
 (defn key-by
   "Convert a sequential COLL to a map of `(f item)` -> `item`.
    This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of items.

@@ -6,6 +6,8 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 
 1.  Install XCode.
 
+1.  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
+
 1.  Run `./bin/build` to build the latest version of the uberjar.
 
 1.  Next, you'll need to run the following commands before building the app:
@@ -15,8 +17,7 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
       git submodule update --init
 
       # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
-      # You may have to run this as sudo if you didn't upgrade perl as described in step above
-      cpan install File::Copy::Recursive Readonly String::Util Text::Caml
+      sudo cpan install File::Copy::Recursive Readonly String::Util Text::Caml JSON
 
       # Copy JRE and uberjar
       ./bin/osx-setup
@@ -45,10 +46,22 @@ aws configure --profile metabase
 cp /path/to/private/key.pem OSX/dsa_priv.pem
 ```
 
-You'll probably also want an Apple Developer ID Application Certificate in your computer's keychain. You'll need to generate a Certificate Signing Request from Keychain Access, and have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate one for you, then load the file on your computer.
+You'll need the `Apple Developer ID Application Certificate` in your computer's keychain.
+You'll need to generate a Certificate Signing Request from Keychain Access, and have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/)
+and generate one for you, then load the file on your computer.
+
+Finally, you may need to open the project a single time in Xcode to make sure the appropriate "build schemes" are generated (these are not checked into CI).
+Run `open OSX/Metabase.xcodeproj` to open the project, which will automatically generate the appropriate schemes. This only needs to be done once.
 
 After that, you are good to go:
 ```bash
 # Bundle entire app, and upload to s3
 ./bin/osx-release
 ```
+
+## Debugging ./bin/osx-release
+
+*  You can run individual steps of the release script by passing in the appropriate step subroutines. e.g. `./bin/osx-release create_dmg upload`.
+   The entire sequence of different steps can be found at the bottom of `./bin/osx-release`.
+*  Generating the DMG seems to be somewhat finicky, so if it fails with a message like "Device busy" trying the step again a few times usually resolves the issue.
+   You can continue the build process from the DMG creation step by running `./bin/osx-release create_dmg upload`.
