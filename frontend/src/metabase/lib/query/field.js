@@ -85,5 +85,5 @@ export function getFieldValues(field: ?Field): FieldValues {
 
 export function getHumanReadableValue(value: Value, fieldValues?: FieldValues = []) {
     const fieldValue = _.findWhere(fieldValues, { [0]: value });
-    return fieldValue && fieldValue.length === 2 ? fieldValue[1] : value;
+    return fieldValue && fieldValue.length === 2 ? fieldValue[1] : String(value);
 }

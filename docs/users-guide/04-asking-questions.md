@@ -124,7 +124,7 @@ Say we had a table of baseball games, each row representing a single game, and w
 
 The words in the quotes are the names of the fields in our table. If you start typing in this box, Metabase will show you fields in the current table that match what you’ve typed, and you can select from this list to autocomplete the field name.
 
-Right now, you can only use the following math operators in your formulas: +, –, * (multiplication), and / (division). You can also use parentheses to clarify the order of operations.
+Right now, you can only use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division). You can also use parentheses to clarify the order of operations.
 
 Once you’ve written your formula and given your new field a name, select `Raw Data` for your view, and click the `Get Answer` button to see your new field appended to your current table. It’ll be on the far right of the table. **Note that this new field is NOT permanently added to this table.** It will only be kept if you save a question that uses it.
 

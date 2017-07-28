@@ -17,8 +17,7 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
       git submodule update --init
 
       # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
-      # You may have to run this as sudo if you didn't upgrade perl as described in step above
-      cpan install File::Copy::Recursive Readonly String::Util Text::Caml
+      sudo cpan install File::Copy::Recursive Readonly String::Util Text::Caml JSON
 
       # Copy JRE and uberjar
       ./bin/osx-setup
