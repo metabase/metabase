@@ -8,7 +8,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [sync-database :as sync-database]
+             [sync :as sync]
              [util :as u]]
             metabase.driver.h2
             [metabase.models
@@ -212,7 +212,7 @@
              :engine  (name engine)
              :details (i/database->connection-details driver :db database-definition))
     ;; sync newly added DB
-    (sync-database/sync-database! <>)
+    (sync/sync-database! <>)
     ;; add extra metadata for fields
     (add-extra-metadata! database-definition <>)))
 

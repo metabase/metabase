@@ -49,8 +49,7 @@
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'Card        :database_id id)
   (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
-  (db/delete! 'Table       :db_id       id)
-  (db/delete! 'RawTable    :database_id id))
+  (db/delete! 'Table       :db_id       id))
 
 
 (defn- perms-objects-set [database _]

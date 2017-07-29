@@ -540,36 +540,6 @@
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
 
-(def emoji-progress-bar
-  "Create a string that shows progress for something, e.g. a database sync process.
-
-     (emoji-progress-bar 10 40)
-       -> \"[************······································] 😒   25%"
-  (let [^:const meter-width    50
-        ^:const progress-emoji ["😱"  ; face screaming in fear
-                                "😢"  ; crying face
-                                "😞"  ; disappointed face
-                                "😒"  ; unamused face
-                                "😕"  ; confused face
-                                "😐"  ; neutral face
-                                "😬"  ; grimacing face
-                                "😌"  ; relieved face
-                                "😏"  ; smirking face
-                                "😋"  ; face savouring delicious food
-                                "😊"  ; smiling face with smiling eyes
-                                "😍"  ; smiling face with heart shaped eyes
-                                "😎"] ; smiling face with sunglasses
-        percent-done->emoji    (fn [percent-done]
-                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
-    (fn [completed total]
-      (let [percent-done (float (/ completed total))
-            filleds      (int (* percent-done meter-width))
-            blanks       (- meter-width filleds)]
-        (str "["
-             (s/join (repeat filleds "*"))
-             (s/join (repeat blanks "·"))
-             (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
-
 
 (defprotocol ^:private IFilteredStacktrace
   (filtered-stacktrace [this]

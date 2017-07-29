@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require [cheshire.core :as json]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
@@ -11,9 +11,8 @@
              [util :refer [*mongo-connection* with-mongo-connection]]]
             [metabase.models
              [database :refer [Database]]
-             [field :as field]
-             [table :as table]]
-            [metabase.sync-database.analyze :as analyze]
+             [field :as field]]
+            [metabase.sync.interface :as si]
             [metabase.util.ssh :as ssh]
             [monger
              [collection :as mc]
@@ -21,6 +20,7 @@
              [conversion :as conv]
              [db :as mdb]
              [query :as mq]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.mongodb.DB))
 
@@ -147,18 +147,7 @@
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
-(defn- analyze-table [table new-field-ids]
-  ;; We only care about 1) table counts and 2) field values
-  {:row_count (analyze/table-row-count table)
-   :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (analyze/test:cardinality-and-extract-field-values field {:id id}))})
-
-(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
-  (assert (and (map? field)
-               (delay? qualified-name-components)
-               (delay? table))
-    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
+(s/defn ^:private ^:always-validate field-values-lazy-seq [field :- si/FieldInstance]
   (lazy-seq
    (assert *mongo-connection*
      "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
@@ -166,7 +155,7 @@
          name-components (rest (field/qualified-name-components field))]
      (assert (seq name-components))
      (for [row (mq/with-collection *mongo-connection* (:name table)
-                 (mq/fields [(s/join \. name-components)]))]
+                 (mq/fields [(str/join \. name-components)]))]
        (get-in row (map keyword name-components))))))
 
 
@@ -177,8 +166,7 @@
 (u/strict-extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table                     (u/drop-first-arg analyze-table)
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
           :details-fields                    (constantly (ssh/with-tunnel-config

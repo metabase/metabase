@@ -1,6 +1,5 @@
 (ns metabase.driver
-  (:require [clojure.math.numeric-tower :as math]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.models
              [database :refer [Database]]
@@ -50,10 +49,6 @@
 
    This name should be a \"nice-name\" that we'll display to the user."
 
-  (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
-    "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
-     Output should match the `AnalyzeTable` schema.")
-
   (can-connect? ^Boolean [this, ^java.util.Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
      try running a query like `SELECT 1;`. This function should return `true` or `false`.")
@@ -68,16 +63,16 @@
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-     Results should match the `DescribeDatabase` schema.")
+     Results should match the `DatabaseMetadata` schema.")
 
-  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^java.util.Map table]
+  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^TableInstance table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-     Results should match the `DescribeTable` schema.")
+     Results should match the `TableMetadata` schema.")
 
-  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^java.util.Map table]
+  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^TableInstance table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
-     Results should match the `DescribeTableFKs` schema.")
+     Results should match the `FKMetadata` schema.")
 
   (details-fields ^clojure.lang.Sequential [this]
     "A vector of maps that contain information about connection properties that should
@@ -198,51 +193,14 @@
 
   (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema` keys.
+     (It is guaranteed too satisfy the `DatabaseMetadataTable` schema in `metabase.sync.interface`.)
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
      There is no expectation that the results be returned in any given order."))
 
 
-(defn- percent-valid-urls
-  "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
-  [vs]
-  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
-    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
-                             (float (/ valid-count non-nil-count)))
-          (nil? v)       (recur valid-count non-nil-count more)
-          :else          (let [valid? (and (string? v)
-                                           (u/is-url? v))]
-                           (recur (if valid? (inc valid-count) valid-count)
-                                  (inc non-nil-count)
-                                  more)))))
-
-(defn default-field-percent-urls
-  "Default implementation for optional driver fn `field-percent-urls` that calculates percentage in Clojure-land."
-  [driver field]
-  (->> (field-values-lazy-seq driver field)
-       (filter identity)
-       (take max-sync-lazy-seq-results)
-       percent-valid-urls))
-
-(defn default-field-avg-length
-  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
-  [driver field]
-  (let [field-values        (->> (field-values-lazy-seq driver field)
-                                 (filter identity)
-                                 (take max-sync-lazy-seq-results))
-        field-values-count (count field-values)]
-    (if (zero? field-values-count)
-      0
-      (int (math/round (/ (->> field-values
-                               (map str)
-                               (map count)
-                               (reduce +))
-                          field-values-count))))))
-
-
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:analyze-table                     (constantly nil)
-   :date-interval                     (u/drop-first-arg u/relative-date)
+  {:date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
