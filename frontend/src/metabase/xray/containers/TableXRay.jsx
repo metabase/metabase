@@ -2,6 +2,7 @@
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
+import title from 'metabase/hoc/Title'
 
 import { fetchTableFingerPrint } from 'metabase/reference/reference'
 
@@ -22,6 +23,17 @@ type Props = {
     }
 }
 
+const mapStateToProps = state => ({
+    fingerprint: getTableFingerprint(state),
+    constituents: getTableConstituents(state)
+})
+
+const mapDispatchToProps = {
+    fetchTableFingerPrint
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
+@title(() => "Table")
 class TableXRay extends Component {
     props: Props
 
@@ -66,13 +78,4 @@ class TableXRay extends Component {
     }
 }
 
-const mapStateToProps = state => ({
-    fingerprint: getTableFingerprint(state),
-    constituents: getTableConstituents(state)
-})
-
-const mapDispatchToProps = {
-    fetchTableFingerPrint
-}
-
-export default connect(mapStateToProps, mapDispatchToProps)(TableXRay)
+export default TableXRay
