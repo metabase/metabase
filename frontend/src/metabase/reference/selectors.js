@@ -167,3 +167,8 @@ export const getGuide = (state, props) => state.reference.guide;
 export const getDashboards = (state, props) => getDashboardListing(state) && resourceListToMap(getDashboardListing(state));
 
 export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;
+
+
+export const getFieldFingerprint = (state) =>
+    state.reference.fieldFingerprint && state.reference.fieldFingerprint.fingerprint
+

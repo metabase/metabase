@@ -5,6 +5,8 @@ import { connect } from 'react-redux'
 
 import { fetchFieldFingerPrint } from 'metabase/reference/reference'
 
+import { getFieldFingerprint } from 'metabase/reference/selectors'
+
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 import SimpleHistogram from 'metabase/xray/SimpleHistogram'
@@ -119,11 +121,11 @@ class FieldXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    fingerprint: state.reference.fieldFingerprint,
+    fingerprint: getFieldFingerprint(state)
 })
 
 const mapDispatchToProps = {
-    fetchFieldFingerPrint: fetchFieldFingerPrint
+    fetchFieldFingerPrint
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldXRay)
