@@ -356,6 +356,20 @@
     ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
 
+;; Make sure saved questions are NOT included if the setting is disabled
+(expect
+  nil
+  (tt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+    (tu/with-temporary-setting-values [enable-nested-queries false]
+      ;; run the Card which will populate its result_metadata column
+      ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+      ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+      (some (fn [database]
+              (when (= (u/get-id database) database/virtual-id)
+                database))
+            ((user->client :crowberto) :get 200 "database" :include_cards true)))))
+
+
 ;; make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS
 (tt/expect-with-temp [Collection [stamp-collection {:name "Stamps"}]
                       Collection [coin-collection  {:name "Coins"}]
