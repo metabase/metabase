@@ -241,7 +241,7 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
                 </Route>
                 {/* REFERENCE */}
-                <Route path="/xray" title="xray">
+                <Route path="/xray" title="XRay">
                     <Route path="segment/:segmentId" component={SegmentXRay} />
                     <Route path="table/:tableId" component={TableXRay} />
                     <Route path="field/:fieldId" component={FieldXRay} />

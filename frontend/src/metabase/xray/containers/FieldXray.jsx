@@ -2,6 +2,7 @@
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
+import title from "metabase/hoc/Title";
 
 import { fetchFieldFingerPrint } from 'metabase/reference/reference'
 
@@ -32,6 +33,16 @@ const FieldOverview = ({ fingerprint, stats }) =>
 const Heading = ({ heading }) =>
     <h3 className="py2 border-bottom mb3">{heading}</h3>
 
+const mapStateToProps = state => ({
+    fingerprint: getFieldFingerprint(state)
+})
+
+const mapDispatchToProps = {
+    fetchFieldFingerPrint
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
+@title(({ fingerprint }) => fingerprint && fingerprint.field.display_name || "Field")
 class FieldXRay extends Component {
     props: Props
 
@@ -120,12 +131,6 @@ class FieldXRay extends Component {
     }
 }
 
-const mapStateToProps = state => ({
-    fingerprint: getFieldFingerprint(state)
-})
+export default FieldXRay
 
-const mapDispatchToProps = {
-    fetchFieldFingerPrint
-}
 
-export default connect(mapStateToProps, mapDispatchToProps)(FieldXRay)
