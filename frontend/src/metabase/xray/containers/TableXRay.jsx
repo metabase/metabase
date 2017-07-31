@@ -6,6 +6,8 @@ import title from 'metabase/hoc/Title'
 
 import { fetchTableFingerPrint } from 'metabase/reference/reference'
 
+import { Link } from 'react-router'
+
 import {
     getTableConstituents,
     getTableFingerprint
@@ -62,7 +64,9 @@ class TableXRay extends Component {
                                     return (
                                         <li>
                                             <div className="full">
-                                                {c.field.display_name}
+                                                <Link to={`xray/field/${c.field.id}`}>
+                                                    {c.field.display_name}
+                                                </Link>
                                                 <SimpleHistogram
                                                     data={c.histogram}
                                                 />
