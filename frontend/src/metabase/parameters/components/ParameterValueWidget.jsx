@@ -21,7 +21,7 @@ import S from "./ParameterWidget.css";
 import cx from "classnames";
 import _ from "underscore"
 
-const WIDGETS = {
+const DATE_WIDGETS = {
     "date/single": DateSingleWidget,
     "date/range": DateRangeWidget,
     "date/relative": DateRelativeWidget,
@@ -68,10 +68,10 @@ export default class ParameterValueWidget extends Component {
     };
 
     static getWidget(parameter, values) {
-        if (values && values.length > 0) {
+        if (DATE_WIDGETS[parameter.type]) {
+            return DATE_WIDGETS[parameter.type];
+        } else if (values && values.length > 0) {
             return CategoryWidget;
-        } else if (WIDGETS[parameter.type]) {
-            return WIDGETS[parameter.type];
         } else {
             return TextWidget;
         }
@@ -166,7 +166,7 @@ export default class ParameterValueWidget extends Component {
                     triggerElement={
                     <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
                         { getParameterTypeIcon() }
-                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
+                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
                         { getWidgetStatusIcon() }
                     </div>
                 }

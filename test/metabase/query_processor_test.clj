@@ -92,12 +92,14 @@
    :schema_name     (data/default-schema)
    :source          :fields
    :fk_field_id     nil
+   :remapped_from   nil
+   :remapped_to     nil
    :min_value       nil
    :max_value       nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id :min_value :max_value)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :min_value :max_value)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -168,29 +170,32 @@
                                 :base_type    (data/id-field-type)
                                 :name         (data/format-name "id")
                                 :display_name "ID"})
-     :category_id {:extra_info   (if (data/fks-supported?)
-                                   {:target_table_id (data/id :categories)}
-                                   {})
-                   :target       (target-field (categories-col :id))
-                   :special_type (if (data/fks-supported?)
-                                   :type/FK
-                                   :type/Category)
-                   :base_type    (data/expected-base-type->actual :type/Integer)
-                   :name         (data/format-name "category_id")
-                   :display_name "Category ID"}
+     :category_id (add-min-max 2.0 74.0
+                               {:extra_info   (if (data/fks-supported?)
+                                                {:target_table_id (data/id :categories)}
+                                                {})
+                                :target       (target-field (categories-col :id))
+                                :special_type (if (data/fks-supported?)
+                                                :type/FK
+                                                :type/Category)
+                                :base_type    (data/expected-base-type->actual :type/Integer)
+                                :name         (data/format-name "category_id")
+                                :display_name "Category ID"})
      :price       (add-min-max 1.0 4.0
                                {:special_type :type/Category
                                 :base_type    (data/expected-base-type->actual :type/Integer)
                                 :name         (data/format-name "price")
                                 :display_name "Price"})
-     :longitude   {:special_type :type/Longitude
-                   :base_type    (data/expected-base-type->actual :type/Float)
-                   :name         (data/format-name "longitude")
-                   :display_name "Longitude"}
-     :latitude    {:special_type :type/Latitude
-                   :base_type    (data/expected-base-type->actual :type/Float)
-                   :name         (data/format-name "latitude")
-                   :display_name "Latitude"}
+     :longitude   (add-min-max -165.374 -73.9533
+                               {:special_type :type/Longitude
+                                :base_type    (data/expected-base-type->actual :type/Float)
+                                :name         (data/format-name "longitude")
+                                :display_name "Longitude"})
+     :latitude    (add-min-max 10.0646 40.7794
+                               {:special_type :type/Latitude
+                                :base_type    (data/expected-base-type->actual :type/Float)
+                                :name         (data/format-name "latitude")
+                                :display_name "Latitude"})
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
@@ -199,8 +204,7 @@
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
   []
-  (mapv (comp #(assoc % :min_value nil :max_value nil) venues-col)
-        [:id :name :category_id :latitude :longitude :price]))
+  (mapv venues-col [:id :name :category_id :latitude :longitude :price]))
 
 ;; #### checkins
 (defn checkins-col
@@ -248,28 +252,32 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type    :type/Integer
-              :special_type :type/Number
-              :name         "count"
-              :display_name "count"
-              :id           nil
-              :table_id     nil
-              :description  nil
-              :source       :aggregation
-              :extra_info   {}
-              :target       nil}))
+     :count  {:base_type       :type/Integer
+              :special_type    :type/Number
+              :name            "count"
+              :display_name    "count"
+              :id              nil
+              :table_id        nil
+              :description     nil
+              :source          :aggregation
+              :extra_info      {}
+              :target          nil
+              :remapped_from   nil
+              :remapped_to     nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
-    :special_type special_type
-    :id           nil
-    :table_id     nil
-    :description  nil
-    :source       :aggregation
-    :extra_info   {}
-    :target       nil
-    :name         (name ag-col-kw)
-    :display_name (name ag-col-kw)}))
+    :special_type  special_type
+    :id            nil
+    :table_id      nil
+    :description   nil
+    :source        :aggregation
+    :extra_info    {}
+    :target        nil
+    :name          (name ag-col-kw)
+    :display_name  (name ag-col-kw)
+    :remapped_from nil
+    :remapped_to   nil}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))

@@ -1,15 +1,23 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [metabase
+  (:require [cheshire.core :as json]
+            [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.models
+             [dimension :refer [Dimension]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]]
             [toucan.db :as db]))
+
+(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -77,22 +85,72 @@
        booleanize-native-form
        (format-rows-by [int int int])))
 
+(qp-expect-with-all-engines
+  {:rows  [[2 8 "Artisan"]
+           [3 2 "Asian"]
+           [4 2 "BBQ"]
+           [5 7 "Bakery"]
+           [6 2 "Bar"]]
+   :columns [(data/format-name "category_id")
+             "count"
+             "Foo"]
+   :cols    [(assoc (breakout-col (venues-col :category_id))
+               :remapped_to "Foo")
+             (aggregate-col :count)
+             (create-remapped-col "Foo" (data/format-name "category_id"))]
+   :native_form true}
+  (data/with-data
+    (fn []
+      (let [venue-names (defs/field-values defs/test-data-map "categories" "name")]
+        [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                                :name "Foo"
+                                :type :internal})
+         (db/insert! FieldValues {:field_id (data/id :venues :category_id)
+                                  :values (json/generate-string (range 0 (count venue-names)))
+                                  :human_readable_values (json/generate-string venue-names)})]))
+    (->> (data/run-query venues
+           (ql/aggregation (ql/count))
+           (ql/breakout $category_id)
+           (ql/limit 5))
+         booleanize-native-form
+         (format-rows-by [int int str]))))
+
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
+   ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
+  (data/with-data
+    (fn []
+      [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                              :name "Foo"
+                              :type :external
+                              :human_readable_field_id (data/id :categories :name)})])
+    [(->> (data/run-query venues
+             (ql/order-by (ql/desc $category_id))
+             (ql/limit 10))
+           rows
+           (map last))
+     (->> (data/run-query venues
+             (ql/order-by (ql/asc $category_id))
+             (ql/limit 10))
+           rows
+           (map last))]))
+
 (datasets/expect-with-engines (engines-that-support :binning)
-  [[10.1 1] [33.1 61] [37.7 29] [39.2 8] [40.8 1]]
+  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :num-bins 20))))))
 
 (datasets/expect-with-engines (engines-that-support :binning)
- [[10.1 1] [30.5 99]]
+ [[0.0 1] [20.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :num-bins 3))))))
 
 (datasets/expect-with-engines (engines-that-support :binning)
-  [[10.1 -165.4 1] [33.1 -119.7 61] [37.7 -124.2 29] [39.2 -78.5 8] [40.8 -78.5 1]]
+   [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -102,14 +160,14 @@
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (datasets/expect-with-engines (engines-that-support :binning)
- [[10.1 1] [30.1 90] [40.1 9]]
+  [[10.0 1] [30.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default))))))
 
 (datasets/expect-with-engines (engines-that-support :binning)
- [[10.1 1] [30.1 61] [35.1 29] [40.1 9]]
+  [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
       (rows (data/run-query venues
@@ -118,7 +176,7 @@
 
 ;; Testing bin-width
 (datasets/expect-with-engines (engines-that-support :binning)
-  [[10.1 1] [33.1 25] [34.1 36] [37.1 29] [40.1 9]]
+  [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -126,7 +184,7 @@
 
 ;; Testing bin-width using a float
 (datasets/expect-with-engines (engines-that-support :binning)
-   [[10.1 1] [32.6 61] [37.6 29] [40.1 9]]
+  [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -154,12 +212,25 @@
 (datasets/expect-with-engines (engines-that-support :binning)
   (merge (venues-col :latitude)
          {:min_value 10.0646, :source :breakout,
-          :max_value 40.7794, :binning_info {:binning_strategy "num-bins", :bin_width 10.0,
-                                             :num_bins         4.0,        :min_value 10.0646,
+          :max_value 40.7794, :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
+                                             :num_bins         4,          :min_value 10.0646,
                                              :max_value        40.7794}})
   (-> (data/run-query venues
                       (ql/aggregation (ql/count))
                       (ql/breakout (ql/binning-strategy $latitude :default)))
+      (get-in [:data :cols])
+      first
+      round-binning-decimals))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+  (merge (venues-col :latitude)
+         {:min_value 10.0646, :source       :breakout,
+          :max_value 40.7794, :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
+                                             :num_bins         5,         :min_value 10.0646,
+                                             :max_value        40.7794}})
+  (-> (data/run-query venues
+                      (ql/aggregation (ql/count))
+                      (ql/breakout (ql/binning-strategy $latitude :num-bins 5)))
       (get-in [:data :cols])
       first
       round-binning-decimals))

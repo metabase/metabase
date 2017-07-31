@@ -861,6 +861,18 @@ function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMa
     }
 }
 
+export function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
+    const column = cols[i];
+
+    if (column.remapping && column.remapping.size > 0) {
+        // We have remapped values, so check their type for determining whether the dimension is numeric
+        // ES6 Map makes the lookup of first value a little verbose
+        return typeof column.remapping.values().next().value === "string";
+    } else {
+        return false
+    }
+}
+
 type LineAreaBarProps = VisualizationProps & {
     chartType: "line" | "area" | "bar" | "scatter",
     isScalarSeries: boolean,
@@ -902,7 +914,6 @@ export default function lineAreaBar(element: Element, {
     const isMultiCardSeries = series.length > 1 &&
         getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
 
-    const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card));
 
     // find the first nonempty single series
     // $FlowFixMe
@@ -910,6 +921,9 @@ export default function lineAreaBar(element: Element, {
 
     const isDimensionTimeseries = dimensionIsTimeseries(firstSeries.data);
     const isDimensionNumeric = dimensionIsNumeric(firstSeries.data);
+    const isRemappedToString = hasRemappingAndValuesAreStrings(firstSeries.data);
+
+    const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card) && !isRemappedToString);
 
     if (firstSeries.data.cols.length < 2) {
         throw new Error("This chart type requires at least 2 columns.");
@@ -1192,7 +1206,9 @@ export default function lineAreaBar(element: Element, {
         const goalValue = settings["graph.goal_value"];
         const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
         const goalDimension = crossfilter(goalData).dimension(d => d[0]);
-        const goalGroup = goalDimension.group().reduceSum(d => d[1]);
+        // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
+        // has just a single row / datapoint
+        const goalGroup = goalDimension.group().reduce((p,d) => d[1], (p,d) => p, () => 0);
         const goalIndex = charts.length;
         let goalChart = dc.lineChart(parent)
             .dimension(goalDimension)

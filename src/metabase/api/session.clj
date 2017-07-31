@@ -40,6 +40,28 @@
   {:username   (throttle/make-throttler :username)
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by username
 
+(defn- ldap-login
+  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password]
+  (when (ldap/ldap-configured?)
+    (try
+      (when-let [user-info (ldap/find-user username)]
+        (when-not (ldap/verify-password user-info password)
+          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly outdated password
+          (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                     :errors      {:password "did not match stored password"}})))
+        ;; password is ok, return new session
+        {:id (create-session! (ldap/fetch-or-create-user! user-info password))})
+      (catch com.unboundid.util.LDAPSDKException e
+        (log/error (u/format-color 'red "Problem connecting to LDAP server, will fallback to local authentication") (.getMessage e))))))
+
+(defn- email-login
+  "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+    (when (pass/verify-password password (:password_salt user) (:password user))
+      {:id (create-session! user)})))
+
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, remote-address :remote-addr}]
@@ -48,28 +70,13 @@
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :username)   username)
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
-  (or
-    ;; First try LDAP if it's enabled
-    (when (ldap/ldap-configured?)
-      (try
-        (when-let [user-info (ldap/find-user username)]
-          (if (ldap/verify-password user-info password)
-            {:id (create-session! (ldap/fetch-or-create-user! user-info password))}
-            ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly outdated password
-            (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                       :errors      {:password "did not match stored password"}}))))
-        (catch com.unboundid.util.LDAPSDKException e
-          (log/error (u/format-color 'red "Problem connecting to LDAP server, will fallback to local authentication") (.getMessage e)))))
+  (or (ldap-login username password)  ; First try LDAP if it's enabled
+      (email-login username password) ; Then try local authentication
+      ;; If nothing succeeded complain about it
+      ;; Don't leak whether the account doesn't exist or the password was incorrect
+      (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                 :errors      {:password "did not match stored password"}}))))
 
-    ;; Then try local authentication
-    (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
-      (when (pass/verify-password password (:password_salt user) (:password user))
-        {:id (create-session! user)}))
-
-    ;; If nothing succeeded complain about it
-    ;; Don't leak whether the account doesn't exist or the password was incorrect
-    (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                               :errors      {:password "did not match stored password"}}))))
 
 (api/defendpoint DELETE "/"
   "Logout."

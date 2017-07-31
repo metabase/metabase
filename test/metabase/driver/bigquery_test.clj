@@ -3,11 +3,14 @@
             [metabase
              [query-processor :as qp]
              [query-processor-test :as qptest]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :refer [expect-with-engine]]))
+
+(def ^:private col-defaults
+  {:remapped_to nil, :remapped_from nil})
 
 ;; Test native queries
 (expect-with-engine :bigquery
@@ -21,10 +24,12 @@
 
 ;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
-  {:cols    [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
-             {:name "user_id",     :display_name  "User ID"      :base_type :type/Integer}
-             {:name "checkins_id", :display_name "Checkins ID"  :base_type :type/Integer}],
-   :columns ["venue_id" "user_id" "checkins_id"]}
+  {:columns ["venue_id" "user_id" "checkins_id"],
+   :cols    (mapv #(merge col-defaults %)
+                  [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
+                   {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
+                   {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}])}
+
   (select-keys (:data (qp/process-query {:native   {:query "SELECT [test_data.checkins.venue_id] AS [venue_id], [test_data.checkins.user_id] AS [user_id], [test_data.checkins.id] AS [checkins_id]
                                                             FROM [test_data.checkins]
                                                             LIMIT 2"}

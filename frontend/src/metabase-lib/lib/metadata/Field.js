@@ -23,6 +23,8 @@ import {
     getFieldType
 } from "metabase/lib/schema_metadata";
 
+import type { FieldValues } from "metabase/meta/types/Field";
+
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
@@ -88,7 +90,7 @@ export default class Field extends Base {
         return isCoordinate(this);
     }
 
-    fieldValues(): Array<string> {
+    fieldValues(): FieldValues {
         return getFieldValues(this._object);
     }
 

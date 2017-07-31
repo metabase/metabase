@@ -369,3 +369,15 @@
 (defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
   ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
   (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))
+
+;; There's a window on in the 0.23.0 and 0.23.1 releases that the
+;; site-url could be persisted without a protocol specified. Other
+;; areas of the application expect that site-url will always include
+;; http/https. This migration ensures that if we have a site-url
+;; stored it has the current defaulting logic applied to it
+(defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
+  (let [stored-site-url (db/select-one-field :value Setting :key "site-url")
+        defaulted-site-url (public-settings/site-url stored-site-url)]
+    (when (and stored-site-url
+               (not= stored-site-url defaulted-site-url))
+      (setting/set! "site-url" stored-site-url))))

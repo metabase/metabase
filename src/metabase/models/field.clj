@@ -6,7 +6,8 @@
              [config :as config]
              [util :as u]]
             [metabase.models
-             [field-values :refer [FieldValues]]
+             [dimension :refer [Dimension]]
+             [field-values :as fv :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
@@ -98,15 +99,38 @@
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
+(defn- keyed-by-field-ids
+  "Queries for `MODEL` instances related by `FIELDS`, returns a map
+  keyed by :field_id"
+  [fields model]
+  (let [field-ids (set (map :id fields))]
+    (u/key-by :field_id (when (seq field-ids)
+                          (db/select model :field_id [:in field-ids])))))
+
 (defn with-values
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :values}
   [fields]
-  (let [field-ids        (set (map :id fields))
-        id->field-values (u/key-by :field_id (when (seq field-ids)
-                                               (db/select FieldValues :field_id [:in field-ids])))]
+  (let [id->field-values (keyed-by-field-ids fields FieldValues)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
+
+(defn with-normal-values
+  "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
+  {:batched-hydrate :normal_values}
+  [fields]
+  (let [id->field-values (keyed-by-field-ids (filter fv/field-should-have-field-values? fields)
+                                             [FieldValues :id :human_readable_values :values :field_id])]
+    (for [field fields]
+      (assoc field :values (get id->field-values (:id field) [])))))
+
+(defn with-dimensions
+  "Efficiently hydrate the `Dimension` for a collection of FIELDS."
+  {:batched-hydrate :dimensions}
+  [fields]
+  (let [id->dimensions (keyed-by-field-ids fields Dimension)]
+    (for [field fields]
+      (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
 (defn with-targets
   "Efficiently hydrate the FK target fields for a collection of FIELDS."

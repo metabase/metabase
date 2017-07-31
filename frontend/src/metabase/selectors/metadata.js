@@ -88,6 +88,8 @@ export const getMetadata = createSelector(
             getAggregatorsWithFields(t));
         hydrate(meta.tables, "breakout_options", t => getBreakouts(t.fields));
 
+        hydrate(meta.fields, "remapping", f => new Map(getFieldValues(f)));
+
         hydrateLookup(meta.databases, "tables", "id");
         hydrateLookup(meta.tables, "fields", "id");
         hydrateLookup(meta.fields, "operators", "name");
@@ -122,7 +124,17 @@ export const getSegments = createSelector(
 // MISC
 
 export const getParameterFieldValues = (state, props) => {
-    return getFieldValues(getIn(state, ["metadata", "fields", props.parameter.field_id, "values"]));
+    const fieldValues = getFieldValues(getIn(state, ["metadata", "fields", props.parameter.field_id]));
+
+    // HACK Atte Keinänen 7/27/17: Currently the field value analysis code only returns a single value for booleans,
+    // this will be addressed in analysis sync refactor
+    const isBooleanFieldValues =
+        fieldValues && fieldValues.length === 1 && fieldValues[0] && typeof(fieldValues[0][0]) === "boolean"
+    if (isBooleanFieldValues) {
+        return [[true], [false]];
+    } else {
+        return fieldValues;
+    }
 }
 
 // UTILS:
