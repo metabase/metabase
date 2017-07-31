@@ -8,6 +8,8 @@ import {
     fetchData
 } from 'metabase/lib/redux';
 
+import { push } from "react-router-redux";
+
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
 import { GettingStartedApi, XRayApi } from 'metabase/services';
@@ -76,10 +78,10 @@ export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
 // X-Ray whatnotery
 const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
-export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
+export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId, cost) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.field_fingerprint({ fieldId });
+            let fingerprint = await XRayApi.field_fingerprint({ fieldId, ...cost.method });
             return fingerprint;
         } catch (error) {
             console.error(error);
@@ -182,6 +184,14 @@ export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, func
         }
     }
 })
+
+const CHANGE_COST = 'metabase/reference/CHANGE_COST';
+export const changeCost = createThunkAction(CHANGE_COST, (cost) => {
+    return dispatch => {
+        dispatch(push(`/xray/${cost}`))
+    }
+})
+
 // Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
 
 const fetchDataWrapper = (props, fn) => {

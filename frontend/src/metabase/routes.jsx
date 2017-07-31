@@ -243,8 +243,8 @@ export const getRoutes = (store) =>
                 {/* REFERENCE */}
                 <Route path="/xray" title="XRay">
                     <Route path="segment/:segmentId" component={SegmentXRay} />
-                    <Route path="table/:tableId" component={TableXRay} />
-                    <Route path="field/:fieldId" component={FieldXRay} />
+                    <Route path="table/:tableId/:cost" component={TableXRay} />
+                    <Route path="field/:fieldId/:cost" component={FieldXRay} />
                     <Route path="card/:cardId" component={CardXRay} />
                     <Route path="compare/fields/:fieldId1/:fieldId2" component={FieldComparison} />
                     <Route path="compare/tables/:tableId1/:tableId2" component={TableComparison} />

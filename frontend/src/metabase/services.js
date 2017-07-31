@@ -134,8 +134,8 @@ export const MetabaseApi = {
 
 export const XRayApi = {
     // X-Rays
-    field_fingerprint:           GET("api/fingerprint/field/:fieldId"),
-    table_fingerprint:           GET("api/fingerprint/table/:tableId"),
+    field_fingerprint:           GET("api/fingerprint/field/:fieldId/:max_query_cost/:max_computation_cost"),
+    table_fingerprint:           GET("api/fingerprint/table/:tableId/:max_query_cost/:max_computation_cost"),
     segment_fingerprint:         GET("api/fingerprint/segment/:segmentId"),
     card_fingerprint:            GET("api/fingerprint/card/:cardId"),
 

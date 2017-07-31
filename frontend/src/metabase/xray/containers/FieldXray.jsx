@@ -4,11 +4,15 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from "metabase/hoc/Title";
 
-import { fetchFieldFingerPrint } from 'metabase/reference/reference'
+import { fetchFieldFingerPrint, changeCost } from 'metabase/reference/reference'
 
 import { getFieldFingerprint } from 'metabase/reference/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
+
+import costs from 'metabase/xray/costs'
+
+import Select, { Option } from 'metabase/components/Select'
 
 import SimpleHistogram from 'metabase/xray/SimpleHistogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
@@ -38,7 +42,8 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
-    fetchFieldFingerPrint
+    fetchFieldFingerPrint,
+    changeCost
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -51,11 +56,30 @@ class FieldXRay extends Component {
     }
 
     componentDidMount () {
-        this.props.fetchFieldFingerPrint(this.props.params.fieldId)
+        this.fetchFieldFingerprint()
+    }
+
+    fetchFieldFingerprint() {
+        const { params } = this.props
+        const cost = costs[params.cost]
+        this.props.fetchFieldFingerPrint(params.fieldId, cost)
+
+    }
+
+    componentDidUpdate (prevProps) {
+        if(prevProps.params.cost !== this.props.params.cost) {
+            this.fetchFieldFingerprint()
+        }
+    }
+
+    changeCost = ({ target }) => {
+        const { params } = this.props
+        // TODO - this feels kinda icky, would be nice to be able to just pass cost
+        this.props.changeCost(`field/${params.fieldId}/${target.value}`)
     }
 
     render () {
-        const { fingerprint } = this.props
+        const { fingerprint, params } = this.props
         return (
             <div className="wrapper" style={{ paddingLeft: '6em', paddingRight: '6em' }}>
                 <div className="full">
@@ -64,10 +88,23 @@ class FieldXRay extends Component {
                             return (
                                 <div className="full">
 
-                                    <div className="my4">
+                                    <div className="my4 flex align-center">
                                         <h1>
                                            {fingerprint.field.display_name} stats
                                        </h1>
+                                       <div className="ml-auto">
+                                           Fidelity:
+                                           <Select
+                                               value={params.cost}
+                                               onChange={this.changeCost}
+                                           >
+                                               { Object.keys(costs).map(cost =>
+                                                   <Option value={cost}>
+                                                       {costs[cost].display_name}
+                                                   </Option>
+                                               )}
+                                           </Select>
+                                       </div>
                                    </div>
                                     <div className="mt4">
                                         <h3 className="py2 border-bottom">Distribution</h3>
