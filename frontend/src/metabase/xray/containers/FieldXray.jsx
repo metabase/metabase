@@ -17,6 +17,8 @@ import Select, { Option } from 'metabase/components/Select'
 import SimpleHistogram from 'metabase/xray/SimpleHistogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
+import Visualization from 'metabase/visualizations/components/Visualization'
+
 type Props = {
     fetchFieldFingerPrint: () => void,
     fingerprint: {}
@@ -108,8 +110,30 @@ class FieldXRay extends Component {
                                    </div>
                                     <div className="mt4">
                                         <h3 className="py2 border-bottom">Distribution</h3>
-                                        <div className="my4">
-                                            <SimpleHistogram data={fingerprint.histogram} legends={false} />
+                                        <div className="my4" style={{ height: 300, width: '100%' }}>
+                                            <Visualization
+                                                className="full-height"
+                                                series={[
+                                                    {
+                                                        card: {
+                                                            display: "bar",
+                                                            visualization_settings: {}
+                                                        },
+                                                        data: {
+                                                            rows: fingerprint.histogram,
+                                                            cols: [
+                                                                fingerprint.field,
+                                                                {
+                                                                    name: "Count",
+                                                                    base_type: "type/Integer"
+                                                                },
+                                                            ]
+                                                        }
+
+                                                    }
+                                                ]}
+                                                showTitle={false}
+                                            />
                                         </div>
                                     </div>
 
