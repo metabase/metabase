@@ -278,16 +278,19 @@
                  :features       (features driver)})
               @registered-drivers))
 
+(defn- init-driver-in-namespace! [ns-symb]
+  (require ns-symb)
+  (if-let [register-driver-fn (ns-resolve ns-symb (symbol "-init-driver"))]
+    (register-driver-fn)
+    (log/warn (format "No -init-driver function found for '%s'" (name ns-symb)))))
+
 (defn find-and-load-drivers!
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
-    (require ns-symb)
-    (if-let [register-driver-fn (ns-resolve ns-symb (symbol "-init-driver"))]
-      (register-driver-fn)
-      (log/warn (format "No -init-driver function found for '%s'" (name ns-symb))))))
+    (init-driver-in-namespace! ns-symb)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
@@ -351,8 +354,9 @@
   [engine]
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
-      (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
-        (u/ignore-exceptions (require namespce))
+      (let [namespace-symb (symbol (format "metabase.driver.%s" (name engine)))]
+        ;; TODO - Maybe this should throw the Exception instead of swallowing it?
+        (u/ignore-exceptions (init-driver-in-namespace! namespace-symb))
         ((keyword engine) @registered-drivers))))
 
 
@@ -367,6 +371,15 @@
       {:pre [db-id]}
       (when-let [engine (db-id->engine db-id)]
         (engine->driver engine)))))
+
+(defn ->driver
+  "Return an appropraiate driver for ENGINE-OR-DATABASE-OR-DB-ID.
+   Offered since this is somewhat more flexible in the arguments it accepts."
+  ;; TODO - we should make `engine->driver` and `database-id->driver` private and just use this for everything
+  [engine-or-database-or-db-id]
+  (if (keyword? engine-or-database-or-db-id)
+    (engine->driver engine-or-database-or-db-id)
+    (database-id->driver (u/get-id engine-or-database-or-db-id))))
 
 
 ;; ## Implementation-Agnostic Driver API

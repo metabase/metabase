@@ -16,6 +16,7 @@ import Select from 'metabase/components/Select'
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
@@ -268,7 +269,7 @@ export class FieldHeader extends Component {
                 />
             </div>
         )
-}
+    }
 }
 
 // consider renaming this component to something more descriptive
@@ -313,6 +314,7 @@ export class ValueRemappings extends Component {
     }
 
     onSaveClick = () => {
+        MetabaseAnalytics.trackEvent("Data Model", "Update Custom Remappings");
         // Returns the promise so that ButtonWithStatus can show the saving status
         return this.props.updateRemappings(this.state.editingRemappings);
     }
@@ -451,7 +453,9 @@ export class FieldRemapping extends Component {
 
         this.clearEditingStates();
 
+
         if (mappingType.type === "original") {
+            MetabaseAnalytics.trackEvent("Data Model", "Change Remapping Type", "No Remapping");
             await deleteFieldDimension(field.id)
             this.setState({ hasChanged: false })
         } else if (mappingType.type === "foreign") {
@@ -459,6 +463,7 @@ export class FieldRemapping extends Component {
             const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
 
             if (entityNameFieldId) {
+                MetabaseAnalytics.trackEvent("Data Model", "Change Remapping Type", "Foreign Key");
                 await updateFieldDimension(field.id, {
                     type: "external",
                     name: field.display_name,
@@ -473,6 +478,7 @@ export class FieldRemapping extends Component {
             }
 
         } else if (mappingType.type === "custom") {
+            MetabaseAnalytics.trackEvent("Data Model", "Change Remapping Type", "Custom Remappings");
             await updateFieldDimension(field.id, {
                 type: "internal",
                 name: field.display_name,
@@ -495,6 +501,7 @@ export class FieldRemapping extends Component {
 
         // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
         if (foreignKeyClause.length === 3 && foreignKeyClause[0] === "fk->") {
+            MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
             await updateFieldDimension(field.id, {
                 type: "external",
                 name: field.display_name,

@@ -12,6 +12,16 @@ import type {
 } from "metabase/meta/types/Visualization";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
+const omittedAggregations = ["rows", "cum_sum", "cum_count", "stddev"];
+const getAggregationOptionsForSummarize = query => {
+    return query
+        .table()
+        .aggregations()
+        .filter(
+            aggregation => !omittedAggregations.includes(aggregation.short)
+        );
+};
+
 export default ({ question }: ClickActionProps): ClickAction[] => {
     const query = question.query();
     if (!(query instanceof StructuredQuery)) {
@@ -33,7 +43,9 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                     query={query}
                     tableMetadata={tableMetadata}
                     customFields={query.expressions()}
-                    availableAggregations={query.table().aggregation_options}
+                    availableAggregations={getAggregationOptionsForSummarize(
+                        query
+                    )}
                     onCommitAggregation={aggregation => {
                         onChangeCardAndRun({
                             nextCard: question.summarize(aggregation).card()
@@ -41,6 +53,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                         onClose && onClose();
                     }}
                     onClose={onClose}
+                    showOnlyProvidedAggregations
                 />
             )
         }

@@ -131,7 +131,7 @@
   (i/format-name *driver* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
-  {:pre [(integer? db-id) (u/string-or-keyword? table-name)]}
+  {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
   (let [table-name (format-name table-name)]
     (or (db/select-one-id Table, :db_id db-id, :name table-name)
         (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))

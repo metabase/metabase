@@ -480,6 +480,9 @@ export function getAggregator(short) {
     return _.findWhere(Aggregators, { short: short });
 }
 
+export const isCompatibleAggregatorForField = (aggregator, field) =>
+    aggregator.validFieldsFilters.every(filter => filter([field]).length === 1)
+
 export function getBreakouts(fields) {
     var result = populateFields(BreakoutAggregator, fields);
     result.fields = result.fields[0];

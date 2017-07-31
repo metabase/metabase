@@ -83,11 +83,15 @@
 (expect false (values-are-valid-emails? ["true"]))
 (expect false (values-are-valid-emails? ["false"]))
 
-;; Tests to avoid analyzing hidden tables
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                         Tests to avoid analyzing hidden tables                                         |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 (defn- unanalyzed-fields-count [table]
-  (assert (pos? ;; don't let ourselves be fooled if the test passes because the table is
-           ;; totally broken or has no fields. Make sure we actually test something
-           (db/count Field :table_id (u/get-id table))))
+  ;; don't let ourselves be fooled if the test passes because the table is
+  ;; totally broken or has no fields. Make sure we actually test something
+  (assert (pos? (db/count Field :table_id (u/get-id table))))
   (db/count Field :last_analyzed nil, :table_id (u/get-id table)))
 
 (defn- latest-sync-time [table]
@@ -96,13 +100,18 @@
     :table_id      (u/get-id table)
     {:order-by [[:last_analyzed :desc]]}))
 
-(defn- set-table-visibility-type! [table visibility-type]
+(defn- set-table-visibility-type!
+  "Change the VISIBILITY-TYPE of TABLE via an API call.
+   (This is done via the API so we can see which, if any, side effects (e.g. analysis) get triggered.)"
+  [table visibility-type]
   ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
                                                                        :entity_type     "person"
                                                                        :visibility_type visibility-type
                                                                        :description     "What a nice table!"}))
 
-(defn- api-sync! [table]
+(defn- api-sync!
+  "Trigger a sync of TABLE via the API."
+  [table]
   ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
 
 (defn- analyze! [table]

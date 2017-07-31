@@ -7,14 +7,13 @@
              [util :as u]]
             [metabase.models
              [dimension :refer [Dimension]]
-             [field-values :refer [FieldValues] :as fv]
+             [field-values :as fv :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
             [toucan
              [db :as db]
-             [models :as models]]
-            [metabase.models.field-values :as fv]))
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
 

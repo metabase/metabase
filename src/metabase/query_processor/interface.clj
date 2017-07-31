@@ -3,8 +3,8 @@
    This namespace should just contain definitions of various protocols and record types; associated logic
    should go in `metabase.query-processor.middleware.expand`."
   (:require [metabase.models
-             [field :as field]
-             [dimension :as dim]]
+             [dimension :as dim]
+             [field :as field]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])

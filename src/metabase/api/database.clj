@@ -135,7 +135,7 @@
   [include_tables include_cards]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)}
-  (or (dbs-list include_tables include_cards)
+  (or (dbs-list (Boolean/parseBoolean include_tables) (Boolean/parseBoolean include_cards))
       []))
 
 
@@ -184,8 +184,7 @@
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (str (str/lower-case prefix) "%")]
-                     [:or [:= :visibility_type nil]
-                          [:not= :visibility_type "hidden"]]]
+                     [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]

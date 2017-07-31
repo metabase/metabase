@@ -541,6 +541,10 @@ export class AggregationDimension extends Dimension {
         return this._displayName;
     }
 
+    aggregationIndex(): number {
+        return this._args[0];
+    }
+
     mbql() {
         return ["aggregation", this._args[0]];
     }

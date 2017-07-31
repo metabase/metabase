@@ -10,7 +10,7 @@ import { CardApi } from 'metabase/services'
 
 import { 
     FETCH_DATABASE_METADATA,
-    FETCH_DATABASES
+    FETCH_REAL_DATABASES
 } from "metabase/redux/metadata";
 
 import { END_LOADING } from "metabase/reference/reference"
@@ -48,7 +48,7 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
             var container = mount(store.connectContainer(<DatabaseListContainer />));
-            await store.waitForActions([FETCH_DATABASES, END_LOADING])
+            await store.waitForActions([FETCH_REAL_DATABASES, END_LOADING])
             
             expect(container.find(ReferenceHeader).length).toBe(1)
             expect(container.find(DatabaseList).length).toBe(1)            
@@ -56,6 +56,28 @@ describe("The Reference Section", () => {
             
             expect(container.find(List).length).toBe(1)
             expect(container.find(ListItem).length).toBeGreaterThanOrEqual(1)
+        })
+        
+        // database list
+        it("should not see saved questions in the database list", async () => {
+            var card = await CardApi.create(cardDef)
+            const store = await createTestStore()
+            store.pushPath("/reference/databases/");
+            var container = mount(store.connectContainer(<DatabaseListContainer />));
+            await store.waitForActions([FETCH_REAL_DATABASES, END_LOADING])
+            
+            expect(container.find(ReferenceHeader).length).toBe(1)
+            expect(container.find(DatabaseList).length).toBe(1)            
+            expect(container.find(AdminAwareEmptyState).length).toBe(0)
+            
+            expect(container.find(List).length).toBe(1)
+            expect(container.find(ListItem).length).toBe(1)
+
+
+            expect(card.name).toBe(cardDef.name);
+            
+            await CardApi.delete({cardId: card.id})
+
         })
         
         // database detail

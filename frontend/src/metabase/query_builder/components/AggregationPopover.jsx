@@ -40,6 +40,8 @@ export default class AggregationPopover extends Component {
         datasetQuery: PropTypes.object,
         customFields: PropTypes.object,
         availableAggregations: PropTypes.array,
+        // Restricts the shown options to contents of `availableActions` only
+        showOnlyProvidedAggregations: PropTypes.boolean
     };
 
 
@@ -118,7 +120,7 @@ export default class AggregationPopover extends Component {
     }
 
     render() {
-        const { query, tableMetadata } = this.props;
+        const { query, tableMetadata, showOnlyProvidedAggregations } = this.props;
 
         const customFields = this.getCustomFields();
         const availableAggregations = this.getAvailableAggregations();
@@ -134,42 +136,45 @@ export default class AggregationPopover extends Component {
         }
 
         let sections = [];
+        let customExpressionIndex = null;
 
         if (availableAggregations.length > 0) {
             sections.push({
-                name: "Metabasics",
+                name: showOnlyProvidedAggregations ? null : "Metabasics",
                 items: availableAggregations.map(aggregation => ({
                     name: aggregation.name,
                     value: [aggregation.short].concat(aggregation.fields.map(field => null)),
                     isSelected: (agg) => !AggregationClause.isCustom(agg) && AggregationClause.getAggregation(agg) === aggregation.short,
                     aggregation: aggregation
                 })),
-                icon: "table2"
+                icon: showOnlyProvidedAggregations ? null : "table2"
             });
         }
 
-        // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
-        // retired metric then we include it in the list to maintain continuity
-        let metrics = tableMetadata.metrics && tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id));
-        if (metrics && metrics.length > 0) {
-            sections.push({
-                name: METRICS_SECTION_NAME,
-                items: metrics.map(metric => ({
-                    name: metric.name,
-                    value: ["METRIC", metric.id],
-                    isSelected: (aggregation) => AggregationClause.getMetric(aggregation) === metric.id,
-                    metric: metric
-                })),
-                icon: "staroutline"
-            });
-        }
+        if (!showOnlyProvidedAggregations) {
+            // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
+            // retired metric then we include it in the list to maintain continuity
+            let metrics = tableMetadata.metrics && tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id));
+            if (metrics && metrics.length > 0) {
+                sections.push({
+                    name: METRICS_SECTION_NAME,
+                    items: metrics.map(metric => ({
+                        name: metric.name,
+                        value: ["METRIC", metric.id],
+                        isSelected: (aggregation) => AggregationClause.getMetric(aggregation) === metric.id,
+                        metric: metric
+                    })),
+                    icon: "staroutline"
+                });
+            }
 
-        let customExpressionIndex = sections.length;
-        if (tableMetadata.db.features.indexOf("expression-aggregations") >= 0) {
-            sections.push({
-                name: CUSTOM_SECTION_NAME,
-                icon: "staroutline"
-            });
+            customExpressionIndex = sections.length;
+            if (tableMetadata.db.features.indexOf("expression-aggregations") >= 0) {
+                sections.push({
+                    name: CUSTOM_SECTION_NAME,
+                    icon: "staroutline"
+                });
+            }
         }
 
         if (sections.length === 1) {
@@ -204,7 +209,7 @@ export default class AggregationPopover extends Component {
                                 this.state.error.map(error =>
                                     <div className="text-error mb1" style={{ whiteSpace: "pre-wrap" }}>{error.message}</div>
                                 )
-                            :
+                                :
                                 <div className="text-error mb1">{this.state.error.message}</div>
                         )}
                         <input
@@ -226,7 +231,7 @@ export default class AggregationPopover extends Component {
         } else if (choosingField) {
             const [agg, fieldId] = aggregation;
             return (
-                <div style={{width: 300}}>
+                <div style={{minWidth: 300}}>
                     <div className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
                             <Icon name="chevronleft" size={18}/>

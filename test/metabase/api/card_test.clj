@@ -197,7 +197,21 @@
             :dataset_query          (mbql-count-query database-id table-id)
             :visualization_settings {:global {:title nil}}
             :database_id            database-id ; these should be inferred automatically
-            :table_id               table-id})
+            :table_id               table-id
+            :labels                 []
+            :can_write              true,
+            :dashboard_count        0,
+            :collection             nil
+            :creator                (match-$ (fetch-user :rasta)
+                                      {:common_name  "Rasta Toucan"
+                                       :is_superuser false
+                                       :is_qbnewb    true
+                                       :last_login   $
+                                       :last_name    "Toucan"
+                                       :first_name   "Rasta"
+                                       :date_joined  $
+                                       :email        "rasta@metabase.com"
+                                       :id           $})})
     (with-self-cleaning-random-card-name [_ card-name]
       (dissoc ((user->client :rasta) :post 200 "card" (card-with-name-and-query card-name (mbql-count-query database-id table-id)))
               :created_at :updated_at :id))))
