@@ -4,7 +4,7 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
-             [sync-database :as sync-database]
+             [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
@@ -71,7 +71,7 @@
           became-visible? (and now-visible? (not was-visible?))]
       (when became-visible?
         (log/info (u/format-color 'green "Table '%s' is now visible. Resyncing." (:name updated-table)))
-        (sync-database/sync-table! updated-table))
+        (sync/sync-table! updated-table))
       updated-table)))
 
 

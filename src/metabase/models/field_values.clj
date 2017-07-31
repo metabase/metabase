@@ -13,7 +13,7 @@
   "The maximum character length for a stored `FieldValues` entry."
   100)
 
-(def ^:const ^Integer total-max-length
+(def ^:private ^:const ^Integer total-max-length
   "Maximum total length for a `FieldValues` entry (combined length of all values for the field)."
   (* low-cardinality-threshold entry-max-length))
 
@@ -48,20 +48,36 @@
 
 (defn- values-less-than-total-max-length?
   "`true` if the combined length of all the values in DISTINCT-VALUES is below the
-   threshold for what we'll allow in a FieldValues entry."
+   threshold for what we'll allow in a FieldValues entry. Does some logging as well."
   [distinct-values]
   (let [total-length (reduce + (map (comp count str)
                                     distinct-values))]
-    (<= total-length total-max-length)))
+    (u/prog1 (<= total-length total-max-length)
+      (log/debug (format "Field values total length is %d (max %d)." total-length total-max-length)
+                 (if <>
+                   "FieldValues are allowed for this Field."
+                   "FieldValues are NOT allowed for this Field.")))))
+
+(defn- cardinality-less-than-threshold?
+  "`true` if the number of DISTINCT-VALUES is less that `low-cardinality-threshold`.
+   Does some logging as well."
+  [distinct-values]
+  (let [num-values (count distinct-values)]
+    (u/prog1 (<= num-values low-cardinality-threshold)
+      (log/debug (if <>
+                   (format "Field has %d distinct values (max %d). FieldValues are allowed for this Field." num-values low-cardinality-threshold)
+                   (format "Field has over %d values. FieldValues are NOT allowed for this Field." low-cardinality-threshold))))))
 
 
 (defn- distinct-values
   "Fetch a sequence of distinct values for FIELD that are below the `total-max-length` threshold.
    If the values are past the threshold, this returns `nil`."
   [field]
+  (require 'metabase.db.metadata-queries)
   (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
-    (when (values-less-than-total-max-length? values)
-      values)))
+    (when (cardinality-less-than-threshold? values)
+      (when (values-less-than-total-max-length? values)
+        values))))
 
 
 (defn create-or-update-field-values!
@@ -74,22 +90,20 @@
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
       (do
-        (log/debug (format "Updating FieldValues for Field %s..." field-name))
+        (log/debug (format "Storing updated FieldValues for Field %s..." field-name))
         (db/update! FieldValues (u/get-id field-values)
           :values values))
       ;; if FieldValues object doesn't exist create one
       values
       (do
-        (log/debug (format "Creating FieldValues for Field %s..." field-name))
+        (log/debug (format "Storing FieldValues for Field %s..." field-name))
         (db/insert! FieldValues
           :field_id              (u/get-id field)
           :values                values
           :human_readable_values human-readable-values))
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
       :else
-      (do
-        (log/debug (format "Values for field %s exceed the total max length threshold." field-name))
-        (db/delete! FieldValues :field_id (u/get-id field))))))
+      (db/delete! FieldValues :field_id (u/get-id field)))))
 
 
 (defn field-values->pairs

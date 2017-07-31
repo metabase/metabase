@@ -5,7 +5,7 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
-             [sync-database :as sync-database]
+             [sync :as sync]
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
@@ -376,11 +376,11 @@
 
 (tt/expect-with-temp [Table [table {:rows 15}]]
   2
-  (let [original-sync-table! sync-database/sync-table!
+  (let [original-sync-table! sync/sync-table!
         called (atom 0)
         test-fun (fn [state]
-                   (with-redefs [sync-database/sync-table! (fn [& args] (swap! called inc)
-                                                             (apply original-sync-table! args))]
+                   (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
+                                                    (apply original-sync-table! args))]
                      ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
                                                                                           :entity_type     "person"
                                                                                           :visibility_type state
