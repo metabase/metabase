@@ -9,9 +9,6 @@ import "leaflet-draw";
 
 import _ from "underscore";
 
-import { updateIn } from "icepick";
-import * as Query from "metabase/lib/query/query";
-import { mbqlEq } from "metabase/lib/query/util";
 import { updateLatLonFilter } from "metabase/qb/lib/actions";
 
 export default class LeafletMap extends Component {

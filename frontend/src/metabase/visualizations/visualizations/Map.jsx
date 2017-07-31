@@ -12,8 +12,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-
 import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
@@ -188,7 +186,7 @@ export default class Map extends Component {
         }
     }
 
-    shouldComponentUpdate(nextProps, nextState) {
+    shouldComponentUpdate(nextProps: any, nextState: any) {
         let sameSize = (this.props.width === nextProps.width && this.props.height === nextProps.height);
         let sameSeries = isSameSeries(this.props.series, nextProps.series);
         return !(sameSize && sameSeries);

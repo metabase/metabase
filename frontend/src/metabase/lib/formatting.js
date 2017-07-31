@@ -67,7 +67,8 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
 }
 
 export function formatCoordinate(value: number, options: FormattingOptions = {}) {
-    const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
+    // NOTE Atte Keinänen 7/31/17 Commented binWidth out as it wasn't being used
+    // const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
     let direction = "";
     if (isLatitude(options.column)) {
         direction = " " + (value < 0 ? "S" : "N");

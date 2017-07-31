@@ -13,12 +13,8 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 // Helpers for defining drill-down progressions
-const CategoryDrillDown = type => [
-    field => isa(field.special_type, type)
-];
-const DateTimeDrillDown = unit => [
-    ["datetime-field", isDate, unit]
-];
+const CategoryDrillDown = type => [field => isa(field.special_type, type)];
+const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
 const LatLonDrillDown = binWidth => [
     ["binning-strategy", isLatitude, "bin-width", binWidth],
     ["binning-strategy", isLongitude, "bin-width", binWidth]
@@ -41,22 +37,13 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
     // Country => State => City
     [
         CategoryDrillDown(TYPE.Country),
-        CategoryDrillDown(TYPE.State),
+        CategoryDrillDown(TYPE.State)
         // CategoryDrillDown(TYPE.City)
     ],
     // Country, State, or City => LatLon
-    [
-        CategoryDrillDown(TYPE.Country),
-        LatLonDrillDown(10)
-    ],
-    [
-        CategoryDrillDown(TYPE.State),
-        LatLonDrillDown(1)
-    ],
-    [
-        CategoryDrillDown(TYPE.City),
-        LatLonDrillDown(0.1)
-    ],
+    [CategoryDrillDown(TYPE.Country), LatLonDrillDown(10)],
+    [CategoryDrillDown(TYPE.State), LatLonDrillDown(1)],
+    [CategoryDrillDown(TYPE.City), LatLonDrillDown(0.1)],
     // LatLon drill downs
     [
         LatLonDrillDown(30),
@@ -80,21 +67,33 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
     // generic bin-width drill down
     [
         [["binning-strategy", isAny, "bin-width", () => true]],
-        [["binning-strategy", isAny, "bin-width", previous => previous / 10]]
+        [
+            [
+                "binning-strategy",
+                isAny,
+                "bin-width",
+                (previous: number) => previous / 10
+            ]
+        ]
     ]
 ];
 
 /**
  * Returns the next drill down for the current dimension objects
  */
-export function drillDownForDimensions(dimensions, metadata) {
+export function drillDownForDimensions(dimensions: any, metadata: any) {
     const table = metadata && tableForDimensions(dimensions, metadata);
 
     for (const drillProgression of DEFAULT_DRILL_DOWN_PROGRESSIONS) {
         for (let index = 0; index < drillProgression.length - 1; index++) {
             const currentDrillBreakoutTemplates = drillProgression[index];
             const nextDrillBreakoutTemplates = drillProgression[index + 1];
-            if (breakoutTemplatesMatchDimensions(currentDrillBreakoutTemplates, dimensions)) {
+            if (
+                breakoutTemplatesMatchDimensions(
+                    currentDrillBreakoutTemplates,
+                    dimensions
+                )
+            ) {
                 const breakouts = breakoutsForBreakoutTemplates(
                     nextDrillBreakoutTemplates,
                     dimensions,
@@ -123,10 +122,12 @@ function breakoutTemplateMatchesDimension(breakoutTemplate, dimension) {
         }
         for (let i = 2; i < breakoutTemplate.length; i++) {
             if (typeof breakoutTemplate[i] === "function") {
+                // $FlowFixMe
                 if (!breakoutTemplate[i](breakout[i])) {
                     return false;
                 }
             } else {
+                // $FlowFixMe
                 if (breakoutTemplate[i] !== breakout[i]) {
                     return false;
                 }
@@ -158,8 +159,9 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
     let fieldFilter = Array.isArray(breakoutTemplate)
         ? breakoutTemplate[1]
         : breakoutTemplate;
-    let dimensionColumns = dimensions.map(d => d.column)
-    let field = _.find(dimensionColumns, fieldFilter) || _.find(table.fields, fieldFilter);
+    let dimensionColumns = dimensions.map(d => d.column);
+    let field = _.find(dimensionColumns, fieldFilter) ||
+        _.find(table.fields, fieldFilter);
     if (!field) {
         return null;
     }
@@ -174,9 +176,8 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
                 if (!prevDimension) {
                     return null;
                 }
-                const prevBreakout = columnToBreakout(
-                    prevDimension.column
-                );
+                const prevBreakout = columnToBreakout(prevDimension.column);
+                // $FlowFixMe
                 breakout.push(arg(prevBreakout[i]));
             } else {
                 breakout.push(arg);

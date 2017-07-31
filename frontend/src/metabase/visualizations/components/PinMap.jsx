@@ -23,6 +23,10 @@ type Props = VisualizationProps;
 type State = {
     lat: ?number,
     lng: ?number,
+    min: ?number,
+    max: ?number,
+    binHeight: ?number,
+    binWidth: ?number,
     zoom: ?number,
     points: L.Point[],
     bounds: L.Bounds,
@@ -70,7 +74,9 @@ export default class PinMap extends Component {
         const SETTINGS_KEYS = ["map.latitude_column", "map.longitude_column", "map.metric_column"];
         if (newProps.series[0].data !== this.props.series[0].data ||
             !_.isEqual(
+                // $FlowFixMe
                 _.pick(newProps.settings, ...SETTINGS_KEYS),
+                // $FlowFixMe
                 _.pick(this.props.settings, ...SETTINGS_KEYS))
         ) {
             this.setState(this._getPoints(newProps))

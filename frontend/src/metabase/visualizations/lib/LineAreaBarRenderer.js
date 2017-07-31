@@ -1002,9 +1002,11 @@ export default function lineAreaBar(element: Element, {
                 let [start, end] = xDomain;
                 if (isHistogramBar) {
                     // NOTE: intentionally add an end point for bar histograms
+                    // $FlowFixMe
                     end += xInterval * 1.5
                 } else {
                     // NOTE: avoid including endpoint due to floating point error
+                    // $FlowFixMe
                     end += xInterval * 0.5
                 }
                 xValues = d3.range(start, end, xInterval);

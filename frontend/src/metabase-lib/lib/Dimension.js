@@ -108,9 +108,7 @@ export default class Dimension {
      */
     // TODO Atte Keinänen 5/21/17: Rename either this or the static method with the same name
     // Also making it clear in the method name that we're working with sub-dimensions would be good
-    dimensions(
-        DimensionTypes?: typeof Dimension[]
-    ): Dimension[] {
+    dimensions(DimensionTypes?: typeof Dimension[]): Dimension[] {
         const dimensionOptions = this.field().dimension_options;
         if (!DimensionTypes && dimensionOptions) {
             return dimensionOptions.map(option =>
@@ -448,11 +446,7 @@ export class DatetimeFieldDimension extends FieldDimension {
     }
 
     render() {
-        return [
-            ...super.render(),
-            ": ",
-            this.subDisplayName()
-        ]
+        return [...super.render(), ": ", this.subDisplayName()];
     }
 }
 
@@ -486,17 +480,23 @@ export class BinnedDimension extends FieldDimension {
     }
 
     subDisplayName(): string {
+        console.log('BinnedDimension subDisplayName', this._args);
+
         if (this._args[0] === "num-bins") {
             return `Quantized into ${this._args[1]} ${inflect("bins", this._args[1])}`;
         } else if (this._args[0] === "bin-width") {
             const binWidth = this._args[1];
-            const units = this.field().isCoordinate() ? inflect("degree", binWidth) : "";
+            const units = this.field().isCoordinate()
+                ? inflect("degree", binWidth)
+                : "";
             return `Quantized by ${binWidth}${units}`;
         }
         return JSON.stringify(this._args);
     }
 
     subTriggerDisplayName(): string {
+        console.log('BinnedDimension subTriggerDisplayName', this._args);
+
         if (this._args[0] === "num-bins") {
             return `${this._args[1]} ${inflect("bins", this._args[1])}`;
         } else if (this._args[0] === "bin-width") {

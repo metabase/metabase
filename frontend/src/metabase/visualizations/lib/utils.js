@@ -166,7 +166,8 @@ export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
 export const DIMENSION_DIMENSION_METRIC = "DIMENSION_DIMENSION_METRIC";
 
-const MAX_SERIES = 10;
+// NOTE Atte Keinänen 7/31/17 Commented MAX_SERIES out as it wasn't being used
+// const MAX_SERIES = 10;
 
 export const isDimensionMetric = (cols, strict = true) =>
     (!strict || cols.length === 2) &&

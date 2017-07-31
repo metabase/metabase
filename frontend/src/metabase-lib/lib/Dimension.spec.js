@@ -250,7 +250,7 @@ describe("DatetimeFieldDimension", () => {
 
 describe("BinningStrategyDimension", () => {
     const dimension = Dimension.parseMBQL(
-        ["binning-strategy", ORDERS_TOTAL_FIELD_ID, "default", 10],
+        ["binning-strategy", ORDERS_TOTAL_FIELD_ID, "num-bins", 10],
         metadata
     );
 
@@ -271,7 +271,7 @@ describe("BinningStrategyDimension", () => {
                 expect(dimension.mbql()).toEqual([
                     "binning-strategy",
                     ["field-id", ORDERS_TOTAL_FIELD_ID],
-                    "default",
+                    "num-bins",
                     10
                 ]);
             });
@@ -288,6 +288,7 @@ describe("BinningStrategyDimension", () => {
                 );
             });
         });
+
         describe("subTriggerDisplayName()", () => {
             it("returns '10 bins'", () => {
                 expect(dimension.subTriggerDisplayName()).toEqual("10 bins");

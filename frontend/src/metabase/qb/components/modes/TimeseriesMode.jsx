@@ -46,11 +46,7 @@ export const TimeseriesModeFooter = (props: Props) => {
 const TimeseriesMode: QueryMode = {
     name: "timeseries",
     actions: [PivotByCategoryAction, PivotByLocationAction, ...DEFAULT_ACTIONS],
-    drills: [
-        PivotByCategoryDrill,
-        PivotByLocationDrill,
-        ...DEFAULT_DRILLS
-    ],
+    drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DEFAULT_DRILLS],
     ModeFooter: TimeseriesModeFooter
 };
 

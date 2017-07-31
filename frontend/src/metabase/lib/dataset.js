@@ -1,11 +1,9 @@
-/* @flow */
-
 import _ from "underscore";
 
-import type { Dataset, Value, Column } from "metabase/meta/types/Dataset";
+import type { Value, Column, DatasetData } from "metabase/meta/types/Dataset";
 
 // Many aggregations result in [[null]] if there are no rows to aggregate after filters
-export const datasetContainsNoResults = (data: Dataset): boolean =>
+export const datasetContainsNoResults = (data: DatasetData): boolean =>
     data.rows.length === 0 || _.isEqual(data.rows, [[null]]);
 
 /**

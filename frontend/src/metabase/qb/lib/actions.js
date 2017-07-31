@@ -11,12 +11,21 @@ import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
 import { rangeForValue } from "metabase/lib/dataset";
-import { isDate, isState, isCountry, isCoordinate } from "metabase/lib/schema_metadata";
+import {
+    isDate,
+    isState,
+    isCountry,
+    isCoordinate
+} from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
+import type {
+    StructuredQuery,
+    FieldFilter,
+    Breakout
+} from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
 
@@ -101,7 +110,12 @@ const drillFilter = (card, value, column) => {
     } else {
         const range = rangeForValue(value, column);
         if (range) {
-            filter = ["BETWEEN", getFieldRefFromColumn(column), range[0], range[1]];
+            filter = [
+                "BETWEEN",
+                getFieldRefFromColumn(column),
+                range[0],
+                range[1]
+            ];
         } else {
             filter = ["=", getFieldRefFromColumn(column), value];
         }
@@ -283,11 +297,20 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     }
 };
 
-export function updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds) {
+export function updateLatLonFilter(
+    card,
+    latitudeColumn,
+    longitudeColumn,
+    bounds
+) {
     return addOrUpdateFilter(card, [
         "INSIDE",
-        latitudeColumn.id, longitudeColumn.id,
-        bounds.getNorth(), bounds.getWest(), bounds.getSouth(), bounds.getEast()
+        latitudeColumn.id,
+        longitudeColumn.id,
+        bounds.getNorth(),
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast()
     ]);
 }
 
@@ -327,7 +350,6 @@ export const pivot = (
 
     for (const breakout of breakouts) {
         newCard.dataset_query.query = Query.addBreakout(
-            // $FlowFixMe
             newCard.dataset_query.query,
             breakout
         );

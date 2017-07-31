@@ -1,3 +1,5 @@
+/* eslint-disable flowtype/require-valid-file-annotation */
+
 import {
     metadata,
     ORDERS_CREATED_DATE_FIELD_ID,

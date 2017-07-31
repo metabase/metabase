@@ -97,6 +97,8 @@ export default class Visualization extends Component {
     state: State;
     props: Props;
 
+    _resetHoverTimer: ?number;
+
     constructor(props: Props) {
         super(props);
 
