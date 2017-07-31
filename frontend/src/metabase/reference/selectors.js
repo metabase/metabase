@@ -172,3 +172,13 @@ export const getIsDashboardModalOpen = (state, props) => state.reference.isDashb
 export const getFieldFingerprint = (state) =>
     state.reference.fieldFingerprint && state.reference.fieldFingerprint.fingerprint
 
+export const getTableFingerprint = (state) =>
+    state.reference.tableFingerprint && state.reference.tableFingerprint.fingerprint
+
+export const getTableConstituents = (state) =>
+    state.reference.tableFingerprint && (
+        Object.keys(state.reference.tableFingerprint.constituents).map(key =>
+            state.reference.tableFingerprint.constituents[key]
+        )
+    )
+
