@@ -31,7 +31,7 @@ const StatGroup = ({ fingerprint, stats, showDescriptions }) =>
     <ol className="Grid Grid--1of3">
         { stats.map(stat =>
             fingerprint[stat] && (
-                <li className="Grid-cell my2">
+                <li className="Grid-cell p4 border-right border-bottom">
                     <SimpleStat
                         stat={fingerprint[stat]}
                         showDescription={showDescriptions}
@@ -43,7 +43,7 @@ const StatGroup = ({ fingerprint, stats, showDescriptions }) =>
 
 
 const Heading = ({ heading }) =>
-    <h3 className="py2 border-bottom mb3">{heading}</h3>
+    <h2 className="py3">{heading}</h2>
 
 const mapStateToProps = state => ({
     fingerprint: getFieldFingerprint(state)
@@ -97,14 +97,17 @@ class FieldXRay extends Component {
                                 <div className="full">
 
                                     <div className="my4 flex align-center">
-                                        <Link to={`/xray/table/${fingerprint.table.id}/approximate`}>
-                                            {fingerprint.table.display_name}
-                                        </Link>
                                         <div>
-                                            <h1>
+                                            <Link
+                                                className="my2"
+                                                to={`/xray/table/${fingerprint.table.id}/approximate`}
+                                            >
+                                                {fingerprint.table.display_name}
+                                            </Link>
+                                            <h1 className="m0">
                                                {fingerprint.field.display_name} stats
                                            </h1>
-                                           <p>{fingerprint.field.description}</p>
+                                           <p className="text-paragraph text-measure">{fingerprint.field.description}</p>
                                        </div>
                                        <div className="ml-auto">
                                            Fidelity:
@@ -117,8 +120,10 @@ class FieldXRay extends Component {
                                     <div className="mt4">
                                         <Heading heading="Distribution" />
                                         <div className="bg-white bordered shadowed">
-                                            <div className="my4" style={{ height: 300, width: '100%' }}>
+                                            <div className="p4">
+                                            <div style={{ height: 300 }}>
                                                 <Histogram histogram={fingerprint.histogram.value} />
+                                            </div>
                                             </div>
                                         </div>
                                     </div>
@@ -129,17 +134,26 @@ class FieldXRay extends Component {
 
                                         isDate(fingerprint.field) && (
                                             <div>
-                                                <Heading heading="Periodicity" />,
-                                                <div className="Grid Grid--gutters bg-white bordered rounded shadowed">
-                                                    { PERIODICITY.map(period =>
-                                                        fingerprint[`histogram-${period}`] && (
-                                                            <div className="Grid-cell" style={{ height: 120 }}>
-                                                                <Histogram
-                                                                    histogram={fingerprint[`histogram-${period}`].value}
-                                                                />
-                                                            </div>
-                                                        )
-                                                    )}
+                                                <Heading heading="Time breakdown" />,
+                                                <div className="bg-white bordered rounded shadowed">
+                                                    <div className="Grid Grid--gutters Grid--1of4">
+                                                        { PERIODICITY.map(period =>
+                                                            fingerprint[`histogram-${period}`] && (
+                                                                <div className="Grid-cell">
+                                                                    <div className="p4 border-right border-bottom">
+                                                                        <div style={{ height: 120}}>
+                                                                            <h4>
+                                                                                {fingerprint[`histogram-${period}`].label}
+                                                                            </h4>
+                                                                            <Histogram
+                                                                                histogram={fingerprint[`histogram-${period}`].value}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         )
@@ -183,16 +197,18 @@ class FieldXRay extends Component {
 
                                     <div className="my4">
                                         <Heading heading="ML" />
-                                        <StatGroup
-                                            fingerprint={fingerprint}
-                                            showDescriptions
-                                            stats={[
-                                                'cardinality-vs-count',
-                                                'positive-definite?',
-                                                'has-nils?',
-                                                'all-distinct?',
-                                            ]}
-                                        />
+                                        <div className="bordered rounded shadowed bg-white">
+                                            <StatGroup
+                                                fingerprint={fingerprint}
+                                                showDescriptions
+                                                stats={[
+                                                    'cardinality-vs-count',
+                                                    'positive-definite?',
+                                                    'has-nils?',
+                                                    'all-distinct?',
+                                                ]}
+                                            />
+                                        </div>
                                     </div>
 
 
