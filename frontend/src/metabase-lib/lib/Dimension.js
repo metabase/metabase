@@ -42,6 +42,10 @@ export default class Dimension {
     _args: any;
     _metadata: ?Metadata;
 
+    // Display names provided by the backend
+    _subDisplayName: ?String;
+    _subTriggerDisplayName: ?String;
+
     /**
      * Dimension constructor
      */
@@ -153,8 +157,8 @@ export default class Dimension {
         }
         let dimension = Dimension.parseMBQL(mbql, this._metadata);
         if (option.name) {
-            dimension.subDisplayName = () => option.name;
-            dimension.subTriggerDisplayName = () => option.name;
+            dimension._subDisplayName = option.name;
+            dimension._subTriggerDisplayName = option.name;
         }
         return dimension;
     }
@@ -253,7 +257,7 @@ export default class Dimension {
      * @abstract
      */
     subDisplayName(): string {
-        return "";
+        return this._subDisplayName || "";
     }
 
     /**
@@ -261,7 +265,7 @@ export default class Dimension {
      * @abstract
      */
     subTriggerDisplayName(): string {
-        return "";
+        return this._subTriggerDisplayName || "";
     }
 
     /**
@@ -302,12 +306,15 @@ export class FieldDimension extends Dimension {
     }
 
     subDisplayName(): string {
-        if (this._parent) {
+        if (this._subDisplayName) {
+            return this._subTriggerDisplayName
+        }
+        else if (this._parent) {
+            // TODO Atte Keinänen 8/1/17: Is this used at all?
             // foreign key, show the field name
             return this.field().display_name;
-        } else if (this.field().isNumber()) {
-            return "Continuous (no binning)";
         } else {
+            // TODO Atte Keinänen 8/1/17: Is this used at all?
             return "Default";
         }
     }
@@ -463,11 +470,7 @@ export class BinnedDimension extends FieldDimension {
     }
 
     static dimensions(parent: Dimension): Dimension[] {
-        if (isFieldDimension(parent) && parent.field().isNumber()) {
-            return [5, 10, 25, 100].map(
-                bins => new BinnedDimension(parent, ["default", bins])
-            );
-        }
+        // Subdimensions are are provided by the backend through the dimension_options field property
         return [];
     }
 
@@ -486,8 +489,13 @@ export class BinnedDimension extends FieldDimension {
             const binWidth = this._args[1];
             const units = this.field().isCoordinate() ? "°" : "";
             return `${binWidth}${units}`;
+        } else {
+            return "Auto binned";
         }
-        return "";
+    }
+
+    render() {
+        return [...super.render(), ": ", this.subTriggerDisplayName()];
     }
 }
 
