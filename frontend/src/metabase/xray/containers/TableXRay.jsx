@@ -43,7 +43,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(() => "Table")
+@title(({ fingerprint }) => fingerprint && fingerprint.table.display_name || "Table")
 class TableXRay extends Component {
     props: Props
 
@@ -75,14 +75,14 @@ class TableXRay extends Component {
     }
 
     render () {
-        const { constituents, params } = this.props
+        const { constituents, fingerprint, params } = this.props
 
         return (
             <LoadingAndErrorWrapper loading={!constituents}>
                 { () =>
                     <div className="wrapper" style={{ paddingLeft: '6em', paddingRight: '6em'}}>
                         <div className="my4 flex align-center py4">
-                            <h1>Xray</h1>
+                            <h1>{ fingerprint.table.display_name }</h1>
                             <div className="ml-auto">
                                 Fidelity:
                                 <CostSelect
