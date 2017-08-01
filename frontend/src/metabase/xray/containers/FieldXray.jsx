@@ -196,7 +196,7 @@ class FieldXRay extends Component {
                                     </div>
 
                                     <div className="my4">
-                                        <Heading heading="ML" />
+                                        <Heading heading="What the Robots say" />
                                         <div className="bordered rounded shadowed bg-white">
                                             <StatGroup
                                                 fingerprint={fingerprint}
