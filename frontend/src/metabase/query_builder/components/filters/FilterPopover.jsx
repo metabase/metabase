@@ -101,8 +101,9 @@ export default class FilterPopover extends Component {
 
     setValue(index: number, value: any) {
         let { filter } = this.state;
-        filter[index + 2] = value;
-        this.setState({ filter: filter });
+        let newFilter = [...filter]
+        newFilter[index + 2] = value;
+        this.setState({ filter: newFilter });
     }
 
     setValues = (values: any[]) => {
