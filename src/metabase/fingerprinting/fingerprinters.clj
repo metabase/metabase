@@ -64,6 +64,29 @@
 (def Any      [:type/* :type/*])
 (def Text     [:type/Text :type/*])
 
+(defn- histogram->dataset
+  ([histogram] (histogram->dataset identity histogram))
+  ([keyfn histogram]
+   (let [rows      (map (fn [[k v]]
+                          [(keyfn k) v])
+                        (h/pdf histogram))
+         first-key (ffirst rows)]
+     {:rows    rows
+      :cols    ["SHARE" "BIN"]
+      :columns [{:basic_type   :type/Float
+                 :name         "SHARE"
+                 :display_name "Share"
+                 :description  "Share of corresponding bin in the overall population."}
+                {:basic_type   (cond
+                                 (number? first-key) :type/Number
+
+                                 (instance? org.joda.time.DateTime first-key)
+                                 :type/DateTime
+
+                                 :else               :type/Text)
+                 :name         "BIN"
+                 :display_name "Bin"}]})))
+
 (defn field-type
   [field]
   (cond
@@ -160,7 +183,7 @@
 
 (defmethod prettify Num
   [fingerprint]
-  (update fingerprint :histogram h/pdf))
+  (update fingerprint :histogram histogram->dataset))
 
 (defmethod fingerprinter [Num Num]
   [_ _]
@@ -277,7 +300,7 @@
 
 (defmethod prettify Text
   [fingerprint]
-  (update fingerprint :histogram h/pdf))
+  (update fingerprint :histogram histogram->dataset))
 
 (defn- quarter
   [dt]
@@ -324,14 +347,12 @@
   (-> fingerprint
       (update :min               from-double)
       (update :max               from-double)
-      (update :histogram         (comp (partial map (fn [[k v]]
-                                                      [(from-double k) v]))
-                                       h/pdf))
+      (update :histogram         (partial histogram->dataset from-double))
       (update :percentiles       (partial m/map-vals from-double))
-      (update :histogram-hour    h/pdf)
-      (update :histogram-day     h/pdf)
-      (update :histogram-month   h/pdf)
-      (update :histogram-quarter h/pdf)))
+      (update :histogram-hour    histogram->dataset)
+      (update :histogram-day     histogram->dataset)
+      (update :histogram-month   histogram->dataset)
+      (update :histogram-quarter histogram->dataset)))
 
 (defmethod fingerprinter Category
   [_ _]
@@ -357,7 +378,7 @@
 
 (defmethod prettify Category
   [fingerprint]
-  (update fingerprint :histogram h/pdf))
+  (update fingerprint :histogram histogram->dataset))
 
 (defmethod fingerprinter :default
   [_ field]
