@@ -319,6 +319,14 @@ export class FieldDimension extends Dimension {
         }
     }
 
+    subTriggerDisplayName(): string {
+        if (this.defaultDimension() instanceof BinnedDimension) {
+            return "Unbinned";
+        } else {
+            return "";
+        }
+    }
+
     icon() {
         return this.field().icon();
     }
@@ -383,6 +391,10 @@ export class FKDimension extends FieldDimension {
     field() {
         return (this._metadata && this._metadata.fields[this._args[0]]) ||
             new Field();
+    }
+
+    static render() {
+
     }
 
     render() {
@@ -495,7 +507,7 @@ export class BinnedDimension extends FieldDimension {
     }
 
     render() {
-        return [...super.render(), ": ", this.subTriggerDisplayName()];
+        return [this._parent.render(), ": ", this.subTriggerDisplayName()];
     }
 }
 
