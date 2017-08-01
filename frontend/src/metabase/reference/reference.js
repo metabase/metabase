@@ -90,10 +90,10 @@ export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, 
 });
 
 const FETCH_TABLE_FINGERPRINT = 'metabase/reference/FETCH_TABLE_FINGERPRINT';
-export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, function(tableId) {
+export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, function(tableId, cost) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.table_fingerprint({ tableId });
+            let fingerprint = await XRayApi.table_fingerprint({ tableId, ...cost.method });
             return fingerprint;
         } catch (error) {
             console.error(error);

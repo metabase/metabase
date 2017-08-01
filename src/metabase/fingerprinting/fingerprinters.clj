@@ -72,20 +72,20 @@
                         (h/pdf histogram))
          first-key (ffirst rows)]
      {:rows    rows
-      :cols    ["SHARE" "BIN"]
-      :columns [{:basic_type   :type/Float
-                 :name         "SHARE"
-                 :display_name "Share"
-                 :description  "Share of corresponding bin in the overall population."}
-                {:basic_type   (cond
-                                 (number? first-key) :type/Number
+      :columns    ["BIN" "SHARE"]
+      :cols [{:base_type   (cond
+                               (number? first-key) :type/Number
 
-                                 (instance? org.joda.time.DateTime first-key)
-                                 :type/DateTime
+                               (instance? org.joda.time.DateTime first-key)
+                               :type/DateTime
 
-                                 :else               :type/Text)
-                 :name         "BIN"
-                 :display_name "Bin"}]})))
+                               :else               :type/Text)
+              :name         "BIN"
+              :display_name "Bin"}
+             {:base_type   :type/Float
+              :name         "SHARE"
+              :display_name "Share"
+              :description  "Share of corresponding bin in the overall population."}]})))
 
 (defn field-type
   [field]

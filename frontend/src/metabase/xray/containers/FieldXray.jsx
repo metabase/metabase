@@ -10,9 +10,8 @@ import { getFieldFingerprint } from 'metabase/reference/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
-import costs from 'metabase/xray/costs'
-
-import Select, { Option } from 'metabase/components/Select'
+import COSTS from 'metabase/xray/costs'
+import CostSelect from 'metabase/xray/components/CostSelect'
 
 import Histogram from 'metabase/xray/Histogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
@@ -62,7 +61,7 @@ class FieldXRay extends Component {
 
     fetchFieldFingerprint() {
         const { params } = this.props
-        const cost = costs[params.cost]
+        const cost = COSTS[params.cost]
         this.props.fetchFieldFingerPrint(params.fieldId, cost)
 
     }
@@ -95,16 +94,10 @@ class FieldXRay extends Component {
                                        </h1>
                                        <div className="ml-auto">
                                            Fidelity:
-                                           <Select
-                                               value={params.cost}
+                                           <CostSelect
+                                               currentCost={params.cost}
                                                onChange={this.changeCost}
-                                           >
-                                               { Object.keys(costs).map(cost =>
-                                                   <Option value={cost}>
-                                                       {costs[cost].display_name}
-                                                   </Option>
-                                               )}
-                                           </Select>
+                                           />
                                        </div>
                                    </div>
                                     <div className="mt4">

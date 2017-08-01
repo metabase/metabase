@@ -10,17 +10,7 @@ const Histogram = ({ fingerprint }) =>
                     display: "bar",
                     visualization_settings: {}
                 },
-                data: {
-                    rows: fingerprint.histogram,
-                    cols: [
-                        fingerprint.field,
-                        {
-                            name: "Count",
-                            base_type: "type/Integer"
-                        },
-                    ]
-                }
-
+                data: fingerprint.histogram
             }
         ]}
         showTitle={false}

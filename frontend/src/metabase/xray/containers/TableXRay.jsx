@@ -4,7 +4,13 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchTableFingerPrint } from 'metabase/reference/reference'
+import {
+    fetchTableFingerPrint,
+    changeCost
+} from 'metabase/reference/reference'
+
+import COSTS from 'metabase/xray/costs'
+import CostSelect from 'metabase/xray/components/CostSelect'
 
 import { Link } from 'react-router'
 
@@ -14,7 +20,6 @@ import {
 } from 'metabase/reference/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
-import SimpleHistogram from 'metabase/xray/SimpleHistogram'
 
 type Props = {
     constituents: [],
@@ -31,7 +36,8 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
-    fetchTableFingerPrint
+    fetchTableFingerPrint,
+    changeCost
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -44,17 +50,42 @@ class TableXRay extends Component {
     }
 
     componentDidMount () {
-        this.props.fetchTableFingerPrint(this.props.params.tableId)
+        this.fetchTableFingerPrint()
     }
 
+    fetchTableFingerPrint () {
+        const { params } = this.props
+        const cost = COSTS[params.cost]
+        this.props.fetchTableFingerPrint(params.tableId, cost)
+    }
+
+    componentDidUpdate (prevProps) {
+        if(prevProps.params.cost !== this.props.params.cost) {
+            this.fetchTableFingerPrint()
+        }
+    }
+
+    changeCost = ({ target }) => {
+        const { params } = this.props
+        // TODO - this feels kinda icky, would be nice to be able to just pass cost
+        console.log(params)
+        this.props.changeCost(`table/${params.tableId}/${target.value}`)
+    }
 
     render () {
-        const { constituents } = this.props
+        const { constituents, params } = this.props
 
         return (
             <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
-                <div className="my4 py4">
+                <div className="my4 flex align-center py4">
                     <h1>Xray</h1>
+                    <div className="ml-auto">
+                        Fidelity:
+                        <CostSelect
+                            currentCost={params.cost}
+                            onChange={this.changeCost}
+                        />
+                    </div>
                 </div>
                     <LoadingAndErrorWrapper loading={!constituents}>
                         { () =>
@@ -64,12 +95,9 @@ class TableXRay extends Component {
                                     return (
                                         <li>
                                             <div className="full">
-                                                <Link to={`xray/field/${c.field.id}`}>
+                                                <Link to={`xray/field/${c.field.id}/approximate`}>
                                                     {c.field.display_name}
                                                 </Link>
-                                                <SimpleHistogram
-                                                    data={c.histogram}
-                                                />
                                             </div>
                                         </li>
                                     )
