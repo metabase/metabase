@@ -479,19 +479,6 @@ export class BinnedDimension extends FieldDimension {
         return this._parent.baseDimension();
     }
 
-    subDisplayName(): string {
-        if (this._args[0] === "num-bins") {
-            return `Quantized into ${this._args[1]} ${inflect("bins", this._args[1])}`;
-        } else if (this._args[0] === "bin-width") {
-            const binWidth = this._args[1];
-            const units = this.field().isCoordinate()
-                ? inflect("degree", binWidth)
-                : "";
-            return `Quantized by ${binWidth}${units}`;
-        }
-        return JSON.stringify(this._args);
-    }
-
     subTriggerDisplayName(): string {
         if (this._args[0] === "num-bins") {
             return `${this._args[1]} ${inflect("bins", this._args[1])}`;

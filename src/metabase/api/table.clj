@@ -76,7 +76,7 @@
       updated-table)))
 
 (def ^:private dimension-options
-  (let [default-entry ["Quantized by the default binning strategy for the field" ["default"]]]
+  (let [default-entry ["Auto bin" ["default"]]]
     (zipmap (range)
             (concat
              (map (fn [[name param]]
@@ -103,18 +103,18 @@
                      :mbql (apply vector "binning-strategy" nil params)
                      :type "type/Number"})
                   [default-entry
-                   ["Quantized by 10 equally sized bins"  ["num-bins" 10]]
-                   ["Quantized by 50 equally sized bins"  ["num-bins" 50]]
-                   ["Quantized by 100 equally sized bins" ["num-bins" 100]]])
+                   ["10 bins"  ["num-bins" 10]]
+                   ["50 bins"  ["num-bins" 50]]
+                   ["100 bins" ["num-bins" 100]]])
              (map (fn [[name params]]
                     {:name name
                      :mbql (apply vector "binning-strategy" nil params)
                      :type "type/Coordinate"})
                   [default-entry
-                   ["Quantized by 1 degree"  ["bin-width" 1.0]]
-                   ["Quantized by 10 degree" ["bin-width" 10.0]]
-                   ["Quantized by 20 degree" ["bin-width" 20.0]]
-                   ["Quantized by 50 degree" ["bin-width" 50.0]]])))))
+                   ["Bin every 1 degree"  ["bin-width" 1.0]]
+                   ["Bin every 10 degrees" ["bin-width" 10.0]]
+                   ["Bin every 20 degrees" ["bin-width" 20.0]]
+                   ["Bin every 50 degrees" ["bin-width" 50.0]]])))))
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]
