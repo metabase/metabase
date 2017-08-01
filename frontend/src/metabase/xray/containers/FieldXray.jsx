@@ -14,10 +14,9 @@ import costs from 'metabase/xray/costs'
 
 import Select, { Option } from 'metabase/components/Select'
 
-import SimpleHistogram from 'metabase/xray/SimpleHistogram'
+import Histogram from 'metabase/xray/Histogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
-import Visualization from 'metabase/visualizations/components/Visualization'
 
 type Props = {
     fetchFieldFingerPrint: () => void,
@@ -111,29 +110,7 @@ class FieldXRay extends Component {
                                     <div className="mt4">
                                         <h3 className="py2 border-bottom">Distribution</h3>
                                         <div className="my4" style={{ height: 300, width: '100%' }}>
-                                            <Visualization
-                                                className="full-height"
-                                                series={[
-                                                    {
-                                                        card: {
-                                                            display: "bar",
-                                                            visualization_settings: {}
-                                                        },
-                                                        data: {
-                                                            rows: fingerprint.histogram,
-                                                            cols: [
-                                                                fingerprint.field,
-                                                                {
-                                                                    name: "Count",
-                                                                    base_type: "type/Integer"
-                                                                },
-                                                            ]
-                                                        }
-
-                                                    }
-                                                ]}
-                                                showTitle={false}
-                                            />
+                                            <Histogram fingerprint={fingerprint} />
                                         </div>
                                     </div>
 
@@ -149,27 +126,6 @@ class FieldXRay extends Component {
                                             <FieldOverview fingerprint={fingerprint} stats={['entropy', 'sd', 'nil-conunt', ]} />
                                         </div>
                                     </div>
-
-                                    <ol className="Grid Grid--1of3 Grid--gutters my4 py4">
-                                        { fingerprint['histogram-day'] && (
-                                            <li className="Grid-cell">
-                                                <Heading heading="Day" />
-                                                <SimpleHistogram data={fingerprint['histogram-day']} />
-                                            </li>
-                                        )}
-                                        { fingerprint['histogram-month'] && (
-                                            <li className="Grid-cell">
-                                                <Heading heading="Month" />
-                                                <SimpleHistogram data={fingerprint['histogram-month']} />
-                                            </li>
-                                        )}
-                                        { fingerprint['histogram-quarter'] && (
-                                            <li className="Grid-cell">
-                                                <Heading heading="Quarter" />
-                                                <SimpleHistogram data={fingerprint['histogram-quarter']} />
-                                            </li>
-                                        )}
-                                    </ol>
 
                                     <a className="link" onClick={() => this.setState({ showRaw: !this.state.showRaw })}>
                                         { this.state.showRaw ? 'Hide' : 'Show' } raw response (debug)
