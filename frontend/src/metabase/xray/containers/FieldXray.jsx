@@ -2,7 +2,8 @@
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
-import title from "metabase/hoc/Title";
+import title from 'metabase/hoc/Title'
+import { Link } from 'react-router'
 
 import { fetchFieldFingerPrint, changeCost } from 'metabase/reference/reference'
 
@@ -30,7 +31,10 @@ const FieldOverview = ({ fingerprint, stats }) =>
         { stats.map(stat =>
             fingerprint[stat] && (
                 <li className="my2">
-                    <SimpleStat stat={fingerprint[stat]} label={stat} />
+                    <SimpleStat
+                        stat={fingerprint[stat]}
+                        label={stat}
+                    />
                 </li>
             )
         )}
@@ -92,6 +96,9 @@ class FieldXRay extends Component {
                                 <div className="full">
 
                                     <div className="my4 flex align-center">
+                                        <Link to={`/xray/table/${fingerprint.table.id}/approximate`}>
+                                            {fingerprint.table.display_name}
+                                        </Link>
                                         <h1>
                                            {fingerprint.field.display_name} stats
                                        </h1>
