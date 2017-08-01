@@ -44,7 +44,7 @@
                                            max_computation_cost)})
        f/prettify))
 
-(api/defendpoint GET "/table/:id"
+(api/defendpoint GET "/table/:id/:max_query_cost/:max_computation_cost"
   "Get fingerprint for a `Tield` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
