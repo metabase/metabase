@@ -641,7 +641,7 @@
 ;; Lat/Long fields should use bin-width rather than num-bins
 (expect
   (if (data/binning-supported?)
-    #{"bin-width" "default"}
+    #{nil "bin-width" "default"}
     #{})
   (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
     (extract-dimension-options response "LATITUDE")))
@@ -649,7 +649,7 @@
 ;; Number columns without a special type should use "num-bins"
 (expect
   (if (data/binning-supported?)
-    #{"num-bins" "default"}
+    #{nil "num-bins" "default"}
     #{})
   (let [{:keys [special_type]} (Field (data/id :venues :price))]
     (try
