@@ -9,6 +9,8 @@ import {
     changeCost
 } from 'metabase/reference/reference'
 
+import Histogram from 'metabase/xray/Histogram'
+
 import COSTS from 'metabase/xray/costs'
 import CostSelect from 'metabase/xray/components/CostSelect'
 
@@ -76,36 +78,38 @@ class TableXRay extends Component {
         const { constituents, params } = this.props
 
         return (
-            <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
-                <div className="my4 flex align-center py4">
-                    <h1>Xray</h1>
-                    <div className="ml-auto">
-                        Fidelity:
-                        <CostSelect
-                            currentCost={params.cost}
-                            onChange={this.changeCost}
-                        />
+            <LoadingAndErrorWrapper loading={!constituents}>
+                { () =>
+                    <div className="wrapper" style={{ paddingLeft: '6em', paddingRight: '6em'}}>
+                        <div className="my4 flex align-center py4">
+                            <h1>Xray</h1>
+                            <div className="ml-auto">
+                                Fidelity:
+                                <CostSelect
+                                    currentCost={params.cost}
+                                    onChange={this.changeCost}
+                                />
+                            </div>
+                        </div>
+                        <ol className="Grid Grid--1of3">
+                            { constituents.map(c => {
+                                return (
+                                    <li className="Grid-cell">
+                                        <div className="full">
+                                            <Link to={`xray/field/${c.field.id}/approximate`}>
+                                                {c.field.display_name}
+                                                <div  style={{ height: 120 }}>
+                                                    <Histogram histogram={c.histogram} />
+                                                </div>
+                                            </Link>
+                                        </div>
+                                    </li>
+                                )
+                            })}
+                        </ol>
                     </div>
-                </div>
-                    <LoadingAndErrorWrapper loading={!constituents}>
-                        { () =>
-                            <ol>
-                                { constituents.map(c => {
-                                    console.log(c)
-                                    return (
-                                        <li>
-                                            <div className="full">
-                                                <Link to={`xray/field/${c.field.id}/approximate`}>
-                                                    {c.field.display_name}
-                                                </Link>
-                                            </div>
-                                        </li>
-                                    )
-                                })}
-                            </ol>
-                        }
-                    </LoadingAndErrorWrapper>
-            </div>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }
