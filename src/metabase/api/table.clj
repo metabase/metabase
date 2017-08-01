@@ -98,6 +98,7 @@
                    ["Quarter" "quarter"]
                    ["Quarter of Year" "quarter-of-year"]
                    ["Year" "year"]])
+<<<<<<< HEAD
              (map (fn [[name params]]
                     {:name name
                      :mbql (apply vector "binning-strategy" nil params)
@@ -115,6 +116,33 @@
                    ["Bin every 10 degrees" ["bin-width" 10.0]]
                    ["Bin every 20 degrees" ["bin-width" 20.0]]
                    ["Bin every 50 degrees" ["bin-width" 50.0]]])))))
+=======
+             (cons
+              {:name "Don't bin"
+               :mbql nil
+               :type "type/Number"}
+              (map (fn [[name params]]
+                     {:name name
+                      :mbql (apply vector "binning-strategy" nil params)
+                      :type "type/Number"})
+                   [default-entry
+                    ["Quantized by 10 equally sized bins"  ["num-bins" 10]]
+                    ["Quantized by 50 equally sized bins"  ["num-bins" 50]]
+                    ["Quantized by 100 equally sized bins" ["num-bins" 100]]]))
+             (cons
+              {:name "Don't bin"
+               :mbql nil
+               :type "type/Coordinate"}
+              (map (fn [[name params]]
+                     {:name name
+                      :mbql (apply vector "binning-strategy" nil params)
+                      :type "type/Coordinate"})
+                   [default-entry
+                    ["Quantized by 1 degree"  ["bin-width" 1.0]]
+                    ["Quantized by 10 degree" ["bin-width" 10.0]]
+                    ["Quantized by 20 degree" ["bin-width" 20.0]]
+                    ["Quantized by 50 degree" ["bin-width" 50.0]]]))))))
+>>>>>>> a287ceb902f99d76887f22098c8f6a6cd568e862
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]
