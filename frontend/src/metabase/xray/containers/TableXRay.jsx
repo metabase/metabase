@@ -95,7 +95,7 @@ class TableXRay extends Component {
                                     return (
                                         <li>
                                             <div className="full">
-                                                <Link to={`xray/field/${c.field.id}`}>
+                                                <Link to={`xray/field/${c.field.id}/approximate`}>
                                                     {c.field.display_name}
                                                 </Link>
                                             </div>
