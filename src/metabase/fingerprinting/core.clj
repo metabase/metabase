@@ -56,14 +56,16 @@
 (defmethod fingerprint (type Field)
   [opts field]
   {:fingerprint (->> (metadata/field-values field (extract-query-opts opts))
-                     (fingerprint-field opts field))})
+                     (fingerprint-field opts field)
+                     (merge {:table (Table (:table_id field))}))})
 
 (defmethod fingerprint (type Table)
   [opts table]
   {:constituents (fingerprint-query opts (metadata/query-values
                                           (:db_id table)
                                           (merge (extract-query-opts opts)
-                                                 {:source-table (:id table)})))})
+                                                 {:source-table (:id table)})))
+   :fingerprint  {:table table}})
 
 (defmethod fingerprint (type Card)
   [opts card]
@@ -75,14 +77,18 @@
         fields [(first breakout) (or (first aggregation) (second breakout))]]
     {:constituents [(fingerprint-field opts (first fields) (map first rows))
                     (fingerprint-field opts (second fields) (map second rows))]
-     :fingerprint  (fingerprint-field opts fields rows)}))
+     :fingerprint  (merge (fingerprint-field opts fields rows)
+                          {:card  card
+                           :table (Table (:table_id card))})}))
 
 (defmethod fingerprint (type Segment)
   [opts segment]
   {:constituents (fingerprint-query opts (metadata/query-values
                                           (metadata/db-id segment)
                                           (merge (extract-query-opts opts)
-                                                 (:definition segment))))})
+                                                 (:definition segment))))
+   :fingerprint  {:table   (Table (:table_id segment))
+                  :segment segment}})
 
 (defmethod fingerprint (type Metric)
   [_ metric]
@@ -138,5 +144,5 @@
   "Walk the fingerprint structure and prettify all fingerprints within."
   [fingerprint]
   (-> fingerprint
-      (update :fingerprint f/prettify)
-      (update :constituents (partial map prettify))))
+      (update :fingerprint  f/prettify)
+      (update :constituents (partial map f/prettify))))
