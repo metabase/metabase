@@ -98,31 +98,33 @@
                    ["Quarter" "quarter"]
                    ["Quarter of Year" "quarter-of-year"]
                    ["Year" "year"]])
-             (cons
-              {:name "Don't bin"
-               :mbql nil
-               :type "type/Number"}
-              (map (fn [[name params]]
-                     {:name name
-                      :mbql (apply vector "binning-strategy" nil params)
-                      :type "type/Number"})
-                   [default-entry
-                    ["10 bins"  ["num-bins" 10]]
-                    ["50 bins"  ["num-bins" 50]]
-                    ["100 bins" ["num-bins" 100]]]))
-             (cons
-              {:name "Don't bin"
-               :mbql nil
-               :type "type/Coordinate"}
-              (map (fn [[name params]]
-                     {:name name
-                      :mbql (apply vector "binning-strategy" nil params)
-                      :type "type/Coordinate"})
-                   [default-entry
-                    ["Bin every 1 degree"  ["bin-width" 1.0]]
-                    ["Bin every 10 degrees" ["bin-width" 10.0]]
-                    ["Bin every 20 degrees" ["bin-width" 20.0]]
-                    ["Bin every 50 degrees" ["bin-width" 50.0]]]))))))
+             (conj
+               (mapv (fn [[name params]]
+                      {:name name
+                       :mbql (apply vector "binning-strategy" nil params)
+                       :type "type/Number"})
+                    [default-entry
+                     ["10 bins" ["num-bins" 10]]
+                     ["50 bins" ["num-bins" 50]]
+                     ["100 bins" ["num-bins" 100]]])
+               {:name "Don't bin"
+                :mbql nil
+                :type "type/Number"}
+               )
+             (conj
+               (mapv (fn [[name params]]
+                      {:name name
+                       :mbql (apply vector "binning-strategy" nil params)
+                       :type "type/Coordinate"})
+                    [default-entry
+                     ["Bin every 1 degree" ["bin-width" 1.0]]
+                     ["Bin every 10 degrees" ["bin-width" 10.0]]
+                     ["Bin every 20 degrees" ["bin-width" 20.0]]
+                     ["Bin every 50 degrees" ["bin-width" 50.0]]])
+               {:name "Don't bin"
+                :mbql nil
+                :type "type/Coordinate"}
+              )))))
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]
@@ -153,10 +155,10 @@
   (dimension-index-for-type "type/DateTime" #(= "Day" (:name %))))
 
 (def ^:private numeric-default-index
-  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) "default binning")))
+  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) "Auto bin")))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "default binning")))
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "Auto bin")))
 
 (defn- assoc-field-dimension-options [{:keys [base_type special_type min_value max_value] :as field}]
   (let [[default-option all-options] (cond
