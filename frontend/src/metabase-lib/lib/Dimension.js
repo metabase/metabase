@@ -119,7 +119,7 @@ export default class Dimension {
                 this._dimensionForOption(option));
         } else {
             return [].concat(
-                ...DimensionTypes.map(DimensionType =>
+                ...(DimensionTypes || []).map(DimensionType =>
                     DimensionType.dimensions(this))
             );
         }
