@@ -17,19 +17,16 @@
 (defn- fingerprint-field
   "Transduce given column with corresponding fingerprinter."
   [opts field data]
-  (-> (transduce identity (f/fingerprinter opts field) data)
-      (assoc :field field)))
+  (transduce identity (f/fingerprinter opts field) data))
 
 (defn- fingerprint-query
   "Transuce each column in given dataset with corresponding fingerprinter."
   [opts {:keys [rows cols]}]
   (transduce identity
              (apply redux/juxt (map-indexed (fn [i field]
-                                              (redux/post-complete
-                                               (redux/pre-step
-                                                (f/fingerprinter opts field)
-                                                #(nth % i))
-                                               #(assoc % :field field)))
+                                              (redux/pre-step
+                                               (f/fingerprinter opts field)
+                                               #(nth % i)))
                                             cols))
              rows))
 
@@ -140,9 +137,20 @@
                                  (comparison/fingerprint-distance a b))])
                           a b))}))
 
+(defn- add-descriptions
+  [fingerprint]
+  (into {}
+    (map (fn [[k v]]
+           (if (#{:field :type :table :card :segment} k)
+             [k v]
+             [k {:value        v
+                 :label        k
+                 :descripttion k}])))
+    fingerprint))
+
 (defn prettify
   "Walk the fingerprint structure and prettify all fingerprints within."
   [fingerprint]
   (-> fingerprint
-      (update :fingerprint  f/prettify)
-      (update :constituents (partial map f/prettify))))
+      (update :fingerprint  (comp add-descriptions f/prettify))
+      (update :constituents (partial map (comp add-descriptions f/prettify)))))

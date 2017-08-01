@@ -65,27 +65,17 @@
 (def Text     [:type/Text :type/*])
 
 (defn- histogram->dataset
-  ([histogram] (histogram->dataset identity histogram))
-  ([keyfn histogram]
-   (let [rows      (map (fn [[k v]]
-                          [(keyfn k) v])
-                        (h/pdf histogram))
-         first-key (ffirst rows)]
-     {:rows    rows
-      :columns    ["BIN" "SHARE"]
-      :cols [{:base_type   (cond
-                               (number? first-key) :type/Number
-
-                               (instance? org.joda.time.DateTime first-key)
-                               :type/DateTime
-
-                               :else               :type/Text)
-              :name         "BIN"
-              :display_name "Bin"}
-             {:base_type   :type/Float
-              :name         "SHARE"
-              :display_name "Share"
-              :description  "Share of corresponding bin in the overall population."}]})))
+  ([field histogram] (histogram->dataset identity field histogram))
+  ([keyfn field histogram]
+   {:rows    (map (fn [[k v]]
+                    [(keyfn k) v])
+                  (h/pdf histogram))
+    :columns [(:name field) "SHARE"]
+    :cols [field
+           {:name         "SHARE"
+            :display_name "Share"
+            :description  "Share of corresponding bin in the overall population."
+            :base_type    :type/Float}]}))
 
 (defn field-type
   [field]
@@ -121,7 +111,7 @@
   (dissoc fingerprint :type :field :has-nils?))
 
 (defmethod fingerprinter Num
-  [_ _]
+  [_ field]
   (redux/post-complete
    (redux/fuse {:histogram      h/histogram
                 :cardinality    cardinality
@@ -171,9 +161,11 @@
           :skewness             skewness
           :all-distinct?        (>= unique% (- 1 cardinality-error))
           :entropy              (h/entropy histogram)
-          :type                 Num})
+          :type                 Num
+          :field                field})
        {:count 0
-        :type  Num}))))
+        :type  Num
+        :field field}))))
 
 (defmethod comparison-vector Num
   [fingerprint]
@@ -182,16 +174,17 @@
                 :skewness :entropy :nil% :cardinality-vs-count :span]))
 
 (defmethod prettify Num
-  [fingerprint]
-  (update fingerprint :histogram histogram->dataset))
+  [{:keys [field] :as fingerprint}]
+  (update fingerprint :histogram (partial histogram->dataset field)))
 
 (defmethod fingerprinter [Num Num]
-  [_ _]
+  [_ field]
   (redux/post-complete
    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                 :correlation       (stats/correlation first second)
                 :covariance        (stats/covariance first second)})
-   #(assoc % :type [Num Num])))
+   #(assoc % :type [Num Num]
+           :field field)))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."
@@ -229,7 +222,7 @@
       (select-keys (tide/decompose period ts) [:trend :seasonal :reminder]))))
 
 (defmethod fingerprinter [DateTime Num]
-  [{:keys [max-cost scale]} _]
+  [{:keys [max-cost scale]} field]
   (let [scale (or scale :raw)]
     (redux/post-complete
      (redux/pre-step
@@ -249,6 +242,7 @@
        (let [ys-r (->> series (map second) reverse not-empty)]
          (merge {:scale                  scale
                  :type                   [DateTime Num]
+                 :field                  field
                  :series                 series
                  :linear-regression      linear-regression
                  :seasonal-decomposition
@@ -284,7 +278,7 @@
 ;;   (rollup (redux/pre-step (fingerprinter opts y) second) first))
 
 (defmethod fingerprinter Text
-  [_ _]
+  [_ field]
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step h/histogram (stats/somef count))})
    (fn [{:keys [histogram]}]
@@ -296,18 +290,19 @@
         :count      total-count
         :nil%       (/ nil-count (max total-count 1))
         :has-nils?  (pos? nil-count)
-        :type       Text}))))
+        :type       Text
+        :field      field}))))
 
 (defmethod prettify Text
-  [fingerprint]
-  (update fingerprint :histogram histogram->dataset))
+  [{:keys [field] :as fingerprint}]
+  (update fingerprint :histogram (partial histogram->dataset field)))
 
 (defn- quarter
   [dt]
   (-> (t/month dt) (/ 3) Math/ceil long))
 
 (defmethod fingerprinter DateTime
-  [_ _]
+  [_ field]
   (redux/post-complete
    (redux/pre-step
     (redux/fuse {:histogram         (redux/pre-step h/histogram t.coerce/to-long)
@@ -336,26 +331,43 @@
         :nil%              (/ nil-count (max total-count 1))
         :has-nils?         (pos? nil-count)
         :entropy           (h/entropy histogram)
-        :type              DateTime}))))
+        :type              DateTime
+        :field             field}))))
 
 (defmethod comparison-vector DateTime
   [fingerprint]
   (dissoc fingerprint :type :percentiles :field :has-nils?))
 
 (defmethod prettify DateTime
-  [fingerprint]
+  [{:keys [field] :as fingerprint}]
   (-> fingerprint
       (update :min               from-double)
       (update :max               from-double)
-      (update :histogram         (partial histogram->dataset from-double))
+      (update :histogram         (partial histogram->dataset from-double field))
       (update :percentiles       (partial m/map-vals from-double))
-      (update :histogram-hour    histogram->dataset)
-      (update :histogram-day     histogram->dataset)
-      (update :histogram-month   histogram->dataset)
-      (update :histogram-quarter histogram->dataset)))
+      (update :histogram-hour    (partial histogram->dataset
+                                          {:name         "HOUR"
+                                           :display_name "Hour of day"
+                                           :base_type    :type/Integer
+                                           :special_type :type/Category}))
+      (update :histogram-day     (partial histogram->dataset
+                                          {:name         "DAY"
+                                           :display_name "Day of week"
+                                           :base_type    :type/Integer
+                                           :special_type :type/Category}))
+      (update :histogram-month   (partial histogram->dataset
+                                          {:name         "MONTH"
+                                           :display_name "Month of year"
+                                           :base_type    :type/Integer
+                                           :special_type :type/Category}))
+      (update :histogram-quarter (partial histogram->dataset
+                                          {:name         "QUARTER"
+                                           :display_name "Quarter of year"
+                                           :base_type    :type/Integer
+                                           :special_type :type/Category}))))
 
 (defmethod fingerprinter Category
-  [_ _]
+  [_ field]
   (redux/post-complete
    (redux/fuse {:histogram   h/histogram-categorical
                 :cardinality cardinality})
@@ -370,15 +382,16 @@
         :cardinality          cardinality
         :count                total-count
         :entropy              (h/entropy histogram)
-        :type                 Category}))))
+        :type                 Category
+        :field                field}))))
 
 (defmethod comparison-vector Category
   [fingerprint]
   (dissoc fingerprint :type :cardinality :field :has-nils?))
 
 (defmethod prettify Category
-  [fingerprint]
-  (update fingerprint :histogram histogram->dataset))
+  [{:keys [field] :as fingerprint}]
+  (update fingerprint :histogram (partial histogram->dataset field)))
 
 (defmethod fingerprinter :default
   [_ field]
@@ -389,7 +402,8 @@
      {:count     total-count
       :nil%      (/ nil-count (max total-count 1))
       :has-nils? (pos? nil-count)
-      :type      [nil (field-type field)]})))
+      :type      [nil (field-type field)]
+      :field     field})))
 
 (prefer-method fingerprinter Category Text)
 (prefer-method fingerprinter Num Category)
