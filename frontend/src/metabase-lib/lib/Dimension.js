@@ -393,10 +393,6 @@ export class FKDimension extends FieldDimension {
             new Field();
     }
 
-    static render() {
-
-    }
-
     render() {
         return [
             stripId(this._parent.field().display_name),
@@ -507,7 +503,7 @@ export class BinnedDimension extends FieldDimension {
     }
 
     render() {
-        return [this._parent.render(), ": ", this.subTriggerDisplayName()];
+        return [...super.render(), ": ", this.subTriggerDisplayName()];
     }
 }
 
