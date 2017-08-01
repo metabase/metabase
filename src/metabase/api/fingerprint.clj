@@ -33,7 +33,7 @@
   {:query       (keyword query)
    :computation (keyword computation)})
 
-(api/defendpoint GET "/field/:id/:max_query_cost/:max_computation_cost"
+(api/defendpoint GET "/field/:id"
   "Get fingerprint for a `Field` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
