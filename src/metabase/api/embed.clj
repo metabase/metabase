@@ -27,11 +27,14 @@
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]]
             [metabase.util :as u]
             [metabase.util
              [embed :as eu]
              [schema :as su]]
+             [metabase
+              [db :as mdb]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -164,11 +167,31 @@
   [dashboard-id dashcard-id card-id]
   (let [param-id->param (u/key-by :id (db/select-one-field :parameters Dashboard :id dashboard-id))]
     ;; throw a 404 if there's no matching DashboardCard so people can't get info about other Cards that aren't in this Dashboard
-    (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id, :dashboard_id dashboard-id, :card_id card-id))
-          :when         (= (:card_id param-mapping) card-id)
-          :let          [param (get param-id->param (:parameter_id param-mapping))]
-          :when         param]
-      (assoc param :target (:target param-mapping)))))
+    ;; also allows case where DashboardCard is associated with `card-id` via DashboardCardSeries
+    (for [
+          param-mapping
+          (api/check-404
+            (or
+              (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id, :dashboard_id dashboard-id, :card_id card-id)
+              (db/select-one-field :parameter_mappings DashboardCard
+                :id dashcard-id
+                :dashboard_id dashboard-id
+                :card_id
+                  (db/select-one-field :card_id DashboardCard
+                    (mdb/join [DashboardCard :id] [DashboardCardSeries :dashboardcard_id])
+                    {:where [:= :dashboardcard_series.card_id card-id]}
+                  )
+              )
+            )
+          )
+            :when         (= (:card_id param-mapping) card-id)
+            :let          [param (get param-id->param (:parameter_id param-mapping))]
+            :when         param
+        ]
+      (assoc param :target (:target param-mapping))
+    )
+  )
+)
 
 
 ;;; ------------------------------------------------------------ Card Fns used by both /api/embed and /api/preview_embed ------------------------------------------------------------
