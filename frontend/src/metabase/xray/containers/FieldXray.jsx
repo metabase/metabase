@@ -2,7 +2,8 @@
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
-import title from "metabase/hoc/Title";
+import title from 'metabase/hoc/Title'
+import { Link } from 'react-router'
 
 import { fetchFieldFingerPrint, changeCost } from 'metabase/reference/reference'
 
@@ -16,6 +17,9 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 import Histogram from 'metabase/xray/Histogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
+import { isDate } from 'metabase/lib/schema_metadata'
+
+const PERIODICITY = ['day', 'week', 'month', 'hour', 'quarter']
 
 type Props = {
     fetchFieldFingerPrint: () => void,
@@ -27,7 +31,10 @@ const FieldOverview = ({ fingerprint, stats }) =>
         { stats.map(stat =>
             fingerprint[stat] && (
                 <li className="my2">
-                    <SimpleStat stat={fingerprint[stat]} label={stat} />
+                    <SimpleStat
+                        stat={fingerprint[stat]}
+                        label={stat}
+                    />
                 </li>
             )
         )}
@@ -89,6 +96,9 @@ class FieldXRay extends Component {
                                 <div className="full">
 
                                     <div className="my4 flex align-center">
+                                        <Link to={`/xray/table/${fingerprint.table.id}/approximate`}>
+                                            {fingerprint.table.display_name}
+                                        </Link>
                                         <h1>
                                            {fingerprint.field.display_name} stats
                                        </h1>
@@ -103,7 +113,7 @@ class FieldXRay extends Component {
                                     <div className="mt4">
                                         <h3 className="py2 border-bottom">Distribution</h3>
                                         <div className="my4" style={{ height: 300, width: '100%' }}>
-                                            <Histogram fingerprint={fingerprint} />
+                                            <Histogram histogram={fingerprint.histogram} />
                                         </div>
                                     </div>
 
@@ -119,6 +129,21 @@ class FieldXRay extends Component {
                                             <FieldOverview fingerprint={fingerprint} stats={['entropy', 'sd', 'nil-conunt', ]} />
                                         </div>
                                     </div>
+
+                                    { isDate(fingerprint.field) && [
+                                            <Heading heading="Periodicity" />,
+                                            <div className="Grid Grid--gutters">
+                                                { PERIODICITY.map(period =>
+                                                    fingerprint[`histogram-${period}`] && (
+                                                        <div className="Grid-cell" style={{ height: 120 }}>
+                                                            <Histogram
+                                                                histogram={fingerprint[`histogram-${period}`]}
+                                                            />
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                    ]}
 
                                     <a className="link" onClick={() => this.setState({ showRaw: !this.state.showRaw })}>
                                         { this.state.showRaw ? 'Hide' : 'Show' } raw response (debug)
