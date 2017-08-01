@@ -480,8 +480,6 @@ export class BinnedDimension extends FieldDimension {
     }
 
     subDisplayName(): string {
-        console.log('BinnedDimension subDisplayName', this._args);
-
         if (this._args[0] === "num-bins") {
             return `Quantized into ${this._args[1]} ${inflect("bins", this._args[1])}`;
         } else if (this._args[0] === "bin-width") {
@@ -495,8 +493,6 @@ export class BinnedDimension extends FieldDimension {
     }
 
     subTriggerDisplayName(): string {
-        console.log('BinnedDimension subTriggerDisplayName', this._args);
-
         if (this._args[0] === "num-bins") {
             return `${this._args[1]} ${inflect("bins", this._args[1])}`;
         } else if (this._args[0] === "bin-width") {
