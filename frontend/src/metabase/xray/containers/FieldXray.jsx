@@ -16,6 +16,9 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 import Histogram from 'metabase/xray/Histogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
+import { isDate } from 'metabase/lib/schema_metadata'
+
+const PERIODICITY = ['day', 'week', 'month', 'hour', 'quarter']
 
 type Props = {
     fetchFieldFingerPrint: () => void,
@@ -103,7 +106,7 @@ class FieldXRay extends Component {
                                     <div className="mt4">
                                         <h3 className="py2 border-bottom">Distribution</h3>
                                         <div className="my4" style={{ height: 300, width: '100%' }}>
-                                            <Histogram fingerprint={fingerprint} />
+                                            <Histogram histogram={fingerprint.histogram} />
                                         </div>
                                     </div>
 
@@ -119,6 +122,21 @@ class FieldXRay extends Component {
                                             <FieldOverview fingerprint={fingerprint} stats={['entropy', 'sd', 'nil-conunt', ]} />
                                         </div>
                                     </div>
+
+                                    { isDate(fingerprint.field) && [
+                                            <Heading heading="Periodicity" />,
+                                            <div className="Grid Grid--gutters">
+                                                { PERIODICITY.map(period =>
+                                                    fingerprint[`histogram-${period}`] && (
+                                                        <div className="Grid-cell" style={{ height: 120 }}>
+                                                            <Histogram
+                                                                histogram={fingerprint[`histogram-${period}`]}
+                                                            />
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                    ]}
 
                                     <a className="link" onClick={() => this.setState({ showRaw: !this.state.showRaw })}>
                                         { this.state.showRaw ? 'Hide' : 'Show' } raw response (debug)

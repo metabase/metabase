@@ -1,7 +1,7 @@
 import React from 'react'
 import Visualization from 'metabase/visualizations/components/Visualization'
 
-const Histogram = ({ fingerprint }) =>
+const Histogram = ({ histogram }) =>
     <Visualization
         className="full-height"
         series={[
@@ -10,7 +10,7 @@ const Histogram = ({ fingerprint }) =>
                     display: "bar",
                     visualization_settings: {}
                 },
-                data: fingerprint.histogram
+                data: histogram
             }
         ]}
         showTitle={false}
