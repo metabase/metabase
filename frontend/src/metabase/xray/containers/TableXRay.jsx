@@ -99,7 +99,7 @@ class TableXRay extends Component {
                                             <Link to={`xray/field/${c.field.id}/approximate`}>
                                                 {c.field.display_name}
                                                 <div  style={{ height: 120 }}>
-                                                    <Histogram histogram={c.histogram} />
+                                                    <Histogram histogram={c.histogram.value} />
                                                 </div>
                                             </Link>
                                         </div>

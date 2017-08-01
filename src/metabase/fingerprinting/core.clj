@@ -145,7 +145,7 @@
              [k v]
              [k {:value        v
                  :label        k
-                 :descripttion k}])))
+                 :description  k}])))
     fingerprint))
 
 (defn prettify
