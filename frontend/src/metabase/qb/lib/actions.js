@@ -1,7 +1,6 @@
 /* @flow weak */
 
 import moment from "moment";
-import _ from "underscore";
 
 import Q from "metabase/lib/query"; // legacy query lib
 import { fieldIdsEq } from "metabase/lib/query/util";
@@ -14,8 +13,7 @@ import { rangeForValue } from "metabase/lib/dataset";
 import {
     isDate,
     isState,
-    isCountry,
-    isCoordinate
+    isCountry
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
@@ -401,9 +399,10 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
         if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
             if (isDate(breakoutFields[0])) {
                 card.display = "line";
-            } else if (_.all(breakoutFields, isCoordinate)) {
-                card.display = "map";
-                card.visualization_settings["map.type"] = "grid";
+            // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
+            // } else if (_.all(breakoutFields, isCoordinate)) {
+            //     card.display = "map";
+            //     card.visualization_settings["map.type"] = "grid";
             } else {
                 card.display = "bar";
             }
