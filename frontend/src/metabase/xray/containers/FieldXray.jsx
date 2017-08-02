@@ -59,10 +59,6 @@ const mapDispatchToProps = {
 class FieldXRay extends Component {
     props: Props
 
-    state = {
-        showRaw: false,
-    }
-
     componentDidMount () {
         this.fetchFieldFingerprint()
     }
@@ -210,19 +206,6 @@ class FieldXRay extends Component {
                                             />
                                         </div>
                                     </div>
-
-
-                                    <a className="link" onClick={() => this.setState({ showRaw: !this.state.showRaw })}>
-                                        { this.state.showRaw ? 'Hide' : 'Show' } raw response (debug)
-                                    </a>
-
-                                    { this.state.showRaw && (
-                                        <pre>
-                                            <code>
-                                                { JSON.stringify(this.props.fingerprint, null, 2) }
-                                            </code>
-                                        </pre>
-                                    )}
                                 </div>
                             )
                         }}

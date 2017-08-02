@@ -49,10 +49,6 @@ const mapDispatchToProps = {
 class TableXRay extends Component {
     props: Props
 
-    state = {
-        grid: true
-    }
-
     componentDidMount () {
         this.fetchTableFingerPrint()
     }
