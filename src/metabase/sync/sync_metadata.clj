@@ -17,6 +17,7 @@
             [schema.core :as s]))
 
 (s/defn ^:always-validate sync-db-metadata!
+  "Sync the metadata for a Metabase DATABASE. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
     ;; Make sure the relevant table models are up-to-date

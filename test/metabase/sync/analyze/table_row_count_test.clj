@@ -18,5 +18,5 @@
   (tt/with-temp Table [venues-copy (let [venues-table (Table (data/id :venues))]
                                      (assoc (select-keys venues-table [:schema :name :db_id])
                                        :rows 0))]
-    (table-row-count/update-row-count-for-table! venues-copy)
+    (table-row-count/update-row-count! venues-copy)
     (db/select-one-field :rows Table :id (u/get-id venues-copy))))
