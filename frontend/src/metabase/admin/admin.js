@@ -12,8 +12,6 @@ import { combineReducers, createThunkAction, handleActions } from "metabase/lib/
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { UtilApi} from "metabase/services";
-import { assoc } from "icepick";
-
 
 export const LOAD_TROUBLESHOOTING_INFO = 'metabase/admin/LOAD_TROUBLESHOOTING_INFO';
 export const getTroubleshootingInfo = createThunkAction(LOAD_TROUBLESHOOTING_INFO, function() {
