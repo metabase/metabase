@@ -15,6 +15,8 @@ import {
     RUN_QUERY,
     CANCEL_QUERY,
     SET_DATASET_QUERY,
+    REMOVE_QUERY_FILTER,
+    UPDATE_QUERY_FILTER,
     setQueryDatabase,
     setQuerySourceTable
 } from "metabase/query_builder/actions";
@@ -36,11 +38,13 @@ import VisualizationSettings from "metabase/query_builder/components/Visualizati
 import Visualization from "metabase/visualizations/components/Visualization";
 import TableSimple from "metabase/visualizations/components/TableSimple";
 
+import {delay} from "metabase/lib/promise"
 
 import {
     ORDERS_TOTAL_FIELD_ID,
     unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
+import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 
 const initQBWithReviewsTable = async () => {
     const store = await createTestStore()
@@ -99,7 +103,7 @@ describe("QueryBuilder", () => {
             expect(doneButton.length).toBe(1)
 
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
-            expect(fieldsToIncludeCheckboxes.length).toBe(8)
+            expect(fieldsToIncludeCheckboxes.length).toBe(6)
 
             fieldsToIncludeCheckboxes.at(3).simulate("click");
 
@@ -233,10 +237,7 @@ describe("QueryBuilder", () => {
     });
 
     describe("editor bar", async() => {
-        fdescribe("for Category field in Products table", () =>  {
-            // TODO: Update the test H2 database fixture so that it recognizes Category field as Category
-            // and has run a database sync so that Category field contains the expected field values
-
+        describe("for filtering by Rating category field in Reviews table", () =>  {
             let store = null;
             let qb = null;
             beforeAll(async () => {
@@ -245,7 +246,7 @@ describe("QueryBuilder", () => {
 
             // NOTE: Sequential tests; these may fail in a cascading way but shouldn't affect other tests
 
-            it("lets you add it as a filter", async () => {
+            it("lets you add Rating field as a filter", async () => {
                 // TODO Atte Keinänen 7/13/17: Extracting GuiQueryEditor's contents to smaller React components
                 // would make testing with selectors more natural
                 const filterSection = qb.find('.GuiBuilder-filtered-by');
@@ -322,6 +323,97 @@ describe("QueryBuilder", () => {
 
                 expect(qb.find(FilterWidget).length).toBe(0);
             })
+        })
+
+        describe("for filtering by ID number field in Reviews table", () => {
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQBWithReviewsTable());
+            })
+
+            it("lets you add ID field as a filter", async () => {
+                const filterSection = qb.find('.GuiBuilder-filtered-by');
+                const addFilterButton = filterSection.find('.AddButton');
+                addFilterButton.simulate("click");
+
+                const filterPopover = filterSection.find(FilterPopover);
+
+                const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="ID"]')
+                expect(ratingFieldButton.length).toBe(1);
+                ratingFieldButton.simulate('click');
+            })
+
+            it("lets you see a correct number of operators in filter popover", () => {
+                const filterPopover = qb.find(FilterPopover);
+
+                const operatorSelector = filterPopover.find(OperatorSelector);
+                const moreOptionsIcon = operatorSelector.find(".Icon-chevrondown");
+                moreOptionsIcon.simulate("click");
+
+                expect(operatorSelector.find("button").length).toBe(9)
+            })
+
+            it("lets you set 'ID is 10' filter", async () => {
+                const filterPopover = qb.find(FilterPopover);
+                const filterInput = filterPopover.find("textarea");
+                filterInput.simulate('change', { target: { value: "10" }})
+
+                const addFilterButton = filterPopover.find('button[children="Add filter"]')
+                addFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                store.resetDispatchedActions();
+
+                expect(qb.find(FilterPopover).length).toBe(0);
+                const filterWidget = qb.find(FilterWidget);
+                expect(filterWidget.length).toBe(1);
+                expect(filterWidget.text()).toBe("ID is equal to10");
+            })
+
+            it("lets you update the filter to 'ID is 10 or 11'", async () => {
+                const filterWidget = qb.find(FilterWidget);
+                filterWidget.find(FieldName).simulate('click');
+
+                const filterPopover = qb.find(FilterPopover);
+                const filterInput = filterPopover.find("textarea");
+                filterInput.simulate('change', { target: { value: "10,      11" }})
+
+                const addFilterButton = filterPopover.find('button[children="Update filter"]')
+                addFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                expect(qb.find(FilterPopover).length).toBe(0);
+                expect(filterWidget.text()).toBe("ID is equal to2 selections");
+            });
+
+            it("lets you update the filter to 'ID is between 1 or 100'", async () => {
+                const filterWidget = qb.find(FilterWidget);
+                filterWidget.find(FieldName).simulate('click');
+
+                const filterPopover = qb.find(FilterPopover);
+                const operatorSelector = filterPopover.find(OperatorSelector);
+                operatorSelector.find('button[children="Between"]').simulate("click");
+
+                const betweenInputs = filterPopover.find("textarea");
+                expect(betweenInputs.length).toBe(2);
+
+                expect(betweenInputs.at(0).props().value).toBe("10, 11");
+
+                betweenInputs.at(1).simulate('change', { target: { value: "asdasd" }})
+                const updateFilterButton = filterPopover.find('button[children="Update filter"]')
+                expect(updateFilterButton.props().className).toMatch(/disabled/);
+
+                betweenInputs.at(0).simulate('change', { target: { value: "1" }})
+                betweenInputs.at(1).simulate('change', { target: { value: "100" }})
+
+                updateFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                expect(qb.find(FilterPopover).length).toBe(0);
+                expect(filterWidget.text()).toBe("ID between1100");
+            });
         })
     })
 });
