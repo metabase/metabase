@@ -12,7 +12,8 @@ const approximate = {
     method: {
         max_query_cost: 'sample',
         max_computation_cost: 'linear'
-    }
+    },
+    icon: 'costapproximate'
 }
 
 const exact = {
@@ -24,7 +25,8 @@ const exact = {
     method: {
         max_query_cost: 'full-scan',
         max_computation_cost: 'unbounded'
-    }
+    },
+    icon: 'costexact'
 }
 
 const extended = {
@@ -36,7 +38,8 @@ const extended = {
     method: {
         max_query_cost: 'full-scan',
         max_computation_cost: 'unbounded'
-    }
+    },
+    icon: 'costextended'
 }
 
 export default {

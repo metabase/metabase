@@ -65,11 +65,10 @@ class TableXRay extends Component {
         }
     }
 
-    changeCost = ({ target }) => {
+    changeCost = (cost) => {
         const { params } = this.props
         // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        console.log(params)
-        this.props.changeCost(`table/${params.tableId}/${target.value}`)
+        this.props.changeCost(`table/${params.tableId}/${cost}`)
     }
 
     render () {

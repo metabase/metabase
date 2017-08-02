@@ -76,10 +76,10 @@ class FieldXRay extends Component {
         }
     }
 
-    changeCost = ({ target }) => {
+    changeCost = (cost) => {
         const { params } = this.props
         // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        this.props.changeCost(`field/${params.fieldId}/${target.value}`)
+        this.props.changeCost(`field/${params.fieldId}/${cost}`)
     }
 
     render () {
