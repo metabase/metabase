@@ -167,7 +167,10 @@ class FieldXRay extends Component {
                                                     'sum',
                                                     'cardinality',
                                                     'sd',
-                                                    'nil%'
+                                                    'nil%',
+                                                    'mean',
+                                                    'median',
+                                                    'mean-median-spread'
                                                 ]}
                                             />
                                         </div>
