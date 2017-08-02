@@ -98,6 +98,8 @@ export default class SettingsSetupList extends Component {
                   </div>
               }
               </LoadingAndErrorWrapper>
+
+              <p>Are you having trouble with timezones? <a href='/admin/troubleshooting'> Click for debugging information</a></p>
             </div>
         );
     }

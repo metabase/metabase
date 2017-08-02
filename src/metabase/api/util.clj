@@ -33,5 +33,12 @@
   []
   {:token (crypto-random/hex 32)})
 
+(api/defendpoint GET "/troubleshooting_info"
+  "Troubleshooting info for timezones, and other admin settings"
+  []
+  (api/check-superuser)
+  {:server_timezone "blah"
+   :databases [{:id 1 :name "Some Database" :tz "blah"}]
+   :reporting_timezone "blah"})
 
 (api/define-routes)

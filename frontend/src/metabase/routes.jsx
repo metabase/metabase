@@ -78,6 +78,7 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
+import TroubleshootingApp from "metabase/admin/TroubleshootingApp.jsx"
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
@@ -244,7 +245,7 @@ export const getRoutes = (store) =>
             {/* ADMIN */}
             <Route path="/admin" title="Admin" component={IsAdmin}>
                 <IndexRedirect to="/admin/settings" />
-
+                <Route path="troubleshooting" component={TroubleshootingApp} />
                 <Route path="databases" title="Databases">
                     <IndexRoute component={DatabaseListApp} />
                     <Route path="create" component={DatabaseEditApp} />

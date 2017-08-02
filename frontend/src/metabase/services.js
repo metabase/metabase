@@ -235,6 +235,7 @@ export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
     random_token:                GET("/api/util/random_token"),
     logs:                        GET("/api/util/logs"),
+    troubleshooting_info:        GET("/api/util/troubleshooting_info"),
 };
 
 export const GeoJSONApi = {
