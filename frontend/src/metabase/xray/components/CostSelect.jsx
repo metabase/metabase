@@ -9,7 +9,7 @@ const CostSelect = ({currentCost, onChange}) =>
         onChange={onChange}
     >
         { Object.keys(COSTS).map(cost =>
-            <Option value={cost}>
+            <Option value={cost} key={cost}>
                 {COSTS[cost].display_name}
             </Option>
         )}
