@@ -1359,11 +1359,20 @@ export function rowRenderer(
 
   const colors = settings["graph.colors"];
 
-  // format the dimension axis
+  const formatDimension = (row) =>
+      formatValue(row[0], { column: cols[0], type: "axis" })
+
+  // dc.js doesn't give us a way to format the row labels from unformatted data, so we have to
+  // do it here then construct a mapping to get the original dimension for tooltipsd/clicks
   const rows = series[0].data.rows.map(row => [
-      formatValue(row[0], { column: cols[0], type: "axis" }),
+      formatDimension(row),
       row[1]
   ]);
+  const formattedDimensionMap = new Map(series[0].data.rows.map(row => [
+      formatDimension(row),
+      row[0]
+  ]));
+
   const dataset = crossfilter(rows);
   const dimension = dataset.dimension(d => d[0]);
   const group = dimension.group().reduceSum(d => d[1]);
@@ -1382,7 +1391,7 @@ export function rowRenderer(
                 index: -1,
                 event: d3.event,
                 data: [
-                  { key: getFriendlyName(cols[0]), value: d.key, col: cols[0] },
+                  { key: getFriendlyName(cols[0]), value: formattedDimensionMap.get(d.key), col: cols[0] },
                   { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] }
                 ]
               });
@@ -1397,7 +1406,7 @@ export function rowRenderer(
                   value: d.value,
                   column: cols[1],
                   dimensions: [{
-                      value: d.key,
+                      value: formattedDimensionMap.get(d.key),
                       column: cols[0]
                   }],
                   element: this
