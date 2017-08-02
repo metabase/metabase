@@ -1368,10 +1368,10 @@ export function rowRenderer(
       formatDimension(row),
       row[1]
   ]);
-  const formattedDimensionMap = new Map(series[0].data.rows.map(row => [
-      formatDimension(row),
-      row[0]
-  ]));
+  const formattedDimensionMap = new Map(rows.map(([formattedDimension], index) => [
+      formattedDimension,
+      series[0].data.rows[index][0]
+  ]))
 
   const dataset = crossfilter(rows);
   const dimension = dataset.dimension(d => d[0]);
