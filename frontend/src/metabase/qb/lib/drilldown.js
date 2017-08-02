@@ -62,7 +62,7 @@ const DEFAULT_DRILL_DOWN_PROGRESSIONS = [
     // generic num-bins drill down
     [
         [["binning-strategy", isAny, "num-bins", () => true]],
-        [["binning-strategy", isAny, "num-bins", previous => previous]]
+        [["binning-strategy", isAny, "default"]]
     ],
     // generic bin-width drill down
     [
@@ -212,19 +212,6 @@ function columnToBreakout(column) {
         return ["datetime-field", column.id, column.unit];
     } else if (column.binning_info) {
         let binningStrategy = column.binning_info.binning_strategy;
-
-        // HACK: `binning_strategy` currently always returns `num-bins`, so try to guess if it's actually `bin-width`
-        if (binningStrategy === "num-bins") {
-            const numBinsComputed = (column.binning_info.max_value -
-                column.binning_info.min_value) /
-                column.binning_info.bin_width;
-            const numBinsError = Math.abs(
-                column.binning_info.num_bins - numBinsComputed
-            ) / numBinsComputed;
-            if (numBinsError > 0.0000001) {
-                binningStrategy = "bin-width";
-            }
-        }
 
         switch (binningStrategy) {
             case "bin-width":

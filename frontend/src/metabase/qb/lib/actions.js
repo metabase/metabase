@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import moment from "moment";
+import _ from "underscore";
 
 import Q from "metabase/lib/query"; // legacy query lib
 import { fieldIdsEq } from "metabase/lib/query/util";
@@ -13,7 +14,8 @@ import { rangeForValue } from "metabase/lib/dataset";
 import {
     isDate,
     isState,
-    isCountry
+    isCountry,
+    isCoordinate
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
@@ -399,10 +401,13 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
         if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
             if (isDate(breakoutFields[0])) {
                 card.display = "line";
-            // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
-            // } else if (_.all(breakoutFields, isCoordinate)) {
-            //     card.display = "map";
-            //     card.visualization_settings["map.type"] = "grid";
+            } else if (_.all(breakoutFields, isCoordinate)) {
+                card.display = "map";
+                // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
+                // Currently show a pin map instead of heat map for double coordinate breakout
+                // This way the binning drill-through works in a somewhat acceptable way (although it is designed for heat maps)
+                card.visualization_settings["map.type"] = "pin";
+                // card.visualization_settings["map.type"] = "grid";
             } else {
                 card.display = "bar";
             }
