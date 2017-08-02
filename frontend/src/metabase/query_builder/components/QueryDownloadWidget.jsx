@@ -18,14 +18,14 @@ const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 const QueryDownloadWidget = ({ className, card, result, uuid, token }) =>
     <PopoverWithTrigger
         triggerElement={
-            <Tooltip tooltip="Download">
+            <Tooltip tooltip="Download full results">
                 <Icon title="Download this data" name="downarrow" size={16} />
             </Tooltip>
         }
         triggerClasses={cx(className, "text-brand-hover")}
     >
         <div className="p2" style={{ maxWidth: 320 }}>
-            <h4>Download</h4>
+            <h4>Download full results</h4>
             { result.data.rows_truncated != null &&
                 <FieldSet className="my2 text-gold border-gold" legend="Warning">
                     <div className="my1">Your answer has a large number of rows so it could take awhile to download.</div>
