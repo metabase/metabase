@@ -17,11 +17,11 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (impl/insert-categorical! histogram (when x 1) x)))
 
-(def ^:private ^:const ^Long pdf-sample-points 100)
-
 (def ^{:arglists '([^Histogram histogram])} categorical?
   "Returns true if given histogram holds categorical values."
   (comp (complement #{:none}) impl/target-type))
+
+(def ^:private ^:const ^Long pdf-sample-points 100)
 
 (defn pdf
   "Probability density function of given histogram.
@@ -30,23 +30,23 @@
    https://en.wikipedia.org/wiki/Probability_density_function"
   [^Histogram histogram]
   (if (categorical? histogram)
-    (map (let [norm (/ (impl/total-count histogram))]
-           (fn [[target count]]
-             [target (* count norm)]))
-         (-> histogram impl/bins first :target :counts))
+    (let [norm (/ (impl/total-count histogram))]
+      (for [[target count] (-> histogram impl/bins first :target :counts)]
+        [target (* count norm)]))
     (let [{:keys [min max]} (impl/bounds histogram)
-          step (/ (- max min) pdf-sample-points)]
+          step              (/ (- max min) pdf-sample-points)]
       (transduce (take pdf-sample-points)
                  (fn
-                   ([] {:total-count 0
-                        :densities   (transient [])})
-                   ([{:keys [total-count densities]}]
-                    (for [[x count] (persistent! densities)]
-                      [x (/ count total-count)]))
-                   ([{:keys [total-count densities]} i]
-                    (let [d (impl/density histogram i)]
-                      {:densities   (conj! densities [i d])
-                       :total-count (+ total-count d)})))
+                   ([] {:total-density 0
+                        :densities     (transient [])})
+                   ([{:keys [total-density densities]}]
+                    (for [[x density] (persistent! densities)]
+                      [x (/ density total-density)]))
+                   ([acc x]
+                    (let [d (impl/density histogram x)]
+                      (-> acc
+                          (update :densities conj! [x d])
+                          (update :total-density + d)))))
                  (iterate (partial + step) min)))))
 
 (def ^{:arglists '([^Histogram histogram])} nil-count
@@ -54,7 +54,7 @@
   (comp :count impl/missing-bin))
 
 (defn total-count
-  "Return total number of values histogram holds."
+  "Return total number (including nils) of values histogram holds."
   [^Histogram histogram]
   (+ (impl/total-count histogram)
      (nil-count histogram)))
@@ -68,3 +68,11 @@
                    (map #(* % (math/log %))))
              (redux/post-complete + -)
              (pdf histogram)))
+
+(defn optimal-bin-width
+  "Determine optimal bin width (and consequently number of bins) for a given
+   histogram using Freedman-Diaconis rule.
+   https://en.wikipedia.org/wiki/Freedman%E2%80%93Diaconis_rule"
+  [^Histogram histogram]
+  (let [{first-q 0.25 third-q 0.75} (impl/percentiles histogram 0.25 0.75)]
+    (* 2 (- third-q first-q) (math/pow (impl/total-count histogram) (/ -3)))))
