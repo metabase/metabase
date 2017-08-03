@@ -59,7 +59,7 @@
   ([acc x] (hyper-loglog/insert acc x)))
 
 (def Num      [:type/Number :type/*])
-(def Datetime [:type/DateTime :type/*])
+(def DateTime [:type/DateTime :type/*])
 (def Category [:type/* :type/Category])
 (def Any      [:type/* :type/*])
 (def Text     [:type/Text :type/*])
