@@ -457,6 +457,7 @@ describe("QueryBuilder", () => {
                 // Get the binning
                 const results = getQueryResults(store.getState())[0]
                 const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
                 expect(breakoutBinningInfo.bin_width).toBe(20);
                 expect(breakoutBinningInfo.num_bins).toBe(8);
             })
@@ -482,6 +483,7 @@ describe("QueryBuilder", () => {
                 expect(qb.find(".ShownRowCount").text()).toBe("Showing 95 rows");
                 const results = getQueryResults(store.getState())[0]
                 const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
                 expect(breakoutBinningInfo.bin_width).toBe(1);
                 expect(breakoutBinningInfo.num_bins).toBe(100);
             })
@@ -503,7 +505,82 @@ describe("QueryBuilder", () => {
 
                 // We just want to see that there are a lot more rows than there would be if a binning was active
                 expect(qb.find(".ShownRowCount").text()).toBe("Showing first 2,000 rows");
+
+                const results = getQueryResults(store.getState())[0]
+                expect(results.data.cols[0].binning_info).toBe(undefined);
             });
         })
+
+        describe("for grouping by Latitude location field through Users FK in Orders table", async () => {
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQbWithOrdersTable());
+            })
+
+            it("lets you group by Latitude with the default binning option", async () => {
+                const breakoutSection = qb.find('.GuiBuilder-groupedBy');
+                const addBreakoutButton = breakoutSection.find('.AddButton');
+                addBreakoutButton.simulate("click");
+
+                const breakoutPopover = breakoutSection.find("#BreakoutPopover")
+
+                const userSectionButton = breakoutPopover.find(FieldList).find('h3[children="User"]')
+                expect(userSectionButton.length).toBe(1);
+                userSectionButton.simulate("click");
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('h4[children="Latitude"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                expect(breakoutWidget.text()).toBe("Latitude: Auto binned");
+            });
+
+            it("produces correct results for default binning option", async () => {
+                // Run the raw data query
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 18 rows");
+
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("bin-width");
+                expect(breakoutBinningInfo.bin_width).toBe(10);
+                expect(breakoutBinningInfo.num_bins).toBe(18);
+            })
+
+            it("lets you group by Latitude with the 'Bin every 1 degree'", async () => {
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                breakoutWidget.find(FieldName).children().first().simulate("click")
+                const breakoutPopover = qb.find("#BreakoutPopover")
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="Auto binned"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                qb.find(DimensionPicker).find('a[children="Bin every 1 degree"]').simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                expect(breakoutWidget.text()).toBe("Latitude: 1°");
+            });
+            it("produces correct results for 'Bin every 1 degree'", async () => {
+                // Run the raw data query
+                store.resetDispatchedActions();
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 180 rows");
+
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("bin-width");
+                expect(breakoutBinningInfo.bin_width).toBe(1);
+                expect(breakoutBinningInfo.num_bins).toBe(180);
+            })
+        });
     })
 });
