@@ -58,11 +58,11 @@
   ([acc] (hyper-loglog/distinct-count acc))
   ([acc x] (hyper-loglog/insert acc x)))
 
-(def num      [:type/number :type/*])
-(def datetime [:type/datetime :type/*])
-(def category [:type/* :type/category])
-(def any      [:type/* :type/*])
-(def text     [:type/text :type/*])
+(def Num      [:type/Number :type/*])
+(def Datetime [:type/DateTime :type/*])
+(def Category [:type/* :type/Category])
+(def Any      [:type/* :type/*])
+(def Text     [:type/Text :type/*])
 
 ;;;;;;;;;;;;;;;;;; temporary cp until we merge the binning branch ;;;;;;;;;;
 
