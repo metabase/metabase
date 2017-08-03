@@ -207,14 +207,16 @@
   ;; Create the database
   (i/create-db! driver database-definition)
   ;; Add DB object to Metabase DB
-  (u/prog1 (db/insert! Database
+  (let [db (db/insert! Database
              :name    database-name
              :engine  (name engine)
-             :details (i/database->connection-details driver :db database-definition))
+             :details (i/database->connection-details driver :db database-definition))]
     ;; sync newly added DB
-    (sync/sync-database! <>)
+    (sync/sync-database! db)
     ;; add extra metadata for fields
-    (add-extra-metadata! database-definition <>)))
+    (add-extra-metadata! database-definition db)
+    ;; make sure we're returing an up-to-date copy of the DB
+    (Database (u/get-id db))))
 
 (defn- reload-test-extensions [engine]
   (println "Reloading test extensions for driver:" engine)
