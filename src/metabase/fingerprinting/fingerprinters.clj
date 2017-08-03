@@ -1,7 +1,6 @@
 (ns metabase.fingerprinting.fingerprinters
   "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as h.impl]
-            [bigml.sketchy.hyper-loglog :as hyper-loglog]
             [clojure.math.numeric-tower :refer [ceil expt floor round]] ;;;;;; temp!
             [clj-time
              [coerce :as t.coerce]
@@ -17,7 +16,8 @@
              [costs :as costs]]
             [metabase.util :as u]            ;;;; temp!
             [redux.core :as redux]
-            [tide.core :as tide]))
+            [tide.core :as tide])
+  (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
 (def ^:private ^:const percentiles (range 0 1 0.1))
 
@@ -54,9 +54,11 @@
 
 (defn cardinality
   "transducer that sketches cardinality using hyper-loglog."
-  ([] (hyper-loglog/create cardinality-error))
-  ([acc] (hyper-loglog/distinct-count acc))
-  ([acc x] (hyper-loglog/insert acc x)))
+  ([] (HyperLogLogPlus. 14 25))
+  ([acc] (.cardinality acc))
+  ([acc x]
+   (.offer acc x)
+   acc))
 
 (def Num      [:type/Number :type/*])
 (def DateTime [:type/DateTime :type/*])
