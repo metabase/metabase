@@ -52,6 +52,9 @@ const isGuideEmpty = ({
     important_tables && important_tables.length !== 0 ? false :
     true;
 
+// This function generates a link for each important field of a Metric.
+// The link goes to a question comprised of this Metric broken out by 
+// That important field.
 const exploreLinksForMetric = (metricId, guide, metadataFields, tables) => {
     if (guide.metric_important_fields[metricId]) { 
         return guide.metric_important_fields[metricId]
