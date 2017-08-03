@@ -34,3 +34,6 @@ tooltip.default = tooltip.TestTooltip
 
 import * as popover from "metabase/components/Popover";
 popover.default = popover.TestPopover
+
+import * as table from "metabase/visualizations/visualizations/Table";
+table.default = table.TestTable

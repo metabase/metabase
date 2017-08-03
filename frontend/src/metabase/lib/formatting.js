@@ -13,6 +13,7 @@ import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { Field } from "metabase/meta/types/Field";
@@ -32,6 +33,9 @@ const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
+const BINNING_DEGREES_FORMATTER       = (value, binWidth) => {
+    return d3.format(`.0${decimalCount(binWidth)}f`)(value)
+}
 
 // use en dashes, for Maz
 const RANGE_SEPARATOR = ` – `;
@@ -67,8 +71,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
 }
 
 export function formatCoordinate(value: number, options: FormattingOptions = {}) {
-    // NOTE Atte Keinänen 7/31/17 Commented binWidth out as it wasn't being used
-    // const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
+    const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
     let direction = "";
     if (isLatitude(options.column)) {
         direction = " " + (value < 0 ? "S" : "N");
@@ -77,7 +80,9 @@ export function formatCoordinate(value: number, options: FormattingOptions = {})
         direction = " " + (value < 0 ? "W" : "E");
         value = Math.abs(value);
     }
-    return DECIMAL_DEGREES_FORMATTER(value) + "°" + direction;
+
+    const formattedValue = binWidth ? BINNING_DEGREES_FORMATTER(value, binWidth) : DECIMAL_DEGREES_FORMATTER(value)
+    return formattedValue + "°" + direction;
 }
 
 export function formatRange(range: [number, number], formatter: (value: number) => string, options: FormattingOptions = {}) {

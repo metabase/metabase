@@ -16,7 +16,10 @@ import {
     CANCEL_QUERY,
     SET_DATASET_QUERY,
     setQueryDatabase,
-    setQuerySourceTable
+    setQuerySourceTable,
+    setDatasetQuery,
+    NAVIGATE_TO_NEW_CARD,
+    UPDATE_URL
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
@@ -42,7 +45,11 @@ import {
 } from "metabase/__support__/sample_dataset_fixture";
 import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
-import { getQueryResults } from "metabase/query_builder/selectors";
+import { getCard, getQueryResults } from "metabase/query_builder/selectors";
+import { TestTable } from "metabase/visualizations/visualizations/Table";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+
+import { delay } from "metabase/lib/promise";
 
 const initQbWithDbAndTable = (dbId, tableId) => {
     return async () => {
@@ -578,5 +585,143 @@ describe("QueryBuilder", () => {
                 expect(breakoutBinningInfo.num_bins).toBe(180);
             })
         });
+    })
+
+    describe("drill-through", () => {
+        describe("Zoom In action for broken out fields", () => {
+            it("works for Count of rows aggregation and Subtotal 50 Bins breakout", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                await store.dispatch(setDatasetQuery({
+                    database: 1,
+                    type: 'query',
+                    query: {
+                        source_table: 1,
+                        breakout: [['binning-strategy', ['field-id', 6], 'num-bins', 50]],
+                        aggregation: [['count']]
+                    }
+                }));
+
+
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                const table = qb.find(TestTable);
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                expect(firstRowCells.length).toBe(2);
+
+                expect(firstRowCells.first().text()).toBe("12  –  14");
+
+                const countCell = firstRowCells.last();
+                expect(countCell.text()).toBe("387");
+                countCell.children().first().simulate("click");
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                store.resetDispatchedActions();
+                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+
+                store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                // Should reset to auto binning
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                expect(breakoutWidget.text()).toBe("Total: Auto binned");
+
+                // Expecting to see the correct lineage (just a simple sanity check)
+                const title = qb.find(QueryHeader).find("h1")
+                expect(title.text()).toBe("New question")
+            })
+
+            it("works for Count of rows aggregation and FK State breakout", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                await store.dispatch(setDatasetQuery({
+                    database: 1,
+                    type: 'query',
+                    query: {
+                        source_table: 1,
+                        breakout: [['fk->', 7, 19]],
+                        aggregation: [['count']]
+                    }
+                }));
+
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                const table = qb.find(TestTable);
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                expect(firstRowCells.length).toBe(2);
+
+                expect(firstRowCells.first().text()).toBe("AA");
+
+                const countCell = firstRowCells.last();
+                expect(countCell.text()).toBe("417");
+                countCell.children().first().simulate("click");
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                store.resetDispatchedActions();
+                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+
+                store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                // Should reset to auto binning
+                const breakoutWidgets = qb.find(BreakoutWidget);
+                expect(breakoutWidgets.length).toBe(3);
+                expect(breakoutWidgets.at(0).text()).toBe("Latitude: 1°");
+                expect(breakoutWidgets.at(1).text()).toBe("Longitude: 1°");
+
+                // Should have visualization type set to Pin map (temporary workaround until we have polished heat maps)
+                const card = getCard(store.getState())
+                expect(card.display).toBe("map");
+                expect(card.visualization_settings).toEqual({ "map.type": "pin" });
+            });
+
+            it("works for Count of rows aggregation and FK Latitude Auto binned breakout", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                await store.dispatch(setDatasetQuery({
+                    database: 1,
+                    type: 'query',
+                    query: {
+                        source_table: 1,
+                        breakout: [["binning-strategy", ['fk->', 7, 14], "default"]],
+                        aggregation: [['count']]
+                    }
+                }));
+
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                const table = qb.find(TestTable);
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                expect(firstRowCells.length).toBe(2);
+
+                // lat-long formatting should be improved when it comes to trailing zeros
+                expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
+
+                const countCell = firstRowCells.last();
+                expect(countCell.text()).toBe("1,079");
+                countCell.children().first().simulate("click");
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                store.resetDispatchedActions();
+                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+
+                store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                // Should reset to auto binning
+                const breakoutWidgets = qb.find(BreakoutWidget);
+                expect(breakoutWidgets.length).toBe(2);
+
+                // Default location binning strategy currently has a bin width of 10° so
+                expect(breakoutWidgets.at(0).text()).toBe("Latitude: 1°");
+
+                // Should have visualization type set to the previous visualization
+                const card = getCard(store.getState())
+                expect(card.display).toBe("bar");
+            });
+        })
     })
 });

@@ -323,10 +323,8 @@ describe("Dimension classes", () => {
                 });
             });
             describe("subDisplayName()", () => {
-                it("returns 'Quantized by 10 equally sized bins'", () => {
-                    expect(dimension.subDisplayName()).toEqual(
-                        "Quantized by 10 equally sized bins"
-                    );
+                it("returns '10 bins'", () => {
+                    expect(dimension.subDisplayName()).toEqual("10 bins");
                 });
             });
 
