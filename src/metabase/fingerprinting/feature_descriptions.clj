@@ -69,6 +69,7 @@
    :histogram-quarter      {:label "Distribution of quarters"}})
 
 (def ^{:arglists '([fingerprint])} add-descriptions
+  "Add descriptions of features to naked values where applicable."
   (partial m/map-kv (fn [k v]
                       (if-let [description (descriptions k)]
                         [k (assoc description :value v)]

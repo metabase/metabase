@@ -27,10 +27,11 @@
                 (- 1 (/ product magnitude-a magnitude-b))))
              (map vector a b)))
 
-(defmulti difference
-  "Difference between two features.
-   Confined to [0, 1] with 0 being same, and 1 orthogonal."
-  #(mapv type %&))
+(defmulti
+  ^{:doc "Difference between two features.
+          Confined to [0, 1] with 0 being same, and 1 orthogonal."
+    :arglists '([a v])}
+  difference #(mapv type %&))
 
 (defmethod difference [Number Number]
   [a b]

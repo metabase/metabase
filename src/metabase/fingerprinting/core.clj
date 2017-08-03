@@ -33,18 +33,19 @@
                                             cols))
              rows))
 
-(defmulti fingerprint
-  "Given a model, fetch corresponding dataset and compute its fingerprint.
+(defmulti
+  ^{:doc "Given a model, fetch corresponding dataset and compute its fingerprint.
 
-   Takes a map of options as first argument. Recognized options:
-   * `:max-cost`         a map with keys `:computation` and `:query` which
-                         limits maximal resource expenditure when computing the
-                         fingerprint. See `metabase.fingerprinting.costs` for
-                         details.
+          Takes a map of options as first argument. Recognized options:
+          * `:max-cost`   a map with keys `:computation` and `:query` which
+                          limits maximal resource expenditure when computing
+                          the fingerprint.
+                          See `metabase.fingerprinting.costs` for details.
 
-   * `:scale`            controls pre-aggregation by time. Can be one of `:day`,
-                         `week`, `:month`, or `:raw`."
-  #(type %2))
+          * `:scale`      controls pre-aggregation by time. Can be one of:
+                          `:day`, `week`, `:month`, or `:raw`."
+    :arglists '([opts field])}
+  fingerprint #(type %2))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
 
@@ -99,15 +100,15 @@
   [{:keys [scale] :as opts} a b]
   (merge (extract-query-opts opts)
          (cond
-           (and (isa? (f/field-type a) f/DateTime)
+           (and (isa? (#'f/field-type a) #'f/DateTime)
                 (not= scale :raw)
                 (instance? (type Metric) b))
            (merge (:definition b)
                   {:breakout [[:datetime-field [:field-id (:id a)] scale]]})
 
-           (and (isa? (f/field-type a) f/DateTime)
+           (and (isa? (#'f/field-type a) #'f/DateTime)
                 (not= scale :raw)
-                (isa? (f/field-type b) f/Num))
+                (isa? (#'f/field-type b) #'f/Num))
            {:source-table (:table_id a)
             :breakout     [[:datetime-field [:field-id (:id a)] scale]]
             :aggregation  [:sum [:field-id (:id b)]]}

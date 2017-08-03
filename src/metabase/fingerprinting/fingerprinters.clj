@@ -61,11 +61,11 @@
    (.offer acc x)
    acc))
 
-(def Num      [:type/Number :type/*])
-(def DateTime [:type/DateTime :type/*])
-(def Category [:type/* :type/Category])
-(def Any      [:type/* :type/*])
-(def Text     [:type/Text :type/*])
+(def ^:private Num      [:type/Number :type/*])
+(def ^:private DateTime [:type/DateTime :type/*])
+(def ^:private Category [:type/* :type/Category])
+(def ^:private Any      [:type/* :type/*])
+(def ^:private Text     [:type/Text :type/*])
 
 ;;;;;;;;;;;;;;;;;; temporary cp until we merge the binning branch ;;;;;;;;;;
 
@@ -90,6 +90,7 @@
 
 ;;;;;;;; cast to long
 (defn order-of-magnitude
+  "Return oder of magnitude."
   [x]
   (if (zero? x)
     0
@@ -175,32 +176,35 @@
             :description  "Share of corresponding bin in the overall population."
             :base_type    :type/Float}]}))
 
-(defn field-type
+(defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
     [(:base_type field) (or (:special_type field) :type/*)]))
 
-(defmulti fingerprinter
-  "Transducer that summarizes (_fingerprints_) given coll. What features are
-   extracted depends on the type of corresponding `Field`(s), amount of data
-   points available (some algorithms have a minimum data points requirement)
-   and `max-cost.computation` setting.
-   Note we are heavily using data sketches so some summary values may be
-   approximate."
-  #(field-type %2))
+(defmulti
+  ^{:doc "Transducer that summarizes (_fingerprints_) given coll. What features
+          are extracted depends on the type of corresponding `Field`(s), amount
+          of data points available (some algorithms have a minimum data points
+          requirement) and `max-cost.computation` setting.
+          Note we are heavily using data sketches so some summary values may be
+          approximate."
+    :arglists '([opts field])}
+  fingerprinter #(field-type %2))
 
-(defmulti x-ray
-  "Make fingerprint human readable."
-  :type)
+(defmulti
+  ^{:doc "Make fingerprint human readable."
+    :arglists '([fingerprint])}
+  x-ray :type)
 
 (defmethod x-ray :default
   [fingerprint]
   fingerprint)
 
-(defmulti comparison-vector
-  "Fingerprint feature vector for comparison/difference purposes."
-  :type)
+(defmulti
+  ^{:doc "Fingerprint feature vector for comparison/difference purposes."
+    :arglists '([fingerprint])}
+  comparison-vector :type)
 
 (defmethod comparison-vector :default
   [fingerprint]
