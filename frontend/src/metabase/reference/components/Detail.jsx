@@ -23,7 +23,7 @@ const Detail = ({ name, description, placeholder, subtitleClass, url, icon, isEd
                         placeholder={placeholder}
                         {...field}
                         //FIXME: use initialValues from redux forms instead of default value
-                        // to allow for reinitializing on cancel (see ReferenceGettingStartedGuide.jsx)
+                        // to allow for reinitializing on cancel (see GettingStartedGuide.jsx)
                         defaultValue={description}
                     /> :
                     <span className={subtitleClass}>{description || placeholder || 'No description yet'}</span>
