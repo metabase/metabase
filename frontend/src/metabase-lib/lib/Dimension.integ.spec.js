@@ -8,22 +8,25 @@ import {
     PRODUCT_TILE_FIELD_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
-import { fetchDatabaseMetadata, fetchTableMetadata } from "metabase/redux/metadata";
+import {
+    fetchDatabaseMetadata,
+    fetchTableMetadata
+} from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import Dimension from "./Dimension";
 
 describe("Dimension classes", () => {
-    let metadata = null
+    let metadata = null;
 
     beforeAll(async () => {
         await login();
-        const store = await createTestStore()
-        await store.dispatch(fetchDatabaseMetadata(1))
-        await store.dispatch(fetchTableMetadata(1))
-        await store.dispatch(fetchTableMetadata(2))
-        await store.dispatch(fetchTableMetadata(3))
-        metadata = getMetadata(store.getState())
-    })
+        const store = await createTestStore();
+        await store.dispatch(fetchDatabaseMetadata(1));
+        await store.dispatch(fetchTableMetadata(1));
+        await store.dispatch(fetchTableMetadata(2));
+        await store.dispatch(fetchTableMetadata(3));
+        metadata = getMetadata(store.getState());
+    });
 
     describe("Dimension", () => {
         describe("STATIC METHODS", () => {
@@ -129,7 +132,7 @@ describe("Dimension classes", () => {
                 ["field-id", PRODUCT_CATEGORY_FIELD_ID],
                 metadata
             );
-        })
+        });
 
         describe("INSTANCE METHODS", () => {
             describe("mbql()", () => {
@@ -147,9 +150,7 @@ describe("Dimension classes", () => {
             });
             describe("subDisplayName()", () => {
                 it("returns 'Default' for numeric fields", () => {
-                    expect(dimension.subDisplayName()).toEqual(
-                        "Default"
-                    );
+                    expect(dimension.subDisplayName()).toEqual("Default");
                 });
                 it("returns 'Default' for non-numeric fields", () => {
                     expect(
@@ -162,10 +163,12 @@ describe("Dimension classes", () => {
             });
             describe("subTriggerDisplayName()", () => {
                 it("returns 'Unbinned' if the dimension is a binnable number", () => {
-                    expect(dimension.subTriggerDisplayName()).toBe("Unbinned")
+                    expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
                 });
                 it("does not have a value if the dimension is a category", () => {
-                    expect(categoryDimension.subTriggerDisplayName()).toBeFalsy();
+                    expect(
+                        categoryDimension.subTriggerDisplayName()
+                    ).toBeFalsy();
                 });
             });
         });
@@ -178,7 +181,7 @@ describe("Dimension classes", () => {
                 ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID],
                 metadata
             );
-        })
+        });
 
         describe("STATIC METHODS", () => {
             describe("dimensions(parentDimension)", () => {
@@ -229,7 +232,7 @@ describe("Dimension classes", () => {
                 ["datetime-field", ORDERS_CREATED_DATE_FIELD_ID, "month"],
                 metadata
             );
-        })
+        });
 
         describe("STATIC METHODS", () => {
             describe("dimensions(parentDimension)", () => {
@@ -275,7 +278,9 @@ describe("Dimension classes", () => {
             });
             describe("subTriggerDisplayName()", () => {
                 it("returns 'by month'", () => {
-                    expect(dimension.subTriggerDisplayName()).toEqual("by month");
+                    expect(dimension.subTriggerDisplayName()).toEqual(
+                        "by month"
+                    );
                 });
             });
         });
@@ -288,7 +293,7 @@ describe("Dimension classes", () => {
                 ["field-id", ORDERS_TOTAL_FIELD_ID],
                 metadata
             ).dimensions()[1];
-        })
+        });
 
         describe("STATIC METHODS", () => {
             describe("dimensions(parentDimension)", () => {
@@ -327,7 +332,9 @@ describe("Dimension classes", () => {
 
             describe("subTriggerDisplayName()", () => {
                 it("returns '10 bins'", () => {
-                    expect(dimension.subTriggerDisplayName()).toEqual("10 bins");
+                    expect(dimension.subTriggerDisplayName()).toEqual(
+                        "10 bins"
+                    );
                 });
             });
         });
@@ -340,7 +347,7 @@ describe("Dimension classes", () => {
                 ["expression", "Hello World"],
                 metadata
             );
-        })
+        });
 
         describe("STATIC METHODS", () => {
             describe("dimensions(parentDimension)", () => {
@@ -359,7 +366,10 @@ describe("Dimension classes", () => {
         describe("INSTANCE METHODS", () => {
             describe("mbql()", () => {
                 it('returns an "expression" clause', () => {
-                    expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
+                    expect(dimension.mbql()).toEqual([
+                        "expression",
+                        "Hello World"
+                    ]);
                 });
             });
             describe("displayName()", () => {
@@ -374,7 +384,7 @@ describe("Dimension classes", () => {
         let dimension = null;
         beforeAll(() => {
             dimension = Dimension.parseMBQL(["aggregation", 1], metadata);
-        })
+        });
 
         describe("INSTANCE METHODS", () => {
             describe("mbql()", () => {
@@ -384,4 +394,4 @@ describe("Dimension classes", () => {
             });
         });
     });
-})
+});

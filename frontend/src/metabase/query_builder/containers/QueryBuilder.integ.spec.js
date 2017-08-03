@@ -15,8 +15,6 @@ import {
     RUN_QUERY,
     CANCEL_QUERY,
     SET_DATASET_QUERY,
-    REMOVE_QUERY_FILTER,
-    UPDATE_QUERY_FILTER,
     setQueryDatabase,
     setQuerySourceTable
 } from "metabase/query_builder/actions";
@@ -37,8 +35,6 @@ import RunButton from "metabase/query_builder/components/RunButton";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
 import Visualization from "metabase/visualizations/components/Visualization";
 import TableSimple from "metabase/visualizations/components/TableSimple";
-
-import {delay} from "metabase/lib/promise"
 
 import {
     ORDERS_TOTAL_FIELD_ID,
