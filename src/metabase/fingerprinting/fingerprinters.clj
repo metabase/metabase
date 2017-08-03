@@ -50,7 +50,7 @@
   (when (every? some? [x2 x1])
     (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
 
-(def ^:private ^:const ^double cardinality-error 0.01)
+(def ^:private ^:const ^Double cardinality-error 0.01)
 
 (defn cardinality
   "transducer that sketches cardinality using hyper-loglog."

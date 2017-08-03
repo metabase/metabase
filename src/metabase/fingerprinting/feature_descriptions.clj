@@ -1,6 +1,6 @@
 (ns metabase.fingerprinting.feature-descriptions
   "Desciptions of all the fingerprint features exposed as x-rays."
-  (require [medley.core :as m]))
+  (:require [medley.core :as m]))
 
 (def ^:private descriptions
   {:histogram              {:label       "Distribution"
