@@ -8,11 +8,13 @@
              [setting :refer [defsetting]]
              table]
             [metabase.util :as u]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [clj-time.format :as tformat])
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
            metabase.models.field.FieldInstance
-           metabase.models.table.TableInstance))
+           metabase.models.table.TableInstance
+           org.joda.time.DateTime))
 
 ;;; ## INTERFACE + CONSTANTS
 
@@ -199,7 +201,10 @@
   (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema` keys.
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
-     There is no expectation that the results be returned in any given order."))
+     There is no expectation that the results be returned in any given order.")
+
+  (current-db-time ^DateTime [this ^DatabaseInstance database]
+    "Returns the current time from the perspective of `DATABASE`"))
 
 
 (defn- percent-valid-urls
@@ -238,6 +243,23 @@
                                (reduce +))
                           field-values-count))))))
 
+(defn create-db-time-formatter
+  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
+  the offset/timezone information. Results of this are threadsafe and
+  can safely be def'd"
+  [date-format-str]
+  (.withOffsetParsed (tformat/formatter date-format-str)))
+
+(defn make-current-db-time-fn
+  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
+  for the current time. Returns a function that executes the query and
+  parses the date returned preserving it's timezone"
+  [date-formatter native-query]
+  (fn [driver database]
+    (some->> (execute-query driver {:database database, :native {:query native-query}})
+             :rows
+             ffirst
+             (tformat/parse date-formatter))))
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
@@ -250,7 +272,8 @@
    :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)
    :sync-in-context                   (fn [_ _ f] (f))
-   :table-rows-seq                    (constantly nil)})
+   :table-rows-seq                    (constantly nil)
+   :current-db-time                   (constantly nil)})
 
 
 ;;; ## CONFIG

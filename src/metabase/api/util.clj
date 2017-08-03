@@ -1,12 +1,22 @@
 (ns metabase.api.util
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin page tasks."
-  (:require [compojure.core :refer [GET POST]]
+  (:require [clj-time
+             [core :as time]
+             [format :as tformat]]
+            [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
+            [metabase
+             [driver :as driver]
+             [logger :as logger]]
             [metabase.api.common :as api]
-            [metabase.logger :as logger]
+            [metabase.models
+             [database :refer [Database]]
+             [setting :as setting]]
             [metabase.util
              [schema :as su]
-             [stats :as stats]]))
+             [stats :as stats]]
+            [toucan.db :as db])
+  (:import [org.joda.time DateTime DateTimeZone]))
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
@@ -33,12 +43,30 @@
   []
   {:token (crypto-random/hex 32)})
 
+(def ^:private date-time-formatter (tformat/formatters :date-time))
+
+(defn- create-tz-info-map [^DateTimeZone tz ^DateTime current-time]
+  (when tz
+    {:name (.getID tz)
+     :offset_time (tformat/unparse (tformat/with-zone date-time-formatter tz) current-time)
+     :utc_time (tformat/unparse date-time-formatter current-time)}))
+
+(defn- extract-time-zone [^DateTime dt]
+  (-> dt .getChronology .getZone))
+
 (api/defendpoint GET "/troubleshooting_info"
   "Troubleshooting info for timezones, and other admin settings"
   []
   (api/check-superuser)
-  {:server_timezone "blah"
-   :databases [{:id 1 :name "Some Database" :tz "blah"}]
-   :reporting_timezone "blah"})
+  (let [current-time (time/now)
+        report-tz    (when-let [tz-id (setting/get :report-timezone)]
+                       (time/time-zone-for-id tz-id))]
+    {:server_timezone    (create-tz-info-map (time/default-time-zone) current-time)
+     :reporting_timezone (create-tz-info-map report-tz current-time)
+     :databases          (mapv (fn [db-instance]
+                                 (let [the-driver (driver/->driver (:engine db-instance))
+                                       dt         (driver/current-db-time the-driver db-instance)]
+                                   (create-tz-info-map (extract-time-zone dt) dt)))
+                               (db/select Database {:order-by [:%lower.name]})) }))
 
 (api/define-routes)
