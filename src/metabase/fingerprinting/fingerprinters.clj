@@ -64,7 +64,7 @@
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
-(def ^:private Any      [:type/* :type/*])
+; (def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
 ;;;;;;;;;;;;;;;;;; temporary cp until we merge the binning branch ;;;;;;;;;;
