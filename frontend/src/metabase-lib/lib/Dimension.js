@@ -119,8 +119,8 @@ export default class Dimension {
                 this._dimensionForOption(option));
         } else {
             return [].concat(
-                ...(DimensionTypes || []).map(DimensionType =>
-                    DimensionType.dimensions(this))
+                ...(DimensionTypes || [])
+                    .map(DimensionType => DimensionType.dimensions(this))
             );
         }
     }
@@ -307,9 +307,8 @@ export class FieldDimension extends Dimension {
 
     subDisplayName(): string {
         if (this._subDisplayName) {
-            return this._subTriggerDisplayName
-        }
-        else if (this._parent) {
+            return this._subTriggerDisplayName;
+        } else if (this._parent) {
             // TODO Atte Keinänen 8/1/17: Is this used at all?
             // foreign key, show the field name
             return this.field().display_name;

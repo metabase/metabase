@@ -81,7 +81,7 @@ describe("drilldown", () => {
         });
 
         // NUMERIC:
-        it("should return breakout with same num-bins for num-bins strategy", () => {
+        it("should reset breakout to default binning for num-bins strategy", () => {
             const drillDown = drillDownForDimensions(
                 [
                     {
@@ -100,8 +100,7 @@ describe("drilldown", () => {
                     [
                         "binning-strategy",
                         ["field-id", ORDERS_TOTAL_FIELD_ID],
-                        "num-bins",
-                        10
+                        "default"
                     ]
                 ]
             });

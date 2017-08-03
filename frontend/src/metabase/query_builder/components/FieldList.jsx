@@ -223,7 +223,7 @@ export default class FieldList extends Component {
 
 import cx from "classnames";
 
-const DimensionPicker = ({ className, dimension, dimensions, onChangeDimension }) => {
+export const DimensionPicker = ({ className, dimension, dimensions, onChangeDimension }) => {
     return (
         <ul className="px2 py1">
             { dimensions.map((d, index) =>
