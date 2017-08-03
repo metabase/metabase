@@ -12,6 +12,7 @@
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.public-settings :as public-settings]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -110,12 +111,13 @@
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
 (defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
-  (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
-    {:name               "Saved Questions"
-     :id                 database/virtual-id
-     :features           #{:basic-aggregations}
-     :tables             virtual-tables
-     :is_saved_questions true}))
+  (when (public-settings/enable-nested-queries)
+    (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
+      {:name               "Saved Questions"
+       :id                 database/virtual-id
+       :features           #{:basic-aggregations}
+       :tables             virtual-tables
+       :is_saved_questions true})))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-virtual-tables-for-saved-cards [dbs]
