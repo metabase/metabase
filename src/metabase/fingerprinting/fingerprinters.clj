@@ -2,7 +2,7 @@
   "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as h.impl]
             [bigml.sketchy.hyper-loglog :as hyper-loglog]
-            [clojure.math.numeric-tower :refer [ceil expt floor]] ;;;;;; temp!
+            [clojure.math.numeric-tower :refer [ceil expt floor round]] ;;;;;; temp!
             [clj-time
              [coerce :as t.coerce]
              [core :as t]
@@ -140,28 +140,31 @@
 
 (defn- equidistant-bins
   [histogram]
-  (let [{:keys [min max]}                      (h.impl/bounds histogram)
-        bin-width                              (h/optimal-bin-width histogram)
-        {:keys [min-value num-bins bin-width]} (nicer-breakout
-                                                {:min-value min
-                                                 :max-value max
-                                                 :num-bins  (calculate-num-bins
-                                                             min max bin-width)
-                                                 :strategy  :num-bins})]
-    (->> min-value
-         (iterate (partial + bin-width))
-         (take (inc num-bins))
-         (map (fn [x]
-                [x (h.impl/sum histogram x)]))
-         (partition 2 1)
-         (map (fn [[[x s1] [_ s2]]]
-                [x (- s2 s1)])))))
+  (if (h/categorical? histogram)
+    (-> histogram h.impl/bins first :target :counts)
+    (let [{:keys [min max]}                      (h.impl/bounds histogram)
+          bin-width                              (h/optimal-bin-width histogram)
+          {:keys [min-value num-bins bin-width]} (nicer-breakout
+                                                  {:min-value min
+                                                   :max-value max
+                                                   :num-bins  (calculate-num-bins
+                                                               min max bin-width)
+                                                   :strategy  :num-bins})]
+      (->> min-value
+           (iterate (partial + bin-width))
+           (take (inc num-bins))
+           (map (fn [x]
+                  [x (h.impl/sum histogram x)]))
+           (partition 2 1)
+           (map (fn [[[x s1] [_ s2]]]
+                  [x (- s2 s1)]))))))
 
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
-   {:rows    (for [[k v] (equidistant-bins histogram)]
-               [(keyfn k) v])
+   {:rows    (let [norm (/ (h.imp/total-count histogram))]
+               (for [[k v] (equidistant-bins histogram)]
+                 [(keyfn k) (* v norm)]))
     :columns [(:name field) "SHARE"]
     :cols [field
            {:name         "SHARE"
@@ -201,7 +204,7 @@
   (dissoc fingerprint :type :field :has-nils?))
 
 (defmethod fingerprinter Num
-  [_ field]
+  [{:keys [max-cost]} field]
   (redux/post-complete
    (redux/fuse {:histogram      h/histogram
                 :cardinality    cardinality
@@ -214,45 +217,47 @@
      (if (pos? (h/total-count histogram))
        (let [nil-count   (h/nil-count histogram)
              total-count (h/total-count histogram)
-             unique%     (/ cardinality (max total-count 1))
+             uniqueness  (/ cardinality (max total-count 1))
              var         (or (h.impl/variance histogram) 0)
              sd          (math/sqrt var)
              min         (h.impl/minimum histogram)
              max         (h.impl/maximum histogram)
              mean        (h.impl/mean histogram)
              median      (h.impl/median histogram)
-             span        (- max min)]
-         {:histogram            histogram
-          :percentiles          (apply h.impl/percentiles histogram percentiles)
-          :sum                  sum
-          :sum-of-squares       sum-of-squares
-          :positive-definite?   (>= min 0)
-          :%>mean               (- 1 ((h.impl/cdf histogram) mean))
-          :cardinality-vs-count unique%
-          :var>sd?              (> var sd)
-          :nil%                 (/ nil-count (clojure.core/max total-count 1))
-          :has-nils?            (pos? nil-count)
-          :0<=x<=1?             (<= 0 min max 1)
-          :-1<=x<=1?            (<= -1 min max 1)
-          :cv                   (safe-divide mean sd)
-          :span-vs-sd           (safe-divide span sd)
-          :mean-median-spread   (safe-divide span (- mean median))
-          :min-vs-max           (safe-divide min max)
-          :span                 span
-          :cardinality          cardinality
-          :min                  min
-          :max                  max
-          :mean                 mean
-          :median               median
-          :var                  var
-          :sd                   sd
-          :count                total-count
-          :kurtosis             kurtosis
-          :skewness             skewness
-          :all-distinct?        (>= unique% (- 1 cardinality-error))
-          :entropy              (h/entropy histogram)
-          :type                 Num
-          :field                field})
+             range       (- max min)]
+         (merge
+          {:histogram          histogram
+           :percentiles        (apply h.impl/percentiles histogram percentiles)
+           :positive-definite? (>= min 0)
+           :%>mean             (- 1 ((h.impl/cdf histogram) mean))
+           :uniqueness         uniqueness
+           :var>sd?            (> var sd)
+           :nil%               (/ nil-count (clojure.core/max total-count 1))
+           :has-nils?          (pos? nil-count)
+           :0<=x<=1?           (<= 0 min max 1)
+           :-1<=x<=1?          (<= -1 min max 1)
+           :cv                 (safe-divide sd mean)
+           :range-vs-sd        (safe-divide sd range)
+           :mean-median-spread (safe-divide (- mean median) range)
+           :min-vs-max         (safe-divide min max)
+           :range              range
+           :cardinality        cardinality
+           :min                min
+           :max                max
+           :mean               mean
+           :median             median
+           :var                var
+           :sd                 sd
+           :count              total-count
+           :kurtosis           kurtosis
+           :skewness           skewness
+           :all-distinct?      (>= unique% (- 1 cardinality-error))
+           :entropy            (h/entropy histogram)
+           :type               Num
+           :field              field}
+          (when (costs/full-scan? max-cost)
+            {:sum            sum
+             :sum-of-squares sum-of-squares})))
        {:count 0
         :type  Num
         :field field}))))
@@ -261,11 +266,14 @@
   [fingerprint]
   (select-keys fingerprint
                [:histogram :mean :median :min :max :sd :count :kurtosis
-                :skewness :entropy :nil% :cardinality-vs-count :span]))
+                :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
 
 (defmethod x-ray Num
   [{:keys [field] :as fingerprint}]
-  (update fingerprint :histogram (partial histogram->dataset field)))
+  (-> fingerprint
+      (update :histogram (partial histogram->dataset field))
+      (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
+              :positive-definite? :var>sd? :uniqueness :min-vs-max)))
 
 (defmethod fingerprinter [Num Num]
   [_ field]
@@ -389,7 +397,7 @@
 
 (defn- quarter
   [dt]
-  (-> (t/month dt) (/ 3) Math/ceil long))
+  (-> dt t/month (/ 3) Math/ceil long))
 
 (defmethod fingerprinter DateTime
   [_ field]
@@ -409,7 +417,7 @@
                 histogram-quarter]}]
      (let [nil-count   (h/nil-count histogram)
            total-count (h/total-count histogram)]
-       {:earlies           (h.impl/minimum histogram)
+       {:earliest          (h.impl/minimum histogram)
         :latest            (h.impl/maximum histogram)
         :histogram         histogram
         :percentiles       (apply h.impl/percentiles histogram percentiles)
@@ -428,11 +436,45 @@
   [fingerprint]
   (dissoc fingerprint :type :percentiles :field :has-nils?))
 
+(defn- round-to-month
+  [dt]
+  (if (<= (t/day dt) 15)
+    (t/floor dt t/month)
+    (t/date-time (t/year dt) (inc (t/month dt)))))
+
+(defn- month-frequencies
+  [earliest latest]
+  (let [earilest    (round-to-month latest)
+        latest      (round-to-month latest)
+        start-month (t/month earliest)
+        duration    (t/in-months (t/interval earliest latest))]
+    (->> (range (dec start-month) (+ start-month duration))
+         (map #(inc (mod % 12)))
+         frequencies)))
+
+(defn- quarter-frequencies
+  [earliest latest]
+  (let [earilest      (round-to-month latest)
+        latest        (round-to-month latest)
+        start-quarter (quarter earliest)
+        duration      (round (/ (t/in-months (t/interval earliest latest)) 3))]
+    (->> (range (dec start-quarter) (+ start-quarter duration))
+         (map #(inc (mod % 4)))
+         frequencies)))
+
+(defn- weigh-periodicity
+  [weights card]
+  (let [baseline (apply min (vals weights))]
+    (update card :rows (partial map (fn [[k v]]
+                                      [k (* v (/ baseline (weights k)))])))))
+
 (defmethod x-ray DateTime
-  [{:keys [field] :as fingerprint}]
+  [{:keys [field earliest latest] :as fingerprint}]
+  (let [earliest (from-double earliest)
+        latest   (from-double latest)])
   (-> fingerprint
-      (update :earlies           from-double)
-      (update :latest            from-double)
+      (assoc  :earliest          earliest)
+      (assoc  :latest            latest)
       (update :histogram         (partial histogram->dataset from-double field))
       (update :percentiles       (partial m/map-vals from-double))
       (update :histogram-hour    (partial histogram->dataset
@@ -445,16 +487,22 @@
                                            :display_name "Day of week"
                                            :base_type    :type/Integer
                                            :special_type :type/Category}))
-      (update :histogram-month   (partial histogram->dataset
-                                          {:name         "MONTH"
-                                           :display_name "Month of year"
-                                           :base_type    :type/Integer
-                                           :special_type :type/Category}))
-      (update :histogram-quarter (partial histogram->dataset
-                                          {:name         "QUARTER"
-                                           :display_name "Quarter of year"
-                                           :base_type    :type/Integer
-                                           :special_type :type/Category}))))
+      (update :histogram-month   (comp
+                                  (partial weight-periodicity
+                                           (month-frequencies earliest latest))
+                                  (partial histogram->dataset
+                                           {:name         "MONTH"
+                                            :display_name "Month of year"
+                                            :base_type    :type/Integer
+                                            :special_type :type/Category})))
+      (update :histogram-quarter (comp
+                                  (partial weight-periodicity
+                                           (quarter-frequencies earliest latest))
+                                  (partial histogram->dataset
+                                           {:name         "QUARTER"
+                                            :display_name "Quarter of year"
+                                            :base_type    :type/Integer
+                                            :special_type :type/Category})))))
 
 (defmethod fingerprinter Category
   [_ field]
@@ -464,16 +512,16 @@
    (fn [{:keys [histogram cardinality]}]
      (let [nil-count   (h/nil-count histogram)
            total-count (h/total-count histogram)
-           unique%     (/ cardinality (max total-count 1))]
-       {:histogram            histogram
-        :cardinality-vs-count unique%
-        :nil%                 (/ nil-count (max total-count 1))
-        :has-nils?            (pos? nil-count)
-        :cardinality          cardinality
-        :count                total-count
-        :entropy              (h/entropy histogram)
-        :type                 Category
-        :field                field}))))
+           uniqueness  (/ cardinality (max total-count 1))]
+       {:histogram   histogram
+        :uniqueness  uniqueness
+        :nil%        (/ nil-count (max total-count 1))
+        :has-nils?   (pos? nil-count)
+        :cardinality cardinality
+        :count       total-count
+        :entropy     (h/entropy histogram)
+        :type        Category
+        :field       field}))))
 
 (defmethod comparison-vector Category
   [fingerprint]

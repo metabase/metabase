@@ -5,7 +5,8 @@
             [metabase.fingerprinting
              [comparison :as comparison]
              [costs :as costs]
-             [fingerprinters :as f]]
+             [fingerprinters :as f]
+             [feature-descriptions :refer [add-descriptions]]]
             [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
@@ -139,14 +140,6 @@
                                  (map comparison/fingerprint-distance a b)
                                  (comparison/fingerprint-distance a b))])
                           a b))}))
-
-(def ^:private ^{:arglists '([fingerprint])} add-descriptions
-  (partial m/map-kv (fn [k v]
-                      (if (#{:field :type :table :card :segment} k)
-                        [k v]
-                        [k {:value        v
-                            :label        k
-                            :descripttion k}]))))
 
 (defn- trim-decimals
   [decimal-places fingerprint]
