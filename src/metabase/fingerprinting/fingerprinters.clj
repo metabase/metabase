@@ -15,8 +15,6 @@
             [metabase.fingerprinting
              [histogram :as h]
              [costs :as costs]]
-            [metabase.models
-             [metric :refer [Metric]]]
             [metabase.util :as u]            ;;;; temp!
             [redux.core :as redux]
             [tide.core :as tide]))
@@ -24,8 +22,8 @@
 (def ^:private ^:const percentiles (range 0 1 0.1))
 
 (defn rollup
-  "Transducer that groups by `groupfn` and reduces each group with `f`.
-   Note the contructor airity of `f` needs to be free of side effects."
+  "transducer that groups by `groupfn` and reduces each group with `f`.
+   note the contructor airity of `f` needs to be free of side effects."
   [f groupfn]
   (let [init (f)]
     (fn
@@ -40,31 +38,31 @@
          (assoc! acc k (f (get acc k init) x)))))))
 
 (defn safe-divide
-  "Like `clojure.core//`, but returns nil if denominator is 0."
+  "like `clojure.core//`, but returns nil if denominator is 0."
   [numerator & denominators]
   (when (or (and (not-empty denominators) (not-any? zero? denominators))
             (and (not (zero? numerator)) (empty? denominators)))
     (apply / numerator denominators)))
 
 (defn growth
-  "Relative difference between `x1` an `x2`."
+  "relative difference between `x1` an `x2`."
   [x2 x1]
   (when (every? some? [x2 x1])
     (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
 
-(def ^:private ^:const ^Double cardinality-error 0.01)
+(def ^:private ^:const ^double cardinality-error 0.01)
 
 (defn cardinality
-  "Transducer that sketches cardinality using Hyper-LogLog."
+  "transducer that sketches cardinality using hyper-loglog."
   ([] (hyper-loglog/create cardinality-error))
   ([acc] (hyper-loglog/distinct-count acc))
   ([acc x] (hyper-loglog/insert acc x)))
 
-(def Num      [:type/Number :type/*])
-(def DateTime [:type/DateTime :type/*])
-(def Category [:type/* :type/Category])
-(def Any      [:type/* :type/*])
-(def Text     [:type/Text :type/*])
+(def num      [:type/number :type/*])
+(def datetime [:type/datetime :type/*])
+(def category [:type/* :type/category])
+(def any      [:type/* :type/*])
+(def text     [:type/text :type/*])
 
 ;;;;;;;;;;;;;;;;;; temporary cp until we merge the binning branch ;;;;;;;;;;
 
@@ -74,7 +72,7 @@
                             num-bins)))
 
 (defn- calculate-num-bins [min-value max-value bin-width]
-  (long (Math/ceil (/ (- max-value min-value)
+  (long (ceil (/ (- max-value min-value)
                          bin-width))))
 
 (defn- ceil-to
@@ -90,7 +88,9 @@
 ;;;;;;;; cast to long
 (defn order-of-magnitude
   [x]
-  (floor (/ (Math/log x) (Math/log 10))))
+  (if (zero? x)
+    0
+    (long (floor (/ (math/log (math/abs x)) (math/log 10))))))
 
 (def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
@@ -162,7 +162,7 @@
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
-   {:rows    (let [norm (/ (h.imp/total-count histogram))]
+   {:rows    (let [norm (/ (h.impl/total-count histogram))]
                (for [[k v] (equidistant-bins histogram)]
                  [(keyfn k) (* v norm)]))
     :columns [(:name field) "SHARE"]
@@ -251,7 +251,7 @@
            :count              total-count
            :kurtosis           kurtosis
            :skewness           skewness
-           :all-distinct?      (>= unique% (- 1 cardinality-error))
+           :all-distinct?      (>= uniqueness (- 1 cardinality-error))
            :entropy            (h/entropy histogram)
            :type               Num
            :field              field}
@@ -471,38 +471,38 @@
 (defmethod x-ray DateTime
   [{:keys [field earliest latest] :as fingerprint}]
   (let [earliest (from-double earliest)
-        latest   (from-double latest)])
-  (-> fingerprint
-      (assoc  :earliest          earliest)
-      (assoc  :latest            latest)
-      (update :histogram         (partial histogram->dataset from-double field))
-      (update :percentiles       (partial m/map-vals from-double))
-      (update :histogram-hour    (partial histogram->dataset
-                                          {:name         "HOUR"
-                                           :display_name "Hour of day"
-                                           :base_type    :type/Integer
-                                           :special_type :type/Category}))
-      (update :histogram-day     (partial histogram->dataset
-                                          {:name         "DAY"
-                                           :display_name "Day of week"
-                                           :base_type    :type/Integer
-                                           :special_type :type/Category}))
-      (update :histogram-month   (comp
-                                  (partial weight-periodicity
-                                           (month-frequencies earliest latest))
-                                  (partial histogram->dataset
-                                           {:name         "MONTH"
-                                            :display_name "Month of year"
-                                            :base_type    :type/Integer
-                                            :special_type :type/Category})))
-      (update :histogram-quarter (comp
-                                  (partial weight-periodicity
-                                           (quarter-frequencies earliest latest))
-                                  (partial histogram->dataset
-                                           {:name         "QUARTER"
-                                            :display_name "Quarter of year"
-                                            :base_type    :type/Integer
-                                            :special_type :type/Category})))))
+        latest   (from-double latest)]
+    (-> fingerprint
+        (assoc  :earliest          earliest)
+        (assoc  :latest            latest)
+        (update :histogram         (partial histogram->dataset from-double field))
+        (update :percentiles       (partial m/map-vals from-double))
+        (update :histogram-hour    (partial histogram->dataset
+                                            {:name         "HOUR"
+                                             :display_name "Hour of day"
+                                             :base_type    :type/Integer
+                                             :special_type :type/Category}))
+        (update :histogram-day     (partial histogram->dataset
+                                            {:name         "DAY"
+                                             :display_name "Day of week"
+                                             :base_type    :type/Integer
+                                             :special_type :type/Category}))
+        (update :histogram-month   (comp
+                                    (partial weigh-periodicity
+                                             (month-frequencies earliest latest))
+                                    (partial histogram->dataset
+                                             {:name         "MONTH"
+                                              :display_name "Month of year"
+                                              :base_type    :type/Integer
+                                              :special_type :type/Category})))
+        (update :histogram-quarter (comp
+                                    (partial weigh-periodicity
+                                             (quarter-frequencies earliest latest))
+                                    (partial histogram->dataset
+                                             {:name         "QUARTER"
+                                              :display_name "Quarter of year"
+                                              :base_type    :type/Integer
+                                              :special_type :type/Category}))))))
 
 (defmethod fingerprinter Category
   [_ field]

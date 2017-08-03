@@ -7,7 +7,6 @@
                             :description "Distribution of values."
                             :link        "https://en.wikipedia.org/wiki/Probability_mass_function"}
    :percentiles            {:label "Percentiles"
-                            :description
                             :link  "https://en.wikipedia.org/wiki/Percentile"}
    :sum                    {:label       "Sum"
                             :description "Sum of all values."}
