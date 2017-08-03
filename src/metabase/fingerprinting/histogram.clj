@@ -35,19 +35,21 @@
         [target (* count norm)]))
     (let [{:keys [min max]} (impl/bounds histogram)
           step              (/ (- max min) pdf-sample-points)]
-      (transduce (take pdf-sample-points)
-                 (fn
-                   ([] {:total-density 0
-                        :densities     (transient [])})
-                   ([{:keys [total-density densities]}]
-                    (for [[x density] (persistent! densities)]
-                      [x (/ density total-density)]))
-                   ([acc x]
-                    (let [d (impl/density histogram x)]
-                      (-> acc
-                          (update :densities conj! [x d])
-                          (update :total-density + d)))))
-                 (iterate (partial + step) min)))))
+      (if (pos? step)
+        (transduce (take pdf-sample-points)
+                   (fn
+                     ([] {:total-density 0
+                          :densities     (transient [])})
+                     ([{:keys [total-density densities]}]
+                      (for [[x density] (persistent! densities)]
+                        [x (/ density total-density)]))
+                     ([acc x]
+                      (let [d (impl/density histogram x)]
+                        (-> acc
+                            (update :densities conj! [x d])
+                            (update :total-density + d)))))
+                   (iterate (partial + step) min))
+        [[min 1.0]]))))
 
 (def ^{:arglists '([^Histogram histogram])} nil-count
   "Return number of nil values histogram holds."

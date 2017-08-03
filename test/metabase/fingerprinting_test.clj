@@ -2,13 +2,16 @@
   (:require [clj-time.coerce :as t.coerce]
             [clj-time.core :as t]
             [expectations :refer :all]
-            [metabase.fingerprinting :as f :refer :all]
+            [metabase.fingerprinting
+             [core :as f.core]
+             [costs :refer :all]
+             [fingerprinters :as f :refer :all]
+             [histogram :as h :refer :all]]
             [redux.core :as redux]))
 
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
-(def ^:private datetimes [(t/date-time 2016 1) (t/date-time 2016 2) nil
-                          (t/date-time 2016 5) (t/date-time 2016 7 23)
-                          (t/date-time 2016 10 2)])
+(def ^:private datetimes ["2015-06-01" nil "2015-06-11" "2015-01-01"
+                          "2016-06-31" "2017-09-01" "2016-04-15" "2017-11-02"])
 (def ^:private categories [:foo :baz :bar :bar nil :foo])
 
 (def ^:private hist (transduce identity histogram (take 100 (cycle numbers))))
@@ -38,10 +41,6 @@
    (growth 0.1 -0.5)])
 
 (expect
-  [{0.1 12 0.2 11 0.22 11 0.3 11 0.4 11 0.5 11 0.51 11 0.55 11}]
-  [(bins hist)])
-
-(expect
   [100.0
    11]
   [(total-count hist)
@@ -50,9 +49,9 @@
 (expect
   [-0.0
    true]
-  (let [all-ones (binned-entropy (transduce identity histogram (repeat 10 1)))]
+  (let [all-ones (entropy (transduce identity histogram (repeat 10 1)))]
     [all-ones
-     (> (binned-entropy hist) (binned-entropy hist-c) all-ones)]))
+     (> (entropy hist) (entropy hist-c) all-ones)]))
 
 (expect
   [{:foo 2
@@ -77,8 +76,8 @@
    (#'f/quarter (t/date-time 2017 12))])
 
 (expect
-  {:limit (var-get #'f/max-sample-size)}
-  (#'f/extract-query-opts {:max-cost {:query :sample}}))
+  {:limit (var-get #'f.core/max-sample-size)}
+  (#'f.core/extract-query-opts {:max-cost {:query :sample}}))
 
 (defn- make-timestamp
   [y m]
@@ -109,15 +108,20 @@
    (var-get #'f/DateTime)
    (var-get #'f/Category)
    (var-get #'f/Text)
-   nil]
-  [(-> (#'f/fingerprint-field {} {:base_type :type/Number} numbers) :type)
-   (-> (#'f/fingerprint-field {} {:base_type :type/DateTime} datetimes) :type)
-   (-> (#'f/fingerprint-field {} {:base_type :type/Text
+   [nil [:type/NeverBeforeSeen :type/*]]]
+  [(-> (#'f.core/fingerprint-field {} {:base_type :type/Number} numbers) :type)
+   (-> (#'f.core/fingerprint-field {} {:base_type :type/DateTime} datetimes)
+       :type)
+   (-> (#'f.core/fingerprint-field {} {:base_type :type/Text
                                   :special_type :type/Category}
                               categories)
        :type)
-   (-> (#'f/fingerprint-field {} {:base_type :type/Text} (map str categories)) :type)
-   (-> (#'f/fingerprint-field {} {:base_type :type/NeverBeforeSeen} numbers) :type)])
+   (->> categories
+        (map str)
+        (#'f.core/fingerprint-field {} {:base_type :type/Text})
+        :type)
+   (-> (#'f.core/fingerprint-field {} {:base_type :type/NeverBeforeSeen} numbers)
+       :type)])
 
 (expect
   [true
@@ -131,16 +135,20 @@
    true
    true
    true
+   true
+   false
    false]
-  [(-> {:computation :linear} (#'f/linear-computation?) some?)
-   (-> {:computation :unbounded} (#'f/unbounded-computation?) some?)
-   (-> {:computation :yolo} (#'f/unbounded-computation?) some?)
-   (-> {:computation :yolo} (#'f/yolo-computation?) some?)
-   (-> {:computation :unbounded} (#'f/linear-computation?) some?)
-   (-> {:computation :unbounded} (#'f/yolo-computation?) some?)
-   (-> {:query :cache} (#'f/cache-only?) some?)
-   (-> {:query :sample} (#'f/sample-only?) some?)
-   (-> {:query :full-scan} (#'f/full-scan?) some?)
-   (-> {:query :joins} (#'f/full-scan?) some?)
-   (-> {:query :joins} (#'f/alow-joins?) some?)
-   (-> {:query :sample} (#'f/full-scan?) some?)])
+  [(-> {:computation :linear} linear-computation? boolean)
+   (-> {:computation :unbounded} unbounded-computation? boolean)
+   (-> {:computation :yolo} unbounded-computation? boolean)
+   (-> {:computation :yolo} yolo-computation? boolean)
+   (-> {:computation :unbounded} linear-computation? boolean)
+   (-> {:computation :unbounded} yolo-computation? boolean)
+   (-> {:query :cache} cache-only? boolean)
+   (-> {:query :sample} sample-only? boolean)
+   (-> {:query :full-scan} full-scan? boolean)
+   (-> {:query :joins} full-scan? boolean)
+   (-> {:query :joins} alow-joins? boolean)
+   (-> nil full-scan? boolean)
+   (-> nil alow-joins? boolean)
+   (-> {:query :sample} full-scan? boolean)])
