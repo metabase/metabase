@@ -67,16 +67,17 @@
           :types          (constantly {:base_type       :keyword
                                        :special_type    :keyword
                                        :visibility_type :keyword
-                                       :description     :clob})
+                                       :description     :clob
+                                       :fingerprint     :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set  perms-objects-set
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         i/superuser?}))
+         {:perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        i/superuser?}))
 
 
 ;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------

@@ -3741,3 +3741,14 @@ databaseChangeLog:
             columns:
               - column:
                   name: field_id
+  - changeSet:
+      id: 59
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint
+                  type: text
+                  remarks: 'Serialized JSON containing non-identifying information about this Field, such as min, max, and percent JSON. Used for classification.'

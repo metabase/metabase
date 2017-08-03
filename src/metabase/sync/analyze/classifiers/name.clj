@@ -1,5 +1,5 @@
-(ns metabase.sync.analyze.special-types.name
-  "Logic for inferring the special types of Fields based on their name."
+(ns metabase.sync.analyze.classifiers.name
+  "Classifier that infers the special type of a Field based on its name and base type."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -69,7 +69,7 @@
     (assert (isa? special-type :type/*))))
 
 
-(s/defn ^:private ^:always-validate infer-special-type-by-name :- (s/maybe su/FieldType)
+(s/defn ^:private ^:always-validate special-type-for-name-and-base-type :- (s/maybe su/FieldType)
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
   (or (when (= "id" (str/lower-case field-name)) :type/PK)
@@ -79,14 +79,11 @@
                 special-type))
             pattern+base-types+special-type)))
 
-(s/defn ^:always-validate infer-special-types-by-name!
-  [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (doseq [field fields]
-    (sync-util/with-error-handling (format "Error inferring special type by name for %s" (sync-util/name-for-logging field))
-      (when-let [inferred-special-type (infer-special-type-by-name (:name field) (:base_type field))]
-        (log/debug (format "Based on the name of %s %s, we're giving it a special type of %s."
-                           (sync-util/name-for-logging table)
-                           (sync-util/name-for-logging field)
-                           inferred-special-type))
-        (db/update! Field (u/get-id field)
-          :special_type inferred-special-type)))))
+(s/defn ^:always-validate infer-special-type :- (s/maybe i/FieldInstance)
+  "Classifer that infers the special type of a FIELD based on its name and base type."
+  [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
+  (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
+    (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
+                       (sync-util/name-for-logging field)
+                       inferred-special-type))
+    (assoc field :special_type inferred-special-type)))

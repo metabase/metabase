@@ -12,7 +12,8 @@
              [field-values :as field-values]
              [table :as table :refer [Table]]]
             [metabase.sync.analyze :as analyze]
-            [metabase.sync.analyze.special-types.values :as values]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -36,12 +37,10 @@
 
 ;;; ## mark-json-field!
 
-(def ^:const ^:private fake-values-seq-json
-  "A sequence of values that should be marked is valid JSON.")
-
 (defn- values-are-valid-json? [values]
-  (= (#'values/test:json (field/map->FieldInstance {:base_type :type/Text}) values)
-     :type/SerializedJSON))
+  (let [field (field/map->FieldInstance {:base_type :type/Text})]
+    (= (:special_type (classify-text-fingerprint/infer-special-type field (#'fingerprint/fingerprint field values)))
+       :type/SerializedJSON)))
 
 ;; When all the values are valid JSON dicts they're valid JSON
 (expect
@@ -70,8 +69,9 @@
 ;; Check that things that are valid emails are marked as Emails
 
 (defn- values-are-valid-emails? [values]
-  (= (#'values/test:email (field/map->FieldInstance {:base_type :type/Text}) values)
-     :type/Email))
+  (let [field (field/map->FieldInstance {:base_type :type/Text})]
+    (= (:special_type (classify-text-fingerprint/infer-special-type field (#'fingerprint/fingerprint field values)))
+       :type/Email)))
 
 (expect true (values-are-valid-emails? ["helper@metabase.com"]))
 (expect true (values-are-valid-emails? ["helper@metabase.com", "someone@here.com", "help@nope.com"]))

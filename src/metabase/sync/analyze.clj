@@ -9,7 +9,8 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze
-             [special-types :as special-types]
+             [classify :as classify]
+             [fingerprint :as fingerprint]
              [table-row-count :as table-row-count]]
             [metabase.util :as u]
             [schema.core :as s]
@@ -30,7 +31,8 @@
   "Perform in-depth analysis for a TABLE."
   [table :- i/TableInstance]
   (table-row-count/update-row-count! table)
-  (special-types/infer-special-types! table)
+  (fingerprint/fingerprint-fields! table)
+  (classify/classify-fields! table)
   (update-fields-last-analyzed! table))
 
 

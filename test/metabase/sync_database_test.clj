@@ -77,7 +77,7 @@
                                 (into {} (dissoc field :table :db :children :qualified-name :qualified-name-components :values :target))))
                tu/boolean-ids-and-timestamps)))
 
-(def ^:private ^:const table-defaults
+(def ^:private table-defaults
   {:id                      true
    :db_id                   true
    :raw_table_id            false
@@ -94,7 +94,7 @@
    :created_at              true
    :updated_at              true})
 
-(def ^:private ^:const field-defaults
+(def ^:private field-defaults
   {:id                 true
    :table_id           true
    :raw_column_id      false
@@ -109,7 +109,8 @@
    :fk_target_field_id false
    :created_at         true
    :updated_at         true
-   :last_analyzed      true})
+   :last_analyzed      true
+   :fingerprint        nil})
 
 
 ;; ## SYNC DATABASE
