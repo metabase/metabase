@@ -60,8 +60,8 @@ export default class GettingStartedGuideContainer extends Component {
             <div>
                 
             { this.props.isEditing ? 
-                            <GettingStartedGuideEditForm {...this.props} /> :
-                            <GettingStartedGuide {...this.props} />
+                <GettingStartedGuideEditForm {...this.props} /> :
+                <GettingStartedGuide {...this.props} />
             }            
             </div>
         );

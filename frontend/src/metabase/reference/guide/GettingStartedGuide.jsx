@@ -52,6 +52,22 @@ const isGuideEmpty = ({
     important_tables && important_tables.length !== 0 ? false :
     true;
 
+const exploreLinksForMetric = (metricId, guide, metadataFields, tables) => {
+    if (guide.metric_important_fields[metricId]) { 
+        return guide.metric_important_fields[metricId]
+                .map(fieldId => metadataFields[fieldId])
+                .map(field => ({
+                    name: field.display_name || field.name,
+                    url: getQuestionUrl({
+                        dbId: tables[field.table_id] && tables[field.table_id].db_id,
+                        tableId: field.table_id,
+                        fieldId: field.id,
+                        metricId
+                    })
+                }))
+    }
+}
+
 const mapStateToProps = (state, props) => ({
     guide: getGuide(state, props),
     user: getUser(state, props),
@@ -162,19 +178,7 @@ export default class GettingStartedGuide extends Component {
                                                         type="metric"
                                                         entity={metrics[metricId]}
                                                         tables={tables}
-                                                        exploreLinks={guide.metric_important_fields[metricId] &&
-                                                            guide.metric_important_fields[metricId]
-                                                                .map(fieldId => metadataFields[fieldId])
-                                                                .map(field => ({
-                                                                    name: field.display_name || field.name,
-                                                                    url: getQuestionUrl({
-                                                                        dbId: tables[field.table_id] && tables[field.table_id].db_id,
-                                                                        tableId: field.table_id,
-                                                                        fieldId: field.id,
-                                                                        metricId
-                                                                    })
-                                                                }))
-                                                        }
+                                                        exploreLinks={exploreLinksForMetric(metricId, guide, metadataFields, tables)}
                                                     />
                                                 )}
                                             </div>
