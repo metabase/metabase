@@ -1,6 +1,7 @@
 (ns metabase.fingerprinting.core
   "Fingerprinting (feature extraction) for various models."
-  (:require [metabase.db.metadata-queries :as metadata]
+  (:require [clojure.walk :refer [postwalk]]
+            [metabase.db.metadata-queries :as metadata]
             [metabase.fingerprinting
              [comparison :as comparison]
              [costs :as costs]
@@ -12,6 +13,7 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.util :as u]
             [redux.core :as redux]))
 
 (defn- fingerprint-field
@@ -71,7 +73,8 @@
                              (merge (extract-query-opts opts)
                                     (-> card :dataset_query :query)))
         {:keys [breakout aggregation]} (group-by :source cols)
-        fields [(first breakout) (or (first aggregation) (second breakout))]]
+        fields [(first breakout)
+                (or (first aggregation) (second breakout))]]
     {:constituents [(fingerprint-field opts (first fields) (map first rows))
                     (fingerprint-field opts (second fields) (map second rows))]
      :fingerprint  (merge (fingerprint-field opts fields rows)
@@ -137,20 +140,29 @@
                                  (comparison/fingerprint-distance a b))])
                           a b))}))
 
-(defn- add-descriptions
-  [fingerprint]
-  (into {}
-    (map (fn [[k v]]
-           (if (#{:field :type :table :card :segment} k)
-             [k v]
-             [k {:value        v
-                 :label        k
-                 :descripttion k}])))
-    fingerprint))
+(def ^:private ^{:arglists '([fingerprint])} add-descriptions
+  (partial m/map-kv (fn [k v]
+                      (if (#{:field :type :table :card :segment} k)
+                        [k v]
+                        [k {:value        v
+                            :label        k
+                            :descripttion k}]))))
 
-(defn prettify
-  "Walk the fingerprint structure and prettify all fingerprints within."
+(defn- trim-decimals
+  [decimal-places fingerprint]
+  (postwalk
+   (fn [x]
+     (if (float? x)
+       (u/round-to-decimals (+ (- (min (long (f/order-of-magnitude x)) 0))
+                               decimal-places)
+                            x)
+       x))
+   fingerprint))
+
+(defn x-ray
+  "Turn the fingerprint structure into an x-ray."
   [fingerprint]
-  (-> fingerprint
-      (update :fingerprint  (comp add-descriptions f/prettify))
-      (update :constituents (partial map (comp add-descriptions f/prettify)))))
+  (let [x-ray (comp add-descriptions (partial trim-decimals 2) f/x-ray)]
+    (-> fingerprint
+        (update :fingerprint  x-ray)
+        (update :constituents (partial map x-ray)))))

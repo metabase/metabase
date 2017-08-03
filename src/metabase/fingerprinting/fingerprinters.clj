@@ -87,7 +87,8 @@
   (let [scale (/ precision)]
     (/ (floor (* x scale)) scale)))
 
-(defn- order-of-magnitude
+;;;;;;;; cast to long
+(defn order-of-magnitude
   [x]
   (floor (/ (Math/log x) (Math/log 10))))
 
