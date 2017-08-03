@@ -90,7 +90,10 @@ export default class ActionsWidget extends Component {
             this.setState({ selectedActionIndex: index });
         } else if (action && action.url) {
           const nextUrl = action.url();
-          this.props.onChangeLocation(nextUrl);
+          if(nextUrl){
+              MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
+              this.props.onChangeLocation(nextUrl);
+          }
         }
         else if (action && action.card) {
             const nextCard = action.card();

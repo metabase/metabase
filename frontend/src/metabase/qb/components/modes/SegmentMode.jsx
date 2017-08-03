@@ -19,7 +19,7 @@ const SegmentMode: QueryMode = {
     name: "segment",
     actions: [
         ...DEFAULT_ACTIONS,
-        XRaySegment,
+        // XRaySegment,
         CommonMetricsAction,
         CountByTimeAction,
         SummarizeBySegmentMetricAction

@@ -6,6 +6,6 @@ import XRaySegment from "./XRaySegment";
 
 export const DEFAULT_ACTIONS = [
     UnderlyingDataAction,
-    UnderlyingRecordsAction,
-    XRaySegment
+    UnderlyingRecordsAction
+    // XRaySegment
 ];
