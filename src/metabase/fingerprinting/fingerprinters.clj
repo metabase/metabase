@@ -22,8 +22,8 @@
 (def ^:private ^:const percentiles (range 0 1 0.1))
 
 (defn rollup
-  "transducer that groups by `groupfn` and reduces each group with `f`.
-   note the contructor airity of `f` needs to be free of side effects."
+  "Transducer that groups by `groupfn` and reduces each group with `f`.
+   Note the contructor airity of `f` needs to be free of side effects."
   [f groupfn]
   (let [init (f)]
     (fn
@@ -38,14 +38,14 @@
          (assoc! acc k (f (get acc k init) x)))))))
 
 (defn safe-divide
-  "like `clojure.core//`, but returns nil if denominator is 0."
-  [numerator & denominators]
+  "Like `clojure.core//`, but returns nil if denominator is 0."
+  [x & denominators]
   (when (or (and (not-empty denominators) (not-any? zero? denominators))
-            (and (not (zero? numerator)) (empty? denominators)))
-    (apply / numerator denominators)))
+            (and (not (zero? x)) (empty? denominators)))
+    (apply / x denominators)))
 
 (defn growth
-  "relative difference between `x1` an `x2`."
+  "Relative difference between `x1` an `x2`."
   [x2 x1]
   (when (every? some? [x2 x1])
     (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
@@ -53,7 +53,8 @@
 (def ^:private ^:const ^Double cardinality-error 0.01)
 
 (defn cardinality
-  "transducer that sketches cardinality using hyper-loglog."
+  "Transducer that sketches cardinality using HyperLogLog++.
+   https://research.google.com/pubs/pub40671.html"
   ([] (HyperLogLogPlus. 14 25))
   ([acc] (.cardinality acc))
   ([acc x]
