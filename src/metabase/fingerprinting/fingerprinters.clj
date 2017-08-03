@@ -2,6 +2,7 @@
   "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as h.impl]
             [bigml.sketchy.hyper-loglog :as hyper-loglog]
+            [clojure.math.numeric-tower :refer [ceil expt floor]] ;;;;;; temp!
             [clj-time
              [coerce :as t.coerce]
              [core :as t]
@@ -16,6 +17,7 @@
              [costs :as costs]]
             [metabase.models
              [metric :refer [Metric]]]
+            [metabase.util :as u]            ;;;; temp!
             [redux.core :as redux]
             [tide.core :as tide]))
 
@@ -64,12 +66,101 @@
 (def Any      [:type/* :type/*])
 (def Text     [:type/Text :type/*])
 
+;;;;;;;;;;;;;;;;;; temporary cp until we merge the binning branch ;;;;;;;;;;
+
+
+(defn- calculate-bin-width [min-value max-value num-bins]
+  (u/round-to-decimals 5 (/ (- max-value min-value)
+                            num-bins)))
+
+(defn- calculate-num-bins [min-value max-value bin-width]
+  (long (Math/ceil (/ (- max-value min-value)
+                         bin-width))))
+
+(defn- ceil-to
+  [precision x]
+  (let [scale (/ precision)]
+    (/ (ceil (* x scale)) scale)))
+
+(defn- floor-to
+  [precision x]
+  (let [scale (/ precision)]
+    (/ (floor (* x scale)) scale)))
+
+(defn- order-of-magnitude
+  [x]
+  (floor (/ (Math/log x) (Math/log 10))))
+
+(def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
+
+(defn- nicer-bin-width
+  [min-value max-value num-bins]
+  (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
+        scale         (expt 10 (order-of-magnitude min-bin-width))]
+    (->> pleasing-numbers
+         (map (partial * scale))
+         (drop-while (partial > min-bin-width))
+         first)))
+
+(defn- nicer-bounds
+  [min-value max-value bin-width]
+  [(floor-to bin-width min-value) (ceil-to bin-width max-value)])
+
+(def ^:private ^:const max-steps 10)
+
+(defn- fixed-point
+  [f]
+  (fn [x]
+    (->> (iterate f x)
+         (partition 2 1)
+         (take max-steps)
+         (drop-while (partial apply not=))
+         ffirst)))
+
+(def ^:private ^{:arglists '([binned-field])} nicer-breakout
+  (fixed-point
+   (fn
+     [{:keys [min-value max-value bin-width num-bins strategy] :as binned-field}]
+     (let [bin-width (if (= strategy :num-bins)
+                       (nicer-bin-width min-value max-value num-bins)
+                       bin-width)
+           [min-value max-value] (nicer-bounds min-value max-value bin-width)]
+       (-> binned-field
+           (assoc :min-value min-value
+                  :max-value max-value
+                  :num-bins  (if (= strategy :num-bins)
+                               num-bins
+                               (calculate-num-bins min-value max-value bin-width))
+                  :bin-width bin-width))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn- equidistant-bins
+  [histogram]
+  (let [{:keys [min max]}                      (h.impl/bounds histogram)
+        bin-width                              (h/optimal-bin-width histogram)
+        {:keys [min-value num-bins bin-width]} (nicer-breakout
+                                                {:min-value min
+                                                 :max-value max
+                                                 :num-bins  (calculate-num-bins
+                                                             min max bin-width)
+                                                 :strategy  :num-bins})]
+    (->> min-value
+         (iterate (partial + bin-width))
+         (take (inc num-bins))
+         (map (fn [x]
+                [x (h.impl/sum histogram x)]))
+         (partition 2 1)
+         (map (fn [[[x s1] [_ s2]]]
+                [x (- s2 s1)])))))
+
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
-   {:rows    (map (fn [[k v]]
-                    [(keyfn k) v])
-                  (h/pdf histogram))
+   {:rows    (for [[k v] (equidistant-bins histogram)]
+               [(keyfn k) v])
     :columns [(:name field) "SHARE"]
     :cols [field
            {:name         "SHARE"
@@ -79,11 +170,9 @@
 
 (defn field-type
   [field]
-  (cond
-    (sequential? field)             (mapv field-type field)
-    (instance? (type Metric) field) Num
-    :else                           [(:base_type field)
-                                     (or (:special_type field) :type/*)]))
+  (if (sequential? field)
+    (mapv field-type field)
+    [(:base_type field) (or (:special_type field) :type/*)]))
 
 (defmulti fingerprinter
   "Transducer that summarizes (_fingerprints_) given coll. What features are
@@ -94,11 +183,11 @@
    approximate."
   #(field-type %2))
 
-(defmulti prettify
+(defmulti x-ray
   "Make fingerprint human readable."
   :type)
 
-(defmethod prettify :default
+(defmethod x-ray :default
   [fingerprint]
   fingerprint)
 
@@ -173,7 +262,7 @@
                [:histogram :mean :median :min :max :sd :count :kurtosis
                 :skewness :entropy :nil% :cardinality-vs-count :span]))
 
-(defmethod prettify Num
+(defmethod x-ray Num
   [{:keys [field] :as fingerprint}]
   (update fingerprint :histogram (partial histogram->dataset field)))
 
@@ -266,7 +355,7 @@
   [fingerprint]
   (dissoc fingerprint :type :scale :field))
 
-(defmethod prettify [DateTime Num]
+(defmethod x-ray [DateTime Num]
   [fingerprint]
   (update fingerprint :series #(for [[x y] %]
                                  [(from-double x) y])))
@@ -293,7 +382,7 @@
         :type       Text
         :field      field}))))
 
-(defmethod prettify Text
+(defmethod x-ray Text
   [{:keys [field] :as fingerprint}]
   (update fingerprint :histogram (partial histogram->dataset field)))
 
@@ -319,8 +408,8 @@
                 histogram-quarter]}]
      (let [nil-count   (h/nil-count histogram)
            total-count (h/total-count histogram)]
-       {:min               (h.impl/minimum histogram)
-        :max               (h.impl/maximum histogram)
+       {:earlies           (h.impl/minimum histogram)
+        :latest            (h.impl/maximum histogram)
         :histogram         histogram
         :percentiles       (apply h.impl/percentiles histogram percentiles)
         :histogram-hour    histogram-hour
@@ -338,11 +427,11 @@
   [fingerprint]
   (dissoc fingerprint :type :percentiles :field :has-nils?))
 
-(defmethod prettify DateTime
+(defmethod x-ray DateTime
   [{:keys [field] :as fingerprint}]
   (-> fingerprint
-      (update :min               from-double)
-      (update :max               from-double)
+      (update :earlies           from-double)
+      (update :latest            from-double)
       (update :histogram         (partial histogram->dataset from-double field))
       (update :percentiles       (partial m/map-vals from-double))
       (update :histogram-hour    (partial histogram->dataset
@@ -389,7 +478,7 @@
   [fingerprint]
   (dissoc fingerprint :type :cardinality :field :has-nils?))
 
-(defmethod prettify Category
+(defmethod x-ray Category
   [{:keys [field] :as fingerprint}]
   (update fingerprint :histogram (partial histogram->dataset field)))
 
