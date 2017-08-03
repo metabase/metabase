@@ -23,6 +23,8 @@ import {
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
+import SimpleStat from 'metabase/xray/SimpleStat'
+
 type Props = {
     constituents: [],
     fetchTableFingerPrint: () => void,
@@ -47,10 +49,6 @@ const mapDispatchToProps = {
 class TableXRay extends Component {
     props: Props
 
-    state = {
-        grid: true
-    }
-
     componentDidMount () {
         this.fetchTableFingerPrint()
     }
@@ -67,21 +65,20 @@ class TableXRay extends Component {
         }
     }
 
-    changeCost = ({ target }) => {
+    changeCost = (cost) => {
         const { params } = this.props
         // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        console.log(params)
-        this.props.changeCost(`table/${params.tableId}/${target.value}`)
+        this.props.changeCost(`table/${params.tableId}/${cost}`)
     }
 
     render () {
         const { constituents, fingerprint, params } = this.props
 
         return (
-            <LoadingAndErrorWrapper loading={!constituents}>
+            <LoadingAndErrorWrapper loading={!constituents} className="bg-slate-extra-light">
                 { () =>
-                    <div className="wrapper" style={{ paddingLeft: '6em', paddingRight: '6em'}}>
-                        <div className="my4 flex align-center py4">
+                    <div className="wrapper" style={{ paddingLeft: '12em', paddingRight: '12em'}}>
+                        <div className="my4 flex align-center py2">
                             <h1>{ fingerprint.table.display_name }</h1>
                             <div className="ml-auto">
                                 Fidelity:
@@ -91,22 +88,45 @@ class TableXRay extends Component {
                                 />
                             </div>
                         </div>
-                        <ol className="Grid Grid--1of3">
-                            { constituents.map(c => {
-                                return (
-                                    <li className="Grid-cell">
-                                        <div className="full">
-                                            <Link to={`xray/field/${c.field.id}/approximate`}>
-                                                {c.field.display_name}
-                                                <div  style={{ height: 120 }}>
-                                                    <Histogram histogram={c.histogram} />
+                        <div>
+                            <ol>
+                                { constituents.map(c => {
+                                    return (
+                                        <li className="Grid my3 bg-white bordered rounded shadowed">
+                                            <div className="Grid-cell Cell--1of3 border-right">
+                                                <div className="p4">
+                                                    <Link
+                                                        to={`xray/field/${c.field.id}/approximate`}
+                                                        className="text-brand-hover link transition-text"
+                                                    >
+                                                        <h2 className="text-bold">{c.field.display_name}</h2>
+                                                    </Link>
+                                                    <p className="text-measure text-paragraph">{c.field.description}</p>
+
+                                                    <div className="flex align-center">
+                                                        { c.min && (
+                                                            <SimpleStat
+                                                                stat={c.min}
+                                                            />
+                                                        )}
+                                                        { c.max && (
+                                                            <SimpleStat
+                                                                stat={c.max}
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </Link>
-                                        </div>
-                                    </li>
-                                )
-                            })}
-                        </ol>
+                                            </div>
+                                            <div className="Grid-cell p3">
+                                                <div style={{ height: 220 }}>
+                                                    <Histogram histogram={c.histogram.value} />
+                                                </div>
+                                            </div>
+                                        </li>
+                                    )
+                                })}
+                            </ol>
+                        </div>
                     </div>
                 }
             </LoadingAndErrorWrapper>

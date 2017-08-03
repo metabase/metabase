@@ -1,18 +1,36 @@
 import React from 'react'
+import cx from 'classnames'
+
+import Icon from 'metabase/components/Icon'
+import Tooltip from 'metabase/components/Tooltip'
 
 import COSTS from 'metabase/xray/costs'
-import Select, { Option } from 'metabase/components/Select'
 
-const CostSelect = ({currentCost, onChange}) =>
-    <Select
-        value={currentCost}
-        onChange={onChange}
-    >
-        { Object.keys(COSTS).map(cost =>
-            <Option value={cost}>
-                {COSTS[cost].display_name}
-            </Option>
-        )}
-    </Select>
+const CostSelect = ({ currentCost, onChange }) =>
+    <ol className="bordered rounded shadowed bg-white flex align-center overflow-hidden">
+        { Object.keys(COSTS).map(cost => {
+            const c = COSTS[cost]
+            return (
+                <li
+                    key={cost}
+                    onClick={() => onChange(cost)}
+                    className={cx(
+                        "flex align-center justify-center cursor-pointer bg-brand-hover",
+                        { 'bg-brand text-white': currentCost === cost }
+                    )}
+                >
+                    <Tooltip
+                        tooltip={c.description}
+                    >
+                        <Icon
+                            size={32}
+                            name={c.icon}
+                            className="p1 border-right"
+                        />
+                    </Tooltip>
+                </li>
+            )
+        })}
+    </ol>
 
 export default CostSelect
