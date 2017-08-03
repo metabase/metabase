@@ -25,7 +25,7 @@ import { SET_ERROR_PAGE } from "metabase/redux/app";
 import QueryHeader from "metabase/query_builder/components/QueryHeader";
 import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
-import FieldList from "metabase/query_builder/components/FieldList";
+import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
@@ -45,22 +45,28 @@ import {
     unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
 import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
+import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
+import { getQueryResults } from "metabase/query_builder/selectors";
 
-const initQBWithReviewsTable = async () => {
-    const store = await createTestStore()
-    store.pushPath("/question");
-    const qb = mount(store.connectContainer(<QueryBuilder />));
-    await store.waitForActions([INITIALIZE_QB]);
+const initQbWithDbAndTable = (dbId, tableId) => {
+    return async () => {
+        const store = await createTestStore()
+        store.pushPath("/question");
+        const qb = mount(store.connectContainer(<QueryBuilder />));
+        await store.waitForActions([INITIALIZE_QB]);
 
-    // Use Products table
-    store.dispatch(setQueryDatabase(1));
-    store.dispatch(setQuerySourceTable(4));
-    await store.waitForActions([FETCH_TABLE_METADATA]);
-    store.resetDispatchedActions();
+        // Use Products table
+        store.dispatch(setQueryDatabase(dbId));
+        store.dispatch(setQuerySourceTable(tableId));
+        await store.waitForActions([FETCH_TABLE_METADATA]);
+        store.resetDispatchedActions();
 
-    return { store, qb }
+        return { store, qb }
+    }
 }
 
+const initQbWithOrdersTable = initQbWithDbAndTable(1, 1)
+const initQBWithReviewsTable = initQbWithDbAndTable(1, 4)
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
@@ -377,7 +383,9 @@ describe("QueryBuilder", () => {
 
                 const filterPopover = qb.find(FilterPopover);
                 const filterInput = filterPopover.find("textarea");
-                filterInput.simulate('change', { target: { value: "10,      11" }})
+
+                // Intentionally use a value with lots of extra spaces
+                filterInput.simulate('change', { target: { value: "  10,      11" }})
 
                 const addFilterButton = filterPopover.find('button[children="Update filter"]')
                 addFilterButton.simulate("click");
@@ -413,6 +421,88 @@ describe("QueryBuilder", () => {
                 await store.waitForActions([SET_DATASET_QUERY])
                 expect(qb.find(FilterPopover).length).toBe(0);
                 expect(filterWidget.text()).toBe("ID between1100");
+            });
+        })
+
+        describe("for grouping by Total in Orders table", async () => {
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQbWithOrdersTable());
+            })
+
+            it("lets you group by Total with the default binning option", async () => {
+                const breakoutSection = qb.find('.GuiBuilder-groupedBy');
+                const addBreakoutButton = breakoutSection.find('.AddButton');
+                addBreakoutButton.simulate("click");
+
+                const breakoutPopover = breakoutSection.find("#BreakoutPopover")
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('h4[children="Total"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                expect(breakoutWidget.text()).toBe("Total: Auto binned");
+            });
+            it("produces correct results for default binning option", async () => {
+                // Run the raw data query
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                // We can use the visible row count as we have a low number of result rows
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 6 rows");
+
+                // Get the binning
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.bin_width).toBe(20);
+                expect(breakoutBinningInfo.num_bins).toBe(8);
+            })
+            it("lets you change the binning strategy to 100 bins", async () => {
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                breakoutWidget.find(FieldName).children().first().simulate("click")
+                const breakoutPopover = qb.find("#BreakoutPopover")
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="Auto binned"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                qb.find(DimensionPicker).find('a[children="100 bins"]').simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                expect(breakoutWidget.text()).toBe("Total: 100 bins");
+            });
+            it("produces correct results for 100 bins", async () => {
+                store.resetDispatchedActions();
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 95 rows");
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.bin_width).toBe(1);
+                expect(breakoutBinningInfo.num_bins).toBe(100);
+            })
+            it("lets you disable the binning", async () => {
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                breakoutWidget.find(FieldName).children().first().simulate("click")
+                const breakoutPopover = qb.find("#BreakoutPopover")
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="100 bins"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                qb.find(DimensionPicker).find('a[children="Don\'t bin"]').simulate("click");
+            });
+            it("produces the expected count of rows when no binning", async () => {
+                store.resetDispatchedActions();
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                // We just want to see that there are a lot more rows than there would be if a binning was active
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing first 2,000 rows");
             });
         })
     })
