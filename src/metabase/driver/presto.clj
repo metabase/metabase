@@ -251,6 +251,9 @@
   clojure.lang.Named
   (getName [_] "Presto"))
 
+(def ^:private presto-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
+(def ^:private presto-db-time-query "select to_iso8601(current_timestamp)")
+
 (u/strict-extend PrestoDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -294,7 +297,8 @@
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :current-db-time                   (driver/make-current-db-time-fn presto-date-formatter presto-db-time-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

@@ -7,9 +7,7 @@
              [query-processor-test :refer [rows]]
              [sync :as sync]
              [util :as u]]
-            [metabase.driver
-             [generic-sql :as sql]
-             postgres]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -239,7 +237,6 @@
         ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
         (map (partial into {}) (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds"))))))
 
-
 ;;; timezone tests
 
 (tu/resolve-private-vars metabase.driver.generic-sql.query-processor
@@ -274,3 +271,7 @@
                                                      :port               "5432"
                                                      :dbname             "cool"
                                                      :additional-options "prepareThreshold=0"})))
+
+(expect-with-engine :postgres
+  "UTC"
+  (tu/db-timezone-id))

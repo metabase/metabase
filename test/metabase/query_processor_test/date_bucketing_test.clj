@@ -5,7 +5,9 @@
              [query-processor-test :refer :all]
              [util :as u]]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets :refer [*driver* *engine*]]
@@ -17,12 +19,13 @@
     x))
 
 (defn- sad-toucan-incidents-with-bucketing [unit]
-  (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-         (data/run-query incidents
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp unit))
-           (ql/limit 10)))
-       rows (format-rows-by [->long-if-number int])))
+  (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+    (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+           (data/run-query incidents
+             (ql/aggregation (ql/count))
+             (ql/breakout (ql/datetime-field $timestamp unit))
+             (ql/limit 10)))
+         rows (format-rows-by [->long-if-number int]))))
 
 (expect-with-non-timeseries-dbs
   (cond
@@ -38,7 +41,19 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :vertica :h2 :oracle :presto} *engine*)
+    (supports-report-timezone? *engine*)
+    [["2015-06-01T03:31:00.000-07:00" 1]
+     ["2015-06-01T09:06:00.000-07:00" 1]
+     ["2015-06-01T10:23:00.000-07:00" 1]
+     ["2015-06-01T11:55:00.000-07:00" 1]
+     ["2015-06-01T14:04:00.000-07:00" 1]
+     ["2015-06-01T14:19:00.000-07:00" 1]
+     ["2015-06-01T19:13:00.000-07:00" 1]
+     ["2015-06-01T22:37:00.000-07:00" 1]
+     ["2015-06-02T01:20:00.000-07:00" 1]
+     ["2015-06-02T04:11:00.000-07:00" 1]]
+
+    :else
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -48,23 +63,12 @@
      ["2015-06-02T02:13:00.000Z" 1]
      ["2015-06-02T05:37:00.000Z" 1]
      ["2015-06-02T08:20:00.000Z" 1]
-     ["2015-06-02T11:11:00.000Z" 1]]
-
-    :else
-    [["2015-06-01T03:31:00.000Z" 1]
-     ["2015-06-01T09:06:00.000Z" 1]
-     ["2015-06-01T10:23:00.000Z" 1]
-     ["2015-06-01T11:55:00.000Z" 1]
-     ["2015-06-01T14:04:00.000Z" 1]
-     ["2015-06-01T14:19:00.000Z" 1]
-     ["2015-06-01T19:13:00.000Z" 1]
-     ["2015-06-01T22:37:00.000Z" 1]
-     ["2015-06-02T01:20:00.000Z" 1]
-     ["2015-06-02T04:11:00.000Z" 1]])
+     ["2015-06-02T11:11:00.000Z" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
 (expect-with-non-timeseries-dbs
   (cond
+
     (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:31:00" 1]
      ["2015-06-01 16:06:00" 1]
@@ -77,7 +81,19 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (i/has-questionable-timezone-support? *driver*)
+    (supports-report-timezone? *engine*)
+    [["2015-06-01T03:31:00.000-07:00" 1]
+     ["2015-06-01T09:06:00.000-07:00" 1]
+     ["2015-06-01T10:23:00.000-07:00" 1]
+     ["2015-06-01T11:55:00.000-07:00" 1]
+     ["2015-06-01T14:04:00.000-07:00" 1]
+     ["2015-06-01T14:19:00.000-07:00" 1]
+     ["2015-06-01T19:13:00.000-07:00" 1]
+     ["2015-06-01T22:37:00.000-07:00" 1]
+     ["2015-06-02T01:20:00.000-07:00" 1]
+     ["2015-06-02T04:11:00.000-07:00" 1]]
+
+    :else
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -87,19 +103,8 @@
      ["2015-06-02T02:13:00.000Z" 1]
      ["2015-06-02T05:37:00.000Z" 1]
      ["2015-06-02T08:20:00.000Z" 1]
-     ["2015-06-02T11:11:00.000Z" 1]]
+     ["2015-06-02T11:11:00.000Z" 1]])
 
-    :else
-    [["2015-06-01T03:31:00.000Z" 1]
-     ["2015-06-01T09:06:00.000Z" 1]
-     ["2015-06-01T10:23:00.000Z" 1]
-     ["2015-06-01T11:55:00.000Z" 1]
-     ["2015-06-01T14:04:00.000Z" 1]
-     ["2015-06-01T14:19:00.000Z" 1]
-     ["2015-06-01T19:13:00.000Z" 1]
-     ["2015-06-01T22:37:00.000Z" 1]
-     ["2015-06-02T01:20:00.000Z" 1]
-     ["2015-06-02T04:11:00.000Z" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
 (expect-with-non-timeseries-dbs
@@ -129,7 +134,19 @@
      ["2015-06-02 11:00:00" 1]
      ["2015-06-02 13:00:00" 1]]
 
-    (i/has-questionable-timezone-support? *driver*)
+    (supports-report-timezone? *engine*)
+    [["2015-06-01T03:00:00.000-07:00" 1]
+     ["2015-06-01T09:00:00.000-07:00" 1]
+     ["2015-06-01T10:00:00.000-07:00" 1]
+     ["2015-06-01T11:00:00.000-07:00" 1]
+     ["2015-06-01T14:00:00.000-07:00" 2]
+     ["2015-06-01T19:00:00.000-07:00" 1]
+     ["2015-06-01T22:00:00.000-07:00" 1]
+     ["2015-06-02T01:00:00.000-07:00" 1]
+     ["2015-06-02T04:00:00.000-07:00" 1]
+     ["2015-06-02T06:00:00.000-07:00" 1]]
+
+    :else
     [["2015-06-01T10:00:00.000Z" 1]
      ["2015-06-01T16:00:00.000Z" 1]
      ["2015-06-01T17:00:00.000Z" 1]
@@ -139,25 +156,13 @@
      ["2015-06-02T05:00:00.000Z" 1]
      ["2015-06-02T08:00:00.000Z" 1]
      ["2015-06-02T11:00:00.000Z" 1]
-     ["2015-06-02T13:00:00.000Z" 1]]
-
-    :else
-    [["2015-06-01T03:00:00.000Z" 1]
-     ["2015-06-01T09:00:00.000Z" 1]
-     ["2015-06-01T10:00:00.000Z" 1]
-     ["2015-06-01T11:00:00.000Z" 1]
-     ["2015-06-01T14:00:00.000Z" 2]
-     ["2015-06-01T19:00:00.000Z" 1]
-     ["2015-06-01T22:00:00.000Z" 1]
-     ["2015-06-02T01:00:00.000Z" 1]
-     ["2015-06-02T04:00:00.000Z" 1]
-     ["2015-06-02T06:00:00.000Z" 1]])
+     ["2015-06-02T13:00:00.000Z" 1]])
   (sad-toucan-incidents-with-bucketing :hour))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *driver*)
-    [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
-    [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
+  (if (supports-report-timezone? *engine*)
+    [[0 8] [1 9] [2 7] [3 10] [4 10] [5 9] [6 6] [7 5] [8 7] [9 7]]
+    [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
 (expect-with-non-timeseries-dbs
@@ -174,47 +179,48 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (i/has-questionable-timezone-support? *driver*)
-    [["2015-06-01T00:00:00.000Z"  6]
-     ["2015-06-02T00:00:00.000Z" 10]
-     ["2015-06-03T00:00:00.000Z"  4]
-     ["2015-06-04T00:00:00.000Z"  9]
-     ["2015-06-05T00:00:00.000Z"  9]
-     ["2015-06-06T00:00:00.000Z"  8]
-     ["2015-06-07T00:00:00.000Z"  8]
-     ["2015-06-08T00:00:00.000Z"  9]
-     ["2015-06-09T00:00:00.000Z"  7]
-     ["2015-06-10T00:00:00.000Z"  9]]
+    (supports-report-timezone? *engine*)
+    [["2015-06-01T00:00:00.000-07:00" 8]
+     ["2015-06-02T00:00:00.000-07:00" 9]
+     ["2015-06-03T00:00:00.000-07:00" 9]
+     ["2015-06-04T00:00:00.000-07:00" 4]
+     ["2015-06-05T00:00:00.000-07:00" 11]
+     ["2015-06-06T00:00:00.000-07:00" 8]
+     ["2015-06-07T00:00:00.000-07:00" 6]
+     ["2015-06-08T00:00:00.000-07:00" 10]
+     ["2015-06-09T00:00:00.000-07:00" 6]
+     ["2015-06-10T00:00:00.000-07:00" 10]]
 
     :else
-    [["2015-06-01T00:00:00.000Z"  8]
-     ["2015-06-02T00:00:00.000Z"  9]
-     ["2015-06-03T00:00:00.000Z"  9]
-     ["2015-06-04T00:00:00.000Z"  4]
-     ["2015-06-05T00:00:00.000Z" 11]
-     ["2015-06-06T00:00:00.000Z"  8]
-     ["2015-06-07T00:00:00.000Z"  6]
-     ["2015-06-08T00:00:00.000Z" 10]
-     ["2015-06-09T00:00:00.000Z"  6]
-     ["2015-06-10T00:00:00.000Z" 10]])
+    [["2015-06-01T00:00:00.000Z" 6]
+     ["2015-06-02T00:00:00.000Z" 10]
+     ["2015-06-03T00:00:00.000Z" 4]
+     ["2015-06-04T00:00:00.000Z" 9]
+     ["2015-06-05T00:00:00.000Z" 9]
+     ["2015-06-06T00:00:00.000Z" 8]
+     ["2015-06-07T00:00:00.000Z" 8]
+     ["2015-06-08T00:00:00.000Z" 9]
+     ["2015-06-09T00:00:00.000Z" 7]
+     ["2015-06-10T00:00:00.000Z" 9]])
+
   (sad-toucan-incidents-with-bucketing :day))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *driver*)
-    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
-    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
+  (if (supports-report-timezone? *engine*)
+    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
+    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *driver*)
-    [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
-    [[1 8] [2  9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]])
+  (if (supports-report-timezone? *engine*)
+    [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
+    [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *driver*)
-    [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
-    [[152 8] [153  9] [154 9] [155 4] [156 11] [157  8] [158 6] [159 10] [160 6] [161 10]])
+  (if (supports-report-timezone? *engine*)
+    [[152 8] [153 9] [154 9] [155 4] [156 11] [157 8] [158 6] [159 10] [160 6] [161 10]]
+    [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
 (expect-with-non-timeseries-dbs
@@ -226,24 +232,27 @@
      ["2015-06-21" 60]
      ["2015-06-28" 7]]
 
-    (i/has-questionable-timezone-support? *driver*)
+    (supports-report-timezone? *engine*)
+    [["2015-05-31T00:00:00.000-07:00" 49]
+     ["2015-06-07T00:00:00.000-07:00" 47]
+     ["2015-06-14T00:00:00.000-07:00" 39]
+     ["2015-06-21T00:00:00.000-07:00" 58]
+     ["2015-06-28T00:00:00.000-07:00" 7]]
+
+    :else
     [["2015-05-31T00:00:00.000Z" 46]
      ["2015-06-07T00:00:00.000Z" 47]
      ["2015-06-14T00:00:00.000Z" 40]
      ["2015-06-21T00:00:00.000Z" 60]
-     ["2015-06-28T00:00:00.000Z" 7]]
-
-    :else
-    [["2015-05-31T00:00:00.000Z" 49]
-     ["2015-06-07T00:00:00.000Z" 47]
-     ["2015-06-14T00:00:00.000Z" 39]
-     ["2015-06-21T00:00:00.000Z" 58]
      ["2015-06-28T00:00:00.000Z" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
 (expect-with-non-timeseries-dbs
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
+    (supports-report-timezone? *engine*)
+    [[23 49] [24 47] [25 39] [26 58] [27 7]]
+
     (contains? #{:sqlserver :sqlite :crate :oracle} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
@@ -255,7 +264,16 @@
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
 (expect-with-non-timeseries-dbs
-  [[(if (contains? #{:sqlite :crate} *engine*) "2015-06-01", "2015-06-01T00:00:00.000Z") 200]]
+  [[(cond
+      (contains? #{:sqlite :crate} *engine*)
+      "2015-06-01"
+
+      (supports-report-timezone? *engine*)
+      "2015-06-01T00:00:00.000-07:00"
+
+      :else
+      "2015-06-01T00:00:00.000Z")
+    200]]
   (sad-toucan-incidents-with-bucketing :month))
 
 (expect-with-non-timeseries-dbs
@@ -263,7 +281,15 @@
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
 (expect-with-non-timeseries-dbs
-  [[(if (contains? #{:sqlite :crate} *engine*) "2015-04-01", "2015-04-01T00:00:00.000Z") 200]]
+  [[(cond (contains? #{:sqlite :crate} *engine*)
+          "2015-04-01"
+
+          (supports-report-timezone? *engine*)
+          "2015-04-01T00:00:00.000-07:00"
+
+          :else
+          "2015-04-01T00:00:00.000Z")
+    200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
 (expect-with-non-timeseries-dbs

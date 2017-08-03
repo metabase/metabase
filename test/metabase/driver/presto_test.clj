@@ -7,7 +7,7 @@
              [table :refer [Table] :as table]]
             [metabase.test
              [data :as data]
-             [util :refer [resolve-private-vars]]]
+             [util :refer [resolve-private-vars] :as tu]]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
@@ -139,3 +139,7 @@
       (driver/can-connect-with-details? engine details :rethrow-exceptions))
        (catch Exception e
          (.getMessage e))))
+
+(datasets/expect-with-engine :presto
+  "UTC"
+  (tu/db-timezone-id))

@@ -142,40 +142,44 @@
   clojure.lang.Named
   (getName [_] "SQL Server"))
 
+(def ^:private sqlserver-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
+(def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
+
 (u/strict-extend SQLServerDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly (ssh/with-tunnel-config
-                                        [{:name         "host"
-                                          :display-name "Host"
-                                          :default      "localhost"}
-                                         {:name         "port"
-                                          :display-name "Port"
-                                          :type         :integer
-                                          :default      1433}
-                                         {:name         "db"
-                                          :display-name "Database name"
-                                          :placeholder  "BirdsOfTheWorld"
-                                          :required     true}
-                                         {:name         "instance"
-                                          :display-name "Database instance name"
-                                          :placeholder  "N/A"}
-                                         {:name         "domain"
-                                          :display-name "Windows domain"
-                                          :placeholder  "N/A"}
-                                         {:name         "user"
-                                          :display-name "Database username"
-                                          :placeholder  "What username do you use to login to the database?"
-                                          :required     true}
-                                         {:name         "password"
-                                          :display-name "Database password"
-                                          :type         :password
-                                          :placeholder  "*******"}
-                                         {:name         "ssl"
-                                          :display-name "Use a secure connection (SSL)?"
-                                          :type         :boolean
-                                          :default      false}]))})
+         {:date-interval   (u/drop-first-arg date-interval)
+          :details-fields  (constantly (ssh/with-tunnel-config
+                                         [{:name         "host"
+                                           :display-name "Host"
+                                           :default      "localhost"}
+                                          {:name         "port"
+                                           :display-name "Port"
+                                           :type         :integer
+                                           :default      1433}
+                                          {:name         "db"
+                                           :display-name "Database name"
+                                           :placeholder  "BirdsOfTheWorld"
+                                           :required     true}
+                                          {:name         "instance"
+                                           :display-name "Database instance name"
+                                           :placeholder  "N/A"}
+                                          {:name         "domain"
+                                           :display-name "Windows domain"
+                                           :placeholder  "N/A"}
+                                          {:name         "user"
+                                           :display-name "Database username"
+                                           :placeholder  "What username do you use to login to the database?"
+                                           :required     true}
+                                          {:name         "password"
+                                           :display-name "Database password"
+                                           :type         :password
+                                           :placeholder  "*******"}
+                                          {:name         "ssl"
+                                           :display-name "Use a secure connection (SSL)?"
+                                           :type         :boolean
+                                           :default      false}]))
+          :current-db-time (driver/make-current-db-time-fn sqlserver-date-formatter sqlserver-db-time-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

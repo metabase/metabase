@@ -1,7 +1,7 @@
 (ns metabase.driver.sqlserver-test
   (:require [metabase.test
              [data :as data]
-             [util :refer [obj->json->obj]]]
+             [util :refer [obj->json->obj] :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]))
@@ -22,3 +22,7 @@
   (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
         (data/run-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
+
+(expect-with-engine :sqlserver
+  "UTC"
+  (tu/db-timezone-id))
