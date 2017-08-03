@@ -32,11 +32,6 @@
    (mapv (partial ceil-to 1.0) [1 1.1 1.8])
    (mapv (partial ceil-to 15.0) [1.0 15.0 16.0])])
 
-
-(expect
-  [-2.0 -1.0 0.0 1.0 2.0 3.0]
-  (map order-of-magnitude [0.01 0.5 4 12 444 1023]))
-
 (expect
   [20.0 2000.0]
   [(nicer-bin-width 27 135 8)

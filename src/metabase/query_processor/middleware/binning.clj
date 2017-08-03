@@ -71,16 +71,12 @@
   (let [scale (/ precision)]
     (/ (floor (* x scale)) scale)))
 
-(defn- order-of-magnitude
-  [x]
-  (floor (/ (Math/log x) (Math/log 10))))
-
 (def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
 (defn- nicer-bin-width
   [min-value max-value num-bins]
   (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
-        scale         (expt 10 (order-of-magnitude min-bin-width))]
+        scale         (expt 10 (u/order-of-magnitude min-bin-width))]
     (->> pleasing-numbers
          (map (partial * scale))
          (drop-while (partial > min-bin-width))

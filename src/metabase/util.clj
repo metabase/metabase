@@ -880,3 +880,11 @@
   [m & {:keys [present non-nil]}]
   (merge (select-keys m present)
          (select-non-nil-keys m non-nil)))
+
+(defn order-of-magnitude
+  "Return the order of magnitude as a power of 10 of a given number."
+  [x]
+  (if (zero? x)
+    0
+    (long (math/floor (/ (Math/log (math/abs x))
+                         (Math/log 10))))))
