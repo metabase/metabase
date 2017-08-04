@@ -362,13 +362,19 @@
               (sync-database! db)
               (db/exists? FieldValues :field_id field-id))))))))
 
+(defn- narrow-to-min-max [row]
+  (-> row
+      (get-in [:type :type/Number])
+      (select-keys [:min :max])
+      (update :min #(u/round-to-decimals 4 %))
+      (update :max #(u/round-to-decimals 4 %))))
+
 (expect
-  [-165.374 -73.9533 10.0646 40.7794]
+  [{:min -165.374 :max -73.9533}
+   {:min 10.0646 :max 40.7794}]
   (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
                   Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
     (sync-table! table)
-    (map #(u/round-to-decimals 4 %)
-         [(db/select-one-field :min_value Field, :id (id :venues :longitude))
-          (db/select-one-field :max_value Field, :id (id :venues :longitude))
-          (db/select-one-field :min_value Field, :id (id :venues :latitude))
-          (db/select-one-field :max_value Field, :id (id :venues :latitude))])))
+    (map narrow-to-min-max
+         [(db/select-one-field :fingerprint Field, :id (id :venues :longitude))
+          (db/select-one-field :fingerprint Field, :id (id :venues :latitude))])))

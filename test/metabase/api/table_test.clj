@@ -72,18 +72,20 @@
    :metrics                 []})
 
 (def ^:private field-defaults
-  {:description        nil
-   :active             true
-   :position           0
-   :target             nil
-   :preview_display    true
-   :visibility_type    "normal"
-   :caveats            nil
-   :points_of_interest nil
-   :special_type       nil
-   :parent_id          nil
-   :dimensions         []
-   :values             []})
+  {:description              nil
+   :active                   true
+   :position                 0
+   :target                   nil
+   :preview_display          true
+   :visibility_type          "normal"
+   :caveats                  nil
+   :points_of_interest       nil
+   :special_type             nil
+   :parent_id                nil
+   :dimensions               []
+   :values                   []
+   :dimension_options        []
+   :default_dimension_option nil})
 
 (defn- field-details [field]
   (merge
@@ -96,6 +98,10 @@
       :raw_column_id      $
       :last_analyzed      $
       :fingerprint        $})))
+
+(defn- fk-field-details [field]
+  (-> (field-details field)
+      (dissoc :dimension_options :default_dimension_option)))
 
 
 ;; ## GET /api/table
@@ -174,7 +180,9 @@
                              :name         "NAME"
                              :display_name "Name"
                              :base_type    "type/Text"
-                             :values       data/venue-categories)]
+                             :values       data/venue-categories
+                             :dimension_options []
+                             :default_dimension_option nil)]
             :rows         75
             :updated_at   $
             :id           (data/id :categories)
@@ -220,7 +228,10 @@
                              :name            "LAST_LOGIN"
                              :display_name    "Last Login"
                              :base_type       "type/DateTime"
-                             :visibility_type "normal")
+                             :visibility_type "normal"
+                             :dimension_options        (var-get datetime-dimension-indexes)
+                             :default_dimension_option (var-get date-default-index)
+                             )
                            (assoc (field-details (Field (data/id :users :name)))
                              :special_type    "type/Name"
                              :table_id        (data/id :users)
@@ -228,7 +239,9 @@
                              :display_name    "Name"
                              :base_type       "type/Text"
                              :visibility_type "normal"
-                             :values          (map vector (sort user-full-names)))
+                             :values          (map vector (sort user-full-names))
+                             :dimension_options []
+                             :default_dimension_option nil)
                            (assoc (field-details (Field :table_id (data/id :users), :name "PASSWORD"))
                              :special_type    "type/Category"
                              :table_id        (data/id :users)
@@ -258,10 +271,12 @@
                              :display_name "ID"
                              :base_type    "type/BigInteger")
                            (assoc (field-details (Field (data/id :users :last_login)))
-                             :table_id     (data/id :users)
-                             :name         "LAST_LOGIN"
-                             :display_name "Last Login"
-                             :base_type    "type/DateTime")
+                             :table_id                 (data/id :users)
+                             :name                     "LAST_LOGIN"
+                             :display_name             "Last Login"
+                             :base_type                "type/DateTime"
+                             :dimension_options        (var-get datetime-dimension-indexes)
+                             :default_dimension_option (var-get date-default-index))
                            (assoc (field-details (Field (data/id :users :name)))
                              :table_id     (data/id :users)
                              :special_type "type/Name"
@@ -363,7 +378,7 @@
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
-      :origin         (-> (field-details checkins-user-field)
+      :origin         (-> (fk-field-details checkins-user-field)
                           (dissoc :target :dimensions :values)
                           (assoc :table_id     (data/id :checkins)
                                  :name         "USER_ID"
@@ -380,7 +395,7 @@
                                                          :id           $
                                                          :raw_table_id $
                                                          :created_at   $}))))
-      :destination    (-> (field-details users-id-field)
+      :destination    (-> (fk-field-details users-id-field)
                           (dissoc :target :dimensions :values)
                           (assoc :table_id     (data/id :users)
                                  :name         "ID"
@@ -530,15 +545,18 @@
 ;; Numeric fields without min/max values should not have binning strategies
 (expect
   []
-  (let [{:keys [min_value max_value]} (Field (data/id :venues :latitude))]
+  (let [lat-field-id (data/id :venues :latitude)
+        fingerprint  (:fingerprint (Field lat-field-id))]
     (try
-      (db/update! Field (data/id :venues :latitude) :min_value nil :max_value nil)
+      (db/update! Field (data/id :venues :latitude) :fingerprint (-> fingerprint
+                                                                     (assoc-in [:type :type/Number :max] nil)
+                                                                     (assoc-in [:type :type/Number :min] nil)))
       (-> ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories)))
           (get-in [:fields])
           first
           :dimension_options)
       (finally
-        (db/update! Field (data/id :venues :latitude) :min_value min_value :max_value max_value)))))
+        (db/update! Field lat-field-id :fingerprint fingerprint)))))
 
 (defn- extract-dimension-options
   "For the given `FIELD-NAME` find it's dimension_options following

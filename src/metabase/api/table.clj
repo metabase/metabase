@@ -160,8 +160,9 @@
 (def ^:private coordinate-default-index
   (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "Auto bin")))
 
-(defn- assoc-field-dimension-options [{:keys [base_type special_type min_value max_value] :as field}]
-  (let [[default-option all-options] (cond
+(defn- assoc-field-dimension-options [{:keys [base_type special_type fingerprint] :as field}]
+  (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
+        [default-option all-options] (cond
 
                                        (isa? base_type :type/DateTime)
                                        [date-default-index datetime-dimension-indexes]

@@ -32,9 +32,7 @@
                                     :visibility_type :visibility-type
                                     :base_type       :base-type
                                     :table_id        :table-id
-                                    :parent_id       :parent-id
-                                    :min_value       :min-value
-                                    :max_value       :max-value}))
+                                    :parent_id       :parent-id}))
 
 (defn- rename-dimension-keys
   [dimension]
@@ -258,7 +256,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id :max_value :min_value]
+        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id :fingerprint]
                                               :visibility_type [:not= "sensitive"]
                                               :id              [:in field-ids])
                                             (hydrate :values)

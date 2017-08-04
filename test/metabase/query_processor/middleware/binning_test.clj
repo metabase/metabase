@@ -5,7 +5,7 @@
              [expand :as ql]]
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-vars metabase.query-processor.middleware.binning filter->field-map extract-bounds ceil-to floor-to order-of-magnitude nicer-bin-width nicer-bounds nicer-breakout)
+(tu/resolve-private-vars metabase.query-processor.middleware.binning filter->field-map extract-bounds ceil-to floor-to nicer-bin-width nicer-bounds nicer-breakout)
 
 (expect
   {}
@@ -37,34 +37,37 @@
   [(nicer-bin-width 27 135 8)
    (nicer-bin-width -0.0002 10000.34 8)])
 
+(def ^:private test-min-max-field
+  {:field-id 1 :fingerprint {:type {:type/Number {:min 100 :max 1000}}}})
+
 (expect
   [1 10]
-  (extract-bounds {:field-id 1 :min-value 100 :max-value 1000}
+  (extract-bounds test-min-max-field
                   {1 [(ql/> (ql/field-id 1) 1) (ql/< (ql/field-id 1) 10)]}))
 
 (expect
   [1 10]
-  (extract-bounds {:field-id 1 :min-value 100 :max-value 1000}
+  (extract-bounds test-min-max-field
                   {1 [(ql/between (ql/field-id 1) 1 10)]}))
 
 (expect
   [100 1000]
-  (extract-bounds {:field-id 1 :min-value 100 :max-value 1000}
+  (extract-bounds test-min-max-field
                   {}))
 
 (expect
   [500 1000]
-  (extract-bounds {:field-id 1 :min-value 100 :max-value 1000}
+  (extract-bounds test-min-max-field
                   {1 [(ql/> (ql/field-id 1) 500)]}))
 
 (expect
   [100 500]
-  (extract-bounds {:field-id 1 :min-value 100 :max-value 1000}
+  (extract-bounds test-min-max-field
                   {1 [(ql/< (ql/field-id 1) 500)]}))
 
 (expect
   [600 700]
-  (extract-bounds {:field-id 1 :min-value 100 :max-value 1000}
+  (extract-bounds test-min-max-field
                   {1 [(ql/> (ql/field-id 1) 200)
                       (ql/< (ql/field-id 1) 800)
                       (ql/between (ql/field-id 1) 600 700)]}))

@@ -51,7 +51,7 @@
         fields))
 
     metabase.query_processor.interface.BinnedField
-    (let [{:keys [strategy], {:keys [min-value max-value] :as nested-field} :field} this]
+    (let [{:keys [strategy min-value max-value], nested-field :field} this]
       [(assoc nested-field :binning_info {:binning_strategy strategy
                                           :bin_width (:bin-width this)
                                           :num_bins (:num-bins this)
@@ -276,9 +276,7 @@
                           :table-id           :table_id
                           :visibility-type    :visibility_type
                           :remapped-to        :remapped_to
-                          :remapped-from      :remapped_from
-                          :min-value          :min_value
-                          :max-value          :max_value})
+                          :remapped-from      :remapped_from})
         (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn

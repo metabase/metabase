@@ -210,30 +210,26 @@
 
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-engines (engines-that-support :binning)
-  (merge (venues-col :latitude)
-         {:min_value 10.0646, :source :breakout,
-          :max_value 40.7794, :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
-                                             :num_bins         4,          :min_value 10.0646,
-                                             :max_value        40.7794}})
+  (assoc (breakout-col (venues-col :latitude))
+         :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
+                        :num_bins         4,          :min_value 10.0
+                        :max_value        50.0})
   (-> (data/run-query venues
-                      (ql/aggregation (ql/count))
-                      (ql/breakout (ql/binning-strategy $latitude :default)))
+        (ql/aggregation (ql/count))
+        (ql/breakout (ql/binning-strategy $latitude :default)))
       (get-in [:data :cols])
-      first
-      round-binning-decimals))
+      first))
 
 (datasets/expect-with-engines (engines-that-support :binning)
-  (merge (venues-col :latitude)
-         {:min_value 10.0646, :source       :breakout,
-          :max_value 40.7794, :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
-                                             :num_bins         5,         :min_value 10.0646,
-                                             :max_value        40.7794}})
+  (assoc (breakout-col (venues-col :latitude))
+         :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
+                        :num_bins         5,         :min_value 7.5,
+                        :max_value        45.0})
   (-> (data/run-query venues
                       (ql/aggregation (ql/count))
                       (ql/breakout (ql/binning-strategy $latitude :num-bins 5)))
       (get-in [:data :cols])
-      first
-      round-binning-decimals))
+      first))
 
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-engines (engines-that-support :binning)
@@ -242,12 +238,14 @@
    :error (format "Unable to bin field '%s' with id '%s' without a min/max value"
                   (:name (Field (data/id :venues :latitude)))
                   (data/id :venues :latitude))}
-  (let [{:keys [min_value max_value]} (Field (data/id :venues :latitude))]
+  (let [fingerprint (-> (data/id :venues :latitude)
+                        Field
+                        :fingerprint)]
     (try
-      (db/update! Field (data/id :venues :latitude) :min_value nil :max_value nil)
+      (db/update! Field (data/id :venues :latitude) :fingerprint {:type {:type/Number {:min nil :max nil}}})
       (-> (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default)))
           (select-keys [:status :class :error]))
       (finally
-        (db/update! Field (data/id :venues :latitude) :min_value min_value :max_value max_value)))))
+        (db/update! Field (data/id :venues :latitude) :fingerprint fingerprint)))))

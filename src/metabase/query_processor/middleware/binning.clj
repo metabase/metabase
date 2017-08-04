@@ -43,8 +43,9 @@
   using the greatest user specified min value and the smallest user
   specified max value. When a user specified min or max is not found,
   use the global min/max for the given field."
-  [{field-id :field-id, global-min :min-value, global-max :max-value} field-filter-map]
-  (let [user-maxes (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
+  [{:keys [field-id fingerprint]} field-filter-map]
+  (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
+        user-maxes (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
                          :when (contains? #{:< :<= :between} filter-type)]
                      (if (= :between filter-type)
                        (get-in query-filter [:max-val :value])

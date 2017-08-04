@@ -93,13 +93,11 @@
    :source          :fields
    :fk_field_id     nil
    :remapped_from   nil
-   :remapped_to     nil
-   :min_value       nil
-   :max_value       nil})
+   :remapped_to     nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :min_value :max_value)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :fingerprint)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -116,16 +114,8 @@
      :name {:special_type :type/Name
             :base_type    (data/expected-base-type->actual :type/Text)
             :name         (data/format-name "name")
-            :display_name "Name"})))
-
-(defn- add-min-max
-  "For databases that support binning, min/max values will be
-  populated, otherwise it will remain nil"
-  [min-val max-val original-map]
-  (merge original-map
-         (when (data/binning-supported?)
-           {:min_value min-val
-            :max_value max-val})))
+            :display_name "Name"
+            :fingerprint  {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})))
 
 ;; #### users
 (defn users-col
@@ -136,20 +126,22 @@
    {:table_id (data/id :users)
     :id       (data/id :users col)}
    (case col
-     :id         (add-min-max 1.0 15.0
-                              {:special_type :type/PK
-                               :base_type    (data/id-field-type)
-                               :name         (data/format-name "id")
-                               :display_name "ID"})
+     :id         {:special_type :type/PK
+                  :base_type    (data/id-field-type)
+                  :name         (data/format-name "id")
+                  :display_name "ID"
+                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 8.0}}}}
      :name       {:special_type :type/Name
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
-                  :display_name "Name"}
+                  :display_name "Name"
+                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 13.266666666666667}}}}
      :last_login {:special_type nil
                   :base_type    (data/expected-base-type->actual :type/DateTime)
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
-                  :unit         :default})))
+                  :unit         :default
+                  :fingerprint  {:global {:distinct-count 15}}})))
 
 ;; #### venues
 (defn venues-columns
@@ -165,41 +157,42 @@
    {:table_id (data/id :venues)
     :id       (data/id :venues col)}
    (case col
-     :id          (add-min-max 1.0 100.0
-                               {:special_type :type/PK
-                                :base_type    (data/id-field-type)
-                                :name         (data/format-name "id")
-                                :display_name "ID"})
-     :category_id (add-min-max 2.0 74.0
-                               {:extra_info   (if (data/fks-supported?)
-                                                {:target_table_id (data/id :categories)}
-                                                {})
-                                :target       (target-field (categories-col :id))
-                                :special_type (if (data/fks-supported?)
-                                                :type/FK
-                                                :type/Category)
-                                :base_type    (data/expected-base-type->actual :type/Integer)
-                                :name         (data/format-name "category_id")
-                                :display_name "Category ID"})
-     :price       (add-min-max 1.0 4.0
-                               {:special_type :type/Category
-                                :base_type    (data/expected-base-type->actual :type/Integer)
-                                :name         (data/format-name "price")
-                                :display_name "Price"})
-     :longitude   (add-min-max -165.374 -73.9533
-                               {:special_type :type/Longitude
-                                :base_type    (data/expected-base-type->actual :type/Float)
-                                :name         (data/format-name "longitude")
-                                :display_name "Longitude"})
-     :latitude    (add-min-max 10.0646 40.7794
-                               {:special_type :type/Latitude
-                                :base_type    (data/expected-base-type->actual :type/Float)
-                                :name         (data/format-name "latitude")
-                                :display_name "Latitude"})
+     :id          {:special_type :type/PK
+                   :base_type    (data/id-field-type)
+                   :name         (data/format-name "id")
+                   :display_name "ID"
+                   :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 50.5}}}}
+     :category_id {:extra_info   (if (data/fks-supported?)
+                                   {:target_table_id (data/id :categories)}
+                                   {})
+                   :target       (target-field (categories-col :id))
+                   :special_type (if (data/fks-supported?)
+                                   :type/FK
+                                   :type/Category)
+                   :base_type    (data/expected-base-type->actual :type/Integer)
+                   :name         (data/format-name "category_id")
+                   :display_name "Category ID"
+                   :fingerprint  {:global {:distinct-count 28}, :type {:type/Number {:min 2, :max 74, :avg 29.98}}},}
+     :price       {:special_type :type/Category
+                   :base_type    (data/expected-base-type->actual :type/Integer)
+                   :name         (data/format-name "price")
+                   :display_name "Price"
+                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}},}
+     :longitude   {:special_type :type/Longitude
+                   :base_type    (data/expected-base-type->actual :type/Float)
+                   :name         (data/format-name "longitude")
+                   :fingerprint  {:global {:distinct-count 84}, :type {:type/Number {:min -165.374, :max -73.9533, :avg -115.99848699999991}}},
+                   :display_name "Longitude"}
+     :latitude    {:special_type :type/Latitude
+                   :base_type    (data/expected-base-type->actual :type/Float)
+                   :name         (data/format-name "latitude")
+                   :display_name "Latitude"
+                   :fingerprint  {:global {:distinct-count 94}, :type {:type/Number {:min 10.0646, :max 40.7794, :avg 35.50589199999998}}},}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
-                   :display_name "Name"})))
+                   :display_name "Name"
+                   :fingerprint  {:global {:distinct-count 100}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 15.63}}}})))
 
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
@@ -219,27 +212,27 @@
                 :base_type    (data/id-field-type)
                 :name         (data/format-name "id")
                 :display_name "ID"}
-     :venue_id (add-min-max 1.0 100.0
-                            {:extra_info   (if (data/fks-supported?)
-                                             {:target_table_id (data/id :venues)}
-                                             {})
-                             :target       (target-field (venues-col :id))
-                             :special_type (if (data/fks-supported?)
-                                             :type/FK
-                                             :type/Category)
-                             :base_type    (data/expected-base-type->actual :type/Integer)
-                             :name         (data/format-name "venue_id")
-                             :display_name "Venue ID"})
-     :user_id  (add-min-max 1.0 15.0
-                            {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
-                                               {})
-                             :target       (target-field (users-col :id))
-                             :special_type (if (data/fks-supported?)
-                                             :type/FK
-                                             :type/Category)
-                             :base_type    (data/expected-base-type->actual :type/Integer)
-                             :name         (data/format-name "user_id")
-                             :display_name "User ID"}))))
+     :venue_id {:extra_info   (if (data/fks-supported?)
+                                {:target_table_id (data/id :venues)}
+                                {})
+                :target       (target-field (venues-col :id))
+                :special_type (if (data/fks-supported?)
+                                :type/FK
+                                :type/Category)
+                :base_type    (data/expected-base-type->actual :type/Integer)
+                :name         (data/format-name "venue_id")
+                :display_name "Venue ID"
+                :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 51.965}}}}
+     :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
+                                  {})
+                :target       (target-field (users-col :id))
+                :special_type (if (data/fks-supported?)
+                                :type/FK
+                                :type/Category)
+                :base_type    (data/expected-base-type->actual :type/Integer)
+                :name         (data/format-name "user_id")
+                :display_name "User ID"
+                :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 7.929}}}})))
 
 
 ;;; #### aggregate columns

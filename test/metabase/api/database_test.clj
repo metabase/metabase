@@ -243,9 +243,7 @@
    :position           0
    :target             nil
    :preview_display    true
-   :parent_id          nil
-   :min_value          nil
-   :max_value          nil})
+   :parent_id          nil})
 
 (defn- field-details [field]
   (merge

@@ -76,9 +76,7 @@
      :created_at         $
      :base_type          "type/Text"
      :fk_target_field_id nil
-     :parent_id          nil
-     :min_value          nil
-     :max_value          nil})
+     :parent_id          nil})
   ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 

@@ -7,7 +7,8 @@
              [field :as field]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.sync.interface :as i])
   (:import clojure.lang.Keyword
            java.sql.Timestamp))
 
@@ -122,8 +123,7 @@
                     remapped-to        :- (s/maybe s/Str)
                     dimensions         :- (s/maybe (s/cond-pre Dimensions {} []))
                     values             :- (s/maybe (s/cond-pre FieldValues {} []))
-                    min-value          :- (s/maybe s/Num)
-                    max-value          :- (s/maybe s/Num)]
+                    fingerprint        :- (s/maybe i/Fingerprint)]
   clojure.lang.Named
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
