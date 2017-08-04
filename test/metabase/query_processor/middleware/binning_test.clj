@@ -33,7 +33,7 @@
    (mapv (partial ceil-to 15.0) [1.0 15.0 16.0])])
 
 (expect
-  [20.0 2000.0]
+  [20 2000]
   [(nicer-bin-width 27 135 8)
    (nicer-bin-width -0.0002 10000.34 8)])
 
@@ -74,8 +74,8 @@
 
 (expect
   [[0.0 1000.0 125.0 8]
-   [200.0 1600.0 200.0 8]
-   [0.0 1200.0 200.0 8]
+   [200N 1600N 200 8]
+   [0.0 1200.0 200 8]
    [0.0 1005.0 15.0 67]]
   [((juxt :min-value :max-value :bin-width :num-bins)
          (nicer-breakout {:field-id 1 :min-value 100 :max-value 1000
