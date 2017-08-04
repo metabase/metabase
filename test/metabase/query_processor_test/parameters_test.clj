@@ -40,3 +40,18 @@
                        :target ["variable" ["template-tag" "ids_list"]]
                        :value  "1,2,3"}]})
       :data :native_form :query))
+
+
+(expect
+  "SELECT * FROM USERS where id IN ('1', '2', '3')"
+  (-> (qp/process-query
+        {:database   (data/id)
+         :type       "native"
+         :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
+                      :template_tags {:ids_list {:name         "ids_list"
+                                                 :display_name "Ids list"
+                                                 :type         "text"}}}
+         :parameters [{:type   "category"
+                       :target ["variable" ["template-tag" "ids_list"]]
+                       :value  "1,2,3"}]})
+     :data :native_form :query))
