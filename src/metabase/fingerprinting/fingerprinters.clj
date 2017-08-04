@@ -279,11 +279,13 @@
                 :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
 
 (defmethod x-ray Num
-  [{:keys [field] :as fingerprint}]
-  (-> fingerprint
-      (update :histogram (partial histogram->dataset field))
-      (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
-              :positive-definite? :var>sd? :uniqueness :min-vs-max)))
+  [{:keys [field count] :as fingerprint}]
+  (if (pos? count)
+    (-> fingerprint
+        (update :histogram (partial histogram->dataset field))
+        (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
+                :positive-definite? :var>sd? :uniqueness :min-vs-max))
+    fingerprint))
 
 (defmethod fingerprinter [Num Num]
   [_ field]
@@ -472,40 +474,42 @@
                                       [k (* v (/ baseline (weights k)))])))))
 
 (defmethod x-ray DateTime
-  [{:keys [field earliest latest] :as fingerprint}]
-  (let [earliest (from-double earliest)
-        latest   (from-double latest)]
-    (-> fingerprint
-        (assoc  :earliest          earliest)
-        (assoc  :latest            latest)
-        (update :histogram         (partial histogram->dataset from-double field))
-        (update :percentiles       (partial m/map-vals from-double))
-        (update :histogram-hour    (partial histogram->dataset
-                                            {:name         "HOUR"
-                                             :display_name "Hour of day"
-                                             :base_type    :type/Integer
-                                             :special_type :type/Category}))
-        (update :histogram-day     (partial histogram->dataset
-                                            {:name         "DAY"
-                                             :display_name "Day of week"
-                                             :base_type    :type/Integer
-                                             :special_type :type/Category}))
-        (update :histogram-month   (comp
-                                    (partial weigh-periodicity
-                                             (month-frequencies earliest latest))
-                                    (partial histogram->dataset
-                                             {:name         "MONTH"
-                                              :display_name "Month of year"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category})))
-        (update :histogram-quarter (comp
-                                    (partial weigh-periodicity
-                                             (quarter-frequencies earliest latest))
-                                    (partial histogram->dataset
-                                             {:name         "QUARTER"
-                                              :display_name "Quarter of year"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category}))))))
+  [{:keys [field earliest latest count] :as fingerprint}]
+  (if (pos? count)
+    (let [earliest (from-double earliest)
+          latest   (from-double latest)]
+      (-> fingerprint
+          (assoc  :earliest          earliest)
+          (assoc  :latest            latest)
+          (update :histogram         (partial histogram->dataset from-double field))
+          (update :percentiles       (partial m/map-vals from-double))
+          (update :histogram-hour    (partial histogram->dataset
+                                              {:name         "HOUR"
+                                               :display_name "Hour of day"
+                                               :base_type    :type/Integer
+                                               :special_type :type/Category}))
+          (update :histogram-day     (partial histogram->dataset
+                                              {:name         "DAY"
+                                               :display_name "Day of week"
+                                               :base_type    :type/Integer
+                                               :special_type :type/Category}))
+          (update :histogram-month   (comp
+                                      (partial weigh-periodicity
+                                               (month-frequencies earliest latest))
+                                      (partial histogram->dataset
+                                               {:name         "MONTH"
+                                                :display_name "Month of year"
+                                                :base_type    :type/Integer
+                                                :special_type :type/Category})))
+          (update :histogram-quarter (comp
+                                      (partial weigh-periodicity
+                                               (quarter-frequencies earliest latest))
+                                      (partial histogram->dataset
+                                               {:name         "QUARTER"
+                                                :display_name "Quarter of year"
+                                                :base_type    :type/Integer
+                                                :special_type :type/Category})))))
+    (select-keys fingerprint [:count :type :field])))
 
 (defmethod fingerprinter Category
   [_ field]
