@@ -20,12 +20,17 @@ import {
 import Icon from 'metabase/components/Icon'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
+import type { Table } from 'metabase/meta/types/Table'
+
 type Props = {
     constituents: [],
     fetchTableFingerPrint: () => void,
-    fingerprint: {},
+    fingerprint: {
+        table: Table
+    },
     params: {
-        tableId: number
+        tableId: number,
+        cost: string
     }
 }
 
@@ -43,17 +48,25 @@ const mapDispatchToProps = {
 class TableXRay extends Component {
     props: Props
 
+    state = {
+        error: null
+    }
+
     componentDidMount () {
         this.fetchTableFingerPrint()
     }
 
-    fetchTableFingerPrint () {
+    async fetchTableFingerPrint () {
         const { params } = this.props
         const cost = COSTS[params.cost]
-        this.props.fetchTableFingerPrint(params.tableId, cost)
+        try {
+            await this.props.fetchTableFingerPrint(params.tableId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchTableFingerPrint()
         }
@@ -61,11 +74,13 @@ class TableXRay extends Component {
 
     render () {
         const { constituents, fingerprint, params } = this.props
+        const { error } = this.state
 
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
                     loading={!constituents}
+                    error={error}
                     noBackground
                 >
                     { () =>

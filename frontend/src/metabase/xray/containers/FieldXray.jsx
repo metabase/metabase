@@ -25,10 +25,22 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
+import type { Field } from 'metabase/meta/types/Field'
+import type { Table } from 'metabase/meta/types/Table'
+
 type Props = {
     fetchFieldFingerPrint: () => void,
-    fingerprint: {},
-    params: {},
+    fingerprint: {
+        table: Table,
+        field: Field,
+        histogram: {
+            value: {}
+        }
+    },
+    params: {
+        cost: string,
+        fieldId: number
+    },
 }
 
 const Periodicity = ({fingerprint}) =>
@@ -69,18 +81,26 @@ const mapDispatchToProps = {
 class FieldXRay extends Component {
     props: Props
 
+    state = {
+       error: null
+    }
+
     componentDidMount () {
         this.fetchFieldFingerprint()
     }
 
-    fetchFieldFingerprint() {
+    async fetchFieldFingerprint() {
         const { params } = this.props
         const cost = COSTS[params.cost]
-        this.props.fetchFieldFingerPrint(params.fieldId, cost)
+        try {
+            await this.props.fetchFieldFingerPrint(params.fieldId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
 
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchFieldFingerprint()
         }
@@ -88,9 +108,11 @@ class FieldXRay extends Component {
 
     render () {
         const { fingerprint, params } = this.props
+        const { error } = this.state
         return (
                 <LoadingAndErrorWrapper
                     loading={!fingerprint}
+                    error={error}
                     noBackground
                 >
                     { () =>

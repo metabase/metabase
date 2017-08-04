@@ -20,9 +20,20 @@ import {
 
 import Constituent from 'metabase/xray/components/Constituent'
 
+import type { Table } from 'metabase/meta/types/Table'
+import type { Segment } from 'metabase/meta/types/Segment'
+
 type Props = {
     fetchSegmentFingerPrint: () => void,
-    fingerprint: {}
+    constituents: [],
+    fingerprint: {
+        table: Table,
+        segment: Segment,
+    },
+    params: {
+        segmentId: number,
+        cost: string,
+    }
 }
 
 const mapStateToProps = state => ({
@@ -39,17 +50,25 @@ const mapDispatchToProps = {
 class SegmentXRay extends Component {
     props: Props
 
+    state = {
+        error: null
+    }
+
     componentDidMount () {
         this.fetchSegmentFingerPrint()
     }
 
-    fetchSegmentFingerPrint () {
+    async fetchSegmentFingerPrint () {
         const { params } = this.props
         const cost = COSTS[params.cost]
-        this.props.fetchSegmentFingerPrint(params.segmentId, cost)
+        try {
+            await this.props.fetchSegmentFingerPrint(params.segmentId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchSegmentFingerPrint()
         }
@@ -57,10 +76,12 @@ class SegmentXRay extends Component {
 
     render () {
         const { constituents, fingerprint, params } = this.props
+        const { error } = this.state
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
                     loading={!constituents}
+                    error={error}
                     noBackground
                 >
                     { () =>
