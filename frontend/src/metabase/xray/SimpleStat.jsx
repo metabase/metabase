@@ -14,7 +14,7 @@ const SimpleStat = ({ stat, showDescription }) =>
         </div>
         { /* call toString to ensure that values like true / false show up */ }
         <h1 className="my1">
-            {stat.value}
+            {stat.value.toString()}
         </h1>
     </div>
 

@@ -8,8 +8,6 @@ import {
     fetchData
 } from 'metabase/lib/redux';
 
-import { push } from "react-router-redux";
-
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
 import { GettingStartedApi, XRayApi } from 'metabase/services';
