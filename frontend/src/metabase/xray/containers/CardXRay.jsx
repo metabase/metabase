@@ -6,7 +6,6 @@ import { connect } from 'react-redux'
 import { fetchCardFingerPrint } from 'metabase/reference/reference'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
-import SimpleHistogram from 'metabase/xray/SimpleHistogram'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
 type Props = {
@@ -23,12 +22,6 @@ const FingerPrintList = ({ fingerprint }) =>
                     <li key={fieldName}>
                         <h4>{fieldName}</h4>
                         <div>
-                            <SimpleHistogram
-                                data={f.histogram}
-                                height={40}
-                                gridLines={false}
-                                legends={false}
-                            />
                             <ol className="Grid">
                                 <li className="Grid-cell">
                                     <SimpleStat name="Min" data={f.min} />
@@ -102,13 +95,6 @@ const FingerprintGrid = ({ fingerprint, fields, distribution }) =>
                             */}
                             { distribution && (
                                 <li className="Grid-cell">
-                                    <SimpleHistogram
-                                        data={field.histogram}
-                                        gridLines={false}
-                                        height={30}
-                                        legends={false}
-                                        showValues={false}
-                                    />
                                 </li>
                             )}
                         </ol>
@@ -163,31 +149,15 @@ class CardXRay extends Component {
                                             <h2 className="py3 my3">Time breakdown</h2>
                                             <div className="my3">
                                                 <h4>Hour</h4>
-                                                <SimpleHistogram
-                                                    data={fingerprint['CREATED_AT']['histogram-hour']}
-                                                    height={60}
-                                                />
                                             </div>
                                             <div className="my3">
                                                 <h4>Day</h4>
-                                                <SimpleHistogram
-                                                    data={fingerprint['CREATED_AT']['histogram-day']}
-                                                    height={60}
-                                                />
                                             </div>
                                             <div className="my3">
                                                 <h4>Month</h4>
-                                                <SimpleHistogram
-                                                    data={fingerprint['CREATED_AT']['histogram-month']}
-                                                    height={60}
-                                                />
                                             </div>
                                             <div className="my3">
                                                 <h4>Quarter</h4>
-                                                <SimpleHistogram
-                                                    data={fingerprint['CREATED_AT']['histogram-quarter']}
-                                                    height={60}
-                                                />
                                             </div>
                                         </div>
                                     )}
