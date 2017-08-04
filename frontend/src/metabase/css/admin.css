@@ -7,15 +7,14 @@
 }
 
 .AdminNav {
-    padding-top: 1.825em;
-    padding-bottom: 1.825em;
+    padding-top: 0.75em;
+    padding-bottom: 0.75em;
     background: var(--admin-nav-bg-color);
     color: #fff;
     font-size: 0.85rem;
 }
 
 .AdminGear {
-    margin-top: 0.25em;
     margin-right: 0.5em;
 }
 

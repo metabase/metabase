@@ -1,3 +1,4 @@
+/* @flow weak */
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings"
 
@@ -81,4 +82,25 @@ export function publicDashboard(uuid) {
 
 export function embedCard(token, type = null) {
     return `/embed/question/${token}` + (type ? `.${type}` : ``);
+}
+
+export function datamodelMetricList (databaseId: number) {
+    return `/admin/dm/database/${databaseId}/metrics`
+}
+
+const datamodelPrefix = '/admin/dm/database'
+
+export const datamodel = {
+    metricList: function (databaseId: number) {
+        return `${datamodelPrefix}/${databaseId}/metrics`
+    },
+    dbData: function (databaseId: number) {
+        return `${datamodelPrefix}/${databaseId}/data`
+    },
+    db: function (databaseId: number) {
+        return `${datamodelPrefix}/${databaseId}`
+    },
+    metric: function (databaseId: number, metricId: number) {
+        return `${datamodelPrefix}/${databaseId}/metric/${metricId}`
+    }
 }

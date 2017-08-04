@@ -84,14 +84,14 @@ export default class Navbar extends Component {
             <nav className={cx("Nav AdminNav", this.props.className)}>
                 <div className="wrapper flex align-center">
                     <div className="NavTitle flex align-center">
-                        <Icon name={'gear'} className="AdminGear" size={22}></Icon>
-                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin Panel</span>
+                        <Icon name='gear' className="AdminGear" size={22} />
+                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin</span>
                     </div>
 
                     <ul className="sm-ml4 flex flex-full text-strong">
                         <AdminNavItem name="Settings"    path="/admin/settings"     currentPath={this.props.path} />
                         <AdminNavItem name="People"      path="/admin/people"       currentPath={this.props.path} />
-                        <AdminNavItem name="Data Model"  path="/admin/datamodel"    currentPath={this.props.path} />
+                        <AdminNavItem name="Data Model"  path="/admin/dm"    currentPath={this.props.path} />
                         <AdminNavItem name="Databases"   path="/admin/databases"    currentPath={this.props.path} />
                         <AdminNavItem name="Permissions" path="/admin/permissions"  currentPath={this.props.path} />
                     </ul>

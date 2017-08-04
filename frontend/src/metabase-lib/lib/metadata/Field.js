@@ -93,6 +93,12 @@ export default class Field extends Base {
         return getIconForField(this);
     }
 
+    typeDisplayName() {
+        return getFieldType(this);
+    }
+
+    getVisibilitySettingName() {}
+
     dimension() {
         return new FieldIDDimension(null, [this.id], this.metadata);
     }

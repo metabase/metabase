@@ -52,6 +52,16 @@ import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx"
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx"
 
+// datamodel containers
+//
+import DatamodelApp from 'metabase/admin/dm/containers/DatamodelApp';
+import DatamodelDatabaseApp from 'metabase/admin/dm/containers/DatamodelDatabaseApp';
+import DatabaseLanding from 'metabase/admin/dm/containers/DatabaseLanding'
+import DatabaseMetrics from 'metabase/admin/dm/containers/DatabaseMetrics'
+import DatabaseData from 'metabase/admin/dm/containers/DatabaseData'
+import TableLanding from 'metabase/admin/dm/containers/TableLanding'
+import FieldLanding from 'metabase/admin/dm/containers/FieldLanding'
+
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
@@ -104,11 +114,7 @@ const UserIsAuthenticated = UserAuthWrapper({
     redirectAction: (location) =>
         // HACK: workaround for redux-auth-wrapper not including hash
         // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-        routerActions.replace({
-            ...location,
-            query: {
-                ...location.query,
-                redirect: location.query.redirect + (window.location.hash || "")
+        routerActions.replace({ ...location, query: { ...location.query, redirect: location.query.redirect + (window.location.hash || "")
             }
         })
 });
@@ -249,6 +255,17 @@ export const getRoutes = (store) =>
                     <IndexRoute component={DatabaseListApp} />
                     <Route path="create" component={DatabaseEditApp} />
                     <Route path=":databaseId" component={DatabaseEditApp} />
+                </Route>
+
+                <Route path="dm" title="Data Model" component={DatamodelApp}>
+                    <IndexRoute component={DatamodelDatabaseApp} />
+                    <Route path="database/:databaseId" component={DatabaseLanding} />
+                    <Route path="database/:databaseId/table/:tableId/" component={TableLanding} />
+                    <Route path="database/:databaseId/table/:tableId/field/:fieldId/(:fieldMode)" component={FieldLanding} />
+                    <Route path="database/:databaseId/metrics" component={DatabaseMetrics} />
+                    <Route path="database/:databaseId/metric/create" component={MetricApp} />
+                    <Route path="database/:databaseId/metric/:metricId" component={MetricApp} />
+                    <Route path="database/:databaseId/data" component={DatabaseData} />
                 </Route>
 
                 <Route path="datamodel" title="Data Model">
