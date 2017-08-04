@@ -4,12 +4,12 @@
    Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [medley.core :as m]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;; make sure all the driver test extension namespaces are loaded <3
 ;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
@@ -56,20 +56,20 @@
 
 (defmacro qp-expect-with-all-engines
   {:style/indent 0}
-  [data q-form & post-process-fns]
+  [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}
-     (-> ~q-form
+     (-> ~query-form
          ~@post-process-fns)))
 
-(defmacro qp-expect-with-engines [datasets data q-form]
+(defmacro qp-expect-with-engines [datasets data query-form]
   `(datasets/expect-with-engines ~datasets
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}
-     ~q-form))
+     ~query-form))
 
 
 (defn ->columns

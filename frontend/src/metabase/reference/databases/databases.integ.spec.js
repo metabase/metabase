@@ -1,6 +1,7 @@
 import {
     login,
-    createTestStore
+    createTestStore,
+    clickRouterLink
 } from "metabase/__support__/integrated_tests";
 
 import React from 'react';
@@ -28,6 +29,10 @@ import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import QueryButton from "metabase/components/QueryButton";
+import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
+import { getQuestion } from "metabase/query_builder/selectors";
 
 describe("The Reference Section", () => {
     // Test data
@@ -85,7 +90,7 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1");
             mount(store.connectContainer(<DatabaseDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
 
         })
         
@@ -94,7 +99,7 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables");
             mount(store.connectContainer(<TableListContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
         // table detail
 
@@ -102,33 +107,33 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1");
             mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
 
        it("should see the Reviews table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/2");
             mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
        it("should see the Products table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/3");
             mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
        it("should see the People table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/4");
             mount(store.connectContainer(<TableDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
         // field list
        it("should see the fields for the orders table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields");
             mount(store.connectContainer(<FieldListContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
 
         })
        it("should see the questions for the orders tables", async  () => {
@@ -136,7 +141,7 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/questions");
             mount(store.connectContainer(<TableQuestionsContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
             
             var card = await CardApi.create(cardDef)
 
@@ -151,16 +156,36 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/1");
             mount(store.connectContainer(<FieldDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
+        })
+
+        it("should let you open a potentially useful question for created_at field without errors", async () => {
+            const store = await createTestStore()
+            store.pushPath("/reference/databases/1/tables/1/fields/1");
+
+            const app = mount(store.getAppContainer());
+
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
+            const fieldDetails = app.find(FieldDetailContainer);
+            expect(fieldDetails.length).toBe(1);
+
+            const usefulQuestionLink = fieldDetails.find(UsefulQuestions).find(QueryButton).first().find("a");
+            expect(usefulQuestionLink.text()).toBe("Number of Orders grouped by Created At")
+            clickRouterLink(usefulQuestionLink);
+
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+
+            const qbQuery = getQuestion(store.getState()).query();
+
+            // the granularity/subdimension should be applied correctly to the breakout
+            expect(qbQuery.breakouts()).toEqual([["datetime-field", ["field-id", 1], "day"]]);
         })
 
        it("should see the orders id field", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/25");
             mount(store.connectContainer(<FieldDetailContainer />));
-            await store.waitForActions([FETCH_DATABASE_METADATA])
+            await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
     });
-
-
 });

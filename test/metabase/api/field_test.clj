@@ -41,6 +41,7 @@
     {:description        nil
      :table_id           (id :users)
      :raw_column_id      $
+     :fingerprint        $
      :table              (tu/match-$ (Table (id :users))
                            {:description             nil
                             :entity_type             nil

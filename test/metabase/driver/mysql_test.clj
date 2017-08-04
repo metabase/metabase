@@ -1,7 +1,7 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
             [metabase
-             [sync-database :as sync-db]
+             [sync :as sync]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
@@ -67,5 +67,5 @@
     (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]
-      (sync-db/sync-database! db)
+      (sync/sync-database! db)
       (db->fields db))))

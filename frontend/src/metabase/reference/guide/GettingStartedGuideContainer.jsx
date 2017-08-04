@@ -3,7 +3,8 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import ReferenceGettingStartedGuide from "metabase/reference/guide/ReferenceGettingStartedGuide.jsx"
+import GettingStartedGuide from "metabase/reference/guide/GettingStartedGuide.jsx"
+import GettingStartedGuideEditForm from "metabase/reference/guide/GettingStartedGuideEditForm.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
@@ -55,9 +56,14 @@ export default class GettingStartedGuideContainer extends Component {
     }
 
     render() {
-
         return (
-                <ReferenceGettingStartedGuide {...this.props} />
+            <div>
+                
+            { this.props.isEditing ? 
+                <GettingStartedGuideEditForm {...this.props} /> :
+                <GettingStartedGuide {...this.props} />
+            }            
+            </div>
         );
     }
 }

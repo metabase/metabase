@@ -327,7 +327,6 @@
                                           ;; we just want to ignore all the test "session schemas" that don't match the current test
                                           (require 'metabase.test.data.oracle)
                                           ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
-          :field-percent-urls        sql/slow-field-percent-urls
           :set-timezone-sql          (constantly "ALTER session SET time_zone = %s")
           :prepare-value             (u/drop-first-arg prepare-value)
           :string-length-fn          (u/drop-first-arg string-length-fn)
