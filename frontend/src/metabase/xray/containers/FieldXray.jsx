@@ -25,18 +25,14 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
+import type { Field } from 'metabase/meta/types/Field'
+import type { Table } from 'metabase/meta/types/Table'
+
 type Props = {
     fetchFieldFingerPrint: () => void,
     fingerprint: {
-        table: {
-            id: number,
-            display_name: string
-        },
-        field: {
-            display_name: string,
-            id: number,
-            description: string
-        },
+        table: Table,
+        field: Field,
         histogram: {
             value: {}
         }

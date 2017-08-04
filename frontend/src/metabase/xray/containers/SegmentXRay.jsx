@@ -20,19 +20,15 @@ import {
 
 import Constituent from 'metabase/xray/components/Constituent'
 
+import type { Table } from 'metabase/meta/types/Table'
+import type { Segment } from 'metabase/meta/types/Segment'
+
 type Props = {
     fetchSegmentFingerPrint: () => void,
     constituents: [],
     fingerprint: {
-        table: {
-            id: number,
-            display_name: string
-        },
-        segment: {
-            id: number,
-            name: string,
-            description: string
-        }
+        table: Table,
+        segment: Segment,
     },
     params: {
         segmentId: number,

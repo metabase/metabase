@@ -20,15 +20,13 @@ import {
 import Icon from 'metabase/components/Icon'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
+import type { Table } from 'metabase/meta/types/Table'
+
 type Props = {
     constituents: [],
     fetchTableFingerPrint: () => void,
     fingerprint: {
-        table: {
-            id: number,
-            display_name: string,
-            description: string
-        }
+        table: Table
     },
     params: {
         tableId: number,
