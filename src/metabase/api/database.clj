@@ -12,6 +12,7 @@
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.public-settings :as public-settings]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -42,7 +43,10 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info [dbs]
+(defn- add-native-perms-info
+  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running native (e.g. SQL) queries.
+   Will be one of `:write`, `:read`, or `:none`."
+  [dbs]
   (for [db dbs]
     (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
@@ -107,11 +111,13 @@
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
 (defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
-  (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
-    {:name     "Saved Questions"
-     :id       database/virtual-id
-     :features #{:basic-aggregations}
-     :tables   virtual-tables}))
+  (when (public-settings/enable-nested-queries)
+    (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
+      {:name               "Saved Questions"
+       :id                 database/virtual-id
+       :features           #{:basic-aggregations}
+       :tables             virtual-tables
+       :is_saved_questions true})))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-virtual-tables-for-saved-cards [dbs]
@@ -131,7 +137,7 @@
   [include_tables include_cards]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)}
-  (or (dbs-list include_tables include_cards)
+  (or (dbs-list (Boolean/parseBoolean include_tables) (Boolean/parseBoolean include_cards))
       []))
 
 
@@ -159,12 +165,12 @@
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields :target :values] :segments :metrics])
-      (update :tables   (fn [tables]
-                          (for [table tables
-                                :when (mi/can-read? table)]
-                            (-> table
-                                (update :segments (partial filter mi/can-read?))
-                                (update :metrics  (partial filter mi/can-read?))))))))
+      (update :tables (fn [tables]
+                        (for [table tables
+                              :when (mi/can-read? table)]
+                          (-> table
+                              (update :segments (partial filter mi/can-read?))
+                              (update :metrics  (partial filter mi/can-read?))))))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
@@ -180,8 +186,7 @@
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (str (str/lower-case prefix) "%")]
-                     [:or [:= :visibility_type nil]
-                          [:not= :visibility_type "hidden"]]]
+                     [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]

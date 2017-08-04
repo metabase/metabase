@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.fields-test
   "Tests for the `:fields` clause."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]))
 
 ;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the order of the IDs in the `fields` clause

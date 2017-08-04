@@ -4,12 +4,12 @@
    Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [medley.core :as m]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;; make sure all the driver test extension namespaces are loaded <3
 ;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
@@ -56,20 +56,20 @@
 
 (defmacro qp-expect-with-all-engines
   {:style/indent 0}
-  [data q-form & post-process-fns]
+  [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}
-     (-> ~q-form
+     (-> ~query-form
          ~@post-process-fns)))
 
-(defmacro qp-expect-with-engines [datasets data q-form]
+(defmacro qp-expect-with-engines [datasets data query-form]
   `(datasets/expect-with-engines ~datasets
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}
-     ~q-form))
+     ~query-form))
 
 
 (defn ->columns
@@ -91,11 +91,13 @@
    :visibility_type :normal
    :schema_name     (data/default-schema)
    :source          :fields
-   :fk_field_id     nil})
+   :fk_field_id     nil
+   :remapped_from   nil
+   :remapped_to     nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -231,28 +233,32 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type    :type/Integer
-              :special_type :type/Number
-              :name         "count"
-              :display_name "count"
-              :id           nil
-              :table_id     nil
-              :description  nil
-              :source       :aggregation
-              :extra_info   {}
-              :target       nil}))
+     :count  {:base_type       :type/Integer
+              :special_type    :type/Number
+              :name            "count"
+              :display_name    "count"
+              :id              nil
+              :table_id        nil
+              :description     nil
+              :source          :aggregation
+              :extra_info      {}
+              :target          nil
+              :remapped_from   nil
+              :remapped_to     nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
-    :special_type special_type
-    :id           nil
-    :table_id     nil
-    :description  nil
-    :source       :aggregation
-    :extra_info   {}
-    :target       nil
-    :name         (name ag-col-kw)
-    :display_name (name ag-col-kw)}))
+    :special_type  special_type
+    :id            nil
+    :table_id      nil
+    :description   nil
+    :source        :aggregation
+    :extra_info    {}
+    :target        nil
+    :name          (name ag-col-kw)
+    :display_name  (name ag-col-kw)
+    :remapped_from nil
+    :remapped_to   nil}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))

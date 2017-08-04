@@ -5,29 +5,28 @@ import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
-import { getModeActions } from "metabase/qb/lib/modes";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
 import _ from "underscore";
 
-import type { Card, UnsavedCard} from "metabase/meta/types/Card";
-import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { Card, UnsavedCard } from "metabase/meta/types/Card";
+import type { ClickAction } from "metabase/meta/types/Visualization";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     className?: string,
-    mode: QueryMode,
     card: Card,
-    tableMetadata: TableMetadata,
-    navigateToNewCardInsideQB: any => void
+    question: Question,
+    setCardAndRun: (card: Card) => void,
+    navigateToNewCardInsideQB: (any) => void
 };
 
 type State = {
-    isVisible: boolean,
-    isOpen: boolean,
-    selectedActionIndex: ?number
+    iconIsVisible: boolean,
+    popoverIsOpen: boolean,
+    isClosing: boolean,
+    selectedActionIndex: ?number,
 };
 
 const CIRCLE_SIZE = 48;
@@ -37,8 +36,9 @@ const POPOVER_WIDTH = 350;
 export default class ActionsWidget extends Component {
     props: Props;
     state: State = {
-        isVisible: false,
-        isOpen: false,
+        iconIsVisible: false,
+        popoverIsOpen: false,
+        isClosing: false,
         selectedActionIndex: null
     };
 
@@ -51,64 +51,74 @@ export default class ActionsWidget extends Component {
     }
 
     handleMouseMoved = () => {
-        if (!this.state.isVisible) {
-            this.setState({ isVisible: true });
+        // Don't auto-show or auto-hide the icon if popover is open
+        if (this.state.popoverIsOpen) return;
+
+        if (!this.state.iconIsVisible) {
+            this.setState({ iconIsVisible: true });
         }
         this.handleMouseStoppedMoving();
     };
 
     handleMouseStoppedMoving = _.debounce(
         () => {
-            this.setState({ isVisible: false });
+            if (this.state.iconIsVisible) {
+                this.setState({ iconIsVisible: false });
+            }
         },
         1000
     );
 
     close = () => {
-        this.setState({ isOpen: false, selectedActionIndex: null });
+        this.setState({ isClosing: true, popoverIsOpen: false, selectedActionIndex: null });
+        // Needed because when closing the action widget by clicking compass, this is triggered first
+        // on mousedown (by OnClickOutsideWrapper) and toggle is triggered on mouseup
+        setTimeout(() => this.setState({ isClosing: false }), 500);
     };
 
     toggle = () => {
-        if (!this.state.isOpen) {
+        if (this.state.isClosing) return;
+
+        if (!this.state.popoverIsOpen) {
             MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");
         }
         this.setState({
-            isOpen: !this.state.isOpen,
+            popoverIsOpen: !this.state.popoverIsOpen,
             selectedActionIndex: null
         });
     };
 
     handleOnChangeCardAndRun = ({ nextCard }: { nextCard: Card|UnsavedCard}) => {
+        // TODO: move lineage logic to Question?
         const { card: previousCard } = this.props;
         this.props.navigateToNewCardInsideQB({ nextCard, previousCard });
     }
 
     handleActionClick = (index: number) => {
-        const { mode, card, tableMetadata } = this.props;
-        const action = getModeActions(mode, card, tableMetadata)[index];
-        if (action && action.popover) {
-            this.setState({ selectedActionIndex: index });
-        } else if (action && action.url) {
-          const nextUrl = action.url();
-          if(nextUrl){
-              MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-              this.props.onChangeLocation(nextUrl);
-          }
-        }
-        else if (action && action.card) {
-            const nextCard = action.card();
-            if (nextCard) {
-                MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun({ nextCard });
+        const { question } = this.props;
+        const mode = question.mode()
+        if (mode) {
+            const action = mode.actions()[index];
+            if (action && action.popover) {
+                this.setState({ selectedActionIndex: index });
+            } else if (action && action.question) {
+                const nextQuestion = action.question();
+                if (nextQuestion) {
+                    MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
+                    this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
+                }
+                this.close();
             }
-            this.close();
+        } else {
+            console.warn("handleActionClick: Question mode is missing")
         }
     };
     render() {
-        const { className, mode, card, tableMetadata } = this.props;
-        const { isOpen, isVisible, selectedActionIndex } = this.state;
+        const { className, question } = this.props;
+        const { popoverIsOpen, iconIsVisible, selectedActionIndex } = this.state;
 
-        const actions: ClickAction[] = getModeActions(mode, card, tableMetadata);
+        const mode = question.mode();
+        const actions = mode ? mode.actions() : [];
         if (actions.length === 0) {
             return null;
         }
@@ -120,12 +130,12 @@ export default class ActionsWidget extends Component {
         return (
             <div className={cx(className, "relative")}>
                 <div
-                    className="circular bg-brand flex layout-centered m4 cursor-pointer"
+                    className="circular bg-brand flex layout-centered m3 cursor-pointer"
                     style={{
                         width: CIRCLE_SIZE,
                         height: CIRCLE_SIZE,
                         transition: "opacity 300ms ease-in-out",
-                        opacity: isOpen || isVisible ? 1 : 0,
+                        opacity: popoverIsOpen || iconIsVisible ? 1 : 0,
                         boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.2)"
                     }}
                     onClick={this.toggle}
@@ -135,14 +145,14 @@ export default class ActionsWidget extends Component {
                         className="text-white"
                         style={{
                             transition: "transform 500ms ease-in-out",
-                            transform: isOpen
+                            transform: popoverIsOpen
                                 ? "rotate(0deg)"
                                 : "rotate(720deg)"
                         }}
                         size={NEEDLE_SIZE}
                     />
                 </div>
-                {isOpen &&
+                {popoverIsOpen &&
                     <OnClickOutsideWrapper handleDismissal={() => {
                         MetabaseAnalytics.trackEvent("Actions", "Dismissed Action Menu");
                         this.close();

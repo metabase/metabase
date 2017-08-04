@@ -10,7 +10,7 @@
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -78,7 +78,8 @@
    :row_count 1
    :data      {:rows        [[1]]
                :columns     ["count"]
-               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer}]
+               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer
+                              :remapped_to nil, :remapped_from nil}]
                :native_form {:collection "venues"
                              :query      native-query}}}
   (-> (qp/process-query {:native   {:query      native-query
@@ -115,15 +116,6 @@
               :base-type :type/Integer
               :pk? true}}}
   (driver/describe-table (MongoDriver.) (data/db) (Table (data/id :venues))))
-
-;; ANALYZE-TABLE
-(datasets/expect-with-engine :mongo
-  {:row_count 100
-   :fields    [{:id (data/id :venues :category_id) :values [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]}
-               {:id (data/id :venues :name),       :values (db/select-one-field :values FieldValues, :field_id (data/id :venues :name))}
-               {:id (data/id :venues :price),      :values [1 2 3 4]}]}
-  (let [venues-table (Table (data/id :venues))]
-    (driver/analyze-table (MongoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 

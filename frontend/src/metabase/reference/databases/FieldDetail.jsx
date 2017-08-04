@@ -36,7 +36,7 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 
-const interestingQuestions = (database, table, field) => {
+const interestingQuestions = (database, table, field, metadata) => {
     return [
         {
             text: `Number of ${table.display_name} grouped by ${field.display_name}`,
@@ -46,7 +46,8 @@ const interestingQuestions = (database, table, field) => {
                 tableId: table.id,
                 fieldId: field.id,
                 getCount: true,
-                visualization: 'bar'
+                visualization: 'bar',
+                metadata
             })
         },
         {
@@ -57,7 +58,8 @@ const interestingQuestions = (database, table, field) => {
                 tableId: table.id,
                 fieldId: field.id,
                 getCount: true,
-                visualization: 'pie'
+                visualization: 'pie',
+                metadata
             })
         },
         {
@@ -66,7 +68,8 @@ const interestingQuestions = (database, table, field) => {
             link: getQuestionUrl({
                 dbId: database.id,
                 tableId: table.id,
-                fieldId: field.id
+                fieldId: field.id,
+                metadata
             })
         }
     ]
@@ -128,6 +131,7 @@ export default class FieldDetail extends Component {
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
+        metadata: PropTypes.object
     };
 
     render() {
@@ -146,6 +150,7 @@ export default class FieldDetail extends Component {
             handleSubmit,
             resetForm,
             submitting,
+            metadata
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
@@ -226,7 +231,7 @@ export default class FieldDetail extends Component {
                             </li>
 
 
-                            { !isEditing && 
+                            { !isEditing &&
                                 <li className="relative">
                                     <Detail
                                         id="base_type"
@@ -246,7 +251,16 @@ export default class FieldDetail extends Component {
                                 </li>
                             { !isEditing &&
                                 <li className="relative">
-                                    <UsefulQuestions questions={interestingQuestions(this.props.database, this.props.table, this.props.field)} />
+                                    <UsefulQuestions
+                                        questions={
+                                            interestingQuestions(
+                                                this.props.database,
+                                                this.props.table,
+                                                this.props.field,
+                                                metadata
+                                            )
+                                        }
+                                    />
                                 </li>
                             }
 

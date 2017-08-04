@@ -369,16 +369,19 @@
 
 
 (defn- user-facing-info [setting]
-  (let [k (:name setting)
-        v (get k)]
-    {:key         k
-     :value       (when (and (not= v (env-var-value setting))
-                             (not= v (:default setting)))
-                    v)
-     :description (:description setting)
-     :default     (or (when (env-var-value setting)
-                        (format "Using $%s" (env-var-name setting)))
-                      (:default setting))}))
+  (let [k         (:name setting)
+        v         (get k)
+        env-value (env-var-value setting)]
+    {:key            k
+     :value          (when (and (not= v env-value)
+                                (not= v (:default setting)))
+                       v)
+     :is_env_setting (boolean env-value)
+     :env_name       (env-var-name setting)
+     :description    (:description setting)
+     :default        (or (when env-value
+                           (format "Using $%s" (env-var-name setting)))
+                         (:default setting))}))
 
 (defn all
   "Return a sequence of Settings maps in a format suitable for consumption by the frontend.

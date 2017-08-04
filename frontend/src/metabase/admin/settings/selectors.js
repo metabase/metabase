@@ -60,6 +60,11 @@ const SECTIONS = [
                 key: "enable-advanced-humanization",
                 display_name: "Friendly Table and Field Names",
                 type: "boolean"
+            },
+            {
+                key: "enable-nested-queries",
+                display_name: "Enable Nested Queries",
+                type: "boolean"
             }
         ]
     },
@@ -199,14 +204,12 @@ const SECTIONS = [
             {
                 key: "ldap-bind-dn",
                 display_name: "Username or DN",
-                type: "string",
-                required: true
+                type: "string"
             },
             {
                 key: "ldap-password",
                 display_name: "Password",
-                type: "password",
-                required: true
+                type: "password"
             },
             {
                 key: "ldap-user-base",

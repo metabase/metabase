@@ -15,8 +15,6 @@
              [permissions-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [pulse-channel :refer [PulseChannel]]
-             [raw-column :refer [RawColumn]]
-             [raw-table :refer [RawTable]]
              [revision :refer [Revision]]
              [segment :refer [Segment]]
              [setting :as setting]
@@ -86,21 +84,24 @@
   (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
-  [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (boolean-ids-and-timestamps v)
-              (coll? v) (mapv boolean-ids-and-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
-               (if (or (= :id k)
-                       (.endsWith (name k) "_id")
-                       (= :created_at k)
-                       (= :updated_at k)
-                       (= :last_analyzed k))
-                 [k (not (nil? v))]
-                 [k (f v)])))))
+  "Useful for unit test comparisons. Converts map keys found in `DATA`
+  satisfying `PRED` with booleans when not nil"
+  ([data]
+   (boolean-ids-and-timestamps
+    (every-pred (some-fn keyword? string?)
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id}
+                         #(.endsWith (name %) "_id")))
+    data))
+  ([pred data]
+   (walk/prewalk (fn [maybe-map]
+                   (if (map? maybe-map)
+                     (reduce-kv (fn [acc k v]
+                                  (if (pred k)
+                                    (assoc acc k (not (nil? v)))
+                                    (assoc acc k v)))
+                                {} maybe-map)
+                     maybe-map))
+                 data)))
 
 
 (defn- user-id [username]
@@ -170,16 +171,6 @@
                                     :schedule_type :daily
                                     :schedule_hour 15})})
 
-(u/strict-extend (class RawColumn)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
-                                :name   (random-name)})})
-
-(u/strict-extend (class RawTable)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
-                                :name   (random-name)})})
-
 (u/strict-extend (class Revision)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
@@ -217,7 +208,7 @@
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
 
-(defn resolve-private-vars* [source-namespace target-namespace symbols]
+(defn ^:deprecated resolve-private-vars* [source-namespace target-namespace symbols]
   {:pre [(namespace-or-symbol? source-namespace)
          (namespace-or-symbol? target-namespace)
          (every? symbol? symbols)]}
@@ -227,11 +218,15 @@
                          (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]
     (intern target-namespace symb varr)))
 
-(defmacro resolve-private-vars
+(defmacro ^:deprecated resolve-private-vars
   "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
 
     (resolve-private-vars metabase.driver.generic-sql.sync
-      field-avg-length field-percent-urls)"
+      field-avg-length field-percent-urls)
+
+   DEPRECATED: Just refer to vars directly using `#'` syntax instead of using this macro.
+
+     (#'some-ns/field-avg-length ...)"
   [namespc & symbols]
   `(resolve-private-vars* (quote ~namespc) *ns* (quote ~symbols)))
 

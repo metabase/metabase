@@ -3,6 +3,7 @@ import { Lexer, Parser, getImage } from "chevrotain";
 import _ from "underscore";
 
 import { formatFieldName, formatExpressionName, formatAggregationName, getAggregationFromName } from "../expressions";
+import { isNumeric } from "metabase/lib/schema_metadata";
 
 import {
     allTokens,
@@ -396,7 +397,7 @@ export function suggest(source, {
                     let aggregationOption = _.findWhere(tableMetadata.aggregation_options, { short: aggregationShort });
                     fields = aggregationOption && aggregationOption.fields && aggregationOption.fields[0] || []
                 } else if (startRule === "expression") {
-                    fields = tableMetadata.fields;
+                    fields = tableMetadata.fields.filter(isNumeric);
                 }
                 finalSuggestions.push(...fields.map(field => ({
                     type: "fields",

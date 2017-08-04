@@ -1,15 +1,23 @@
 
-## Asking Questions
+## Asking questions
 ---
-Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask Metabase a question, click the New Question button at the top of the screen to go to the question builder.  
+Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask Metabase a question, click the New Question button at the top of the screen to go to the question builder. (Note: to [create a new SQL query](04-asking-questions.html#using-sql), click the console icon in the top right of the new question screen.)
 
 ![queryinterfacebar](images/QueryInterfaceBar.png)
 
 Questions are made up of a number of parts: source data, filters, and answer output.
 
-### Source Data
+### Source data
 ---
-All of the data in databases are in tables. Typically, tables will be named for the thing that each row in the table contains. For example, in a Customers table, each row in the table would represent a single customer. This means that when you’re thinking about how to phrase your question, you’ll need to decide what your question is about, and which table has that information in it. The first dropdown menu in the question builder is where you’ll choose the table you want.  
+All of the data in databases are in tables. Typically, tables will be named for the thing that each row in the table contains. For example, in a Customers table, each row in the table would represent a single customer. This means that when you’re thinking about how to phrase your question, you’ll need to decide what your question is about, and which table has that information in it.
+
+The first dropdown menu in the question builder is where you’ll choose the database and table you want.
+
+#### Using saved questions as source data
+
+If you've [saved some questions](06-sharing-answers.html), in the Data menu you'll see the option to use one of your saved questions as source data. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used in a question just like any other table in your database.
+
+You can use any saved question as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table.
 
 ### Filters
 ---
@@ -47,7 +55,7 @@ Now the relative date will be referencing the past 30 days from *today*, *not* f
 #### Using segments
 If your Metabase admins have created special named filters, called segments, for the table you’re viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are shortcuts to sets of filters that are commonly used in your organization. They might be something like “Active Users,” or “Most Popular Products.”
 
-### Answer Output
+### Answer output
 ---
 The last section of the question builder is where you select what you want the output of your answer to be, under the View dropdown. You’re basically telling Metabase, “I want to view the…” Metabase can output the answer to your question in four different ways:
 
@@ -116,7 +124,7 @@ Say we had a table of baseball games, each row representing a single game, and w
 
 The words in the quotes are the names of the fields in our table. If you start typing in this box, Metabase will show you fields in the current table that match what you’ve typed, and you can select from this list to autocomplete the field name.
 
-Right now, you can only use the following math operators in your formulas: +, –, * (multiplication), and / (division). You can also use parentheses to clarify the order of operations.
+Right now, you can only use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division). You can also use parentheses to clarify the order of operations.
 
 Once you’ve written your formula and given your new field a name, select `Raw Data` for your view, and click the `Get Answer` button to see your new field appended to your current table. It’ll be on the far right of the table. **Note that this new field is NOT permanently added to this table.** It will only be kept if you save a question that uses it.
 

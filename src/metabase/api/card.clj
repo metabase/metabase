@@ -252,7 +252,7 @@
   (when collection_id
     (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set* (perms/collection-readwrite-path collection_id))))
   ;; everything is g2g, now save the card
-  (->> (db/insert! Card
+  (let [card (db/insert! Card
          :creator_id             api/*current-user-id*
          :dataset_query          dataset_query
          :description            description
@@ -260,8 +260,10 @@
          :name                   name
          :visualization_settings visualization_settings
          :collection_id          collection_id
-         :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum))
-       (events/publish-event! :card-create)))
+         :result_metadata        (result-metadata dataset_query result_metadata metadata_checksum))]
+       (events/publish-event! :card-create card)
+       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with returned one -- See #4283
+       (hydrate card :creator :dashboard_count :labels :can_write :collection)))
 
 
 ;;; ------------------------------------------------------------ Updating Cards ------------------------------------------------------------

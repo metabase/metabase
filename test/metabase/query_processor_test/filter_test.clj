@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]))
 
 ;;; ------------------------------------------------------------ "FILTER" CLAUSE ------------------------------------------------------------

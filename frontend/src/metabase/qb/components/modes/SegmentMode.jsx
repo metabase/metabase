@@ -2,7 +2,6 @@
 
 import { DEFAULT_ACTIONS } from "../actions";
 import { DEFAULT_DRILLS } from "../drill";
-import XRaySegment from "../actions/XRaySegment";
 
 import SummarizeBySegmentMetricAction
     from "../actions/SummarizeBySegmentMetricAction";

@@ -21,14 +21,8 @@ const thunkWithDispatchAction = ({ dispatch, getState }) => next => action => {
 
         return action(dispatchAugmented, getState);
     }
-
     return next(action);
 };
-
-let middleware = [thunkWithDispatchAction, promise];
-if (DEBUG) {
-    middleware.push(logger);
-}
 
 const devToolsExtension = window.devToolsExtension ? window.devToolsExtension() : (f => f);
 
@@ -40,7 +34,12 @@ export function getStore(reducers, history, intialState, enhancer = (a) => a) {
         routing,
     });
 
-    middleware.push(routerMiddleware(history));
+    const middleware = [
+        thunkWithDispatchAction,
+        promise,
+        ...(DEBUG ? [logger] : []),
+        routerMiddleware(history)
+    ];
 
     return createStore(reducer, intialState, compose(
         applyMiddleware(...middleware),

@@ -540,45 +540,39 @@
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
 
-(def emoji-progress-bar
-  "Create a string that shows progress for something, e.g. a database sync process.
 
-     (emoji-progress-bar 10 40)
-       -> \"[************······································] 😒   25%"
-  (let [^:const meter-width    50
-        ^:const progress-emoji ["😱"  ; face screaming in fear
-                                "😢"  ; crying face
-                                "😞"  ; disappointed face
-                                "😒"  ; unamused face
-                                "😕"  ; confused face
-                                "😐"  ; neutral face
-                                "😬"  ; grimacing face
-                                "😌"  ; relieved face
-                                "😏"  ; smirking face
-                                "😋"  ; face savouring delicious food
-                                "😊"  ; smiling face with smiling eyes
-                                "😍"  ; smiling face with heart shaped eyes
-                                "😎"] ; smiling face with sunglasses
-        percent-done->emoji    (fn [percent-done]
-                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
-    (fn [completed total]
-      (let [percent-done (float (/ completed total))
-            filleds      (int (* percent-done meter-width))
-            blanks       (- meter-width filleds)]
-        (str "["
-             (s/join (repeat filleds "*"))
-             (s/join (repeat blanks "·"))
-             (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
+(defprotocol ^:private IFilteredStacktrace
+  (filtered-stacktrace [this]
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
 
-(defn filtered-stacktrace
-  "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
-  [^Throwable e]
-  (when e
-    (when-let [stacktrace (.getStackTrace e)]
-      (vec (for [frame stacktrace
-                 :let  [s (str frame)]
-                 :when (re-find #"metabase" s)]
-             (s/replace s #"^metabase\." ""))))))
+;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
+;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
+;; a VerifyError. Adding a layer of indirection here avoids the problem. Once we upgrade to Clojure 1.9
+;; we should be able to remove this code.
+(defn- throwable-get-stack-trace [^Throwable t]
+  (.getStackTrace t))
+
+(defn- thread-get-stack-trace [^Thread t]
+  (.getStackTrace t))
+
+(extend nil
+  IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
+
+(extend Throwable
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
+
+(extend Thread
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (filtered-stacktrace (thread-get-stack-trace this)))})
+
+;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
+(extend (Class/forName "[Ljava.lang.StackTraceElement;")
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (vec (for [frame this
+                                                         :let  [s (str frame)]
+                                                         :when (re-find #"metabase" s)]
+                                                     (s/replace s #"^metabase\." ""))))})
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
@@ -733,12 +727,6 @@
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
-
-(defn string-or-keyword?
-  "Is X a `String` or a `Keyword`?"
-  [x]
-  (or (string? x)
-      (keyword? x)))
 
 (defn key-by
   "Convert a sequential COLL to a map of `(f item)` -> `item`.

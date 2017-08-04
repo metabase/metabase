@@ -369,8 +369,8 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
                 .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
         }
 
-        if (dashboard.param_values) {
-            dispatch(addParamValues(dashboard.param_values));
+        if (result.param_values) {
+            dispatch(addParamValues(result.param_values));
         }
 
         return {
@@ -516,9 +516,17 @@ export const navigateToNewCardFromDashboard = createThunkAction(
             const {dashboardId, dashboards, parameterValues} = getState().dashboard;
             const dashboard = dashboards[dashboardId];
             const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query);
+            const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
+
+            // clicking graph title with a filter applied loses display type and visualization settings; see #5278
+            const cardWithVizSettings = {
+                ...cardAfterClick,
+                display: cardAfterClick.display || previousCard.display,
+                visualization_settings: cardAfterClick.visualization_settings || previousCard.visualization_settings
+            }
 
             const url = questionUrlWithParameters(
-                getCardAfterVisualizationClick(nextCard, previousCard),
+                cardWithVizSettings,
                 metadata,
                 dashboard.parameters,
                 parameterValues,

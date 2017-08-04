@@ -3,7 +3,7 @@
   (:require [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -149,8 +149,8 @@
             (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
-;; (TODO - this isn't tested against Mongo, BigQuery or Presto because those drivers don't currently work correctly with multiple columns with the same name)
-(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery :presto)
+;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with multiple columns with the same name)
+(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
   [(aggregate-col :count)
    (assoc (aggregate-col :count)
      :display_name    "Count 2"

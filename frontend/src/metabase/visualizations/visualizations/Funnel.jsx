@@ -16,6 +16,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import { TitleLegendHeader } from "metabase/visualizations/components/TitleLegendHeader";
 
 export default class Funnel extends Component {
     props: VisualizationProps;
@@ -108,17 +109,27 @@ export default class Funnel extends Component {
     render() {
         const { settings } = this.props;
 
+        const hasTitle = settings["card.title"];
+
         if (settings["funnel.type"] === "bar") {
             return <FunnelBar {...this.props} />
         } else {
             const { actionButtons, className, onChangeCardAndRun, series } = this.props;
             return (
                 <div className={cx(className, "flex flex-column p1")}>
+                    { hasTitle &&
+                        <TitleLegendHeader
+                            series={series}
+                            settings={settings}
+                            onChangeCardAndRun={onChangeCardAndRun}
+                            actionButtons={actionButtons}
+                        />
+                    }
                     <LegendHeader
                         className="flex-no-shrink"
                         // $FlowFixMe
                         series={series._raw || series}
-                        actionButtons={actionButtons}
+                        actionButtons={!hasTitle && actionButtons}
                         onChangeCardAndRun={onChangeCardAndRun}
                     />
                     <FunnelNormal {...this.props} className="flex-full" />

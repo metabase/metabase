@@ -73,7 +73,7 @@
              :id         $
              :details    $
              :updated_at $
-             :features   (mapv name (driver/features (driver/engine->driver (:engine db))))}))))
+             :features   (map name (driver/features (driver/engine->driver (:engine db))))}))))
 
 
 ;; # DB LIFECYCLE ENDPOINTS
@@ -126,11 +126,6 @@
       (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
               :features)))
 
-:description             nil
-                               :entity_type             nil
-                               :caveats                 nil
-                               :points_of_interest      nil
-                               :visibility_type         nil
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil
@@ -161,16 +156,23 @@
 
 
 ;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!
-;; If you're writing a test that needs this, fix your brain and your test
+;; If you're writing a NEW test that needs this, fix your brain and your test!
+;; To reïterate, this is BAD BAD BAD BAD BAD BAD! It will break tests if you use it! Don't use it!
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
-  (db/delete! Database :id [:not-in (into (set skip)
-                                          (for [engine datasets/all-valid-engines
-                                                :let   [id (datasets/when-testing-engine engine
-                                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
-                                                :when  id]
-                                            id))]))
+  (let [ids-to-skip (into (set skip)
+                          (for [engine datasets/all-valid-engines
+                                :let   [id (datasets/when-testing-engine engine
+                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
+                                :when  id]
+                            id))]
+    (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
+      (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+                                         "WARNING: deleting randomly created databases:\n%s\n"
+                                         "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
+                 (u/pprint-to-str dbs))))
+    (db/delete! Database :id [:not-in ids-to-skip])))
 
 
 ;; ## GET /api/database
@@ -243,6 +245,19 @@
    :preview_display    true
    :parent_id          nil})
 
+(defn- field-details [field]
+  (merge
+   default-field-details
+   (match-$ (hydrate/hydrate field :values)
+     {:updated_at         $
+      :id                 $
+      :raw_column_id      $
+      :created_at         $
+      :last_analyzed      $
+      :fingerprint        $
+      :fk_target_field_id $
+      :values             $})))
+
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
 (expect
@@ -259,36 +274,20 @@
                                   {:schema       "PUBLIC"
                                    :name         "CATEGORIES"
                                    :display_name "Categories"
-                                   :fields       [(merge default-field-details
-                                                         (match-$ (hydrate/hydrate (Field (id :categories :id)) :values)
-                                                           {:table_id           (id :categories)
-                                                            :special_type       "type/PK"
-                                                            :name               "ID"
-                                                            :display_name       "ID"
-                                                            :updated_at         $
-                                                            :id                 $
-                                                            :raw_column_id      $
-                                                            :created_at         $
-                                                            :last_analyzed      $
-                                                            :base_type          "type/BigInteger"
-                                                            :visibility_type    "normal"
-                                                            :fk_target_field_id $
-                                                            :values             $}))
-                                                  (merge default-field-details
-                                                         (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
-                                                           {:table_id           (id :categories)
-                                                            :special_type       "type/Name"
-                                                            :name               "NAME"
-                                                            :display_name       "Name"
-                                                            :updated_at         $
-                                                            :id                 $
-                                                            :raw_column_id      $
-                                                            :created_at         $
-                                                            :last_analyzed      $
-                                                            :base_type          "type/Text"
-                                                            :visibility_type    "normal"
-                                                            :fk_target_field_id $
-                                                            :values             $}))]
+                                   :fields       [(assoc (field-details (Field (id :categories :id)))
+                                                    :table_id        (id :categories)
+                                                    :special_type    "type/PK"
+                                                    :name            "ID"
+                                                    :display_name    "ID"
+                                                    :base_type       "type/BigInteger"
+                                                    :visibility_type "normal")
+                                                  (assoc (field-details (Field (id :categories :name)))
+                                                    :table_id           (id :categories)
+                                                    :special_type       "type/Name"
+                                                    :name               "NAME"
+                                                    :display_name       "Name"
+                                                    :base_type          "type/Text"
+                                                    :visibility_type    "normal")]
                                    :segments     []
                                    :metrics      []
                                    :rows         75
@@ -338,16 +337,17 @@
                    :query    inner-query-clauses}})
 
 (defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
-  {:name     "Saved Questions"
-   :id       database/virtual-id
-   :features ["basic-aggregations"]
-   :tables   card-tables})
+  {:name               "Saved Questions"
+   :id                 database/virtual-id
+   :features           ["basic-aggregations"]
+   :tables             card-tables
+   :is_saved_questions true})
 
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge {:id           (format "card__%d" (u/get-id card))
           :db_id        database/virtual-id
           :display_name (:name card)
-          :schema       "All questions"
+          :schema       "Everything else"
           :description  nil}
          kvs))
 
@@ -359,6 +359,20 @@
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
+
+;; Make sure saved questions are NOT included if the setting is disabled
+(expect
+  nil
+  (tt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+    (tu/with-temporary-setting-values [enable-nested-queries false]
+      ;; run the Card which will populate its result_metadata column
+      ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+      ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+      (some (fn [database]
+              (when (= (u/get-id database) database/virtual-id)
+                database))
+            ((user->client :crowberto) :get 200 "database" :include_cards true)))))
+
 
 ;; make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS
 (tt/expect-with-temp [Collection [stamp-collection {:name "Stamps"}]

@@ -1,0 +1,37 @@
+(ns metabase.test.mock.util)
+
+(def table-defaults
+  {:description             nil
+   :entity_type             nil
+   :caveats                 nil
+   :points_of_interest      nil
+   :show_in_getting_started false
+   :schema                  nil
+   :raw_table_id            false
+   :fields                  []
+   :rows                    nil
+   :updated_at              true
+   :entity_name             nil
+   :active                  true
+   :id                      true
+   :db_id                   true
+   :visibility_type         nil
+   :created_at              true})
+
+(def field-defaults
+  {:description        nil
+   :table_id           true
+   :caveats            nil
+   :points_of_interest nil
+   :fk_target_field_id false
+   :updated_at         true
+   :active             true
+   :parent_id          false
+   :special_type       nil
+   :id                 true
+   :raw_column_id      false
+   :last_analyzed      true
+   :position           0
+   :visibility_type    :normal
+   :preview_display    true
+   :created_at         true})

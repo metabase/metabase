@@ -43,7 +43,7 @@ Community support only at this time, but we have reports of Metabase instances r
 
 # Upgrading Metabase
 
-Before you attempt to upgrade Metabase, you should make a backup of the database just in case. While it is unlikely you will need to rollback, it will do wonders for your peace of mind.
+Before you attempt to upgrade Metabase, you should make a backup of the application database just in case. While it is unlikely you will need to roll back, it will do wonders for your peace of mind.
 
 How you upgrade Metabase depends on how you are running it. See below for information on how to update Metabase on managed platforms.
 
@@ -51,14 +51,14 @@ How you upgrade Metabase depends on how you are running it. See below for inform
 
 
 #### Docker Image
-If you are running it via docker, then you simply kill the docker process, and start a new container with the latest image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+If you are running Metabase via docker, then you simply need to kill the Docker process and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
 #### Jar file
-If you are running the JVM Jar file directly, then you simply kill the process, and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+If you are running the JVM Jar file directly, then you simply kill the process and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
 
-#### Mac OS X Application
-If you are using the Metabase app, you will be notified when there is a new version available. You will see a dialog displaying the changes in the latest version and prompt you to upgrade.
+#### macOS Application
+If you are using the Metabase macOS app, you will be notified when there is a new version available. You will see a dialog displaying the changes in the latest version and prompting you to upgrade.
 
 ![Autoupdate Confirmation Dialog](images/AutoupdateScreenshot.png)
 
@@ -113,7 +113,7 @@ You'll just need to set a JVM option to let it know explicitly how much memory i
 
     java -Xmx2g -jar metabase.jar
 
-Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase isn't the only process that'll be running. Generally, leaving 1-2 GB of RAM for these other processes should be enough; for example, you might set `-Xmx` to `1g` for an instance with 2 GB of RAM, `2g` for one with 4 GB of RAM, `6g` for an instance with 8 GB of RAM, and so forth. You may need to experment with these settings a bit to find the right number.
+Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase isn't the only process that'll be running. Generally, leaving 1-2 GB of RAM for these other processes should be enough; for example, you might set `-Xmx` to `1g` for an instance with 2 GB of RAM, `2g` for one with 4 GB of RAM, `6g` for an instance with 8 GB of RAM, and so forth. You may need to experiment with these settings a bit to find the right number.
 
 As above, you can use the environment variable `JAVA_TOOL_OPTIONS` to set JVM args instead of passing them directly to `java`. This is useful when running the Docker image,
 for example.
@@ -128,7 +128,7 @@ On Windows 10, if you see an error message like
 
     Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
 
-when running the JAR, you can unblock the file by right-clicking, clicking "Properties", and then clicking "Unblock".
+when running the JAR, you can unblock the file by right-clicking, clicking "Properties," and then clicking "Unblock."
 See Microsoft's documentation [here](https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/) for more details on unblocking downloaded files.
 
 There are a few other reasons why Metabase might not be able to connect to your H2 DB. Metabase connects to the DB over a TCP port, and it's possible
