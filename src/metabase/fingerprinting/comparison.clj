@@ -21,8 +21,7 @@
              (redux/post-complete
               (redux/fuse {:magnitude-a (redux/pre-step magnitude first)
                            :magnitude-b (redux/pre-step magnitude second)
-                           :product     (redux/pre-step + (fn [[a b]]
-                                                            (* a b)))})
+                           :product     (redux/pre-step + (partial apply *))})
               (fn [{:keys [magnitude-a magnitude-b product]}]
                 (- 1 (/ product magnitude-a magnitude-b))))
              (map vector a b)))

@@ -56,8 +56,8 @@
   "Transducer that sketches cardinality using HyperLogLog++.
    https://research.google.com/pubs/pub40671.html"
   ([] (HyperLogLogPlus. 14 25))
-  ([acc] (.cardinality acc))
-  ([acc x]
+  ([^HyperLogLogPlus acc] (.cardinality acc))
+  ([^HyperLogLogPlus acc x]
    (.offer acc x)
    acc))
 
@@ -141,27 +141,30 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defn- equidistant-bins
   [histogram]
   (if (h/categorical? histogram)
     (-> histogram h.impl/bins first :target :counts)
-    (let [{:keys [min max]}                      (h.impl/bounds histogram)
-          bin-width                              (h/optimal-bin-width histogram)
-          {:keys [min-value num-bins bin-width]} (nicer-breakout
-                                                  {:min-value min
-                                                   :max-value max
-                                                   :num-bins  (calculate-num-bins
-                                                               min max bin-width)
-                                                   :strategy  :num-bins})]
-      (->> min-value
-           (iterate (partial + bin-width))
-           (take (inc num-bins))
-           (map (fn [x]
-                  [x (h.impl/sum histogram x)]))
-           (partition 2 1)
-           (map (fn [[[x s1] [_ s2]]]
-                  [x (- s2 s1)]))))))
+    (let [{:keys [min max]} (h.impl/bounds histogram)]
+      (cond
+        (nil? min)  []
+        (= min max) [[min 1.0]]
+        :else       (let [{:keys [min-value num-bins bin-width]}
+                          (nicer-breakout
+                           {:min-value min
+                            :max-value max
+                            :num-bins  (->> histogram
+                                            h/optimal-bin-width
+                                            (calculate-num-bins min max))
+                            :strategy  :num-bins})]
+                      (->> min-value
+                           (iterate (partial + bin-width))
+                           (take (inc num-bins))
+                           (map (fn [x]
+                                  [x (h.impl/sum histogram x)]))
+                           (partition 2 1)
+                           (map (fn [[[x s1] [_ s2]]]
+                                  [x (- s2 s1)]))))))))
 
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
@@ -327,54 +330,45 @@
       (select-keys (tide/decompose period ts) [:trend :seasonal :reminder]))))
 
 (defmethod fingerprinter [DateTime Num]
-  [{:keys [max-cost scale]} field]
-  (let [scale (or scale :raw)]
-    (redux/post-complete
-     (redux/pre-step
-      (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                   :series            (if (= scale :raw)
-                                        conj
-                                        (redux/post-complete
-                                         conj
-                                         (partial fill-timeseries
-                                                  (case scale
-                                                    :month (t/months 1)
-                                                    :week  (t/weeks 1)
-                                                    :day   (t/days 1)))))})
-      (fn [[x y]]
-        [(-> x t.format/parse to-double) y]))
-     (fn [{:keys [series linear-regression]}]
-       (let [ys-r (->> series (map second) reverse not-empty)]
-         (merge {:scale                  scale
-                 :type                   [DateTime Num]
-                 :field                  field
-                 :series                 series
-                 :linear-regression      linear-regression
-                 :seasonal-decomposition
-                 (when (and (not= scale :raw)
-                            (costs/unbounded-computation? max-cost))
-                   (decompose-timeseries scale series))}
-                (case scale
-                  :month {:YoY          (growth (first ys-r) (nth ys-r 11))
-                          :YoY-previous (growth (second ys-r) (nth ys-r 12))
-                          :MoM          (growth (first ys-r) (second ys-r))
-                          :MoM-previous (growth (second ys-r) (nth ys-r 2))}
-                  :week  {:YoY          (growth (first ys-r) (nth ys-r 51))
-                          :YoY-previous (growth (second ys-r) (nth ys-r 52))
-                          :WoW          (growth (first ys-r) (second ys-r))
-                          :WoW-previous (growth (second ys-r) (nth ys-r 2))}
-                  :day   {:DoD          (growth (first ys-r) (second ys-r))
-                          :DoD-previous (growth (second ys-r) (nth ys-r 2))}
-                  :raw   nil)))))))
+  [{:keys [max-cost resolution query]} field]
+  (redux/post-complete
+   (redux/pre-step
+    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                 :series            (if (nil? resolution)
+                                      conj
+                                      (redux/post-complete
+                                       conj
+                                       (partial fill-timeseries
+                                                (case resolution
+                                                  :month (t/months 1)
+                                                  :week  (t/weeks 1)
+                                                  :day   (t/days 1)))))})
+    (fn [[x y]]
+      [(-> x t.format/parse to-double) y]))
+   (fn [{:keys [series linear-regression]}]
+     (let [ys-r (->> series (map second) reverse not-empty)]
+       (merge {:resolution             resolution
+               :type                   [DateTime Num]
+               :field                  field
+               :series                 series
+               :linear-regression      linear-regression
+               :seasonal-decomposition
+               (when (and resolution
+                          (costs/unbounded-computation? max-cost))
+                 (decompose-timeseries resolution series))}
+              (when (costs/alow-joins? series)
+                {:YoY 0
+                 :MoM 0
+                 :WoW 0
+                 :DoD 0}))))))
 
 (defmethod comparison-vector [DateTime Num]
   [fingerprint]
-  (dissoc fingerprint :type :scale :field))
+  (dissoc fingerprint :type :resolution :field))
 
 (defmethod x-ray [DateTime Num]
   [fingerprint]
-  (update fingerprint :series #(for [[x y] %]
-                                 [(from-double x) y])))
+  (dissoc fingerprint :series))
 
 ;; This one needs way more thinking
 ;;

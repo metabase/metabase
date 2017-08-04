@@ -25,8 +25,7 @@
 (def ^:private ^:const Scale
   (s/maybe (s/enum "month"
                    "week"
-                   "day"
-                   "raw")))
+                   "day")))
 
 (defn- max-cost
   [query computation]
@@ -75,32 +74,6 @@
        (api/read-check Card)
        (f/fingerprint {:max-cost (max-cost max_query_cost
                                            max_computation_cost)})
-       f/x-ray))
-
-(api/defendpoint GET "/metric/:mid/field/:fid"
-  "Get fingerprint for `Metric` by Field."
-  [mid fid max_query_cost max_computation_cost scale]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost
-   scale                Scale}
-  (f/x-ray
-   (f/multifield-fingerprint
-    {:max-cost (max-cost max_query_cost max_computation_cost)
-     :scale    (or (keyword scale) :day)}
-    (api/read-check Field fid)
-    (api/read-check Metric mid))))
-
-(api/defendpoint GET "/fields/:id1/:id2"
-  "Get a multi-field fingerprint for `Field`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost scale]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost
-   scale                Scale}
-  (->> [id1 id2]
-       (map (partial api/read-check Field))
-       (apply f/multifield-fingerprint
-              {:max-cost (max-cost max_query_cost max_computation_cost)
-               :scale    (or (keyword scale) :day)})
        f/x-ray))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"

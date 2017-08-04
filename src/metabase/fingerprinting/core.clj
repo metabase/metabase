@@ -40,10 +40,7 @@
           * `:max-cost`   a map with keys `:computation` and `:query` which
                           limits maximal resource expenditure when computing
                           the fingerprint.
-                          See `metabase.fingerprinting.costs` for details.
-
-          * `:scale`      controls pre-aggregation by time. Can be one of:
-                          `:day`, `week`, `:month`, or `:raw`."
+                          See `metabase.fingerprinting.costs` for details."
     :arglists '([opts field])}
   fingerprint #(type %2))
 
@@ -70,18 +67,27 @@
 
 (defmethod fingerprint (type Card)
   [opts card]
-  (let [{:keys [rows cols]} (metadata/query-values
-                             (:database_id card)
-                             (merge (extract-query-opts opts)
-                                    (-> card :dataset_query :query)))
+  (let [resolution (let [[head _ resolution] (-> card
+                                                 :dataset_query
+                                                 :query
+                                                 :breakout
+                                                 first)]
+                     (when (= head :datetime-field)
+                       resolution))
+        query (-> card :dataset_query :query)
+        {:keys [rows cols]} (->> query
+                                 (merge (extract-query-opts opts))
+                                 (metadata/query-values (:database_id card)))
         {:keys [breakout aggregation]} (group-by :source cols)
         fields [(first breakout)
                 (or (first aggregation) (second breakout))]]
     {:constituents [(fingerprint-field opts (first fields) (map first rows))
                     (fingerprint-field opts (second fields) (map second rows))]
-     :fingerprint  (merge (fingerprint-field opts fields rows)
-                          {:card  card
-                           :table (Table (:table_id card))})}))
+     :fingerprint  (merge
+                    (fingerprint-field (assoc opts :resolution resolution)
+                                       fields rows)
+                    {:card  card
+                     :table (Table (:table_id card))})}))
 
 (defmethod fingerprint (type Segment)
   [opts segment]
@@ -95,40 +101,6 @@
 (defmethod fingerprint (type Metric)
   [_ metric]
   {:metric metric})
-
-(defn- build-query
-  [{:keys [scale] :as opts} a b]
-  (merge (extract-query-opts opts)
-         (cond
-           (and (isa? (#'f/field-type a) #'f/DateTime)
-                (not= scale :raw)
-                (instance? (type Metric) b))
-           (merge (:definition b)
-                  {:breakout [[:datetime-field [:field-id (:id a)] scale]]})
-
-           (and (isa? (#'f/field-type a) #'f/DateTime)
-                (not= scale :raw)
-                (isa? (#'f/field-type b) #'f/Num))
-           {:source-table (:table_id a)
-            :breakout     [[:datetime-field [:field-id (:id a)] scale]]
-            :aggregation  [:sum [:field-id (:id b)]]}
-
-           :else
-           {:source-table (:table_id a)
-            :fields       [[:field-id (:id a)]
-                           [:field-id (:id b)]]})))
-
-(defn multifield-fingerprint
-  "Holistically fingerprint dataset with multiple columns.
-   Takes and additional option `:scale` which controls how timeseries data
-   is aggregated. Possible values: `:month`, `week`, `:day`, `:raw`."
-  [opts a b]
-  (assert (= (:table_id a) (:table_id b)))
-  {:fingerprint  (->> (metadata/query-values (metadata/db-id a)
-                                             (build-query opts a b))
-                     :rows
-                     (fingerprint-field opts [a b]))
-   :constituents (map (partial fingerprint opts) [a b])})
 
 (defn compare-fingerprints
   "Compare fingerprints of two models."
