@@ -56,32 +56,54 @@ class TroubleshootingApp extends Component {
     }
     render () {
         return (
-            <LoadingAndErrorWrapper loading={!this.props.troubleShootingInfo}>
-                { this.props.troubleShootingInfo && 
-                    <div>
-                        <h1>Helpful Troubleshooting Information</h1>
+            <div className="wrapper">
+                <div className="my4">
+                    <h2>Helpful Troubleshooting Information</h2>
+                </div>
+                
+                <LoadingAndErrorWrapper loading={!this.props.troubleShootingInfo}>
+                            { () => 
+                                <div> 
+                                    <div className="my3">
+                                        <h3 className="mb2 text-grey-4 text-uppercase">Global Timezones</h3>
+                                        <ul className="bordered rounded p3">
+                                            <li className="mb1 h4">Server Timezone : <b>{this.props.troubleShootingInfo.server_timezone}</b> </li>
+                                            <li className="mb1 h4">Reporting Timezone : <b>{this.props.troubleShootingInfo.reporting_timezone}</b> </li>
+                                            <li className="mb1 h4">Browser Timezone : <b>{this.props.troubleShootingInfo.reporting_timezone}</b> </li>
+                                        </ul>
+                                    </div>
+    
+                                    <div className="my3">
+                                        <h3 className="text-grey-4 text-uppercase" >Database Timezones</h3>
+                                         <table className="ContentTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Timezone</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                            {this.props.troubleShootingInfo.databases.map((database)=>
+                                                <tr> 
+                                                    <td> <a href={"/admin/databases/"+ database.id}>{database.name}</a> </td>
+                                                    <td> {database.tz}</td>
+                                                </tr>
+                                            )}
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                        <h2>Global Timezones</h2>
-                        <ul>
-                            <li>Server Timezone : {this.props.troubleShootingInfo.server_timezone} </li>
-                            <li>Reporting Timezone : {this.props.troubleShootingInfo.reporting_timezone} </li>
-                        </ul>
-
-                        <h2>Database Timezones</h2>
-                        <ul>
-                        
-                        {this.props.troubleShootingInfo.databases.map((database)=>
-                            <li> <a href={"/admin/databases/"+ database.id}>{database.name}</a> Timezone: {database.tz}
-                            </li>)
-                        }
-                        </ul>
-
-                        <h2>Client Info</h2>
-                        <p> Metadata Cache Size (bytes) : {this.props.reduxStoreSize} </p>
-                    </div>
-                }
-            </LoadingAndErrorWrapper>
-        )
+                                    <div className="my3">
+                                        <h3 className="mb2 text-grey-4 text-uppercase">Client Info</h3>
+                                        <ul className="bordered rounded p3">
+                                            <li className="mb1 h4"> Metadata Cache Size (bytes) : <b>{this.props.reduxStoreSize}</b> </li>
+                                        </ul>
+                                    </div>
+                                </div> 
+                            }
+                </LoadingAndErrorWrapper>
+            </div>
+         )
     }
 }
 
