@@ -3,6 +3,8 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
+import { Link } from 'react-router'
+
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 import {
@@ -10,10 +12,7 @@ import {
     changeCost
 } from 'metabase/reference/reference'
 
-import { Link } from 'react-router'
-import Histogram from 'metabase/xray/Histogram'
-import SimpleStat from 'metabase/xray/SimpleStat'
-
+import Icon from 'metabase/components/Icon'
 import COSTS from 'metabase/xray/costs'
 import CostSelect from 'metabase/xray/components/CostSelect'
 
@@ -21,6 +20,8 @@ import {
     getSegmentConstituents,
     getSegmentFingerprint
 } from 'metabase/reference/selectors'
+
+import Constituent from 'metabase/xray/components/Constituent'
 
 type Props = {
     fetchSegmentFingerPrint: () => void,
@@ -38,7 +39,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ fingerprint }) => fingerprint.segment && fingerprint.segment.display_name || "Segment" )
+@title(({ fingerprint }) => fingerprint && fingerprint.segment.name || "Segment" )
 class SegmentXRay extends Component {
     props: Props
 
@@ -61,7 +62,7 @@ class SegmentXRay extends Component {
     changeCost = (cost) => {
         const { params } = this.props
         // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        this.props.changeCost(`table/${params.segmentId}/${cost}`)
+        this.props.changeCost(`segment/${params.segmentId}/${cost}`)
     }
 
     render () {
@@ -75,52 +76,40 @@ class SegmentXRay extends Component {
                     { () =>
                         <div className="full">
                             <div className="my4 flex align-center py2">
-                                <h1>{ fingerprint.segment.display_name }</h1>
+                                <div>
+                                    <Link
+                                        className="my2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration shadowed rounded"
+                                        to={`/xray/table/${fingerprint.table.id}/approximate`}
+                                    >
+                                        <div className="flex align-center">
+                                            <Icon name="chevronleft" />
+                                            {fingerprint.table.display_name}
+                                        </div>
+                                    </Link>
+                                    <h1>{ fingerprint.segment.name } XRay</h1>
+                                    <p className="m0 text-paragraph text-measure">
+                                        {fingerprint.segment.description}
+                                    </p>
+                                </div>
                                 <div className="ml-auto flex align-center">
-                                   <h3 className="mr2">Fidelity:</h3>
+                                   <h3 className="mr2 text-grey-3">Fidelity</h3>
                                     <CostSelect
                                         currentCost={params.cost}
                                         onChange={this.changeCost}
                                     />
                                 </div>
-                                <ol>
-                                    { constituents.map(c => {
-                                        return (
-                                            <li className="Grid my3 bg-white bordered rounded shadowed">
-                                                <div className="Grid-cell Cell--1of3 border-right">
-                                                    <div className="p4">
-                                                        <Link
-                                                            to={`xray/field/${c.field.id}/approximate`}
-                                                            className="text-brand-hover link transition-text"
-                                                        >
-                                                            <h2 className="text-bold">{c.field.display_name}</h2>
-                                                        </Link>
-                                                        <p className="text-measure text-paragraph">{c.field.description}</p>
-
-                                                        <div className="flex align-center">
-                                                            { c.min && (
-                                                                <SimpleStat
-                                                                    stat={c.min}
-                                                                />
-                                                            )}
-                                                            { c.max && (
-                                                                <SimpleStat
-                                                                    stat={c.max}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="Grid-cell p3">
-                                                    <div style={{ height: 220 }}>
-                                                        <Histogram histogram={c.histogram.value} />
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        )
-                                    })}
-                                </ol>
                             </div>
+                            <ol>
+                                { constituents.map(c => {
+                                    return (
+                                        <li>
+                                            <Constituent
+                                                constituent={c}
+                                            />
+                                        </li>
+                                    )
+                                })}
+                            </ol>
                         </div>
                     }
                 </LoadingAndErrorWrapper>

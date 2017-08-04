@@ -18,6 +18,7 @@ import {
     VALUES_OVERVIEW
 } from 'metabase/xray/stats'
 
+import Icon from 'metabase/components/Icon'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import CostSelect from 'metabase/xray/components/CostSelect'
 import StatGroup from 'metabase/xray/components/StatGroup'
@@ -105,12 +106,15 @@ class FieldXRay extends Component {
                             <div className="my4 flex align-center">
                                 <div>
                                     <Link
-                                        className="my2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration"
+                                        className="my2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
                                         to={`/xray/table/${fingerprint.table.id}/approximate`}
                                     >
-                                        {fingerprint.table.display_name}
+                                        <div className="flex align-center">
+                                            <Icon name="chevronleft" />
+                                            {fingerprint.table.display_name}
+                                        </div>
                                     </Link>
-                                    <h1 className="m0">
+                                    <h1 className="mt2">
                                         {fingerprint.field.display_name} XRay
                                     </h1>
                                     <p className="mt0 text-paragraph text-measure">
@@ -118,7 +122,7 @@ class FieldXRay extends Component {
                                     </p>
                                 </div>
                                 <div className="ml-auto flex align-center">
-                                    <h3 className="mr2">Fidelity:</h3>
+                                    <h3 className="mr2 text-grey-3">Fidelity</h3>
                                     <CostSelect
                                         currentCost={params.cost}
                                         onChange={this.changeCost}

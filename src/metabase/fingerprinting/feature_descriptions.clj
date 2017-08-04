@@ -34,7 +34,7 @@
    :var                    {:label       "Variance"
                             :description "Measure of how far the values are spread from the mean."
                             :link        "https://en.wikipedia.org/wiki/Variance"}
-   :sd                     {:label       "Standard deviatin"
+   :sd                     {:label       "Standard deviation"
                             :description "Measure of how far the values are spread from the mean."
                             :link        "https://en.wikipedia.org/wiki/Standard_deviation"}
    :count                  {:label       "Count"

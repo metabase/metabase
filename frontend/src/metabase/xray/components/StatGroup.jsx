@@ -12,7 +12,7 @@ const StatGroup = ({ heading, fingerprint, stats, showDescriptions }) =>
             <div className="bordered rounded shadowed bg-white">
                 <ol className="Grid Grid--1of4">
                     { stats.map(stat =>
-                        fingerprint[stat] && (
+                        !!fingerprint[stat] && (
                             <li className="Grid-cell lg-p3 lg-px4 border-right border-bottom" key={stat}>
                                 <SimpleStat
                                     stat={fingerprint[stat]}

@@ -2,8 +2,6 @@ import React from 'react'
 import Tooltip from 'metabase/components/Tooltip'
 import Icon from 'metabase/components/Icon'
 
-import { formatValue } from "metabase/lib/formatting";
-
 const SimpleStat = ({ stat, showDescription }) =>
     <div>
         <div className="flex align-center">
@@ -16,7 +14,7 @@ const SimpleStat = ({ stat, showDescription }) =>
         </div>
         { /* call toString to ensure that values like true / false show up */ }
         <h1 className="my1">
-            {formatValue(stat.value.toString(), {})}
+            {stat.value}
         </h1>
     </div>
 

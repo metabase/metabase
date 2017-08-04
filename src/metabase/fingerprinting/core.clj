@@ -26,11 +26,12 @@
   "Transuce each column in given dataset with corresponding fingerprinter."
   [opts {:keys [rows cols]}]
   (transduce identity
-             (apply redux/juxt (map-indexed (fn [i field]
-                                              (redux/pre-step
-                                               (f/fingerprinter opts field)
-                                               #(nth % i)))
-                                            cols))
+             (->> cols
+                  (remove :remapped_from)
+                  (map-indexed (fn [i field]
+                                 (redux/pre-step (f/fingerprinter opts field)
+                                                 #(nth % i))))
+                  (apply redux/juxt))
              rows))
 
 (defmulti

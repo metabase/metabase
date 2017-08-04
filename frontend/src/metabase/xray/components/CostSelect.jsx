@@ -15,7 +15,7 @@ const CostSelect = ({ currentCost, onChange }) =>
                     key={cost}
                     onClick={() => onChange(cost)}
                     className={cx(
-                        "flex align-center justify-center cursor-pointer bg-brand-hover text-white-hover transition-background transition-text",
+                        "flex align-center justify-center cursor-pointer bg-brand-hover text-white-hover transition-background transition-text text-grey-2",
                         { 'bg-brand text-white': currentCost === cost }
                     )}
                 >
