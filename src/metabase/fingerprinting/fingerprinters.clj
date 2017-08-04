@@ -169,7 +169,7 @@
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
-   {:rows    (let [norm (/ (h.impl/total-count histogram))]
+   {:rows    (let [norm (safe-divide (h.impl/total-count histogram))]
                (for [[k v] (equidistant-bins histogram)]
                  [(keyfn k) (* v norm)]))
     :columns [(:name field) "SHARE"]
@@ -379,7 +379,9 @@
 (defmethod fingerprinter Text
   [_ field]
   (redux/post-complete
-   (redux/fuse {:histogram (redux/pre-step h/histogram (stats/somef count))})
+   (redux/fuse {:histogram (redux/pre-step
+                            h/histogram
+                            (stats/somef (comp count u/jdbc-clob->str)))})
    (fn [{:keys [histogram]}]
      (let [nil-count   (h/nil-count histogram)
            total-count (h/total-count histogram)]
