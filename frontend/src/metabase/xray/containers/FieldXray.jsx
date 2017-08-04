@@ -85,14 +85,22 @@ const mapDispatchToProps = {
 class FieldXRay extends Component {
     props: Props
 
+    state = {
+       error: null
+    }
+
     componentDidMount () {
         this.fetchFieldFingerprint()
     }
 
-    fetchFieldFingerprint() {
+    async fetchFieldFingerprint() {
         const { params } = this.props
         const cost = COSTS[params.cost]
-        this.props.fetchFieldFingerPrint(params.fieldId, cost)
+        try {
+            await this.props.fetchFieldFingerPrint(params.fieldId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
 
     }
 
@@ -104,9 +112,11 @@ class FieldXRay extends Component {
 
     render () {
         const { fingerprint, params } = this.props
+        const { error } = this.state
         return (
                 <LoadingAndErrorWrapper
                     loading={!fingerprint}
+                    error={error}
                     noBackground
                 >
                     { () =>

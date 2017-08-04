@@ -50,14 +50,22 @@ const mapDispatchToProps = {
 class TableXRay extends Component {
     props: Props
 
+    state = {
+        error: null
+    }
+
     componentDidMount () {
         this.fetchTableFingerPrint()
     }
 
-    fetchTableFingerPrint () {
+    async fetchTableFingerPrint () {
         const { params } = this.props
         const cost = COSTS[params.cost]
-        this.props.fetchTableFingerPrint(params.tableId, cost)
+        try {
+            await this.props.fetchTableFingerPrint(params.tableId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -68,11 +76,13 @@ class TableXRay extends Component {
 
     render () {
         const { constituents, fingerprint, params } = this.props
+        const { error } = this.state
 
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
                     loading={!constituents}
+                    error={error}
                     noBackground
                 >
                     { () =>

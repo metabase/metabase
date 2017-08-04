@@ -54,14 +54,22 @@ const mapDispatchToProps = {
 class SegmentXRay extends Component {
     props: Props
 
+    state = {
+        error: null
+    }
+
     componentDidMount () {
         this.fetchSegmentFingerPrint()
     }
 
-    fetchSegmentFingerPrint () {
+    async fetchSegmentFingerPrint () {
         const { params } = this.props
         const cost = COSTS[params.cost]
-        this.props.fetchSegmentFingerPrint(params.segmentId, cost)
+        try {
+            await this.props.fetchSegmentFingerPrint(params.segmentId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -72,10 +80,12 @@ class SegmentXRay extends Component {
 
     render () {
         const { constituents, fingerprint, params } = this.props
+        const { error } = this.state
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
                     loading={!constituents}
+                    error={error}
                     noBackground
                 >
                     { () =>
