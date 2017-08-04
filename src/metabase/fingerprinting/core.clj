@@ -27,7 +27,7 @@
   [opts {:keys [rows cols]}]
   (transduce identity
              (->> cols
-                  (remove :remapped_from)
+                  (remove :remapped_to)
                   (map-indexed (fn [i field]
                                  (redux/pre-step (f/fingerprinter opts field)
                                                  #(nth % i))))

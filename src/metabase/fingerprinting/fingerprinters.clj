@@ -173,7 +173,7 @@
                (for [[k v] (equidistant-bins histogram)]
                  [(keyfn k) (* v norm)]))
     :columns [(:name field) "SHARE"]
-    :cols [field
+    :cols [(dissoc field :remapped_from)
            {:name         "SHARE"
             :display_name "Share"
             :description  "Share of corresponding bin in the overall population."
