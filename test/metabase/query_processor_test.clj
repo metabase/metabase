@@ -115,7 +115,7 @@
             :base_type    (data/expected-base-type->actual :type/Text)
             :name         (data/format-name "name")
             :display_name "Name"
-            :fingerprint  {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})))
+            :fingerprint  {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333}}}})))
 
 ;; #### users
 (defn users-col
@@ -135,7 +135,7 @@
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
                   :display_name "Name"
-                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 13.266666666666667}}}}
+                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 13.267}}}}
      :last_login {:special_type nil
                   :base_type    (data/expected-base-type->actual :type/DateTime)
                   :name         (data/format-name "last_login")
@@ -172,22 +172,22 @@
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "category_id")
                    :display_name "Category ID"
-                   :fingerprint  {:global {:distinct-count 28}, :type {:type/Number {:min 2, :max 74, :avg 29.98}}},}
+                   :fingerprint  {:global {:distinct-count 28}, :type {:type/Number {:min 2, :max 74, :avg 29.98}}}}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"
-                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}},}
+                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
-                   :fingerprint  {:global {:distinct-count 84}, :type {:type/Number {:min -165.374, :max -73.9533, :avg -115.99848699999991}}},
+                   :fingerprint  {:global {:distinct-count 84}, :type {:type/Number {:min -165.374, :max -73.953, :avg -115.998}}}
                    :display_name "Longitude"}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "latitude")
                    :display_name "Latitude"
-                   :fingerprint  {:global {:distinct-count 94}, :type {:type/Number {:min 10.0646, :max 40.7794, :avg 35.50589199999998}}},}
+                   :fingerprint  {:global {:distinct-count 94}, :type {:type/Number {:min 10.065, :max 40.779, :avg 35.506}}}}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")

@@ -217,6 +217,7 @@
   (-> (data/run-query venues
         (ql/aggregation (ql/count))
         (ql/breakout (ql/binning-strategy $latitude :default)))
+      tu/round-fingerprint-cols
       (get-in [:data :cols])
       first))
 
@@ -228,6 +229,7 @@
   (-> (data/run-query venues
                       (ql/aggregation (ql/count))
                       (ql/breakout (ql/binning-strategy $latitude :num-bins 5)))
+      tu/round-fingerprint-cols
       (get-in [:data :cols])
       first))
 

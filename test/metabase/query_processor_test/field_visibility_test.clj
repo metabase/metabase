@@ -5,7 +5,9 @@
              [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [toucan.db :as db]))
 
 ;;; ------------------------------------------------------------ :details-only fields  ------------------------------------------------------------
@@ -14,7 +16,10 @@
   (-> (data/run-query venues
         (ql/order-by (ql/asc $id))
         (ql/limit 1))
-      :data :cols set))
+      tu/round-fingerprint-cols
+      :data
+      :cols
+      set))
 
 (expect-with-non-timeseries-dbs
   [(set (venues-cols))
@@ -58,5 +63,6 @@
   (-> (data/run-query users
         (ql/order-by (ql/asc $id)))
       booleanize-native-form
+      tu/round-fingerprint-cols
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
