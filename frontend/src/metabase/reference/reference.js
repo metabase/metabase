@@ -76,7 +76,10 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
-// X-Ray whatnotery
+// Xray Fetch Actions
+// These actions are used to fetch Xray fingerprints and comparisons. Most take  a cost which
+// is used by the backend to figure out how precise to be when generating the xray stats.
+
 const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
 export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId, cost) {
     return async () => {
@@ -182,13 +185,6 @@ export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, func
         } catch (error) {
             console.error(error)
         }
-    }
-})
-
-const CHANGE_COST = 'metabase/reference/CHANGE_COST';
-export const changeCost = createThunkAction(CHANGE_COST, (cost) => {
-    return dispatch => {
-        dispatch(push(`/xray/${cost}`))
     }
 })
 

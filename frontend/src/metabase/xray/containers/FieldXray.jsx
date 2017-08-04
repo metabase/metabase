@@ -6,7 +6,7 @@ import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
-import { fetchFieldFingerPrint, changeCost } from 'metabase/reference/reference'
+import { fetchFieldFingerPrint } from 'metabase/reference/reference'
 import { getFieldFingerprint } from 'metabase/reference/selectors'
 
 import COSTS from 'metabase/xray/costs'
@@ -61,8 +61,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
-    fetchFieldFingerPrint,
-    changeCost
+    fetchFieldFingerPrint
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -85,12 +84,6 @@ class FieldXRay extends Component {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchFieldFingerprint()
         }
-    }
-
-    changeCost = (cost) => {
-        const { params } = this.props
-        // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        this.props.changeCost(`field/${params.fieldId}/${cost}`)
     }
 
     render () {
@@ -123,8 +116,9 @@ class FieldXRay extends Component {
                                 <div className="ml-auto flex align-center">
                                     <h3 className="mr2 text-grey-3">Fidelity</h3>
                                     <CostSelect
+                                        xrayType='field'
+                                        id={fingerprint.field.id}
                                         currentCost={params.cost}
-                                        onChange={this.changeCost}
                                     />
                                 </div>
                             </div>

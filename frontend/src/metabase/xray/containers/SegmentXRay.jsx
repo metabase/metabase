@@ -7,10 +7,7 @@ import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-import {
-    fetchSegmentFingerPrint,
-    changeCost
-} from 'metabase/reference/reference'
+import { fetchSegmentFingerPrint } from 'metabase/reference/reference'
 
 import Icon from 'metabase/components/Icon'
 import COSTS from 'metabase/xray/costs'
@@ -34,8 +31,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
-    fetchSegmentFingerPrint,
-    changeCost
+    fetchSegmentFingerPrint
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -57,12 +53,6 @@ class SegmentXRay extends Component {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchSegmentFingerPrint()
         }
-    }
-
-    changeCost = (cost) => {
-        const { params } = this.props
-        // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        this.props.changeCost(`segment/${params.segmentId}/${cost}`)
     }
 
     render () {
@@ -96,7 +86,8 @@ class SegmentXRay extends Component {
                                    <h3 className="mr2 text-grey-3">Fidelity</h3>
                                     <CostSelect
                                         currentCost={params.cost}
-                                        onChange={this.changeCost}
+                                        xrayType='segment'
+                                        id={fingerprint.segment.id}
                                     />
                                 </div>
                             </div>

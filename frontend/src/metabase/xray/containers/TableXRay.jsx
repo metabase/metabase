@@ -4,11 +4,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import {
-    fetchTableFingerPrint,
-    changeCost
-} from 'metabase/reference/reference'
-
+import { fetchTableFingerPrint } from 'metabase/reference/reference'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
 import COSTS from 'metabase/xray/costs'
@@ -39,8 +35,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
-    fetchTableFingerPrint,
-    changeCost
+    fetchTableFingerPrint
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -62,12 +57,6 @@ class TableXRay extends Component {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchTableFingerPrint()
         }
-    }
-
-    changeCost = (cost) => {
-        const { params } = this.props
-        // TODO - this feels kinda icky, would be nice to be able to just pass cost
-        this.props.changeCost(`table/${params.tableId}/${cost}`)
     }
 
     render () {
@@ -93,8 +82,9 @@ class TableXRay extends Component {
                                 <div className="ml-auto flex align-center">
                                    <h3 className="mr2">Fidelity:</h3>
                                     <CostSelect
+                                        xrayType='table'
                                         currentCost={params.cost}
-                                        onChange={this.changeCost}
+                                        id={fingerprint.table.id}
                                     />
                                 </div>
                             </div>
