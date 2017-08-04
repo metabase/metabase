@@ -57,7 +57,7 @@ import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
-// Reference Metrics 
+// Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
@@ -243,7 +243,7 @@ export const getRoutes = (store) =>
                 </Route>
                 {/* REFERENCE */}
                 <Route path="/xray" title="XRay">
-                    <Route path="segment/:segmentId" component={SegmentXRay} />
+                    <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
                     <Route path="table/:tableId/:cost" component={TableXRay} />
                     <Route path="field/:fieldId/:cost" component={FieldXRay} />
                     <Route path="card/:cardId" component={CardXRay} />

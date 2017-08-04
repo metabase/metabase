@@ -9,12 +9,12 @@ import {
     changeCost
 } from 'metabase/reference/reference'
 
-import Histogram from 'metabase/xray/Histogram'
+import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
 import COSTS from 'metabase/xray/costs'
-import CostSelect from 'metabase/xray/components/CostSelect'
 
-import { Link } from 'react-router'
+import CostSelect from 'metabase/xray/components/CostSelect'
+import Constituent from 'metabase/xray/components/Constituent'
 
 import {
     getTableConstituents,
@@ -22,8 +22,6 @@ import {
 } from 'metabase/reference/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
-
-import SimpleStat from 'metabase/xray/SimpleStat'
 
 type Props = {
     constituents: [],
@@ -75,61 +73,39 @@ class TableXRay extends Component {
         const { constituents, fingerprint, params } = this.props
 
         return (
-            <LoadingAndErrorWrapper loading={!constituents} className="bg-slate-extra-light">
-                { () =>
-                    <div className="wrapper" style={{ paddingLeft: '12em', paddingRight: '12em'}}>
-                        <div className="my4 flex align-center py2">
-                            <h1>{ fingerprint.table.display_name }</h1>
-                            <div className="ml-auto">
-                                Fidelity:
-                                <CostSelect
-                                    currentCost={params.cost}
-                                    onChange={this.changeCost}
-                                />
+            <XRayPageWrapper>
+                <LoadingAndErrorWrapper
+                    loading={!constituents}
+                    noBackground
+                >
+                    { () =>
+                        <div className="full">
+                            <div className="my4 flex align-center py2">
+                                <div>
+                                    <h1>{ fingerprint.table.display_name } XRay</h1>
+                                    <p className="m0 text-paragraph text-measure">{fingerprint.table.description}</p>
+                                </div>
+                                <div className="ml-auto flex align-center">
+                                   <h3 className="mr2">Fidelity:</h3>
+                                    <CostSelect
+                                        currentCost={params.cost}
+                                        onChange={this.changeCost}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                        <div>
                             <ol>
-                                { constituents.map(c => {
-                                    return (
-                                        <li className="Grid my3 bg-white bordered rounded shadowed">
-                                            <div className="Grid-cell Cell--1of3 border-right">
-                                                <div className="p4">
-                                                    <Link
-                                                        to={`xray/field/${c.field.id}/approximate`}
-                                                        className="text-brand-hover link transition-text"
-                                                    >
-                                                        <h2 className="text-bold">{c.field.display_name}</h2>
-                                                    </Link>
-                                                    <p className="text-measure text-paragraph">{c.field.description}</p>
-
-                                                    <div className="flex align-center">
-                                                        { c.min && (
-                                                            <SimpleStat
-                                                                stat={c.min}
-                                                            />
-                                                        )}
-                                                        { c.max && (
-                                                            <SimpleStat
-                                                                stat={c.max}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="Grid-cell p3">
-                                                <div style={{ height: 220 }}>
-                                                    <Histogram histogram={c.histogram.value} />
-                                                </div>
-                                            </div>
-                                        </li>
-                                    )
-                                })}
+                                { constituents.map((constituent, index) =>
+                                    <li key={index}>
+                                        <Constituent
+                                            constituent={constituent}
+                                        />
+                                    </li>
+                                )}
                             </ol>
                         </div>
-                    </div>
-                }
-            </LoadingAndErrorWrapper>
+                    }
+                </LoadingAndErrorWrapper>
+            </XRayPageWrapper>
         )
     }
 }

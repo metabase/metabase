@@ -177,10 +177,20 @@ export const getFieldFingerprint = (state) =>
 export const getTableFingerprint = (state) =>
     state.reference.tableFingerprint && state.reference.tableFingerprint.fingerprint
 
+export const getSegmentFingerprint = (state) =>
+    state.reference.segmentFingerprint && state.reference.segmentFingerprint.fingerprint
+
 export const getTableConstituents = (state) =>
     state.reference.tableFingerprint && (
         Object.keys(state.reference.tableFingerprint.constituents).map(key =>
             state.reference.tableFingerprint.constituents[key]
+        )
+    )
+
+export const getSegmentConstituents = (state) =>
+    state.reference.segmentFingerprint && (
+        Object.keys(state.reference.segmentFingerprint.constituents).map(key =>
+            state.reference.segmentFingerprint.constituents[key]
         )
     )
 

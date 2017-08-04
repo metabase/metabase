@@ -14,9 +14,9 @@ import MetabaseAnalytics from 'metabase/lib/analytics';
 
 import { GettingStartedApi, XRayApi } from 'metabase/services';
 
-import { 
-    filterUntouchedFields, 
-    isEmptyObject 
+import {
+    filterUntouchedFields,
+    isEmptyObject
 } from "./utils.js"
 
 export const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
@@ -103,10 +103,10 @@ export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, 
 
 
 const FETCH_SEGMENT_FINGERPRINT = 'metabase/reference/FETCH_SEGMENT_FINGERPRINT';
-export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRINT, function(segmentId) {
+export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRINT, function(segmentId, cost) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.segment_fingerprint({ segmentId });
+            let fingerprint = await XRayApi.segment_fingerprint({ segmentId, ...cost.method });
             return fingerprint;
         } catch (error) {
             console.error(error);
@@ -213,8 +213,8 @@ const fetchDataWrapper = (props, fn) => {
 export const wrappedFetchGuide = async (props) => {
 
     fetchDataWrapper(
-        props, 
-        async () => { 
+        props,
+        async () => {
                 await Promise.all(
                     [props.fetchGuide(),
                      props.fetchDashboards(),
@@ -231,8 +231,8 @@ export const wrappedFetchDatabaseMetadata = (props, databaseID) => {
 export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
 
     fetchDataWrapper(
-        props, 
-        async (dbID) => { 
+        props,
+        async (dbID) => {
                 await Promise.all(
                     [props.fetchDatabaseMetadata(dbID),
                      props.fetchQuestions()]
@@ -242,11 +242,11 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID)
 export const wrappedFetchMetricDetail = async (props, metricID) => {
 
     fetchDataWrapper(
-        props, 
-        async (mID) => { 
+        props,
+        async (mID) => {
                 await Promise.all(
                     [props.fetchMetricTable(mID),
-                     props.fetchMetrics(), 
+                     props.fetchMetrics(),
                      props.fetchGuide()]
                 )}
         )(metricID)
@@ -254,11 +254,11 @@ export const wrappedFetchMetricDetail = async (props, metricID) => {
 export const wrappedFetchMetricQuestions = async (props, metricID) => {
 
     fetchDataWrapper(
-        props, 
-        async (mID) => { 
+        props,
+        async (mID) => {
                 await Promise.all(
                     [props.fetchMetricTable(mID),
-                     props.fetchMetrics(), 
+                     props.fetchMetrics(),
                      props.fetchQuestions()]
                 )}
         )(metricID)
@@ -266,8 +266,8 @@ export const wrappedFetchMetricQuestions = async (props, metricID) => {
 export const wrappedFetchMetricRevisions = async (props, metricID) => {
 
     fetchDataWrapper(
-        props, 
-        async (mID) => { 
+        props,
+        async (mID) => {
                 await Promise.all(
                     [props.fetchMetricRevisions(mID),
                      props.fetchMetrics()]
@@ -311,8 +311,8 @@ export const wrappedFetchSegmentDetail = (props, segmentID) => {
 export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
 
     fetchDataWrapper(
-        props, 
-        async (sID) => { 
+        props,
+        async (sID) => {
                 await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentTable(sID),
@@ -323,8 +323,8 @@ export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
 export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
 
     fetchDataWrapper(
-        props, 
-        async (sID) => { 
+        props,
+        async (sID) => {
                 await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentRevisions(sID),
@@ -335,8 +335,8 @@ export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
 export const wrappedFetchSegmentFields = async (props, segmentID) => {
 
     fetchDataWrapper(
-        props, 
-        async (sID) => { 
+        props,
+        async (sID) => {
                 await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentFields(sID),
@@ -346,7 +346,7 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
 }
 
 // This is called when a component gets a new set of props.
-// I *think* this is un-necessary in all cases as we're using multiple 
+// I *think* this is un-necessary in all cases as we're using multiple
 // components where the old code re-used the same component
 export const clearState = props => {
     props.endEditing();
@@ -364,9 +364,9 @@ const resetForm = (props) => {
 }
 
 // Update actions
-// these use the "fetchDataWrapper" for now. It should probably be renamed. 
-// Using props to fire off actions, which imo should be refactored to 
-// dispatch directly, since there is no actual dependence with the props 
+// these use the "fetchDataWrapper" for now. It should probably be renamed.
+// Using props to fire off actions, which imo should be refactored to
+// dispatch directly, since there is no actual dependence with the props
 // of that component
 
 const updateDataWrapper = (props, fn) => {
