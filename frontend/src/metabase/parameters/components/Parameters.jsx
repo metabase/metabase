@@ -14,7 +14,7 @@ type Props = {
     className?:                 string,
 
     parameters:                 Parameter[],
-    editingParameter?:           ?Parameter,
+    editingParameter?:          ?Parameter,
     parameterValues?:           ParameterValues,
 
     isFullscreen?:              boolean,

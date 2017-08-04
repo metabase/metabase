@@ -26,6 +26,7 @@ function hasArg(arg) {
 }
 
 var SRC_PATH = __dirname + '/frontend/src/metabase';
+var LIB_SRC_PATH = __dirname + '/frontend/src/metabase-lib';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
 // default NODE_ENV to development
@@ -125,6 +126,7 @@ var config = module.exports = {
         extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH,
+            'metabase-lib':         LIB_SRC_PATH,
             'style':                SRC_PATH + '/css/core/index.css',
             'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
         }

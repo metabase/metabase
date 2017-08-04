@@ -49,8 +49,7 @@
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'Card        :database_id id)
   (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
-  (db/delete! 'Table       :db_id       id)
-  (db/delete! 'RawTable    :database_id id))
+  (db/delete! 'Table       :db_id       id))
 
 
 (defn- perms-objects-set [database _]
@@ -78,7 +77,7 @@
 (defn ^:hydrate tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
-  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]})) ; TODO - do we want to include tables that should be `:hidden`?
 
 (defn schema-names
   "Return a *sorted set* of schema names (as strings) associated with this `Database`."

@@ -1,0 +1,149 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Deploys Metabase by creating an ElasticBeanstalk application in an contained in a CloudFormation stack.",
+    "Parameters": {
+        "MetabaseVersion": {
+            "Description": "Metabase Version",
+            "Type": "String",
+            "Default": "@@MB_TAG@@"
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the AWS Elastic Beanstalk instance",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "instanceType": {
+            "Description": "The Type of EC2 instance to use for running Metabase",
+            "Type": "String",
+            "Default": "t2.small"
+        },
+        "VPCid": {
+            "Description": "The VPC to use for running Metabase",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "Subnets": {
+            "Description": "The VPC subnet(s) to use for running Metabase",
+            "Type": "List<AWS::EC2::Subnet::Id>"
+        }
+    },
+    "Resources": {
+        "metabaseApplication": {
+            "Type": "AWS::ElasticBeanstalk::Application",
+            "Properties": {
+                "Description": "Metabase Application",
+                "ApplicationVersions": [
+                    {
+                        "VersionLabel": {
+                            "Ref": "MetabaseVersion"
+                        },
+                        "Description": "Metabase Application Version",
+                        "SourceBundle": {
+                            "S3Bucket": "downloads.metabase.com",
+                            "S3Key": {
+                                "Fn::Join": [
+                                    "/",
+                                    [
+                                        {
+                                            "Ref": "MetabaseVersion"
+                                        },
+                                        "metabase-aws-eb.zip"
+                                    ]
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "ConfigurationTemplates": [
+                    {
+                        "TemplateName": "MetabaseConfiguration",
+                        "Description": "Metabase Application Configuration",
+                        "SolutionStackName": "64bit Amazon Linux 2017.03 v2.7.0 running Docker 17.03.1-ce",
+                        "OptionSettings": [
+                            {
+                                "Namespace": "aws:autoscaling:launchconfiguration",
+                                "OptionName": "EC2KeyName",
+                                "Value": {
+                                    "Ref": "KeyName"
+                                }
+                            },
+                            {
+                                "Namespace": "aws:rds:dbinstance",
+                                "OptionName": "DBEngine",
+                                "Value": "postgres"
+                            },
+                            {
+                                "Namespace": "aws:rds:dbinstance",
+                                "OptionName": "DBAllocatedStorage",
+                                "Value": "10"
+                            },
+                            {
+                                "Namespace": "aws:rds:dbinstance",
+                                "OptionName": "DBInstanceClass",
+                                "Value": "db.t2.small"
+                            },
+                            {
+                                "Namespace": "aws:rds:dbinstance",
+                                "OptionName": "MultiAZDatabase",
+                                "Value": "false"
+                            },
+                            {
+                                "Namespace": "aws:rds:dbinstance",
+                                "OptionName": "DBDeletionPolicy",
+                                "Value": "Snapshot"
+                            },
+                            {
+                                "Namespace": "aws:autoscaling:launchconfiguration",
+                                "OptionName": "InstanceType",
+                                "Value": {
+                                    "Ref": "instanceType"
+                                }
+                            },
+                            {
+                                "Namespace": "aws:ec2:vpc",
+                                "OptionName": "VPCId",
+                                "Value": {
+                                    "Ref": "VPCid"
+                                }
+                            },
+                            {
+                                "Namespace": "aws:ec2:vpc",
+                                "OptionName": "Subnets",
+                                "Value": {
+                                    "Fn::Join": [
+                                        ",",
+                                        {
+                                            "Ref": "Subnets"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "metabaseEnvironment": {
+            "Type": "AWS::ElasticBeanstalk::Environment",
+            "Properties": {
+                "ApplicationName": {
+                    "Ref": "metabaseApplication"
+                },
+                "Description": "AWS Elastic Beanstalk Environment for Metabase",
+                "TemplateName": "MetabaseConfiguration",
+                "VersionLabel": {
+                    "Ref": "MetabaseVersion"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "URL": {
+            "Description": "Metabase URL",
+            "Value": {
+                "Fn::GetAtt": [
+                    "metabaseEnvironment",
+                    "EndpointURL"
+                ]
+            }
+        }
+    }
+}

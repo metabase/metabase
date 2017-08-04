@@ -16,7 +16,6 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
@@ -62,21 +61,20 @@
   (let [parsers (map (comp field-type->parser :type) columns)]
     (for [row data]
       (for [[value parser] (partition 2 (interleave row parsers))]
-        (when value
+        (when (some? value)
           (parser value))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
-  (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details-with-tunnel) :as :json))]
-      (when error
-        (throw (ex-info (or (:message error) "Error running query.") error)))
-      (let [rows    (parse-presto-results columns data)
-            results {:columns (or columns prev-columns)
-                     :rows    (vec (concat prev-rows rows))}]
-        (if (nil? nextUri)
-          results
-          (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
-              (fetch-presto-results! details-with-tunnel results nextUri)))))))
+  (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
+    (when error
+      (throw (ex-info (or (:message error) "Error running query.") error)))
+    (let [rows    (parse-presto-results columns data)
+          results {:columns (or columns prev-columns)
+                   :rows    (vec (concat prev-rows rows))}]
+      (if (nil? nextUri)
+        results
+        (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
+            (fetch-presto-results! details results nextUri))))))
 
 (defn- execute-presto-query! [details query]
   (ssh/with-ssh-tunnel [details-with-tunnel details]
@@ -100,33 +98,15 @@
 (defn- quote+combine-names [& names]
   (str/join \. (map quote-name names)))
 
+(defn- rename-duplicates [values]
+  ;; Appends _2, _3 and so on to duplicated values
+  (loop [acc [], [h & tail] values, seen {}]
+    (let [value (if (seen h) (str h "_" (inc (seen h))) h)]
+      (if tail
+        (recur (conj acc value) tail (assoc seen h (inc (get seen h 0))))
+        (conj acc value)))))
 
 ;;; IDriver implementation
-
-(defn- field-avg-length [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(round(avg(length(%s))) AS integer) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (or v 0)))
-
-(defn- field-percent-urls [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (if (= v "NaN") 0.0 v)))
-
-(defn- analyze-table [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
-     :field-avg-length-fn   field-avg-length
-     :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
 
 (defn- can-connect? [{:keys [catalog] :as details}]
   (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
@@ -192,10 +172,13 @@
 
 (defn- execute-query [{:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
   (let [sql                    (str "-- " (qputil/query->remark outer-query) "\n"
-                                          (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn  :from_iso8601_timestamp))
+                                          (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
         details                (merge (:details database) settings)
-        {:keys [columns rows]} (execute-presto-query! details sql)]
-    {:columns (map (comp keyword :name) columns)
+        {:keys [columns rows]} (execute-presto-query! details sql)
+        columns                (for [[col name] (map vector columns (rename-duplicates (map :name columns)))]
+                                 {:name name, :base_type (presto-type->base-type (:type col))})]
+    {:cols    columns
+     :columns (map (comp keyword :name) columns)
      :rows    rows}))
 
 (defn- field-values-lazy-seq [{field-name :name, :as field}]
@@ -289,8 +272,7 @@
 (u/strict-extend PrestoDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:analyze-table                     analyze-table
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
@@ -341,7 +323,6 @@
           :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"information_schema"})
-          :field-percent-urls        (u/drop-first-arg field-percent-urls)
           :prepare-value             (u/drop-first-arg prepare-value)
           :quote-style               (constantly :ansi)
           :stddev-fn                 (constantly :stddev_samp)

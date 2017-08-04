@@ -156,10 +156,12 @@ By default, the tests only run against the `h2` driver. You can specify which dr
 
     ENGINES=h2,postgres,mysql,mongo lein test
 
-At the time of this writing, the valid engines are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, `sqlite`, `druid`, `bigquery`, and `redshift`. Some of these engines require additional parameters
+At the time of this writing, the valid engines are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, `sqlite`, `druid`, `bigquery`, `oracle`, `vertica`, and `redshift`. Some of these engines require additional parameters
 when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
-Run the linters:
+Due to some issues with the way we've structured our test setup code, you currently always need to include `h2` in the `ENGINES` list. Thus to test something like `bigquery` you should specify `ENGINES=h2,bigquery`. Fortunately the H2 tests are fast so this should not make a noticeable difference.
+
+##### Run the linters:
 
     lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter
 

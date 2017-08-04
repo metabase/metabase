@@ -9,7 +9,7 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.expand-macros :refer :all]
             [metabase.test
              [data :as data]

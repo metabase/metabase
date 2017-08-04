@@ -1,6 +1,7 @@
 :root {
   --brand-color: #509EE3;
   --brand-light-color: #CDE3F8;
+  --brand-saturated-color: #2D86D4;
 
   --base-grey: #f8f8f8;
   --grey-1: color(var(--base-grey) shade(10%));
@@ -20,7 +21,6 @@
   --gold-color: #F9D45C;
   --orange-color: #F9A354;
   --purple-color: #A989C5;
-  --purple-light-color: #C5ABDB;
   --green-color: #9CC177;
   --dark-color: #4C545B;
   --error-color: #EF8C8C;
@@ -80,16 +80,6 @@
   background-color: #FCE8E8
 }
 
-/* heads up */
-
-.text-headsup {
-  color: var(--headsup-color);
-}
-
-.bg-headsup {
-  background-color: var(--headsup-color);
-}
-
 /* warning */
 
 .text-warning {
@@ -111,11 +101,6 @@
     color: var(--purple-color);
 }
 
-.text-purple-light,
-.text-purple-light-hover:hover {
-    color: var(--purple-light-color);
-}
-
 .text-green,
 .text-green-hover:hover {
     color: var(--green-color);
@@ -131,7 +116,6 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
-.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */

@@ -7,8 +7,8 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.expand :as ql]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -50,6 +50,9 @@
 
 (defrecord ^:private DateRange [start end])
 
+;; List of numbers to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->number` for more details.
+(s/defrecord ^:private CommaSeparatedNumbers [numbers :- [s/Num]])
+
 ;; convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param values.
 (defrecord ^:private NoValue [])
 
@@ -75,6 +78,7 @@
 
 (def ^:private ParamValue
   (s/named (s/maybe (s/cond-pre NoValue
+                                CommaSeparatedNumbers
                                 Dimension
                                 Date
                                 s/Num
@@ -138,13 +142,36 @@
       (when required
         (throw (Exception. (format "'%s' is a required param." display_name))))))
 
-(s/defn ^:private ^:always-validate value->number :- s/Num
-  [value]
-  (if (string? value)
-    (.parse (NumberFormat/getInstance) ^String value)
-    value))
+(s/defn ^:private ^:always-validate parse-number :- s/Num
+  "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in
+   things that aren't numbers, like SQL identifiers."
+  [s :- s/Str]
+  (.parse (NumberFormat/getInstance) ^String s))
 
-;; TODO - this should probably be converting strings to numbers (issue #3816)
+(s/defn ^:private ^:always-validate value->number :- (s/cond-pre s/Num CommaSeparatedNumbers)
+  "Parse a 'numeric' param value. Normally this returns an integer or floating-point number,
+   but as a somewhat undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the
+   old parameter code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has
+   long been changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated
+   numeric values to work we'll allow that (with validation) and return an instance of `CommaSeperatedNumbers`. (That
+   is converted to SQL as a simple comma-separated list.)"
+  [value]
+  (cond
+    ;; if not a string it's already been parsed
+    (number? value) value
+    ;; same goes for an instance of CommanSepe
+    (instance? CommaSeparatedNumbers value) value
+    value
+    ;; if the value is a string, then split it by commas in the string. Usually there should be none.
+    ;; Parse each part as a number.
+    (let [parts (for [part (str/split value #",")]
+                  (parse-number part))]
+      (if (> (count parts) 1)
+        ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
+        (strict-map->CommaSeparatedNumbers {:numbers parts})
+        ;; otherwise just return the single number
+        (first parts)))))
+
 (s/defn ^:private ^:always-validate parse-value-for-type :- ParamValue
   [param-type value]
   (cond
@@ -251,6 +278,10 @@
   Keyword (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
   SqlCall (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
   NoValue (->replacement-snippet-info [_]    {:replacement-snippet ""})
+
+  CommaSeparatedNumbers
+  (->replacement-snippet-info [{:keys [numbers]}]
+    {:replacement-snippet (str/join ", " numbers)})
 
   Date
   (->replacement-snippet-info [{:keys [s]}]

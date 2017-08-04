@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [metabase
              [events :as events]
-             [sync-database :as sync-database]]
+             [sync :as sync]]
             [metabase.models.database :refer [Database]]))
 
 (def ^:const sync-database-topics
@@ -28,7 +28,7 @@
       (when-let [database (Database (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
         (future (try
-                  (sync-database/sync-database! database)
+                  (sync/sync-database! database)
                   (catch Throwable t
                     (log/error (format "Error syncing Database: %d" (:id database)) t))))))
     (catch Throwable e
