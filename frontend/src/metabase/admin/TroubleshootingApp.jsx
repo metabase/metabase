@@ -1,12 +1,13 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
+import moment from "moment";
 
 import { getTroubleshootingInfo } from 'metabase/admin/admin'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 
-function roughSizeOfObject( object ) {
+const roughSizeOfObject = ( object ) => {
 
     var objectList = [];
     var stack = [ object ];
@@ -40,6 +41,12 @@ function roughSizeOfObject( object ) {
     return bytes;
 }
 
+const getUTCOffset = () => {
+    return moment().format("Z")
+}
+
+
+
 const mapStateToProps = state => ({
     troubleShootingInfo: state.admin.troubleshooting,
     reduxStoreSize: roughSizeOfObject(state)
@@ -69,7 +76,7 @@ class TroubleshootingApp extends Component {
                                         <ul className="bordered rounded p3">
                                             <li className="mb1 h4">Server Timezone : <b>{this.props.troubleShootingInfo.server_timezone}</b> </li>
                                             <li className="mb1 h4">Reporting Timezone : <b>{this.props.troubleShootingInfo.reporting_timezone}</b> </li>
-                                            <li className="mb1 h4">Browser Timezone : <b>{this.props.troubleShootingInfo.reporting_timezone}</b> </li>
+                                            <li className="mb1 h4">Browser UTC Offset : <b>{getUTCOffset()}</b> </li>
                                         </ul>
                                     </div>
     
