@@ -78,16 +78,17 @@ class SegmentXRay extends Component {
                             <div className="my4 flex align-center py2">
                                 <div>
                                     <Link
-                                        className="my2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration shadowed rounded"
+                                        className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration shadowed rounded"
                                         to={`/xray/table/${fingerprint.table.id}/approximate`}
                                     >
-                                        <div className="flex align-center">
-                                            <Icon name="chevronleft" />
-                                            {fingerprint.table.display_name}
-                                        </div>
+                                        {fingerprint.table.display_name}
                                     </Link>
-                                    <h1>{ fingerprint.segment.name } XRay</h1>
-                                    <p className="m0 text-paragraph text-measure">
+                                    <h1 className="mt2 flex align-center">
+                                        {fingerprint.segment.name}
+                                        <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
+                                        <span className="text-grey-3">XRay</span>
+                                    </h1>
+                                    <p className="mt1 text-paragraph text-measure">
                                         {fingerprint.segment.description}
                                     </p>
                                 </div>

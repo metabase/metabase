@@ -21,6 +21,7 @@ import {
     getTableFingerprint
 } from 'metabase/reference/selectors'
 
+import Icon from 'metabase/components/Icon'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 type Props = {
@@ -82,7 +83,11 @@ class TableXRay extends Component {
                         <div className="full">
                             <div className="my4 flex align-center py2">
                                 <div>
-                                    <h1>{ fingerprint.table.display_name } XRay</h1>
+                                    <h1 className="mt2 flex align-center">
+                                        {fingerprint.table.display_name}
+                                        <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
+                                        <span className="text-grey-3">XRay</span>
+                                    </h1>
                                     <p className="m0 text-paragraph text-measure">{fingerprint.table.description}</p>
                                 </div>
                                 <div className="ml-auto flex align-center">

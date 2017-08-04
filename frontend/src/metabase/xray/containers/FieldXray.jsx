@@ -96,28 +96,27 @@ class FieldXRay extends Component {
     render () {
         const { fingerprint, params } = this.props
         return (
-            <XRayPageWrapper>
                 <LoadingAndErrorWrapper
                     loading={!fingerprint}
                     noBackground
                 >
                     { () =>
+                        <XRayPageWrapper>
                         <div className="full">
-                            <div className="my4 flex align-center">
+                            <div className="my3 flex align-center">
                                 <div>
                                     <Link
-                                        className="my2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
+                                        className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
                                         to={`/xray/table/${fingerprint.table.id}/approximate`}
                                     >
-                                        <div className="flex align-center">
-                                            <Icon name="chevronleft" />
-                                            {fingerprint.table.display_name}
-                                        </div>
+                                        {fingerprint.table.display_name}
                                     </Link>
-                                    <h1 className="mt2">
-                                        {fingerprint.field.display_name} XRay
+                                    <h1 className="mt2 flex align-center">
+                                        {fingerprint.field.display_name}
+                                        <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
+                                        <span className="text-grey-3">XRay</span>
                                     </h1>
-                                    <p className="mt0 text-paragraph text-measure">
+                                    <p className="mt1 text-paragraph text-measure">
                                         {fingerprint.field.description}
                                     </p>
                                 </div>
@@ -162,9 +161,9 @@ class FieldXRay extends Component {
                                 stats={ROBOTS}
                             />
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }
