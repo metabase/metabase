@@ -1,7 +1,9 @@
 // keys for common values interesting for most folks
 export const VALUES_OVERVIEW = [
     'min',
+    'earliest', // date field min is expressed as earliest
     'max',
+    'latest', // date field max is expressed as latest
     'count',
     'sum',
     'cardinality',
