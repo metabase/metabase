@@ -22,7 +22,22 @@ import Constituent from 'metabase/xray/components/Constituent'
 
 type Props = {
     fetchSegmentFingerPrint: () => void,
-    fingerprint: {}
+    constituents: [],
+    fingerprint: {
+        table: {
+            id: number,
+            display_name: string
+        },
+        segment: {
+            id: number,
+            name: string,
+            description: string
+        }
+    },
+    params: {
+        segmentId: number,
+        cost: string,
+    }
 }
 
 const mapStateToProps = state => ({
@@ -49,7 +64,7 @@ class SegmentXRay extends Component {
         this.props.fetchSegmentFingerPrint(params.segmentId, cost)
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchSegmentFingerPrint()
         }

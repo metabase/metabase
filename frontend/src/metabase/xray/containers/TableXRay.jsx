@@ -23,9 +23,16 @@ import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 type Props = {
     constituents: [],
     fetchTableFingerPrint: () => void,
-    fingerprint: {},
+    fingerprint: {
+        table: {
+            id: number,
+            display_name: string,
+            description: string
+        }
+    },
     params: {
-        tableId: number
+        tableId: number,
+        cost: string
     }
 }
 
@@ -53,7 +60,7 @@ class TableXRay extends Component {
         this.props.fetchTableFingerPrint(params.tableId, cost)
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchTableFingerPrint()
         }

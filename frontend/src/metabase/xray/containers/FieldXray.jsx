@@ -27,8 +27,24 @@ import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
 type Props = {
     fetchFieldFingerPrint: () => void,
-    fingerprint: {},
-    params: {},
+    fingerprint: {
+        table: {
+            id: number,
+            display_name: string
+        },
+        field: {
+            display_name: string,
+            id: number,
+            description: string
+        },
+        histogram: {
+            value: {}
+        }
+    },
+    params: {
+        cost: string,
+        fieldId: number
+    },
 }
 
 const Periodicity = ({fingerprint}) =>
@@ -80,7 +96,7 @@ class FieldXRay extends Component {
 
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
             this.fetchFieldFingerprint()
         }
