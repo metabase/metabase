@@ -120,7 +120,7 @@
   (postwalk
    (fn [x]
      (if (float? x)
-       (u/round-to-decimals (+ (- (min (long (f/order-of-magnitude x)) 0))
+       (u/round-to-decimals (+ (- (min (u/order-of-magnitude x) 0))
                                decimal-places)
                             x)
        x))

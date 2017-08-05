@@ -1,12 +1,12 @@
 (ns metabase.fingerprinting.fingerprinters
   "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as h.impl]
-            [clojure.math.numeric-tower :refer [ceil expt floor round]] ;;;;;; temp!
             [clj-time
              [coerce :as t.coerce]
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
+            [clojure.math.numeric-tower :refer [round]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -14,7 +14,8 @@
             [metabase.fingerprinting
              [histogram :as h]
              [costs :as costs]]
-            [metabase.util :as u]            ;;;; temp!
+            [metabase.query-processor.middleware.binning :as binning]
+            [metabase.util :as u]
             [redux.core :as redux]
             [tide.core :as tide])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
@@ -67,80 +68,6 @@
 ; (def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
-;;;;;;;;;;;;;;;;;; temporary cp until we merge the binning branch ;;;;;;;;;;
-
-
-(defn- calculate-bin-width [min-value max-value num-bins]
-  (u/round-to-decimals 5 (/ (- max-value min-value)
-                            num-bins)))
-
-(defn- calculate-num-bins [min-value max-value bin-width]
-  (long (ceil (/ (- max-value min-value)
-                         bin-width))))
-
-(defn- ceil-to
-  [precision x]
-  (let [scale (/ precision)]
-    (/ (ceil (* x scale)) scale)))
-
-(defn- floor-to
-  [precision x]
-  (let [scale (/ precision)]
-    (/ (floor (* x scale)) scale)))
-
-;;;;;;;; cast to long
-(defn order-of-magnitude
-  "Return oder of magnitude."
-  [x]
-  (if (zero? x)
-    0
-    (long (floor (/ (math/log (math/abs x)) (math/log 10))))))
-
-(def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
-
-(defn- nicer-bin-width
-  [min-value max-value num-bins]
-  (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
-        scale         (expt 10 (order-of-magnitude min-bin-width))]
-    (->> pleasing-numbers
-         (map (partial * scale))
-         (drop-while (partial > min-bin-width))
-         first)))
-
-(defn- nicer-bounds
-  [min-value max-value bin-width]
-  [(floor-to bin-width min-value) (ceil-to bin-width max-value)])
-
-(def ^:private ^:const max-steps 10)
-
-(defn- fixed-point
-  [f]
-  (fn [x]
-    (->> (iterate f x)
-         (partition 2 1)
-         (take max-steps)
-         (drop-while (partial apply not=))
-         ffirst)))
-
-(def ^:private ^{:arglists '([binned-field])} nicer-breakout
-  (fixed-point
-   (fn
-     [{:keys [min-value max-value bin-width num-bins strategy] :as binned-field}]
-     (let [bin-width (if (= strategy :num-bins)
-                       (nicer-bin-width min-value max-value num-bins)
-                       bin-width)
-           [min-value max-value] (nicer-bounds min-value max-value bin-width)]
-       (-> binned-field
-           (assoc :min-value min-value
-                  :max-value max-value
-                  :num-bins  (if (= strategy :num-bins)
-                               num-bins
-                               (calculate-num-bins min-value max-value bin-width))
-                  :bin-width bin-width))))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defn- equidistant-bins
   [histogram]
   (if (h/categorical? histogram)
@@ -150,12 +77,12 @@
         (nil? min)  []
         (= min max) [[min 1.0]]
         :else       (let [{:keys [min-value num-bins bin-width]}
-                          (nicer-breakout
+                          (binning/nicer-breakout
                            {:min-value min
                             :max-value max
                             :num-bins  (->> histogram
                                             h/optimal-bin-width
-                                            (calculate-num-bins min max))
+                                            (binning/calculate-num-bins min max))
                             :strategy  :num-bins})]
                       (->> min-value
                            (iterate (partial + bin-width))
