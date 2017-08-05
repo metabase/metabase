@@ -128,7 +128,7 @@ class ChartSettings extends Component {
                     <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
                 }
                 <div className="Grid flex-full mt3">
-                    <div className="Grid-cell Cell--1of3 scroll-y p1">
+                    <div className="Grid-cell Cell--1of3 scroll-y scroll-show p1">
                         { widgets && widgets.map((widget) =>
                             <Widget key={widget.id} {...widget} />
                         )}
@@ -151,7 +151,7 @@ class ChartSettings extends Component {
                         </div>
                     </div>
                 </div>
-                <div className="pt1">
+                <div className="bg-white">
                   <a className={cx("Button Button--primary", { disabled: !isDirty })} onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
                   <a className="text-grey-2 ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
                   { !_.isEqual(this.state.settings, {}) &&
