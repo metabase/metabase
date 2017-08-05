@@ -22,6 +22,7 @@
 (defn- field-query [{table-id :table_id} query]
   {:pre [(integer? table-id)]}
   (qp-query (db/select-one-field :db_id Table, :id table-id)
+            ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading macro for building queries. Do not remove
             (ql/query (merge query)
                       (ql/source-table table-id))))
 
@@ -65,10 +66,29 @@
   (-> (field-query field (ql/aggregation {} (ql/count (ql/field-id (u/get-id field)))))
       first first int))
 
-(defn field-max-min
-  "Returns a pair [max min] for the given `FIELD`"
-  [{field-id :id :as field}]
-  (->> (field-query field (ql/aggregation {} [(ql/min (ql/field-id field-id))
-                                              (ql/max (ql/field-id field-id))]))
-       first
-       (map double)))
+(defn db-id
+  "Fetch the database ID of a given entity."
+  [x]
+  (db/select-one-field :db_id 'Table :id (:table_id x)))
+
+(defn field-values
+  "Return all the values of FIELD for QUERY."
+  [field query]
+  (->> (qp/process-query
+         {:type     :query
+          :database (db-id field)
+          :query    (merge {:fields       [[:field-id (:id field)]]
+                            :source-table (:table_id field)}
+                           query)})
+       :data
+       :rows
+       (map first)))
+
+(defn query-values
+  "Return all values for QUERY."
+  [db-id query]
+  (-> (qp/process-query
+        {:type     :query
+         :database db-id
+         :query    query})
+      :data))

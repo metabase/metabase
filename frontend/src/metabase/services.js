@@ -145,7 +145,22 @@ export const MetabaseApi = {
     field_dimension_update:     POST("/api/field/:fieldId/dimension"),
     field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
     dataset:                    POST("/api/dataset"),
-    dataset_duration:           POST("/api/dataset/duration"),
+    dataset_duration:           POST("/api/dataset/duration")
+};
+
+export const XRayApi = {
+    // X-Rays
+    field_fingerprint:           GET("api/fingerprint/field/:fieldId"),
+    table_fingerprint:           GET("api/fingerprint/table/:tableId"),
+    segment_fingerprint:         GET("api/fingerprint/segment/:segmentId"),
+    card_fingerprint:            GET("api/fingerprint/card/:cardId"),
+
+    // Comparisons
+    // TODO - the api is currently set where compare is nested under fingerprint
+    field_compare:               GET("api/fingerprint/compare/fields/:fieldId1/:fieldId2"),
+    table_compare:               GET("api/fingerprint/compare/table/:tableId/:otherTableId"),
+    segment_compare:             GET("api/fingerprint/compare/segment/:segmentId/:otherSegmentId"),
+    card_compare:                GET("api/fingerprint/compare/card/:cardId/:otherCardId")
 };
 
 export const PulseApi = {
