@@ -501,7 +501,8 @@
           :features                 (constantly (set/union #{:basic-aggregations
                                                              :standard-deviation-aggregations
                                                              :native-parameters
-                                                             :expression-aggregations}
+                                                             :expression-aggregations
+                                                             :binning}
                                                            (when-not config/is-test?
                                                              ;; during unit tests don't treat bigquery as having FK support
                                                              #{:foreign-keys})))

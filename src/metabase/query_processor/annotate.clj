@@ -50,6 +50,14 @@
           (i/map->DateTimeField {:field field, :unit unit}))
         fields))
 
+    metabase.query_processor.interface.BinnedField
+    (let [{:keys [strategy min-value max-value], nested-field :field} this]
+      [(assoc nested-field :binning_info {:binning_strategy strategy
+                                          :bin_width (:bin-width this)
+                                          :num_bins (:num-bins this)
+                                          :min_value min-value
+                                          :max_value max-value})])
+
     metabase.query_processor.interface.Field
     (if-let [parent (:parent this)]
       [this parent]

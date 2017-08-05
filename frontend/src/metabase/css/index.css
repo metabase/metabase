@@ -9,7 +9,6 @@
 @import './components/icons.css';
 @import './components/list.css';
 @import './components/modal.css';
-@import './components/popover.css';
 @import './components/select.css';
 @import './components/table.css';
 
@@ -22,4 +21,3 @@
 @import './query_builder.css';
 @import './setup.css';
 @import './tutorial.css';
-

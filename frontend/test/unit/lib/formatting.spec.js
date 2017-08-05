@@ -54,8 +54,8 @@ describe('formatting', () => {
             expect(formatValue(12345, { column: { base_type: TYPE.Number, special_type: TYPE.ZipCode }})).toEqual("12345");
         });
         it("should format latitude and longitude columns correctly", () => {
-            expect(formatValue(37.7749, { column: { base_type: TYPE.Number, special_type: TYPE.Latitude }})).toEqual("37.77490000");
-            expect(formatValue(-122.4194, { column: { base_type: TYPE.Number, special_type: TYPE.Longitude }})).toEqual("-122.41940000");
+            expect(formatValue(37.7749, { column: { base_type: TYPE.Number, special_type: TYPE.Latitude }})).toEqual("37.77490000° N");
+            expect(formatValue(-122.4194, { column: { base_type: TYPE.Number, special_type: TYPE.Longitude }})).toEqual("122.41940000° W");
         });
         it("should return a component for links in jsx mode", () => {
             expect(isElementOfType(formatValue("http://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);

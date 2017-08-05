@@ -71,7 +71,6 @@
 
 (driver/register-driver! :toucanery (ToucaneryDriver.))
 
-
 (def toucanery-tables-and-fields
   [(merge table-defaults
           {:name         "employees"

@@ -108,7 +108,11 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 
 
     if (result.status >= 200 && result.status <= 299) {
-        return resultBody
+        if (options.transformResponse) {
+           return options.transformResponse(resultBody, { data });
+        } else {
+           return resultBody
+        }
     } else {
         const error = { status: result.status, data: resultBody, isCancelled: false }
         if (!simulateOfflineMode) {

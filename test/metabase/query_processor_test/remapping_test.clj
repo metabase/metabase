@@ -76,4 +76,5 @@
          booleanize-native-form
          (format-rows-by [int str int double double int str])
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
+         tu/round-fingerprint-cols
          :data)))

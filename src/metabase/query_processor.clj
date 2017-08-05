@@ -13,6 +13,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
@@ -89,6 +90,7 @@
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
       format-rows/format-rows
+      binning/update-binning-strategy
       results-metadata/record-and-return-metadata!
       resolve/resolve-middleware
       add-dim/add-remapping

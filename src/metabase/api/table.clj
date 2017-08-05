@@ -4,12 +4,13 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
-             [database :as database]
+             [database :as database :refer [Database]]
              [field :refer [Field with-normal-values]]
              [field-values :as fv]
              [interface :as mi]
@@ -74,6 +75,124 @@
         (sync/sync-table! updated-table))
       updated-table)))
 
+(def ^:private dimension-options
+  (let [default-entry ["Auto bin" ["default"]]]
+    (zipmap (range)
+            (concat
+             (map (fn [[name param]]
+                    {:name name
+                     :mbql ["datetime-field" nil param]
+                     :type "type/DateTime"})
+                  [["Minute" "minute"]
+                   ["Minute of Hour" "minute-of-hour"]
+                   ["Hour" "hour"]
+                   ["Hour of Day" "hour-of-day"]
+                   ["Day" "day"]
+                   ["Day of Week" "day-of-week"]
+                   ["Day of Month" "day-of-month"]
+                   ["Day of Year" "day-of-year"]
+                   ["Week" "week"]
+                   ["Week of Year" "week-of-year"]
+                   ["Month" "month"]
+                   ["Month of Year" "month-of-year"]
+                   ["Quarter" "quarter"]
+                   ["Quarter of Year" "quarter-of-year"]
+                   ["Year" "year"]])
+             (conj
+               (mapv (fn [[name params]]
+                      {:name name
+                       :mbql (apply vector "binning-strategy" nil params)
+                       :type "type/Number"})
+                    [default-entry
+                     ["10 bins" ["num-bins" 10]]
+                     ["50 bins" ["num-bins" 50]]
+                     ["100 bins" ["num-bins" 100]]])
+               {:name "Don't bin"
+                :mbql nil
+                :type "type/Number"}
+               )
+             (conj
+               (mapv (fn [[name params]]
+                      {:name name
+                       :mbql (apply vector "binning-strategy" nil params)
+                       :type "type/Coordinate"})
+                    [default-entry
+                     ["Bin every 1 degree" ["bin-width" 1.0]]
+                     ["Bin every 10 degrees" ["bin-width" 10.0]]
+                     ["Bin every 20 degrees" ["bin-width" 20.0]]
+                     ["Bin every 50 degrees" ["bin-width" 50.0]]])
+               {:name "Don't bin"
+                :mbql nil
+                :type "type/Coordinate"}
+              )))))
+
+(def ^:private dimension-options-for-response
+  (m/map-kv (fn [k v]
+              [(str k) v]) dimension-options))
+
+(defn- create-dim-index-seq [dim-type]
+  (->> dimension-options
+       (m/filter-kv (fn [k v] (= (:type v) dim-type)))
+       keys
+       sort
+       (map str)))
+
+(def ^:private datetime-dimension-indexes
+  (create-dim-index-seq "type/DateTime"))
+
+(def ^:private numeric-dimension-indexes
+  (create-dim-index-seq "type/Number"))
+
+(def ^:private coordinate-dimension-indexes
+  (create-dim-index-seq "type/Coordinate"))
+
+(defn- dimension-index-for-type [dim-type pred]
+  (first (m/find-first (fn [[k v]]
+                         (and (= dim-type (:type v))
+                              (pred v))) dimension-options-for-response)))
+
+(def ^:private date-default-index
+  (dimension-index-for-type "type/DateTime" #(= "Day" (:name %))))
+
+(def ^:private numeric-default-index
+  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) "Auto bin")))
+
+(def ^:private coordinate-default-index
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "Auto bin")))
+
+(defn- assoc-field-dimension-options [{:keys [base_type special_type fingerprint] :as field}]
+  (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
+        [default-option all-options] (cond
+
+                                       (isa? base_type :type/DateTime)
+                                       [date-default-index datetime-dimension-indexes]
+
+                                       (and min_value max_value
+                                            (isa? special_type :type/Coordinate))
+                                       [coordinate-default-index coordinate-dimension-indexes]
+
+                                       (and min_value max_value
+                                            (isa? base_type :type/Number)
+                                            (or (nil? special_type) (isa? special_type :type/Number)))
+                                       [numeric-default-index numeric-dimension-indexes]
+
+                                       :else
+                                       [nil []])]
+    (assoc field
+      :default_dimension_option default-option
+      :dimension_options all-options)))
+
+(defn- assoc-dimension-options [resp driver]
+  (if (and driver (contains? (driver/features driver) :binning))
+    (-> resp
+        (assoc :dimension_options dimension-options-for-response)
+        (update :fields #(mapv assoc-field-dimension-options %)))
+    (-> resp
+        (assoc :dimension_options [])
+        (update :fields (fn [fields]
+                          (mapv #(assoc %
+                                   :dimension_options []
+                                   :default_dimension_option nil) fields))))))
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
@@ -91,17 +210,20 @@
   will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
-  (-> (api/read-check Table id)
-      (hydrate :db [:fields :target :dimensions] :segments :metrics)
-      (update :fields with-normal-values)
-      (m/dissoc-in [:db :details])
-      format-fields-for-response
-      (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
-                             ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                             identity
-                             ;; Otherwise filter out all :sensitive fields
-                             (partial filter (fn [{:keys [visibility_type]}]
-                                               (not= (keyword visibility_type) :sensitive)))))))
+  (let [table (api/read-check Table id)
+        driver (driver/engine->driver (db/select-one-field :engine Database :id (:db_id table)))]
+    (-> table
+        (hydrate :db [:fields :target :dimensions] :segments :metrics)
+        (update :fields with-normal-values)
+        (m/dissoc-in [:db :details])
+        (assoc-dimension-options driver)
+        format-fields-for-response
+        (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
+                               ;; If someone passes include_sensitive_fields return hydrated :fields as-is
+                               identity
+                               ;; Otherwise filter out all :sensitive fields
+                               (partial filter (fn [{:keys [visibility_type]}]
+                                                 (not= (keyword visibility_type) :sensitive))))))))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual' database."
