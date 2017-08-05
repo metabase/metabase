@@ -118,7 +118,6 @@ class ChartSettings extends Component {
         const tabNames = Object.keys(tabs);
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
-        const isDirty = !_.isEqual(this.props.series[0].card.visualization_settings, this.state.settings);
 
         return (
             <div className="flex flex-column spread p4">
@@ -152,7 +151,7 @@ class ChartSettings extends Component {
                     </div>
                 </div>
                 <div className="pt1">
-                  <a className={cx("Button Button--primary", { disabled: !isDirty })} onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
+                  <a className="Button Button--primary" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
                   <a className="text-grey-2 ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
                   { !_.isEqual(this.state.settings, {}) &&
                       <a className="Button Button--warning float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
