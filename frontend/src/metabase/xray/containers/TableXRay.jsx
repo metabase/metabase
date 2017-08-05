@@ -4,7 +4,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchTableFingerPrint } from 'metabase/reference/reference'
+import { fetchTableThumbPrint } from 'metabase/reference/reference'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
 import COSTS from 'metabase/xray/costs'
@@ -14,7 +14,7 @@ import Constituent from 'metabase/xray/components/Constituent'
 
 import {
     getTableConstituents,
-    getTableFingerprint
+    getTableThumbprint
 } from 'metabase/reference/selectors'
 
 import Icon from 'metabase/components/Icon'
@@ -24,8 +24,8 @@ import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
     constituents: [],
-    fetchTableFingerPrint: () => void,
-    fingerprint: {
+    fetchTableThumbPrint: () => void,
+    thumbprint: {
         table: Table
     },
     params: {
@@ -35,16 +35,16 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    fingerprint: getTableFingerprint(state),
+    thumbprint: getTableThumbprint(state),
     constituents: getTableConstituents(state)
 })
 
 const mapDispatchToProps = {
-    fetchTableFingerPrint
+    fetchTableThumbPrint
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ fingerprint }) => fingerprint && fingerprint.table.display_name || "Table")
+@title(({ thumbprint }) => thumbprint && thumbprint.table.display_name || "Table")
 class TableXRay extends Component {
     props: Props
 
@@ -53,14 +53,14 @@ class TableXRay extends Component {
     }
 
     componentDidMount () {
-        this.fetchTableFingerPrint()
+        this.fetchTableThumbPrint()
     }
 
-    async fetchTableFingerPrint () {
+    async fetchTableThumbPrint () {
         const { params } = this.props
         const cost = COSTS[params.cost]
         try {
-            await this.props.fetchTableFingerPrint(params.tableId, cost)
+            await this.props.fetchTableThumbPrint(params.tableId, cost)
         } catch (error) {
             this.setState({ error })
         }
@@ -68,12 +68,12 @@ class TableXRay extends Component {
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchTableFingerPrint()
+            this.fetchTableThumbPrint()
         }
     }
 
     render () {
-        const { constituents, fingerprint, params } = this.props
+        const { constituents, thumbprint, params } = this.props
         const { error } = this.state
 
         return (
@@ -88,18 +88,18 @@ class TableXRay extends Component {
                             <div className="my4 flex align-center py2">
                                 <div>
                                     <h1 className="mt2 flex align-center">
-                                        {fingerprint.table.display_name}
+                                        {thumbprint.table.display_name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                         <span className="text-grey-3">XRay</span>
                                     </h1>
-                                    <p className="m0 text-paragraph text-measure">{fingerprint.table.description}</p>
+                                    <p className="m0 text-paragraph text-measure">{thumbprint.table.description}</p>
                                 </div>
                                 <div className="ml-auto flex align-center">
                                    <h3 className="mr2">Fidelity:</h3>
                                     <CostSelect
                                         xrayType='table'
                                         currentCost={params.cost}
-                                        id={fingerprint.table.id}
+                                        id={thumbprint.table.id}
                                     />
                                 </div>
                             </div>

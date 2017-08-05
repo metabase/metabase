@@ -1,12 +1,11 @@
-(ns metabase.fingerprinting-test
-  (:require [clj-time.coerce :as t.coerce]
-            [clj-time.core :as t]
+(ns metabase.xray-test
+  (:require [clj-time.core :as t]
             [expectations :refer :all]
-            [metabase.fingerprinting
-             [core :as f.core]
+            [metabase.xray
+             [core :as x.core]
              [costs :refer :all]
-             [fingerprinters :as f :refer :all]
-             [histogram :as h :refer :all]]
+             [histogram :as h :refer :all]
+             [thumbprinters :as tp :refer :all]]
             [redux.core :as redux]))
 
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
@@ -70,19 +69,19 @@
    1
    2
    4]
-  [(#'f/quarter (t/date-time 2017 1))
-   (#'f/quarter (t/date-time 2017 3))
-   (#'f/quarter (t/date-time 2017 5))
-   (#'f/quarter (t/date-time 2017 12))])
+  [(#'tp/quarter (t/date-time 2017 1))
+   (#'tp/quarter (t/date-time 2017 3))
+   (#'tp/quarter (t/date-time 2017 5))
+   (#'tp/quarter (t/date-time 2017 12))])
 
 (expect
-  {:limit (var-get #'f.core/max-sample-size)}
-  (#'f.core/extract-query-opts {:max-cost {:query :sample}}))
+  {:limit (var-get #'x.core/max-sample-size)}
+  (#'x.core/extract-query-opts {:max-cost {:query :sample}}))
 
 (defn- make-timestamp
   [y m]
   (-> (t/date-time y m)
-      ((var f/to-double))))
+      ((var tp/to-double))))
 
 (expect
   [[(make-timestamp 2016 1) 12]
@@ -98,29 +97,29 @@
    [(make-timestamp 2016 11) 0]
    [(make-timestamp 2016 12) 0]
    [(make-timestamp 2017 1) 25]]
-  (#'f/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
-                                     [(make-timestamp 2016 3) 4]
-                                     [(make-timestamp 2017 1) 25]]))
+  (#'tp/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
+                                      [(make-timestamp 2016 3) 4]
+                                      [(make-timestamp 2017 1) 25]]))
 
-;; Also low-key tests if fingerprinters can survive nils.
+;; Also low-key tests if thumbprinters can survive nils.
 (expect
-  [(var-get #'f/Num)
-   (var-get #'f/DateTime)
-   (var-get #'f/Category)
-   (var-get #'f/Text)
+  [(var-get #'tp/Num)
+   (var-get #'tp/DateTime)
+   (var-get #'tp/Category)
+   (var-get #'tp/Text)
    [nil [:type/NeverBeforeSeen :type/*]]]
-  [(-> (#'f.core/fingerprint-field {} {:base_type :type/Number} numbers) :type)
-   (-> (#'f.core/fingerprint-field {} {:base_type :type/DateTime} datetimes)
+  [(-> (#'x.core/thumbprint-field {} {:base_type :type/Number} numbers) :type)
+   (-> (#'x.core/thumbprint-field {} {:base_type :type/DateTime} datetimes)
        :type)
-   (-> (#'f.core/fingerprint-field {} {:base_type :type/Text
+   (-> (#'x.core/thumbprint-field {} {:base_type :type/Text
                                   :special_type :type/Category}
                               categories)
        :type)
    (->> categories
         (map str)
-        (#'f.core/fingerprint-field {} {:base_type :type/Text})
+        (#'x.core/thumbprint-field {} {:base_type :type/Text})
         :type)
-   (-> (#'f.core/fingerprint-field {} {:base_type :type/NeverBeforeSeen} numbers)
+   (-> (#'x.core/thumbprint-field {} {:base_type :type/NeverBeforeSeen} numbers)
        :type)])
 
 (expect

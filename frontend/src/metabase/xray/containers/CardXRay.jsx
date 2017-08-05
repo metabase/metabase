@@ -2,21 +2,21 @@ import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 
-import { fetchCardFingerPrint } from 'metabase/reference/reference'
+import { fetchCardThumbPrint } from 'metabase/reference/reference'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
 type Props = {
-    fetchCardFingerPrint: () => void,
-    fingerprint: {}
+    fetchCardThumbPrint: () => void,
+    thumbprint: {}
 }
 
-const FingerPrintList = ({ fingerprint }) =>
+const ThumbPrintList = ({ thumbprint }) =>
     <div>
         <ol className="full">
-            { Object.keys(fingerprint).map(fieldName => {
-                const f = fingerprint[fieldName]
+            { Object.keys(thumbprint).map(fieldName => {
+                const f = thumbprint[fieldName]
                 return (
                     <li key={fieldName}>
                         <h4>{fieldName}</h4>
@@ -39,7 +39,7 @@ const FingerPrintList = ({ fingerprint }) =>
         </ol>
     </div>
 
-const FingerprintGrid = ({ fingerprint, fields, distribution }) =>
+const ThumbprintGrid = ({ thumbprint, fields, distribution }) =>
     <div className="full">
         <ol>
             <li className="border-bottom border-dark">
@@ -59,8 +59,8 @@ const FingerprintGrid = ({ fingerprint, fields, distribution }) =>
                     )}
                 </ol>
             </li>
-            { Object.keys(fingerprint).map(key => {
-                const field = fingerprint[key]
+            { Object.keys(thumbprint).map(key => {
+                const field = thumbprint[key]
                 return (
                     <li className="border-bottom">
                         <ol className="Grid Grid--gutters">
@@ -111,39 +111,39 @@ class CardXRay extends Component {
     }
 
     componentDidMount () {
-        this.props.fetchCardFingerPrint(this.props.params.cardId)
+        this.props.fetchCardThumbPrint(this.props.params.cardId)
     }
 
 
     render () {
-        const { fingerprint } = this.props
+        const { thumbprint } = this.props
         return (
             <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
                 <div className="my4 py4">
                     <h1>Xray</h1>
                 </div>
-                <LoadingAndErrorWrapper loading={!fingerprint}>
+                <LoadingAndErrorWrapper loading={!thumbprint}>
                     { () =>
                         <div className="full">
                             { this.state.grid ?(
                                 <div className="mt3">
                                     <div className="my4">
                                         <h2 className="py3 my3">Overview</h2>
-                                        <FingerprintGrid
-                                            fingerprint={fingerprint}
+                                        <ThumbprintGrid
+                                            thumbprint={thumbprint}
                                             fields={['count', 'min', 'max', 'mean', 'median']}
                                             distribution={false}
                                         />
                                     </div>
                                     <div className="my4">
                                         <h2 className="py3 my3">I am a cool math wizard</h2>
-                                        <FingerprintGrid
-                                            fingerprint={fingerprint}
+                                        <ThumbprintGrid
+                                            thumbprint={thumbprint}
                                             fields={['skewness', 'has-nils?', 'all-distinct?', 'range-vs-spread', 'sum-of-squares', 'range-vs-sd']}
                                             distribution={true}
                                         />
                                     </div>
-                                    { fingerprint['CREATED_AT'] && (
+                                    { thumbprint['CREATED_AT'] && (
                                         <div className="my4">
                                             <h2 className="py3 my3">Time breakdown</h2>
                                             <div className="my3">
@@ -163,12 +163,12 @@ class CardXRay extends Component {
                                 </div>
                             )
                             : (
-                                <FingerPrintList fingerprint={fingerprint} />
+                                <ThumbPrintList thumbprint={thumbprint} />
                             )}
                             <pre>
 
                                 <code>
-                                    { JSON.stringify(fingerprint, null, 2) }
+                                    { JSON.stringify(thumbprint, null, 2) }
                                 </code>
                             </pre>
                         </div>
@@ -180,11 +180,11 @@ class CardXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    fingerprint: state.reference.tableFingerprint,
+    thumbprint: state.reference.tableThumbprint,
 })
 
 const mapDispatchToProps = {
-    fetchCardFingerPrint: fetchCardFingerPrint
+    fetchCardThumbPrint: fetchCardThumbPrint
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)

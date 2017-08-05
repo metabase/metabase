@@ -75,27 +75,27 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
 // Xray Fetch Actions
-// These actions are used to fetch Xray fingerprints and comparisons. Most take  a cost which
+// These actions are used to fetch Xray thumbprints and comparisons. Most take  a cost which
 // is used by the backend to figure out how precise to be when generating the xray stats.
 
-const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
-export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId, cost) {
+const FETCH_FIELD_THUMBPRINT = 'metabase/reference/FETCH_FIELD_THUMBPRINT';
+export const fetchFieldThumbPrint = createThunkAction(FETCH_FIELD_THUMBPRINT, function(fieldId, cost) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.field_fingerprint({ fieldId, ...cost.method });
-            return fingerprint;
+            let thumbprint = await XRayApi.field_thumbprint({ fieldId, ...cost.method });
+            return thumbprint;
         } catch (error) {
             console.error(error);
         }
     };
 });
 
-const FETCH_TABLE_FINGERPRINT = 'metabase/reference/FETCH_TABLE_FINGERPRINT';
-export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, function(tableId, cost) {
+const FETCH_TABLE_THUMBPRINT = 'metabase/reference/FETCH_TABLE_THUMBPRINT';
+export const fetchTableThumbPrint = createThunkAction(FETCH_TABLE_THUMBPRINT, function(tableId, cost) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.table_fingerprint({ tableId, ...cost.method });
-            return fingerprint;
+            let thumbprint = await XRayApi.table_thumbprint({ tableId, ...cost.method });
+            return thumbprint;
         } catch (error) {
             console.error(error);
         }
@@ -103,24 +103,24 @@ export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, 
 });
 
 
-const FETCH_SEGMENT_FINGERPRINT = 'metabase/reference/FETCH_SEGMENT_FINGERPRINT';
-export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRINT, function(segmentId, cost) {
+const FETCH_SEGMENT_THUMBPRINT = 'metabase/reference/FETCH_SEGMENT_THUMBPRINT';
+export const fetchSegment = createThunkAction(FETCH_SEGMENT_THUMBPRINT, function(segmentId, cost) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.segment_fingerprint({ segmentId, ...cost.method });
-            return fingerprint;
+            let thumbprint = await XRayApi.segment_thumbprint({ segmentId, ...cost.method });
+            return thumbprint;
         } catch (error) {
             console.error(error);
         }
     };
 });
 
-const FETCH_CARD_FINGERPRINT = 'metabase/reference/FETCH_CARD_FINGERPRINT';
-export const fetchCardFingerPrint = createThunkAction(FETCH_CARD_FINGERPRINT, function(cardId) {
+const FETCH_CARD_THUMBPRINT = 'metabase/reference/FETCH_CARD_THUMBPRINT';
+export const fetchCardThumbPrint = createThunkAction(FETCH_CARD_THUMBPRINT, function(cardId) {
     return async () => {
         try {
-            let fingerprint = await XRayApi.card_fingerprint({ cardId });
-            return fingerprint;
+            let thumbprint = await XRayApi.card_thumbprint({ cardId });
+            return thumbprint;
         } catch (error) {
             console.error(error);
         }
@@ -665,14 +665,14 @@ export default handleActions({
     [FETCH_GUIDE]: {
         next: (state, { payload }) => assoc(state, 'guide', payload)
     },
-    [FETCH_FIELD_FINGERPRINT]: {
-        next: (state, { payload }) => assoc(state, 'fieldFingerprint', payload)
+    [FETCH_FIELD_THUMBPRINT]: {
+        next: (state, { payload }) => assoc(state, 'fieldThumbprint', payload)
     },
-    [FETCH_TABLE_FINGERPRINT]: {
-        next: (state, { payload }) => assoc(state, 'tableFingerprint', payload)
+    [FETCH_TABLE_THUMBPRINT]: {
+        next: (state, { payload }) => assoc(state, 'tableThumbprint', payload)
     },
-    [FETCH_SEGMENT_FINGERPRINT]: {
-        next: (state, { payload }) => assoc(state, 'segmentFingerprint', payload)
+    [FETCH_SEGMENT_THUMBPRINT]: {
+        next: (state, { payload }) => assoc(state, 'segmentThumbprint', payload)
     },
     [FETCH_FIELD_COMPARISON]: {
         next: (state, { payload }) => assoc(state, 'fieldComparison', payload)

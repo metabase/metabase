@@ -1,6 +1,6 @@
 /* Combinations of MaxQueryCost and MaxComputationCost values combined into
  * human understandable groupings.
- * for more info on the actual values see src/metabase/fingerprints/costs.clj
+ * for more info on the actual values see src/metabase/xray/costs.clj
  */
 
 const approximate = {

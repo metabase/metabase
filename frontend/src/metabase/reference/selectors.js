@@ -171,26 +171,25 @@ export const getDashboards = (state, props) => getDashboardListing(state) && res
 export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;
 
 
-export const getFieldFingerprint = (state) =>
-    state.reference.fieldFingerprint && state.reference.fieldFingerprint.fingerprint
+export const getFieldThumbprint = (state) =>
+    state.reference.fieldThumbprint && state.reference.fieldThumbprint.thumbprint
 
-export const getTableFingerprint = (state) =>
-    state.reference.tableFingerprint && state.reference.tableFingerprint.fingerprint
+export const getTableThumbprint = (state) =>
+    state.reference.tableThumbprint && state.reference.tableThumbprint.thumbprint
 
-export const getSegmentFingerprint = (state) =>
-    state.reference.segmentFingerprint && state.reference.segmentFingerprint.fingerprint
+export const getSegmentThumbprint = (state) =>
+    state.reference.segmentThumbprint && state.reference.segmentThumbprint.thumbprint
 
 export const getTableConstituents = (state) =>
-    state.reference.tableFingerprint && (
-        Object.keys(state.reference.tableFingerprint.constituents).map(key =>
-            state.reference.tableFingerprint.constituents[key]
+    state.reference.tableThumbprint && (
+        Object.keys(state.reference.tableThumbprint.constituents).map(key =>
+            state.reference.tableThumbprint.constituents[key]
         )
     )
 
 export const getSegmentConstituents = (state) =>
-    state.reference.segmentFingerprint && (
-        Object.keys(state.reference.segmentFingerprint.constituents).map(key =>
-            state.reference.segmentFingerprint.constituents[key]
+    state.reference.segmentThumbprint && (
+        Object.keys(state.reference.segmentThumbprint.constituents).map(key =>
+            state.reference.segmentThumbprint.constituents[key]
         )
     )
-
