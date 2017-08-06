@@ -35,10 +35,10 @@
 (defmethod difference [Number Number]
   [a b]
   (cond
-    (every? zero? [a b]) 0
-    (zero? (max a b))    1
-    :else                (/ (- (max a b) (min a b))
-                            (max a b))))
+    (== a b 0)        0
+    (zero? (max a b)) 1
+    :else             (/ (- (max a b) (min a b))
+                         (max a b))))
 
 (defmethod difference [Boolean Boolean]
   [a b]

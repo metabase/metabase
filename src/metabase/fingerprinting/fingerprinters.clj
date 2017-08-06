@@ -15,9 +15,12 @@
              [histogram :as h]
              [costs :as costs]]
             [metabase.query-processor.middleware.binning :as binning]
-            [metabase.util :as u]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [redux.core :as redux]
-            [tide.core :as tide])
+            [tide.core :as tide]
+            [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
 (def ^:private ^:const percentiles (range 0 1 0.1))
@@ -151,7 +154,10 @@
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
                                                           (map math/sq)))})
    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-     (if (pos? (h/total-count histogram))
+     (if (h/empty? histogram)
+       {:count 0
+        :type  Num
+        :field field}
        (let [nil-count   (h/nil-count histogram)
              total-count (h/total-count histogram)
              uniqueness  (/ cardinality (max total-count 1))
@@ -194,10 +200,7 @@
            :field              field}
           (when (costs/full-scan? max-cost)
             {:sum            sum
-             :sum-of-squares sum-of-squares})))
-       {:count 0
-        :type  Num
-        :field field}))))
+             :sum-of-squares sum-of-squares})))))))
 
 (defmethod comparison-vector Num
   [fingerprint]
@@ -249,47 +252,85 @@
 (defn- decompose-timeseries
   "Decompose given timeseries with expected periodicty `period` into trend,
    seasonal component, and reminder.
-   `period` can be one of `:day`, `week`, or `:month`."
+   `period` can be one of `hour`, `:day`, `day-of-week`, `week`, or `:month`."
   [period ts]
   (let [period (case period
-                 :month 12
-                 :week  52
-                 :day   365)]
+                 :hour        24
+                 :day-of-week 7
+                 :month       12
+                 :week        52
+                 :day         365)]
     (when (>= (count ts) (* 2 period))
-      (select-keys (tide/decompose period ts) [:trend :seasonal :reminder]))))
+      (select-keys (tide/decompose period {:periodic? true
+                                           :robust?   true}
+                                   ts)
+                   [:trend :seasonal :residual]))))
+
+(defn- last-n-days
+  [n offset {:keys [breakout filter] :as query}]
+  (let [[[_ datetime-field _]] breakout
+        time-range             [:and
+                                [:> datetime-field
+                                 [:relative-datetime (- (+ n offset)) :day]]
+                                [:<= datetime-field
+                                 [:relative-datetime (- offset) :day]]]]
+    (-> (qp/process-query
+         {:type :query
+          :database (db/select-one-field :db_id 'Table :id (:source_table query))
+          :query (-> query
+                     (dissoc :breakout)
+                     (assoc :filter (if filter
+                                      [:and filter time-range]
+                                      time-range)))})
+        :data
+        :rows
+        ffirst)))
+
+(defn- rolling-window-growth
+  [window query]
+  (growth (last-n-days window 0 query) (last-n-days window window query)))
 
 (defmethod fingerprinter [DateTime Num]
-  [{:keys [max-cost resolution query]} field]
-  (redux/post-complete
-   (redux/pre-step
-    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                 :series            (if (nil? resolution)
-                                      conj
-                                      (redux/post-complete
-                                       conj
-                                       (partial fill-timeseries
-                                                (case resolution
-                                                  :month (t/months 1)
-                                                  :week  (t/weeks 1)
-                                                  :day   (t/days 1)))))})
-    (fn [[x y]]
-      [(-> x t.format/parse to-double) y]))
-   (fn [{:keys [series linear-regression]}]
-     (let [ys-r (->> series (map second) reverse not-empty)]
-       (merge {:resolution             resolution
-               :type                   [DateTime Num]
-               :field                  field
-               :series                 series
-               :linear-regression      linear-regression
-               :seasonal-decomposition
-               (when (and resolution
-                          (costs/unbounded-computation? max-cost))
-                 (decompose-timeseries resolution series))}
-              (when (costs/alow-joins? series)
-                {:YoY 0
-                 :MoM 0
-                 :WoW 0
-                 :DoD 0}))))))
+  [{:keys [max-cost query]} field]
+  (let [resolution (let [[head _ resolution] (-> query :breakout first)]
+                     (when (= head "datetime-field")
+                       (keyword resolution)))]
+    (redux/post-complete
+     (redux/pre-step
+      (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                   :series            (if (nil? resolution)
+                                        conj
+                                        (redux/post-complete
+                                         conj
+                                         (partial fill-timeseries
+                                                  (case resolution
+                                                    :month (t/months 1)
+                                                    :week  (t/weeks 1)
+                                                    :day   (t/days 1)
+                                                    :hour  (t/hours 1)))))})
+      (fn [[x y]]
+        [(-> x t.format/parse to-double) y]))
+     (fn [{:keys [series linear-regression]}]
+       (let [ys-r (->> series (map second) reverse not-empty)]
+         (merge {:resolution             resolution
+                 :type                   [DateTime Num]
+                 :field                  field
+                 :series                 series
+                 :linear-regression      linear-regression
+                 :growth-series          (->> series
+                                              (partition 2 1)
+                                              (map (fn [[[_ y1] [x y2]]]
+                                                     [x (growth y2 y1)])))
+                 :seasonal-decomposition
+                 (when (and resolution
+                            (costs/unbounded-computation? max-cost))
+                   (decompose-timeseries resolution series))}
+                (when (and (costs/alow-joins? max-cost)
+                           (:aggregation query))
+                  {:YoY (rolling-window-growth 365 query)
+                   :MoM (rolling-window-growth 30 query)
+                   :WoW (rolling-window-growth 7 query)
+                   :DoD (rolling-window-growth 1 query)})))))))
 
 (defmethod comparison-vector [DateTime Num]
   [fingerprint]

@@ -67,14 +67,7 @@
 
 (defmethod fingerprint (type Card)
   [opts card]
-  (let [resolution (let [[head _ resolution] (-> card
-                                                 :dataset_query
-                                                 :query
-                                                 :breakout
-                                                 first)]
-                     (when (= head :datetime-field)
-                       resolution))
-        query (-> card :dataset_query :query)
+  (let [query (-> card :dataset_query :query)
         {:keys [rows cols]} (->> query
                                  (merge (extract-query-opts opts))
                                  (metadata/query-values (:database_id card)))
@@ -84,8 +77,7 @@
     {:constituents [(fingerprint-field opts (first fields) (map first rows))
                     (fingerprint-field opts (second fields) (map second rows))]
      :fingerprint  (merge
-                    (fingerprint-field (assoc opts :resolution resolution)
-                                       fields rows)
+                    (fingerprint-field (assoc opts :query query) fields rows)
                     {:card  card
                      :table (Table (:table_id card))})}))
 
@@ -101,18 +93,6 @@
 (defmethod fingerprint (type Metric)
   [_ metric]
   {:metric metric})
-
-(defn compare-fingerprints
-  "Compare fingerprints of two models."
-  [opts a b]
-  (let [[a b] (map (partial fingerprint opts) [a b])]
-    {:constituents [a b]
-     :comparison   (into {}
-                     (map (fn [[k a] [_ b]]
-                            [k (if (sequential? a)
-                                 (map comparison/fingerprint-distance a b)
-                                 (comparison/fingerprint-distance a b))])
-                          a b))}))
 
 (defn- trim-decimals
   [decimal-places fingerprint]
@@ -130,5 +110,18 @@
   [fingerprint]
   (let [x-ray (comp add-descriptions (partial trim-decimals 2) f/x-ray)]
     (-> fingerprint
-        (update :fingerprint  x-ray)
+        (update :fingerprint x-ray)
+        (update :comparison  x-ray)
         (update :constituents (partial map x-ray)))))
+
+(defn compare-fingerprints
+  "Compare fingerprints of two models."
+  [opts a b]
+  (let [[a b] (map (partial fingerprint opts) [a b])]
+    {:constituents [a b]
+     :comparison   (into {}
+                     (map (fn [[k a] [_ b]]
+                            [k (if (sequential? a)
+                                 (map comparison/fingerprint-distance a b)
+                                 (comparison/fingerprint-distance a b))])
+                          a b))}))
