@@ -117,7 +117,14 @@ export function getXValues(datas, chartType) {
 }
 
 export function getFriendlyName(column) {
-    return column.display_name || FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] || column.name;
+    if (column.display_name && column.display_name !== column.name) {
+        return column.display_name
+    } else {
+        // NOTE Atte Keinänen 8/7/17:
+        // Values `display_name` and `name` are same for breakout columns so check FRIENDLY_NAME_MAP
+        // before returning either `display_name` or `name`
+        return FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] || column.display_name || column.name;
+    }
 }
 
 export function getCardColors(card) {
