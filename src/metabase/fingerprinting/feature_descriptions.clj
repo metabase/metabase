@@ -66,7 +66,14 @@
    :histogram-hour         {:label "Distribution of hours in a day"}
    :histogram-day          {:label "Distribution of days of week"}
    :histogram-month        {:label "Distribution of months"}
-   :histogram-quarter      {:label "Distribution of quarters"}})
+   :histogram-quarter      {:label "Distribution of quarters"}
+   :MoM                    {:label       "Month over month"
+                            :description "Last 30 days over previous 30 days growth"}
+   :YoY                    {:label       "Year over year"
+                            :description "Last 365 days over previous 365 days growth"}
+   :WoW                    {:label       "Week over week"
+                            :description "Last 7 days over previous 7 days growth"}
+   :DoD                    {:label "Day over day"}})
 
 (def ^{:arglists '([fingerprint])} add-descriptions
   "Add descriptions of features to naked values where applicable."
