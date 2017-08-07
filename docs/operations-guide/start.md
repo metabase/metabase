@@ -387,4 +387,4 @@ Metabase to use your own logging configuration file by passing a `-Dlog4j.config
 
     java -Dlog4j.configuration=file:/path/to/custom/log4j.properties -jar metabase.jar
 
-The easiest way to get started customizing logging would be to use a copy of default `log4j.properties` file linked to above and adjust that to meet your needs.
+The easiest way to get started customizing logging would be to use a copy of default `log4j.properties` file linked to above and adjust that to meet your needs. Keep in mind that you'll need to restart Metabase for changes to the file to take effect.
