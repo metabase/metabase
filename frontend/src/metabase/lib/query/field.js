@@ -3,6 +3,7 @@ import { mbqlEq } from "./util";
 
 import type { Field as FieldReference } from "metabase/meta/types/Query";
 import type { Field, FieldId, FieldValues } from "metabase/meta/types/Field";
+import type { Value } from "metabase/meta/types/Dataset";
 
 // gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
 export function getFieldTargetId(field: FieldReference): ?FieldId {
