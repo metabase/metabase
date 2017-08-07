@@ -111,7 +111,7 @@
   (let [x-ray (comp add-descriptions (partial trim-decimals 2) f/x-ray)]
     (-> fingerprint
         (update :fingerprint x-ray)
-        (update :comparison  x-ray)
+;        (update :comparison  (partial map x-ray))
         (update :constituents (partial map x-ray)))))
 
 (defn compare-fingerprints
@@ -119,9 +119,6 @@
   [opts a b]
   (let [[a b] (map (partial fingerprint opts) [a b])]
     {:constituents [a b]
-     :comparison   (into {}
-                     (map (fn [[k a] [_ b]]
-                            [k (if (sequential? a)
-                                 (map comparison/fingerprint-distance a b)
-                                 (comparison/fingerprint-distance a b))])
-                          a b))}))
+     :comparison   (map comparison/fingerprint-distance
+                        (:constituents a)
+                        (:constituents b))}))

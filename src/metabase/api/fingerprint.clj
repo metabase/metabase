@@ -11,18 +11,18 @@
             [schema.core :as s]))
 
 ;; See metabase.fingerprinting.core/fingerprint for description of these settings.
-(def ^:private ^:const MaxQueryCost
+(def ^:private MaxQueryCost
   (s/maybe (s/enum "cache"
                    "sample"
                    "full-scan"
                    "joins")))
 
-(def ^:private ^:const MaxComputationCost
+(def ^:private MaxComputationCost
   (s/maybe (s/enum "linear"
                    "unbounded"
                    "yolo")))
 
-(def ^:private ^:const Scale
+(def ^:private Scale
   (s/maybe (s/enum "month"
                    "week"
                    "day")))
@@ -98,16 +98,16 @@
               {:max-cost (max-cost max_query_cost max_computation_cost)})
        f/x-ray))
 
-(api/defendpoint GET "/compare/cards/:id1/:id2"
-  "Get comparison fingerprints for `Card`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (->> [id1 id2]
-       (map (partial api/read-check Card))
-       (apply f/compare-fingerprints
-              {:max-cost (max-cost max_query_cost max_computation_cost)})
-       f/x-ray))
+;; (api/defendpoint GET "/compare/cards/:id1/:id2"
+;;   "Get comparison fingerprints for `Card`s with ID1 and ID2."
+;;   [id1 id2 max_query_cost max_computation_cost]
+;;   {max_query_cost       MaxQueryCost
+;;    max_computation_cost MaxComputationCost}
+;;   (->> [id1 id2]
+;;        (map (partial api/read-check Card))
+;;        (apply f/compare-fingerprints
+;;               {:max-cost (max-cost max_query_cost max_computation_cost)})
+;;        f/x-ray))
 
 (api/defendpoint GET "/compare/segments/:id1/:id2"
   "Get comparison fingerprints for `Segment`s with ID1 and ID2."

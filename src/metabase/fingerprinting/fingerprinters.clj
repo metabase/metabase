@@ -23,7 +23,7 @@
             [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
-(def ^:private ^:const percentiles (range 0 1 0.1))
+(def ^:private percentiles (range 0 1 0.1))
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
@@ -442,8 +442,9 @@
                                       [k (* v (/ baseline (weights k)))])))))
 
 (defmethod x-ray DateTime
-  [{:keys [field earliest latest count] :as fingerprint}]
-  (if (pos? count)
+  [{:keys [field earliest latest histogram] :as fingerprint}]
+  (if (h/empty? histogram)
+    (select-keys fingerprint [:count :type :field])
     (let [earliest (from-double earliest)
           latest   (from-double latest)]
       (-> fingerprint
@@ -476,8 +477,7 @@
                                                {:name         "QUARTER"
                                                 :display_name "Quarter of year"
                                                 :base_type    :type/Integer
-                                                :special_type :type/Category})))))
-    (select-keys fingerprint [:count :type :field])))
+                                                :special_type :type/Category})))))))
 
 (defmethod fingerprinter Category
   [_ field]
