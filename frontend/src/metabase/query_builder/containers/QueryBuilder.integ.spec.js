@@ -16,14 +16,17 @@ import {
     CANCEL_QUERY,
     SET_DATASET_QUERY,
     setQueryDatabase,
-    setQuerySourceTable
+    setQuerySourceTable,
+    setDatasetQuery,
+    NAVIGATE_TO_NEW_CARD,
+    UPDATE_URL
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
 import QueryHeader from "metabase/query_builder/components/QueryHeader";
 import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
-import FieldList from "metabase/query_builder/components/FieldList";
+import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
@@ -36,27 +39,37 @@ import VisualizationSettings from "metabase/query_builder/components/Visualizati
 import Visualization from "metabase/visualizations/components/Visualization";
 import TableSimple from "metabase/visualizations/components/TableSimple";
 
-
 import {
     ORDERS_TOTAL_FIELD_ID,
     unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
+import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
+import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
+import { getCard, getQueryResults } from "metabase/query_builder/selectors";
+import { TestTable } from "metabase/visualizations/visualizations/Table";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
-const initQBWithReviewsTable = async () => {
-    const store = await createTestStore()
-    store.pushPath("/question");
-    const qb = mount(store.connectContainer(<QueryBuilder />));
-    await store.waitForActions([INITIALIZE_QB]);
+import { delay } from "metabase/lib/promise";
 
-    // Use Products table
-    store.dispatch(setQueryDatabase(1));
-    store.dispatch(setQuerySourceTable(4));
-    await store.waitForActions([FETCH_TABLE_METADATA]);
-    store.resetDispatchedActions();
+const initQbWithDbAndTable = (dbId, tableId) => {
+    return async () => {
+        const store = await createTestStore()
+        store.pushPath("/question");
+        const qb = mount(store.connectContainer(<QueryBuilder />));
+        await store.waitForActions([INITIALIZE_QB]);
 
-    return { store, qb }
+        // Use Products table
+        store.dispatch(setQueryDatabase(dbId));
+        store.dispatch(setQuerySourceTable(tableId));
+        await store.waitForActions([FETCH_TABLE_METADATA]);
+        store.resetDispatchedActions();
+
+        return { store, qb }
+    }
 }
 
+const initQbWithOrdersTable = initQbWithDbAndTable(1, 1)
+const initQBWithReviewsTable = initQbWithDbAndTable(1, 4)
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
@@ -99,7 +112,7 @@ describe("QueryBuilder", () => {
             expect(doneButton.length).toBe(1)
 
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
-            expect(fieldsToIncludeCheckboxes.length).toBe(8)
+            expect(fieldsToIncludeCheckboxes.length).toBe(6)
 
             fieldsToIncludeCheckboxes.at(3).simulate("click");
 
@@ -233,10 +246,7 @@ describe("QueryBuilder", () => {
     });
 
     describe("editor bar", async() => {
-        fdescribe("for Category field in Products table", () =>  {
-            // TODO: Update the test H2 database fixture so that it recognizes Category field as Category
-            // and has run a database sync so that Category field contains the expected field values
-
+        describe("for filtering by Rating category field in Reviews table", () =>  {
             let store = null;
             let qb = null;
             beforeAll(async () => {
@@ -245,7 +255,7 @@ describe("QueryBuilder", () => {
 
             // NOTE: Sequential tests; these may fail in a cascading way but shouldn't affect other tests
 
-            it("lets you add it as a filter", async () => {
+            it("lets you add Rating field as a filter", async () => {
                 // TODO Atte Keinänen 7/13/17: Extracting GuiQueryEditor's contents to smaller React components
                 // would make testing with selectors more natural
                 const filterSection = qb.find('.GuiBuilder-filtered-by');
@@ -322,6 +332,396 @@ describe("QueryBuilder", () => {
 
                 expect(qb.find(FilterWidget).length).toBe(0);
             })
+        })
+
+        describe("for filtering by ID number field in Reviews table", () => {
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQBWithReviewsTable());
+            })
+
+            it("lets you add ID field as a filter", async () => {
+                const filterSection = qb.find('.GuiBuilder-filtered-by');
+                const addFilterButton = filterSection.find('.AddButton');
+                addFilterButton.simulate("click");
+
+                const filterPopover = filterSection.find(FilterPopover);
+
+                const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="ID"]')
+                expect(ratingFieldButton.length).toBe(1);
+                ratingFieldButton.simulate('click');
+            })
+
+            it("lets you see a correct number of operators in filter popover", () => {
+                const filterPopover = qb.find(FilterPopover);
+
+                const operatorSelector = filterPopover.find(OperatorSelector);
+                const moreOptionsIcon = operatorSelector.find(".Icon-chevrondown");
+                moreOptionsIcon.simulate("click");
+
+                expect(operatorSelector.find("button").length).toBe(9)
+            })
+
+            it("lets you set 'ID is 10' filter", async () => {
+                const filterPopover = qb.find(FilterPopover);
+                const filterInput = filterPopover.find("textarea");
+                filterInput.simulate('change', { target: { value: "10" }})
+
+                const addFilterButton = filterPopover.find('button[children="Add filter"]')
+                addFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                store.resetDispatchedActions();
+
+                expect(qb.find(FilterPopover).length).toBe(0);
+                const filterWidget = qb.find(FilterWidget);
+                expect(filterWidget.length).toBe(1);
+                expect(filterWidget.text()).toBe("ID is equal to10");
+            })
+
+            it("lets you update the filter to 'ID is 10 or 11'", async () => {
+                const filterWidget = qb.find(FilterWidget);
+                filterWidget.find(FieldName).simulate('click');
+
+                const filterPopover = qb.find(FilterPopover);
+                const filterInput = filterPopover.find("textarea");
+
+                // Intentionally use a value with lots of extra spaces
+                filterInput.simulate('change', { target: { value: "  10,      11" }})
+
+                const addFilterButton = filterPopover.find('button[children="Update filter"]')
+                addFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                expect(qb.find(FilterPopover).length).toBe(0);
+                expect(filterWidget.text()).toBe("ID is equal to2 selections");
+            });
+
+            it("lets you update the filter to 'ID is between 1 or 100'", async () => {
+                const filterWidget = qb.find(FilterWidget);
+                filterWidget.find(FieldName).simulate('click');
+
+                const filterPopover = qb.find(FilterPopover);
+                const operatorSelector = filterPopover.find(OperatorSelector);
+                operatorSelector.find('button[children="Between"]').simulate("click");
+
+                const betweenInputs = filterPopover.find("textarea");
+                expect(betweenInputs.length).toBe(2);
+
+                expect(betweenInputs.at(0).props().value).toBe("10, 11");
+
+                betweenInputs.at(1).simulate('change', { target: { value: "asdasd" }})
+                const updateFilterButton = filterPopover.find('button[children="Update filter"]')
+                expect(updateFilterButton.props().className).toMatch(/disabled/);
+
+                betweenInputs.at(0).simulate('change', { target: { value: "1" }})
+                betweenInputs.at(1).simulate('change', { target: { value: "100" }})
+
+                updateFilterButton.simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                expect(qb.find(FilterPopover).length).toBe(0);
+                expect(filterWidget.text()).toBe("ID between1100");
+            });
+        })
+
+        describe("for grouping by Total in Orders table", async () => {
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQbWithOrdersTable());
+            })
+
+            it("lets you group by Total with the default binning option", async () => {
+                const breakoutSection = qb.find('.GuiBuilder-groupedBy');
+                const addBreakoutButton = breakoutSection.find('.AddButton');
+                addBreakoutButton.simulate("click");
+
+                const breakoutPopover = breakoutSection.find("#BreakoutPopover")
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('h4[children="Total"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                expect(breakoutWidget.text()).toBe("Total: Auto binned");
+            });
+            it("produces correct results for default binning option", async () => {
+                // Run the raw data query
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                // We can use the visible row count as we have a low number of result rows
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 6 rows");
+
+                // Get the binning
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
+                expect(breakoutBinningInfo.bin_width).toBe(20);
+                expect(breakoutBinningInfo.num_bins).toBe(8);
+            })
+            it("lets you change the binning strategy to 100 bins", async () => {
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                breakoutWidget.find(FieldName).children().first().simulate("click")
+                const breakoutPopover = qb.find("#BreakoutPopover")
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="Auto binned"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                qb.find(DimensionPicker).find('a[children="100 bins"]').simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                expect(breakoutWidget.text()).toBe("Total: 100 bins");
+            });
+            it("produces correct results for 100 bins", async () => {
+                store.resetDispatchedActions();
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 95 rows");
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
+                expect(breakoutBinningInfo.bin_width).toBe(1);
+                expect(breakoutBinningInfo.num_bins).toBe(100);
+            })
+            it("lets you disable the binning", async () => {
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                breakoutWidget.find(FieldName).children().first().simulate("click")
+                const breakoutPopover = qb.find("#BreakoutPopover")
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="100 bins"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                qb.find(DimensionPicker).find('a[children="Don\'t bin"]').simulate("click");
+            });
+            it("produces the expected count of rows when no binning", async () => {
+                store.resetDispatchedActions();
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                // We just want to see that there are a lot more rows than there would be if a binning was active
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing first 2,000 rows");
+
+                const results = getQueryResults(store.getState())[0]
+                expect(results.data.cols[0].binning_info).toBe(undefined);
+            });
+        })
+
+        describe("for grouping by Latitude location field through Users FK in Orders table", async () => {
+            let store = null;
+            let qb = null;
+            beforeAll(async () => {
+                ({ store, qb } = await initQbWithOrdersTable());
+            })
+
+            it("lets you group by Latitude with the default binning option", async () => {
+                const breakoutSection = qb.find('.GuiBuilder-groupedBy');
+                const addBreakoutButton = breakoutSection.find('.AddButton');
+                addBreakoutButton.simulate("click");
+
+                const breakoutPopover = breakoutSection.find("#BreakoutPopover")
+
+                const userSectionButton = breakoutPopover.find(FieldList).find('h3[children="User"]')
+                expect(userSectionButton.length).toBe(1);
+                userSectionButton.simulate("click");
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('h4[children="Latitude"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                await store.waitForActions([SET_DATASET_QUERY])
+
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                expect(breakoutWidget.text()).toBe("Latitude: Auto binned");
+            });
+
+            it("produces correct results for default binning option", async () => {
+                // Run the raw data query
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 18 rows");
+
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("bin-width");
+                expect(breakoutBinningInfo.bin_width).toBe(10);
+                expect(breakoutBinningInfo.num_bins).toBe(18);
+            })
+
+            it("lets you group by Latitude with the 'Bin every 1 degree'", async () => {
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                breakoutWidget.find(FieldName).children().first().simulate("click")
+                const breakoutPopover = qb.find("#BreakoutPopover")
+
+                const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="Auto binned"]')
+                expect(subtotalFieldButton.length).toBe(1);
+                subtotalFieldButton.simulate('click');
+
+                qb.find(DimensionPicker).find('a[children="Bin every 1 degree"]').simulate("click");
+
+                await store.waitForActions([SET_DATASET_QUERY])
+                expect(breakoutWidget.text()).toBe("Latitude: 1°");
+            });
+            it("produces correct results for 'Bin every 1 degree'", async () => {
+                // Run the raw data query
+                store.resetDispatchedActions();
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 180 rows");
+
+                const results = getQueryResults(store.getState())[0]
+                const breakoutBinningInfo = results.data.cols[0].binning_info;
+                expect(breakoutBinningInfo.binning_strategy).toBe("bin-width");
+                expect(breakoutBinningInfo.bin_width).toBe(1);
+                expect(breakoutBinningInfo.num_bins).toBe(180);
+            })
+        });
+    })
+
+    describe("drill-through", () => {
+        describe("Zoom In action for broken out fields", () => {
+            it("works for Count of rows aggregation and Subtotal 50 Bins breakout", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                await store.dispatch(setDatasetQuery({
+                    database: 1,
+                    type: 'query',
+                    query: {
+                        source_table: 1,
+                        breakout: [['binning-strategy', ['field-id', 6], 'num-bins', 50]],
+                        aggregation: [['count']]
+                    }
+                }));
+
+
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                const table = qb.find(TestTable);
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                expect(firstRowCells.length).toBe(2);
+
+                expect(firstRowCells.first().text()).toBe("12  –  14");
+
+                const countCell = firstRowCells.last();
+                expect(countCell.text()).toBe("387");
+                countCell.children().first().simulate("click");
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                store.resetDispatchedActions();
+                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+
+                store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                // Should reset to auto binning
+                const breakoutWidget = qb.find(BreakoutWidget).first();
+                expect(breakoutWidget.text()).toBe("Total: Auto binned");
+
+                // Expecting to see the correct lineage (just a simple sanity check)
+                const title = qb.find(QueryHeader).find("h1")
+                expect(title.text()).toBe("New question")
+            })
+
+            it("works for Count of rows aggregation and FK State breakout", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                await store.dispatch(setDatasetQuery({
+                    database: 1,
+                    type: 'query',
+                    query: {
+                        source_table: 1,
+                        breakout: [['fk->', 7, 19]],
+                        aggregation: [['count']]
+                    }
+                }));
+
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                const table = qb.find(TestTable);
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                expect(firstRowCells.length).toBe(2);
+
+                expect(firstRowCells.first().text()).toBe("AA");
+
+                const countCell = firstRowCells.last();
+                expect(countCell.text()).toBe("417");
+                countCell.children().first().simulate("click");
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                store.resetDispatchedActions();
+                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+
+                store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                // Should reset to auto binning
+                const breakoutWidgets = qb.find(BreakoutWidget);
+                expect(breakoutWidgets.length).toBe(3);
+                expect(breakoutWidgets.at(0).text()).toBe("Latitude: 1°");
+                expect(breakoutWidgets.at(1).text()).toBe("Longitude: 1°");
+
+                // Should have visualization type set to Pin map (temporary workaround until we have polished heat maps)
+                const card = getCard(store.getState())
+                expect(card.display).toBe("map");
+                expect(card.visualization_settings).toEqual({ "map.type": "pin" });
+            });
+
+            it("works for Count of rows aggregation and FK Latitude Auto binned breakout", async () => {
+                const {store, qb} = await initQbWithOrdersTable();
+                await store.dispatch(setDatasetQuery({
+                    database: 1,
+                    type: 'query',
+                    query: {
+                        source_table: 1,
+                        breakout: [["binning-strategy", ['fk->', 7, 14], "default"]],
+                        aggregation: [['count']]
+                    }
+                }));
+
+                qb.find(RunButton).simulate("click");
+                await store.waitForActions([QUERY_COMPLETED]);
+
+                const table = qb.find(TestTable);
+                const firstRowCells = table.find("tbody tr").first().find("td");
+                expect(firstRowCells.length).toBe(2);
+
+                // lat-long formatting should be improved when it comes to trailing zeros
+                expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
+
+                const countCell = firstRowCells.last();
+                expect(countCell.text()).toBe("1,079");
+                countCell.children().first().simulate("click");
+
+                // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
+                await delay(150);
+
+                store.resetDispatchedActions();
+                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+
+                store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
+
+                // Should reset to auto binning
+                const breakoutWidgets = qb.find(BreakoutWidget);
+                expect(breakoutWidgets.length).toBe(2);
+
+                // Default location binning strategy currently has a bin width of 10° so
+                expect(breakoutWidgets.at(0).text()).toBe("Latitude: 1°");
+
+                // Should have visualization type set to the previous visualization
+                const card = getCard(store.getState())
+                expect(card.display).toBe("bar");
+            });
         })
     })
 });

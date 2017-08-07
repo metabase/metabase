@@ -242,3 +242,7 @@
   (select-keys-when {:a 100, :b nil, :d 200, :e nil}
     :present #{:a :b :c}
     :non-nil #{:d :e :f}))
+
+(expect
+  [-2 -1 0 1 2 3 0 3]
+  (map order-of-magnitude [0.01 0.5 4 12 444 1023 0 -1444]))

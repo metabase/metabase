@@ -66,7 +66,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                         fieldOptions={breakoutOptions}
                         onCommitBreakout={breakout => {
                             const nextCard = question
-                                .pivot(breakout, dimensions)
+                                .pivot([breakout], dimensions)
                                 .card();
 
                             if (nextCard) {

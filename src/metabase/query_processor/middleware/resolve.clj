@@ -137,22 +137,42 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
+(defn- resolve-binned-field [{:keys [binning-strategy binning-param] :as field-ph} field]
+  (let [binned-field (i/map->BinnedField {:field    field
+                                          :strategy binning-strategy})]
+    (case binning-strategy
+      :num-bins
+      (assoc binned-field :num-bins binning-param)
+
+      :bin-width
+      (assoc binned-field :bin-width binning-param)
+
+      :default
+      binned-field
+
+      :else
+      (throw (Exception. (format "Unregonized binning strategy '%s'" binning-strategy))))))
+
 (defn- merge-non-nils
   "Like `clojure.core/merge` but only merges non-nil values"
   [& maps]
   (apply merge-with #(or %2 %1) maps))
 
-(defn- field-ph-resolve-field [{:keys [field-id datetime-unit], :as this} field-id->field]
+(defn- field-ph-resolve-field [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
     ;; try to resolve the Field with the ones available in field-id->field
-    (let [datetime-field? (or (isa? base-type :type/DateTime)
-                              (isa? special-type :type/DateTime))]
-      (if-not datetime-field?
-        field
-        (i/map->DateTimeField {:field field
-                               :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
+    (cond
+      (or (isa? base-type :type/DateTime)
+          (isa? special-type :type/DateTime))
+      (i/map->DateTimeField {:field field
+                             :unit  (or datetime-unit :day)}) ; default to `:day` if a unit wasn't specified
+
+      binning-strategy
+      (resolve-binned-field this field)
+
+      :else field)
     ;; If that fails just return ourselves as-is
     this))
 
@@ -236,7 +256,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id :fingerprint]
                                               :visibility_type [:not= "sensitive"]
                                               :id              [:in field-ids])
                                             (hydrate :values)

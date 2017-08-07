@@ -1,6 +1,8 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.walk :as walk]
+            [expectations :refer :all]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [http-client :as http]
@@ -20,11 +22,15 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :refer [user->client]]]
-            [toucan.hydrate :as hydrate]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [hydrate :as hydrate]]
             [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
+(resolve-private-vars metabase.api.table
+  dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes
+  numeric-default-index date-default-index coordinate-default-index)
 
 
 ;; ## /api/org/* AUTHENTICATION Tests
@@ -66,18 +72,20 @@
    :metrics                 []})
 
 (def ^:private field-defaults
-  {:description        nil
-   :active             true
-   :position           0
-   :target             nil
-   :preview_display    true
-   :visibility_type    "normal"
-   :caveats            nil
-   :points_of_interest nil
-   :special_type       nil
-   :parent_id          nil
-   :dimensions         []
-   :values             []})
+  {:description              nil
+   :active                   true
+   :position                 0
+   :target                   nil
+   :preview_display          true
+   :visibility_type          "normal"
+   :caveats                  nil
+   :points_of_interest       nil
+   :special_type             nil
+   :parent_id                nil
+   :dimensions               []
+   :values                   []
+   :dimension_options        []
+   :default_dimension_option nil})
 
 (defn- field-details [field]
   (merge
@@ -90,6 +98,10 @@
       :raw_column_id      $
       :last_analyzed      $
       :fingerprint        $})))
+
+(defn- fk-field-details [field]
+  (-> (field-details field)
+      (dissoc :dimension_options :default_dimension_option)))
 
 
 ;; ## GET /api/table
@@ -143,10 +155,16 @@
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
+(defn- query-metadata-defaults []
+  (->> dimension-options-for-response
+       var-get
+       walk/keywordize-keys
+       (assoc (table-defaults) :dimension_options)))
+
 ;; ## GET /api/table/:id/query_metadata
 (expect
-  (merge (table-defaults)
-         (match-$ (Table (data/id :categories))
+  (merge (query-metadata-defaults)
+         (match-$ (hydrate/hydrate (Table (data/id :categories)) :field_values)
            {:schema       "PUBLIC"
             :name         "CATEGORIES"
             :display_name "Categories"
@@ -162,7 +180,9 @@
                              :name         "NAME"
                              :display_name "Name"
                              :base_type    "type/Text"
-                             :values       data/venue-categories)]
+                             :values       data/venue-categories
+                             :dimension_options []
+                             :default_dimension_option nil)]
             :rows         75
             :updated_at   $
             :id           (data/id :categories)
@@ -191,7 +211,7 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-  (merge (table-defaults)
+  (merge (query-metadata-defaults)
          (match-$ (Table (data/id :users))
            {:schema       "PUBLIC"
             :name         "USERS"
@@ -208,7 +228,10 @@
                              :name            "LAST_LOGIN"
                              :display_name    "Last Login"
                              :base_type       "type/DateTime"
-                             :visibility_type "normal")
+                             :visibility_type "normal"
+                             :dimension_options        (var-get datetime-dimension-indexes)
+                             :default_dimension_option (var-get date-default-index)
+                             )
                            (assoc (field-details (Field (data/id :users :name)))
                              :special_type    "type/Name"
                              :table_id        (data/id :users)
@@ -216,7 +239,9 @@
                              :display_name    "Name"
                              :base_type       "type/Text"
                              :visibility_type "normal"
-                             :values          (map vector (sort user-full-names)))
+                             :values          (map vector (sort user-full-names))
+                             :dimension_options []
+                             :default_dimension_option nil)
                            (assoc (field-details (Field :table_id (data/id :users), :name "PASSWORD"))
                              :special_type    "type/Category"
                              :table_id        (data/id :users)
@@ -234,7 +259,7 @@
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-  (merge (table-defaults)
+  (merge (query-metadata-defaults)
          (match-$ (Table (data/id :users))
            {:schema       "PUBLIC"
             :name         "USERS"
@@ -246,10 +271,12 @@
                              :display_name "ID"
                              :base_type    "type/BigInteger")
                            (assoc (field-details (Field (data/id :users :last_login)))
-                             :table_id     (data/id :users)
-                             :name         "LAST_LOGIN"
-                             :display_name "Last Login"
-                             :base_type    "type/DateTime")
+                             :table_id                 (data/id :users)
+                             :name                     "LAST_LOGIN"
+                             :display_name             "Last Login"
+                             :base_type                "type/DateTime"
+                             :dimension_options        (var-get datetime-dimension-indexes)
+                             :default_dimension_option (var-get date-default-index))
                            (assoc (field-details (Field (data/id :users :name)))
                              :table_id     (data/id :users)
                              :special_type "type/Name"
@@ -346,11 +373,12 @@
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
   (let [checkins-user-field (Field (data/id :checkins :user_id))
-        users-id-field      (Field (data/id :users :id))]
+        users-id-field      (Field (data/id :users :id))
+        fk-field-defaults   (dissoc field-defaults :target :dimension_options :default_dimension_option)]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
-      :origin         (-> (field-details checkins-user-field)
+      :origin         (-> (fk-field-details checkins-user-field)
                           (dissoc :target :dimensions :values)
                           (assoc :table_id     (data/id :checkins)
                                  :name         "USER_ID"
@@ -367,7 +395,7 @@
                                                          :id           $
                                                          :raw_table_id $
                                                          :created_at   $}))))
-      :destination    (-> (field-details users-id-field)
+      :destination    (-> (fk-field-details users-id-field)
                           (dissoc :target :dimensions :values)
                           (assoc :table_id     (data/id :users)
                                  :name         "ID"
@@ -504,3 +532,63 @@
      (fn []
        (narrow-fields ["PRICE" "CATEGORY_ID"]
                       ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues))))))))
+
+;; Ensure dimensions options are sorted numerically, but returned as strings
+(expect
+  (map str (sort (map #(Long/parseLong %) (var-get datetime-dimension-indexes))))
+  (var-get datetime-dimension-indexes))
+
+(expect
+  (map str (sort (map #(Long/parseLong %) (var-get numeric-dimension-indexes))))
+  (var-get numeric-dimension-indexes))
+
+;; Numeric fields without min/max values should not have binning strategies
+(expect
+  []
+  (let [lat-field-id (data/id :venues :latitude)
+        fingerprint  (:fingerprint (Field lat-field-id))]
+    (try
+      (db/update! Field (data/id :venues :latitude) :fingerprint (-> fingerprint
+                                                                     (assoc-in [:type :type/Number :max] nil)
+                                                                     (assoc-in [:type :type/Number :min] nil)))
+      (-> ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories)))
+          (get-in [:fields])
+          first
+          :dimension_options)
+      (finally
+        (db/update! Field lat-field-id :fingerprint fingerprint)))))
+
+(defn- extract-dimension-options
+  "For the given `FIELD-NAME` find it's dimension_options following
+  the indexes given in the field"
+  [response field-name]
+  (set
+   (for [dim-index (->> response
+                        :fields
+                        (m/find-first #(= field-name (:name %)))
+                        :dimension_options)
+         :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+     strategy)))
+
+;; Lat/Long fields should use bin-width rather than num-bins
+(expect
+  (if (data/binning-supported?)
+    #{nil "bin-width" "default"}
+    #{})
+  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
+    (extract-dimension-options response "LATITUDE")))
+
+;; Number columns without a special type should use "num-bins"
+(expect
+  (if (data/binning-supported?)
+    #{nil "num-bins" "default"}
+    #{})
+  (let [{:keys [special_type]} (Field (data/id :venues :price))]
+    (try
+      (db/update! Field (data/id :venues :price) :special_type nil)
+
+      (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
+        (extract-dimension-options response "PRICE"))
+
+      (finally
+        (db/update! Field (data/id :venues :price) :special_type special_type)))))

@@ -314,3 +314,32 @@
                      (vec form)
                      form))
                  x))
+
+(defn- update-in-if-present
+  "If the path `KS` is found in `M`, call update-in with the original
+  arguments to this function, otherwise, return `M`"
+  [m ks f & args]
+  (if (= ::not-found (get-in m ks ::not-found))
+    m
+    (apply update-in m ks f args)))
+
+(defn- round-fingerprint-fields [fprint-type-map fields]
+  (reduce (fn [fprint field]
+            (update-in-if-present fprint [field] (fn [num]
+                                                   (if (integer? num)
+                                                     num
+                                                     (u/round-to-decimals 3 num)))))
+          fprint-type-map fields))
+
+(defn round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 4 decimal places"
+  [field]
+  (-> field
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
+      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
+
+(defn  round-fingerprint-cols [query-results]
+  (let [maybe-data-cols (if (contains? query-results :data)
+                          [:data :cols]
+                          [:cols])]
+    (update-in query-results maybe-data-cols #(map round-fingerprint %))))

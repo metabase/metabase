@@ -93,6 +93,18 @@
   :type    :integer
   :default 10)
 
+(defsetting breakout-bins-num
+  "When using the default binning strategy and a number of bins is not
+  provided, this number will be used as the default."
+  :type :integer
+  :default 8)
+
+(defsetting breakout-bin-width
+  "When using the default binning strategy for a field of type
+  Coordinate (such as Latitude and Longitude), this number will be used
+  as the default bin width (in degrees)."
+  :type :double
+  :default 10.0)
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).

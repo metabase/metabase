@@ -106,7 +106,6 @@
 
 (driver/register-driver! :moviedb (MovieDbDriver.))
 
-
 (def moviedb-tables-and-fields
   [(merge table-defaults
           {:name         "actors"

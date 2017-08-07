@@ -224,11 +224,11 @@ export default class Question {
     breakout(b) {
         return this.setCard(breakout(this.card(), b));
     }
-    pivot(breakout, dimensions = []) {
+    pivot(breakouts = [], dimensions = []) {
         const tableMetadata = this.tableMetadata();
         return this.setCard(
             // $FlowFixMe: tableMetadata could be null
-            pivot(this.card(), breakout, tableMetadata, dimensions)
+            pivot(this.card(), tableMetadata, breakouts, dimensions)
         );
     }
     filter(operator, column, value) {

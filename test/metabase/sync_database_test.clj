@@ -112,7 +112,6 @@
    :last_analyzed      true
    :fingerprint        nil})
 
-
 ;; ## SYNC DATABASE
 (expect
   [(merge table-defaults
@@ -334,7 +333,6 @@
      (do (sync-table! (Table (id :venues)))
          (get-field-values))]))
 
-
 ;; Make sure that if a Field's cardinality passes `low-cardinality-threshold` (currently 300)
 ;; the corresponding FieldValues entry will be deleted (#3215)
 (defn- insert-range-sql [rang]
@@ -363,3 +361,20 @@
               (exec! [(insert-range-sql (range 100 (+ 100 field-values/low-cardinality-threshold)))])
               (sync-database! db)
               (db/exists? FieldValues :field_id field-id))))))))
+
+(defn- narrow-to-min-max [row]
+  (-> row
+      (get-in [:type :type/Number])
+      (select-keys [:min :max])
+      (update :min #(u/round-to-decimals 4 %))
+      (update :max #(u/round-to-decimals 4 %))))
+
+(expect
+  [{:min -165.374 :max -73.9533}
+   {:min 10.0646 :max 40.7794}]
+  (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
+                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
+    (sync-table! table)
+    (map narrow-to-min-max
+         [(db/select-one-field :fingerprint Field, :id (id :venues :longitude))
+          (db/select-one-field :fingerprint Field, :id (id :venues :latitude))])))

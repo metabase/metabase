@@ -73,6 +73,7 @@
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
+
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
