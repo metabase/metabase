@@ -1,8 +1,8 @@
 import { capitalize } from "metabase/lib/formatting";
 import { isDimension, isMetric, isNumeric, isAny } from "metabase/lib/schema_metadata";
 
-import { columnsAreValid, getDefaultColumns, getOptionFromColumn } from "metabase/visualizations/lib/settings";
-import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getDefaultColumns, getOptionFromColumn } from "metabase/visualizations/lib/settings";
+import { columnsAreValid, getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 

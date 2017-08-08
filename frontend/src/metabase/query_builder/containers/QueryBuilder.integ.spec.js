@@ -28,7 +28,7 @@ import {
     updateFieldValues,
     FETCH_TABLE_METADATA
 } from "metabase/redux/metadata";
-import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
+import FieldList from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
@@ -69,6 +69,8 @@ const initQbWithDbAndTable = (dbId, tableId) => {
         return { store, qb }
     }
 }
+
+const initQBWithReviewsTable = initQbWithDbAndTable(1, 4)
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
@@ -111,7 +113,7 @@ describe("QueryBuilder", () => {
             expect(doneButton.length).toBe(1)
 
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
-            expect(fieldsToIncludeCheckboxes.length).toBe(8)
+            expect(fieldsToIncludeCheckboxes.length).toBe(6)
 
             fieldsToIncludeCheckboxes.at(3).simulate("click");
 
@@ -245,7 +247,7 @@ describe("QueryBuilder", () => {
     });
 
     describe("editor bar", async() => {
-        fdescribe("for Category field in Products table", () =>  {
+        describe("for Category field in Products table", () =>  {
             // TODO: Update the test H2 database fixture so that it recognizes Category field as Category
             // and has run a database sync so that Category field contains the expected field values
 

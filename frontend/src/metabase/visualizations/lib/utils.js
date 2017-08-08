@@ -11,6 +11,24 @@ import * as colors from "metabase/lib/colors";
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
+// NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
+// are able to avoid circular dependency errors in integrated tests
+export function columnsAreValid(colNames, data, filter = () => true) {
+    if (typeof colNames === "string") {
+        colNames = [colNames]
+    }
+    if (!data || !Array.isArray(colNames)) {
+        return false;
+    }
+    const colsByName = {};
+    for (const col of data.cols) {
+        colsByName[col.name] = col;
+    }
+    return colNames.reduce((acc, name) =>
+        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
+        , true);
+}
+
 // computed size properties (drop 'px' and convert string -> Number)
 function getComputedSizeProperty(prop, element) {
     var val = document.defaultView.getComputedStyle(element, null).getPropertyValue(prop);

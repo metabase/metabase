@@ -1,6 +1,7 @@
 import { getVisualizationRaw } from "metabase/visualizations";
 
 import {
+    columnsAreValid,
     getChartTypeFromData,
     DIMENSION_DIMENSION_METRIC,
     DIMENSION_METRIC,
@@ -31,22 +32,6 @@ const WIDGETS = {
     fields: ChartSettingFieldsPicker,
     color: ChartSettingColorPicker,
     colors: ChartSettingColorsPicker,
-}
-
-export function columnsAreValid(colNames, data, filter = () => true) {
-    if (typeof colNames === "string") {
-        colNames = [colNames]
-    }
-    if (!data || !Array.isArray(colNames)) {
-        return false;
-    }
-    const colsByName = {};
-    for (const col of data.cols) {
-        colsByName[col.name] = col;
-    }
-    return colNames.reduce((acc, name) =>
-        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
-    , true);
 }
 
 export function getDefaultColumns(series) {
