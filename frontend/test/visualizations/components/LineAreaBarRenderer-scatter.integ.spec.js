@@ -1,7 +1,8 @@
+import "__support__/integrated_tests";
 
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
-import { NumberColumn, dispatchUIEvent } from "../../support/visualizations";
+import { NumberColumn, dispatchUIEvent } from "../__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
     "graph.x_axis.scale": "linear",
@@ -13,7 +14,7 @@ const DEFAULT_SETTINGS = {
 
 describe("LineAreaBarRenderer-scatter", () => {
     let element;
-    const qsa = (selector) => [...element.querySelectorAll(selector)];
+    const qsa = (selector) => [...window.document.documentElement.querySelectorAll(selector)];
 
     beforeEach(function() {
         document.body.insertAdjacentHTML('afterbegin', '<div id="fixture" style="height: 800px; width: 1200px;">');
@@ -40,10 +41,13 @@ describe("LineAreaBarRenderer-scatter", () => {
                 expect(hover.data[0].value).toBe(1)
                 expect(hover.data[1].key).toBe("B")
                 expect(hover.data[1].value).toBe(2)
+
+
                 done()
             }
         });
-        dispatchUIEvent(qsa("svg .bubble")[0], "mousemove");
+
+        dispatchUIEvent(qsa(".bubble")[0], "mousemove");
     });
 
     it("should render a scatter chart with 2 dimensions and 1 metric", function(done) {
@@ -71,6 +75,7 @@ describe("LineAreaBarRenderer-scatter", () => {
                 done()
             }
         });
-        dispatchUIEvent(qsa("svg .bubble")[0], "mousemove");
+
+        dispatchUIEvent(qsa(".bubble")[0], "mousemove");
     });
 });

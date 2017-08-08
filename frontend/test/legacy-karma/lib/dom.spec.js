@@ -1,3 +1,6 @@
+// NOTE Atte Keinänen 8/8/17: Uses Karma because selection API isn't available in jsdom which Jest only supports
+// Has its own `legacy-karma` directory as a reminder that would be nice to get completely rid of Karma for good at some point
+
 import { getSelectionPosition, setSelectionPosition } from "metabase/lib/dom"
 
 describe("getSelectionPosition/setSelectionPosition", () => {
