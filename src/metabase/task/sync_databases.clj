@@ -19,15 +19,17 @@
 (defonce ^:private sync-databases-trigger (atom nil))
 
 ;; simple job which looks up all databases and runs a sync on them
+;; simple job which looks up all databases and runs a sync on them
 (jobs/defjob SyncDatabases [_]
   (doseq [database (db/select Database, :is_sample false)] ; skip Sample Dataset DB
     (try
       ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-      ;; most of the time we do a quick sync and avoid the lengthy analysis process
-      ;; at midnight we run the full sync
-      (let [full-sync? (not (and (zero? (t/hour (t/now)))
-                                 (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema)))]
-        (sync-database/sync-database! database :full-sync? full-sync?))
+      (if-not (and (zero? (t/hour (t/now)))
+                   (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
+        ;; most of the time we do a quick sync and avoid the lengthy analysis process
+        (sync-database/sync-database! database :full-sync? false)
+        ;; at midnight we run the full sync
+        (sync-database/sync-database! database :full-sync? true))
       (catch Throwable e
         (log/error (format "Error syncing database %d: " (:id database)) e)))))
 
