@@ -2,21 +2,21 @@ import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 
-import { fetchCardThumbPrint } from 'metabase/reference/reference'
+import { fetchCardXray } from 'metabase/xray/xray'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
 type Props = {
-    fetchCardThumbPrint: () => void,
-    thumbprint: {}
+    fetchCardXray: () => void,
+    xray: {}
 }
 
-const ThumbPrintList = ({ thumbprint }) =>
+const XrayList = ({ xray }) =>
     <div>
         <ol className="full">
-            { Object.keys(thumbprint).map(fieldName => {
-                const f = thumbprint[fieldName]
+            { Object.keys(xray).map(fieldName => {
+                const f = xray[fieldName]
                 return (
                     <li key={fieldName}>
                         <h4>{fieldName}</h4>
@@ -39,7 +39,7 @@ const ThumbPrintList = ({ thumbprint }) =>
         </ol>
     </div>
 
-const ThumbprintGrid = ({ thumbprint, fields, distribution }) =>
+const XrayGrid = ({ xray, fields, distribution }) =>
     <div className="full">
         <ol>
             <li className="border-bottom border-dark">
@@ -59,8 +59,8 @@ const ThumbprintGrid = ({ thumbprint, fields, distribution }) =>
                     )}
                 </ol>
             </li>
-            { Object.keys(thumbprint).map(key => {
-                const field = thumbprint[key]
+            { Object.keys(xray).map(key => {
+                const field = xray[key]
                 return (
                     <li className="border-bottom">
                         <ol className="Grid Grid--gutters">
@@ -111,39 +111,39 @@ class CardXRay extends Component {
     }
 
     componentDidMount () {
-        this.props.fetchCardThumbPrint(this.props.params.cardId)
+        this.props.fetchCardxray(this.props.params.cardId)
     }
 
 
     render () {
-        const { thumbprint } = this.props
+        const { xray } = this.props
         return (
             <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
                 <div className="my4 py4">
                     <h1>Xray</h1>
                 </div>
-                <LoadingAndErrorWrapper loading={!thumbprint}>
+                <LoadingAndErrorWrapper loading={!xray}>
                     { () =>
                         <div className="full">
                             { this.state.grid ?(
                                 <div className="mt3">
                                     <div className="my4">
                                         <h2 className="py3 my3">Overview</h2>
-                                        <ThumbprintGrid
-                                            thumbprint={thumbprint}
+                                        <xrayGrid
+                                            xray={xray}
                                             fields={['count', 'min', 'max', 'mean', 'median']}
                                             distribution={false}
                                         />
                                     </div>
                                     <div className="my4">
                                         <h2 className="py3 my3">I am a cool math wizard</h2>
-                                        <ThumbprintGrid
-                                            thumbprint={thumbprint}
+                                        <XrayGrid
+                                            xray={xray}
                                             fields={['skewness', 'has-nils?', 'all-distinct?', 'range-vs-spread', 'sum-of-squares', 'range-vs-sd']}
                                             distribution={true}
                                         />
                                     </div>
-                                    { thumbprint['CREATED_AT'] && (
+                                    { xray['CREATED_AT'] && (
                                         <div className="my4">
                                             <h2 className="py3 my3">Time breakdown</h2>
                                             <div className="my3">
@@ -163,12 +163,12 @@ class CardXRay extends Component {
                                 </div>
                             )
                             : (
-                                <ThumbPrintList thumbprint={thumbprint} />
+                                <XrayList xray={xray} />
                             )}
                             <pre>
 
                                 <code>
-                                    { JSON.stringify(thumbprint, null, 2) }
+                                    { JSON.stringify(xray, null, 2) }
                                 </code>
                             </pre>
                         </div>
@@ -180,11 +180,11 @@ class CardXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    thumbprint: state.reference.tableThumbprint,
+    xray: state.xray.tablexray,
 })
 
 const mapDispatchToProps = {
-    fetchCardThumbPrint: fetchCardThumbPrint
+    fetchCardxray: fetchCardXray
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)

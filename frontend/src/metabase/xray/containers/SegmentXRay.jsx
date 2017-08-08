@@ -7,7 +7,7 @@ import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-import { fetchSegmentThumbPrint } from 'metabase/reference/reference'
+import { fetchSegmentXray } from 'metabase/xray/xray'
 
 import Icon from 'metabase/components/Icon'
 import COSTS from 'metabase/xray/costs'
@@ -15,8 +15,8 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 
 import {
     getSegmentConstituents,
-    getSegmentThumbprint
-} from 'metabase/reference/selectors'
+    getSegmentXray
+} from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
 
@@ -24,9 +24,9 @@ import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
 
 type Props = {
-    fetchSegmentThumbPrint: () => void,
+    fetchSegmentXray: () => void,
     constituents: [],
-    thumbprint: {
+    xray: {
         table: Table,
         segment: Segment,
     },
@@ -37,16 +37,16 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    thumbprint: getSegmentThumbprint(state),
+    xray: getSegmentXray(state),
     constituents: getSegmentConstituents(state)
 })
 
 const mapDispatchToProps = {
-    fetchSegmentThumbPrint
+    fetchSegmentXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ thumbprint }) => thumbprint && thumbprint.segment.name || "Segment" )
+@title(({ xray }) => xray && xray.segment.name || "Segment" )
 class SegmentXRay extends Component {
     props: Props
 
@@ -55,14 +55,15 @@ class SegmentXRay extends Component {
     }
 
     componentDidMount () {
-        this.fetchSegmentThumbPrint()
+        this.fetchSegmentXray()
     }
 
-    async fetchSegmentThumbPrint () {
+    async fetchSegmentXray () {
         const { params } = this.props
+        // TODO - this should happen in the action
         const cost = COSTS[params.cost]
         try {
-            await this.props.fetchSegmentThumbPrint(params.segmentId, cost)
+            await this.props.fetchSegmentXray(params.segmentId, cost)
         } catch (error) {
             this.setState({ error })
         }
@@ -70,12 +71,12 @@ class SegmentXRay extends Component {
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchSegmentThumbPrint()
+            this.fetchSegmentXray()
         }
     }
 
     render () {
-        const { constituents, thumbprint, params } = this.props
+        const { constituents, xray, params } = this.props
         const { error } = this.state
         return (
             <XRayPageWrapper>
@@ -90,17 +91,17 @@ class SegmentXRay extends Component {
                                 <div>
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration shadowed rounded"
-                                        to={`/xray/table/${thumbprint.table.id}/approximate`}
+                                        to={`/xray/table/${xray.table.id}/approximate`}
                                     >
-                                        {thumbprint.table.display_name}
+                                        {xray.table.display_name}
                                     </Link>
                                     <h1 className="mt2 flex align-center">
-                                        {thumbprint.segment.name}
+                                        {xray.segment.name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                         <span className="text-grey-3">XRay</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
-                                        {thumbprint.segment.description}
+                                        {xray.segment.description}
                                     </p>
                                 </div>
                                 <div className="ml-auto flex align-center">
@@ -108,7 +109,7 @@ class SegmentXRay extends Component {
                                     <CostSelect
                                         currentCost={params.cost}
                                         xrayType='segment'
-                                        id={thumbprint.segment.id}
+                                        id={xray.segment.id}
                                     />
                                 </div>
                             </div>

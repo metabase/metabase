@@ -1,12 +1,12 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { fetchSegmentComparison } from 'metabase/reference/reference'
+import { fetchSegmentComparison } from 'metabase/xray/xray'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 const mapStateToProps = state => ({
-    segmentComparison: state.reference.segmentComparison
+    segmentComparison: state.xray.segmentComparison
 })
 
 const mapDispatchToProps = {

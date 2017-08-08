@@ -6,8 +6,8 @@ import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
-import { fetchFieldThumbPrint } from 'metabase/reference/reference'
-import { getFieldThumbprint } from 'metabase/reference/selectors'
+import { fetchFieldXray } from 'metabase/xray/xray'
+import { getFieldXray } from 'metabase/xray/selectors'
 
 import COSTS from 'metabase/xray/costs'
 
@@ -29,8 +29,8 @@ import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
-    fetchFieldThumbPrint: () => void,
-    thumbprint: {
+    fetchFieldXray: () => void,
+    xray: {
         table: Table,
         field: Field,
         histogram: {
@@ -43,21 +43,21 @@ type Props = {
     },
 }
 
-const Periodicity = ({thumbprint}) =>
+const Periodicity = ({xray}) =>
     <div>
         <Heading heading="Time breakdown" />,
         <div className="bg-white bordered rounded shadowed">
             <div className="Grid Grid--gutters Grid--1of4">
                 { PERIODICITY.map(period =>
-                    thumbprint[`histogram-${period}`] && (
+                    xray[`histogram-${period}`] && (
                         <div className="Grid-cell">
                             <div className="p4 border-right border-bottom">
                                 <div style={{ height: 120}}>
                                     <h4>
-                                        {thumbprint[`histogram-${period}`].label}
+                                        {xray[`histogram-${period}`].label}
                                     </h4>
                                     <Histogram
-                                        histogram={thumbprint[`histogram-${period}`].value}
+                                        histogram={xray[`histogram-${period}`].value}
                                     />
                                 </div>
                             </div>
@@ -69,15 +69,15 @@ const Periodicity = ({thumbprint}) =>
     </div>
 
 const mapStateToProps = state => ({
-    thumbprint: getFieldThumbprint(state)
+    xray: getFieldXray(state)
 })
 
 const mapDispatchToProps = {
-    fetchFieldThumbPrint
+    fetchFieldXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ thumbprint }) => thumbprint && thumbprint.field.display_name || "Field")
+@title(({ xray }) => xray && xray.field.display_name || "Field")
 class FieldXRay extends Component {
     props: Props
 
@@ -86,14 +86,14 @@ class FieldXRay extends Component {
     }
 
     componentDidMount () {
-        this.fetchFieldThumbprint()
+        this.fetchFieldXray()
     }
 
-    async fetchFieldThumbprint() {
+    async fetchFieldXray() {
         const { params } = this.props
         const cost = COSTS[params.cost]
         try {
-            await this.props.fetchFieldThumbPrint(params.fieldId, cost)
+            await this.props.fetchFieldXray(params.fieldId, cost)
         } catch (error) {
             this.setState({ error })
         }
@@ -102,44 +102,44 @@ class FieldXRay extends Component {
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchFieldThumbprint()
+            this.fetchFieldXray()
         }
     }
 
     render () {
-        const { thumbprint, params } = this.props
+        const { xray, params } = this.props
         const { error } = this.state
         return (
-                <LoadingAndErrorWrapper
-                    loading={!thumbprint}
-                    error={error}
-                    noBackground
-                >
-                    { () =>
-                        <XRayPageWrapper>
+            <LoadingAndErrorWrapper
+                loading={!xray}
+                error={error}
+                noBackground
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="my3 flex align-center">
                                 <div>
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
-                                        to={`/xray/table/${thumbprint.table.id}/approximate`}
+                                        to={`/xray/table/${xray.table.id}/approximate`}
                                     >
-                                        {thumbprint.table.display_name}
+                                        {xray.table.display_name}
                                     </Link>
                                     <h1 className="mt2 flex align-center">
-                                        {thumbprint.field.display_name}
+                                        {xray.field.display_name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                         <span className="text-grey-3">XRay</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
-                                        {thumbprint.field.description}
+                                        {xray.field.description}
                                     </p>
                                 </div>
                                 <div className="ml-auto flex align-center">
                                     <h3 className="mr2 text-grey-3">Fidelity</h3>
                                     <CostSelect
                                         xrayType='field'
-                                        id={thumbprint.field.id}
+                                        id={xray.field.id}
                                         currentCost={params.cost}
                                     />
                                 </div>
@@ -149,30 +149,30 @@ class FieldXRay extends Component {
                                 <div className="bg-white bordered shadowed">
                                     <div className="lg-p4">
                                         <div style={{ height: 300 }}>
-                                            <Histogram histogram={thumbprint.histogram.value} />
+                                            <Histogram histogram={xray.histogram.value} />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            { isDate(thumbprint.field) && <Periodicity thumbprint={thumbprint} /> }
+                            { isDate(xray.field) && <Periodicity xray={xray} /> }
 
                             <StatGroup
                                 heading="Values overview"
-                                thumbprint={thumbprint}
+                                xray={xray}
                                 stats={VALUES_OVERVIEW}
                             />
 
                             <StatGroup
                                 heading="Statistical overview"
-                                thumbprint={thumbprint}
+                                xray={xray}
                                 showDescriptions
                                 stats={STATS_OVERVIEW}
                             />
 
                             <StatGroup
                                 heading="Robots"
-                                thumbprint={thumbprint}
+                                xray={xray}
                                 showDescriptions
                                 stats={ROBOTS}
                             />

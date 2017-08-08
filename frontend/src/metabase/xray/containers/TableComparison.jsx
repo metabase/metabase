@@ -1,12 +1,12 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { fetchTableComparison } from 'metabase/reference/reference'
+import { fetchTableComparison } from 'metabase/xray/xray'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 const mapStateToProps = state => ({
-    tableComparison: state.reference.tableComparison
+    tableComparison: state.xray.tableComparison
 })
 
 const mapDispatchToProps = {
