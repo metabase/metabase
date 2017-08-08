@@ -1,5 +1,5 @@
-(ns metabase.fingerprinting.costs
-  "Predicates for limiting resource expanditure during fingerprinting."
+(ns metabase.xray.costs
+  "Predicates for limiting resource expanditure during thumbprinting."
   (:require [schema.core :as s]))
 
 (def MaxCost

@@ -1,20 +1,20 @@
-(ns metabase.fingerprinting.fingerprinters
-  "Fingerprinting (feature extraction) for various models."
+(ns metabase.xray.thumbprinters
+  "Thumbprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as h.impl]
-            [clojure.math.numeric-tower :refer [ceil expt floor round]] ;;;;;; temp!
             [clj-time
              [coerce :as t.coerce]
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
+            [clojure.math.numeric-tower :refer [ceil expt floor round]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
             [medley.core :as m]
-            [metabase.fingerprinting
-             [histogram :as h]
-             [costs :as costs]]
-            [metabase.util :as u]            ;;;; temp!
+            [metabase.util :as u]
+            [metabase.xray
+             [costs :as costs]
+             [histogram :as h]]
             [redux.core :as redux]
             [tide.core :as tide])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
@@ -186,34 +186,34 @@
     [(:base_type field) (or (:special_type field) :type/*)]))
 
 (defmulti
-  ^{:doc "Transducer that summarizes (_fingerprints_) given coll. What features
+  ^{:doc "Transducer that summarizes (_thumbprints_) given coll. What features
           are extracted depends on the type of corresponding `Field`(s), amount
           of data points available (some algorithms have a minimum data points
           requirement) and `max-cost.computation` setting.
           Note we are heavily using data sketches so some summary values may be
           approximate."
     :arglists '([opts field])}
-  fingerprinter #(field-type %2))
+  thumbprinter #(field-type %2))
 
 (defmulti
-  ^{:doc "Make fingerprint human readable."
-    :arglists '([fingerprint])}
+  ^{:doc "Make thumbprint human readable."
+    :arglists '([thumbprint])}
   x-ray :type)
 
 (defmethod x-ray :default
-  [fingerprint]
-  fingerprint)
+  [thumbprint]
+  thumbprint)
 
 (defmulti
-  ^{:doc "Fingerprint feature vector for comparison/difference purposes."
-    :arglists '([fingerprint])}
+  ^{:doc "Thumbprint feature vector for comparison/difference purposes."
+    :arglists '([thumbprint])}
   comparison-vector :type)
 
 (defmethod comparison-vector :default
-  [fingerprint]
-  (dissoc fingerprint :type :field :has-nils?))
+  [thumbprint]
+  (dissoc thumbprint :type :field :has-nils?))
 
-(defmethod fingerprinter Num
+(defmethod thumbprinter Num
   [{:keys [max-cost]} field]
   (redux/post-complete
    (redux/fuse {:histogram      h/histogram
@@ -273,21 +273,21 @@
         :field field}))))
 
 (defmethod comparison-vector Num
-  [fingerprint]
-  (select-keys fingerprint
+  [thumbprint]
+  (select-keys thumbprint
                [:histogram :mean :median :min :max :sd :count :kurtosis
                 :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
 
 (defmethod x-ray Num
-  [{:keys [field count] :as fingerprint}]
+  [{:keys [field count] :as thumbprint}]
   (if (pos? count)
-    (-> fingerprint
+    (-> thumbprint
         (update :histogram (partial histogram->dataset field))
         (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
                 :positive-definite? :var>sd? :uniqueness :min-vs-max))
-    fingerprint))
+    thumbprint))
 
-(defmethod fingerprinter [Num Num]
+(defmethod thumbprinter [Num Num]
   [_ field]
   (redux/post-complete
    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
@@ -331,7 +331,7 @@
     (when (>= (count ts) (* 2 period))
       (select-keys (tide/decompose period ts) [:trend :seasonal :reminder]))))
 
-(defmethod fingerprinter [DateTime Num]
+(defmethod thumbprinter [DateTime Num]
   [{:keys [max-cost resolution query]} field]
   (redux/post-complete
    (redux/pre-step
@@ -365,20 +365,20 @@
                  :DoD 0}))))))
 
 (defmethod comparison-vector [DateTime Num]
-  [fingerprint]
-  (dissoc fingerprint :type :resolution :field))
+  [thumbprint]
+  (dissoc thumbprint :type :resolution :field))
 
 (defmethod x-ray [DateTime Num]
-  [fingerprint]
-  (dissoc fingerprint :series))
+  [thumbprint]
+  (dissoc thumbprint :series))
 
 ;; This one needs way more thinking
 ;;
-;; (defmethod fingerprinter [Category Any]
+;; (defmethod thumbprinter [Category Any]
 ;;   [opts [x y]]
-;;   (rollup (redux/pre-step (fingerprinter opts y) second) first))
+;;   (rollup (redux/pre-step (thumbprinter opts y) second) first))
 
-(defmethod fingerprinter Text
+(defmethod thumbprinter Text
   [_ field]
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step
@@ -397,14 +397,14 @@
         :field      field}))))
 
 (defmethod x-ray Text
-  [{:keys [field] :as fingerprint}]
-  (update fingerprint :histogram (partial histogram->dataset field)))
+  [{:keys [field] :as thumbprint}]
+  (update thumbprint :histogram (partial histogram->dataset field)))
 
 (defn- quarter
   [dt]
   (-> dt t/month (/ 3) Math/ceil long))
 
-(defmethod fingerprinter DateTime
+(defmethod thumbprinter DateTime
   [_ field]
   (redux/post-complete
    (redux/pre-step
@@ -438,8 +438,8 @@
         :field             field}))))
 
 (defmethod comparison-vector DateTime
-  [fingerprint]
-  (dissoc fingerprint :type :percentiles :field :has-nils?))
+  [thumbprint]
+  (dissoc thumbprint :type :percentiles :field :has-nils?))
 
 (defn- round-to-month
   [dt]
@@ -474,11 +474,11 @@
                                       [k (* v (/ baseline (weights k)))])))))
 
 (defmethod x-ray DateTime
-  [{:keys [field earliest latest count] :as fingerprint}]
+  [{:keys [field earliest latest count] :as thumbprint}]
   (if (pos? count)
     (let [earliest (from-double earliest)
           latest   (from-double latest)]
-      (-> fingerprint
+      (-> thumbprint
           (assoc  :earliest          earliest)
           (assoc  :latest            latest)
           (update :histogram         (partial histogram->dataset from-double field))
@@ -509,9 +509,9 @@
                                                 :display_name "Quarter of year"
                                                 :base_type    :type/Integer
                                                 :special_type :type/Category})))))
-    (select-keys fingerprint [:count :type :field])))
+    (select-keys thumbprint [:count :type :field])))
 
-(defmethod fingerprinter Category
+(defmethod thumbprinter Category
   [_ field]
   (redux/post-complete
    (redux/fuse {:histogram   h/histogram-categorical
@@ -531,14 +531,14 @@
         :field       field}))))
 
 (defmethod comparison-vector Category
-  [fingerprint]
-  (dissoc fingerprint :type :cardinality :field :has-nils?))
+  [thumbprint]
+  (dissoc thumbprint :type :cardinality :field :has-nils?))
 
 (defmethod x-ray Category
-  [{:keys [field] :as fingerprint}]
-  (update fingerprint :histogram (partial histogram->dataset field)))
+  [{:keys [field] :as thumbprint}]
+  (update thumbprint :histogram (partial histogram->dataset field)))
 
-(defmethod fingerprinter :default
+(defmethod thumbprinter :default
   [_ field]
   (redux/post-complete
    (redux/fuse {:total-count stats/count
@@ -550,5 +550,5 @@
       :type      [nil (field-type field)]
       :field     field})))
 
-(prefer-method fingerprinter Category Text)
-(prefer-method fingerprinter Num Category)
+(prefer-method thumbprinter Category Text)
+(prefer-method thumbprinter Num Category)

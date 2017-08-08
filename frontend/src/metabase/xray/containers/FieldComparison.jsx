@@ -1,12 +1,12 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { fetchFieldComparison } from 'metabase/reference/reference'
+import { fetchFieldComparison } from 'metabase/xray/xray'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 const mapStateToProps = state => ({
-    fieldComparison: state.reference.fieldComparison
+    fieldComparison: state.xray.fieldComparison
 })
 
 const mapDispatchToProps = {
@@ -16,7 +16,6 @@ const mapDispatchToProps = {
 class FieldComparison extends Component {
     componentWillMount () {
         const { fieldId1, fieldId2 } = this.props.params
-        console.log('ids', fieldId1, fieldId2)
         this.props.fetchFieldComparison(fieldId1, fieldId2)
     }
     render () {

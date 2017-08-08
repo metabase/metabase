@@ -1,4 +1,4 @@
-(ns metabase.fingerprinting.histogram
+(ns metabase.xray.histogram
   "Wrappers and additional functionality for `bigml.histogram`."
   (:require [bigml.histogram.core :as impl]
             [kixi.stats.math :as math]

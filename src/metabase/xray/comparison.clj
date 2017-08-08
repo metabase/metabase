@@ -1,10 +1,10 @@
-(ns metabase.fingerprinting.comparison
-  "Fingerprint similarity comparison."
+(ns metabase.xray.comparison
+  "Thumbprint similarity comparison."
   (:require [clojure.set :as set]
             [kixi.stats.math :as math]
-            [metabase.fingerprinting
-             [fingerprinters :as fingerprinters]
-             [histogram :as h]]
+            [metabase.xray
+             [histogram :as h]
+             [thumbprinters :as thumbprinters]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram))
 
@@ -99,13 +99,13 @@
   (into {}
     (map (fn [[k a] [_ b]]
            [k (difference a b)])
-         (flatten-map (fingerprinters/comparison-vector a))
-         (flatten-map (fingerprinters/comparison-vector b)))))
+         (flatten-map (thumbprinters/comparison-vector a))
+         (flatten-map (thumbprinters/comparison-vector b)))))
 
 (def ^:private ^:const ^Double interestingness-thershold 0.2)
 
-(defn fingerprint-distance
-  "Distance metric between fingerprints `a` and `b`."
+(defn thumbprint-distance
+  "Distance metric between thumbprints `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
     {:distance   (transduce (map val)

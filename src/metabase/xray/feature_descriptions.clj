@@ -1,5 +1,5 @@
-(ns metabase.fingerprinting.feature-descriptions
-  "Desciptions of all the fingerprint features exposed as x-rays."
+(ns metabase.xray.feature-descriptions
+  "Desciptions of all the thumbprint features exposed as x-rays."
   (:require [medley.core :as m]))
 
 (def ^:private descriptions
@@ -68,7 +68,7 @@
    :histogram-month        {:label "Distribution of months"}
    :histogram-quarter      {:label "Distribution of quarters"}})
 
-(def ^{:arglists '([fingerprint])} add-descriptions
+(def ^{:arglists '([thumbprint])} add-descriptions
   "Add descriptions of features to naked values where applicable."
   (partial m/map-kv (fn [k v]
                       (if-let [description (descriptions k)]
