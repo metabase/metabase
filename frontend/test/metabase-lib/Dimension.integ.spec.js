@@ -105,19 +105,6 @@ describe("Dimension classes", () => {
                 });
             });
         });
-
-        describe("INSTANCE METHODS", () => {
-            describe("dimensions()", () => {
-                it("returns `default_dimension_option` of the underlying field if available", () => {
-                    pending();
-                });
-                it("returns default dimension for matching dimension if no `default_dimension_option`", () => {
-                    // just a single scenario should be sufficient here as we will test
-                    // `static defaultDimension()` individually for each dimension
-                    pending();
-                });
-            });
-        });
     });
 
     describe("FieldIDDimension", () => {
