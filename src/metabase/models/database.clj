@@ -39,11 +39,12 @@
   "(Re)schedule sync operation tasks for DATABASE. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
+    ;; this is done this way to avoid circular dependencies
     (require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/schedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error "Error scheduling tasks for DB:" (.getMessage e) "\n")
-      (log/debug (u/pprint-to-str (u/filtered-stacktrace e))))))
+      (log/error "Error scheduling tasks for DB:" (.getMessage e) "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e))))))
 
 (defn- unschedule-tasks!
   "Unschedule any currently pending sync operation tasks for DATABASE."
@@ -52,8 +53,8 @@
     (require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error "Error unscheduling tasks for DB:" (.getMessage e) "\n")
-      (log/debug (u/pprint-to-str (u/filtered-stacktrace e))))))
+      (log/error "Error unscheduling tasks for DB:" (.getMessage e) "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e))))))
 
 (defn- post-insert [{database-id :id, :as database}]
   (u/prog1 database
