@@ -22,17 +22,19 @@
 
 (defn- db-details []
   (tu/match-$ (db)
-    {:created_at         $
-     :engine             "h2"
-     :caveats            nil
-     :points_of_interest nil
-     :id                 $
-     :updated_at         $
-     :name               "test-data"
-     :is_sample          false
-     :is_full_sync       true
-     :description        nil
-     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
+    {:created_at                  $
+     :engine                      "h2"
+     :caveats                     nil
+     :points_of_interest          nil
+     :id                          $
+     :updated_at                  $
+     :name                        "test-data"
+     :is_sample                   false
+     :is_full_sync                true
+     :description                 nil
+     :features                    (mapv name (driver/features (driver/engine->driver :h2)))
+     :cache_field_values_schedule "0 50 0 * * ? *"
+     :metadata_sync_schedule      "0 50 * * * ? *"}))
 
 
 ;; ## GET /api/field/:id

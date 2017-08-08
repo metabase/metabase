@@ -238,7 +238,7 @@
 
 (defn- init-driver-in-namespace! [ns-symb]
   (require ns-symb)
-  (if-let [register-driver-fn (ns-resolve ns-symb (symbol "-init-driver"))]
+  (if-let [register-driver-fn (ns-resolve ns-symb '-init-driver)]
     (register-driver-fn)
     (log/warn (format "No -init-driver function found for '%s'" (name ns-symb)))))
 
@@ -326,8 +326,7 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
-      {:pre [db-id]}
-      (when-let [engine (db-id->engine db-id)]
+      (when-let [engine (db-id->engine (u/get-id db-id))]
         (engine->driver engine)))))
 
 (defn ->driver

@@ -16,25 +16,20 @@
             [schema.core :as s]
             [metabase.sync.util :as sync-util]))
 
-(def ^:private SyncDatabaseOptions
-  {(s/optional-key :full-sync?) s/Bool})
-
 (s/defn ^:always-validate sync-database!
   "Perform all the different sync operations synchronously for DATABASE.
-   You may optionally supply OPTIONS, which can be used to disable so-called 'full-sync',
-   meaning just metadata will be synced, but no 'analysis' (special type determination and
-   FieldValues syncing) will be done."
-  ([database]
-   (sync-database! database {:full-sync? true}))
-  ([database :- i/DatabaseInstance, options :- SyncDatabaseOptions]
-   (sync-util/sync-operation :sync database (format "Sync %s with options: %s" (sync-util/name-for-logging database) options)
-     ;; First make sure Tables, Fields, and FK information is up-to-date
-     (sync-metadata/sync-db-metadata! database)
-     (when (:full-sync? options)
-       ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
-       (analyze/analyze-db! database)
-       ;; Finally, update FieldValues
-       (field-values/update-field-values! database)))))
+   This is considered a 'full sync' in that all the different sync operations are performed at the same time.
+   Please note that this function is *not* what is called by the scheduled tasks. Those call different steps
+   independently."
+  {:style/indent 1}
+  [database :- i/DatabaseInstance]
+  (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+    ;; First make sure Tables, Fields, and FK information is up-to-date
+    (sync-metadata/sync-db-metadata! database)
+    ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
+    (analyze/analyze-db! database)
+    ;; Finally, update cached FieldValues
+    (field-values/update-field-values! database)))
 
 
 (s/defn ^:always-validate sync-table!

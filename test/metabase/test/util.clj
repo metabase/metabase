@@ -1,9 +1,15 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
+            [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
+            [metabase
+             [task :as task]
+             [util :as u]]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -21,8 +27,8 @@
              [table :refer [Table]]
              [user :refer [User]]]
             [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.util.test :as test]))
+            [toucan.util.test :as test])
+  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 ;; ## match-$
 
@@ -136,7 +142,7 @@
 (u/strict-extend (class Database)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :yeehaw
+                                :engine    :yeehaw ; wtf?
                                 :is_sample false
                                 :name      (random-name)})})
 
@@ -338,8 +344,64 @@
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
 
-(defn  round-fingerprint-cols [query-results]
+(defn round-fingerprint-cols [query-results]
   (let [maybe-data-cols (if (contains? query-results :data)
                           [:data :cols]
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                       SCHEDULER                                                        |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler in place
+;; and then check the tasks that get scheduled
+
+(defn do-with-scheduler [scheduler f]
+  (with-redefs [metabase.task/scheduler (constantly scheduler)]
+    (f)))
+
+(defmacro with-scheduler
+  "Temporarily bind the Metabase Quartzite scheduler to SCHEULDER and run BODY."
+  {:style/indent 1}
+  [scheduler & body]
+  `(do-with-scheduler ~scheduler (fn [] ~@body)))
+
+(defn do-with-temp-scheduler [f]
+  (let [temp-scheduler (qs/start (qs/initialize))]
+    (with-scheduler temp-scheduler
+      (try (f)
+           (finally
+             (qs/shutdown temp-scheduler))))))
+
+(defmacro with-temp-scheduler
+  "Execute BODY with a temporary scheduler in place.
+
+    (with-temp-scheduler
+      (do-something-to-schedule-tasks)
+      ;; verify that the right thing happened
+      (scheduler-current-tasks))"
+  {:style/indent 0}
+  [& body]
+  `(do-with-temp-scheduler (fn [] ~@body)))
+
+(defn scheduler-current-tasks
+  "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler.
+   Intended so we can test that things were scheduled correctly."
+  []
+  (when-let [^Scheduler scheduler (#'task/scheduler)]
+    (vec
+     (sort-by
+      :key
+      (for [^JobKey job-key (.getJobKeys scheduler nil)]
+        (let [^JobDetail job-detail (.getJobDetail scheduler job-key)
+              triggers              (.getTriggersOfJob scheduler job-key)]
+          {:description (.getDescription job-detail)
+           :class       (.getJobClass job-detail)
+           :key         (.getName job-key)
+           :data        (into {} (.getJobDataMap job-detail))
+           :triggers    (vec (for [^Trigger trigger triggers]
+                               (merge
+                                {:key (.getName (.getKey trigger))}
+                                (when (instance? CronTrigger trigger)
+                                  {:cron-schedule (.getCronExpression ^CronTrigger trigger)}))))}))))))
