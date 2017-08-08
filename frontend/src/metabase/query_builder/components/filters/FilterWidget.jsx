@@ -8,6 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 import FilterPopover from "./FilterPopover.jsx";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
+import { formatValue } from "metabase/lib/formatting";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -62,13 +63,17 @@ export default class FilterWidget extends Component {
 
         const operator = dimension.operator(op);
 
+        let formattedValues;
         // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
         if (operator && operator.multi && values.length > maxDisplayValues) {
-            values = [values.length + " selections"];
-        }
-
-        if (dimension.field().isDate()) {
-            values = generateTimeFilterValuesDescriptions(filter);
+            formattedValues = [values.length + " selections"];
+        } else if (dimension.field().isDate()) {
+            formattedValues = generateTimeFilterValuesDescriptions(filter);
+        } else {
+            // TODO Atte Keinänen 7/16/17: Move formatValue to metabase-lib
+            formattedValues = values.filter(value => value !== undefined).map(value =>
+                formatValue(value, { column: dimension.field() })
+            )
         }
 
         return (
@@ -87,16 +92,13 @@ export default class FilterWidget extends Component {
                         <a className="QueryOption flex align-center">{operator && operator.moreVerboseName}</a>
                     </div>
                 </div>
-                { values.length > 0 && (
+                { formattedValues.length > 0 && (
                     <div className="flex align-center flex-wrap">
-                        {values.map((value, valueIndex) => {
-                            var valueString = value != null ? value.toString() : null;
-                            return value != undefined && (
-                                <div key={valueIndex} className="Filter-section Filter-section-value">
-                                    <span className="QueryOption">{valueString}</span>
-                                </div>
-                            );
-                        })}
+                        {formattedValues.map((formattedValue, valueIndex) =>
+                            <div key={valueIndex} className="Filter-section Filter-section-value">
+                                <span className="QueryOption">{formattedValue}</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

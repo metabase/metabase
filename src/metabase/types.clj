@@ -5,7 +5,6 @@
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
-
 ;;; Numeric Types
 
 (derive :type/Number :type/*)
@@ -60,6 +59,7 @@
 ;;; Other
 
 (derive :type/Boolean :type/*)
+(derive :type/Enum :type/*)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced filter options like starts with / contains
 

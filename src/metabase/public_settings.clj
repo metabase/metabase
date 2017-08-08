@@ -55,6 +55,11 @@
   :type    :boolean
   :default false)
 
+(defsetting enable-nested-queries
+  "Allow using a saved question as the source for other queries?"
+  :type    :boolean
+  :default true)
+
 
 (defsetting enable-query-caching
   "Enabling caching will save the results of queries that take a long time to run."
@@ -88,6 +93,18 @@
   :type    :integer
   :default 10)
 
+(defsetting breakout-bins-num
+  "When using the default binning strategy and a number of bins is not
+  provided, this number will be used as the default."
+  :type :integer
+  :default 8)
+
+(defsetting breakout-bin-width
+  "When using the default binning strategy for a field of type
+  Coordinate (such as Latitude and Longitude), this number will be used
+  as the default bin width (in degrees)."
+  :type :double
+  :default 10.0)
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).
@@ -117,16 +134,17 @@
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
    :email_configured      ((resolve 'metabase.email/email-configured?))
+   :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
+   :enable_nested_queries (enable-nested-queries)
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
-   :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
    :map_tile_server_url   (map-tile-server-url)
    :password_complexity   password/active-password-complexity
    :public_sharing        (enable-public-sharing)
-   :embedding             (enable-embedding)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
    :site_name             (site-name)

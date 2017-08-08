@@ -197,11 +197,14 @@
 
 ;;; ### initial projection
 
-(defn- add-initial-projection [query pipeline]
+(defn- add-initial-projection [query pipeline-ctx]
   (let [all-fields (distinct (annotate/collect-fields query :keep-date-time-fields))]
-    (when (seq all-fields)
-      {$project (into (array-map) (for [field all-fields]
-                                    {(->lvalue field) (->initial-rvalue field)}))})))
+    (if-not (seq all-fields)
+      pipeline-ctx
+      (let [projections (map #(vector (->lvalue %) (->initial-rvalue %)) all-fields)]
+        (-> pipeline-ctx
+            (assoc  :projections (doall (map (comp keyword first) projections)))
+            (update :query conj {$project (into (hash-map) projections)}))))))
 
 
 ;;; ### filter
@@ -232,9 +235,10 @@
     :not (parse-filter-subclause subclause :negate)
     nil  (parse-filter-subclause clause)))
 
-(defn- handle-filter [{filter-clause :filter} pipeline]
-  (when filter-clause
-    {$match (parse-filter-clause filter-clause)}))
+(defn- handle-filter [{filter-clause :filter} pipeline-ctx]
+  (if-not filter-clause
+    pipeline-ctx
+    (update pipeline-ctx :query conj {$match (parse-filter-clause filter-clause)})))
 
 
 ;;; ### aggregation
@@ -254,69 +258,78 @@
       :min      {$min (->rvalue field)}
       :max      {$max (->rvalue field)})))
 
-(defn- handle-breakout+aggregation [{breakout-fields :breakout, aggregations :aggregation} pipeline]
+(defn- handle-breakout+aggregation [{breakout-fields :breakout, aggregations :aggregation} pipeline-ctx]
   (let [aggregations? (seq aggregations)
         breakout?     (seq breakout-fields)]
-    (when (or aggregations? breakout?)
-      (filter identity
-              [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
-               (when breakout?
-                 {$project (merge {"_id"      "$_id"
-                                   "___group" (into {} (for [field breakout-fields]
-                                                         {(->lvalue field) (->rvalue field)}))}
-                                  (into {} (for [{ag-field :field} aggregations
-                                                 :when             ag-field]
-                                             {(->lvalue ag-field) (->rvalue ag-field)})))})
-               ;; Now project onto the __group and the aggregation rvalue
-               {$group (merge {"_id" (when breakout?
-                                       "$___group")}
-                              (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
-                                         {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
-               ;; Sort by _id (___group)
-               {$sort {"_id" 1}}
-               ;; now project back to the fields we expect
-               {$project (merge {"_id" false}
-                                (into {} (for [{ag-type :aggregation-type} aggregations]
-                                           {(ag-type->field-name ag-type) (if (= ag-type :distinct)
-                                                                            {$size "$count"} ; HACK
-                                                                            true)}))
-                                (into {} (for [field breakout-fields]
-                                           {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}]))))
+    (if-not (or aggregations? breakout?)
+      pipeline-ctx
+      (let [projected-fields (concat (for [{ag-type :aggregation-type} aggregations]
+                                       [(ag-type->field-name ag-type) (if (= ag-type :distinct)
+                                                                        {$size "$count"} ; HACK
+                                                                        true)])
+                                     (for [field breakout-fields]
+                                       [(->lvalue field) (format "$_id.%s" (->lvalue field))]))]
+        (-> pipeline-ctx
+            (assoc :projections (doall (map (comp keyword first) projected-fields)))
+            (update :query into (filter identity
+                                        [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
+                                         (when breakout?
+                                           {$project (merge {"_id"      "$_id"
+                                                             "___group" (into {} (for [field breakout-fields]
+                                                                                   {(->lvalue field) (->rvalue field)}))}
+                                                            (into {} (for [{ag-field :field} aggregations
+                                                                           :when             ag-field]
+                                                                       {(->lvalue ag-field) (->rvalue ag-field)})))})
+                                         ;; Now project onto the __group and the aggregation rvalue
+                                         {$group (merge {"_id" (when breakout?
+                                                                 "$___group")}
+                                                        (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
+                                                                   {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
+                                         ;; Sort by _id (___group)
+                                         {$sort {"_id" 1}}
+                                         ;; now project back to the fields we expect
+                                         {$project (merge {"_id" false}
+                                                          (into {} projected-fields))}])))))))
 
 
 ;;; ### order-by
 
-(defn- handle-order-by [{:keys [order-by]} pipeline]
-  (when (seq order-by)
-    {$sort (into (array-map) (for [{:keys [field direction]} order-by]
-                               {(->lvalue field) (case direction
-                                                   :ascending   1
-                                                   :descending -1)}))}))
-
+(defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
+  (if-not (seq order-by)
+    pipeline-ctx
+    (update pipeline-ctx :query conj {$sort (into (hash-map)
+                                                  (for [{:keys [field direction]} order-by]
+                                                    [(->lvalue field) (case direction
+                                                                        :ascending   1
+                                                                        :descending -1)]))})))
 
 ;;; ### fields
 
-(defn- handle-fields [{:keys [fields]} pipeline]
-  (when (seq fields)
-    ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
-    {$project (into (array-map "_id" false)
-                    (for [field fields]
-                      {(->lvalue field) (->rvalue field)}))}))
-
+(defn- handle-fields [{:keys [fields]} pipeline-ctx]
+  (if-not (seq fields)
+    pipeline-ctx
+    (let [new-projections (doall (map #(vector (->lvalue %) (->rvalue %)) fields))]
+      (-> pipeline-ctx
+          (assoc :projections (map (comp keyword first) new-projections))
+          ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
+          (update :query conj {$project (merge {"_id" false}
+                                               (into (hash-map) new-projections))})))))
 
 ;;; ### limit
 
-(defn- handle-limit [{:keys [limit]} pipeline]
-  (when limit
-    {$limit limit}))
+(defn- handle-limit [{:keys [limit]} pipeline-ctx]
+  (if-not limit
+    pipeline-ctx
+    (update pipeline-ctx :query conj {$limit limit})))
 
 
 ;;; ### page
 
-(defn- handle-page [{{page-num :page items-per-page :items, :as page-clause} :page} pipeline]
-  (when page-clause
-    [{$skip (* items-per-page (dec page-num))}
-     {$limit items-per-page}]))
+(defn- handle-page [{{page-num :page items-per-page :items, :as page-clause} :page} pipeline-ctx]
+  (if-not page-clause
+    pipeline-ctx
+    (update pipeline-ctx :query into [{$skip (* items-per-page (dec page-num))}
+                                      {$limit items-per-page}])))
 
 
 ;;; # process + run
@@ -324,21 +337,25 @@
 (defn- generate-aggregation-pipeline
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [query]
-  (loop [pipeline [], [f & more] [add-initial-projection
-                                  handle-filter
-                                  handle-breakout+aggregation
-                                  handle-order-by
-                                  handle-fields
-                                  handle-limit
-                                  handle-page]]
-    (let [out      (f query pipeline)
-          pipeline (cond
-                     (nil? out)        pipeline
-                     (map? out)        (conj pipeline out)
-                     (sequential? out) (vec (concat pipeline out)))]
-      (if-not (seq more)
-        pipeline
-        (recur pipeline more)))))
+  (reduce (fn [pipeline-ctx f]
+            (f query pipeline-ctx))
+          {:projections [], :query []}
+          [add-initial-projection
+           handle-filter
+           handle-breakout+aggregation
+           handle-order-by
+           handle-fields
+           handle-limit
+           handle-page]))
+
+(defn- create-unescaping-rename-map [original-keys]
+  (into {} (for [k original-keys]
+             (let [k-str     (name k)
+                   unescaped (-> k-str
+                                 (s/replace #"___" ".")
+                                 (s/replace #"~~~(.+)$" ""))]
+               (when-not (= k-str unescaped)
+                 {k (keyword unescaped)})))))
 
 (defn- unescape-names
   "Restore the original, unescaped nested Field names in the keys of RESULTS.
@@ -346,13 +363,7 @@
   [results]
   ;; Build a map of escaped key -> unescaped key by looking at the keys in the first result
   ;; e.g. {:source___username :source.username}
-  (let [replacements (into {} (for [k (keys (first results))]
-                                (let [k-str     (name k)
-                                      unescaped (-> k-str
-                                                    (s/replace #"___" ".")
-                                                    (s/replace #"~~~(.+)$" ""))]
-                                  (when-not (= k-str unescaped)
-                                    {k (keyword unescaped)}))))]
+  (let [replacements (create-unescaping-rename-map (keys (first results)))]
     ;; If the map is non-empty then map set/rename-keys over the results with it
     (if-not (seq replacements)
       results
@@ -402,7 +413,7 @@
      (form->encoded-fn-name [:___ObjectId \"583327789137b2700a1621fb\"]) -> :ObjectId"
   [form]
   (when (vector? form)
-    (when (u/string-or-keyword? (first form))
+    (when ((some-fn keyword? string?) (first form))
       (when-let [[_ k] (re-matches #"^___(\w+$)" (name (first form)))]
         (let [k (keyword k)]
           (when (contains? fn-name->decoder k)
@@ -449,15 +460,16 @@
   {:pre [(map? database)
          (string? source-table-name)]}
   (binding [*query* query]
-    (let [generated-pipeline (generate-aggregation-pipeline (:query query))]
+    (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
       (log-monger-form generated-pipeline)
-      {:query      generated-pipeline
+      {:projections proj
+       :query generated-pipeline
        :collection source-table-name
        :mbql?      true})))
 
 (defn execute-query
   "Process and run a native MongoDB query."
-  [{{:keys [collection query mbql?]} :native, database :database}]
+  [{{:keys [collection query mbql? projections]} :native, database :database}]
   {:pre [query
          (string? collection)
          (map? database)]}
@@ -470,11 +482,20 @@
                   results
                   [results])
         ;; if we formed the query using MBQL then we apply a couple post processing functions
-        results (if-not mbql? results
-                              (-> results
-                                  unescape-names
-                                  unstringify-dates))
-        columns (vec (keys (first results)))]
+        results (if-not mbql?
+                  results
+                  (-> results
+                      unescape-names
+                      unstringify-dates))
+        rename-map (create-unescaping-rename-map projections)
+        columns (if-not mbql?
+                  (vec (keys (first results)))
+                  (map (fn [proj]
+                         (if (contains? rename-map proj)
+                           (get rename-map proj)
+                           proj))
+                       projections))]
+
     {:columns   columns
      :rows      (for [row results]
                   (mapv row columns))

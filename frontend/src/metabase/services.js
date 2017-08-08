@@ -95,6 +95,7 @@ export const LdapApi = {
 export const MetabaseApi = {
     db_list:                     GET("/api/database"),
     db_list_with_tables:         GET("/api/database?include_tables=true&include_cards=true"),
+    db_real_list_with_tables:    GET("/api/database?include_tables=true&include_cards=false"),
     db_create:                  POST("/api/database"),
     db_add_sample_dataset:      POST("/api/database/sample_dataset"),
     db_get:                      GET("/api/database/:dbId"),
@@ -120,16 +121,46 @@ export const MetabaseApi = {
                                         table.metrics.push(...GA.metrics);
                                         table.segments.push(...GA.segments);
                                     }
+
+                                    if (table && table.fields) {
+                                        // replace dimension_options IDs with objects
+                                        for (const field of table.fields) {
+                                            if (field.dimension_options) {
+                                                field.dimension_options = field.dimension_options.map(id => table.dimension_options[id])
+                                            }
+                                            if (field.default_dimension_option) {
+                                                field.default_dimension_option = table.dimension_options[field.default_dimension_option];
+                                            }
+                                        }
+                                    }
+
                                     return table;
                                  }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
     field_values:                GET("/api/field/:fieldId/values"),
-    // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
+    field_values_update:        POST("/api/field/:fieldId/values"),
     field_update:                PUT("/api/field/:id"),
+    field_dimension_update:     POST("/api/field/:fieldId/dimension"),
+    field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
     dataset:                    POST("/api/dataset"),
-    dataset_duration:           POST("/api/dataset/duration"),
+    dataset_duration:           POST("/api/dataset/duration")
+};
+
+export const XRayApi = {
+    // X-Rays
+    field_fingerprint:           GET("api/fingerprint/field/:fieldId"),
+    table_fingerprint:           GET("api/fingerprint/table/:tableId"),
+    segment_fingerprint:         GET("api/fingerprint/segment/:segmentId"),
+    card_fingerprint:            GET("api/fingerprint/card/:cardId"),
+
+    // Comparisons
+    // TODO - the api is currently set where compare is nested under fingerprint
+    field_compare:               GET("api/fingerprint/compare/fields/:fieldId1/:fieldId2"),
+    table_compare:               GET("api/fingerprint/compare/table/:tableId/:otherTableId"),
+    segment_compare:             GET("api/fingerprint/compare/segment/:segmentId/:otherSegmentId"),
+    card_compare:                GET("api/fingerprint/compare/card/:cardId/:otherCardId")
 };
 
 export const PulseApi = {

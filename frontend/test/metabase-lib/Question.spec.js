@@ -337,7 +337,7 @@ describe("Question", () => {
                     query: {
                         source_table: ORDERS_TABLE_ID,
                         aggregation: [["count"]],
-                        breakout: [["field-id", ORDERS_CREATED_DATE_FIELD_ID]]
+                        breakout: ["field-id", ORDERS_CREATED_DATE_FIELD_ID]
                     }
                 });
                 // Make sure we haven't mutated the underlying query
@@ -360,7 +360,7 @@ describe("Question", () => {
                     query: {
                         source_table: ORDERS_TABLE_ID,
                         aggregation: [["count"]],
-                        breakout: [["field-id", ORDERS_PK_FIELD_ID]]
+                        breakout: ["field-id", ORDERS_PK_FIELD_ID]
                     }
                 });
                 // Make sure we haven't mutated the underlying query

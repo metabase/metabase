@@ -10,11 +10,11 @@ import {
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
-import { GettingStartedApi } from "metabase/services";
+import { GettingStartedApi, XRayApi } from 'metabase/services';
 
-import { 
-    filterUntouchedFields, 
-    isEmptyObject 
+import {
+    filterUntouchedFields,
+    isEmptyObject
 } from "./utils.js"
 
 export const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
@@ -74,6 +74,117 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
+// Xray Fetch Actions
+// These actions are used to fetch Xray fingerprints and comparisons. Most take  a cost which
+// is used by the backend to figure out how precise to be when generating the xray stats.
+
+const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
+export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId, cost) {
+    return async () => {
+        try {
+            let fingerprint = await XRayApi.field_fingerprint({ fieldId, ...cost.method });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+const FETCH_TABLE_FINGERPRINT = 'metabase/reference/FETCH_TABLE_FINGERPRINT';
+export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, function(tableId, cost) {
+    return async () => {
+        try {
+            let fingerprint = await XRayApi.table_fingerprint({ tableId, ...cost.method });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+
+const FETCH_SEGMENT_FINGERPRINT = 'metabase/reference/FETCH_SEGMENT_FINGERPRINT';
+export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRINT, function(segmentId, cost) {
+    return async () => {
+        try {
+            let fingerprint = await XRayApi.segment_fingerprint({ segmentId, ...cost.method });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+const FETCH_CARD_FINGERPRINT = 'metabase/reference/FETCH_CARD_FINGERPRINT';
+export const fetchCardFingerPrint = createThunkAction(FETCH_CARD_FINGERPRINT, function(cardId) {
+    return async () => {
+        try {
+            let fingerprint = await XRayApi.card_fingerprint({ cardId });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+const FETCH_FIELD_COMPARISON = 'metabase/reference/FETCH_FIELD_COMPARISON';
+export const fetchFieldComparison = createThunkAction(FETCH_FIELD_COMPARISON, function(fieldId1, fieldId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.field_compare({ fieldId1, fieldId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+const FETCH_TABLE_COMPARISON = 'metabase/reference/FETCH_TABLE_COMPARISON';
+export const fetchTableComparison = createThunkAction(FETCH_TABLE_COMPARISON, function(tableId1, tableId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.table_compare({ tableId1, tableId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+
+const FETCH_SEGMENT_COMPARISON = 'metabase/reference/FETCH_SEGMENT_COMPARISON';
+export const fetchSegmentComparison = createThunkAction(FETCH_SEGMENT_COMPARISON, function(segmentId1, segmentId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.segment_compare({ segmentId1, segmentId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+
+const FETCH_METRIC_COMPARISON = 'metabase/reference/FETCH_METRIC_COMPARISON';
+export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, function(metricId1, metricId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.metric_compare({ metricId1, metricId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
+
+const FETCH_CARD_COMPARISON = 'metabase/reference/FETCH_CARD_COMPARISON';
+export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, function(cardId1, cardId2) {
+    return async () => {
+        try {
+            let comparison = await XRayApi.card_compare({ cardId1, cardId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
+        }
+    }
+})
 
 // Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
 
@@ -96,8 +207,8 @@ const fetchDataWrapper = (props, fn) => {
 export const wrappedFetchGuide = async (props) => {
 
     fetchDataWrapper(
-        props, 
-        async () => { 
+        props,
+        async () => {
                 await Promise.all(
                     [props.fetchGuide(),
                      props.fetchDashboards(),
@@ -114,8 +225,8 @@ export const wrappedFetchDatabaseMetadata = (props, databaseID) => {
 export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
 
     fetchDataWrapper(
-        props, 
-        async (dbID) => { 
+        props,
+        async (dbID) => {
                 await Promise.all(
                     [props.fetchDatabaseMetadata(dbID),
                      props.fetchQuestions()]
@@ -125,11 +236,11 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (props, databaseID)
 export const wrappedFetchMetricDetail = async (props, metricID) => {
 
     fetchDataWrapper(
-        props, 
-        async (mID) => { 
+        props,
+        async (mID) => {
                 await Promise.all(
                     [props.fetchMetricTable(mID),
-                     props.fetchMetrics(), 
+                     props.fetchMetrics(),
                      props.fetchGuide()]
                 )}
         )(metricID)
@@ -137,11 +248,11 @@ export const wrappedFetchMetricDetail = async (props, metricID) => {
 export const wrappedFetchMetricQuestions = async (props, metricID) => {
 
     fetchDataWrapper(
-        props, 
-        async (mID) => { 
+        props,
+        async (mID) => {
                 await Promise.all(
                     [props.fetchMetricTable(mID),
-                     props.fetchMetrics(), 
+                     props.fetchMetrics(),
                      props.fetchQuestions()]
                 )}
         )(metricID)
@@ -149,8 +260,8 @@ export const wrappedFetchMetricQuestions = async (props, metricID) => {
 export const wrappedFetchMetricRevisions = async (props, metricID) => {
 
     fetchDataWrapper(
-        props, 
-        async (mID) => { 
+        props,
+        async (mID) => {
                 await Promise.all(
                     [props.fetchMetricRevisions(mID),
                      props.fetchMetrics()]
@@ -176,7 +287,7 @@ export const wrappedFetchMetricRevisions = async (props, metricID) => {
 // }
 
 export const wrappedFetchDatabases = (props) => {
-    fetchDataWrapper(props, props.fetchDatabases)({})
+    fetchDataWrapper(props, props.fetchRealDatabases)({})
 }
 export const wrappedFetchMetrics = (props) => {
     fetchDataWrapper(props, props.fetchMetrics)({})
@@ -194,8 +305,8 @@ export const wrappedFetchSegmentDetail = (props, segmentID) => {
 export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
 
     fetchDataWrapper(
-        props, 
-        async (sID) => { 
+        props,
+        async (sID) => {
                 await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentTable(sID),
@@ -206,8 +317,8 @@ export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
 export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
 
     fetchDataWrapper(
-        props, 
-        async (sID) => { 
+        props,
+        async (sID) => {
                 await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentRevisions(sID),
@@ -218,8 +329,8 @@ export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
 export const wrappedFetchSegmentFields = async (props, segmentID) => {
 
     fetchDataWrapper(
-        props, 
-        async (sID) => { 
+        props,
+        async (sID) => {
                 await props.fetchSegments(sID);
                 await Promise.all(
                     [props.fetchSegmentFields(sID),
@@ -229,7 +340,7 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
 }
 
 // This is called when a component gets a new set of props.
-// I *think* this is un-necessary in all cases as we're using multiple 
+// I *think* this is un-necessary in all cases as we're using multiple
 // components where the old code re-used the same component
 export const clearState = props => {
     props.endEditing();
@@ -247,9 +358,9 @@ const resetForm = (props) => {
 }
 
 // Update actions
-// these use the "fetchDataWrapper" for now. It should probably be renamed. 
-// Using props to fire off actions, which imo should be refactored to 
-// dispatch directly, since there is no actual dependence with the props 
+// these use the "fetchDataWrapper" for now. It should probably be renamed.
+// Using props to fire off actions, which imo should be refactored to
+// dispatch directly, since there is no actual dependence with the props
 // of that component
 
 const updateDataWrapper = (props, fn) => {
@@ -542,6 +653,7 @@ export const tryUpdateGuide = async (formFields, props) => {
     endEditing();
 };
 
+
 const initialState = {
     error: null,
     isLoading: false,
@@ -552,6 +664,18 @@ const initialState = {
 export default handleActions({
     [FETCH_GUIDE]: {
         next: (state, { payload }) => assoc(state, 'guide', payload)
+    },
+    [FETCH_FIELD_FINGERPRINT]: {
+        next: (state, { payload }) => assoc(state, 'fieldFingerprint', payload)
+    },
+    [FETCH_TABLE_FINGERPRINT]: {
+        next: (state, { payload }) => assoc(state, 'tableFingerprint', payload)
+    },
+    [FETCH_SEGMENT_FINGERPRINT]: {
+        next: (state, { payload }) => assoc(state, 'segmentFingerprint', payload)
+    },
+    [FETCH_FIELD_COMPARISON]: {
+        next: (state, { payload }) => assoc(state, 'fieldComparison', payload)
     },
     [SET_ERROR]: {
         throw: (state, { payload }) => assoc(state, 'error', payload)

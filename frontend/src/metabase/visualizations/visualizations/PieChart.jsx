@@ -46,7 +46,7 @@ export default class PieChart extends Component {
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
-            throw new ChartSettingsError("Which columns do want to use?", "Data");
+            throw new ChartSettingsError("Which columns do you want to use?", "Data");
         }
     }
 

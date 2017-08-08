@@ -18,9 +18,12 @@ import {
     isMetric,
     isPK,
     isFK,
+    isCoordinate,
     getIconForField,
     getFieldType
 } from "metabase/lib/schema_metadata";
+
+import type { FieldValues } from "metabase/meta/types/Field";
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
@@ -83,7 +86,11 @@ export default class Field extends Base {
         return isFK(this);
     }
 
-    fieldValues(): Array<string> {
+    isCoordinate() {
+        return isCoordinate(this);
+    }
+
+    fieldValues(): FieldValues {
         return getFieldValues(this._object);
     }
 

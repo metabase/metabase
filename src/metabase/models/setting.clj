@@ -53,7 +53,7 @@
 
 
 (def ^:private Type
-  (s/enum :string :boolean :json :integer))
+  (s/enum :string :boolean :json :integer :double))
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -158,6 +158,12 @@
   (when-let [s (get-string setting-or-name)]
     (Integer/parseInt s)))
 
+(defn get-double
+  "Get double value of (presumably `:double`) SETTING-OR-NAME. This is the default getter for `:double` settings."
+  ^Double [setting-or-name]
+  (when-let [s (get-string setting-or-name)]
+    (Double/parseDouble s)))
+
 (defn get-json
   "Get the string value of SETTING-OR-NAME and parse it as JSON."
   [setting-or-name]
@@ -167,7 +173,8 @@
   {:string  get-string
    :boolean get-boolean
    :integer get-integer
-   :json    get-json})
+   :json    get-json
+   :double  get-double})
 
 (defn get
   "Fetch the value of SETTING-OR-NAME. What this means depends on the Setting's `:getter`; by default, this looks for first for a corresponding env var,
@@ -236,6 +243,15 @@
                                                   (re-matches #"^\d+$" new-value))))
                                  (str new-value))))
 
+(defn set-double!
+  "Set the value of double SETTING-OR-NAME."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (when new-value
+                                 (assert (or (float? new-value)
+                                             (and (string? new-value)
+                                                  (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
+                                 (str new-value))))
+
 (defn set-json!
   "Serialize NEW-VALUE for SETTING-OR-NAME as a JSON string and save it."
   [setting-or-name new-value]
@@ -246,7 +262,8 @@
   {:string  set-string!
    :boolean set-boolean!
    :integer set-integer!
-   :json    set-json!})
+   :json    set-json!
+   :double  set-double!})
 
 (defn set!
   "Set the value of SETTING-OR-NAME. What this means depends on the Setting's `:setter`; by default, this just updates the Settings cache and writes its value to the DB.
@@ -369,16 +386,19 @@
 
 
 (defn- user-facing-info [setting]
-  (let [k (:name setting)
-        v (get k)]
-    {:key         k
-     :value       (when (and (not= v (env-var-value setting))
-                             (not= v (:default setting)))
-                    v)
-     :description (:description setting)
-     :default     (or (when (env-var-value setting)
-                        (format "Using $%s" (env-var-name setting)))
-                      (:default setting))}))
+  (let [k         (:name setting)
+        v         (get k)
+        env-value (env-var-value setting)]
+    {:key            k
+     :value          (when (and (not= v env-value)
+                                (not= v (:default setting)))
+                       v)
+     :is_env_setting (boolean env-value)
+     :env_name       (env-var-name setting)
+     :description    (:description setting)
+     :default        (or (when env-value
+                           (format "Using $%s" (env-var-name setting)))
+                         (:default setting))}))
 
 (defn all
   "Return a sequence of Settings maps in a format suitable for consumption by the frontend.

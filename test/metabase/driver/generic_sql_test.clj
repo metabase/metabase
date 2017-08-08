@@ -1,13 +1,11 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :refer :all]
+            [metabase.driver.generic-sql :as sql :refer :all]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.test
-             [data :refer :all]
-             [util :refer [resolve-private-vars]]]
+            [metabase.test.data :refer :all]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
@@ -66,29 +64,6 @@
      :dest-column-name "ID"}}
   (driver/describe-table-fks (H2Driver.) (db) @venues-table))
 
-
-;; ANALYZE-TABLE
-
-(expect
-  {:row_count 100,
-   :fields    [{:id (id :venues :category_id)}
-               {:id (id :venues :id)}
-               {:id (id :venues :latitude)}
-               {:id (id :venues :longitude)}
-               {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
-               {:id (id :venues :price), :values [1 2 3 4]}]}
-  (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
-
-(resolve-private-vars metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
-
-;;; FIELD-AVG-LENGTH
-(datasets/expect-with-engines @generic-sql-engines
-  ;; Not sure why some databases give different values for this but they're close enough that I'll allow them
-  (if (contains? #{:redshift :sqlserver} datasets/*engine*)
-    15
-    16)
-  (field-avg-length datasets/*driver* (db/select-one 'Field :id (id :venues :name))))
-
 ;;; FIELD-VALUES-LAZY-SEQ
 (datasets/expect-with-engines @generic-sql-engines
   ["Red Medicine"
@@ -96,7 +71,7 @@
    "The Apple Pan"
    "Wurstküche"
    "Brite Spot Family Restaurant"]
-  (take 5 (field-values-lazy-seq datasets/*driver* (db/select-one 'Field :id (id :venues :name)))))
+  (take 5 (#'sql/field-values-lazy-seq datasets/*driver* (db/select-one 'Field :id (id :venues :name)))))
 
 
 ;;; TABLE-ROWS-SEQ
@@ -106,23 +81,15 @@
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
    {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
    {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (sort-by :id (table-rows-seq datasets/*driver*
-                                                 (db/select-one 'Database :id (id))
-                                                 (db/select-one 'RawTable :id (db/select-one-field :raw_table_id 'Table, :id (id :venues))))))]
+  (for [row (take 5 (sort-by :id (#'sql/table-rows-seq datasets/*driver*
+                                   (db/select-one 'Database :id (id))
+                                   (db/select-one 'Table :id (id :venues)))))]
     ;; different DBs use different precisions for these
     (-> (dissoc row :latitude :longitude)
         (update :price int)
         (update :category_id int)
         (update :id int))))
 
-;;; FIELD-PERCENT-URLS
-(datasets/expect-with-engines @generic-sql-engines
-  (if (= datasets/*engine* :oracle)
-    ;; Oracle considers empty strings to be NULL strings; thus in this particular test `percent-valid-urls` gives us 4/7 valid valid where other DBs give us 4/8
-    0.5714285714285714
-    0.5)
-  (dataset half-valid-urls
-    (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
 (expect

@@ -10,7 +10,7 @@ import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
 import { stripId, singularize } from "metabase/lib/formatting";
 
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
 import type { ConcreteField } from "metabase/meta/types/Query";
 import type Table from "metabase-lib/lib/metadata/Table";
@@ -20,7 +20,7 @@ export type AccordianListItem = {
 }
 
 export type AccordianListSection = {
-    name: string;
+    name: ?string;
     items: AccordianListItem[]
 }
 
@@ -36,7 +36,9 @@ type Props = {
     tableMetadata: Table,
 
     alwaysExpanded?: boolean,
-    enableSubDimensions?: boolean
+    enableSubDimensions?: boolean,
+
+    hideSectionHeader?: boolean
 }
 
 type State = {
@@ -54,7 +56,7 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, fieldOptions, segmentOptions } = newProps;
+        let { tableMetadata, fieldOptions, segmentOptions, hideSectionHeader } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
@@ -73,17 +75,17 @@ export default class FieldList extends Component {
             }))
 
         let mainSection = {
-            name: singularize(tableName),
+            name: hideSectionHeader ? null : singularize(tableName),
             items: specialOptions.concat(getSectionItems(fieldOptions))
         };
 
         let fkSections = fieldOptions.fks.map(fkOptions => ({
-            name: stripId(fkOptions.field.display_name),
+            name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
             items: getSectionItems(fkOptions)
         }));
 
         let sections = []
-        if (mainSection.items.length > 0) {
+        if (mainSection.items.length > 0 ) {
             sections.push(mainSection);
         }
         sections.push(...fkSections);
@@ -181,14 +183,24 @@ export default class FieldList extends Component {
     }
 
     onChange = (item) => {
-        if (item.segment && this.props.onFilterChange) {
-            this.props.onFilterChange(item.value);
-        } else if (this.props.field != null && this.itemIsSelected(item)) {
+        const { field, enableSubDimensions, onFilterChange, onFieldChange} = this.props;
+        if (item.segment && onFilterChange) {
+            onFilterChange(item.value);
+        } else if (field != null && this.itemIsSelected(item)) {
             // ensure if we select the same item we don't reset datetime-field's unit
-            this.props.onFieldChange(this.props.field);
+            onFieldChange(field);
         } else {
             const dimension = item.dimension.defaultDimension() || item.dimension;
-            this.props.onFieldChange(dimension.mbql());
+            const shouldExcludeBinning = !enableSubDimensions && dimension instanceof BinnedDimension
+
+            if (shouldExcludeBinning) {
+                // If we don't let user choose the sub-dimension, we don't want to treat the field
+                // as a binned field (which would use the default binning)
+                // Let's unwrap the base field of the binned field instead
+                onFieldChange(dimension.baseDimension().mbql());
+            } else {
+                onFieldChange(dimension.mbql());
+            }
         }
     }
 
@@ -211,7 +223,7 @@ export default class FieldList extends Component {
 
 import cx from "classnames";
 
-const DimensionPicker = ({ className, dimension, dimensions, onChangeDimension }) => {
+export const DimensionPicker = ({ className, dimension, dimensions, onChangeDimension }) => {
     return (
         <ul className="px2 py1">
             { dimensions.map((d, index) =>

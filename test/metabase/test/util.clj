@@ -15,8 +15,6 @@
              [permissions-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [pulse-channel :refer [PulseChannel]]
-             [raw-column :refer [RawColumn]]
-             [raw-table :refer [RawTable]]
              [revision :refer [Revision]]
              [segment :refer [Segment]]
              [setting :as setting]
@@ -86,21 +84,24 @@
   (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
-  [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (boolean-ids-and-timestamps v)
-              (coll? v) (mapv boolean-ids-and-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
-               (if (or (= :id k)
-                       (.endsWith (name k) "_id")
-                       (= :created_at k)
-                       (= :updated_at k)
-                       (= :last_analyzed k))
-                 [k (not (nil? v))]
-                 [k (f v)])))))
+  "Useful for unit test comparisons. Converts map keys found in `DATA`
+  satisfying `PRED` with booleans when not nil"
+  ([data]
+   (boolean-ids-and-timestamps
+    (every-pred (some-fn keyword? string?)
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id}
+                         #(.endsWith (name %) "_id")))
+    data))
+  ([pred data]
+   (walk/prewalk (fn [maybe-map]
+                   (if (map? maybe-map)
+                     (reduce-kv (fn [acc k v]
+                                  (if (pred k)
+                                    (assoc acc k (not (nil? v)))
+                                    (assoc acc k v)))
+                                {} maybe-map)
+                     maybe-map))
+                 data)))
 
 
 (defn- user-id [username]
@@ -169,16 +170,6 @@
                                     :details       {}
                                     :schedule_type :daily
                                     :schedule_hour 15})})
-
-(u/strict-extend (class RawColumn)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
-                                :name   (random-name)})})
-
-(u/strict-extend (class RawTable)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
-                                :name   (random-name)})})
 
 (u/strict-extend (class Revision)
   test/WithTempDefaults
@@ -323,3 +314,32 @@
                      (vec form)
                      form))
                  x))
+
+(defn- update-in-if-present
+  "If the path `KS` is found in `M`, call update-in with the original
+  arguments to this function, otherwise, return `M`"
+  [m ks f & args]
+  (if (= ::not-found (get-in m ks ::not-found))
+    m
+    (apply update-in m ks f args)))
+
+(defn- round-fingerprint-fields [fprint-type-map fields]
+  (reduce (fn [fprint field]
+            (update-in-if-present fprint [field] (fn [num]
+                                                   (if (integer? num)
+                                                     num
+                                                     (u/round-to-decimals 3 num)))))
+          fprint-type-map fields))
+
+(defn round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 4 decimal places"
+  [field]
+  (-> field
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
+      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
+
+(defn  round-fingerprint-cols [query-results]
+  (let [maybe-data-cols (if (contains? query-results :data)
+                          [:data :cols]
+                          [:cols])]
+    (update-in query-results maybe-data-cols #(map round-fingerprint %))))

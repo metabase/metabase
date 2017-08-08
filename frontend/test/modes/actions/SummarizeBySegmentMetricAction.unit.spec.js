@@ -16,6 +16,31 @@ const question = Question.create({
 });
 
 describe("SummarizeBySegmentMetricAction", () => {
+    describe("aggregation options", () => {
+        it("should show only a subset of all query aggregations", () => {
+            const hasAggregationOption = (popover, optionName) =>
+                popover.find(
+                    `.List-item-title[children="${optionName}"]`
+                ).length === 1;
+
+            const action = SummarizeBySegmentMetricAction({ question })[0];
+            const popover = mount(
+                action.popover({
+                    onClose: () => {},
+                    onChangeCardAndRun: () => {}
+                })
+            );
+
+            expect(hasAggregationOption(popover, "Count of rows")).toBe(true);
+            expect(hasAggregationOption(popover, "Average of ...")).toBe(true);
+            expect(hasAggregationOption(popover, "Raw data")).toBe(false);
+            expect(
+                hasAggregationOption(popover, "Cumulative count of rows")
+            ).toBe(false);
+            expect(popover.find(".List-section-title").length).toBe(0);
+        });
+    });
+
     describe("onChangeCardAndRun", async () => {
         it("should be called for 'Count of rows' choice", async () => {
             const action = SummarizeBySegmentMetricAction({ question })[0];

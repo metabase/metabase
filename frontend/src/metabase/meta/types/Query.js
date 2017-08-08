@@ -144,7 +144,8 @@ export type ConcreteField =
     LocalFieldReference |
     ForeignFieldReference |
     ExpressionReference |
-    DatetimeField;
+    DatetimeField |
+    BinnedField;
 
 export type LocalFieldReference =
     ["field-id", FieldId] |
@@ -162,6 +163,11 @@ export type FieldLiteral =
 export type DatetimeField =
     ["datetime-field", LocalFieldReference | ForeignFieldReference, DatetimeUnit] |
     ["datetime-field", LocalFieldReference | ForeignFieldReference, "as", DatetimeUnit]; // @deprecated: don't include the "as" element
+
+export type BinnedField =
+    ["binning-strategy", LocalFieldReference | ForeignFieldReference, "default"] | // default binning (as defined by backend)
+    ["binning-strategy", LocalFieldReference | ForeignFieldReference, "num-bins", number] | // number of bins
+    ["binning-strategy", LocalFieldReference | ForeignFieldReference, "bin-width", number]; // width of each bin
 
 export type AggregateField = ["aggregation", number];
 

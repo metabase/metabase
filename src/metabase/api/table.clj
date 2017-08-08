@@ -4,13 +4,15 @@
             [compojure.core :refer [GET PUT]]
             [medley.core :as m]
             [metabase
-             [sync-database :as sync-database]
+             [driver :as driver]
+             [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
-             [database :as database]
-             [field :refer [Field]]
+             [database :as database :refer [Database]]
+             [field :refer [Field with-normal-values]]
+             [field-values :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
             [metabase.util.schema :as su]
@@ -44,41 +46,161 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
-(defn- visible-state?
-  "only the nil state is considered visible."
-  [state]
-  {:pre [(or (nil? state) (table/visibility-types state))]}
-  (if (nil? state)
-    :show
-    :hide))
 
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started]} :body}]
-  {display_name    (s/maybe su/NonBlankString)
-   entity_type     (s/maybe TableEntityType)
-   visibility_type (s/maybe TableVisibilityType)}
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started], :as body} :body}]
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe TableEntityType)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
   (api/write-check Table id)
-  (let [original-visibility-type (:visibility_type (Table :id id))]
-    (api/check-500 (db/update-non-nil-keys! Table id
-                     :display_name            display_name
-                     :caveats                 caveats
-                     :points_of_interest      points_of_interest
-                     :show_in_getting_started show_in_getting_started
-                     :entity_type             entity_type
-                     :description             description))
-    (api/check-500 (db/update! Table id, :visibility_type visibility_type))
-    (let [updated-table (Table id)
-          new-visibility (visible-state? (:visibility_type updated-table))
-          old-visibility (visible-state? original-visibility-type)
-          visibility-changed? (and (not= new-visibility
-                                         old-visibility)
-                                   (= :show new-visibility))]
-      (when visibility-changed?
-        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
-        (sync-database/sync-table! updated-table))
+  (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
+    ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update description and related fields if passed in
+    (api/check-500
+     (db/update! Table id
+       (assoc (u/select-keys-when body
+                :non-nil [:display_name :show_in_getting_started :entity_type]
+                :present [:description :caveats :points_of_interest])
+         :visibility_type visibility_type)))
+    (let [updated-table   (Table id)
+          now-visible?    (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
+          was-visible?    (nil? original-visibility-type)
+          became-visible? (and now-visible? (not was-visible?))]
+      (when became-visible?
+        (log/info (u/format-color 'green "Table '%s' is now visible. Resyncing." (:name updated-table)))
+        (sync/sync-table! updated-table))
       updated-table)))
 
+(def ^:private dimension-options
+  (let [default-entry ["Auto bin" ["default"]]]
+    (zipmap (range)
+            (concat
+             (map (fn [[name param]]
+                    {:name name
+                     :mbql ["datetime-field" nil param]
+                     :type "type/DateTime"})
+                  [["Minute" "minute"]
+                   ["Minute of Hour" "minute-of-hour"]
+                   ["Hour" "hour"]
+                   ["Hour of Day" "hour-of-day"]
+                   ["Day" "day"]
+                   ["Day of Week" "day-of-week"]
+                   ["Day of Month" "day-of-month"]
+                   ["Day of Year" "day-of-year"]
+                   ["Week" "week"]
+                   ["Week of Year" "week-of-year"]
+                   ["Month" "month"]
+                   ["Month of Year" "month-of-year"]
+                   ["Quarter" "quarter"]
+                   ["Quarter of Year" "quarter-of-year"]
+                   ["Year" "year"]])
+             (conj
+               (mapv (fn [[name params]]
+                      {:name name
+                       :mbql (apply vector "binning-strategy" nil params)
+                       :type "type/Number"})
+                    [default-entry
+                     ["10 bins" ["num-bins" 10]]
+                     ["50 bins" ["num-bins" 50]]
+                     ["100 bins" ["num-bins" 100]]])
+               {:name "Don't bin"
+                :mbql nil
+                :type "type/Number"}
+               )
+             (conj
+               (mapv (fn [[name params]]
+                      {:name name
+                       :mbql (apply vector "binning-strategy" nil params)
+                       :type "type/Coordinate"})
+                    [default-entry
+                     ["Bin every 1 degree" ["bin-width" 1.0]]
+                     ["Bin every 10 degrees" ["bin-width" 10.0]]
+                     ["Bin every 20 degrees" ["bin-width" 20.0]]
+                     ["Bin every 50 degrees" ["bin-width" 50.0]]])
+               {:name "Don't bin"
+                :mbql nil
+                :type "type/Coordinate"}
+              )))))
+
+(def ^:private dimension-options-for-response
+  (m/map-kv (fn [k v]
+              [(str k) v]) dimension-options))
+
+(defn- create-dim-index-seq [dim-type]
+  (->> dimension-options
+       (m/filter-kv (fn [k v] (= (:type v) dim-type)))
+       keys
+       sort
+       (map str)))
+
+(def ^:private datetime-dimension-indexes
+  (create-dim-index-seq "type/DateTime"))
+
+(def ^:private numeric-dimension-indexes
+  (create-dim-index-seq "type/Number"))
+
+(def ^:private coordinate-dimension-indexes
+  (create-dim-index-seq "type/Coordinate"))
+
+(defn- dimension-index-for-type [dim-type pred]
+  (first (m/find-first (fn [[k v]]
+                         (and (= dim-type (:type v))
+                              (pred v))) dimension-options-for-response)))
+
+(def ^:private date-default-index
+  (dimension-index-for-type "type/DateTime" #(= "Day" (:name %))))
+
+(def ^:private numeric-default-index
+  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) "Auto bin")))
+
+(def ^:private coordinate-default-index
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "Auto bin")))
+
+(defn- assoc-field-dimension-options [{:keys [base_type special_type fingerprint] :as field}]
+  (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
+        [default-option all-options] (cond
+
+                                       (isa? base_type :type/DateTime)
+                                       [date-default-index datetime-dimension-indexes]
+
+                                       (and min_value max_value
+                                            (isa? special_type :type/Coordinate))
+                                       [coordinate-default-index coordinate-dimension-indexes]
+
+                                       (and min_value max_value
+                                            (isa? base_type :type/Number)
+                                            (or (nil? special_type) (isa? special_type :type/Number)))
+                                       [numeric-default-index numeric-dimension-indexes]
+
+                                       :else
+                                       [nil []])]
+    (assoc field
+      :default_dimension_option default-option
+      :dimension_options all-options)))
+
+(defn- assoc-dimension-options [resp driver]
+  (if (and driver (contains? (driver/features driver) :binning))
+    (-> resp
+        (assoc :dimension_options dimension-options-for-response)
+        (update :fields #(mapv assoc-field-dimension-options %)))
+    (-> resp
+        (assoc :dimension_options [])
+        (update :fields (fn [fields]
+                          (mapv #(assoc %
+                                   :dimension_options []
+                                   :default_dimension_option nil) fields))))))
+
+(defn- format-fields-for-response [resp]
+  (update resp :fields
+          (fn [fields]
+            (for [{:keys [values] :as field} fields]
+              (if (seq values)
+                (update field :values fv/field-values->pairs)
+                field)))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -88,15 +210,20 @@
   will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
-  (-> (api/read-check Table id)
-      (hydrate :db [:fields :target] :field_values :segments :metrics)
-      (m/dissoc-in [:db :details])
-      (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
-                             ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                             identity
-                             ;; Otherwise filter out all :sensitive fields
-                             (partial filter (fn [{:keys [visibility_type]}]
-                                               (not= (keyword visibility_type) :sensitive)))))))
+  (let [table (api/read-check Table id)
+        driver (driver/engine->driver (db/select-one-field :engine Database :id (:db_id table)))]
+    (-> table
+        (hydrate :db [:fields :target :dimensions] :segments :metrics)
+        (update :fields with-normal-values)
+        (m/dissoc-in [:db :details])
+        (assoc-dimension-options driver)
+        format-fields-for-response
+        (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
+                               ;; If someone passes include_sensitive_fields return hydrated :fields as-is
+                               identity
+                               ;; Otherwise filter out all :sensitive fields
+                               (partial filter (fn [{:keys [visibility_type]}]
+                                                 (not= (keyword visibility_type) :sensitive))))))))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual' database."
@@ -119,7 +246,7 @@
     (cond-> {:id           (str "card__" (u/get-id card))
              :db_id        database/virtual-id
              :display_name (:name card)
-             :schema       (get-in card [:collection :name] "All questions")
+             :schema       (get-in card [:collection :name] "Everything else")
              :description  (:description card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card) (:result_metadata card))))))
 

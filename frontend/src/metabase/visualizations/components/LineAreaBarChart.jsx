@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
+import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
 
 import "./LineAreaBarChart.css";
 
@@ -95,7 +96,9 @@ export default class LineAreaBarChart extends Component {
         }
 
         // both or neither primary dimension must be numeric
-        if (isNumeric(initialDimensions[0]) !== isNumeric(newDimensions[0])) {
+        // a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+        if ((isNumeric(initialDimensions[0]) !== isNumeric(newDimensions[0])) &&
+            !(isDate(initialDimensions[0]) && isDate(newDimensions[0]))) {
             return false;
         }
 
@@ -186,48 +189,31 @@ export default class LineAreaBarChart extends Component {
 
         const settings = this.getSettings();
 
-        let titleHeaderSeries, multiseriesHeaderSeries;
-
-        // $FlowFixMe
-        let originalSeries = series._raw || series;
-        let cardIds = _.uniq(originalSeries.map(s => s.card.id))
-        const isComposedOfMultipleQuestions = cardIds.length > 1;
-
-        if (showTitle && settings["card.title"]) {
-            titleHeaderSeries = [{ card: {
-                name: settings["card.title"],
-                ...(isComposedOfMultipleQuestions ? {} : {
-                    id: cardIds[0],
-                    dataset_query: originalSeries[0].card.dataset_query
-                }),
-            }}];
-        }
-
+        let multiseriesHeaderSeries;
         if (series.length > 1) {
             multiseriesHeaderSeries = series;
         }
 
+        const hasTitle = showTitle && settings["card.title"];
+
         return (
             <div className={cx("LineAreaBarChart flex flex-column p1", this.getHoverClasses(), this.props.className)}>
-                { titleHeaderSeries ?
-                    <LegendHeader
-                        className="flex-no-shrink"
-                        series={titleHeaderSeries}
-                        description={settings["card.description"]}
+                { hasTitle &&
+                    <TitleLegendHeader
+                        series={series}
+                        settings={settings}
+                        onChangeCardAndRun={onChangeCardAndRun}
                         actionButtons={actionButtons}
-                        // If a dashboard card is composed of multiple questions, its custom card title
-                        // shouldn't act as a link as it's ambiguous that which question it should open
-                        onChangeCardAndRun={ isComposedOfMultipleQuestions ? null : onChangeCardAndRun }
                     />
-                : null }
-                { multiseriesHeaderSeries || (!titleHeaderSeries && actionButtons) ? // always show action buttons if we have them
+                }
+                { multiseriesHeaderSeries || (!hasTitle && actionButtons) ? // always show action buttons if we have them
                     <LegendHeader
                         className="flex-no-shrink"
                         series={multiseriesHeaderSeries}
                         settings={settings}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
-                        actionButtons={!titleHeaderSeries ? actionButtons : null}
+                        actionButtons={!hasTitle ? actionButtons : null}
                         onChangeCardAndRun={onChangeCardAndRun}
                         onVisualizationClick={onVisualizationClick}
                         visualizationIsClickable={visualizationIsClickable}
@@ -306,7 +292,7 @@ function transformSingleSeries(s, series, seriesIndex) {
                     // show series title if it's multiseries
                     series.length > 1 && card.name,
                     // always show grouping value
-                    formatValue(breakoutValue, cols[seriesColumnIndex])
+                    formatValue(breakoutValue, { column: cols[seriesColumnIndex] })
                 ].filter(n => n).join(": "),
                 _transformed: true,
                 _breakoutValue: breakoutValue,

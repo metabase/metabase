@@ -7,12 +7,13 @@ import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
-import { stripId } from "metabase/lib/formatting";
+import { stripId, formatField } from "metabase/lib/formatting";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import * as Table from "./query/table";
 
 import * as Q from "./query/query";
+import * as F from "./query/field";
 import { mbql, mbqlEq } from "./query/util";
 
 export const NEW_QUERY_TEMPLATES = {
@@ -323,6 +324,8 @@ var Query = {
         return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
     },
 
+    isBinningStrategy: F.isBinningStrategy,
+
     isExpressionField(field) {
         return Array.isArray(field) && field.length === 2 && mbqlEq(field[0], "expression");
     },
@@ -371,6 +374,8 @@ var Query = {
             return Query.getFieldTargetId(field[2]);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTargetId(field[1]);
+        } else if (Query.isBinningStrategy(field)) {
+            return Query.getFieldTargetId(field[1]);
         } else if (Query.isFieldLiteral(field)) {
             return field;
         }
@@ -392,6 +397,8 @@ var Query = {
                 ...Query.getFieldTarget(field[1], tableDef, path),
                 unit: Query.getDatetimeUnit(field)
             };
+        } else if (Query.isBinningStrategy(field)) {
+            return Query.getFieldTarget(field[1], tableDef, path);
         } else if (Query.isExpressionField(field)) {
             // hmmm, since this is a dynamic field we'll need to build this here
             let fieldDef = {
@@ -435,7 +442,7 @@ var Query = {
     },
 
     getFieldPathName(fieldId, tableDef) {
-        return Query.getFieldPath(fieldId, tableDef).map(f => f && f.display_name).join(": ")
+        return Query.getFieldPath(fieldId, tableDef).map(formatField).join(": ")
     },
 
     getDatetimeUnit(field) {

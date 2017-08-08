@@ -4,19 +4,23 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
              [interface :as i]
-             [resolve :as resolve]
              [sort :as sort]
              [util :as qputil]]
-            [toucan.db :as db]))
+            [metabase.query-processor.middleware.resolve :as resolve]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (defn- fetch-fields-for-souce-table-id [source-table-id]
   (map resolve/rename-mb-field-keys
-       (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description]
-         :table_id        source-table-id
-         :visibility_type [:not-in ["sensitive" "retired"]]
-         :parent_id       nil
-         {:order-by [[:position :asc]
-                     [:id :desc]]})))
+       (-> (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description :fingerprint]
+             :table_id        source-table-id
+             :visibility_type [:not-in ["sensitive" "retired"]]
+             :parent_id       nil
+             {:order-by [[:position :asc]
+                         [:id :desc]]})
+            (hydrate :values)
+            (hydrate :dimensions))))
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
@@ -24,7 +28,9 @@
   ;; Sort the implicit FIELDS so the SQL (or other native query) that gets generated (mostly) approximates the 'magic' sorting
   ;; we do on the results. This is done so when the outer query we generate is a `SELECT *` the order doesn't change
   (for [field (sort/sort-fields inner-query (fetch-fields-for-souce-table-id source-table-id))
-        :let  [field (resolve/resolve-table (i/map->Field field) {[nil source-table-id] source-table})]]
+        :let  [field (-> field
+                         resolve/convert-db-field
+                         (resolve/resolve-table {[nil source-table-id] source-table}))]]
     (if (qputil/datetime-field? field)
       (i/map->DateTimeField {:field field, :unit :default})
       field)))
@@ -53,8 +59,8 @@
 (defn- add-implicit-breakout-order-by
   "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
   [{breakout-fields :breakout, order-by :order-by, :as inner-query}]
-  (let [order-by-fields                   (set (map :field order-by))
-        implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
+  (let [order-by-fields                   (set (map (comp #(select-keys % [:field-id :fk-field-id]) :field) order-by))
+        implicit-breakout-order-by-fields (remove (comp order-by-fields #(select-keys % [:field-id :fk-field-id]))
                                                   breakout-fields)]
     (cond-> inner-query
       (seq implicit-breakout-order-by-fields) (update :order-by concat (for [field implicit-breakout-order-by-fields]
@@ -69,7 +75,6 @@
   (if-not (qputil/mbql-query? query)
     query
     (update query :query add-implicit-clauses-to-inner-query)))
-
 
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.

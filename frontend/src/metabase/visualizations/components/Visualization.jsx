@@ -13,7 +13,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { getVisualizationTransformed } from "metabase/visualizations";
+import { getVisualizationTransformed, extractRemappings } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
@@ -67,10 +67,6 @@ type Props = {
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
 
-    // used by TableInteractive
-    cellIsClickableFn: (number, number) => boolean,
-    cellClickedFn: (number, number) => void,
-
     // misc
     onUpdateWarnings: (string[]) => void,
     onOpenChartSettings: () => void,
@@ -100,6 +96,8 @@ type State = {
 export default class Visualization extends Component {
     state: State;
     props: Props;
+
+    _resetHoverTimer: ?number;
 
     constructor(props: Props) {
         super(props);
@@ -167,20 +165,33 @@ export default class Visualization extends Component {
             error: null,
             warnings: [],
             yAxisSplit: null,
-            ...getVisualizationTransformed(newProps.series)
+            ...getVisualizationTransformed(extractRemappings(newProps.series))
         });
     }
 
     handleHoverChange = (hovered) => {
-        const { yAxisSplit } = this.state;
         if (hovered) {
+            const { yAxisSplit } = this.state;
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (yAxisSplit) {
                 const axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
                 hovered = assoc(hovered, "axisIndex", axisIndex);
             }
+            this.setState({ hovered });
+            // If we previously set a timeout for clearing the hover clear it now since we received
+            // a new hover.
+            if (this._resetHoverTimer !== null) {
+                clearTimeout(this._resetHoverTimer);
+                this._resetHoverTimer = null;
+            }
+        } else {
+            // When reseting the hover wait in case we're simply transitioning from one
+            // element to another. This allows visualizations to use mouseleave events etc.
+            this._resetHoverTimer = setTimeout(() => {
+                this.setState({ hovered: null });
+                this._resetHoverTimer = null;
+            }, 0);
         }
-        this.setState({ hovered });
     }
 
     getClickActions(clicked: ?ClickObject) {

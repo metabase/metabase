@@ -155,6 +155,9 @@ trap summary EXIT
 fail_fast() {
   echo -e "========================================"
   echo -e "Failing fast! Stopping other nodes..."
+  # Touch a file to differentiate between a local failure and a
+  # failure triggered by another node
+  touch '/tmp/local-fail'
   # ssh to the other CircleCI nodes and send SIGUSR1 to tell them to exit early
   for (( i = 0; i < $CIRCLE_NODE_TOTAL; i++ )); do
     if [ $i != $CIRCLE_NODE_INDEX ]; then
@@ -182,7 +185,12 @@ fi
 
 export CIRCLE_COMMIT_MESSAGE="$(git log --format=oneline -n 1 $CIRCLE_SHA1)"
 
-if [ -f "/tmp/fail" ]; then
+# This local-fail check is to guard against two nodes failing at the
+# same time. Both nodes ssh to each node and drop /tmp/fail. Those
+# failing nodes then get here and see and the other node has told it
+# to exit early. This results in both nodes exiting early, and thus
+# not failing, causing the build to succeed
+if [[ -f "/tmp/fail" && ! -f "/tmp/local-fail" ]]; then
   exit_early
 fi
 

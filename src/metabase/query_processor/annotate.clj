@@ -15,7 +15,8 @@
              [humanization :as humanization]]
             [metabase.query-processor
              [interface :as i]
-             [sort :as sort]]
+             [sort :as sort]
+             [util :as qputil]]
             [toucan.db :as db])
   (:import [metabase.query_processor.interface Expression ExpressionRef]))
 
@@ -48,6 +49,14 @@
         (for [field fields]
           (i/map->DateTimeField {:field field, :unit unit}))
         fields))
+
+    metabase.query_processor.interface.BinnedField
+    (let [{:keys [strategy min-value max-value], nested-field :field} this]
+      [(assoc nested-field :binning_info {:binning_strategy strategy
+                                          :bin_width (:bin-width this)
+                                          :num_bins (:num-bins this)
+                                          :min_value min-value
+                                          :max_value max-value})])
 
     metabase.query_processor.interface.Field
     (if-let [parent (:parent this)]
@@ -224,6 +233,28 @@
                          :when (contains? missing-keys k)]
                      (info-for-missing-key inner-query fields k (map k initial-rows))))))
 
+(defn- fixup-renamed-fields
+  "After executing the query, it's possible that java.jdbc changed the
+  name of the column that was originally in the query. This can happen
+  when java.jdbc finds two columns with the same name, it will append
+  an integer (like _2) on the end. When this is done on an existing
+  column in the query, this function fixes that up, updating the
+  column information we have with the new name that java.jdbc assigned
+  the column. The `add-unknown-fields-if-needed` function above is
+  similar, but is used when we don't have existing information on that
+  column and need to infer it."
+  [query actual-keys]
+  (let [expected-field-names (set (map (comp keyword name) (:fields query)))]
+    (if (= expected-field-names (set actual-keys))
+      query
+      (update query :fields
+              (fn [fields]
+                (mapv (fn [expected-field actual-key]
+                        (if (not= (name expected-field) (name actual-key))
+                          (assoc expected-field :field-name (name actual-key))
+                          expected-field))
+                      fields actual-keys))))))
+
 (defn- convert-field-to-expected-format
   "Rename keys, provide default values, etc. for FIELD so it is in the format expected by the frontend."
   [field]
@@ -243,7 +274,9 @@
                           :schema-name        :schema_name
                           :special-type       :special_type
                           :table-id           :table_id
-                          :visibility-type    :visibility_type})
+                          :visibility-type    :visibility_type
+                          :remapped-to        :remapped_to
+                          :remapped-from      :remapped_from})
         (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn
@@ -289,25 +322,28 @@
   [inner-query result-keys initial-rows]
   {:pre [(sequential? result-keys)]}
   (when (seq result-keys)
-    (->> (collect-fields (dissoc inner-query :expressions))
-         ;; qualify the field name to make sure it matches what will come back. (For Mongo nested queries only)
-         (map qualify-field-name)
-         ;; add entries for aggregate fields
-         (add-aggregate-fields-if-needed inner-query)
-         ;; make field-name a keyword
-         (map (u/rpartial update :field-name keyword))
-         ;; add entries for fields we weren't expecting
-         (add-unknown-fields-if-needed inner-query result-keys initial-rows)
-         ;; remove expected fields not present in the results, and make sure they're unique
-         (filter (comp (partial contains? (set result-keys)) :field-name))
-         ;; now sort the fields
-         (sort/sort-fields inner-query)
-         ;; remove any duplicate entires
-         (m/distinct-by :field-name)
-         ;; convert them to the format expected by the frontend
-         (map convert-field-to-expected-format)
-         ;; add FK info
-         add-extra-info-to-fk-fields)))
+    (let [result-keys-set (set result-keys)
+          query-with-renamed-columns (fixup-renamed-fields inner-query result-keys)]
+      (->> (dissoc query-with-renamed-columns :expressions)
+           collect-fields
+           ;; qualify the field name to make sure it matches what will come back. (For Mongo nested queries only)
+           (map qualify-field-name)
+           ;; add entries for aggregate fields
+           (add-aggregate-fields-if-needed inner-query)
+           ;; make field-name a keyword
+           (map (u/rpartial update :field-name keyword))
+           ;; add entries for fields we weren't expecting
+           (add-unknown-fields-if-needed inner-query result-keys initial-rows)
+           ;; remove expected fields not present in the results, and make sure they're unique
+           (filter (comp (partial contains? (set result-keys)) :field-name))
+           ;; now sort the fields
+           (sort/sort-fields inner-query)
+           ;; remove any duplicate entires
+           (m/distinct-by :field-name)
+           ;; convert them to the format expected by the frontend
+           (map convert-field-to-expected-format)
+           ;; add FK info
+           add-extra-info-to-fk-fields))))
 
 (defn annotate-and-sort
   "Post-process a structured query to add metadata to the results. This stage:

@@ -17,7 +17,7 @@ The first dropdown menu in the question builder is where you’ll choose the dat
 
 If you've [saved some questions](06-sharing-answers.html), in the Data menu you'll see the option to use one of your saved questions as source data. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used in a question just like any other table in your database.
 
-You can use any saved question as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table. The only caveat is that you can't use a saved question which itself uses a saved question as source data. (That's more inception than Metabase can handle!)
+You can use any saved question as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table.
 
 ### Filters
 ---
@@ -124,7 +124,7 @@ Say we had a table of baseball games, each row representing a single game, and w
 
 The words in the quotes are the names of the fields in our table. If you start typing in this box, Metabase will show you fields in the current table that match what you’ve typed, and you can select from this list to autocomplete the field name.
 
-Right now, you can only use the following math operators in your formulas: +, –, * (multiplication), and / (division). You can also use parentheses to clarify the order of operations.
+Right now, you can only use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division). You can also use parentheses to clarify the order of operations.
 
 Once you’ve written your formula and given your new field a name, select `Raw Data` for your view, and click the `Get Answer` button to see your new field appended to your current table. It’ll be on the far right of the table. **Note that this new field is NOT permanently added to this table.** It will only be kept if you save a question that uses it.
 

@@ -9,6 +9,7 @@ import FieldDetail from "metabase/reference/databases/FieldDetail.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
+import { getMetadata } from "metabase/selectors/metadata";
 
 import {
     getDatabase,
@@ -23,7 +24,8 @@ const mapStateToProps = (state, props) => ({
     table: getTable(state, props),    
     field: getField(state, props),    
     databaseId: getDatabaseId(state, props),
-    isEditing: getIsEditing(state, props)
+    isEditing: getIsEditing(state, props),
+    metadata: getMetadata(state, props)
 });
 
 const mapDispatchToProps = {
@@ -40,7 +42,8 @@ export default class FieldDetailContainer extends Component {
         databaseId: PropTypes.number.isRequired,
         table: PropTypes.object.isRequired,
         field: PropTypes.object.isRequired,
-        isEditing: PropTypes.bool
+        isEditing: PropTypes.bool,
+        metadata: PropTypes.object
     };
 
     async fetchContainerData(){

@@ -12,6 +12,7 @@
              [email :as email]
              [embed :as embed]
              [field :as field]
+             [fingerprint :as fingerprint]
              [geojson :as geojson]
              [getting-started :as getting-started]
              [label :as label]
@@ -61,6 +62,8 @@
   (context "/email"           [] (+auth email/routes))
   (context "/embed"           [] (+message-only-exceptions embed/routes))
   (context "/field"           [] (+auth field/routes))
+  ;; TODO - fingerprint and comparison should be split out?
+  (context "/fingerprint"     [] (+auth fingerprint/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
   (context "/geojson"         [] (+auth geojson/routes))
   (context "/label"           [] (+auth label/routes))

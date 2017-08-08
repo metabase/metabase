@@ -11,6 +11,24 @@ import * as colors from "metabase/lib/colors";
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
+// NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
+// are able to avoid circular dependency errors in integrated tests
+export function columnsAreValid(colNames, data, filter = () => true) {
+    if (typeof colNames === "string") {
+        colNames = [colNames]
+    }
+    if (!data || !Array.isArray(colNames)) {
+        return false;
+    }
+    const colsByName = {};
+    for (const col of data.cols) {
+        colsByName[col.name] = col;
+    }
+    return colNames.reduce((acc, name) =>
+        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
+        , true);
+}
+
 // computed size properties (drop 'px' and convert string -> Number)
 function getComputedSizeProperty(prop, element) {
     var val = document.defaultView.getComputedStyle(element, null).getPropertyValue(prop);
@@ -116,10 +134,8 @@ export function getXValues(datas, chartType) {
     return xValues;
 }
 
-export function getFriendlyName(col) {
-    let name = col.display_name || col.name;
-    let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];
-    return friendlyName || name;
+export function getFriendlyName(column) {
+    return column.display_name || FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] || column.name;
 }
 
 export function getCardColors(card) {
@@ -168,7 +184,8 @@ export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
 export const DIMENSION_DIMENSION_METRIC = "DIMENSION_DIMENSION_METRIC";
 
-const MAX_SERIES = 10;
+// NOTE Atte Keinänen 7/31/17 Commented MAX_SERIES out as it wasn't being used
+// const MAX_SERIES = 10;
 
 export const isDimensionMetric = (cols, strict = true) =>
     (!strict || cols.length === 2) &&
@@ -203,9 +220,9 @@ export function getChartTypeFromData(cols, rows, strict = true) {
     if (isDimensionMetricMetric(cols, strict)) {
         return DIMENSION_METRIC_METRIC;
     } else if (isDimensionDimensionMetric(cols, strict)) {
-        if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
+        // if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
             return DIMENSION_DIMENSION_METRIC;
-        }
+        // }
     } else if (isDimensionMetric(cols, strict)) {
         return DIMENSION_METRIC;
     }
@@ -277,4 +294,3 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         };
     }
 }
-

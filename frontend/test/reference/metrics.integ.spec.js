@@ -105,15 +105,19 @@ describe("The Reference Section", () => {
 
             it("Should see a newly asked question in its questions list", async () => {
                     var card = await CardApi.create(metricCardDef)
-
                     expect(card.name).toBe(metricCardDef.name);
-                    // see that there is a new question on the metric's questions page
-                    const store = await createTestStore()    
-                    store.pushPath("/reference/metrics/"+metricIds[0]+'/questions');
-                    mount(store.connectContainer(<MetricQuestionsContainer />));
-                    await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE])
-                    
-                    await CardApi.delete({cardId: card.id})
+
+                    try {
+                        // see that there is a new question on the metric's questions page
+                        const store = await createTestStore()
+
+                        store.pushPath("/reference/metrics/"+metricIds[0]+'/questions');
+                        mount(store.connectContainer(<MetricQuestionsContainer />));
+                        await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE])
+                    } finally {
+                        // even if the code above results in an exception, try to delete the question
+                        await CardApi.delete({cardId: card.id})
+                    }
             })
 
                        

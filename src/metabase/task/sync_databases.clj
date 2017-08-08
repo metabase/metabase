@@ -7,7 +7,7 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [metabase
              [driver :as driver]
-             [sync-database :as sync-database]
+             [sync :as sync]
              [task :as task]]
             [metabase.models.database :refer [Database]]
             [toucan.db :as db]))
@@ -23,12 +23,11 @@
   (doseq [database (db/select Database, :is_sample false)] ; skip Sample Dataset DB
     (try
       ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-      (if-not (and (zero? (t/hour (t/now)))
-                   (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
-        ;; most of the time we do a quick sync and avoid the lengthy analysis process
-        (sync-database/sync-database! database :full-sync? false)
-        ;; at midnight we run the full sync
-        (sync-database/sync-database! database :full-sync? true))
+      ;; most of the time we do a quick sync and avoid the lengthy analysis process
+      ;; at midnight we run the full sync
+      (let [full-sync? (not (and (zero? (t/hour (t/now)))
+                                 (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema)))]
+        (sync/sync-database! database {:full-sync? full-sync?}))
       (catch Throwable e
         (log/error (format "Error syncing database %d: " (:id database)) e)))))
 

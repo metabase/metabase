@@ -16,8 +16,6 @@ import PivotByLocationAction from "../actions/PivotByLocationAction";
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
-import TimeseriesPivotDrill from "../drill/TimeseriesPivotDrill";
-
 import type { QueryMode } from "metabase/meta/types/Visualization";
 import type {
     Card as CardObject,
@@ -48,12 +46,7 @@ export const TimeseriesModeFooter = (props: Props) => {
 const TimeseriesMode: QueryMode = {
     name: "timeseries",
     actions: [PivotByCategoryAction, PivotByLocationAction, ...DEFAULT_ACTIONS],
-    drills: [
-        TimeseriesPivotDrill,
-        PivotByCategoryDrill,
-        PivotByLocationDrill,
-        ...DEFAULT_DRILLS
-    ],
+    drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DEFAULT_DRILLS],
     ModeFooter: TimeseriesModeFooter
 };
 

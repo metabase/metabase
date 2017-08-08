@@ -20,12 +20,10 @@ export default class SetupMessage extends Component {
         let content;
         if (user.is_superuser) {
             content = (
-                <div className="flex flex-column">
-                    <div className="ml-auto">
-                        {channels.map(c =>
-                            <Link to={"/admin/settings/"+c.toLowerCase()} key={c.toLowerCase()} className="Button Button--primary mr1" target={window.OSX ? null : "_blank"}>Configure {c}</Link>
-                        )}
-                    </div>
+                <div>
+                    {channels.map(c =>
+                        <Link to={"/admin/settings/"+c.toLowerCase()} key={c.toLowerCase()} className="Button Button--primary mr1" target={window.OSX ? null : "_blank"}>Configure {c}</Link>
+                    )}
                 </div>
             );
 
@@ -38,10 +36,6 @@ export default class SetupMessage extends Component {
                 </div>
             );
         }
-        return (
-            <div className="mx4 mb4">
-                {content}
-            </div>
-        );
+        return content;
     }
 }

@@ -11,17 +11,20 @@ export const ORDERS_TABLE_ID = 1;
 export const PEOPLE_TABLE_ID = 2;
 export const PRODUCT_TABLE_ID = 3;
 
-export const ORDERS_TOTAL_FIELD_ID = 6;
-export const PRODUCT_CATEGORY_FIELD_ID = 21;
 export const ORDERS_CREATED_DATE_FIELD_ID = 1;
 export const ORDERS_PK_FIELD_ID = 2;
 export const ORDERS_PRODUCT_FK_FIELD_ID = 3;
+export const ORDERS_TOTAL_FIELD_ID = 6;
 
 export const MAIN_METRIC_ID = 1;
 
+export const PRODUCT_CATEGORY_FIELD_ID = 21;
 export const PRODUCT_PK_FIELD_ID = 24;
 export const PRODUCT_TILE_FIELD_ID = 27;
 
+export const PEOPLE_LATITUDE_FIELD_ID = 14;
+export const PEOPLE_LONGITUDE_FIELD_ID = 15;
+export const PEOPLE_STATE_FIELD_ID = 19;
 
 export const state = {
   metadata: {
@@ -132,7 +135,7 @@ export const state = {
         engine: 'h2',
         created_at: '2017-06-14T23:22:55.349Z',
         points_of_interest: null
-      }, 
+      },
        '2': {
         description: null,
         features: [
@@ -1450,7 +1453,20 @@ export const orders_count_card = {
 };
 
 export const native_orders_count_card = {
-    id: 2,
+    id: 3,
+    name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
+    dataset_query: {
+        type: "native",
+        database: DATABASE_ID,
+        native: {
+            query: "SELECT count(*) FROM orders"
+        }
+    }
+};
+
+export const unsaved_native_orders_count_card = {
     name: "# orders data",
     display: 'table',
     visualization_settings: {},

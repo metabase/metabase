@@ -10,6 +10,11 @@ import { constrainToScreen } from "metabase/lib/dom";
 
 import cx from "classnames";
 
+import "./Popover.css";
+
+const POPOVER_TRANSITION_ENTER = 100;
+const POPOVER_TRANSITION_LEAVE = 100;
+
 export default class Popover extends Component {
     constructor(props, context) {
         super(props, context);
@@ -57,23 +62,12 @@ export default class Popover extends Component {
         return this._popoverElement;
     }
 
-    _cleanupPopoverElement() {
-        if (this._popoverElement) {
-            ReactDOM.unmountComponentAtNode(this._popoverElement);
-            if (this._popoverElement.parentNode) {
-                this._popoverElement.parentNode.removeChild(this._popoverElement);
-            }
-            clearInterval(this._timer);
-            delete this._popoverElement, this._timer;
-        }
-    }
-
     componentDidMount() {
-        this._renderPopover();
+        this._renderPopover(this.props.isOpen);
     }
 
     componentDidUpdate() {
-        this._renderPopover();
+        this._renderPopover(this.props.isOpen);
     }
 
     componentWillUnmount() {
@@ -81,7 +75,17 @@ export default class Popover extends Component {
             this._tether.destroy();
             delete this._tether;
         }
-        this._cleanupPopoverElement();
+        if (this._popoverElement) {
+            this._renderPopover(false);
+            setTimeout(() => {
+                ReactDOM.unmountComponentAtNode(this._popoverElement);
+                if (this._popoverElement.parentNode) {
+                    this._popoverElement.parentNode.removeChild(this._popoverElement);
+                }
+                clearInterval(this._timer);
+                delete this._popoverElement, this._timer;
+            }, POPOVER_TRANSITION_LEAVE);
+        }
     }
 
     handleDismissal(...args) {
@@ -159,22 +163,24 @@ export default class Popover extends Component {
         return best;
     }
 
-    _renderPopover() {
-        if (this.props.isOpen) {
-            // popover is open, lets do this!
-            const popoverElement = this._getPopoverElement();
-            ReactDOM.unstable_renderSubtreeIntoContainer(this,
-                <ReactCSSTransitionGroup
-                    transitionName="Popover"
-                    transitionAppear={true}
-                    transitionAppearTimeout={250}
-                    transitionEnterTimeout={250}
-                    transitionLeaveTimeout={250}
-                >
-                    {this._popoverComponent()}
-                </ReactCSSTransitionGroup>
-                , popoverElement);
+    _renderPopover(isOpen) {
+        // popover is open, lets do this!
+        const popoverElement = this._getPopoverElement();
+        ReactDOM.unstable_renderSubtreeIntoContainer(this,
+            <ReactCSSTransitionGroup
+                transitionName="Popover"
+                transitionAppear
+                transitionEnter
+                transitionLeave
+                transitionAppearTimeout={POPOVER_TRANSITION_ENTER}
+                transitionEnterTimeout={POPOVER_TRANSITION_ENTER}
+                transitionLeaveTimeout={POPOVER_TRANSITION_LEAVE}
+            >
+                { isOpen ? this._popoverComponent() : null }
+            </ReactCSSTransitionGroup>
+        , popoverElement);
 
+        if (isOpen) {
             var tetherOptions = {};
 
             tetherOptions.element = popoverElement;
@@ -261,9 +267,6 @@ export default class Popover extends Component {
                     }
                 }
             }
-        } else {
-            // if the popover isn't open then actively unmount our popover
-            this._cleanupPopoverElement();
         }
     }
 
@@ -277,11 +280,14 @@ export default class Popover extends Component {
  * Simply renders the popover body inline instead of mutating DOM root.
  */
 export const TestPopover = (props) =>
-    props.isOpen ?
+    (props.isOpen === undefined || props.isOpen) ?
         <div
             id={props.id}
             className={cx("TestPopover TestPopoverBody", props.className)}
             style={props.style}
+            // because popover is normally directly attached to body element, other elements should not need
+            // to care about clicks that happen inside the popover
+            onClick={ (e) => { e.stopPropagation(); } }
         >
             { typeof props.children === "function" ?
                 props.children()

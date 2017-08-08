@@ -4,17 +4,20 @@
             [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor
-             [expand :as ql]
-             [interface :as qpi]]
+            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
 ;; Test the expansion of the expressions clause
 (expect
   {:expressions {:my-cool-new-field (qpi/map->Expression {:operator :*
-                                                          :args [{:field-id 10, :fk-field-id nil, :datetime-unit nil}
-                                                                 20.0]})}}                                            ; 20 should be converted to a FLOAT
+                                                          :args     [{:field-id         10,  :fk-field-id        nil,
+                                                                      :datetime-unit    nil, :remapped-from      nil,
+                                                                      :remapped-to      nil, :field-display-name nil
+                                                                      :binning-strategy nil, :binning-param      nil}
+                                                                     20.0]})}}; 20 should be converted to a FLOAT
+
   (ql/expressions {} {:my-cool-new-field (ql/* (ql/field-id 10) 20)}))
 
 
