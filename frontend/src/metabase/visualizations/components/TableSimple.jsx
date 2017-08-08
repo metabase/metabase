@@ -9,8 +9,7 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue } from "metabase/lib/formatting";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { getTableCellClickedObject, isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import cx from "classnames";
@@ -112,7 +111,7 @@ export default class TableSimple extends Component {
                                                     width={8} height={8}
                                                     style={{ position: "absolute", right: "100%", marginRight: 3 }}
                                                 />
-                                                <Ellipsified>{getFriendlyName(col)}</Ellipsified>
+                                                <Ellipsified>{formatColumn(col)}</Ellipsified>
                                             </div>
                                         </th>
                                     )}
