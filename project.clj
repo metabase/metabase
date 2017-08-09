@@ -61,7 +61,8 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [kixi/stats "0.3.8"                                  ; Various statistic measures implemented as transducers
-                  :exclusions [org.clojure/test.check]]
+                  :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
+                               org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
