@@ -13,7 +13,8 @@
             [medley.core :as m]
             [metabase.fingerprinting
              [histogram :as h]
-             [costs :as costs]]
+             [costs :as costs]
+             [stl :as stl]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -261,10 +262,7 @@
                  :week        52
                  :day         365)]
     (when (>= (count ts) (* 2 period))
-      (select-keys (tide/decompose period {:periodic? true
-                                           :robust?   true}
-                                   ts)
-                   [:trend :seasonal :residual]))))
+      (select-keys (stl/decompose period ts) [:trend :seasonal :residual]))))
 
 (defn- last-n-days
   [n offset {:keys [breakout filter] :as query}]

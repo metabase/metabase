@@ -43,6 +43,7 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
+                 [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev139-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
@@ -59,7 +60,9 @@
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
-                 [kixi/stats "0.3.8"]                                 ; Various statistic measures implemented as transducers
+                 [kixi/stats "0.3.8"                                  ; Various statistic measures implemented as transducers
+                  :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
+                               org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -71,7 +74,8 @@
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
-                 [com.clearspring.analytics/stream "2.9.5"]           ; Various sketching algorithms
+                 [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
+                  :exclusions [org.slf4j/slf4j-api]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
@@ -85,7 +89,6 @@
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [tide "0.2.0-SNAPSHOT"]                              ; Various algorithms for working with timeseries
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
