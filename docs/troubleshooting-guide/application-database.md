@@ -29,7 +29,7 @@ Not all H2 errors are recoverable (which is why if you're using H2, _please_ hav
 java -cp metabase.jar org.h2.tools.Recover
 mv metabase.db.mv.db metabase.old.db
 touch metabase.db.mv.db
-java -cp metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:/path/to/metabase.db
+java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db
 ```
 
 NOTE: If you are using a legacy Metabase H2 application database (where the database file is named 'metabase.db.h2.db'), use the below instead. 
@@ -38,7 +38,7 @@ NOTE: If you are using a legacy Metabase H2 application database (where the data
 java -cp metabase.jar org.h2.tools.Recover
 mv metabase.db.h2.db metabase.old.db
 touch metabase.db.h2.db
-java -cp metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:/path/to/metabase.db;MV_STORE=FALSE
+java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db;MV_STORE=FALSE
 ```
 
 
