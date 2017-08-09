@@ -1,12 +1,12 @@
 
 export const getFieldXray = (state) =>
-    state.xray.fieldXray && state.xray.fieldXray.thumbprint
+    state.xray.fieldXray && state.xray.fieldXray.features
 
 export const getTableXray = (state) =>
-    state.xray.tableXray && state.xray.tableXray.thumbprint
+    state.xray.tableXray && state.xray.tableXray.features
 
 export const getSegmentXray = (state) =>
-    state.xray.segmentXray && state.xray.segmentXray.thumbprint
+    state.xray.segmentXray && state.xray.segmentXray.features
 
 export const getTableConstituents = (state) =>
     state.xray.tableXray && (

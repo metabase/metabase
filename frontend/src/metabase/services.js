@@ -150,10 +150,10 @@ export const MetabaseApi = {
 
 export const XRayApi = {
     // X-Rays
-    field_xray:            GET("api/xray/field/:fieldId"),
-    table_xray:            GET("api/xray/table/:tableId"),
-    segment_xray:          GET("api/xray/segment/:segmentId"),
-    card_xray:             GET("api/xray/card/:cardId"),
+    field_xray:            GET("api/x-ray/field/:fieldId"),
+    table_xray:            GET("api/x-ray/table/:tableId"),
+    segment_xray:          GET("api/x-ray/segment/:segmentId"),
+    card_xray:             GET("api/x-ray/card/:cardId"),
 
     // Comparisons
     // TODO - the api is currently set where compare is nested under fingerprint
