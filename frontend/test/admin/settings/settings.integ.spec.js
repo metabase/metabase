@@ -8,8 +8,6 @@ import SettingInput from "metabase/admin/settings/components/widgets/SettingInpu
 import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 600000;
-
 describe("admin/settings", () => {
     beforeAll(async () =>
         await login()
