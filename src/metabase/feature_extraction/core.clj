@@ -120,6 +120,9 @@
   [opts a b]
   (let [[a b] (map (partial extract-features opts) [a b])]
     {:constituents [a b]
-     :comparison   (map comparison/features-distance
-                        (:constituents a)
-                        (:constituents b))}))
+     :comparison   (if (:constituents a)
+                     (map comparison/features-distance
+                          (:constituents a)
+                          (:constituents b))
+                     (comparison/features-distance (:features a)
+                                                   (:features b)))}))

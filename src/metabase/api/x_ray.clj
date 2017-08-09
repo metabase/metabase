@@ -41,7 +41,7 @@
   (->> id
        (api/read-check Field)
        (fe/extract-features {:max-cost (max-cost max_query_cost
-                                                max_computation_cost)})
+                                                 max_computation_cost)})
        fe/x-ray))
 
 (api/defendpoint GET "/table/:id"
@@ -52,7 +52,7 @@
   (->> id
        (api/read-check Table)
        (fe/extract-features {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
+                                                 max_computation_cost)})
        fe/x-ray))
 
 (api/defendpoint GET "/segment/:id"
@@ -63,7 +63,7 @@
   (->> id
        (api/read-check Segment)
        (fe/extract-features {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
+                                                 max_computation_cost)})
        fe/x-ray))
 
 (api/defendpoint GET "/card/:id"
@@ -74,7 +74,7 @@
   (->> id
        (api/read-check Card)
        (fe/extract-features {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
+                                                 max_computation_cost)})
        fe/x-ray))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"
@@ -83,7 +83,7 @@
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> [id1 id2]
-       (map #(api/read-check Table (Integer/parseInt %)))
+       (map #(api/read-check Field (Integer/parseInt %)))
        (apply fe/compare-features
               {:max-cost (max-cost max_query_cost max_computation_cost)})
        fe/x-ray))
