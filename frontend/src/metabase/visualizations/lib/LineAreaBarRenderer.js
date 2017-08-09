@@ -566,7 +566,10 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
             return [px, py, e];
         });
 
-        const { width, height } = parent.node().getBBox();
+        // HACK Atte Keinänen 8/8/17: For some reason the parent node is not present in Jest/Enzyme tests
+        // so simply return empty width and height for preventing the need to do bigger hacks in test code
+        const { width, height } = parent.node() ? parent.node().getBBox() : { width: 0, height: 0 };
+
         const voronoi = d3.geom.voronoi()
             .clipExtent([[0,0], [width, height]]);
 
@@ -692,11 +695,13 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
 
             // stretch the goal line all the way across, use x axis as reference
             let xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
-            if (xAxisLine) {
+
+            // HACK Atte Keinänen 8/8/17: For some reason getBBox method is not present in Jest/Enzyme tests
+            if (xAxisLine && goalLine.getBBox) {
                 goalLine.setAttribute("d", `M0,${goalLine.getBBox().y}L${xAxisLine.getBBox().width},${goalLine.getBBox().y}`)
             }
 
-            let { x, y, width } = goalLine.getBBox();
+            let { x, y, width } = goalLine.getBBox ? goalLine.getBBox() : { x: 0, y: 0, width: 0 };
 
             const labelOnRight = !isSplitAxis;
             chart.selectAll(".goal .stack._0")
