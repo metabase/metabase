@@ -1,4 +1,4 @@
-(ns metabase.fingerprinting.histogram
+(ns metabase.feature-extraction.histogram
   "Wrappers and additional functionality for `bigml.histogram`."
   (:refer-clojure :exclude [empty?])
   (:require [bigml.histogram.core :as impl]

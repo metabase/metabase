@@ -1,9 +1,9 @@
-(ns metabase.fingerprinting.comparison
-  "Fingerprint similarity comparison."
+(ns metabase.feature-extraction.comparison
+  "Feature vector similarity comparison."
   (:require [clojure.set :as set]
             [kixi.stats.math :as math]
-            [metabase.fingerprinting
-             [fingerprinters :as fingerprinters]
+            [metabase.feature-extraction
+             [feature-extractors :as fe]
              [histogram :as h]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram))
@@ -94,18 +94,18 @@
      m)))
 
 (defn pairwise-differences
-  "Pairwise differences of (feature) vectors `a` and `b`."
+  "Pairwise differences of feature vectors `a` and `b`."
   [a b]
   (into {}
     (map (fn [[k a] [_ b]]
            [k (difference a b)])
-         (flatten-map (fingerprinters/comparison-vector a))
-         (flatten-map (fingerprinters/comparison-vector b)))))
+         (flatten-map (fe/comparison-vector a))
+         (flatten-map (fe/comparison-vector b)))))
 
 (def ^:private ^:const ^Double interestingness-thershold 0.2)
 
-(defn fingerprint-distance
-  "Distance metric between fingerprints `a` and `b`."
+(defn features-distance
+  "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
     {:distance   (transduce (map val)

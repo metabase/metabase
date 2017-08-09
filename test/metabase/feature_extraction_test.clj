@@ -1,11 +1,11 @@
-(ns metabase.fingerprinting-test
+(ns metabase.feature-extraction-test
   (:require [clj-time.coerce :as t.coerce]
             [clj-time.core :as t]
             [expectations :refer :all]
-            [metabase.fingerprinting
-             [core :as f.core]
+            [metabase.feature-extraction
+             [core :as fe.core]
              [costs :refer :all]
-             [fingerprinters :as f :refer :all]
+             [feature-extractors :as fe :refer :all]
              [histogram :as h :refer :all]]
             [redux.core :as redux]))
 
@@ -70,19 +70,19 @@
    1
    2
    4]
-  [(#'f/quarter (t/date-time 2017 1))
-   (#'f/quarter (t/date-time 2017 3))
-   (#'f/quarter (t/date-time 2017 5))
-   (#'f/quarter (t/date-time 2017 12))])
+  [(#'fe/quarter (t/date-time 2017 1))
+   (#'fe/quarter (t/date-time 2017 3))
+   (#'fe/quarter (t/date-time 2017 5))
+   (#'fe/quarter (t/date-time 2017 12))])
 
 (expect
-  {:limit (var-get #'f.core/max-sample-size)}
-  (#'f.core/extract-query-opts {:max-cost {:query :sample}}))
+  {:limit (var-get #'fe.core/max-sample-size)}
+  (#'fe.core/extract-query-opts {:max-cost {:query :sample}}))
 
 (defn- make-timestamp
   [y m]
   (-> (t/date-time y m)
-      ((var f/to-double))))
+      ((var fe/to-double))))
 
 (expect
   [[(make-timestamp 2016 1) 12]
@@ -98,29 +98,29 @@
    [(make-timestamp 2016 11) 0]
    [(make-timestamp 2016 12) 0]
    [(make-timestamp 2017 1) 25]]
-  (#'f/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
+  (#'fe/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
                                      [(make-timestamp 2016 3) 4]
                                      [(make-timestamp 2017 1) 25]]))
 
-;; Also low-key tests if fingerprinters can survive nils.
+;; Also low-key tests if feature extractors can survive nils.
 (expect
-  [(var-get #'f/Num)
-   (var-get #'f/DateTime)
-   (var-get #'f/Category)
-   (var-get #'f/Text)
+  [(var-get #'fe/Num)
+   (var-get #'fe/DateTime)
+   (var-get #'fe/Category)
+   (var-get #'fe/Text)
    [nil [:type/NeverBeforeSeen :type/*]]]
-  [(-> (#'f.core/fingerprint-field {} {:base_type :type/Number} numbers) :type)
-   (-> (#'f.core/fingerprint-field {} {:base_type :type/DateTime} datetimes)
+  [(-> (#'fe.core/field->features {} {:base_type :type/Number} numbers) :type)
+   (-> (#'fe.core/field->features {} {:base_type :type/DateTime} datetimes)
        :type)
-   (-> (#'f.core/fingerprint-field {} {:base_type :type/Text
+   (-> (#'fe.core/field->features {} {:base_type :type/Text
                                   :special_type :type/Category}
                               categories)
        :type)
    (->> categories
         (map str)
-        (#'f.core/fingerprint-field {} {:base_type :type/Text})
+        (#'fe.core/field->features {} {:base_type :type/Text})
         :type)
-   (-> (#'f.core/fingerprint-field {} {:base_type :type/NeverBeforeSeen} numbers)
+   (-> (#'fe.core/field->features {} {:base_type :type/NeverBeforeSeen} numbers)
        :type)])
 
 (expect

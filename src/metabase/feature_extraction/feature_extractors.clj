@@ -1,5 +1,5 @@
-(ns metabase.fingerprinting.fingerprinters
-  "Fingerprinting (feature extraction) for various models."
+(ns metabase.feature-extraction.feature-extractors
+  "Feature extractors for various models."
   (:require [bigml.histogram.core :as h.impl]
             [clj-time
              [coerce :as t.coerce]
@@ -11,7 +11,7 @@
              [core :as stats]
              [math :as math]]
             [medley.core :as m]
-            [metabase.fingerprinting
+            [metabase.feature-extraction
              [histogram :as h]
              [costs :as costs]
              [stl :as stl]]
@@ -20,7 +20,6 @@
              [query-processor :as qp]
              [util :as u]]
             [redux.core :as redux]
-            [tide.core :as tide]
             [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
@@ -117,34 +116,34 @@
     [(:base_type field) (or (:special_type field) :type/*)]))
 
 (defmulti
-  ^{:doc "Transducer that summarizes (_fingerprints_) given coll. What features
-          are extracted depends on the type of corresponding `Field`(s), amount
-          of data points available (some algorithms have a minimum data points
-          requirement) and `max-cost.computation` setting.
+  ^{:doc "Returns a transducer that extracts features from given coll.
+          What features are extracted depends on the type of corresponding
+          `Field`(s), amount of data points available (some algorithms have a
+          minimum data points requirement) and `max-cost.computation` setting.
           Note we are heavily using data sketches so some summary values may be
           approximate."
     :arglists '([opts field])}
-  fingerprinter #(field-type %2))
+  feature-extractor #(field-type %2))
 
 (defmulti
-  ^{:doc "Make fingerprint human readable."
-    :arglists '([fingerprint])}
+  ^{:doc "Make features human-friendly."
+    :arglists '([features])}
   x-ray :type)
 
 (defmethod x-ray :default
-  [fingerprint]
-  fingerprint)
+  [features]
+  features)
 
 (defmulti
-  ^{:doc "Fingerprint feature vector for comparison/difference purposes."
-    :arglists '([fingerprint])}
+  ^{:doc "Feature vector for comparison/difference purposes."
+    :arglists '([features])}
   comparison-vector :type)
 
 (defmethod comparison-vector :default
-  [fingerprint]
-  (dissoc fingerprint :type :field :has-nils?))
+  [features]
+  (dissoc features :type :field :has-nils?))
 
-(defmethod fingerprinter Num
+(defmethod feature-extractor Num
   [{:keys [max-cost]} field]
   (redux/post-complete
    (redux/fuse {:histogram      h/histogram
@@ -204,21 +203,21 @@
              :sum-of-squares sum-of-squares})))))))
 
 (defmethod comparison-vector Num
-  [fingerprint]
-  (select-keys fingerprint
+  [features]
+  (select-keys features
                [:histogram :mean :median :min :max :sd :count :kurtosis
                 :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
 
 (defmethod x-ray Num
-  [{:keys [field count] :as fingerprint}]
+  [{:keys [field count] :as features}]
   (if (pos? count)
-    (-> fingerprint
+    (-> features
         (update :histogram (partial histogram->dataset field))
         (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
                 :positive-definite? :var>sd? :uniqueness :min-vs-max))
-    fingerprint))
+    features))
 
-(defmethod fingerprinter [Num Num]
+(defmethod feature-extractor [Num Num]
   [_ field]
   (redux/post-complete
    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
@@ -288,7 +287,7 @@
   [window query]
   (growth (last-n-days window 0 query) (last-n-days window window query)))
 
-(defmethod fingerprinter [DateTime Num]
+(defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
   (let [resolution (let [[head _ resolution] (-> query :breakout first)]
                      (when (= head "datetime-field")
@@ -331,20 +330,20 @@
                    :DoD (rolling-window-growth 1 query)})))))))
 
 (defmethod comparison-vector [DateTime Num]
-  [fingerprint]
-  (dissoc fingerprint :type :resolution :field))
+  [features]
+  (dissoc features :type :resolution :field))
 
 (defmethod x-ray [DateTime Num]
-  [fingerprint]
-  (dissoc fingerprint :series))
+  [features]
+  (dissoc features :series))
 
 ;; This one needs way more thinking
 ;;
-;; (defmethod fingerprinter [Category Any]
+;; (defmethod feature-extractor [Category Any]
 ;;   [opts [x y]]
-;;   (rollup (redux/pre-step (fingerprinter opts y) second) first))
+;;   (rollup (redux/pre-step (feature-extractor opts y) second) first))
 
-(defmethod fingerprinter Text
+(defmethod feature-extractor Text
   [_ field]
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step
@@ -363,14 +362,14 @@
         :field      field}))))
 
 (defmethod x-ray Text
-  [{:keys [field] :as fingerprint}]
-  (update fingerprint :histogram (partial histogram->dataset field)))
+  [{:keys [field] :as features}]
+  (update features :histogram (partial histogram->dataset field)))
 
 (defn- quarter
   [dt]
   (-> dt t/month (/ 3) Math/ceil long))
 
-(defmethod fingerprinter DateTime
+(defmethod feature-extractor DateTime
   [_ field]
   (redux/post-complete
    (redux/pre-step
@@ -404,8 +403,8 @@
         :field             field}))))
 
 (defmethod comparison-vector DateTime
-  [fingerprint]
-  (dissoc fingerprint :type :percentiles :field :has-nils?))
+  [features]
+  (dissoc features :type :percentiles :field :has-nils?))
 
 (defn- round-to-month
   [dt]
@@ -440,12 +439,12 @@
                                       [k (* v (/ baseline (weights k)))])))))
 
 (defmethod x-ray DateTime
-  [{:keys [field earliest latest histogram] :as fingerprint}]
+  [{:keys [field earliest latest histogram] :as features}]
   (if (h/empty? histogram)
-    (select-keys fingerprint [:count :type :field])
+    (select-keys features [:count :type :field])
     (let [earliest (from-double earliest)
           latest   (from-double latest)]
-      (-> fingerprint
+      (-> features
           (assoc  :earliest          earliest)
           (assoc  :latest            latest)
           (update :histogram         (partial histogram->dataset from-double field))
@@ -477,7 +476,7 @@
                                                 :base_type    :type/Integer
                                                 :special_type :type/Category})))))))
 
-(defmethod fingerprinter Category
+(defmethod feature-extractor Category
   [_ field]
   (redux/post-complete
    (redux/fuse {:histogram   h/histogram-categorical
@@ -497,14 +496,14 @@
         :field       field}))))
 
 (defmethod comparison-vector Category
-  [fingerprint]
-  (dissoc fingerprint :type :cardinality :field :has-nils?))
+  [features]
+  (dissoc features :type :cardinality :field :has-nils?))
 
 (defmethod x-ray Category
-  [{:keys [field] :as fingerprint}]
-  (update fingerprint :histogram (partial histogram->dataset field)))
+  [{:keys [field] :as features}]
+  (update features :histogram (partial histogram->dataset field)))
 
-(defmethod fingerprinter :default
+(defmethod feature-extractor :default
   [_ field]
   (redux/post-complete
    (redux/fuse {:total-count stats/count
@@ -516,5 +515,5 @@
       :type      [nil (field-type field)]
       :field     field})))
 
-(prefer-method fingerprinter Category Text)
-(prefer-method fingerprinter Num Category)
+(prefer-method feature-extractor Category Text)
+(prefer-method feature-extractor Num Category)
