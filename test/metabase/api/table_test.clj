@@ -88,13 +88,14 @@
   (merge
    field-defaults
    (match-$ field
-     {:updated_at         $
-      :id                 $
-      :created_at         $
-      :fk_target_field_id $
-      :raw_column_id      $
-      :last_analyzed      $
-      :fingerprint        $})))
+     {:updated_at          $
+      :id                  $
+      :created_at          $
+      :fk_target_field_id  $
+      :raw_column_id       $
+      :last_analyzed       $
+      :fingerprint         $
+      :fingerprint_version $})))
 
 (defn- fk-field-details [field]
   (-> (field-details field)

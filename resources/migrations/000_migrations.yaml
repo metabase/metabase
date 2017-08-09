@@ -3778,3 +3778,18 @@ databaseChangeLog:
                   defaultValue: '0 50 0 * * ? *' # run at 12:50 AM
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 61
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint_version
+                  type: int
+                  remarks: 'The version of the fingerprint for this Field. Used so we can keep track of which Fields need to be analyzed again when new things are added to fingerprints.'
+                  defaultValue: 0
+                  constraints:
+                    nullable: false

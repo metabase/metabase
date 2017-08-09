@@ -40,45 +40,46 @@
 ;; ## GET /api/field/:id
 (expect
   (tu/match-$ (Field (id :users :name))
-    {:description        nil
-     :table_id           (id :users)
-     :raw_column_id      $
-     :fingerprint        $
-     :table              (tu/match-$ (Table (id :users))
-                           {:description             nil
-                            :entity_type             nil
-                            :visibility_type         nil
-                            :db                      (db-details)
-                            :schema                  "PUBLIC"
-                            :name                    "USERS"
-                            :display_name            "Users"
-                            :rows                    15
-                            :updated_at              $
-                            :entity_name             nil
-                            :active                  true
-                            :id                      (id :users)
-                            :db_id                   (id)
-                            :caveats                 nil
-                            :points_of_interest      nil
-                            :show_in_getting_started false
-                            :raw_table_id            $
-                            :created_at              $})
-     :special_type       "type/Name"
-     :name               "NAME"
-     :display_name       "Name"
-     :caveats            nil
-     :points_of_interest nil
-     :updated_at         $
-     :last_analyzed      $
-     :active             true
-     :id                 (id :users :name)
-     :visibility_type    "normal"
-     :position           0
-     :preview_display    true
-     :created_at         $
-     :base_type          "type/Text"
-     :fk_target_field_id nil
-     :parent_id          nil})
+    {:description         nil
+     :table_id            (id :users)
+     :raw_column_id       $
+     :fingerprint         $
+     :fingerprint_version $
+     :table               (tu/match-$ (Table (id :users))
+                            {:description             nil
+                             :entity_type             nil
+                             :visibility_type         nil
+                             :db                      (db-details)
+                             :schema                  "PUBLIC"
+                             :name                    "USERS"
+                             :display_name            "Users"
+                             :rows                    15
+                             :updated_at              $
+                             :entity_name             nil
+                             :active                  true
+                             :id                      (id :users)
+                             :db_id                   (id)
+                             :caveats                 nil
+                             :points_of_interest      nil
+                             :show_in_getting_started false
+                             :raw_table_id            $
+                             :created_at              $})
+     :special_type        "type/Name"
+     :name                "NAME"
+     :display_name        "Name"
+     :caveats             nil
+     :points_of_interest  nil
+     :updated_at          $
+     :last_analyzed       $
+     :active              true
+     :id                  (id :users :name)
+     :visibility_type     "normal"
+     :position            0
+     :preview_display     true
+     :created_at          $
+     :base_type           "type/Text"
+     :fk_target_field_id  nil
+     :parent_id           nil})
   ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 

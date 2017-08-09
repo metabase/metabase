@@ -1,5 +1,6 @@
 (ns metabase.sync-database.analyze-test
-  ;; TODO - this namespace follows the old pattern of sync namespaces. Tests should be moved to appropriate new homes at some point
+  ;; TODO - this namespace follows the old pattern of sync namespaces. Tests should be moved to appropriate new homes
+  ;; at some point
   (:require [clojure.string :as str]
             [expectations :refer :all]
             [metabase
@@ -83,15 +84,15 @@
 (expect false (values-are-valid-emails? ["false"]))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                         Tests to avoid analyzing hidden tables                                         |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Tests to avoid analyzing hidden tables                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- unanalyzed-fields-count [table]
+(defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (pos? (db/count Field :table_id (u/get-id table))))
-  (db/count Field :last_analyzed nil, :table_id (u/get-id table)))
+  (assert (db/exists? Field :id (u/get-id field)))
+  (db/exists? Field :id (u/get-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
   (db/select-one-field :last_analyzed Field
@@ -99,7 +100,7 @@
     :table_id      (u/get-id table)
     {:order-by [[:last_analyzed :desc]]}))
 
-(defn- set-table-visibility-type!
+(defn- set-table-visibility-type-via-api!
   "Change the VISIBILITY-TYPE of TABLE via an API call.
    (This is done via the API so we can see which, if any, side effects (e.g. analysis) get triggered.)"
   [table visibility-type]
@@ -120,56 +121,55 @@
          additional-options))
 
 (defn- fake-field [table & {:as additional-options}]
-  (merge {:table_id (u/get-id table), :name "NAME"}
+  (merge {:table_id (u/get-id table), :name "PRICE", :base_type "type/Integer"}
          additional-options))
 
 ;; expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing
 (expect
-  1
+  false
   (tt/with-temp* [Table [table (fake-table)]
                   Field [field (fake-field table)]]
-    (set-table-visibility-type! table "hidden")
+    (set-table-visibility-type-via-api! table "hidden")
     (api-sync! table)
-    (set-table-visibility-type! table "cruft")
-    (set-table-visibility-type! table "cruft")
+    (set-table-visibility-type-via-api! table "cruft")
+    (set-table-visibility-type-via-api! table "cruft")
     (api-sync! table)
-    (set-table-visibility-type! table "technical")
+    (set-table-visibility-type-via-api! table "technical")
     (api-sync! table)
-    (set-table-visibility-type! table "technical")
+    (set-table-visibility-type-via-api! table "technical")
     (api-sync! table)
     (api-sync! table)
-    (unanalyzed-fields-count table)))
+    (fake-field-was-analyzed? field)))
 
 ;; same test not coming through the api
 (defn- analyze-table! [table]
-  ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a hidden table
-  ;; and will allow that. TODO - Does that behavior make sense?
+  ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
+  ;; hidden table and will allow that. TODO - Does that behavior make sense?
   (analyze/analyze-db! (Database (:db_id table))))
 
 (expect
-  1
+  false
   (tt/with-temp* [Table [table (fake-table)]
                   Field [field (fake-field table)]]
-    (set-table-visibility-type! table "hidden")
+    (set-table-visibility-type-via-api! table "hidden")
     (analyze-table! table)
-    (set-table-visibility-type! table "cruft")
-    (set-table-visibility-type! table "cruft")
+    (set-table-visibility-type-via-api! table "cruft")
+    (set-table-visibility-type-via-api! table "cruft")
     (analyze-table! table)
-    (set-table-visibility-type! table "technical")
+    (set-table-visibility-type-via-api! table "technical")
     (analyze-table! table)
-    (set-table-visibility-type! table "technical")
+    (set-table-visibility-type-via-api! table "technical")
     (analyze-table! table)
     (analyze-table! table)
-    (unanalyzed-fields-count table)))
+    (fake-field-was-analyzed? field)))
 
 ;; un-hiding a table should cause it to be analyzed
 (expect
-  0
   (tt/with-temp* [Table [table (fake-table)]
                   Field [field (fake-field table)]]
-    (set-table-visibility-type! table "hidden")
-    (set-table-visibility-type! table nil)
-    (unanalyzed-fields-count table)))
+    (set-table-visibility-type-via-api! table "hidden")
+    (set-table-visibility-type-via-api! table nil)
+    (fake-field-was-analyzed? field)))
 
 ;; re-hiding a table should not cause it to be analyzed
 (expect
@@ -177,9 +177,9 @@
   (tt/with-temp* [Table [table (fake-table :visibility_type "hidden")]
                   Field [field (fake-field table)]]
     ;; switch the table to visible (triggering a sync) and get the last sync time
-    (let [last-sync-time (do (set-table-visibility-type! table nil)
+    (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
                              (latest-sync-time table))]
       ;; now make it hidden again
-      (set-table-visibility-type! table "hidden")
+      (set-table-visibility-type-via-api! table "hidden")
       ;; sync time shouldn't change
       (= last-sync-time (latest-sync-time table)))))

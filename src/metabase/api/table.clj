@@ -36,7 +36,8 @@
   (for [table (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
                   (hydrate :db))
         :when (mi/can-read? table)]
-    ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf. TODO - should that be part of `post-select` instead?
+    ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf.
+    ;; TODO - should that be part of `post-select` instead?
     (update table :rows (fn [n]
                           (or n 0)))))
 
@@ -99,7 +100,7 @@
                    ["Quarter of Year" "quarter-of-year"]
                    ["Year" "year"]])
              (conj
-               (mapv (fn [[name params]]
+              (mapv (fn [[name params]]
                       {:name name
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Number"})
@@ -107,12 +108,11 @@
                      ["10 bins" ["num-bins" 10]]
                      ["50 bins" ["num-bins" 50]]
                      ["100 bins" ["num-bins" 100]]])
-               {:name "Don't bin"
-                :mbql nil
-                :type "type/Number"}
-               )
+              {:name "Don't bin"
+               :mbql nil
+               :type "type/Number"})
              (conj
-               (mapv (fn [[name params]]
+              (mapv (fn [[name params]]
                       {:name name
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Coordinate"})
@@ -121,10 +121,9 @@
                      ["Bin every 10 degrees" ["bin-width" 10.0]]
                      ["Bin every 20 degrees" ["bin-width" 20.0]]
                      ["Bin every 50 degrees" ["bin-width" 50.0]]])
-               {:name "Don't bin"
-                :mbql nil
-                :type "type/Coordinate"}
-              )))))
+              {:name "Don't bin"
+               :mbql nil
+               :type "type/Coordinate"})))))
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]
@@ -226,20 +225,23 @@
                                                  (not= (keyword visibility_type) :sensitive))))))))
 
 (defn- card-result-metadata->virtual-fields
-  "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual' database."
+  "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
+   database."
   [card-id metadata]
   (for [col metadata]
     (assoc col
       :table_id     (str "card__" card-id)
       :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-      ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be used that way IRL
+      ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be
+      ;; used that way IRL
       :special_type (when-let [special-type (keyword (:special_type col))]
                       (when-not (or (isa? special-type :type/PK)
                                     (isa? special-type :type/FK))
                         special-type)))))
 
 (defn card->virtual-table
-  "Return metadata for a 'virtual' table for a CARD in the Saved Questions 'virtual' database. Optionally include 'virtual' fields as well."
+  "Return metadata for a 'virtual' table for a CARD in the Saved Questions 'virtual' database. Optionally include
+   'virtual' fields as well."
   [card & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :colllection)]

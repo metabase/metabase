@@ -66,7 +66,7 @@
           :describe-table        describe-table
           :features              (constantly #{:dynamic-schema :nested-fields})
           :details-fields        (constantly [])
-          :field-values-lazy-seq (constantly nil)
+          :field-values-lazy-seq (fn [& _] (range 500)) ; enough so it can get fingerprinted, but not be a category
           :table-rows-seq        table-rows-seq}))
 
 (driver/register-driver! :toucanery (ToucaneryDriver.))
