@@ -29,9 +29,10 @@
                   (fn
                     ([] (.getConfig decomposer))
                     ([_]
-                     (let [^StlResult decomposition (.decompose decomposer
-                                                                xs
-                                                                (preprocess ys))]
+                     (let [^StlResult decomposition (.decompose
+                                                     ^StlDecomposition decomposer
+                                                     xs
+                                                     (preprocess ys))]
                        {:trend    (postprocess (.getTrend decomposition))
                         :seasonal (postprocess (.getSeasonal decomposition))
                         :residual (postprocess (.getRemainder decomposition))
