@@ -1,7 +1,7 @@
 (ns metabase.fingerprinting.stl
   "Seasonal-Trend Decomposition
   https://www.wessa.net/download/stl.pdf"
-  (:import com.github.brandtg.stl.StlDecomposition))
+  (:import (com.github.brandtg.stl StlDecomposition StlResult StlConfig)))
 
 (def ^:private setters
   {:inner-loop-passes           (memfn setNumberOfInnerLoopPasses n)
@@ -16,23 +16,23 @@
   ([period ts]
    (decompose period {} ts))
   ([period opts ts]
-   (let [xs            (map first ts)
-         ys            (map second ts)
-         preprocess    (if-let [transform (:transform opts)]
-                         (partial map transform)
-                         identity)
-         postprocess   (if-let [transform (:reverse-transform opts)]
-                         (partial map transform)
-                         vec)
-         decomposer    (StlDecomposition. period)
-         _             (reduce-kv (fn [config k v]
-                                    (when-let [setter (setters k)]
-                                      (setter config v))
-                                    config)
-                                  (.getConfig decomposer)
-                                  (merge {:inner-loop-passes 100}
-                                         opts))
-         decomposition (.decompose decomposer xs (preprocess ys))]
+   (let [xs                           (map first ts)
+         ys                           (map second ts)
+         preprocess                   (if-let [transform (:transform opts)]
+                                        (partial map transform)
+                                        identity)
+         postprocess                  (if-let [transform (:reverse-transform opts)]
+                                        (partial map transform)
+                                        vec)
+         ^StlDecomposition decomposer (StlDecomposition. period)
+         _                            (reduce-kv (fn [^StlConfig config k v]
+                                                   (when-let [setter (setters k)]
+                                                     (setter config v))
+                                                   config)
+                                                 (.getConfig decomposer)
+                                                 (merge {:inner-loop-passes 100}
+                                                        opts))
+         ^StlResult decomposition     (.decompose decomposer xs (preprocess ys))]
      {:trend    (postprocess (.getTrend decomposition))
       :seasonal (postprocess (.getSeasonal decomposition))
       :residual (postprocess (.getRemainder decomposition))
