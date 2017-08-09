@@ -75,7 +75,8 @@
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
-                  :exclusions [org.slf4j/slf4j-api]]
+                  :exclusions [org.slf4j/slf4j-api
+                               it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
