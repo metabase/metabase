@@ -26,13 +26,13 @@ import FieldList from "metabase/query_builder/components/FieldList";
 import SegmentItem from "metabase/admin/datamodel/components/database/SegmentItem";
 import MetricsList from "metabase/admin/datamodel/components/database/MetricsList";
 import MetricItem from "metabase/admin/datamodel/components/database/MetricItem";
+import { MetabaseApi } from "metabase/services";
 
 describe("admin/datamodel", () => {
     beforeAll(async () =>
         await login()
     );
 
-    // TODO Atte Keinänen 6/22/17: Data model specs are easy to convert to Enzyme, disabled until conversion has been done
     describe("data model editor", () => {
         it("should allow admin to edit data model", async () => {
             const store = await createTestStore();
@@ -94,8 +94,7 @@ describe("admin/datamodel", () => {
             entityNameTypeRow.simulate("click");
             await store.waitForActions([UPDATE_FIELD]);
 
-            // TODO Atte Keinänen 8/9/17: Currently this test is very lacking because it doesn't validate that
-            // the updates actually are reflected in Query Builder :/ It doesn't reset the fields either.
+            // TODO Atte Keinänen 8/9/17: Currently this test doesn't validate that the updates actually are reflected in QB
         });
 
         it("should allow admin to create segments", async () => {
@@ -175,5 +174,11 @@ describe("admin/datamodel", () => {
             // Validate that the segment got actually added
             expect(app.find(MetricsList).find(MetricItem).first().text()).toEqual("User countCount");
         });
+
+        afterAll(async () => {
+            await MetabaseApi.table_update({ id: 1, visibility_type: null}); // Sample Dataset
+            await MetabaseApi.field_update({ id: 8, visibility_type: "normal", special_type: null }) // Address
+            await MetabaseApi.field_update({ id: 9, visibility_type: "normal"}) // Address
+        })
     });
 });

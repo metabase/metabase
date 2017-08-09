@@ -1,3 +1,5 @@
+// NOTE Atte Keinänen 9/8/17: This can't be converted to Jest as NodeJS doesn't have cookie support
+// Probably we just want to remove this test.
 
 import { By } from "selenium-webdriver";
 import {

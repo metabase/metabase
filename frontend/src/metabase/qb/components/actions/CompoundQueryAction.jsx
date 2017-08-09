@@ -6,7 +6,6 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
-    console.log(question);
     if (question.id()) {
         return [
             {

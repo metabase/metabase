@@ -12,7 +12,8 @@ import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
 import { CardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
-import reducers from 'metabase/reducers-main';
+import normalReducers from 'metabase/reducers-main';
+import publicReducers from 'metabase/reducers-public';
 
 import React from 'react'
 import { Provider } from 'react-redux';
@@ -26,11 +27,14 @@ import _ from 'underscore';
 import fetch from 'isomorphic-fetch';
 
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { getRoutes } from "metabase/routes";
+import { getRoutes as getNormalRoutes } from "metabase/routes";
+import { getRoutes as getPublicRoutes } from "metabase/routes-public";
+import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false
 let loginSession = null; // Stores the current login session
+let previousLoginSession = null;
 let simulateOfflineMode = false;
 
 /**
@@ -52,6 +56,19 @@ export async function login() {
     }
 }
 
+export function logout() {
+    previousLoginSession = loginSession
+    loginSession = null
+}
+
+export function restorePreviousLogin() {
+    if (previousLoginSession) {
+        loginSession = previousLoginSession
+    } else {
+        console.warn("There is no previous login that could be restored!")
+    }
+}
+
 /**
  * Calls the provided function while simulating that the browser is offline.
  */
@@ -67,7 +84,6 @@ export async function whenOffline(callWhenOffline) {
             throw e;
         });
 }
-
 
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
 // Needed because we are not in a real web browser environment.
@@ -144,22 +160,26 @@ if (process.env.E2E_HOST) {
  *     * getting a React container subtree for the current route
  */
 
-export const createTestStore = async () => {
+export const createTestStore = async ({ publicApp = false, embedApp = false } = {}) => {
     hasFinishedCreatingStore = false;
     hasStartedCreatingStore = true;
 
     const history = useRouterHistory(createMemoryHistory)();
-    const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history));
+    const getRoutesMethod = publicApp ? getPublicRoutes : (embedApp ? getEmbedRoutes : getNormalRoutes);
+    const reducers = (publicApp || embedApp) ? publicReducers : normalReducers;
+    const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history, getRoutesMethod));
     store.setFinalStoreInstance(store);
 
-    await store.dispatch(refreshSiteSettings());
+    if (!publicApp) {
+        await store.dispatch(refreshSiteSettings());
+    }
 
     hasFinishedCreatingStore = true;
 
     return store;
 }
 
-const testStoreEnhancer = (createStore, history) => {
+const testStoreEnhancer = (createStore, history, getRoutesMethod2) => {
     return (...args) => {
         const store = createStore(...args);
 
@@ -245,7 +265,7 @@ const testStoreEnhancer = (createStore, history) => {
             connectContainer: (reactContainer) => {
                 store.warnIfStoreCreationNotComplete();
 
-                const routes = createRoutes(getRoutes(store._finalStoreInstance))
+                const routes = createRoutes(getRoutesMethod2(store._finalStoreInstance))
                 return store._connectWithStore(
                     <Router
                         routes={routes}
@@ -260,7 +280,7 @@ const testStoreEnhancer = (createStore, history) => {
 
                 return store._connectWithStore(
                     <Router history={history}>
-                        {getRoutes(store._finalStoreInstance)}
+                        {getRoutesMethod2(store._finalStoreInstance)}
                     </Router>
                 )
             },
