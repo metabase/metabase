@@ -6,7 +6,7 @@
 
 // Mocks in a separate file as they would clutter this file
 // This must be before all other imports
-import "./integrated_tests_mocks";
+import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";

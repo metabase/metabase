@@ -10,7 +10,7 @@ import { setIn } from "icepick";
 jest.mock('metabase/lib/analytics');
 
 import {GroupsPermissions} from "metabase/meta/types/Permissions";
-import { normalizedMetadata } from "./selectors.spec.fixtures";
+import { normalizedMetadata } from "./selectors.unit.spec.fixtures";
 import { getTablesPermissionsGrid, getSchemasPermissionsGrid, getDatabasesPermissionsGrid } from "metabase/admin/permissions/selectors";
 
 /******** INITIAL TEST STATE ********/
