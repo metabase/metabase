@@ -129,7 +129,7 @@
   (fe/x-ray
    (fe/compare-features
     {:max-cost (max-cost max_query_cost max_computation_cost)}
-    (api/read-check Segment (Integer/parseInt sid))
-    (api/read-check Table (Integer/parseInt tid)))))
+    (api/read-check Segment sid)
+    (api/read-check Table tid))))
 
 (api/define-routes)
