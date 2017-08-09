@@ -5,7 +5,8 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util.password :as password]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import org.quartz.CronExpression))
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails validation."
@@ -137,3 +138,16 @@
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
     "value must be a valid embedding params map."))
+
+
+(def CronScheduleString
+  "Schema for a valid cron schedule string."
+  ;; See `http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger#format` for details on Cron string format
+  (s/constrained
+   NonBlankString
+   (fn [^String s]
+     (try (CronExpression/validateExpression s)
+          true
+          (catch Throwable _
+            false)))
+   "Invalid cron schedule string."))

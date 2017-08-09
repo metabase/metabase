@@ -53,13 +53,15 @@
          (second @~result)))))
 
 (def ^:private default-db-details
-  {:engine             "h2"
-   :name               "test-data"
-   :is_sample          false
-   :is_full_sync       true
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil})
+  {:engine                      "h2"
+   :name                        "test-data"
+   :is_sample                   false
+   :is_full_sync                true
+   :description                 nil
+   :caveats                     nil
+   :points_of_interest          nil
+   :cache_field_values_schedule "0 50 0 * * ? *"
+   :metadata_sync_schedule      "0 50 * * * ? *"})
 
 
 (defn- db-details

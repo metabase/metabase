@@ -221,7 +221,7 @@
     (drop-if-exists-and-create-db! "dropped_views_test")
     ;; create the DB object
     (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
-      (let [sync! #(sync/sync-database! database {:full-sync? true})]
+      (let [sync! #(sync/sync-database! database)]
         ;; populate the DB and create a view
         (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                 "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"

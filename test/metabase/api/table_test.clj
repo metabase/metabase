@@ -9,16 +9,17 @@
              [middleware :as middleware]
              [sync :as sync]
              [util :as u]]
+            [metabase.api.table :as table-api]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as perms-group]
-             [table :refer [Table]]]
+             [table :as table :refer [Table]]]
             [metabase.test
              [data :as data]
-             [util :as tu :refer [match-$ resolve-private-vars]]]
+             [util :as tu :refer [match-$]]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :refer [user->client]]]
@@ -26,12 +27,6 @@
              [db :as db]
              [hydrate :as hydrate]]
             [toucan.util.test :as tt]))
-
-(resolve-private-vars metabase.models.table pk-field-id)
-(resolve-private-vars metabase.api.table
-  dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes
-  numeric-default-index date-default-index coordinate-default-index)
-
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -45,17 +40,19 @@
 
 (defn- db-details []
   (match-$ (data/db)
-    {:created_at         $
-     :engine             "h2"
-     :id                 $
-     :updated_at         $
-     :name               "test-data"
-     :is_sample          false
-     :is_full_sync       true
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
+    {:created_at                  $
+     :engine                      "h2"
+     :id                          $
+     :updated_at                  $
+     :name                        "test-data"
+     :is_sample                   false
+     :is_full_sync                true
+     :description                 nil
+     :caveats                     nil
+     :points_of_interest          nil
+     :features                    (mapv name (driver/features (driver/engine->driver :h2)))
+     :cache_field_values_schedule "0 50 0 * * ? *"
+     :metadata_sync_schedule      "0 50 * * * ? *"}))
 
 (defn- table-defaults []
   {:description             nil
@@ -140,7 +137,7 @@
             :display_name "Venues"
             :rows         100
             :updated_at   $
-            :pk_field     (pk-field-id $$)
+            :pk_field     (#'table/pk-field-id $$)
             :id           (data/id :venues)
             :db_id        (data/id)
             :raw_table_id $
@@ -156,7 +153,7 @@
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
 (defn- query-metadata-defaults []
-  (->> dimension-options-for-response
+  (->> #'table-api/dimension-options-for-response
        var-get
        walk/keywordize-keys
        (assoc (table-defaults) :dimension_options)))
@@ -229,8 +226,8 @@
                              :display_name    "Last Login"
                              :base_type       "type/DateTime"
                              :visibility_type "normal"
-                             :dimension_options        (var-get datetime-dimension-indexes)
-                             :default_dimension_option (var-get date-default-index)
+                             :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                             :default_dimension_option (var-get #'table-api/date-default-index)
                              )
                            (assoc (field-details (Field (data/id :users :name)))
                              :special_type    "type/Name"
@@ -275,8 +272,8 @@
                              :name                     "LAST_LOGIN"
                              :display_name             "Last Login"
                              :base_type                "type/DateTime"
-                             :dimension_options        (var-get datetime-dimension-indexes)
-                             :default_dimension_option (var-get date-default-index))
+                             :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                             :default_dimension_option (var-get #'table-api/date-default-index))
                            (assoc (field-details (Field (data/id :users :name)))
                              :table_id     (data/id :users)
                              :special_type "type/Name"
@@ -338,7 +335,7 @@
             :name            $
             :rows            15
             :display_name    "Userz"
-            :pk_field        (pk-field-id $$)
+            :pk_field        (#'table/pk-field-id $$)
             :id              $
             :raw_table_id    $
             :created_at      $}))
@@ -535,12 +532,12 @@
 
 ;; Ensure dimensions options are sorted numerically, but returned as strings
 (expect
-  (map str (sort (map #(Long/parseLong %) (var-get datetime-dimension-indexes))))
-  (var-get datetime-dimension-indexes))
+  (map str (sort (map #(Long/parseLong %) (var-get #'table-api/datetime-dimension-indexes))))
+  (var-get #'table-api/datetime-dimension-indexes))
 
 (expect
-  (map str (sort (map #(Long/parseLong %) (var-get numeric-dimension-indexes))))
-  (var-get numeric-dimension-indexes))
+  (map str (sort (map #(Long/parseLong %) (var-get #'table-api/numeric-dimension-indexes))))
+  (var-get #'table-api/numeric-dimension-indexes))
 
 ;; Numeric fields without min/max values should not have binning strategies
 (expect

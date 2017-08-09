@@ -351,7 +351,7 @@
             ;; create the `blueberries_consumed` table and insert a 100 values
             (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
                     (insert-range-sql (range 100))])
-            (sync-database! db {:full-sync? true})
+            (sync-database! db)
             (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                   field-id (db/select-one-id Field :table_id table-id)]
               ;; field values should exist...
