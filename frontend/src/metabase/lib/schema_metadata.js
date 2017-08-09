@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
-import { getFieldValues, getHumanReadableValue } from "metabase/lib/query/field";
+import { getFieldValues } from "metabase/lib/query/field";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -182,7 +182,8 @@ function equivalentArgument(field, table) {
                     .filter(([value, displayValue]) => value != null)
                     .map(([value, displayValue]) => ({
                         key: value,
-                        name: getHumanReadableValue(value, values)
+                        // NOTE Atte Keinänen 8/7/17: Similar logic as in getHumanReadableValue of lib/query/field
+                        name: displayValue ? displayValue : String(value)
                     }))
                     .sort((a, b) => a.key === b.key ? 0 : (a.key < b.key ? -1 : 1))
             };
