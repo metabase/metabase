@@ -1,16 +1,31 @@
 # Frequently Asked Questions
 
+## Logging in
+
 ### I can't log into Metabase. Can you reset my password?
 
 If you are running the MacOS application on your laptop, you can click on the Help menu item and click `Reset Password`.
 
 If you are using a browser to access Metabase, then someone downloaded our software and installed it on a server. We at Metabase don't host your instance. We write software that someone at your company decided to run. You should ask whomever it was that set up your company's Metabase for help resetting your password.
 
-### How should I use the Mac OS X application?
 
-Our Mac OS X application is best thought of as Metabase in single-player mode. It's meant to be a way to quickly try out the program and see if it's something you'd want to use across your team. It's also useful for use on your own.
+## Metabase on macOS
+
+### How should I use the macOS application?
+
+Our macOS application is best thought of as Metabase in single-player mode. It's meant to be a way to quickly try Metabase out and see if it's something you'd want to use across your team. It's also useful for use on your own.
 
 When you need to share dashboards or pulses with others, we *strongly* recommend you run our server application.
+
+
+
+## Asking questions and running queries
+
+### Can I use SQL with Metabase?
+[Yes](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
+
+### Do I need to know SQL to use Metabase?
+[No](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html)
 
 ### Does Metabase support SQL Joins?
 
@@ -18,26 +33,41 @@ Metabase does not expose a "Join" operator, but we do provide ways for non-SQL-p
 
 For more info see our [blog post on the subject](http://www.metabase.com/blog/Joins)
 
-### Can I use SQL with Metabase?
-
-[Yes](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
-
-
-### Do I need to know SQL to use Metabase?
-[No](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html)
-
-
 ### Why can't I do X in the Query Builder?
 
 The primary audience of the GUI querying interface is a non-technical user who doesn't SQL. Advanced users can always [use SQL](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
 
 We're constantly trying to walk the line between putting more functionality into the GUI interface and creating a confusing mess. You can expect it to improve and change with time, but in the meantime, you can always lean on SQL directly for the complicated matters.
 
-## Why can't I seem to use drill-through or question actions?
+### Why can't I seem to use drill-through or question actions?
 
 Metabase allows you to [click on your charts or tables to explore or zoom in](http://www.metabase.com/docs/latest/users-guide/03-basic-exploration.html), but these features don't currently work with SQL/native queries (this is because Metabase doesn't currently parse these kinds of queries). The same is true of the question actions menu in the bottom-right of the question detail page.
 
-However, in an upcoming version of Metabase we'll be including a feature that will let you use the results of SQL/native queries as the starting table for GUI-based questions. This means you'll be able to use sophisticated SQL/native queries to create the exact segments you need, and you and your team will be able to use drill-through and actions if you create GUI-based questions from those segments.
+However, in [Metabase version 0.25 we introduced nested queries](http://www.metabase.com/blog/Metabase-0.25#nested-questions), a feature that lets you use the results of SQL/native queries as the starting table for GUI-based questions. This means you'll be able to use sophisticated SQL/native queries to create the exact segments you need, and you and your team will be able to use drill-through and actions if you create GUI-based questions from those segments.
+
+
+## Pulses and Metabot
+
+### Why do my charts look different when I put them in a Pulse?
+Metabase automatically changes the visualization type of saved questions you put in Pulses so that they fit better in emails and Slack. Here is [an inventory of how charts get changed](https://github.com/metabase/metabase/issues/5493#issuecomment-318198816), and here is [the logic for how this works](https://github.com/metabase/metabase/blob/8f1a287496899250d89a20ec57ac8477cd20bce5/src/metabase/pulse/render.clj#L385-L397).
+
+We understand this behavior isn't expected, and are currently exploring ways to handle this better.
+
+### Why can't I send tables?
+Metabase currently has a limit on how many columns and rows can be included in a Pulse as a safeguard against massive tables getting plopped in users' inboxes, but this is [an issue we're actively discussing changing](https://github.com/metabase/metabase/issues/3894).
+
+### Can I attach files like CSVs to a Pulse?
+Not yet, but [the community is working on it](https://github.com/metabase/metabase/pull/5502)!
+
+### Can I set more specific or granular schedules for Pulses?
+Not yet, but [we'd love your help](https://github.com/metabase/metabase/issues/3846#issuecomment-318516189) working on implementing designs for this feature.
+
+### Can I send Pulses to private Slack channels, or to multiple channels?
+No, this is currently [a limitation with the way we're required to implement our Slack integration](https://github.com/metabase/metabase/issues/2694).
+
+
+
+## Databases
 
 ### Does Metabase support database X?
 
@@ -73,19 +103,26 @@ We do not currently offer a way to connect to other third-party APIs or services
 
 Not exactly. Metabase provides access to data you have in an existing database you control. We currently do not add or modify the information in your database. You should ask whomever controls the database you are accessing how to upload the data you're interested in accessing.
 
+
+
+## Support and troubleshooting
+
 ### Can you help me debug something?
 
 Yes, to the extent that we are able to and have time.
 
-In the event of a clear bug, please [open an issue](https://github.com/metabase/metabase/issues/new).
+If you're sure you've found a bug, please [open an issue](https://github.com/metabase/metabase/issues/new). Otherwise, try checking out the [troubleshooting guide](http://www.metabase.com/troubleshooting/) first to see if the answer to your problem is there.
 
-If you're having other trouble, please start a conversation at our [discussion forum](http://discourse.metabase.com) and check out the other threads. Someone else might have experienced the same problem.
+If you're still having trouble, please start a conversation at our [discussion forum](http://discourse.metabase.com) and check out the other threads. Someone else might have experienced the same problem.
 
 ### Do you offer paid support?
 
 We are experimenting with offering paid support to a limited number of companies. [Contact us](http://www.metabase.com/services/) if you want more information.
 
+## Embedding
+
 ### Can I embed charts or dashboards in another application?
 
-Yes, Metabase offers two solutions for sharing charts and dashboards.
-[Public links](http://www.metabase.com/docs/latest/administration-guide/12-public-links.html) let you share or embed charts with simplicity. A powerful [application embedding](http://www.metabase.com/docs/latest/administration-guide/13-embedding.html) let you to embed and customize charts in your own web applications.
+Yes, Metabase offers two solutions for sharing charts and dashboards:
+- [Public links](http://www.metabase.com/docs/latest/administration-guide/12-public-links.html) let you share or embed charts with simplicity.
+- A powerful [application embedding](http://www.metabase.com/docs/latest/administration-guide/13-embedding.html) let you to embed and customize charts in your own web applications.
