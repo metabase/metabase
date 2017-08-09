@@ -13,10 +13,10 @@
             [medley.core :as m]
             [metabase.fingerprinting
              [histogram :as h]
-             [costs :as costs]]
+             [costs :as costs]
+             [stl :as stl]]
             [metabase.util :as u]            ;;;; temp!
-            [redux.core :as redux]
-            [tide.stl :as stl])
+            [redux.core :as redux])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
 (def ^:private ^:const percentiles (range 0 1 0.1))
@@ -329,10 +329,7 @@
                  :week  52
                  :day   365)]
     (when (>= (count ts) (* 2 period))
-      (select-keys (stl/decompose period {:periodic? true
-                                          :robust?   true}
-                                  ts)
-                   [:trend :seasonal :residual]))))
+      (select-keys (stl/decompose period ts) [:trend :seasonal :residual]))))
 
 (defmethod fingerprinter [DateTime Num]
   [{:keys [max-cost resolution query]} field]
