@@ -118,8 +118,8 @@
   (->> [id1 id2]
        (map #(api/read-check Segment (Integer/parseInt %)))
        (apply fe/compare-features
-              {:max-cost (max-cost max_query_cost max_computation_cost)}))
-  fe/x-ray)
+              {:max-cost (max-cost max_query_cost max_computation_cost)})
+       fe/x-ray))
 
 (api/defendpoint GET "/compare/segment/:sid/table/:tid"
   "Get comparison x-ray for `Segment` and `Table`."

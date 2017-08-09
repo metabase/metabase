@@ -109,9 +109,9 @@
 (defn x-ray
   "Turn feature vector into an x-ray."
   [features]
-  (let [x-ray (comp add-descriptions (partial trim-decimals 2) fe/x-ray)]
+  (let [prettify (comp add-descriptions (partial trim-decimals 2) fe/x-ray)]
     (-> features
-        (update :features x-ray)
+        (update :features prettify)
                                         ;        (update :comparison  (partial map x-ray))
         (update :constituents (partial map x-ray)))))
 
