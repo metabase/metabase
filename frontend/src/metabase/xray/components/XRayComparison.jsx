@@ -36,6 +36,7 @@ const CompareHistograms = ({ itemA, itemB }) =>
             <Histogram
                 histogram={itemA}
                 color={normal.blue}
+                showAxis={false}
             />
         </div>
         <div
@@ -44,6 +45,7 @@ const CompareHistograms = ({ itemA, itemB }) =>
             <Histogram
                 histogram={itemB}
                 color={normal.yellow}
+                showAxis={false}
             />
         </div>
     </div>
@@ -70,6 +72,20 @@ const XRayComparison = ({
                     </Link>
                 </div>
             </div>
+            <Heading heading="Overview" />
+            <div className="bordered rounded bg-white shadowed my4">
+                <div className="Grid Grid--1of4">
+                    <div className="Grid-cell p4">
+                        <h3>Count</h3>
+                        <div className="flex">
+                            <h2 style={{ color: normal.blue}}>{itemA.constituents[fields[0].name].count.value}</h2>
+                            <h2 style={{ color: normal.yellow}}>{itemB.constituents[fields[1].name].count.value}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <Heading heading="Full breakdown" />
             <div className="bordered rounded bg-white shadowed my4">
 
                 <div className="flex">

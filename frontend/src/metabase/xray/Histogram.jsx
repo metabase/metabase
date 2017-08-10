@@ -1,7 +1,9 @@
 import React from 'react'
 import Visualization from 'metabase/visualizations/components/Visualization'
 
-const Histogram = ({ histogram, color }) =>
+import { normal } from 'metabase/lib/colors'
+
+const Histogram = ({ histogram, color, showAxis }) =>
     <Visualization
         className="full-height"
         series={[
@@ -9,7 +11,11 @@ const Histogram = ({ histogram, color }) =>
                 card: {
                     display: "bar",
                     visualization_settings: {
-                        "graph.colors": [color]
+                        "graph.colors": [color],
+                        "graph.x_axis.axis_enabled": showAxis,
+                        "graph.x_axis.labels_enabled": showAxis,
+                        "graph.y_axis.axis_enabled": showAxis,
+                        "graph.y_axis.labels_enabled": showAxis
                     }
                 },
                 data: histogram
@@ -17,6 +23,11 @@ const Histogram = ({ histogram, color }) =>
         ]}
         showTitle={false}
     />
+
+Histogram.defaultProps = {
+    color: normal.blue,
+    showAxis: true
+}
 
 export default Histogram
 
