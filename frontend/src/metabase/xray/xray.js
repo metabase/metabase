@@ -1,6 +1,7 @@
 import { assoc } from 'icepick'
 
 import {
+    createAction,
     createThunkAction,
     handleActions
 } from 'metabase/lib/redux'
@@ -57,39 +58,60 @@ export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId) =>
 )
 
 const FETCH_FIELD_COMPARISON = 'metabase/xray/FETCH_FIELD_COMPARISON';
-export const fetchFieldComparison = createThunkAction(FETCH_FIELD_COMPARISON, function(fieldId1, fieldId2) {
-    async () => {
-        try {
-            const comparison = await XRayApi.field_compare({ fieldId1, fieldId2 })
-            return comparison
-        } catch (error) {
-            console.error(error)
+export const fetchFieldComparison = createThunkAction(
+    FETCH_FIELD_COMPARISON,
+    (fieldId1, fieldId2) =>
+        async (dispatch) => {
+            try {
+                const comparison = await XRayApi.field_compare({ fieldId1, fieldId2 })
+                dispatch(loadComparison(comparison))
+                return false
+            } catch (error) {
+                console.error(error)
+            }
         }
-    }
-})
+)
 const FETCH_TABLE_COMPARISON = 'metabase/xray/FETCH_TABLE_COMPARISON';
-export const fetchTableComparison = createThunkAction(FETCH_TABLE_COMPARISON, function(tableId1, tableId2) {
-    async () => {
-        try {
-            const comparison = await XRayApi.table_compare({ tableId1, tableId2 })
-            return comparison
-        } catch (error) {
-            console.error(error)
+export const fetchTableComparison = createThunkAction(
+    FETCH_TABLE_COMPARISON,
+    (tableId1, tableId2) =>
+        async () => {
+            try {
+                const comparison = await XRayApi.table_compare({ tableId1, tableId2 })
+                return comparison
+            } catch (error) {
+                console.error(error)
+            }
         }
-    }
-})
+)
 
 const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentComparison = createThunkAction(FETCH_SEGMENT_COMPARISON, function(segmentId1, segmentId2) {
-    async () => {
-        try {
-            const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2 })
-            return comparison
-        } catch (error) {
-            console.error(error)
+export const fetchSegmentComparison = createThunkAction(
+    FETCH_SEGMENT_COMPARISON,
+    (segmentId1, segmentId2) =>
+        async (dispatch) => {
+            try {
+                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2 })
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
         }
-    }
-})
+)
+
+const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const fetchSegmentTableComparison = createThunkAction(
+    FETCH_SEGMENT_TABLE_COMPARISON,
+    (segmentId, tableId) =>
+        async (dispatch) => {
+            try {
+                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId })
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
 
 const FETCH_METRIC_COMPARISON = 'metabase/xray/FETCH_METRIC_COMPARISON';
 export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, function(metricId1, metricId2) {
@@ -115,6 +137,9 @@ export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (car
     }
 )
 
+const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
+export const loadComparison = createAction(LOAD_COMPARISON)
+
 export default handleActions({
     [FETCH_FIELD_XRAY]: {
         next: (state, { payload }) => assoc(state, 'fieldXray', payload)
@@ -127,5 +152,9 @@ export default handleActions({
     },
     [FETCH_FIELD_COMPARISON]: {
         next: (state, { payload }) => assoc(state, 'fieldComparison', payload)
+    },
+    [LOAD_COMPARISON]: {
+        next: (state, { payload }) => assoc(state, 'comparison', payload)
     }
+
 }, {})

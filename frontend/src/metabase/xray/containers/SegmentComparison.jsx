@@ -2,11 +2,12 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
 import { fetchSegmentComparison } from 'metabase/xray/xray'
+import { getComparison } from 'metabase/xray/selectors'
 
-import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
+import XRayComparison from 'metabase/xray/components/XRayComparison'
 
 const mapStateToProps = state => ({
-    segmentComparison: state.xray.segmentComparison
+    comparison: getComparison(state)
 })
 
 const mapDispatchToProps = {
@@ -16,15 +17,11 @@ const mapDispatchToProps = {
 class SegmentComparison extends Component {
     componentWillMount () {
         const { segmentId1, segmentId2 } = this.props.params
-        console.log('ids', segmentId1, segmentId2)
-        this.props.fetchSegmentComparison(segmentId1, segmentId2)
+        this.props.fetchSegmentTableComparison(segmentId1, segmentId2)
     }
+
     render () {
-        return (
-            <LoadingAndErrorWrapper loading={!this.props.segmentComparison}>
-                { JSON.stringify(this.props.segmentComparison, null, 2) }
-            </LoadingAndErrorWrapper>
-        )
+        return <XRayComparison comparison={this.props.comparison} />
     }
 }
 

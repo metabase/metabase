@@ -21,3 +21,5 @@ export const getSegmentConstituents = (state) =>
             state.xray.segmentXray.constituents[key]
         )
     )
+
+export const getComparison = (state) => state.xray.comparison
