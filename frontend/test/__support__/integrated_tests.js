@@ -165,9 +165,9 @@ export const createTestStore = async ({ publicApp = false, embedApp = false } = 
     hasStartedCreatingStore = true;
 
     const history = useRouterHistory(createMemoryHistory)();
-    const getRoutesMethod = publicApp ? getPublicRoutes : (embedApp ? getEmbedRoutes : getNormalRoutes);
+    const getRoutes = publicApp ? getPublicRoutes : (embedApp ? getEmbedRoutes : getNormalRoutes);
     const reducers = (publicApp || embedApp) ? publicReducers : normalReducers;
-    const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history, getRoutesMethod));
+    const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history, getRoutes));
     store.setFinalStoreInstance(store);
 
     if (!publicApp) {
@@ -179,7 +179,7 @@ export const createTestStore = async ({ publicApp = false, embedApp = false } = 
     return store;
 }
 
-const testStoreEnhancer = (createStore, history, getRoutesMethod2) => {
+const testStoreEnhancer = (createStore, history, getRoutes) => {
     return (...args) => {
         const store = createStore(...args);
 
@@ -265,7 +265,7 @@ const testStoreEnhancer = (createStore, history, getRoutesMethod2) => {
             connectContainer: (reactContainer) => {
                 store.warnIfStoreCreationNotComplete();
 
-                const routes = createRoutes(getRoutesMethod2(store._finalStoreInstance))
+                const routes = createRoutes(getRoutes(store._finalStoreInstance))
                 return store._connectWithStore(
                     <Router
                         routes={routes}
@@ -280,7 +280,7 @@ const testStoreEnhancer = (createStore, history, getRoutesMethod2) => {
 
                 return store._connectWithStore(
                     <Router history={history}>
-                        {getRoutesMethod2(store._finalStoreInstance)}
+                        {getRoutes(store._finalStoreInstance)}
                     </Router>
                 )
             },
