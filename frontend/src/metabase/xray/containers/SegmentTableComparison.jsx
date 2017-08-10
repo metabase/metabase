@@ -39,9 +39,11 @@ class SegmentTableComparison extends Component {
                         comparisonFields={[
                             'distance',
                             'threshold',
-                            ...comparison.comparison.CATEGORY.components.map(c =>
-                                c[0]
-                            )
+                            'entropy',
+                            'count',
+                            'histogram',
+                            'uniqueness',
+                            'nil%',
                         ]}
                         comparison={comparison.comparison}
                         itemA={{
