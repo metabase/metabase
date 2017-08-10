@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
+import _ from 'underscore'
 
 import { fetchSegmentTableComparison } from 'metabase/xray/xray'
 import { getComparison } from 'metabase/xray/selectors'
@@ -32,9 +33,9 @@ class SegmentTableComparison extends Component {
 
                     <XRayComparison
                         fields={
-                            Object.values(comparison.constituents[0].constituents).map(c =>
+                            _.sortBy(Object.values(comparison.constituents[0].constituents).map(c =>
                                 c.field
-                            )
+                            ), 'distance')
                         }
                         comparisonFields={[
                             'distance',
