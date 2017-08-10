@@ -33,12 +33,18 @@ const CompareHistograms = ({ itemA, itemB }) =>
         <div
             className="flex-full"
         >
-            <Histogram histogram={itemA} />
+            <Histogram
+                histogram={itemA}
+                color={normal.blue}
+            />
         </div>
         <div
             className="flex-full"
         >
-            <Histogram histogram={itemB} />
+            <Histogram
+                histogram={itemB}
+                color={normal.yellow}
+            />
         </div>
     </div>
 
