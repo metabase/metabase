@@ -26,12 +26,14 @@
   "Transuce each column in given dataset with corresponding feature extractor."
   [opts {:keys [rows cols]}]
   (transduce identity
-             (apply redux/juxt
-                    (for [[i field] (m/indexed cols)
-                          :when (not (or (:remapped_to field)
-                                         (= :type/PK (:special_type field))))]
-                      (redux/pre-step (fe/feature-extractor opts field)
-                                      #(nth % i))))
+             (redux/fuse
+              (into {}
+                (for [[i field] (m/indexed cols)
+                      :when (not (or (:remapped_to field)
+                                     (= :type/PK (:special_type field))))]
+                  [(:name field) (redux/pre-step
+                                  (fe/feature-extractor opts field)
+                                  #(nth % i))])))
              rows))
 
 (defmulti
@@ -40,7 +42,7 @@
           Takes a map of options as first argument. Recognized options:
           * `:max-cost`   a map with keys `:computation` and `:query` which
                           limits maximal resource expenditure when computing
-                          the features.
+                          features.
                           See `metabase.feature-extraction.costs` for details."
     :arglists '([opts field])}
   extract-features #(type %2))
@@ -61,22 +63,23 @@
 (defmethod extract-features (type Table)
   [opts table]
   {:constituents (dataset->features opts (metadata/query-values
-                                        (:db_id table)
-                                        (merge (extract-query-opts opts)
-                                               {:source-table (:id table)})))
+                                          (:db_id table)
+                                          (merge (extract-query-opts opts)
+                                                 {:source-table (:id table)})))
    :features     {:table table}})
 
 (defmethod extract-features (type Card)
   [opts card]
   (let [query (-> card :dataset_query :query)
-        {:keys [rows cols]} (->> query
-                                 (merge (extract-query-opts opts))
-                                 (metadata/query-values (:database_id card)))
-        {:keys [breakout aggregation]} (group-by :source cols)
-        fields [(first breakout)
-                (or (first aggregation) (second breakout))]]
-    {:constituents [(field->features opts (first fields) (map first rows))
-                    (field->features opts (second fields) (map second rows))]
+        {:keys [rows cols :as dataset]} (->> query
+                                             (merge (extract-query-opts opts))
+                                             (metadata/query-values
+                                              (:database_id card)))
+        {:keys [breakout aggregation]}  (group-by :source cols)
+        fields                          [(first breakout)
+                                         (or (first aggregation)
+                                             (second breakout))]]
+    {:constituents (dataset->features opts dataset)
      :features     (merge
                     (field->features (assoc opts :query query) fields rows)
                     {:card  card
@@ -85,15 +88,11 @@
 (defmethod extract-features (type Segment)
   [opts segment]
   {:constituents (dataset->features opts (metadata/query-values
-                                        (metadata/db-id segment)
-                                        (merge (extract-query-opts opts)
-                                               (:definition segment))))
+                                          (metadata/db-id segment)
+                                          (merge (extract-query-opts opts)
+                                                 (:definition segment))))
    :features     {:table   (Table (:table_id segment))
                   :segment segment}})
-
-;; (defmethod extract-features (type Metric)
-;;   [_ metric]
-;;   {:metric metric})
 
 (defn- trim-decimals
   [decimal-places features]
@@ -106,14 +105,22 @@
        x))
    features))
 
+(defn- update-when
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
 (defn x-ray
   "Turn feature vector into an x-ray."
   [features]
   (let [prettify (comp add-descriptions (partial trim-decimals 2) fe/x-ray)]
     (-> features
-        (update :features prettify)
-                                        ;        (update :comparison  (partial map x-ray))
-        (update :constituents (partial map x-ray)))))
+        (update-when :features prettify)
+        (update-when :constituents (fn [constituents]
+                                     (if (sequential? constituents)
+                                       (map x-ray constituents)
+                                       (m/map-vals prettify constituents)))))))
 
 (defn compare-features
   "Compare feature vectors of two models."
@@ -121,8 +128,10 @@
   (let [[a b] (map (partial extract-features opts) [a b])]
     {:constituents [a b]
      :comparison   (if (:constituents a)
-                     (map comparison/features-distance
-                          (:constituents a)
-                          (:constituents b))
+                     (into {}
+                       (map (fn [[field a] [_ b]]
+                              [field (comparison/features-distance a b)])
+                            (:constituents a)
+                            (:constituents b)))
                      (comparison/features-distance (:features a)
                                                    (:features b)))}))
