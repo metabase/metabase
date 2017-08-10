@@ -6,7 +6,7 @@ import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
-import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
+import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import { fetchSegmentXray } from 'metabase/xray/xray'
 
 import Icon from 'metabase/components/Icon'
@@ -87,7 +87,7 @@ class SegmentXRay extends Component {
                 >
                     { () =>
                         <div className="full">
-                            <div className="my4 flex align-center py2">
+                            <div className="mt4 mb2 flex align-center py2">
                                 <div>
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration shadowed rounded"
@@ -113,17 +113,29 @@ class SegmentXRay extends Component {
                                     />
                                 </div>
                             </div>
-                            <ol>
-                                { constituents.map(c => {
-                                    return (
-                                        <li>
-                                            <Constituent
-                                                constituent={c}
-                                            />
-                                        </li>
-                                    )
-                                })}
-                            </ol>
+                            <div>
+                                <Link
+                                    to={`/xray/compare/segment/${xray.segment.id}/table/${xray.table.id}`}
+                                    className="Button bg-white text-brand-hover Button--withIcon no-decoration"
+                                >
+                                    <Icon name="add" />
+                                    {`Compare with all ${xray.table.display_name}s`}
+                                </Link>
+                            </div>
+                            <div className="mt2">
+                                <Heading heading="Fields in this segment" />
+                                <ol>
+                                    { constituents.map(c => {
+                                        return (
+                                            <li>
+                                                <Constituent
+                                                    constituent={c}
+                                                />
+                                            </li>
+                                        )
+                                    })}
+                                </ol>
+                            </div>
                         </div>
                     }
                 </LoadingAndErrorWrapper>
