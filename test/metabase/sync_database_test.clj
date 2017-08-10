@@ -65,7 +65,8 @@
           :describe-table-fks    describe-table-fks
           :features              (constantly #{:foreign-keys})
           :details-fields        (constantly [])
-          :field-values-lazy-seq (constantly [])}))
+          ;; enough values that it won't get marked as a Category, but still get a fingerprint or w/e
+          :field-values-lazy-seq (fn [& _] (range 500))}))
 
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
@@ -74,7 +75,11 @@
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
                (assoc :fields (for [field (db/select Field, :table_id (:id table), {:order-by [:name]})]
-                                (into {} (dissoc field :table :db :children :qualified-name :qualified-name-components :values :target))))
+                                (into {} (-> (dissoc field
+                                                     :table :db :children :qualified-name :qualified-name-components
+                                                     :values :target)
+                                             (update :fingerprint map?)
+                                             (update :fingerprint_version (complement zero?))))))
                tu/boolean-ids-and-timestamps)))
 
 (def ^:private table-defaults
@@ -95,22 +100,23 @@
    :updated_at              true})
 
 (def ^:private field-defaults
-  {:id                 true
-   :table_id           true
-   :raw_column_id      false
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil
-   :active             true
-   :parent_id          false
-   :position           0
-   :preview_display    true
-   :visibility_type    :normal
-   :fk_target_field_id false
-   :created_at         true
-   :updated_at         true
-   :last_analyzed      true
-   :fingerprint        nil})
+  {:id                  true
+   :table_id            true
+   :raw_column_id       false
+   :description         nil
+   :caveats             nil
+   :points_of_interest  nil
+   :active              true
+   :parent_id           false
+   :position            0
+   :preview_display     true
+   :visibility_type     :normal
+   :fk_target_field_id  false
+   :created_at          true
+   :updated_at          true
+   :last_analyzed       true
+   :fingerprint         true
+   :fingerprint_version true})
 
 ;; ## SYNC DATABASE
 (expect
@@ -238,7 +244,7 @@
           field-id (db/select-one-id Field, :table_id table-id, :name "title")]
       (tt/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
-        (let [initial-field-values (db/select-one-field  :values FieldValues, :field_id field-id)]
+        (let [initial-field-values (db/select-one-field :values FieldValues, :field_id field-id)]
           (sync-database! db)
           [initial-field-values
            (db/select-one-field :values FieldValues, :field_id field-id)])))))
