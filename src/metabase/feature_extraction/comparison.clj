@@ -48,6 +48,14 @@
   [a b]
   (* 0.5 (cosine-distance a b)))
 
+(defmethod difference [nil Object]
+  [a b]
+  1)
+
+(defmethod difference [Object nil]
+  [a b]
+  1)
+
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
    https://stats.stackexchange.com/questions/184101/comparing-two-histograms-using-chi-square-distance"
@@ -113,5 +121,5 @@
                              magnitude
                              #(/ % (math/sqrt (count differences))))
                             differences)
-     :components (sort-by val > differences)
+     :components differences
      :thereshold interestingness-thershold}))

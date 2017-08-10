@@ -154,53 +154,49 @@
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
                                                           (map math/sq)))})
    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-     (if (h/empty? histogram)
-       {:count 0
-        :type  Num
-        :field field}
-       (let [nil-count   (h/nil-count histogram)
-             total-count (h/total-count histogram)
-             uniqueness  (/ cardinality (max total-count 1))
-             var         (or (h.impl/variance histogram) 0)
-             sd          (math/sqrt var)
-             min         (h.impl/minimum histogram)
-             max         (h.impl/maximum histogram)
-             mean        (h.impl/mean histogram)
-             median      (h.impl/median histogram)
-             range       (- max min)]
-         (merge
-          {:histogram          histogram
-           :percentiles        (apply h.impl/percentiles histogram percentiles)
-           :positive-definite? (>= min 0)
-           :%>mean             (- 1 ((h.impl/cdf histogram) mean))
-           :uniqueness         uniqueness
-           :var>sd?            (> var sd)
-           :nil%               (/ nil-count (clojure.core/max total-count 1))
-           :has-nils?          (pos? nil-count)
-           :0<=x<=1?           (<= 0 min max 1)
-           :-1<=x<=1?          (<= -1 min max 1)
-           :cv                 (safe-divide sd mean)
-           :range-vs-sd        (safe-divide sd range)
-           :mean-median-spread (safe-divide (- mean median) range)
-           :min-vs-max         (safe-divide min max)
-           :range              range
-           :cardinality        cardinality
-           :min                min
-           :max                max
-           :mean               mean
-           :median             median
-           :var                var
-           :sd                 sd
-           :count              total-count
-           :kurtosis           kurtosis
-           :skewness           skewness
-           :all-distinct?      (>= uniqueness (- 1 cardinality-error))
-           :entropy            (h/entropy histogram)
-           :type               Num
-           :field              field}
-          (when (costs/full-scan? max-cost)
-            {:sum            sum
-             :sum-of-squares sum-of-squares})))))))
+     (let [nil-count   (h/nil-count histogram)
+           total-count (h/total-count histogram)
+           uniqueness  (/ cardinality (max total-count 1))
+           var         (or (h.impl/variance histogram) 0)
+           sd          (math/sqrt var)
+           min         (h.impl/minimum histogram)
+           max         (h.impl/maximum histogram)
+           mean        (h.impl/mean histogram)
+           median      (h.impl/median histogram)
+           range       (some-> max (- min))]
+       (merge
+        {:histogram          histogram
+         :percentiles        (apply h.impl/percentiles histogram percentiles)
+         :positive-definite? (some-> min (>= 0))
+         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+         :uniqueness         uniqueness
+         :var>sd?            (> var sd)
+         :nil%               (/ nil-count (clojure.core/max total-count 1))
+         :has-nils?          (pos? nil-count)
+         :0<=x<=1?           (when min (<= 0 min max 1))
+         :-1<=x<=1?          (when min (<= -1 min max 1))
+         :cv                 (some->> mean (safe-divide sd))
+         :range-vs-sd        (some->> range (safe-divide sd))
+         :mean-median-spread (some->> range (safe-divide (- mean median)))
+         :min-vs-max         (some-> min (safe-divide max))
+         :range              range
+         :cardinality        cardinality
+         :min                min
+         :max                max
+         :mean               mean
+         :median             median
+         :var                var
+         :sd                 sd
+         :count              total-count
+         :kurtosis           kurtosis
+         :skewness           skewness
+         :all-distinct?      (>= uniqueness (- 1 cardinality-error))
+         :entropy            (h/entropy histogram)
+         :type               Num
+         :field              field}
+        (when (costs/full-scan? max-cost)
+          {:sum            sum
+           :sum-of-squares sum-of-squares}))))))
 
 (defmethod comparison-vector Num
   [features]
