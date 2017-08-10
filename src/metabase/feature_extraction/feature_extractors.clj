@@ -68,7 +68,7 @@
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
-; (def ^:private Any      [:type/* :type/*])
+;(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
 (defn- equidistant-bins
@@ -139,9 +139,13 @@
     :arglists '([features])}
   comparison-vector :type)
 
-(defmethod comparison-vector :default
+(defn- comparison-vector-base
   [features]
   (dissoc features :type :field :has-nils?))
+
+(defmethod comparison-vector :default
+  [features]
+  (comparison-vector-base features))
 
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
@@ -154,53 +158,49 @@
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
                                                           (map math/sq)))})
    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-     (if (h/empty? histogram)
-       {:count 0
-        :type  Num
-        :field field}
-       (let [nil-count   (h/nil-count histogram)
-             total-count (h/total-count histogram)
-             uniqueness  (/ cardinality (max total-count 1))
-             var         (or (h.impl/variance histogram) 0)
-             sd          (math/sqrt var)
-             min         (h.impl/minimum histogram)
-             max         (h.impl/maximum histogram)
-             mean        (h.impl/mean histogram)
-             median      (h.impl/median histogram)
-             range       (- max min)]
-         (merge
-          {:histogram          histogram
-           :percentiles        (apply h.impl/percentiles histogram percentiles)
-           :positive-definite? (>= min 0)
-           :%>mean             (- 1 ((h.impl/cdf histogram) mean))
-           :uniqueness         uniqueness
-           :var>sd?            (> var sd)
-           :nil%               (/ nil-count (clojure.core/max total-count 1))
-           :has-nils?          (pos? nil-count)
-           :0<=x<=1?           (<= 0 min max 1)
-           :-1<=x<=1?          (<= -1 min max 1)
-           :cv                 (safe-divide sd mean)
-           :range-vs-sd        (safe-divide sd range)
-           :mean-median-spread (safe-divide (- mean median) range)
-           :min-vs-max         (safe-divide min max)
-           :range              range
-           :cardinality        cardinality
-           :min                min
-           :max                max
-           :mean               mean
-           :median             median
-           :var                var
-           :sd                 sd
-           :count              total-count
-           :kurtosis           kurtosis
-           :skewness           skewness
-           :all-distinct?      (>= uniqueness (- 1 cardinality-error))
-           :entropy            (h/entropy histogram)
-           :type               Num
-           :field              field}
-          (when (costs/full-scan? max-cost)
-            {:sum            sum
-             :sum-of-squares sum-of-squares})))))))
+     (let [nil-count   (h/nil-count histogram)
+           total-count (h/total-count histogram)
+           uniqueness  (/ cardinality (max total-count 1))
+           var         (or (h.impl/variance histogram) 0)
+           sd          (math/sqrt var)
+           min         (h.impl/minimum histogram)
+           max         (h.impl/maximum histogram)
+           mean        (h.impl/mean histogram)
+           median      (h.impl/median histogram)
+           range       (some-> max (- min))]
+       (merge
+        {:histogram          histogram
+         :percentiles        (apply h.impl/percentiles histogram percentiles)
+         :positive-definite? (some-> min (>= 0))
+         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+         :uniqueness         uniqueness
+         :var>sd?            (> var sd)
+         :nil%               (/ nil-count (clojure.core/max total-count 1))
+         :has-nils?          (pos? nil-count)
+         :0<=x<=1?           (when min (<= 0 min max 1))
+         :-1<=x<=1?          (when min (<= -1 min max 1))
+         :cv                 (some->> mean (safe-divide sd))
+         :range-vs-sd        (some->> range (safe-divide sd))
+         :mean-median-spread (some->> range (safe-divide (- mean median)))
+         :min-vs-max         (some-> min (safe-divide max))
+         :range              range
+         :cardinality        cardinality
+         :min                min
+         :max                max
+         :mean               mean
+         :median             median
+         :var                var
+         :sd                 sd
+         :count              total-count
+         :kurtosis           kurtosis
+         :skewness           skewness
+         :all-distinct?      (>= uniqueness (- 1 cardinality-error))
+         :entropy            (h/entropy histogram)
+         :type               Num
+         :field              field}
+        (when (costs/full-scan? max-cost)
+          {:sum            sum
+           :sum-of-squares sum-of-squares}))))))
 
 (defmethod comparison-vector Num
   [features]
@@ -210,12 +210,10 @@
 
 (defmethod x-ray Num
   [{:keys [field count] :as features}]
-  (if (pos? count)
-    (-> features
-        (update :histogram (partial histogram->dataset field))
-        (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
-                :positive-definite? :var>sd? :uniqueness :min-vs-max))
-    features))
+  (-> features
+      (update :histogram (partial histogram->dataset field))
+      (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
+              :positive-definite? :var>sd? :uniqueness :min-vs-max)))
 
 (defmethod feature-extractor [Num Num]
   [_ field]
@@ -232,7 +230,7 @@
 
 (def ^:private ^{:arglists '([t])} from-double
   "Coerce `Double` into a `DateTime`."
-  (comp t.coerce/from-long long))
+  (stats/somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
   "Given a coll of `[DateTime, Any]` pairs with periodicty `step` fill missing
@@ -331,7 +329,9 @@
 
 (defmethod comparison-vector [DateTime Num]
   [features]
-  (dissoc features :type :resolution :field))
+  (-> features
+      (dissoc :resolution)
+      comparison-vector-base))
 
 (defmethod x-ray [DateTime Num]
   [features]
@@ -404,7 +404,9 @@
 
 (defmethod comparison-vector DateTime
   [features]
-  (dissoc features :type :percentiles :field :has-nils?))
+  (-> features
+      (dissoc :percentiles)
+      comparison-vector-base))
 
 (defn- round-to-month
   [dt]
@@ -440,41 +442,45 @@
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
-  (if (h/empty? histogram)
-    (select-keys features [:count :type :field])
-    (let [earliest (from-double earliest)
-          latest   (from-double latest)]
-      (-> features
-          (assoc  :earliest          earliest)
-          (assoc  :latest            latest)
-          (update :histogram         (partial histogram->dataset from-double field))
-          (update :percentiles       (partial m/map-vals from-double))
-          (update :histogram-hour    (partial histogram->dataset
-                                              {:name         "HOUR"
-                                               :display_name "Hour of day"
-                                               :base_type    :type/Integer
-                                               :special_type :type/Category}))
-          (update :histogram-day     (partial histogram->dataset
-                                              {:name         "DAY"
-                                               :display_name "Day of week"
-                                               :base_type    :type/Integer
-                                               :special_type :type/Category}))
-          (update :histogram-month   (comp
-                                      (partial weigh-periodicity
-                                               (month-frequencies earliest latest))
-                                      (partial histogram->dataset
-                                               {:name         "MONTH"
-                                                :display_name "Month of year"
-                                                :base_type    :type/Integer
-                                                :special_type :type/Category})))
-          (update :histogram-quarter (comp
-                                      (partial weigh-periodicity
-                                               (quarter-frequencies earliest latest))
-                                      (partial histogram->dataset
-                                               {:name         "QUARTER"
-                                                :display_name "Quarter of year"
-                                                :base_type    :type/Integer
-                                                :special_type :type/Category})))))))
+  (let [earliest (from-double earliest)
+        latest   (from-double latest)]
+    (-> features
+        (assoc  :earliest          earliest)
+        (assoc  :latest            latest)
+        (update :histogram         (partial histogram->dataset from-double field))
+        (update :percentiles       (partial m/map-vals from-double))
+        (update :histogram-hour    (partial histogram->dataset
+                                            {:name         "HOUR"
+                                             :display_name "Hour of day"
+                                             :base_type    :type/Integer
+                                             :special_type :type/Category}))
+        (update :histogram-day     (partial histogram->dataset
+                                            {:name         "DAY"
+                                             :display_name "Day of week"
+                                             :base_type    :type/Integer
+                                             :special_type :type/Category}))
+        (update :histogram-month   (fn [histogram]
+                                     (when-not (h/empty? histogram)
+                                       (->> histogram
+                                            (histogram->dataset
+                                             {:name         "MONTH"
+                                              :display_name "Month of year"
+                                              :base_type    :type/Integer
+                                              :special_type :type/Category})
+                                            (weigh-periodicity
+                                             (month-frequencies earliest
+                                                                latest))))))
+        (update :histogram-quarter (fn [histogram]
+                                     (when-not (h/empty? histogram)
+                                       (->> histogram
+                                            (histogram->dataset
+                                             {:name         "QUARTER"
+                                              :display_name "Quarter of year"
+                                              :base_type    :type/Integer
+                                              :special_type :type/Category})
+                                            (weigh-periodicity
+                                             (quarter-frequencies earliest
+                                                                  latest)))))))))
 
 (defmethod feature-extractor Category
   [_ field]
@@ -497,7 +503,9 @@
 
 (defmethod comparison-vector Category
   [features]
-  (dissoc features :type :cardinality :field :has-nils?))
+  (-> features
+      (dissoc :cardinality)
+      comparison-vector-base))
 
 (defmethod x-ray Category
   [{:keys [field] :as features}]
