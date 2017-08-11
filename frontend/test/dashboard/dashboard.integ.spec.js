@@ -141,14 +141,16 @@ describe("Dashboard", () => {
             await store.waitForActions([SET_EDITING_DASHBOARD]);
             click(app.find(".Icon.Icon-funneladd"));
             // Choose Time filter type
-            app.find(ParameterOptionsSection)
-                .filterWhere((section) => section.text().match(/Time/))
-                .simulate("click");
+            click(
+                app.find(ParameterOptionsSection)
+                    .filterWhere((section) => section.text().match(/Time/))
+            );
 
             // Choose Relative date filter
-            app.find(ParameterOptionItem)
-                .filterWhere((item) => item.text().match(/Relative Date/))
-                .simulate("click");
+            click(
+                app.find(ParameterOptionItem)
+                    .filterWhere((item) => item.text().match(/Relative Date/))
+            )
 
             await store.waitForActions(ADD_PARAMETER)
 

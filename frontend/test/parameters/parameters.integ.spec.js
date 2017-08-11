@@ -102,7 +102,7 @@ describe("parameters", () => {
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
-            app.find(EmbeddingLegalese).find('button[children="Enable"]').simulate('click');
+            click(app.find(EmbeddingLegalese).find('button[children="Enable"]'));
             await store.waitForActions([UPDATE_SETTING])
 
             expect(app.find(EmbeddingLegalese).length).toBe(0);
@@ -165,7 +165,7 @@ describe("parameters", () => {
             expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);
 
             // save the question, required for public link/embedding
-            app.find(".Header-buttonSection a").first().find("a").simulate("click");
+            click(app.find(".Header-buttonSection a").first().find("a"))
             await store.waitForActions([LOAD_COLLECTIONS]);
 
             setInputValue(app.find(SaveQuestionModal).find("input[name='name']"), "sql parametrized");
@@ -173,7 +173,7 @@ describe("parameters", () => {
             clickButton(app.find(SaveQuestionModal).find("button").last());
             await store.waitForActions([NOTIFY_CARD_CREATED]);
 
-            app.find('#QuestionSavedModal .Button[children="Not now"]').simulate("click");
+            click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(
             await delay(200);
 
@@ -186,7 +186,7 @@ describe("parameters", () => {
             // make the parameter editable
             click(app.find(".AdminSelect-content[children='Disabled']"));
 
-            app.find(".TestPopoverBody .Icon-pencil").simulate("click");
+            click(app.find(".TestPopoverBody .Icon-pencil"))
 
             await delay(200);
 

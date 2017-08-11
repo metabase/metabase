@@ -1,3 +1,5 @@
+import { click } from "__support__/enzyme_utils";
+
 import React from 'react'
 import PasswordReveal from '../../src/metabase/components/PasswordReveal'
 import CopyButton from 'metabase/components/CopyButton'
@@ -13,7 +15,7 @@ describe('password reveal', () => {
 
     it('should toggle the visibility state when hide / show are clicked', () => {
         expect(wrapper.state().visible).toEqual(false)
-        wrapper.find('a').simulate('click')
+        click(wrapper.find('a'))
         expect(wrapper.state().visible).toEqual(true)
     })
 

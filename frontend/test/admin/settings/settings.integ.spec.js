@@ -7,6 +7,7 @@ import { mount } from "enzyme";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
+import { setInputValue } from "__support__/enzyme_utils";
 
 describe("admin/settings", () => {
     beforeAll(async () =>
@@ -31,7 +32,7 @@ describe("admin/settings", () => {
             expect(input.prop("value")).not.toBe(siteName)
 
             // clear the site name input, send the keys corresponding to the site name, then blur to trigger the update
-            input.simulate('change', { target: { value: siteName } })
+            setInputValue(input, siteName)
             input.simulate('blur')
 
             await store.waitForActions([UPDATE_SETTING])

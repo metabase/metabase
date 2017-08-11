@@ -54,17 +54,17 @@ describe("admin/datamodel", () => {
             store.resetDispatchedActions()
 
             // Toggle its visibility to "Hidden"
-            app.find("#VisibilityTypes > span").at(1).simulate("click");
+            click(app.find("#VisibilityTypes > span").at(1))
             await store.waitForActions([UPDATE_TABLE]);
             store.resetDispatchedActions()
 
             // Toggle "Why hide" to "Irrelevant/Cruft"
-            app.find("#VisibilitySubTypes > span").at(2).simulate("click")
+            click(app.find("#VisibilitySubTypes > span").at(2))
             await store.waitForActions([UPDATE_TABLE]);
             store.resetDispatchedActions()
 
             // Unhide
-            app.find("#VisibilityTypes > span").at(0).simulate("click");
+            click(app.find("#VisibilityTypes > span").at(0))
 
             // Open "People" table section
             click(adminListItems.at(1));
@@ -129,7 +129,7 @@ describe("admin/datamodel", () => {
 
             const addFilterButton = filterPopover.find(".Button.disabled");
 
-            filterPopover.find('textarea.border-purple').simulate('change', { target: { value: "gmail" }})
+            setInputValue(filterPopover.find('textarea.border-purple'), "gmail");
             await clickButton(addFilterButton);
 
             await store.waitForActions([UPDATE_PREVIEW_SUMMARY]);
@@ -139,7 +139,7 @@ describe("admin/datamodel", () => {
             setInputValue(app.find("textarea[name='description']"), "change")
 
             // Save the segment
-            app.find('button[children="Save changes"]').simulate("click");
+            click(app.find('button[children="Save changes"]'))
 
             await store.waitForActions([CREATE_SEGMENT, INITIALIZE_METADATA]);
             store.resetDispatchedActions();
@@ -165,13 +165,13 @@ describe("admin/datamodel", () => {
             await store.waitForActions([FETCH_TABLE_METADATA, UPDATE_PREVIEW_SUMMARY]);
 
             click(app.find("#Query-section-aggregation"));
-            app.find("#AggregationPopover").find('h4[children="Count of rows"]').simulate("click");
+            click(app.find("#AggregationPopover").find('h4[children="Count of rows"]'))
 
-            app.find("input[name='name']").simulate('change', { target: { value: 'User count' }});
-            app.find("textarea[name='description']").simulate("change", { target: { value: 'Total number of users'}});
+            setInputValue(app.find("input[name='name']"), 'User count');
+            setInputValue(app.find("textarea[name='description']"), 'Total number of users');
 
             // Save the metric
-            app.find('button[children="Save changes"]').simulate("click");
+            click(app.find('button[children="Save changes"]'))
 
             await store.waitForActions([CREATE_METRIC, INITIALIZE_METADATA]);
             expect(store.getPath()).toBe("/admin/datamodel/database/1/table/2")

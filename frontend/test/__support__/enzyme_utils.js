@@ -30,7 +30,7 @@ export const clickButton = (enzymeWrapper) => {
     }
 }
 
-export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
+export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
     inputWrapper.simulate('change', { target: { value: value } });
     if (blur) inputWrapper.simulate("blur")
 }

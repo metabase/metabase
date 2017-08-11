@@ -51,7 +51,7 @@ describe("FieldPane", () => {
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
         await delay(3000)
 
-        dataReference.find(`a[children="Created At"]`).first().simulate("click")
+        click(dataReference.find(`a[children="Created At"]`).first())
 
         await store.waitForActions([FETCH_TABLE_METADATA]);
     });
@@ -65,7 +65,7 @@ describe("FieldPane", () => {
         // eslint-disable-line react/no-irregular-whitespace
         expect(getUseForButton().text()).toMatch(/Group by/);
 
-        getUseForButton().simulate('click');
+        click(getUseForButton());
         await store.waitForActions([QUERY_COMPLETED]);
         store.resetDispatchedActions()
 

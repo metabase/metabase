@@ -193,8 +193,6 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             _onActionDispatched: null,
             _dispatchedActions: [],
             _finalStoreInstance: null,
-            _usingAppContainer: false,
-
 
             dispatch: (action) => {
                 const result = store._originalDispatch(action);
@@ -282,7 +280,6 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
             connectContainer: (reactContainer) => {
                 store.warnIfStoreCreationNotComplete();
-                store._usingAppContainer = false;
 
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
                 return store._connectWithStore(
@@ -296,7 +293,6 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
             getAppContainer: () => {
                 store.warnIfStoreCreationNotComplete();
-                store._usingAppContainer = true;
 
                 return store._connectWithStore(
                     <Router history={history}>
