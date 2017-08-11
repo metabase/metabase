@@ -118,7 +118,7 @@ class SegmentXRay extends Component {
                                     to={`/xray/compare/segment/${xray.segment.id}/table/${xray.table.id}`}
                                     className="Button bg-white text-brand-hover Button--withIcon no-decoration"
                                 >
-                                    <Icon name="add" />
+                                    <Icon name="compare" />
                                     {`Compare with all ${xray.table.display_name}s`}
                                 </Link>
                             </div>
