@@ -50,7 +50,7 @@ class SegmentTableComparison extends Component {
                             ), 'distance')
                         }
                         comparisonFields={[
-                            'Distance',
+                            'Difference',
                             'Entropy',
                             'Histogram',
                             'Uniqueness',

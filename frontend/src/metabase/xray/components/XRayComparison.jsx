@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router'
-
 import Color from 'color'
 
 import Icon from 'metabase/components/Icon'
@@ -11,6 +10,7 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 import Histogram from 'metabase/xray/Histogram'
 
 import { getIconForField } from 'metabase/lib/schema_metadata'
+import { distanceToPhrase } from 'metabase/xray/utils'
 
 const ComparisonField = ({ field }) =>
     <li
@@ -200,7 +200,7 @@ const XRayComparison = ({
                                         </Link>
                                     </td>
                                     <td className="border-bottom border-right px2">
-                                        <h3>{comparison[field.name].distance}</h3>
+                                        <h3>{distanceToPhrase(comparison[field.name].distance)}</h3>
                                     </td>
                                     <td className="border-bottom border-right">
                                         { itemA.constituents[field.name]['entropy'] && (
