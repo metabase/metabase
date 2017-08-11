@@ -344,13 +344,14 @@ export const clickRouterLink = click
 
 export const clickButton = (enzymeWrapper) => {
     const closestButton = enzymeWrapper.closest("button");
-    // const childButton = enzymeWrapper.children("button");
 
     if (closestButton.length === 1) {
         closestButton.simulate("submit"); // for forms with onSubmit
         closestButton.simulate("click"); // for lone buttons / forms without onSubmit
     } else {
-        throw new Error('Couldn\'t find a button element to click in clickButton');
+        // Assume that the current component wraps a button element
+        enzymeWrapper.simulate("submit");
+        enzymeWrapper.simulate("click");
     }
 }
 
