@@ -94,7 +94,7 @@ const XRayComparison = ({
                 <div className="flex">
                     <Link
                         to={`/xray/${itemA.itemType}/${itemA.id}/approximate`}
-                        className="no-decoration text-orange-hover flex align-center bordered shadowed bg-white p1 px2 rounded mr1"
+                        className="no-decoration text-green-hover flex align-center bordered shadowed bg-white p1 px2 rounded mr1"
                     >
                         <div style={{
                             width: 12,
@@ -108,7 +108,7 @@ const XRayComparison = ({
                     </Link>
                     <Link
                         to={`/xray/${itemB.itemType}/${itemB.id}/approximate`}
-                        className="no-decoration text-gold-hover flex align-center bordered shadowed bg-white p1 px2 rounded mr1"
+                        className="no-decoration text-orange-hover flex align-center bordered shadowed bg-white p1 px2 rounded mr1"
                     >
                         <div style={{
                             width: 12,
