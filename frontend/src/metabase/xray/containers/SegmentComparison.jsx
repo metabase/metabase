@@ -2,6 +2,8 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import _ from 'underscore'
 
+import title from 'metabase/hoc/Title'
+
 import { fetchSegmentComparison } from 'metabase/xray/xray'
 import { getComparison } from 'metabase/xray/selectors'
 
@@ -18,6 +20,12 @@ const mapDispatchToProps = {
     fetchSegmentComparison
 }
 
+@connect(mapStateToProps, mapDispatchToProps)
+@title(({comparison}) =>
+    comparison && (
+        `${comparison.constituents[0].features.segment.name} / ${comparison.constituents[1].features.segment.name}`
+    )
+)
 class SegmentComparison extends Component {
 
     componentWillMount () {
@@ -70,4 +78,4 @@ class SegmentComparison extends Component {
     }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentComparison)
+export default SegmentComparison
