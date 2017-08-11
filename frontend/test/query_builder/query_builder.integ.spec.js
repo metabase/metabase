@@ -123,7 +123,7 @@ describe("QueryBuilder", () => {
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
             expect(fieldsToIncludeCheckboxes.length).toBe(6)
 
-            fieldsToIncludeCheckboxes.at(3).simulate("click");
+            fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parent().find("span").text() === "Created At").simulate("click");
 
             expect(table.find('div[children="Created At"]').length).toBe(0);
 

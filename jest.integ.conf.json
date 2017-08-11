@@ -22,5 +22,6 @@
     "ace": {},
     "ga": {},
     "document": {}
-  }
+  },
+  "testURL": "http://localhost"
 }

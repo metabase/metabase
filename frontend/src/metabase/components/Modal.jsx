@@ -179,7 +179,10 @@ export class TestModal extends Component {
     render() {
         if (this.props.isOpen) {
             return (
-                <div className="test-modal">
+                <div
+                    className="test-modal"
+                    onClick={e => e.stopPropagation()}
+                >
                     { getModalContent({
                         ...this.props,
                         fullPageModal: true,
