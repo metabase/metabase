@@ -63,7 +63,7 @@
 (defmethod extract-features (type Table)
   [opts table]
   {:constituents (dataset->features opts (metadata/query-values
-                                          (:db_id table)
+                                          (metadata/db-id table)
                                           (merge (extract-query-opts opts)
                                                  {:source-table (:id table)})))
    :features     {:table table}})
@@ -71,10 +71,10 @@
 (defmethod extract-features (type Card)
   [opts card]
   (let [query (-> card :dataset_query :query)
-        {:keys [rows cols :as dataset]} (->> query
-                                             (merge (extract-query-opts opts))
-                                             (metadata/query-values
-                                              (:database_id card)))
+        {:keys [rows cols :as dataset]} (metadata/query-values
+                                         (metadata/db-id card)
+                                         (merge (extract-query-opts opts)
+                                                query))
         {:keys [breakout aggregation]}  (group-by :source cols)
         fields                          [(first breakout)
                                          (or (first aggregation)
