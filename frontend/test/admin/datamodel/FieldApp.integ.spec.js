@@ -346,6 +346,7 @@ describe("FieldApp", () => {
             lastMapping.find(Input).simulate('change', {target: {value: "Extraordinarily awesome"}});
 
             const saveButton = valueRemappingsSection.find(ButtonWithStatus)
+            // TRY WITH clickButton !!!
             saveButton.simulate("click");
 
             store.waitForActions([UPDATE_FIELD_VALUES]);

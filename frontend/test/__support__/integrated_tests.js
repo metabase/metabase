@@ -20,22 +20,28 @@ import { Provider } from 'react-redux';
 
 import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
-import { createRoutes, Router, useRouterHistory } from "react-router";
+import { createRoutes, Link, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
+import chalk from "chalk";
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
 
 import { refreshSiteSettings } from "metabase/redux/settings";
+
 import { getRoutes as getNormalRoutes } from "metabase/routes";
 import { getRoutes as getPublicRoutes } from "metabase/routes-public";
 import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
+
+import moment from "moment";
+import Button from "metabase/components/Button";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false
 let loginSession = null; // Stores the current login session
 let previousLoginSession = null;
 let simulateOfflineMode = false;
+
 
 /**
  * Login to the Metabase test instance with default credentials
@@ -168,7 +174,7 @@ export const createTestStore = async ({ publicApp = false, embedApp = false } = 
     const getRoutes = publicApp ? getPublicRoutes : (embedApp ? getEmbedRoutes : getNormalRoutes);
     const reducers = (publicApp || embedApp) ? publicReducers : normalReducers;
     const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history, getRoutes));
-    store.setFinalStoreInstance(store);
+    store._setFinalStoreInstance(store);
 
     if (!publicApp) {
         await store.dispatch(refreshSiteSettings());
@@ -188,14 +194,15 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             _onActionDispatched: null,
             _dispatchedActions: [],
             _finalStoreInstance: null,
+            _usingAppContainer: false,
 
-            setFinalStoreInstance: (finalStore) => {
-                store._finalStoreInstance = finalStore;
-            },
 
             dispatch: (action) => {
                 const result = store._originalDispatch(action);
-                store._dispatchedActions = store._dispatchedActions.concat([action]);
+                store._dispatchedActions = store._dispatchedActions.concat([{
+                    ...action,
+                    timestamp: Date.now()
+                }]);
                 if (store._onActionDispatched) store._onActionDispatched();
                 return result;
             },
@@ -211,6 +218,10 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
              * Convenient in tests for waiting specific actions to be executed after mounting a React container.
              */
             waitForActions: (actionTypes, {timeout = 8000} = {}) => {
+                if (store._onActionDispatched) {
+                    return Promise.reject(new Error("You have an earlier `store.waitForActions(...)` still in progress – have you forgotten to prepend `await` to the method call?"))
+                }
+
                 actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
 
                 const allActionsAreTriggered = () => _.every(actionTypes, actionType =>
@@ -223,7 +234,10 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                 } else {
                     return new Promise((resolve, reject) => {
                         store._onActionDispatched = () => {
-                            if (allActionsAreTriggered()) resolve()
+                            if (allActionsAreTriggered()) {
+                                store._onActionDispatched = null;
+                                resolve()
+                            }
                         };
                         setTimeout(() => {
                             store._onActionDispatched = null;
@@ -234,8 +248,10 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                             } else {
                                 return reject(
                                     new Error(
-                                        `Actions ${actionTypes.join(", ")} were not dispatched within ${timeout}ms. ` +
-                                        `Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`
+                                        `These actions were not dispatched within ${timeout}ms:\n` +
+                                        chalk.cyan(actionTypes.join("\n")) +
+                                        "\n\nDispatched actions since initialization / last call of `store.resetDispatchedActions()`:\n" +
+                                        (store._dispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions")
                                     )
                                 )
                             }
@@ -246,7 +262,10 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             },
 
             logDispatchedActions: () => {
-                console.log(`Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`);
+                console.log(
+                    chalk.bold("\n\nDispatched actions since initialization / last call of `store.resetDispatchedActions()`:\n") +
+                    store._dispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions"
+                )
             },
 
             pushPath: (path) => history.push(path),
@@ -256,7 +275,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             warnIfStoreCreationNotComplete: () => {
                 if (!hasFinishedCreatingStore) {
                     console.warn(
-                        "Seems that you don't wait until the store creation has completely finished. " +
+                        "Seems that you haven't waited until the store creation has completely finished. " +
                         "This means that site settings might not have been completely loaded. " +
                         "Please add `await` in front of createTestStore call.")
                 }
@@ -264,6 +283,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
             connectContainer: (reactContainer) => {
                 store.warnIfStoreCreationNotComplete();
+                store._usingAppContainer = false;
 
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
                 return store._connectWithStore(
@@ -277,6 +297,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
             getAppContainer: () => {
                 store.warnIfStoreCreationNotComplete();
+                store._usingAppContainer = true;
 
                 return store._connectWithStore(
                     <Router history={history}>
@@ -284,6 +305,14 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                     </Router>
                 )
             },
+
+            /** For having internally access to the store with all middlewares included **/
+            _setFinalStoreInstance: (finalStore) => {
+                store._finalStoreInstance = finalStore;
+            },
+
+            _formatDispatchedAction: (action) =>
+                moment(action.timestamp).format("hh:mm:ss.SSS") + " " + chalk.cyan(action.type),
 
             // eslint-disable-next-line react/display-name
             _connectWithStore: (reactContainer) =>
@@ -297,19 +326,39 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
     }
 }
 
-export const clickRouterLink = (linkEnzymeWrapper) => {
-    // This hits an Enzyme bug so we should find some other way to warn the user :/
-    // https://github.com/airbnb/enzyme/pull/769
-
-    // if (linkEnzymeWrapper.closest(Router).length === 0) {
-    //     console.warn(
-    //         "Trying to click a link with a component mounted with `store.connectContainer(container)`. Usually " +
-    //         "you want to use `store.getAppContainer()` instead because it has a complete support for react-router."
-    //     )
-    // }
-
-    linkEnzymeWrapper.simulate('click', {button: 0});
+export const click = (enzymeWrapper) => {
+    const nodeType = enzymeWrapper.type();
+    if (nodeType === Button || nodeType === "button") {
+        console.warn(
+            'You are calling `click` for a button; you would probably want to use `clickButton` instead as ' +
+            'it takes all button click scenarios into account.'
+        )
+    }
+    // Normal click event. Works for both `onClick` React event handlers and react-router <Link> objects.
+    // We simulate a left button click with `{ button: 0 }` because react-router requires that.
+    enzymeWrapper.simulate('click', { button: 0 });
 }
+
+// DEPRECATED
+export const clickRouterLink = click
+
+export const clickButton = (enzymeWrapper) => {
+    const closestButton = enzymeWrapper.closest("button");
+    // const childButton = enzymeWrapper.children("button");
+
+    if (closestButton.length === 1) {
+        closestButton.simulate("submit"); // for forms with onSubmit
+        closestButton.simulate("click"); // for lone buttons / forms without onSubmit
+    } else {
+        throw new Error('Couldn\'t find a button element to click in clickButton');
+    }
+}
+
+export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
+    inputWrapper.simulate('change', { target: { value: value } });
+    if (blur) inputWrapper.simulate("blur")
+}
+
 // Commonly used question helpers that are temporarily here
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
 export const createSavedQuestion = async (unsavedQuestion) => {

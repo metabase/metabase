@@ -1,7 +1,9 @@
 import {
     login,
     createTestStore,
-    clickRouterLink
+    click,
+    clickButton,
+    setInputValue
 } from "__support__/integrated_tests";
 
 import { mount } from "enzyme";
@@ -60,7 +62,7 @@ describe('dashboard list', () => {
             const listAppBeforeAdd = app.find(DatabaseListApp)
 
             const addDbButton = listAppBeforeAdd.find('.Button.Button--primary').first()
-            clickRouterLink(addDbButton)
+            click(addDbButton)
 
             const dbDetailsForm = app.find(DatabaseEditApp);
             expect(dbDetailsForm.length).toBe(1);
@@ -70,7 +72,7 @@ describe('dashboard list', () => {
             expect(dbDetailsForm.find('button[children="Save"]').props().disabled).toBe(true)
 
             const updateInputValue = (name, value) =>
-                dbDetailsForm.find(`input[name="${name}"]`).simulate('change', { target: { value } });
+                setInputValue(dbDetailsForm.find(`input[name="${name}"]`), value);
 
             updateInputValue("name", "Test db name");
             updateInputValue("dbname", "test_postgres_db");
@@ -79,7 +81,7 @@ describe('dashboard list', () => {
             const saveButton = dbDetailsForm.find('button[children="Save"]')
 
             expect(saveButton.props().disabled).toBe(false)
-            saveButton.simulate("submit");
+            clickButton(saveButton)
 
             // Now the submit button should be disabled so that you aren't able to trigger the db creation action twice
             await store.waitForActions([CREATE_DATABASE_STARTED])
@@ -111,7 +113,8 @@ describe('dashboard list', () => {
             const listAppBeforeAdd = app.find(DatabaseListApp)
 
             const addDbButton = listAppBeforeAdd.find('.Button.Button--primary').first()
-            clickRouterLink(addDbButton)
+
+            click(addDbButton) // ROUTER LINK
 
             const dbDetailsForm = app.find(DatabaseEditApp);
             expect(dbDetailsForm.length).toBe(1);
@@ -121,15 +124,17 @@ describe('dashboard list', () => {
             const saveButton = dbDetailsForm.find('button[children="Save"]')
             expect(saveButton.props().disabled).toBe(true)
 
+            // TODO: Apply change method here
             const updateInputValue = (name, value) =>
-                dbDetailsForm.find(`input[name="${name}"]`).simulate('change', { target: { value } });
+                setInputValue(dbDetailsForm.find(`input[name="${name}"]`), value);
 
             updateInputValue("name", "Test db name");
             updateInputValue("dbname", "test_postgres_db");
             updateInputValue("user", "uberadmin");
 
+            // TODO: Apply button submit thing here
             expect(saveButton.props().disabled).toBe(false)
-            saveButton.simulate("submit");
+            clickButton(saveButton)
 
             await store.waitForActions([CREATE_DATABASE_STARTED])
             expect(saveButton.text()).toBe("Saving...");
@@ -155,11 +160,11 @@ describe('dashboard list', () => {
 
             const deleteButton = wrapper.find('.Button.Button--danger').first()
 
-            deleteButton.simulate('click')
+            click(deleteButton);
 
             const deleteModal = wrapper.find('.test-modal')
-            deleteModal.find('.Form-input').simulate('change', { target: { value: "DELETE" }})
-            deleteModal.find('.Button.Button--danger').simulate('click')
+            setInputValue(deleteModal.find('.Form-input'), "DELETE")
+            click(deleteModal.find('.Button.Button--danger'));
 
             // test that the modal is gone
             expect(wrapper.find('.test-modal').length).toEqual(0)
@@ -197,12 +202,12 @@ describe('dashboard list', () => {
             const dbCount = wrapper.find('tr').length
 
             const deleteButton = wrapper.find('.Button.Button--danger').first()
-
-            deleteButton.simulate('click')
+            click(deleteButton)
 
             const deleteModal = wrapper.find('.test-modal')
-            deleteModal.find('.Form-input').simulate('change', { target: { value: "DELETE" }})
-            deleteModal.find('.Button.Button--danger').simulate('click')
+
+            setInputValue(deleteModal.find('.Form-input'), "DELETE");
+            click(deleteModal.find('.Button.Button--danger'))
 
             // test that the modal is gone
             expect(wrapper.find('.test-modal').length).toEqual(0)
@@ -235,7 +240,7 @@ describe('dashboard list', () => {
 
             const wrapper = app.find(DatabaseListApp)
             const sampleDatasetEditLink = wrapper.find('a[children="Sample Dataset"]').first()
-            clickRouterLink(sampleDatasetEditLink);
+            click(sampleDatasetEditLink); // ROUTER LINK
 
             expect(store.getPath()).toEqual("/admin/databases/1")
             await store.waitForActions([INITIALIZE_DATABASE]);
@@ -246,10 +251,10 @@ describe('dashboard list', () => {
             const nameField = dbDetailsForm.find(`input[name="name"]`);
             expect(nameField.props().value).toEqual("Sample Dataset")
 
-            nameField.simulate('change', { target: { value: newName } });
+            setInputValue(nameField, newName);
 
             const saveButton = dbDetailsForm.find('button[children="Save"]')
-            saveButton.simulate("submit");
+            clickButton(saveButton)
 
             await store.waitForActions([UPDATE_DATABASE_STARTED]);
             expect(saveButton.text()).toBe("Saving...");
@@ -286,10 +291,10 @@ describe('dashboard list', () => {
 
             const tooLongName = "too long name ".repeat(100);
             const nameField = dbDetailsForm.find(`input[name="name"]`);
-            nameField.simulate('change', { target: { value: tooLongName } });
+            setInputValue(nameField, tooLongName);
 
             const saveButton = dbDetailsForm.find('button[children="Save"]')
-            saveButton.simulate("submit");
+            clickButton(saveButton)
 
             await store.waitForActions([UPDATE_DATABASE_STARTED]);
             expect(saveButton.text()).toBe("Saving...");
