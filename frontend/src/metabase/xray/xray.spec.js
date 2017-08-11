@@ -1,12 +1,4 @@
-import configureMockStore from 'redux-mock-store'
-import thunk from 'redux-thunk'
-import nock from 'nock'
-
-const middlewares = [thunk]
-const mockStore = configureMockStore(middlewares)
-
 import reducer, {
-    fetchSegmentComparison,
     loadComparison
 } from 'metabase/xray/xray'
 
