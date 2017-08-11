@@ -138,7 +138,7 @@
 
 (defmethod x-ray :default
   [features]
-  features)
+  (dissoc features :has-nils? :all-distinct?))
 
 (defmulti
   ^{:doc "Feature vector for comparison/difference purposes."
@@ -147,7 +147,7 @@
 
 (defmethod comparison-vector :default
   [features]
-  (dissoc features :type :field :has-nils?))
+  (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
 
 (defn- histogram-extractor
   [{:keys [histogram]}]
@@ -368,13 +368,9 @@
 
 (defmethod x-ray Text
   [{:keys [field] :as features}]
-  (update features :histogram (partial histogram->dataset field)))
-
-(defmethod comparison-vector Text
-  [features]
   (-> features
-      (dissoc :percentiles)
-      ((get-method comparison-vector :default))))
+      (update :histogram (partial histogram->dataset field))
+      ((get-method x-ray :default))))
 
 (defn- quarter
   [dt]
@@ -405,12 +401,6 @@
        :histogram-day     histogram-day
        :histogram-month   histogram-month
        :histogram-quarter histogram-quarter}))))
-
-(defmethod comparison-vector DateTime
-  [features]
-  (-> features
-      (dissoc :percentiles)
-      ((get-method comparison-vector :default))))
 
 (defn- round-to-month
   [dt]
@@ -496,15 +486,11 @@
     cardinality-extractor
     (field-metadata-extractor field))))
 
-(defmethod comparison-vector Category
-  [features]
-  (-> features
-      (dissoc :cardinality :percentiles)
-      ((get-method comparison-vector :default))))
-
 (defmethod x-ray Category
   [{:keys [field] :as features}]
-  (update features :histogram (partial histogram->dataset field)))
+  (-> features
+      (update :histogram (partial histogram->dataset field))
+      ((get-method x-ray :default))))
 
 (defmethod feature-extractor :default
   [_ field]
@@ -516,7 +502,8 @@
     (fn [{:keys [total-count nil-count]}]
       {:count     total-count
        :nil%      (/ nil-count (max total-count 1))
-       :has-nils? (pos? nil-count)}))))
+       :has-nils? (pos? nil-count)
+       :type [nil (field-type field)]}))))
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
