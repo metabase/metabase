@@ -19,13 +19,14 @@ const mapDispatchToProps = {
 }
 
 class SegmentComparison extends Component {
+
     componentWillMount () {
-        const { segmentId1, segmentId2 } = this.props.params
-        this.props.fetchSegmentComparison(segmentId1, segmentId2)
+        const { cost, segmentId1, segmentId2 } = this.props.params
+        this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
     }
 
     render () {
-        const { comparison } = this.props
+        const { params, comparison } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
@@ -34,6 +35,7 @@ class SegmentComparison extends Component {
                 { () =>
 
                     <XRayComparison
+                        cost={params.cost}
                         fields={
                             _.sortBy(Object.values(comparison.constituents[0].constituents).map(c =>
                                 c.field
