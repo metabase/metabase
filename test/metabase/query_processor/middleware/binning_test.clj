@@ -5,7 +5,7 @@
              [expand :as ql]]
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-vars metabase.query-processor.middleware.binning filter->field-map extract-bounds ceil-to floor-to nicer-bin-width nicer-bounds nicer-breakout)
+(tu/resolve-private-vars metabase.query-processor.middleware.binning filter->field-map extract-bounds ceil-to floor-to nicer-bin-width nicer-bounds)
 
 (expect
   {}

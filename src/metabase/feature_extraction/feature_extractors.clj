@@ -11,6 +11,7 @@
              [core :as stats]
              [math :as math]]
             [medley.core :as m]
+            [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
              [histogram :as h]
              [costs :as costs]
@@ -53,6 +54,11 @@
   [x2 x1]
   (when (every? some? [x2 x1])
     (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
+
+(defn- merge-juxt
+  [& fns]
+  (fn [x]
+    (apply merge ((apply juxt fns) x))))
 
 (def ^:private ^:const ^Double cardinality-error 0.01)
 
@@ -132,20 +138,40 @@
 
 (defmethod x-ray :default
   [features]
-  features)
+  (dissoc features :has-nils? :all-distinct?))
 
 (defmulti
   ^{:doc "Feature vector for comparison/difference purposes."
     :arglists '([features])}
   comparison-vector :type)
 
-(defn- comparison-vector-base
-  [features]
-  (dissoc features :type :field :has-nils?))
-
 (defmethod comparison-vector :default
   [features]
-  (comparison-vector-base features))
+  (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
+
+(defn- histogram-extractor
+  [{:keys [histogram]}]
+  (let [nil-count   (h/nil-count histogram)
+        total-count (h/total-count histogram)]
+    {:histogram   histogram
+     :percentiles (apply h.impl/percentiles histogram percentiles)
+     :nil%        (/ nil-count (max total-count 1))
+     :has-nils?   (pos? nil-count)
+     :count       total-count
+     :entropy     (h/entropy histogram)}))
+
+(defn- cardinality-extractor
+  [{:keys [cardinality histogram]}]
+  (let [uniqueness (/ cardinality (max (h/total-count histogram) 1))]
+    {:uniqueness    uniqueness
+     :cardinality   cardinality
+     :all-distinct? (>= uniqueness (- 1 cardinality-error))}))
+
+(defn- field-metadata-extractor
+  [field]
+  (fn [_]
+    {:field field
+     :type  (field-type field)}))
 
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
@@ -157,50 +183,40 @@
                 :sum            (redux/with-xform + (remove nil?))
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
                                                           (map math/sq)))})
-   (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-     (let [nil-count   (h/nil-count histogram)
-           total-count (h/total-count histogram)
-           uniqueness  (/ cardinality (max total-count 1))
-           var         (or (h.impl/variance histogram) 0)
-           sd          (math/sqrt var)
-           min         (h.impl/minimum histogram)
-           max         (h.impl/maximum histogram)
-           mean        (h.impl/mean histogram)
-           median      (h.impl/median histogram)
-           range       (some-> max (- min))]
-       (merge
-        {:histogram          histogram
-         :percentiles        (apply h.impl/percentiles histogram percentiles)
-         :positive-definite? (some-> min (>= 0))
-         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-         :uniqueness         uniqueness
-         :var>sd?            (> var sd)
-         :nil%               (/ nil-count (clojure.core/max total-count 1))
-         :has-nils?          (pos? nil-count)
-         :0<=x<=1?           (when min (<= 0 min max 1))
-         :-1<=x<=1?          (when min (<= -1 min max 1))
-         :cv                 (some->> mean (safe-divide sd))
-         :range-vs-sd        (some->> range (safe-divide sd))
-         :mean-median-spread (some->> range (safe-divide (- mean median)))
-         :min-vs-max         (some-> min (safe-divide max))
-         :range              range
-         :cardinality        cardinality
-         :min                min
-         :max                max
-         :mean               mean
-         :median             median
-         :var                var
-         :sd                 sd
-         :count              total-count
-         :kurtosis           kurtosis
-         :skewness           skewness
-         :all-distinct?      (>= uniqueness (- 1 cardinality-error))
-         :entropy            (h/entropy histogram)
-         :type               Num
-         :field              field}
-        (when (costs/full-scan? max-cost)
-          {:sum            sum
-           :sum-of-squares sum-of-squares}))))))
+   (merge-juxt
+    histogram-extractor
+    cardinality-extractor
+    (field-metadata-extractor field)
+    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
+      (let [var         (or (h.impl/variance histogram) 0)
+            sd          (math/sqrt var)
+            min         (h.impl/minimum histogram)
+            max         (h.impl/maximum histogram)
+            mean        (h.impl/mean histogram)
+            median      (h.impl/median histogram)
+            range       (some-> max (- min))]
+        (merge
+         {:positive-definite? (some-> min (>= 0))
+          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+          :var>sd?            (> var sd)
+          :0<=x<=1?           (when min (<= 0 min max 1))
+          :-1<=x<=1?          (when min (<= -1 min max 1))
+          :cv                 (some->> mean (safe-divide sd))
+          :range-vs-sd        (some->> range (safe-divide sd))
+          :mean-median-spread (some->> range (safe-divide (- mean median)))
+          :min-vs-max         (some->> max (safe-divide min))
+          :range              range
+          :min                min
+          :max                max
+          :mean               mean
+          :median             median
+          :var                var
+          :sd                 sd
+          :kurtosis           kurtosis
+          :skewness           skewness}
+         (when (costs/full-scan? max-cost)
+           {:sum            sum
+            :sum-of-squares sum-of-squares})))))))
 
 (defmethod comparison-vector Num
   [features]
@@ -221,8 +237,7 @@
    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                 :correlation       (stats/correlation first second)
                 :covariance        (stats/covariance first second)})
-   #(assoc % :type [Num Num]
-           :field field)))
+   (field-metadata-extractor field)))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."
@@ -269,15 +284,13 @@
                                  [:relative-datetime (- (+ n offset)) :day]]
                                 [:<= datetime-field
                                  [:relative-datetime (- offset) :day]]]]
-    (-> (qp/process-query
-         {:type :query
-          :database (db/select-one-field :db_id 'Table :id (:source_table query))
-          :query (-> query
-                     (dissoc :breakout)
-                     (assoc :filter (if filter
-                                      [:and filter time-range]
-                                      time-range)))})
-        :data
+    (-> (metadata/query-values
+         (db/select-one-field :db_id 'Table :id (:source_table query))
+         (-> query
+             (dissoc :breakout)
+             (assoc :filter (if filter
+                              [:and filter time-range]
+                              time-range))))
         :rows
         ffirst)))
 
@@ -305,33 +318,33 @@
                                                     :hour  (t/hours 1)))))})
       (fn [[x y]]
         [(-> x t.format/parse to-double) y]))
-     (fn [{:keys [series linear-regression]}]
-       (let [ys-r (->> series (map second) reverse not-empty)]
-         (merge {:resolution             resolution
-                 :type                   [DateTime Num]
-                 :field                  field
-                 :series                 series
-                 :linear-regression      linear-regression
-                 :growth-series          (->> series
-                                              (partition 2 1)
-                                              (map (fn [[[_ y1] [x y2]]]
-                                                     [x (growth y2 y1)])))
-                 :seasonal-decomposition
-                 (when (and resolution
-                            (costs/unbounded-computation? max-cost))
-                   (decompose-timeseries resolution series))}
-                (when (and (costs/alow-joins? max-cost)
-                           (:aggregation query))
-                  {:YoY (rolling-window-growth 365 query)
-                   :MoM (rolling-window-growth 30 query)
-                   :WoW (rolling-window-growth 7 query)
-                   :DoD (rolling-window-growth 1 query)})))))))
+     (merge-juxt
+      (field-metadata-extractor field)
+      (fn [{:keys [series linear-regression]}]
+        (let [ys-r (->> series (map second) reverse not-empty)]
+          (merge {:resolution             resolution
+                  :series                 series
+                  :linear-regression      linear-regression
+                  :growth-series          (->> series
+                                               (partition 2 1)
+                                               (map (fn [[[_ y1] [x y2]]]
+                                                      [x (growth y2 y1)])))
+                  :seasonal-decomposition
+                  (when (and resolution
+                             (costs/unbounded-computation? max-cost))
+                    (decompose-timeseries resolution series))}
+                 (when (and (costs/alow-joins? max-cost)
+                            (:aggregation query))
+                   {:YoY (rolling-window-growth 365 query)
+                    :MoM (rolling-window-growth 30 query)
+                    :WoW (rolling-window-growth 7 query)
+                    :DoD (rolling-window-growth 1 query)}))))))))
 
 (defmethod comparison-vector [DateTime Num]
   [features]
   (-> features
       (dissoc :resolution)
-      comparison-vector-base))
+      ((get-method comparison-vector :default))))
 
 (defmethod x-ray [DateTime Num]
   [features]
@@ -349,21 +362,15 @@
    (redux/fuse {:histogram (redux/pre-step
                             h/histogram
                             (stats/somef (comp count u/jdbc-clob->str)))})
-   (fn [{:keys [histogram]}]
-     (let [nil-count   (h/nil-count histogram)
-           total-count (h/total-count histogram)]
-       {:min        (h.impl/minimum histogram)
-        :max        (h.impl/maximum histogram)
-        :histogram  histogram
-        :count      total-count
-        :nil%       (/ nil-count (max total-count 1))
-        :has-nils?  (pos? nil-count)
-        :type       Text
-        :field      field}))))
+   (merge-juxt
+    (field-metadata-extractor field)
+    histogram-extractor)))
 
 (defmethod x-ray Text
   [{:keys [field] :as features}]
-  (update features :histogram (partial histogram->dataset field)))
+  (-> features
+      (update :histogram (partial histogram->dataset field))
+      ((get-method x-ray :default))))
 
 (defn- quarter
   [dt]
@@ -383,30 +390,17 @@
                  :histogram-quarter (redux/pre-step h/histogram-categorical
                                                     (stats/somef quarter))})
     t.format/parse)
-   (fn [{:keys [histogram histogram-hour histogram-day histogram-month
-                histogram-quarter]}]
-     (let [nil-count   (h/nil-count histogram)
-           total-count (h/total-count histogram)]
-       {:earliest          (h.impl/minimum histogram)
-        :latest            (h.impl/maximum histogram)
-        :histogram         histogram
-        :percentiles       (apply h.impl/percentiles histogram percentiles)
-        :histogram-hour    histogram-hour
-        :histogram-day     histogram-day
-        :histogram-month   histogram-month
-        :histogram-quarter histogram-quarter
-        :count             total-count
-        :nil%              (/ nil-count (max total-count 1))
-        :has-nils?         (pos? nil-count)
-        :entropy           (h/entropy histogram)
-        :type              DateTime
-        :field             field}))))
-
-(defmethod comparison-vector DateTime
-  [features]
-  (-> features
-      (dissoc :percentiles)
-      comparison-vector-base))
+   (merge-juxt
+    histogram-extractor
+    (field-metadata-extractor field)
+    (fn [{:keys [histogram histogram-hour histogram-day histogram-month
+                 histogram-quarter]}]
+      {:earliest          (h.impl/minimum histogram)
+       :latest            (h.impl/maximum histogram)
+       :histogram-hour    histogram-hour
+       :histogram-day     histogram-day
+       :histogram-month   histogram-month
+       :histogram-quarter histogram-quarter}))))
 
 (defn- round-to-month
   [dt]
@@ -487,41 +481,33 @@
   (redux/post-complete
    (redux/fuse {:histogram   h/histogram-categorical
                 :cardinality cardinality})
-   (fn [{:keys [histogram cardinality]}]
-     (let [nil-count   (h/nil-count histogram)
-           total-count (h/total-count histogram)
-           uniqueness  (/ cardinality (max total-count 1))]
-       {:histogram   histogram
-        :uniqueness  uniqueness
-        :nil%        (/ nil-count (max total-count 1))
-        :has-nils?   (pos? nil-count)
-        :cardinality cardinality
-        :count       total-count
-        :entropy     (h/entropy histogram)
-        :type        Category
-        :field       field}))))
-
-(defmethod comparison-vector Category
-  [features]
-  (-> features
-      (dissoc :cardinality)
-      comparison-vector-base))
+   (merge-juxt
+    histogram-extractor
+    cardinality-extractor
+    (field-metadata-extractor field))))
 
 (defmethod x-ray Category
   [{:keys [field] :as features}]
-  (update features :histogram (partial histogram->dataset field)))
+  (-> features
+      (update :histogram (partial histogram->dataset field))
+      ((get-method x-ray :default))))
 
 (defmethod feature-extractor :default
   [_ field]
   (redux/post-complete
    (redux/fuse {:total-count stats/count
                 :nil-count   (redux/with-xform stats/count (filter nil?))})
-   (fn [{:keys [total-count nil-count]}]
-     {:count     total-count
-      :nil%      (/ nil-count (max total-count 1))
-      :has-nils? (pos? nil-count)
-      :type      [nil (field-type field)]
-      :field     field})))
+   (merge-juxt
+    (field-metadata-extractor field)
+    (fn [{:keys [total-count nil-count]}]
+      {:count     total-count
+       :nil%      (/ nil-count (max total-count 1))
+       :has-nils? (pos? nil-count)
+       :type [nil (field-type field)]}))))
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
+(prefer-method x-ray Category Text)
+(prefer-method x-ray Num Category)
+(prefer-method comparison-vector Category Text)
+(prefer-method comparison-vector Num Category)

@@ -23,7 +23,8 @@
                            :magnitude-b (redux/pre-step magnitude second)
                            :product     (redux/pre-step + (partial apply *))})
               (fn [{:keys [magnitude-a magnitude-b product]}]
-                (- 1 (/ product magnitude-a magnitude-b))))
+                (some->> (fe/safe-divide product magnitude-a magnitude-b)
+                         (- 1 ))))
              (map vector a b)))
 
 (defmulti
@@ -73,11 +74,11 @@
   [pmf-a pmf-b]
   (let [categories-a (into #{} (map first) pmf-a)
         categories-b (into #{} (map first) pmf-b)]
-    [(->> (set/difference categories-a categories-b)
+    [(->> (set/difference categories-b categories-a)
           (map #(vector % 0))
           (concat pmf-a)
           (sort-by first))
-     (->> (set/difference categories-b categories-a)
+     (->> (set/difference categories-a categories-b)
           (map #(vector % 0))
           (concat pmf-b)
           (sort-by first))]))
@@ -95,7 +96,9 @@
   ([prefix m]
    (into {}
      (mapcat (fn [[k v]]
-               (let [k (keyword (some-> prefix str (subs 1)) (name k))]
+               (let [k (if prefix
+                         (keyword (str (name prefix) "_" (name k)))
+                         k)]
                  (if (map? v)
                    (flatten-map k v)
                    [[k v]]))))
