@@ -75,7 +75,6 @@ const initQbWithDbAndTable = (dbId, tableId) => {
         store.dispatch(setQueryDatabase(dbId));
         store.dispatch(setQuerySourceTable(tableId));
         await store.waitForActions([FETCH_TABLE_METADATA]);
-        store.resetDispatchedActions();
 
         return { store, qb }
     }
@@ -307,7 +306,6 @@ describe("QueryBuilder", () => {
                 clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
-                store.resetDispatchedActions();
 
                 expect(qb.find(FilterPopover).length).toBe(0);
                 const filterWidget = qb.find(FilterWidget);
@@ -385,7 +383,6 @@ describe("QueryBuilder", () => {
                 clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
-                store.resetDispatchedActions();
 
                 expect(qb.find(FilterPopover).length).toBe(0);
                 const filterWidget = qb.find(FilterWidget);
@@ -492,7 +489,6 @@ describe("QueryBuilder", () => {
                 expect(breakoutWidget.text()).toBe("Total: 100 bins");
             });
             it("produces correct results for 100 bins", async () => {
-                store.resetDispatchedActions();
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
@@ -515,7 +511,6 @@ describe("QueryBuilder", () => {
                 click(qb.find(DimensionPicker).find('a[children="Don\'t bin"]'));
             });
             it("produces the expected count of rows when no binning", async () => {
-                store.resetDispatchedActions();
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
@@ -585,7 +580,6 @@ describe("QueryBuilder", () => {
             });
             it("produces correct results for 'Bin every 1 degree'", async () => {
                 // Run the raw data query
-                store.resetDispatchedActions();
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
@@ -631,7 +625,6 @@ describe("QueryBuilder", () => {
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
                 await delay(150);
 
-                store.resetDispatchedActions();
                 click(qb.find(ChartClickActions).find('div[children="Zoom in"]'));
 
                 store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
@@ -673,7 +666,6 @@ describe("QueryBuilder", () => {
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
                 await delay(150);
 
-                store.resetDispatchedActions();
                 click(qb.find(ChartClickActions).find('div[children="Zoom in"]'));
 
                 store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
@@ -719,7 +711,6 @@ describe("QueryBuilder", () => {
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
                 await delay(150);
 
-                store.resetDispatchedActions();
                 click(qb.find(ChartClickActions).find('div[children="Zoom in"]'));
 
                 store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
@@ -797,7 +788,6 @@ describe("QueryBuilder", () => {
                 clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
-                store.resetDispatchedActions();
 
                 // validate the filter text value
                 expect(qb.find(FilterPopover).length).toBe(0);

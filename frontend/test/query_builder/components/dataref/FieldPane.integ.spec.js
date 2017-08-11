@@ -67,7 +67,6 @@ describe("FieldPane", () => {
 
         click(getUseForButton());
         await store.waitForActions([QUERY_COMPLETED]);
-        store.resetDispatchedActions()
 
         // after the breakout has been applied, the button shouldn't be visible anymore
         expect(getUseForButton().length).toBe(0);
@@ -84,7 +83,6 @@ describe("FieldPane", () => {
         }
 
         await store.waitForActions([QUERY_COMPLETED]);
-        store.resetDispatchedActions()
 
         expect(queryBuilder.find(Table).length).toBe(1)
     });

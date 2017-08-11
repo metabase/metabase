@@ -126,7 +126,6 @@ describe("parameters", () => {
 
             click(app.find(".Icon-sql"));
             await store.waitForActions([SET_QUERY_MODE]);
-            store.resetDispatchedActions();
 
             await updateQueryText(store, "select count(*) from products where {{category}}");
 
@@ -137,7 +136,6 @@ describe("parameters", () => {
             click(fieldFilterVarType);
 
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
-            store.resetDispatchedActions();
 
             await delay(100);
 
@@ -154,7 +152,6 @@ describe("parameters", () => {
             // test without the parameter
             click(app.find(RunButton));
             await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
-            await store.resetDispatchedActions();
             expect(app.find(Scalar).text()).toBe(COUNT_ALL);
 
             // test the parameter
@@ -215,7 +212,6 @@ describe("parameters", () => {
                 const app = mount(store.getAppContainer())
 
                 await store.waitForActions([ADD_PARAM_VALUES]);
-                store.resetDispatchedActions();
 
                 // Loading the query results is done in PublicQuestion itself so we have to add a delay here
                 await delay(200);

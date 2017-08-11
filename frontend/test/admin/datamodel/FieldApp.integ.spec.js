@@ -61,7 +61,6 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
     store.pushPath(`/admin/datamodel/database/1/table/${tableId}/${fieldId}`);
     const fieldApp = mount(store.connectContainer(<FieldApp />));
     await store.waitForActions([FETCH_IDFIELDS]);
-    store.resetDispatchedActions();
     return { store, fieldApp }
 }
 
@@ -87,7 +86,6 @@ describe("FieldApp", () => {
 
             setInputValue(nameInput, newTitle);
             await store.waitForActions([UPDATE_FIELD])
-            store.resetDispatchedActions();
 
             setInputValue(descriptionInput, newDescription);
             await store.waitForActions([UPDATE_FIELD])
@@ -200,7 +198,6 @@ describe("FieldApp", () => {
             const foreignKeyButton = typeSelect.find(TestPopover).find("li").at(2).children().first();
             click(foreignKeyButton);
             await store.waitForActions([UPDATE_FIELD])
-            store.resetDispatchedActions();
 
             expect(picker.text()).toMatch(/Foreign KeySelect a target/);
             const fkFieldSelect = picker.find(Select).at(1)
@@ -254,7 +251,6 @@ describe("FieldApp", () => {
             const useFKButton = pickerOptions.at(1).children().first()
             click(useFKButton);
             store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
-            store.resetDispatchedActions();
             // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
             await delay(500);
 

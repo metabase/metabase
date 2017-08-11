@@ -50,7 +50,6 @@ describe("MetricPane", () => {
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
         await delay(3000)
 
-        store.resetDispatchedActions() // make sure that we wait for the newest actions
         click(dataReference.find(`a[children="${vendor_count_metric.name}"]`).first())
 
         await store.waitForActions([FETCH_TABLE_METADATA]);

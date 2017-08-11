@@ -191,21 +191,22 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         const testStoreExtensions = {
             _originalDispatch: store.dispatch,
             _onActionDispatched: null,
-            _dispatchedActions: [],
+            _allDispatchedActions: [],
+            _latestDispatchedActions: [],
             _finalStoreInstance: null,
 
             dispatch: (action) => {
                 const result = store._originalDispatch(action);
-                store._dispatchedActions = store._dispatchedActions.concat([{
+
+                const actionWithTimestamp = [{
                     ...action,
                     timestamp: Date.now()
-                }]);
+                }]
+                store._allDispatchedActions = store._allDispatchedActions.concat(actionWithTimestamp);
+                store._latestDispatchedActions = store._latestDispatchedActions.concat(actionWithTimestamp);
+
                 if (store._onActionDispatched) store._onActionDispatched();
                 return result;
-            },
-
-            resetDispatchedActions: () => {
-                store._dispatchedActions = [];
             },
 
             /**
@@ -221,8 +222,14 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
                 actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
 
+                // Returns all actions that are triggered after the last action which belongs to `actionTypes
+                const getRemainingActions = () => {
+                    const lastActionIndex = _.findLastIndex(store._latestDispatchedActions, (action) => actionTypes.includes(action.type))
+                    return store._latestDispatchedActions.slice(lastActionIndex + 1)
+                }
+
                 const allActionsAreTriggered = () => _.every(actionTypes, actionType =>
-                    store._dispatchedActions.filter((action) => action.type === actionType).length > 0
+                    store._latestDispatchedActions.filter((action) => action.type === actionType).length > 0
                 );
 
                 if (allActionsAreTriggered()) {
@@ -232,6 +239,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                     return new Promise((resolve, reject) => {
                         store._onActionDispatched = () => {
                             if (allActionsAreTriggered()) {
+                                store._latestDispatchedActions = getRemainingActions();
                                 store._onActionDispatched = null;
                                 resolve()
                             }
@@ -241,14 +249,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
                             if (allActionsAreTriggered()) {
                                 // TODO: Figure out why we sometimes end up here instead of _onActionDispatched hook
+                                store._latestDispatchedActions = getRemainingActions();
                                 resolve()
                             } else {
                                 return reject(
                                     new Error(
                                         `These actions were not dispatched within ${timeout}ms:\n` +
                                         chalk.cyan(actionTypes.join("\n")) +
-                                        "\n\nDispatched actions since initialization / last call of `store.resetDispatchedActions()`:\n" +
-                                        (store._dispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions")
+                                        "\n\nDispatched actions since the last call of `waitForActions`:\n" +
+                                        (store._latestDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions") +
+                                        "\n\nDispatched actions since the initialization of test suite:\n" +
+                                        (store._allDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions")
                                     )
                                 )
                             }
@@ -260,8 +271,10 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
             logDispatchedActions: () => {
                 console.log(
-                    chalk.bold("\n\nDispatched actions since initialization / last call of `store.resetDispatchedActions()`:\n") +
-                    store._dispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions"
+                    chalk.bold("Dispatched actions since last call of `waitForActions`:\n") +
+                    (store._latestDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions") +
+                    chalk.bold("\n\nDispatched actions since initialization of test suite:\n") +
+                    store._allDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions"
                 )
             },
 

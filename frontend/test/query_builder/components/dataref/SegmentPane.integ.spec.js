@@ -64,7 +64,6 @@ describe("SegmentPane", () => {
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
         await delay(3000)
 
-        store.resetDispatchedActions() // make sure that we wait for the newest actions
         click(dataReference.find(`a[children="${orders_past_30_days_segment.name}"]`).first())
 
         await store.waitForActions([FETCH_TABLE_METADATA]);
@@ -84,7 +83,6 @@ describe("SegmentPane", () => {
         click(filterByButton.children().first());
 
         await store.waitForActions([QUERY_COMPLETED]);
-        store.resetDispatchedActions()
 
         expect(queryBuilder.find(DataReference).find(UseForButton).length).toBe(0);
     });
@@ -100,7 +98,6 @@ describe("SegmentPane", () => {
         }
 
         await store.waitForActions([QUERY_COMPLETED]);
-        store.resetDispatchedActions()
 
         // The value changes daily which wasn't originally taken into account
         // expect(queryBuilder.find(Scalar).text()).toBe("1,236")
@@ -118,7 +115,6 @@ describe("SegmentPane", () => {
         }
 
         await store.waitForActions([QUERY_COMPLETED]);
-        store.resetDispatchedActions()
 
         expect(queryBuilder.find(Table).length).toBe(1)
     });

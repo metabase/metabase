@@ -51,17 +51,14 @@ describe("admin/datamodel", () => {
             const adminListItems = app.find(".AdminList-item");
             click(adminListItems.at(0));
             await store.waitForActions([SELECT_TABLE]);
-            store.resetDispatchedActions()
 
             // Toggle its visibility to "Hidden"
             click(app.find("#VisibilityTypes > span").at(1))
             await store.waitForActions([UPDATE_TABLE]);
-            store.resetDispatchedActions()
 
             // Toggle "Why hide" to "Irrelevant/Cruft"
             click(app.find("#VisibilitySubTypes > span").at(2))
             await store.waitForActions([UPDATE_TABLE]);
-            store.resetDispatchedActions()
 
             // Unhide
             click(app.find("#VisibilityTypes > span").at(0))
@@ -69,7 +66,6 @@ describe("admin/datamodel", () => {
             // Open "People" table section
             click(adminListItems.at(1));
             await store.waitForActions([SELECT_TABLE]);
-            store.resetDispatchedActions()
 
             // hide fields from people table
             // Set Address field to "Only in Detail Views"
@@ -80,7 +76,6 @@ describe("admin/datamodel", () => {
             expect(onlyInDetailViewsRow.text()).toMatch(/Only in Detail Views/);
             click(onlyInDetailViewsRow);
             await store.waitForActions([UPDATE_FIELD]);
-            store.resetDispatchedActions();
 
             // Set Birth Date field to "Do Not Include"
             click(columnsListItems.at(1).find(".TableEditor-field-visibility"));
@@ -90,7 +85,6 @@ describe("admin/datamodel", () => {
             click(doNotIncludeRow);
 
             await store.waitForActions([UPDATE_FIELD]);
-            store.resetDispatchedActions();
 
             // modify special type for address field
             click(columnsListItems.first().find(".TableEditor-field-special-type"))
@@ -110,13 +104,11 @@ describe("admin/datamodel", () => {
             const app = mount(store.getAppContainer())
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
-            store.resetDispatchedActions();
 
             // Click the new segment button and check that we get properly redirected
             click(app.find(SegmentsList).find(Link));
             expect(store.getPath()).toBe('/admin/datamodel/segment/create?table=2')
             await store.waitForActions([FETCH_TABLE_METADATA, UPDATE_PREVIEW_SUMMARY]);
-            store.resetDispatchedActions();
 
             // Add "Email Is Not gmail" filter
             click(app.find(".GuiBuilder-filtered-by a").first())
@@ -142,7 +134,6 @@ describe("admin/datamodel", () => {
             click(app.find('button[children="Save changes"]'))
 
             await store.waitForActions([CREATE_SEGMENT, INITIALIZE_METADATA]);
-            store.resetDispatchedActions();
             expect(store.getPath()).toBe("/admin/datamodel/database/1/table/2")
 
             // Validate that the segment got actually added
@@ -157,7 +148,6 @@ describe("admin/datamodel", () => {
             const app = mount(store.getAppContainer())
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
-            store.resetDispatchedActions();
 
             // Click the new metric button and check that we get properly redirected
             click(app.find(MetricsList).find(Link));
