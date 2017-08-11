@@ -68,7 +68,7 @@ class SegmentComparison extends Component {
                             constituents: comparison.constituents[1].constituents,
                             itemType: 'segment',
                             color: normal.orange,
-                            id: comparison.constituents[0].features.segment.id,
+                            id: comparison.constituents[1].features.segment.id,
                         }}
                     />
                 }
