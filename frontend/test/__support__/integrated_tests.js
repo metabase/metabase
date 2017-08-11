@@ -20,7 +20,7 @@ import { Provider } from 'react-redux';
 
 import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
-import { createRoutes, Link, Router, useRouterHistory } from "react-router";
+import { createRoutes, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
 import chalk from "chalk";
 
@@ -34,7 +34,6 @@ import { getRoutes as getPublicRoutes } from "metabase/routes-public";
 import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
 
 import moment from "moment";
-import Button from "metabase/components/Button";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false
@@ -324,40 +323,6 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
         return Object.assign(store, testStoreExtensions);
     }
-}
-
-export const click = (enzymeWrapper) => {
-    const nodeType = enzymeWrapper.type();
-    if (nodeType === Button || nodeType === "button") {
-        console.warn(
-            'You are calling `click` for a button; you would probably want to use `clickButton` instead as ' +
-            'it takes all button click scenarios into account.'
-        )
-    }
-    // Normal click event. Works for both `onClick` React event handlers and react-router <Link> objects.
-    // We simulate a left button click with `{ button: 0 }` because react-router requires that.
-    enzymeWrapper.simulate('click', { button: 0 });
-}
-
-// DEPRECATED
-export const clickRouterLink = click
-
-export const clickButton = (enzymeWrapper) => {
-    const closestButton = enzymeWrapper.closest("button");
-
-    if (closestButton.length === 1) {
-        closestButton.simulate("submit"); // for forms with onSubmit
-        closestButton.simulate("click"); // for lone buttons / forms without onSubmit
-    } else {
-        // Assume that the current component wraps a button element
-        enzymeWrapper.simulate("submit");
-        enzymeWrapper.simulate("click");
-    }
-}
-
-export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
-    inputWrapper.simulate('change', { target: { value: value } });
-    if (blur) inputWrapper.simulate("blur")
 }
 
 // Commonly used question helpers that are temporarily here

@@ -55,9 +55,7 @@ describe("SummarizeBySegmentMetricAction", () => {
                 });
 
                 const component = mount(popover);
-                component
-                    .find('.List-item-title[children="Count of rows"]')
-                    .simulate("click");
+                click(component.find('.List-item-title[children="Count of rows"]'));
             });
         });
 
@@ -74,8 +72,7 @@ describe("SummarizeBySegmentMetricAction", () => {
                 });
 
                 const component = mount(popover);
-                component
-                    .find('.List-item-title[children="Sum of ..."]')
+                component.find('.List-item-title[children="Sum of ..."]')
                     .simulate("click");
 
                 component

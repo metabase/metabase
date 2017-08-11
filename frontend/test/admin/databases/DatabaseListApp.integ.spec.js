@@ -1,10 +1,12 @@
 import {
     login,
-    createTestStore,
+    createTestStore
+} from "__support__/integrated_tests";
+import {
     click,
     clickButton,
     setInputValue
-} from "__support__/integrated_tests";
+} from "__support__/enzyme_utils";
 
 import { mount } from "enzyme";
 import {
@@ -164,7 +166,7 @@ describe('dashboard list', () => {
 
             const deleteModal = wrapper.find('.test-modal')
             setInputValue(deleteModal.find('.Form-input'), "DELETE")
-            click(deleteModal.find('.Button.Button--danger'));
+            clickButton(deleteModal.find('.Button.Button--danger'));
 
             // test that the modal is gone
             expect(wrapper.find('.test-modal').length).toEqual(0)
@@ -207,7 +209,7 @@ describe('dashboard list', () => {
             const deleteModal = wrapper.find('.test-modal')
 
             setInputValue(deleteModal.find('.Form-input'), "DELETE");
-            click(deleteModal.find('.Button.Button--danger'))
+            clickButton(deleteModal.find('.Button.Button--danger'))
 
             // test that the modal is gone
             expect(wrapper.find('.test-modal').length).toEqual(0)

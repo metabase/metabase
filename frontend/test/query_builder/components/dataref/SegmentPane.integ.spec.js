@@ -2,6 +2,7 @@ import {
     login,
     createTestStore
 } from "__support__/integrated_tests";
+import { click } from "__support__/enzyme_utils";
 
 import React from 'react';
 import { mount } from "enzyme";
@@ -51,20 +52,20 @@ describe("SegmentPane", () => {
 
     it("opens properly from QB", async () => {
         // open data reference sidebar by clicking button
-        queryBuilder.find(".Icon-reference").simulate("click");
+        click(queryBuilder.find(".Icon-reference"));
         await store.waitForActions([TOGGLE_DATA_REFERENCE]);
 
         const dataReference = queryBuilder.find(DataReference);
         expect(dataReference.length).toBe(1);
 
-        dataReference.find('a[children="Orders"]').simulate("click");
+        click(dataReference.find('a[children="Orders"]'));
 
         // TODO: Refactor TablePane so that it uses redux/metadata actions instead of doing inlined API calls
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
         await delay(3000)
 
         store.resetDispatchedActions() // make sure that we wait for the newest actions
-        dataReference.find(`a[children="${orders_past_30_days_segment.name}"]`).first().simulate("click")
+        click(dataReference.find(`a[children="${orders_past_30_days_segment.name}"]`).first())
 
         await store.waitForActions([FETCH_TABLE_METADATA]);
     });
@@ -80,7 +81,7 @@ describe("SegmentPane", () => {
         await store.waitForActions(LOAD_TABLE_METADATA);
 
         const filterByButton = queryBuilder.find(DataReference).find(UseForButton).first();
-        filterByButton.children().first().simulate("click");
+        click(filterByButton.children().first());
 
         await store.waitForActions([QUERY_COMPLETED]);
         store.resetDispatchedActions()
@@ -92,7 +93,7 @@ describe("SegmentPane", () => {
         const numberQueryButton = queryBuilder.find(DataReference).find(QueryButton).at(0);
 
         try {
-            numberQueryButton.children().first().simulate("click");
+            click(numberQueryButton.children().first());
         } catch(e) {
             // QueryButton uses react-router Link which always throws an error if it's called without a parent Router object
             // Now we are just using the onClick handler of Link so we don't have to care about that
@@ -110,7 +111,7 @@ describe("SegmentPane", () => {
         const allQueryButton = queryBuilder.find(DataReference).find(QueryButton).at(1);
 
         try {
-            allQueryButton.children().first().simulate("click");
+            click(allQueryButton.children().first());
         } catch(e) {
             // QueryButton uses react-router Link which always throws an error if it's called without a parent Router object
             // Now we are just using the onClick handler of Link so we don't have to care about that

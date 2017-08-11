@@ -1,7 +1,13 @@
 import {
     login,
-    createTestStore, clickButton,
+    createTestStore,
 } from "__support__/integrated_tests";
+
+import {
+    clickButton,
+    setInputValue,
+    click
+} from "__support__/enzyme_utils";
 
 import {
     DELETE_FIELD_DIMENSION,
@@ -80,11 +86,11 @@ describe("FieldApp", () => {
             const descriptionInput = header.find(Input).at(1);
             expect(descriptionInput.props().value).toBe(staticFixtureMetadata.fields['1'].description);
 
-            nameInput.simulate('change', {target: {value: newTitle}});
+            setInputValue(nameInput, newTitle);
             await store.waitForActions([UPDATE_FIELD])
             store.resetDispatchedActions();
 
-            descriptionInput.simulate('change', {target: {value: newDescription}});
+            setInputValue(descriptionInput, newDescription);
             await store.waitForActions([UPDATE_FIELD])
         })
 
@@ -125,7 +131,7 @@ describe("FieldApp", () => {
 
             const visibilitySelect = fieldApp.find(FieldVisibilityPicker);
             visibilitySelect.simulate('click');
-            visibilitySelect.find(TestPopover).find("li").at(1).children().first().simulate("click");
+            click(visibilitySelect.find(TestPopover).find("li").at(1).children().first());
 
             await store.waitForActions([UPDATE_FIELD])
         })
@@ -163,7 +169,7 @@ describe("FieldApp", () => {
             typeSelect.simulate('click');
 
             const noSpecialTypeButton = typeSelect.find(TestPopover).find("li").last().children().first()
-            noSpecialTypeButton.simulate("click");
+            click(noSpecialTypeButton);
 
             await store.waitForActions([UPDATE_FIELD])
             expect(picker.text()).toMatch(/Select a special type/);
@@ -180,7 +186,7 @@ describe("FieldApp", () => {
                 .filterWhere(li => li.text() === "Number").first()
                 .children().first();
 
-            noSpecialTypeButton.simulate("click");
+            click(noSpecialTypeButton);
 
             await store.waitForActions([UPDATE_FIELD])
             expect(picker.text()).toMatch(/Number/);
@@ -193,7 +199,7 @@ describe("FieldApp", () => {
             typeSelect.simulate('click');
 
             const foreignKeyButton = typeSelect.find(TestPopover).find("li").at(2).children().first();
-            foreignKeyButton.simulate("click");
+            click(foreignKeyButton);
             await store.waitForActions([UPDATE_FIELD])
             store.resetDispatchedActions();
 
@@ -338,12 +344,12 @@ describe("FieldApp", () => {
             const firstMapping = fieldValueMappings.at(0);
             expect(firstMapping.find("h3").text()).toBe("1");
             expect(firstMapping.find(Input).props().value).toBe("1");
-            firstMapping.find(Input).simulate('change', {target: {value: "Terrible"}});
+            setInputValue(firstMapping.find(Input), "Terrible")
 
             const lastMapping = fieldValueMappings.last();
             expect(lastMapping.find("h3").text()).toBe("5");
             expect(lastMapping.find(Input).props().value).toBe("5");
-            lastMapping.find(Input).simulate('change', {target: {value: "Extraordinarily awesome"}});
+            setInputValue(lastMapping.find(Input), "Extraordinarily awesome")
 
             const saveButton = valueRemappingsSection.find(ButtonWithStatus)
             clickButton(saveButton)
