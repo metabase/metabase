@@ -30,34 +30,6 @@ describe('xray', () => {
             })
         })
 
-        describe('fetch segment comparison', () => {
-            it('should properly fetch and load a comparison', async () => {
-                const store = mockStore({})
-
-                const mockComparison = ({ features: {}})
-
-                nock.disableNetConnect()
-                nock.enableNetConnect('127.0.0.1')
-
-                nock('https://localhost:3000/')
-                    .get(/api$/)
-                    .reply(200, {})
-
-                const dispatched = await store.dispatch(
-                    fetchSegmentComparison(1, 2)
-                )
-
-                const expectedActions = [
-                    loadComparison(mockComparison)
-                ]
-
-                const actions = store.getActions()
-                console.log(actions)
-
-                expect(actions).toEqual(expectedActions)
-
-            })
-        })
     })
 
     describe('xray selectors', () => {

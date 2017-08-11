@@ -1,5 +1,7 @@
 import { assoc } from 'icepick'
 
+import COSTS from 'metabase/xray/costs'
+
 import {
     createAction,
     createThunkAction,
@@ -88,10 +90,11 @@ export const fetchTableComparison = createThunkAction(
 const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
 export const fetchSegmentComparison = createThunkAction(
     FETCH_SEGMENT_COMPARISON,
-    (segmentId1, segmentId2) =>
+    (segmentId1, segmentId2, cost) =>
         async (dispatch) => {
+            const c = COSTS[cost]
             try {
-                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2 })
+                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2, ...c.method })
                 return dispatch(loadComparison(comparison))
             } catch (error) {
                 console.error(error)
@@ -102,10 +105,11 @@ export const fetchSegmentComparison = createThunkAction(
 const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
 export const fetchSegmentTableComparison = createThunkAction(
     FETCH_SEGMENT_TABLE_COMPARISON,
-    (segmentId, tableId) =>
+    (segmentId, tableId, cost) =>
         async (dispatch) => {
+            const c = COSTS[cost]
             try {
-                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId })
+                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId, ...c.method })
                 return dispatch(loadComparison(comparison))
             } catch (error) {
                 console.error(error)
