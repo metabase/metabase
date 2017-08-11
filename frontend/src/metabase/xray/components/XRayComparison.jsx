@@ -7,6 +7,7 @@ import Icon from 'metabase/components/Icon'
 import Tooltip from 'metabase/components/Tooltip'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 
+import CostSelect from 'metabase/xray/components/CostSelect'
 import Histogram from 'metabase/xray/Histogram'
 
 import { getIconForField } from 'metabase/lib/schema_metadata'
@@ -73,15 +74,23 @@ const XRayComparison = ({
     comparisonFields,
     itemA,
     itemB,
-    fields
+    fields,
+    cost
 }) => {
     return (
         <XRayPageWrapper>
             <div>
-                <h1 className="my4 flex align-center">
-                    <Icon name="compare" className="mr1" size={32} />
-                    Comparing
-                </h1>
+                <div className="my4 flex align-center">
+                    <h1 className="flex align-center">
+                        <Icon name="compare" className="mr1" size={32} />
+                        Comparing
+                    </h1>
+                    <div className="ml-auto">
+                        <CostSelect
+                            currentCost={cost}
+                        />
+                    </div>
+                </div>
                 <div className="flex">
                     <Link
                         to={`/xray/${itemA.itemType}/${itemA.id}/approximate`}
@@ -116,14 +125,15 @@ const XRayComparison = ({
 
             <Heading heading="Overview" />
             <div className="bordered rounded bg-white shadowed p4">
-                <h3>Count</h3>
-                <div className="flex">
+                <h3 className="text-grey-3">Count</h3>
+                <div className="flex my1">
                     <h1
                         className="mr1"
                         style={{ color: itemA.color}}
                     >
                         {itemA.constituents[fields[0].name].count.value}
                     </h1>
+                    <span className="h1 text-grey-1 mr1">/</span>
                     <h1 style={{ color: itemB.color}}>
                         {itemB.constituents[fields[1].name].count.value}
                     </h1>

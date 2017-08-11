@@ -250,8 +250,8 @@ export const getRoutes = (store) =>
                     <Route path="card/:cardId" component={CardXRay} />
                     <Route path="compare/fields/:fieldId1/:fieldId2" component={FieldComparison} />
                     <Route path="compare/tables/:tableId1/:tableId2" component={TableComparison} />
-                    <Route path="compare/segments/:segmentId1/:segmentId2" component={SegmentComparison} />
-                    <Route path="compare/segment/:segmentId/table/:tableId" component={SegmentTableComparison} />
+                    <Route path="compare/segments/:segmentId1/:segmentId2/:cost" component={SegmentComparison} />
+                    <Route path="compare/segment/:segmentId/table/:tableId/:cost" component={SegmentTableComparison} />
                     <Route path="compare/cards/:cardId1/:cardId2" component={CardComparison} />
                 </Route>
 
