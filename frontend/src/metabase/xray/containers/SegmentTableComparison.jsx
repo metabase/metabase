@@ -5,6 +5,8 @@ import _ from 'underscore'
 import { fetchSegmentTableComparison } from 'metabase/xray/xray'
 import { getComparison } from 'metabase/xray/selectors'
 
+import { normal } from 'metabase/lib/colors'
+
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 
@@ -38,25 +40,25 @@ class SegmentTableComparison extends Component {
                             ), 'distance')
                         }
                         comparisonFields={[
-                            'distance',
-                            'threshold',
-                            'entropy',
-                            'count',
-                            'histogram',
-                            'uniqueness',
-                            'nil%',
+                            'Distance',
+                            'Entropy',
+                            'Histogram',
+                            'Uniqueness',
+                            'Nil%',
                         ]}
                         comparison={comparison.comparison}
                         itemA={{
                             name: comparison.constituents[0].features.segment.name,
                             constituents: comparison.constituents[0].constituents,
                             itemType: 'segment',
+                            color: normal.green,
                             id: comparison.constituents[0].features.segment.id,
                         }}
                         itemB={{
                             name: comparison.constituents[1].features.table.display_name,
                             constituents: comparison.constituents[1].constituents,
                             itemType: 'table',
+                            color: normal.orange,
                             id: comparison.constituents[0].features.table.id,
                         }}
                     />
