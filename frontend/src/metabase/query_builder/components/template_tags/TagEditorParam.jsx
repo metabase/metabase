@@ -126,7 +126,7 @@ export default class TagEditorParam extends Component {
 
                 { tag.type === "dimension" &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Field</h5>
+                        <h5 className="pb1 text-normal">Field to map to</h5>
                         <Select
                             className="border-med bg-white block"
                             value={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
@@ -151,7 +151,7 @@ export default class TagEditorParam extends Component {
 
                 { widgetOptions && widgetOptions.length > 0 &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Widget</h5>
+                        <h5 className="pb1 text-normal">Filter widget type</h5>
                         <Select
                             className="border-med bg-white block"
                             value={tag.widget_type}
@@ -177,7 +177,7 @@ export default class TagEditorParam extends Component {
 
                 { ((tag.type !== "dimension" && tag.required) || (tag.type === "dimension" || tag.widget_type)) &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Default value</h5>
+                        <h5 className="pb1 text-normal">Default filter widget value</h5>
                         <ParameterValueWidget
                             parameter={{
                                 type: tag.widget_type || (tag.type === "date" ? "date/single" : null)
