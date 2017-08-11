@@ -5,16 +5,20 @@ import _ from 'underscore'
 import title from 'metabase/hoc/Title'
 
 import { fetchSegmentComparison } from 'metabase/xray/xray'
-import { getComparison } from 'metabase/xray/selectors'
+import { getComparison, getComparisonFields } from 'metabase/xray/selectors'
 
 import { normal } from 'metabase/lib/colors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 
-const mapStateToProps = state => ({
-    comparison: getComparison(state)
-})
+const mapStateToProps = (state) => {
+    console.log(getComparisonFields(state))
+    return {
+        comparison: getComparison(state),
+        fields: getComparisonFields(state)
+    }
+}
 
 const mapDispatchToProps = {
     fetchSegmentComparison
@@ -34,7 +38,7 @@ class SegmentComparison extends Component {
     }
 
     render () {
-        const { params, comparison } = this.props
+        const { params, comparison, fields } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
@@ -44,11 +48,7 @@ class SegmentComparison extends Component {
 
                     <XRayComparison
                         cost={params.cost}
-                        fields={
-                            _.sortBy(Object.values(comparison.constituents[0].constituents).map(c =>
-                                c.field
-                            ), 'distance')
-                        }
+                        fields={_.sortBy(fields, 'distance').reverse()}
                         comparisonFields={[
                             'Difference',
                             'Entropy',

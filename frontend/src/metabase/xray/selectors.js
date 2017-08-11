@@ -1,4 +1,3 @@
-
 export const getFieldXray = (state) =>
     state.xray.fieldXray && state.xray.fieldXray.features
 
@@ -23,3 +22,13 @@ export const getSegmentConstituents = (state) =>
     )
 
 export const getComparison = (state) => state.xray.comparison
+
+export const getComparisonFields = (state) => state.xray.comparison && (
+    Object.keys(state.xray.comparison.constituents[0].constituents)
+                     .map(key => {
+                         return {
+                             ...state.xray.comparison.constituents[0].constituents[key].field,
+                             distance: state.xray.comparison.comparison[key].distance
+                         }
+                     })
+)
