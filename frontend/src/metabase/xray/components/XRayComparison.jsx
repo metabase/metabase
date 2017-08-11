@@ -225,16 +225,6 @@ const XRayComparison = ({
                                         />
                                         )}
                                     </td>
-                                    <td className="border-bottom border-right">
-                                        { itemA.constituents[field.name]['uniqueness'] && (
-                                            <CompareInts
-                                                itemA={itemA.constituents[field.name]['uniqueness']['value']}
-                                                itemAColor={itemA.color}
-                                                itemB={itemB.constituents[field.name]['uniqueness']['value']}
-                                                itemBColor={itemB.color}
-                                            />
-                                        )}
-                                    </td>
                                     <td className="border-bottom">
                                         { itemA.constituents[field.name]['nil%'] && (
                                             <CompareInts

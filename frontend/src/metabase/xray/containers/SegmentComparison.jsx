@@ -53,7 +53,6 @@ class SegmentComparison extends Component {
                             'Difference',
                             'Entropy',
                             'Histogram',
-                            'Uniqueness',
                             'Nil%',
                         ]}
                         comparison={comparison.comparison}
