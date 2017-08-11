@@ -172,14 +172,14 @@ const XRayComparison = ({
                     </h4>
                 </div>
 
-                <table className="full">
+                <table className="ComparisonTable full">
                     <thead className="full border-bottom">
                         <tr>
-                            <th className="px2 border-bottom">Field</th>
+                            <th className="px2">Field</th>
                             {comparisonFields.map(c =>
                                 <th
                                     key={c}
-                                    className="px2 py2 border-bottom"
+                                    className="px2 py2"
                                 >
                                     {c}
                                 </th>
@@ -190,7 +190,7 @@ const XRayComparison = ({
                         { fields.map(field => {
                             return (
                                 <tr key={field.id}>
-                                    <td className="border-bottom border-right">
+                                    <td className="border-right">
                                         <Link
                                             to={`/xray/field/${field.id}/approximate`}
                                             className="px2 no-decoration flex align-center text-brand-hover"
@@ -199,10 +199,10 @@ const XRayComparison = ({
                                             <h3>{field.display_name}</h3>
                                         </Link>
                                     </td>
-                                    <td className="border-bottom border-right px2">
+                                    <td className="border-right px2">
                                         <h3>{distanceToPhrase(comparison[field.name].distance)}</h3>
                                     </td>
-                                    <td className="border-bottom border-right">
+                                    <td className="border-right">
                                         { itemA.constituents[field.name]['entropy'] && (
                                             <CompareInts
                                                 itemA={itemA.constituents[field.name]['entropy']['value']}
@@ -213,7 +213,7 @@ const XRayComparison = ({
                                         )}
                                     </td>
                                     <td
-                                        className="border-bottom px2 border-right"
+                                        className="px2 border-right"
                                         style={{minWidth: 400}}
                                     >
                                         { itemA.constituents[field.name]['histogram'] && (
@@ -225,7 +225,7 @@ const XRayComparison = ({
                                         />
                                         )}
                                     </td>
-                                    <td className="border-bottom">
+                                    <td className="px2 h3">
                                         { itemA.constituents[field.name]['nil%'] && (
                                             <CompareInts
                                                 itemA={itemA.constituents[field.name]['nil%']['value']}
