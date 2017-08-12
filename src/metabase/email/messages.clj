@@ -38,7 +38,8 @@
 
 (def ^:private ^:const abandonment-context
   {:heading      "We’d love your feedback."
-   :callToAction "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
+   :callToAction (str "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question "
+                      "survey to help the Metabase team understand why and make things better in the future?")
    :link         "http://www.metabase.com/feedback/inactive"})
 
 (def ^:private ^:const follow-up-context
@@ -71,8 +72,8 @@
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
-   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in `mailto` links
-   (e.g., for the new user to email with any questions)."
+   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
+   `mailto` links (e.g., for the new user to email with any questions)."
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
@@ -120,7 +121,8 @@
       :message-type :html
       :message      message-body)))
 
-;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is determined add appropriate documentation
+;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is
+;; determined add appropriate documentation
 
 (defn- model-name->url-fn [model]
   (case model

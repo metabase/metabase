@@ -15,10 +15,20 @@
 ;; ## GET /api/setting
 ;; Check that we can fetch all Settings for Org
 (expect
- [{:key "test-setting-1", :value nil,     :is_env_setting true,  :env_name "MB_TEST_SETTING_1", :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
-  {:key "test-setting-2", :value "FANCY", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
- (do (set-settings! nil "FANCY")
-     (fetch-test-settings)))
+  [{:key            "test-setting-1"
+    :value          nil
+    :is_env_setting true
+    :env_name       "MB_TEST_SETTING_1"
+    :description    "Test setting - this only shows up in dev (1)"
+    :default        "Using $MB_TEST_SETTING_1"}
+   {:key            "test-setting-2"
+    :value          "FANCY"
+    :is_env_setting false
+    :env_name       "MB_TEST_SETTING_2"
+    :description    "Test setting - this only shows up in dev (2)"
+    :default        "[Default Value]"}]
+  (do (set-settings! nil "FANCY")
+      (fetch-test-settings)))
 
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."

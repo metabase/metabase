@@ -18,9 +18,12 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]])
-  (:import [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
+  (:import [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder
+            RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
 
-;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    UTIL FNS                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
@@ -69,7 +72,9 @@
                               (-> dims rename-dimension-keys i/map->Dimensions )
                               dims)))))
 
-;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               IRESOLVE PROTOCOL                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private IResolve
   (^:private unresolved-field-id ^Integer [this]
@@ -97,7 +102,9 @@
 (u/strict-extend nil    IResolve IResolveDefaults)
 
 
-;;; ## ------------------------------------------------------------ FIELD ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                     FIELD                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- field-unresolved-field-id [{:keys [parent parent-id]}]
   (or (unresolved-field-id parent)
@@ -117,13 +124,20 @@
 (defn- field-resolve-table [{:keys [table-id fk-field-id field-id], :as this} fk-id+table-id->table]
   {:pre [(map? fk-id+table-id->table) (every? vector? (keys fk-id+table-id->table))]}
   (let [table (or (fk-id+table-id->table [fk-field-id table-id])
-                  ;; if we didn't find a matching table check and see whether we're trying to use a field from another table without wrapping it in an fk-> form
+                  ;; if we didn't find a matching table check and see whether we're trying to use a field from another
+                  ;; table without wrapping it in an fk-> form
                   (doseq [[fk table] (keys fk-id+table-id->table)
                           :when      (and fk (= table table-id))]
-                    (throw (Exception. (format "Invalid query: Field %d belongs to table %d. Since %d is not the source table, it must be wrapped in a fk-> form, e.g. [fk-> %d %d]."
+                    (throw (Exception. (format (str "Invalid query: Field %d belongs to table %d. Since %d is not the source table, "
+                                                    "It must be wrapped in a fk-> form, e.g. [fk-> %d %d].")
                                                field-id table-id table-id fk field-id))))
-                  ;; Otherwise, we're using what is most likely an invalid Field ID; complain about it and give a list of tables that are valid
-                  (throw (Exception. (format "Query expansion failed: could not find table %d (FK ID = %d). Resolved tables ([fk-id table-id]): %s" table-id fk-field-id (keys fk-id+table-id->table)))))]
+                  ;; Otherwise, we're using what is most likely an invalid Field ID; complain about it and give a
+                  ;; list of tables that are valid
+                  (throw (Exception. (format (str "Query expansion failed: could not find table %d (FK ID = %d). "
+                                                  "Resolved tables ([fk-id table-id]): %s")
+                                             table-id
+                                             fk-field-id
+                                             (keys fk-id+table-id->table)))))]
     (assoc this
       :table-name  (:name table)
       :schema-name (:schema table))))
@@ -135,7 +149,9 @@
                    :resolve-table       field-resolve-table}))
 
 
-;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               FIELD PLACEHOLDER                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- resolve-binned-field [{:keys [binning-strategy binning-param] :as field-ph} field]
   (let [binned-field (i/map->BinnedField {:field    field
@@ -183,7 +199,9 @@
                    :resolve-field       field-ph-resolve-field}))
 
 
-;;; ## ------------------------------------------------------------ VALUE PLACEHOLDER ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               VALUE PLACEHOLDER                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private IParseValueForField
   (^:private parse-value [this value]
@@ -206,7 +224,8 @@
 
       (instance? RelativeDatetime value)
       (do (s/validate RelativeDatetime value)
-          (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+          (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue
+                                             {:field this, :amount (:amount value), :unit (:unit value)})))
 
       (nil? value)
       nil
@@ -225,7 +244,9 @@
                   {:resolve-field value-ph-resolve-field}))
 
 
-;;; # ------------------------------------------------------------ IMPL ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                      IMPL                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- collect-ids-with [f expanded-query-dict]
   (let [ids (transient #{})]
@@ -256,7 +277,9 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id :fingerprint]
+        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type
+                                                        :visibility_type :table_id :parent_id :description :id
+                                                        :fingerprint]
                                               :visibility_type [:not= "sensitive"]
                                               :id              [:in field-ids])
                                             (hydrate :values)
@@ -274,8 +297,9 @@
            (recur (dec max-iterations))))))))
 
 (defn- fk-field-ids->info
-  "Given a SOURCE-TABLE-ID and collection of FK-FIELD-IDS, return a sequence of maps containing IDs and identifiers for those FK fields and their target tables and fields.
-   FK-FIELD-IDS are IDs of fields that belong to the source table. For example, SOURCE-TABLE-ID might be 'checkins' and FK-FIELD-IDS might have the IDs for 'checkins.user_id'
+  "Given a SOURCE-TABLE-ID and collection of FK-FIELD-IDS, return a sequence of maps containing IDs and identifiers
+   for those FK fields and their target tables and fields. FK-FIELD-IDS are IDs of fields that belong to the source
+   table. For example, SOURCE-TABLE-ID might be 'checkins' and FK-FIELD-IDS might have the IDs for 'checkins.user_id'
    and the like."
   [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
@@ -297,20 +321,25 @@
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
-    (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
-           (i/map->JoinTable {:table-id     target-table-id
-                              :table-name   target-table-name
-                              :schema       target-table-schema
-                              :pk-field     (i/map->JoinTableField {:field-id   target-field-id
-                                                                    :field-name target-field-name})
-                              :source-field (i/map->JoinTableField {:field-id   source-field-id
-                                                                    :field-name source-field-name})
-                              ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
-                              :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
+    (vec (for [{:keys [source-field-name source-field-id target-field-id
+                       target-field-name target-table-id target-table-name
+                       target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
+           (i/map->JoinTable
+            {:table-id     target-table-id
+             :table-name   target-table-name
+             :schema       target-table-schema
+             :pk-field     (i/map->JoinTableField {:field-id   target-field-id
+                                                   :field-name target-field-name})
+             :source-field (i/map->JoinTableField {:field-id   source-field-id
+                                                   :field-name source-field-name})
+             ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
+             :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{{ source-table-id :id :as source-table} :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
+  [{{{source-table-id :id, :as source-table} :source-table} :query
+    :keys [table-ids fk-field-ids]
+    :as   expanded-query-dict}]
   (if-not source-table-id
     ;; if we have a `source-query`, recurse and resolve tables in that
     (update-in expanded-query-dict [:query :source-query] (fn [source-query]
@@ -328,7 +357,9 @@
         (assoc-in <> [:query :join-tables]  joined-tables)
         (walk/postwalk #(resolve-table % fk-id+table-id->table) <>)))))
 
-;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                PUBLIC INTERFACE                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn resolve
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."

@@ -8,16 +8,17 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
-            [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table
+            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
+            TableSchema]
            metabase.driver.bigquery.BigQueryDriver))
 
-(resolve-private-vars metabase.driver.bigquery post-process-native)
-
-;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               CONNECTION DETAILS                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^String normalize-name (comp (u/rpartial s/replace #"-" "_") name))
 
@@ -40,7 +41,9 @@
    (assoc details :dataset-id (normalize-name database-name))))
 
 
-;;; # ------------------------------------------------------------ LOADING DATA ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  LOADING DATA                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
@@ -60,24 +63,30 @@
   #{:BOOLEAN :FLOAT :INTEGER :RECORD :STRING :TIMESTAMP})
 
 (defn- create-table! [^String dataset-id, ^String table-id, field-name->type]
-  {:pre [(seq dataset-id) (seq table-id) (map? field-name->type) (every? (partial contains? valid-field-types) (vals field-name->type))]}
-  (google/execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
-                                                                      (.setTableReference (doto (TableReference.)
-                                                                                            (.setProjectId project-id)
-                                                                                            (.setDatasetId dataset-id)
-                                                                                            (.setTableId table-id)))
-                                                                      (.setSchema (doto (TableSchema.)
-                                                                                    (.setFields (for [[field-name field-type] field-name->type]
-                                                                                                  (doto (TableFieldSchema.)
-                                                                                                    (.setMode "REQUIRED")
-                                                                                                    (.setName (name field-name))
-                                                                                                    (.setType (name field-type))))))))))
+  {:pre [(seq dataset-id) (seq table-id) (map? field-name->type)
+         (every? (partial contains? valid-field-types) (vals field-name->type))]}
+  (let [table (doto (Table.)
+                (.setTableReference (doto (TableReference.)
+                                      (.setProjectId project-id)
+                                      (.setDatasetId dataset-id)
+                                      (.setTableId table-id)))
+                (.setSchema (doto (TableSchema.)
+                              (.setFields (for [[field-name field-type] field-name->type]
+                                            (doto (TableFieldSchema.)
+                                              (.setMode "REQUIRED")
+                                              (.setName (name field-name))
+                                              (.setType (name field-type))))))))]
+    (google/execute (.insert (.tables bigquery) project-id dataset-id)))
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (post-process-native (google/execute (.query (.jobs bigquery) project-id
-                                                              (doto (QueryRequest.)
-                                                                (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
+  (-> (google/execute
+       (.query (.jobs bigquery) project-id
+               (doto (QueryRequest.)
+                 (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))
+      @#'bigquery/post-process-native
+      :rows
+      ffirst))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
@@ -127,10 +136,12 @@
 (defn- fielddefs->field-name->base-type
   "Convert FIELD-DEFINITIONS to a format appropriate for passing to `create-table!`."
   [field-definitions]
-  (into {"id" :INTEGER} (for [{:keys [field-name base-type]} field-definitions]
-                          {field-name (or (base-type->bigquery-type base-type)
-                                          (println (u/format-color 'red "Don't know what BigQuery type to use for base type: %s" base-type))
-                                          (throw (Exception. (format "Don't know what BigQuery type to use for base type: %s" base-type))))})))
+  (into
+   {"id" :INTEGER}
+   (for [{:keys [field-name base-type]} field-definitions]
+     {field-name (or (base-type->bigquery-type base-type)
+                     (println (u/format-color 'red "Don't know what BigQuery type to use for base type: %s" base-type))
+                     (throw (Exception. (format "Don't know what BigQuery type to use for base type: %s" base-type))))})))
 
 (defn- tabledef->prepared-rows
   "Convert TABLE-DEFINITION to a format approprate for passing to `insert-data!`."
@@ -174,16 +185,19 @@
     (when-not (contains? @existing-datasets database-name)
       (try
         (u/auto-retry 10
-          ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start again from a blank slate
+          ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
+          ;; again from a blank slate
           (u/ignore-exceptions
             (destroy-dataset! database-name))
           (create-dataset! database-name)
-          ;; do this in parallel because otherwise it can literally take an hour to load something like fifty_one_different_tables
+          ;; do this in parallel because otherwise it can literally take an hour to load something like
+          ;; fifty_one_different_tables
           (u/pdoseq [tabledef table-definitions]
             (load-tabledef! database-name tabledef))
           (swap! existing-datasets conj database-name)
           (println (u/format-color 'green "[OK]")))
-        ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully work next time around
+        ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully work next time
+        ;; around
         (catch Throwable e
           (u/ignore-exceptions
             (println (u/format-color 'red "Failed to load BigQuery dataset '%s'." database-name))
@@ -191,7 +205,7 @@
           (throw e))))))
 
 
-;;; # ------------------------------------------------------------ IDriverTestExtensions ------------------------------------------------------------
+;;; IDriverTestExtensions
 
 (u/strict-extend BigQueryDriver
   i/IDriverTestExtensions

@@ -260,7 +260,7 @@
 
 ;;; ------------------------------------------------------------ POST /api/database ------------------------------------------------------------
 
-(defn- invalid-connection-response [field m]
+(defn- invalid-connection-response {:style/indent 1} [field m]
   ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
   {:valid   false
    field    m
@@ -274,11 +274,24 @@
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
-          (and host port (u/host-port-up? host port))                           (invalid-connection-response :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-          (and host (u/host-up? host))                                          (invalid-connection-response :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-          host                                                                  (invalid-connection-response :host   (format "'%s' is not reachable" host))
-          :else                                                                 (invalid-connection-response :db     "Unable to connect to database."))
+          (driver/can-connect-with-details? engine details :rethrow-exceptions)
+          nil
+
+          (and host port (u/host-port-up? host port))
+          (invalid-connection-response :dbname
+            (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
+
+          (and host (u/host-up? host))
+          (invalid-connection-response :port
+            (format "Connection to '%s' successful, but port %d is invalid." port))
+
+          host
+          (invalid-connection-response :host
+            (format "'%s' is not reachable" host))
+
+          :else
+          (invalid-connection-response :db
+            "Unable to connect to database."))
         (catch Throwable e
           (invalid-connection-response :dbname (.getMessage e)))))))
 

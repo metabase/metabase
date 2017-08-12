@@ -171,7 +171,7 @@
             (ql/filter (ql/= $bird_id "abcdefabcdefabcdefabcdef"))))))
 
 
-;;; ------------------------------------------------------------ Test that we can handle native queries with "ISODate(...)" and "ObjectId(...) forms (#3741, #4448) ------------------------------------------------------------
+;; Test that we can handle native queries with "ISODate(...)" and "ObjectId(...) forms (#3741, #4448)
 (tu/resolve-private-vars metabase.driver.mongo.query-processor
   maybe-decode-fncall decode-fncalls encode-fncalls)
 

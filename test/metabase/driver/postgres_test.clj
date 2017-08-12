@@ -150,7 +150,8 @@
    [[(hsql/raw "'192.168.1.1'::inet")]
     [(hsql/raw "'10.4.4.15'::inet")]]])
 
-;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this wouldn't work)
+;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this
+;; wouldn't work)
 (expect-with-engine :postgres
   [[1]]
   (rows (data/dataset metabase.driver.postgres-test/ip-addresses
@@ -210,7 +211,8 @@
       (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
         (driver/describe-database pg-driver database)))))
 
-;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new one being created (#3331)
+;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new
+;; one being created (#3331)
 (expect-with-engine :postgres
   [{:name "angry_birds", :active true}]
   (let [details (i/database->connection-details pg-driver :db {:database-name "dropped_views_test"})
@@ -261,7 +263,8 @@
   "America/Chicago"
   (get-timezone-with-report-timezone "America/Chicago"))
 
-;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This should give us the same result as if we didn't try to set a timezone at all
+;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This
+;; should give us the same result as if we didn't try to set a timezone at all
 (expect-with-engine :postgres
   (get-timezone-with-report-timezone nil)
   (get-timezone-with-report-timezone "Crunk Burger"))

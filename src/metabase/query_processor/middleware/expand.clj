@@ -10,10 +10,13 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue DateTimeField Expression
-            ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime RelativeDateTimeValue StringFilter Value ValuePlaceholder]))
+  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue
+            DateTimeField Expression ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime
+            RelativeDateTimeValue StringFilter Value ValuePlaceholder]))
 
-;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                CLAUSE HANDLERS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - check that there's a matching :aggregation clause in the query ?
 (s/defn ^:ql ^:always-validate aggregate-field :- AgFieldRef
@@ -244,21 +247,25 @@
                         (equality-filter filter-type compound-fn f v)))))
 
 (def ^:ql ^{:arglists '([f v & more])} =
-  "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F matches *any* of the values (i.e.`IN`)
+  "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F
+   matches *any* of the values (i.e.`IN`)
 
      (= f v)
      (= f v1 v2) ; same as (or (= f v1) (= f v2))"
   (partial equality-filter := or))
 
 (def ^:ql ^{:arglists '([f v & more])} !=
-  "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F does not match *any* of the values (i.e. `NOT IN`)
+  "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F
+   does not match *any* of the values (i.e. `NOT IN`)
 
      (!= f v)
      (!= f v1 v2) ; same as (and (!= f v1) (!= f v2))"
   (partial equality-filter :!= and))
 
-(defn ^:ql is-null  "Filter subclause. Return results where F is `nil`."     [f] (=  f nil)) ; TODO - Should we deprecate these? They're syntactic sugar, and not particualarly useful.
-(defn ^:ql not-null "Filter subclause. Return results where F is not `nil`." [f] (!= f nil)) ; not-null is doubly unnecessary since you could just use `not` instead.
+;; TODO - Should we deprecate these? They're syntactic sugar, and not particualarly useful.
+;; not-null is doubly unnecessary since you could just use `not` instead.
+(defn ^:ql is-null  "Filter subclause. Return results where F is `nil`."     [f] (=  f nil))
+(defn ^:ql not-null "Filter subclause. Return results where F is not `nil`." [f] (!= f nil))
 
 (s/defn ^:private ^:always-validate comparison-filter :- ComparisonFilter [filter-type f v]
   (i/map->ComparisonFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
@@ -290,7 +297,8 @@
 (s/defn ^:ql ^:always-validate not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.
 
-   For the sake of simplifying driver implementation, `not` automatically translates its argument to a simpler, logically equivalent form whenever possible:
+   For the sake of simplifying driver implementation, `not` automatically translates its argument to a simpler,
+   logically equivalent form whenever possible:
 
      (not (and x y)) -> (or (not x) (not y))
      (not (not x))   -> x
@@ -387,7 +395,9 @@
   (cond
     (map? subclause)    subclause ; already parsed by `asc` or `desc`
     (vector? subclause) (let [[f direction] subclause]
-                          (log/warn (u/format-color 'yellow "The syntax for order-by has changed in MBQL '98. [<field> :ascending/:descending] is deprecated. Prefer [:asc/:desc <field>] instead."))
+                          (log/warn (u/format-color 'yellow (str "The syntax for order-by has changed in MBQL '98. "
+                                                                 "[<field> :ascending/:descending] is deprecated. "
+                                                                 "Prefer [:asc/:desc <field>] instead.")))
                           (order-by-subclause (qputil/normalize-token direction) f))))
 
 (defn ^:ql order-by
@@ -459,15 +469,26 @@
 
 ;;; Metric & Segment handlers
 
-;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in `metabase.query-processor.macros` before
-;; this namespace ever even sees the query. But since the GA driver's queries consist of custom `metric` and `segment` clauses we need to at least
-;; accept them without barfing so we can expand a query in order to check what permissions it requires.
-;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the rest of the MBQL clauses
-(defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
-(defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
+;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in
+;; `metabase.query-processor.macros` before this namespace ever even sees the query. But since the GA driver's queries
+;; consist of custom `metric` and `segment` clauses we need to at least accept them without barfing so we can expand a
+;; query in order to check what permissions it requires.
+;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the
+;; rest of the MBQL clauses
+(defn ^:ql metric
+  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in
+   `metabase.query-processor.macros`.)"
+  [& _])
+
+(defn ^:ql segment
+  "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in
+   `metabase.query-processor.macros`.)"
+  [& _])
 
 
-;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   EXPANSION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; QL functions are any public function in this namespace marked with `^:ql`.
 (def ^:private token->ql-fn
@@ -499,8 +520,8 @@
 (defn- walk-expand-ql-sexprs
   "Walk QUERY depth-first and expand QL bracketed S-expressions."
   [x]
-  (cond (map? x)    (into x (for [[k v] x]                    ; do `into x` instead of `into {}` so we can keep the original class,
-                              [k (walk-expand-ql-sexprs v)])) ; e.g. FieldPlaceholder
+  (cond (map? x)    (into x (for [[k v] x]                    ; do `into x` instead of `into {}` so we can keep the
+                              [k (walk-expand-ql-sexprs v)])) ; original class, e.g. FieldPlaceholder
         (vector? x) (expand-ql-sexpr (mapv walk-expand-ql-sexprs x))
         :else       x))
 
@@ -521,8 +542,8 @@
         query))))
 
 (defn expand
-  "Expand a query dictionary as it comes in from the API and return an \"expanded\" form, (almost) ready for use by the Query Processor.
-   This includes steps like token normalization and function dispatch.
+  "Expand a query dictionary as it comes in from the API and return an \"expanded\" form, (almost) ready for use by
+   the Query Processor. This includes steps like token normalization and function dispatch.
 
      (expand {:query {\"SOURCE_TABLE\" 10, \"FILTER\" [\"=\" 100 200]}})
 
@@ -532,7 +553,8 @@
                                   :value       {:field-placeholder {:field-id 100}
                                                 :value 200}}}}
 
-   The \"placeholder\" objects above are fetched from the DB and replaced in the next QP step, in `metabase.query-processor.middleware.resolve`."
+   The \"placeholder\" objects above are fetched from the DB and replaced in the next QP step, in
+   `metabase.query-processor.middleware.resolve`."
   [outer-query]
   (update outer-query :query expand-inner))
 
@@ -554,7 +576,9 @@
        expand-inner))
 
 
-;;; ------------------------------------------------------------ Other Helper Fns ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                OTHER HELPER FNS                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn is-clause?
   "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
