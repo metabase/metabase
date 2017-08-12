@@ -4,7 +4,7 @@ import _ from 'underscore'
 
 import title from 'metabase/hoc/Title'
 
-import { fetchSegmentComparison } from 'metabase/xray/xray'
+import { fetchSegmentTableComparison } from 'metabase/xray/xray'
 import { getComparison, getComparisonFields } from 'metabase/xray/selectors'
 
 import { normal } from 'metabase/lib/colors'
@@ -12,33 +12,30 @@ import { normal } from 'metabase/lib/colors'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 
-const mapStateToProps = (state) => {
-    console.log(getComparisonFields(state))
-    return {
-        comparison: getComparison(state),
-        fields: getComparisonFields(state)
-    }
-}
+const mapStateToProps = state => ({
+    comparison: getComparison(state),
+    fields: getComparisonFields(state)
+})
 
 const mapDispatchToProps = {
-    fetchSegmentComparison
+    fetchSegmentTableComparison
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({comparison}) =>
     comparison && (
-        `${comparison.constituents[0].features.segment.name} / ${comparison.constituents[1].features.segment.name}`
+        `${comparison.constituents[0].features.segment.name} / ${comparison.constituents[1].features.table.display_name}`
     )
 )
-class SegmentComparison extends Component {
 
+class SegmentTableComparison extends Component {
     componentWillMount () {
-        const { cost, segmentId1, segmentId2 } = this.props.params
-        this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
+        const { cost, segmentId, tableId } = this.props.params
+        this.props.fetchSegmentTableComparison(segmentId, tableId, cost)
     }
 
     render () {
-        const { params, comparison, fields } = this.props
+        const { params, fields, comparison } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
@@ -64,11 +61,11 @@ class SegmentComparison extends Component {
                             id: comparison.constituents[0].features.segment.id,
                         }}
                         itemB={{
-                            name: comparison.constituents[1].features.segment.name,
+                            name: comparison.constituents[1].features.table.display_name,
                             constituents: comparison.constituents[1].constituents,
-                            itemType: 'segment',
+                            itemType: 'table',
                             color: normal.orange,
-                            id: comparison.constituents[1].features.segment.id,
+                            id: comparison.constituents[0].features.table.id,
                         }}
                     />
                 }
@@ -77,4 +74,4 @@ class SegmentComparison extends Component {
     }
 }
 
-export default SegmentComparison
+export default SegmentTableComparison

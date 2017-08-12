@@ -150,17 +150,16 @@ export const MetabaseApi = {
 
 export const XRayApi = {
     // X-Rays
-    field_fingerprint:           GET("api/fingerprint/field/:fieldId"),
-    table_fingerprint:           GET("api/fingerprint/table/:tableId"),
-    segment_fingerprint:         GET("api/fingerprint/segment/:segmentId"),
-    card_fingerprint:            GET("api/fingerprint/card/:cardId"),
+    field_xray:            GET("api/x-ray/field/:fieldId"),
+    table_xray:            GET("api/x-ray/table/:tableId"),
+    segment_xray:          GET("api/x-ray/segment/:segmentId"),
+    card_xray:             GET("api/x-ray/card/:cardId"),
 
-    // Comparisons
-    // TODO - the api is currently set where compare is nested under fingerprint
-    field_compare:               GET("api/fingerprint/compare/fields/:fieldId1/:fieldId2"),
-    table_compare:               GET("api/fingerprint/compare/table/:tableId/:otherTableId"),
-    segment_compare:             GET("api/fingerprint/compare/segment/:segmentId/:otherSegmentId"),
-    card_compare:                GET("api/fingerprint/compare/card/:cardId/:otherCardId")
+    field_compare:         GET("api/x-ray/compare/fields/:fieldId1/:fieldId2"),
+    table_compare:         GET("api/x-ray/compare/tables/:tableId1/:tableId2"),
+    segment_compare:       GET("api/x-ray/compare/segments/:segmentId1/:segmentId2"),
+    segment_table_compare: GET("api/x-ray/compare/segment/:segmentId/table/:tableId"),
+    card_compare:          GET("api/x-ray/compare/cards/:cardId1/:cardId2")
 };
 
 export const PulseApi = {

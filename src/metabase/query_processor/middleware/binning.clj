@@ -30,11 +30,17 @@
      mbql-filter)
     (persistent! acc)))
 
-(defn- calculate-bin-width [min-value max-value num-bins]
+(defn calculate-bin-width
+  "Calculate bin width required to cover interval [`min-value`, `max-value`] with
+   `num-bins`."
+  [min-value max-value num-bins]
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(defn- calculate-num-bins [min-value max-value bin-width]
+(defn calculate-num-bins
+  "Calculate number of bins of width `bin-width` required to cover interval
+   [`min-value`, `max-value`]."
+  [min-value max-value bin-width]
   (long (Math/ceil (/ (- max-value min-value)
                          bin-width))))
 
@@ -98,7 +104,9 @@
          (drop-while (partial apply not=))
          ffirst)))
 
-(def ^:private ^{:arglists '([binned-field])} nicer-breakout
+(def ^{:arglists '([binned-field])} nicer-breakout
+  "Humanize binning: extend interval to start and end on a \"nice\" number and,
+   when number of bins is fixed, have a \"nice\" step (bin width)."
   (fixed-point
    (fn
      [{:keys [min-value max-value bin-width num-bins strategy] :as binned-field}]
