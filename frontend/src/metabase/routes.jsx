@@ -41,6 +41,11 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
+// new question
+import NewQuestionStart from "metabase/new_question/containers/Start";
+import NewQuestionMetrics from "metabase/new_question/containers/Metrics";
+import NewQuestionSegments from "metabase/new_question/containers/Segments";
+
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
@@ -193,7 +198,15 @@ export const getRoutes = (store) =>
                 <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
-                <Route path="/question" component={QueryBuilder} />
+                <Route path="/question">
+                    <IndexRoute component={QueryBuilder} />
+                    { /* NEW QUESTION FLOW */ }
+                    <Route path="new">
+                        <IndexRoute component={NewQuestionStart} />
+                        <Route path="metrics" component={NewQuestionMetrics} />
+                        <Route path="segments" component={NewQuestionSegments} />
+                    </Route>
+                </Route>
                 <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
