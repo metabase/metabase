@@ -11,7 +11,7 @@ import {
 import { mount } from "enzyme";
 import {
     CREATE_MEMBERSHIP,
-    CREATE_USER, deleteUser, FETCH_USERS, LOAD_GROUPS, LOAD_MEMBERSHIPS,
+    CREATE_USER, FETCH_USERS, LOAD_GROUPS, LOAD_MEMBERSHIPS,
     SHOW_MODAL, UPDATE_USER
 } from "metabase/admin/people/people";
 import ModalContent from "metabase/components/ModalContent";
@@ -19,7 +19,6 @@ import { delay } from "metabase/lib/promise";
 import Button from "metabase/components/Button";
 import { getUsers } from "metabase/admin/people/selectors";
 import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
-import { TestPopover } from "metabase/components/Popover";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
 import UserActionsSelect from "metabase/admin/people/components/UserActionsSelect";
