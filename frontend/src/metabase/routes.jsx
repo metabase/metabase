@@ -42,9 +42,9 @@ import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
 // new question
-import NewQuestionStart from "metabase/new_question/containers/Start";
-import NewQuestionMetrics from "metabase/new_question/containers/Metrics";
-import NewQuestionSegments from "metabase/new_question/containers/Segments";
+import NewQuestionStart from "metabase/new_query/containers/Start";
+import NewQuestionMetrics from "metabase/new_query/containers/Metrics";
+import NewQuestionSegments from "metabase/new_query/containers/Segments";
 
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";

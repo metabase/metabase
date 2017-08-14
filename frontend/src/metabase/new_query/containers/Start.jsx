@@ -28,7 +28,7 @@ class Start extends Component {
                 Start
                 <div className="Grid Grid--1of2 Grid--gutters">
                     {metrics &&
-                        <div className="Grid-cell">
+                        <div className= "Grid-cell">
                             <Link to="/question/new/metrics">
                                 <div className="bordered rounded shadowed p4">
                                     <h2>Metrics</h2>

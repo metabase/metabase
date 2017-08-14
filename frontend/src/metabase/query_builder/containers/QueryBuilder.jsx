@@ -59,6 +59,7 @@ import { MetabaseApi } from "metabase/services";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NewQuery from "metabase/new_query/containers/NewQuery";
 
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
@@ -201,8 +202,16 @@ export default class QueryBuilder extends Component {
 }
 
 class LegacyQueryBuilder extends Component {
+    onNewQueryFlowCompleted = (newQuery: StructuredQuery) => {
+        const {question, updateQuestion, runQuestionQuery} = this.props;
+
+        const updatedQuestion = question.setQuery(newQuery);
+        updateQuestion(updatedQuestion);
+        runQuestionQuery();
+    }
+
     render() {
-        const { query, card, isDirty, databases, uiControls, mode } = this.props;
+        const { question, query, card, isDirty, databases, uiControls, mode } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -213,6 +222,12 @@ class LegacyQueryBuilder extends Component {
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;
+
+        const showNewQueryFlow = question && question.isEmpty();
+
+        if (showNewQueryFlow) {
+            return <NewQuery question={question} onComplete={this.onNewQueryFlowCompleted}/>
+        }
 
         return (
             <div className="flex-full relative">
@@ -230,10 +245,10 @@ class LegacyQueryBuilder extends Component {
                             />
                         : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
-                                <GuiQueryEditor
-                                    {...this.props}
-                                    datasetQuery={card && card.dataset_query}
-                                />
+                                    <GuiQueryEditor
+                                        {...this.props}
+                                        datasetQuery={card && card.dataset_query}
+                                    />
                             </div>
                         : null }
                     </div>
@@ -243,9 +258,7 @@ class LegacyQueryBuilder extends Component {
                         <QueryVisualization {...this.props} className="full wrapper mb2 z1"/>
                     </div>
 
-                    { ModeFooter &&
-                        <ModeFooter {...this.props} className="flex-no-shrink" />
-                    }
+                    <ModeFooter {...this.props} className="flex-no-shrink"/>
                 </div>
 
                 <div className={cx("SideDrawer hide sm-show", { "SideDrawer--show": showDrawer })}>
