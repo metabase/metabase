@@ -2,7 +2,7 @@ exports.config = {
     allScriptsTimeout: 11000,
 
     specs: [
-        'e2e/*.js'
+        'legacy-selenium/*.js'
     ],
 
     capabilities: {

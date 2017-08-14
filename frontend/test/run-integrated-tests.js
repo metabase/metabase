@@ -5,7 +5,7 @@ global.afterAll = (method) => { jasmineAfterAllCleanup = method; }
 import { spawn } from "child_process";
 
 // use require for BackendResource to run it after the mock afterAll has been set
-const BackendResource = require("./e2e/support/backend.js").BackendResource
+const BackendResource = require("./legacy-selenium/support/backend.js").BackendResource
 const server = BackendResource.get({});
 const apiHost = process.env.E2E_HOST || server.host;
 

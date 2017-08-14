@@ -53,13 +53,15 @@
          (second @~result)))))
 
 (def ^:private default-db-details
-  {:engine             "h2"
-   :name               "test-data"
-   :is_sample          false
-   :is_full_sync       true
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil})
+  {:engine                      "h2"
+   :name                        "test-data"
+   :is_sample                   false
+   :is_full_sync                true
+   :description                 nil
+   :caveats                     nil
+   :points_of_interest          nil
+   :cache_field_values_schedule "0 50 0 * * ? *"
+   :metadata_sync_schedule      "0 50 * * * ? *"})
 
 
 (defn- db-details
@@ -249,14 +251,15 @@
   (merge
    default-field-details
    (match-$ (hydrate/hydrate field :values)
-     {:updated_at         $
-      :id                 $
-      :raw_column_id      $
-      :created_at         $
-      :last_analyzed      $
-      :fingerprint        $
-      :fk_target_field_id $
-      :values             $})))
+     {:updated_at          $
+      :id                  $
+      :raw_column_id       $
+      :created_at          $
+      :last_analyzed       $
+      :fingerprint         $
+      :fingerprint_version $
+      :fk_target_field_id  $
+      :values              $})))
 
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values

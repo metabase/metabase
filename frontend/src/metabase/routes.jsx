@@ -57,7 +57,7 @@ import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
-// Reference Metrics 
+// Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
@@ -78,6 +78,19 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
+
+/* XRay */
+import FieldXRay from "metabase/xray/containers/FieldXray.jsx";
+import TableXRay from "metabase/xray/containers/TableXRay.jsx";
+import SegmentXRay from "metabase/xray/containers/SegmentXRay.jsx";
+import CardXRay from "metabase/xray/containers/CardXRay.jsx";
+
+/* Comparisons */
+import FieldComparison from "metabase/xray/containers/FieldComparison.jsx";
+import TableComparison from "metabase/xray/containers/TableComparison.jsx";
+import SegmentComparison from "metabase/xray/containers/SegmentComparison.jsx";
+import SegmentTableComparison from "metabase/xray/containers/SegmentTableComparison.jsx";
+import CardComparison from "metabase/xray/containers/CardComparison.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
@@ -228,6 +241,18 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId/tables/:tableId/fields" component={FieldListContainer} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetailContainer} />
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
+                </Route>
+                {/* REFERENCE */}
+                <Route path="/xray" title="XRay">
+                    <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
+                    <Route path="table/:tableId/:cost" component={TableXRay} />
+                    <Route path="field/:fieldId/:cost" component={FieldXRay} />
+                    <Route path="card/:cardId" component={CardXRay} />
+                    <Route path="compare/fields/:fieldId1/:fieldId2" component={FieldComparison} />
+                    <Route path="compare/tables/:tableId1/:tableId2" component={TableComparison} />
+                    <Route path="compare/segments/:segmentId1/:segmentId2/:cost" component={SegmentComparison} />
+                    <Route path="compare/segment/:segmentId/table/:tableId/:cost" component={SegmentTableComparison} />
+                    <Route path="compare/cards/:cardId1/:cardId2" component={CardComparison} />
                 </Route>
 
                 {/* PULSE */}

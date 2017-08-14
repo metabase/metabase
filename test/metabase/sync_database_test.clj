@@ -65,7 +65,8 @@
           :describe-table-fks    describe-table-fks
           :features              (constantly #{:foreign-keys})
           :details-fields        (constantly [])
-          :field-values-lazy-seq (constantly [])}))
+          ;; enough values that it won't get marked as a Category, but still get a fingerprint or w/e
+          :field-values-lazy-seq (fn [& _] (range 500))}))
 
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
@@ -74,7 +75,11 @@
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
                (assoc :fields (for [field (db/select Field, :table_id (:id table), {:order-by [:name]})]
-                                (into {} (dissoc field :table :db :children :qualified-name :qualified-name-components :values :target))))
+                                (into {} (-> (dissoc field
+                                                     :table :db :children :qualified-name :qualified-name-components
+                                                     :values :target)
+                                             (update :fingerprint map?)
+                                             (update :fingerprint_version (complement zero?))))))
                tu/boolean-ids-and-timestamps)))
 
 (def ^:private table-defaults
@@ -95,23 +100,23 @@
    :updated_at              true})
 
 (def ^:private field-defaults
-  {:id                 true
-   :table_id           true
-   :raw_column_id      false
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil
-   :active             true
-   :parent_id          false
-   :position           0
-   :preview_display    true
-   :visibility_type    :normal
-   :fk_target_field_id false
-   :created_at         true
-   :updated_at         true
-   :last_analyzed      true
-   :fingerprint        nil})
-
+  {:id                  true
+   :table_id            true
+   :raw_column_id       false
+   :description         nil
+   :caveats             nil
+   :points_of_interest  nil
+   :active              true
+   :parent_id           false
+   :position            0
+   :preview_display     true
+   :visibility_type     :normal
+   :fk_target_field_id  false
+   :created_at          true
+   :updated_at          true
+   :last_analyzed       true
+   :fingerprint         true
+   :fingerprint_version true})
 
 ;; ## SYNC DATABASE
 (expect
@@ -239,7 +244,7 @@
           field-id (db/select-one-id Field, :table_id table-id, :name "title")]
       (tt/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
-        (let [initial-field-values (db/select-one-field  :values FieldValues, :field_id field-id)]
+        (let [initial-field-values (db/select-one-field :values FieldValues, :field_id field-id)]
           (sync-database! db)
           [initial-field-values
            (db/select-one-field :values FieldValues, :field_id field-id)])))))
@@ -334,7 +339,6 @@
      (do (sync-table! (Table (id :venues)))
          (get-field-values))]))
 
-
 ;; Make sure that if a Field's cardinality passes `low-cardinality-threshold` (currently 300)
 ;; the corresponding FieldValues entry will be deleted (#3215)
 (defn- insert-range-sql [rang]
@@ -353,7 +357,7 @@
             ;; create the `blueberries_consumed` table and insert a 100 values
             (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
                     (insert-range-sql (range 100))])
-            (sync-database! db {:full-sync? true})
+            (sync-database! db)
             (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                   field-id (db/select-one-id Field :table_id table-id)]
               ;; field values should exist...
@@ -363,3 +367,20 @@
               (exec! [(insert-range-sql (range 100 (+ 100 field-values/low-cardinality-threshold)))])
               (sync-database! db)
               (db/exists? FieldValues :field_id field-id))))))))
+
+(defn- narrow-to-min-max [row]
+  (-> row
+      (get-in [:type :type/Number])
+      (select-keys [:min :max])
+      (update :min #(u/round-to-decimals 4 %))
+      (update :max #(u/round-to-decimals 4 %))))
+
+(expect
+  [{:min -165.374 :max -73.9533}
+   {:min 10.0646 :max 40.7794}]
+  (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
+                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
+    (sync-table! table)
+    (map narrow-to-min-max
+         [(db/select-one-field :fingerprint Field, :id (id :venues :longitude))
+          (db/select-one-field :fingerprint Field, :id (id :venues :latitude))])))

@@ -3,7 +3,9 @@
    Currently this is dumb and just fetches a contiguous sequence of values, but in the future we plan to make this
    more sophisticated and have different types of samples for different Fields."
   (:require [metabase.driver :as driver]
-            [metabase.models.table :refer [Table]]
+            [metabase.models
+             [database :refer [Database]]
+             [table :refer [Table]]]
             [metabase.sync.interface :as i]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -13,8 +15,12 @@
    in the various tests above. Maybe return `nil` if no values are available."
   [field :- i/FieldInstance]
   ;; TODO - we should make `->driver` a method so we can pass things like Fields into it
-  (->> (driver/field-values-lazy-seq (driver/->driver (db/select-one-field :db_id Table :id (:table_id field)))
-                                     field)
-       (take driver/max-sync-lazy-seq-results)
-       (filter (complement nil?))
-       seq))
+  (let [db-id    (db/select-one-field :db_id Table :id (:table_id field))
+        driver   (driver/->driver db-id)
+        database (Database db-id)]
+    (driver/sync-in-context driver database
+      (fn []
+        (->> (driver/field-values-lazy-seq driver field)
+             (take driver/max-sync-lazy-seq-results)
+             (filter (complement nil?))
+             seq)))))

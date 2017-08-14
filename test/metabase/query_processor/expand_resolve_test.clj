@@ -5,11 +5,11 @@
              [expand :as ql]
              [resolve :as resolve]
              [source-table :as st]]
-            [metabase.test.data :refer :all]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.util :as tu]
             [metabase.util :as u]))
-
 
 ;; this is here because expectations has issues comparing and object w/ a map and most of the output
 ;; below has objects for the various place holders in the expanded/resolved query
@@ -37,7 +37,9 @@
    :datetime-unit      nil
    :remapped-from      nil
    :remapped-to        nil
-   :field-display-name nil})
+   :field-display-name nil
+   :binning-strategy   nil
+   :binning-param      nil})
 
 (def ^:private field-defaults
   {:fk-field-id     nil
@@ -73,34 +75,38 @@
                                                                       {:field-id true})
                                             :value             1}}}}
    ;; resolved form
-   {:database     (id)
-    :type         :query
-    :query        {:source-table {:schema "PUBLIC"
-                                  :name   "VENUES"
-                                  :id     true}
-                   :filter       {:filter-type :>
-                                  :field       (merge field-defaults
-                                                      {:field-id           true
-                                                       :field-name         "PRICE"
-                                                       :field-display-name "Price"
-                                                       :base-type          :type/Integer
-                                                       :special-type       :type/Category
-                                                       :table-id           (id :venues)
-                                                       :schema-name        "PUBLIC"
-                                                       :table-name         "VENUES"
-                                                       :values             price-field-values})
-                                  :value       {:value 1
-                                                :field (merge field-defaults
-                                                              {:field-id           true
-                                                               :field-name         "PRICE"
-                                                               :field-display-name "Price"
-                                                               :base-type          :type/Integer
-                                                               :special-type       :type/Category
-                                                               :table-id           (id :venues)
-                                                               :schema-name        "PUBLIC"
-                                                               :table-name         "VENUES"
-                                                               :values             price-field-values})}}
-                   :join-tables  nil}
+   {:database (id)
+    :type     :query
+    :query    {:source-table {:schema "PUBLIC"
+                              :name   "VENUES"
+                              :id     true}
+               :filter       {:filter-type :>
+                              :field       (merge field-defaults
+                                                  {:field-id           true
+                                                   :field-name         "PRICE"
+                                                   :field-display-name "Price"
+                                                   :base-type          :type/Integer
+                                                   :special-type       :type/Category
+                                                   :table-id           (id :venues)
+                                                   :schema-name        "PUBLIC"
+                                                   :table-name         "VENUES"
+                                                   :values             price-field-values
+                                                   :fingerprint        {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}})
+                              :value       {:value 1
+                                            :field (merge field-defaults
+                                                          {:field-id           true
+                                                           :field-name         "PRICE"
+                                                           :field-display-name "Price"
+                                                           :base-type          :type/Integer
+                                                           :special-type       :type/Category
+                                                           :table-id           (id :venues)
+                                                           :schema-name        "PUBLIC"
+                                                           :table-name         "VENUES"
+                                                           :values             price-field-values
+                                                           :fingerprint        {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}})}}
+
+
+               :join-tables nil}
     :fk-field-ids #{}
     :table-ids    #{(id :venues)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query venues
@@ -147,7 +153,8 @@
                                                        :special-type       :type/Name
                                                        :table-id           (id :categories)
                                                        :table-name         "CATEGORIES__via__CATEGORY_ID"
-                                                       :values             category-field-values})
+                                                       :values             category-field-values
+                                                       :fingerprint        {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})
                                   :value       {:value "abc"
                                                 :field (merge field-defaults
                                                               {:field-id           true
@@ -158,7 +165,8 @@
                                                                :special-type       :type/Name
                                                                :table-id           (id :categories)
                                                                :table-name         "CATEGORIES__via__CATEGORY_ID"
-                                                               :values             category-field-values})}}
+                                                               :values             category-field-values
+                                                               :fingerprint        {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})}}
                    :join-tables  [{:source-field {:field-id   true
                                                   :field-name "CATEGORY_ID"}
                                    :pk-field     {:field-id   true
@@ -208,7 +216,8 @@
                                                                :base-type          :type/DateTime
                                                                :special-type       nil
                                                                :table-id           (id :users)
-                                                               :table-name         "USERS__via__USER_ID"})
+                                                               :table-name         "USERS__via__USER_ID"
+                                                               :fingerprint        {:global {:distinct-count 15}}})
                                                 :unit  :year}
                                   :value       {:value (u/->Timestamp "1980-01-01")
                                                 :field {:field
@@ -221,8 +230,9 @@
                                                                 :special-type       nil
                                                                 :visibility-type    :normal
                                                                 :table-id           (id :users)
-                                                                :table-name         "USERS__via__USER_ID"})
-                                                        :unit  :year}}}
+                                                                :table-name         "USERS__via__USER_ID"
+                                                                :fingerprint        {:global {:distinct-count 15}}})
+                                                        :unit :year}}}
                    :join-tables  [{:source-field {:field-id   (id :checkins :user_id)
                                                   :field-name "USER_ID"}
                                    :pk-field     {:field-id   (id :users :id)
@@ -271,7 +281,8 @@
                                                              :field-id           true
                                                              :fk-field-id        (id :checkins :venue_id)
                                                              :table-name         "VENUES__via__VENUE_ID"
-                                                             :values             price-field-values})}]
+                                                             :values             price-field-values
+                                                             :fingerprint {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}})}]
                    :breakout     [{:field (merge field-defaults
                                                  {:base-type          :type/Date
                                                   :table-id           (id :checkins)
@@ -280,7 +291,8 @@
                                                   :field-display-name "Date"
                                                   :field-id           true
                                                   :table-name         "CHECKINS"
-                                                  :schema-name        "PUBLIC"})
+                                                  :schema-name        "PUBLIC"
+                                                  :fingerprint        {:global {:distinct-count 618}}})
                                    :unit  :day-of-week}]
                    :join-tables  [{:source-field {:field-id   true
                                                   :field-name "VENUE_ID"}

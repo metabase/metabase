@@ -4,6 +4,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
+            metabase.types
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -44,22 +45,23 @@
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
 
-;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding classes from the model namespaces
-;; also requires a `:require`, which `clj-refactor` seems more than happy to strip out from the ns declaration when running `cljr-clean-ns`.
-;; Plus as a bonus in the future we could add additional validations to these, e.g. requiring that a Field have a base_type
+;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
+;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
+;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
+;; validations to these, e.g. requiring that a Field have a base_type
 
 (def DatabaseInstance "Schema for a valid instance of a Metabase Database." (class Database))
 (def TableInstance    "Schema for a valid instance of a Metabase Table."    (class Table))
 (def FieldInstance    "Schema for a valid instance of a Metabase Field."    (class Field))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                SAMPLING & FINGERPRINTS                                                 |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            SAMPLING & FINGERPRINTS                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ValuesSample
-  "Schema for a sample of VALUES returned by the `sample` sub-stage of analysis and passed into the `fingerprint` stage.
-   Guaranteed to be non-empty and non-nil."
+  "Schema for a sample of VALUES returned by the `sample` sub-stage of analysis and passed into the `fingerprint`
+   stage. Guaranteed to be non-empty and non-nil."
   ;; Validating against this is actually pretty quick, in the order of microseconds even for a 10,000 value sequence
   (s/constrained [(s/pred (complement nil?))] seq "Non-empty sequence of non-nil values."))
 
@@ -95,8 +97,41 @@
    "Type-specific fingerprint with exactly one key"))
 
 (def Fingerprint
-  "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification' sub-stage of
-   analysis. Stored as the `fingerprint` column of Field."
+  "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
+   sub-stage of analysis. Stored as the `fingerprint` column of Field."
   {(s/optional-key :global)       GlobalFingerprint
    (s/optional-key :type)         TypeSpecificFingerprint
    (s/optional-key :experimental) {s/Keyword s/Any}})
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             FINGERPRINT VERSIONING                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Occasionally we want to update the schema of our Field fingerprints and add new logic to populate the additional
+;; keys. However, by default, analysis (which includes fingerprinting) only runs on *NEW* Fields, meaning *EXISTING*
+;; Fields won't get new fingerprints with the updated info.
+;;
+;; To work around this, we can use a versioning system. Fields whose Fingerprint's version is lower than the current
+;; version should get updated during the next sync/analysis regardless of whether they are or are not new Fields.
+;; However, this could be quite inefficient: if we add a new fingerprint field for `:type/Number` Fields, why should
+;; we re-fingerprint `:type/Text` Fields? Ideally, we'd only re-fingerprint the numeric Fields.
+;;
+;; Thus, our implementation below. Each new fingerprint version lists a set of types that should be upgraded to it.
+;; Our fingerprinting logic will calculate whether a fingerprint needs to be recalculated based on its version and the
+;; changes that have been made in subsequent versions. Only the Fields that would benefit from the new Fingerprint
+;; info need be re-fingerprinted.
+;;
+;; Thus, if Fingerprint v2 contains some new info for numeric Fields, only Fields that derive from `:type/Number` need
+;; be upgraded to v2. Textual Fields with a v1 fingerprint can stay at v1 for the time being. Later, if we introduce a
+;; v3 that includes new "global" fingerprint info, both the v2-fingerprinted numeric Fields and the v1-fingerprinted
+;; textual Fields can be upgraded to v3.
+
+(def fingerprint-version->types-that-should-be-re-fingerprinted
+  "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
+   time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
+  {1 #{:type/*}})
+
+(def latest-fingerprint-version
+  "The newest (highest-numbered) version of our Field fingerprints."
+  (apply max (keys fingerprint-version->types-that-should-be-re-fingerprinted)))

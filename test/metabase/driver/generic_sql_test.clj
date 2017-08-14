@@ -64,7 +64,6 @@
      :dest-column-name "ID"}}
   (driver/describe-table-fks (H2Driver.) (db) @venues-table))
 
-
 ;;; FIELD-VALUES-LAZY-SEQ
 (datasets/expect-with-engines @generic-sql-engines
   ["Red Medicine"

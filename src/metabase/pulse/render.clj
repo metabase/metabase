@@ -89,8 +89,8 @@
 
 (defn- datetime-field?
   [field]
-  (or (isa? (:base_type field) :type/DateTime)
-      (isa? (:base_type field) :type/DateTime)))
+  (or (isa? (:base_type field)    :type/DateTime)
+      (isa? (:special_type field) :type/DateTime)))
 
 (defn- number-field?
   [field]
@@ -224,86 +224,115 @@
     (render-to-png html os width)
     (.toByteArray os)))
 
-(defn- create-remapping-lookup [cols col-indexes]
-  (into {}
-        (for [col-index col-indexes
-              :let [{:keys [remapped_from]} (nth cols col-index)]
-              :when remapped_from]
-          [remapped_from col-index])))
-
 (defn- render-table
-  [card rows cols col-indexes bar-column]
-  (let [max-value (if bar-column (apply max (map bar-column rows)))
-        remapping-lookup (create-remapping-lookup cols col-indexes)]
-    [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
+  [header+rows]
+  [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
+   (let [{header-row :row bar-width :bar-width} (first header+rows)]
      [:thead
       [:tr
-       (for [col-idx col-indexes
-             :let [col-at-index (nth cols col-idx)
-                   col (if (:remapped_to col-at-index)
-                         (nth cols (get remapping-lookup (:name col-at-index)))
-                         col-at-index)]
-             :when (not (:remapped_from col-at-index))]
+       (for [header-cell header-row]
          [:th {:style (style bar-td-style bar-th-style {:min-width :60px})}
-          (h (s/upper-case (name (or (:display_name col) (:name col)))))])
-       (when bar-column
-         [:th {:style (style bar-td-style bar-th-style {:width "99%"})}])]]
-     [:tbody
-      (map-indexed (fn [row-idx row]
-                     [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
-                      (for [col-idx col-indexes
-                            :let [col (nth cols col-idx)]
-                            :when (not (:remapped_from col))]
-                        [:td {:style (style bar-td-style (when (and bar-column (= col-idx 1)) {:font-weight 700}))}
-                         (if-let [remapped-index (and (:remapped_to col)
-                                                      (get remapping-lookup (:name col)))]
-                           (-> row (nth remapped-index) (format-cell (nth cols remapped-index)) h)
-                           (-> row (nth col-idx) (format-cell col) h))])
-                      (when bar-column
-                        [:td {:style (style bar-td-style {:width :99%})}
-                         [:div {:style (style {:background-color color-purple
-                                               :max-height       :10px
-                                               :height           :10px
-                                               :border-radius    :2px
-                                               :width            (str (float (* 100 (/ (double (bar-column row)) max-value))) "%")})} ; cast to double to avoid "Non-terminating decimal expansion" errors
-                          "&#160;"]])])
-                   rows)]]))
+          (h header-cell)])
+       (when bar-width
+         [:th {:style (style bar-td-style bar-th-style {:width (str bar-width "%")})}])]])
+   [:tbody
+    (map-indexed (fn [row-idx {:keys [row bar-width]}]
+                   [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
+                    (map-indexed (fn [col-idx cell]
+                                   [:td {:style (style bar-td-style (when (and bar-width (= col-idx 1)) {:font-weight 700}))}
+                                    (h cell)])
+                                 row)
+                    (when bar-width
+                      [:td {:style (style bar-td-style {:width :99%})}
+                       [:div {:style (style {:background-color color-purple
+                                             :max-height       :10px
+                                             :height           :10px
+                                             :border-radius    :2px
+                                             :width            (str bar-width "%")})}
+                        "&#160;"]])])
+                 (rest header+rows))]])
+
+(defn- create-remapping-lookup
+  "Creates a map with from column names to a column index. This is
+  used to figure out what a given column name or value should be
+  replaced with"
+  [cols]
+  (into {}
+        (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
+              :when remapped_from]
+          [remapped_from col-idx])))
+
+(defn- query-results->header-row
+  "Returns a row structure with header info from `COLS`. These values
+  are strings that are ready to be rendered as HTML"
+  [remapping-lookup cols include-bar?]
+  {:row (for [maybe-remapped-col cols
+              :let [col (if (:remapped_to maybe-remapped-col)
+                          (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                          maybe-remapped-col)]
+              ;; If this column is remapped from another, it's already
+              ;; in the output and should be skipped
+              :when (not (:remapped_from maybe-remapped-col))]
+          (s/upper-case (name (or (:display_name col) (:name col)))))
+   :bar-width (when include-bar? 99)})
+
+(defn- query-results->row-seq
+  "Returns a seq of stringified formatted rows that can be rendered into HTML"
+  [remapping-lookup cols rows bar-column max-value]
+  (for [row rows]
+    {:bar-width (when bar-column
+                  ;; cast to double to avoid "Non-terminating decimal expansion" errors
+                  (float (* 100 (/ (double (bar-column row)) max-value))))
+     :row (for [[maybe-remapped-col maybe-remapped-row-cell] (map vector cols row)
+                :when (not (:remapped_from maybe-remapped-col))
+                :let [[col row-cell] (if (:remapped_to maybe-remapped-col)
+                                       [(nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                        (nth row (get remapping-lookup (:name maybe-remapped-col)))]
+                                       [maybe-remapped-col maybe-remapped-row-cell])]]
+            (format-cell row-cell col))}))
+
+(defn- prep-for-html-rendering
+  "Convert the query results (`COLS` and `ROWS`) into a formatted seq
+  of rows (list of strings) that can be rendered as HTML"
+  [cols rows bar-column max-value column-limit]
+  (let [remapping-lookup (create-remapping-lookup cols)
+        limited-cols (take column-limit cols)]
+    (cons
+     (query-results->header-row remapping-lookup limited-cols bar-column)
+     (query-results->row-seq remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
 
 (defn- render-truncation-warning
-  [card {:keys [cols rows]} rows-limit cols-limit]
-  (if (or (> (count rows) rows-limit)
-          (> (count cols) cols-limit))
+  [col-limit col-count row-limit row-count]
+  (if (or (> row-count row-limit)
+          (> col-count col-limit))
     [:div {:style (style {:padding-top :16px})}
      (cond
-       (> (count rows) rows-limit)
+       (> row-count row-limit)
        [:div {:style (style {:color color-gray-2
                              :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number rows-limit)]
-        " of "     [:strong {:style (style {:color color-gray-3})} (format-number (count rows))]
+        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number row-limit)]
+        " of "     [:strong {:style (style {:color color-gray-3})} (format-number row-count)]
         " rows."]
 
-       (> (count cols) cols-limit)
+       (> col-count col-limit)
        [:div {:style (style {:color          color-gray-2
                              :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number cols-limit)]
-        " of "     [:strong {:style (style {:color color-gray-3})} (format-number (count cols))]
+        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number col-limit)]
+        " of "     [:strong {:style (style {:color color-gray-3})} (format-number col-count)]
         " columns."])]))
 
 (defn- render:table
   [card {:keys [cols rows] :as data}]
-  (let [truncated-rows (take rows-limit rows)
-        truncated-cols (take cols-limit cols)
-        col-indexes    (map-indexed (fn [i _] i) truncated-cols)]
-    [:div
-     (render-table card truncated-rows truncated-cols col-indexes nil)
-     (render-truncation-warning card data rows-limit cols-limit)]))
+  [:div
+   (render-table (prep-for-html-rendering cols rows nil nil cols-limit))
+   (render-truncation-warning cols-limit (count cols) rows-limit (count rows))])
 
 (defn- render:bar
   [card {:keys [cols rows] :as data}]
-  (let [truncated-rows (take rows-limit rows)]
+  (let [max-value (apply max (map second rows))]
     [:div
-     (render-table card truncated-rows cols [0 1] second)
-     (render-truncation-warning card data rows-limit 2)]))
+     (render-table (prep-for-html-rendering cols rows second max-value 2))
+     (render-truncation-warning 2 (count cols) rows-limit (count rows))]))
 
 (defn- render:scalar
   [card {:keys [cols rows]}]

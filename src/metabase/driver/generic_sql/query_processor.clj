@@ -18,7 +18,7 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
            java.sql.SQLException
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
+           [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
@@ -41,11 +41,18 @@
 
 ;;; ## Formatting
 
+(defn- qualified-alias
+  "Convert the given `FIELD` to a stringified alias"
+  [field]
+  (some->> field
+           (sql/field->alias (driver))
+           hx/qualify-and-escape-dots))
+
 (defn as
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
   [form field]
-  (if-let [alias (sql/field->alias (driver) field)]
-    [form (hx/qualify-and-escape-dots alias)]
+  (if-let [alias (qualified-alias field)]
+    [form alias]
     form))
 
 ;; TODO - Consider moving this into query processor interface and making it a method on `ExpressionRef` instead ?
@@ -103,6 +110,21 @@
   DateTimeField
   (formatted [{unit :unit, field :field}]
     (sql/date (driver) unit (formatted field)))
+
+  BinnedField
+  (formatted [{:keys [bin-width min-value max-value field]}]
+    (let [formatted-field (formatted field)]
+      ;;
+      ;; Equation is | (value - min) |
+      ;;             | ------------- | * bin-width + min-value
+      ;;             |_  bin-width  _|
+      ;;
+      (-> formatted-field
+          (hx/- min-value)
+          (hx// bin-width)
+          hx/floor
+          (hx/* bin-width)
+          (hx/+ min-value))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
@@ -181,17 +203,14 @@
         form
         (recur form more)))))
 
-
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
-  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields}]
-  (-> honeysql-form
-      ;; Group by all the breakout fields
-      ((partial apply h/group) (map formatted breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field breakout-fields
-                                            :when (not (contains? (set fields-fields) field))]
-                                        (as (formatted field) field)))))
+  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  (as-> honeysql-form new-hsql
+    (apply h/merge-select new-hsql (for [field breakout-fields
+                                         :when (not (contains? (set fields-fields) field))]
+                                     (as (formatted field) field)))
+    (apply h/group new-hsql (map formatted breakout-fields))))
 
 (defn apply-fields
   "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
@@ -250,14 +269,15 @@
 
 (defn apply-order-by
   "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
-  [_ honeysql-form {subclauses :order-by}]
-  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
-                                                                             :ascending  :asc
-                                                                             :descending :desc)])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [_ honeysql-form {subclauses :order-by breakout-fields :breakout}]
+  (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
+    (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
+      (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
+                                                                               :ascending  :asc
+                                                                               :descending :desc)])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn apply-page
   "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers."

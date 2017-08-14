@@ -55,7 +55,7 @@ export default class EmbedFrame extends Component {
                 }
             }
             // $FlowFixMe: flow doesn't know about require.ensure
-            require.ensure([], () => {
+            require.ensure && require.ensure([], () => {
                 require("iframe-resizer/js/iframeResizer.contentWindow.js")
             });
         }

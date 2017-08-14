@@ -79,7 +79,6 @@
 
 (driver/register-driver! :schema-per-customer (SchemaPerCustomerDriver.))
 
-
 (def schema-per-customer-tables-and-fields
   [(merge table-defaults
           {:schema       "common"
