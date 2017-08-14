@@ -63,6 +63,10 @@ Filter widgets **can't** be displayed if the variable is mapped to a field marke
 ##### Setting a default value
 If you input a default value for your field filter, this value will be selected in the filter whenever you come back to this question. If you clear out the filter, though, no value will be passed (i.e., not even the default value). The default value has no effect on the behavior of your SQL question when viewed in a dashboard.
 
+##### Connecting a SQL question to a dashboard filter
+In order for a saved SQL question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{{var}}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, and the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
+
+![Field filter](images/sql-parameters/state-field-filter.png)
 
 ### Optional Clauses
 To make an optional clause in your native query, type  `[[brackets around a {% raw %}{{variable}}{% endraw %}]]`. If `variable` is given a value, then the entire clause is placed into the template. If not, then the entire clause is ignored.
