@@ -33,7 +33,6 @@ describe("admin/settings", () => {
 
             // clear the site name input, send the keys corresponding to the site name, then blur to trigger the update
             setInputValue(input, siteName)
-            input.simulate('blur')
 
             await store.waitForActions([UPDATE_SETTING])
         });
