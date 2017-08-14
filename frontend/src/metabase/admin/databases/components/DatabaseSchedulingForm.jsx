@@ -28,9 +28,9 @@ export const SyncOption = ({ selected, name, description, children, select }) =>
                 />
             }
         </div>
-        <div className="Form-offset">
+        <div className="Form-offset ml1">
             <div className={cx({ 'text-brand': selected })}>
-                <h3>{name} - {description}</h3>
+                <h4>{name} - {description}</h4>
             </div>
             { selected && children && <div className="mt2">{children}</div> }
         </div>
@@ -89,7 +89,7 @@ export default class DatabaseSchedulingForm extends Component {
 
                         <div className="Form-offset mr4 mt4">
                             <div>
-                                <h3>Database syncing</h3>
+                                <h4 className="text-bold text-uppercase">Database syncing</h4>
                                 <p className="text-paragraph text-measure">This is a lightweight process that checks for
                                     updates to this database’s schema. In most cases, you should be fine leaving this
                                     set to sync hourly.</p>
@@ -107,15 +107,16 @@ export default class DatabaseSchedulingForm extends Component {
                                     onScheduleChange={this.updateSchemaSyncSchedule}
                                 />
                             </div>
-                            <div className="mt2">
-                                <h3>Caching Field Values</h3>
+
+                            <div className="mt4">
+                                <h4 className="text-bold text-default text-uppercase">Caching Field Values</h4>
                                 <p className="text-paragraph text-measure">Metabase can scan the values present in each
                                     field in this database to enable checkbox filters in dashboards and questions. This
                                     can be a somewhat resource-intensive process, particularly if you have a very large
                                     database.</p>
 
-                                <h3>How often do the values in the tables of this database change?</h3>
-                                <ol className="bordered shadowed mt2">
+                                  <h3>How often do the values in the tables of this database change?</h3>
+                                <ol className="bordered shadowed mt3">
                                     <li className="border-bottom">
                                         <SyncOption
                                             selected={unsavedDatabase.is_full_sync}
@@ -153,8 +154,8 @@ export default class DatabaseSchedulingForm extends Component {
                             </div>
 
                         </div>
-                        <div className="Form-actions mt2">
-                            <button className={"Button Button--primary"}>Save</button>
+                        <div className="Form-actions mt4">
+                            <button className={"Button Button--primary"}>Save changes</button>
                             <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
                         </div>
                     </form>

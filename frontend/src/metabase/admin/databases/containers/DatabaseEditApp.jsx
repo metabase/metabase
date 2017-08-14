@@ -47,7 +47,7 @@ export const Tabs = ({ currentTab, setTab }) =>
     <div className="border-bottom">
         <ol className="Form-offset flex align center">
             {['Connection', 'Scheduling'].map((tab, index) =>
-                <li key={index}>
+                <li key={index} className="mr3">
                     <Tab
                         name={tab}
                         setTab={setTab}
@@ -143,7 +143,7 @@ export default class DatabaseEditApp extends Component {
                     { /* Sidebar Actions */ }
                     { database && database.id != null &&
                         <div className="Grid-cell Cell--1of3">
-                            <div className="Actions  bordered rounded shadowed">
+                            <div className="Actions bordered rounded shadowed">
                                 <div className="Actions-group">
                                     <label className="Actions-groupLabel block text-bold">Actions</label>
                                     <ol>
@@ -157,7 +157,7 @@ export default class DatabaseEditApp extends Component {
                                                 successText="Sync triggered!"
                                             />
                                         </li>
-                                        <li>
+                                        <li className="mt2">
                                             <ActionButton
                                                 actionFn={() => this.props.rescanDatabaseFields(database.id)}
                                                 className="Button Button--rescanFieldValues"
@@ -170,30 +170,37 @@ export default class DatabaseEditApp extends Component {
                                     </ol>
                                 </div>
 
-                                <div className="Actions-group Actions--dangerZone">
-                                    <label className="Actions-groupLabel block text-bold">Danger Zone:</label>
-                                    <ModalWithTrigger
-                                        ref="discardSavedFieldValuesModal"
-                                        triggerClasses="Button Button--danger Button--discardSavedFieldValues"
-                                        triggerElement="Discard saved field values"
-                                    >
-                                        <ConfirmContent
-                                            title="Discard saved field values"
-                                            onClose={() => this.refs.discardSavedFieldValuesModal.toggle()}
-                                            onAction={() => this.props.discardSavedFieldValues(database.id)}
-                                        />
-                                    </ModalWithTrigger>
-                                    <ModalWithTrigger
-                                        ref="deleteDatabaseModal"
-                                        triggerClasses="Button Button--deleteDatabase Button--danger"
-                                        triggerElement="Remove this database"
-                                    >
-                                        <DeleteDatabaseModal
-                                            database={database}
-                                            onClose={() => this.refs.deleteDatabaseModal.toggle()}
-                                            onDelete={() => this.props.deleteDatabase(database.id, true)}
-                                        />
-                                    </ModalWithTrigger>
+                                <div className="Actions-group">
+                                    <label className="Actions-groupLabel block text-bold">Danger Zone</label>
+                                    <ol>
+                                        <li>
+                                            <ModalWithTrigger
+                                                ref="discardSavedFieldValuesModal"
+                                                triggerClasses="Button Button--danger Button--discardSavedFieldValues"
+                                                triggerElement="Discard saved field values"
+                                            >
+                                                <ConfirmContent
+                                                    title="Discard saved field values"
+                                                    onClose={() => this.refs.discardSavedFieldValuesModal.toggle()}
+                                                    onAction={() => this.props.discardSavedFieldValues(database.id)}
+                                                />
+                                            </ModalWithTrigger>
+                                        </li>
+
+                                        <li className="mt2">
+                                            <ModalWithTrigger
+                                                ref="deleteDatabaseModal"
+                                                triggerClasses="Button Button--deleteDatabase Button--danger"
+                                                triggerElement="Remove this database"
+                                            >
+                                                <DeleteDatabaseModal
+                                                    database={database}
+                                                    onClose={() => this.refs.deleteDatabaseModal.toggle()}
+                                                    onDelete={() => this.props.deleteDatabase(database.id, true)}
+                                                />
+                                            </ModalWithTrigger>
+                                        </li>
+                                    </ol>
                                 </div>
                             </div>
                         </div>
