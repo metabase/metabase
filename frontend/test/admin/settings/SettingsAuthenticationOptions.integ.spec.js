@@ -1,8 +1,8 @@
 import {
     login,
-    createTestStore,
-    clickRouterLink,
+    createTestStore
 } from "__support__/integrated_tests";
+import { click } from "__support__/enzyme_utils"
 
 import { mount } from "enzyme";
 
@@ -28,13 +28,13 @@ describe('Admin Auth Options', () => {
         const settingsWrapper = app.find(SettingsEditorApp)
         const authListItem = settingsWrapper.find('span[children="Authentication"]')
 
-        clickRouterLink(authListItem)
+        click(authListItem)
 
         expect(settingsWrapper.find(SettingsAuthenticationOptions).length).toBe(1)
 
         // test google
         const googleConfigButton = settingsWrapper.find('.Button').first()
-        clickRouterLink(googleConfigButton)
+        click(googleConfigButton)
 
         expect(settingsWrapper.find(SettingsSingleSignOnForm).length).toBe(1)
 
@@ -42,7 +42,7 @@ describe('Admin Auth Options', () => {
 
         // test ldap
         const ldapConfigButton = settingsWrapper.find('.Button').last()
-        clickRouterLink(ldapConfigButton)
+        click(ldapConfigButton)
         expect(settingsWrapper.find(SettingsLdapForm).length).toBe(1)
     })
 })
