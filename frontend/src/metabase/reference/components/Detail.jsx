@@ -21,7 +21,7 @@ const Detail = ({ name, description, placeholder, subtitleClass, url, icon, isEd
                     <textarea
                         className={S.detailTextarea}
                         placeholder={placeholder}
-                        {...field}
+                        onChange={field.onChange}
                         //FIXME: use initialValues from redux forms instead of default value
                         // to allow for reinitializing on cancel (see GettingStartedGuide.jsx)
                         defaultValue={description}
