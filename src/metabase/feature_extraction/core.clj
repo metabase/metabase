@@ -105,33 +105,46 @@
        x))
    features))
 
-(defn- update-when
-  [m k f & args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))
-
 (defn x-ray
   "Turn feature vector into an x-ray."
   [features]
   (let [prettify (comp add-descriptions (partial trim-decimals 2) fe/x-ray)]
     (-> features
-        (update-when :features prettify)
-        (update-when :constituents (fn [constituents]
-                                     (if (sequential? constituents)
-                                       (map x-ray constituents)
-                                       (m/map-vals prettify constituents)))))))
+        (u/update-when :features prettify)
+        (u/update-when :constituents (fn [constituents]
+                                       (if (sequential? constituents)
+                                         (map x-ray constituents)
+                                         (m/map-vals prettify constituents)))))))
+
+(defn- largest-contributors
+  [comparisons]
+  (if (map? comparisons)
+    (->> comparisons
+         (comparison/head-tails-breaks (comp :distance val))
+         (mapcat (fn [[field {:keys [largest-contributors distance]}]]
+                   (for [[feature difference] largest-contributors]
+                     {:feature      feature
+                      :field        field
+                      :contribution (* distance difference)})))
+         (comparison/head-tails-breaks :contribution))
+    (->> comparisons
+         :largest-contributors
+         (map (fn [[feature difference]]
+                {:feature    feature
+                 :difference difference})))))
 
 (defn compare-features
   "Compare feature vectors of two models."
   [opts a b]
-  (let [[a b] (map (partial extract-features opts) [a b])]
-    {:constituents [a b]
-     :comparison   (if (:constituents a)
-                     (into {}
-                       (map (fn [[field a] [_ b]]
-                              [field (comparison/features-distance a b)])
-                            (:constituents a)
-                            (:constituents b)))
-                     (comparison/features-distance (:features a)
-                                                   (:features b)))}))
+  (let [[a b]       (map (partial extract-features opts) [a b])
+        comparisons (if (:constituents a)
+                      (into {}
+                        (map (fn [[field a] [_ b]]
+                               [field (comparison/features-distance a b)])
+                             (:constituents a)
+                             (:constituents b)))
+                      (comparison/features-distance (:features a)
+                                                    (:features b)))]
+    {:constituents         [a b]
+     :comparison           comparisons
+     :largest-contributors (largest-contributors comparisons)}))
