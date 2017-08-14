@@ -106,7 +106,8 @@
     color: var(--green-color);
 }
 
-.text-orange {
+.text-orange,
+.text-orange-hover:hover {
     color: var(--orange-color);
 }
 

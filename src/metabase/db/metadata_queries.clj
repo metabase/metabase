@@ -67,9 +67,11 @@
       first first int))
 
 (defn db-id
-  "Fetch the database ID of a given entity."
+  "Return the database ID of a given entity."
   [x]
-  (db/select-one-field :db_id 'Table :id (:table_id x)))
+  (or (:db_id x)
+      (:database_id x)
+      (db/select-one-field :db_id 'Table :id (:table_id x))))
 
 (defn field-values
   "Return all the values of FIELD for QUERY."

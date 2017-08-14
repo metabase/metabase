@@ -89,6 +89,7 @@ import CardXRay from "metabase/xray/containers/CardXRay.jsx";
 import FieldComparison from "metabase/xray/containers/FieldComparison.jsx";
 import TableComparison from "metabase/xray/containers/TableComparison.jsx";
 import SegmentComparison from "metabase/xray/containers/SegmentComparison.jsx";
+import SegmentTableComparison from "metabase/xray/containers/SegmentTableComparison.jsx";
 import CardComparison from "metabase/xray/containers/CardComparison.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
@@ -249,7 +250,8 @@ export const getRoutes = (store) =>
                     <Route path="card/:cardId" component={CardXRay} />
                     <Route path="compare/fields/:fieldId1/:fieldId2" component={FieldComparison} />
                     <Route path="compare/tables/:tableId1/:tableId2" component={TableComparison} />
-                    <Route path="compare/segments/:segmentId1/:segmentId2" component={SegmentComparison} />
+                    <Route path="compare/segments/:segmentId1/:segmentId2/:cost" component={SegmentComparison} />
+                    <Route path="compare/segment/:segmentId/table/:tableId/:cost" component={SegmentTableComparison} />
                     <Route path="compare/cards/:cardId1/:cardId2" component={CardComparison} />
                 </Route>
 

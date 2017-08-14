@@ -1,7 +1,7 @@
-(ns metabase.api.fingerprint
+(ns metabase.api.x-ray
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.fingerprinting.core :as f]
+            [metabase.feature-extraction.core :as fe]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -10,22 +10,23 @@
              [table :refer [Table]]]
             [schema.core :as s]))
 
-;; See metabase.fingerprinting.core/fingerprint for description of these settings.
-(def ^:private ^:const MaxQueryCost
+;; See metabase.feature-extraction.core/extract-features for description of
+;; these settings.
+(def ^:private MaxQueryCost
   (s/maybe (s/enum "cache"
                    "sample"
                    "full-scan"
                    "joins")))
 
-(def ^:private ^:const MaxComputationCost
+(def ^:private MaxComputationCost
   (s/maybe (s/enum "linear"
                    "unbounded"
                    "yolo")))
 
-(def ^:private ^:const Scale
-  (s/maybe (s/enum "month"
-                   "week"
-                   "day")))
+;; (def ^:private Scale
+;;   (s/maybe (s/enum "month"
+;;                    "week"
+;;                    "day")))
 
 (defn- max-cost
   [query computation]
@@ -33,100 +34,100 @@
    :computation (keyword computation)})
 
 (api/defendpoint GET "/field/:id"
-  "Get fingerprint for a `Field` with ID."
+  "Get x-ray for a `Field` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Field)
-       (f/fingerprint {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
-       f/x-ray))
+       (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                 max_computation_cost)})
+       fe/x-ray))
 
 (api/defendpoint GET "/table/:id"
-  "Get fingerprint for a `Tield` with ID."
+  "Get x-ray for a `Tield` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Table)
-       (f/fingerprint {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
-       f/x-ray))
+       (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                 max_computation_cost)})
+       fe/x-ray))
 
 (api/defendpoint GET "/segment/:id"
-  "Get fingerprint for a `Segment` with ID."
+  "Get x-ray for a `Segment` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Segment)
-       (f/fingerprint {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
-       f/x-ray))
+       (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                 max_computation_cost)})
+       fe/x-ray))
 
 (api/defendpoint GET "/card/:id"
-  "Get fingerprint for a `Card` with ID."
+  "Get x-ray for a `Card` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Card)
-       (f/fingerprint {:max-cost (max-cost max_query_cost
-                                           max_computation_cost)})
-       f/x-ray))
+       (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                 max_computation_cost)})
+       fe/x-ray))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"
-  "Get comparison fingerprints for `Field`s with ID1 and ID2."
+  "Get comparison x-ray for `Field`s with ID1 and ID2."
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> [id1 id2]
-       (map (partial api/read-check Field))
-       (apply f/compare-fingerprints
+       (map #(api/read-check Field (Integer/parseInt %)))
+       (apply fe/compare-features
               {:max-cost (max-cost max_query_cost max_computation_cost)})
-       f/x-ray))
+       fe/x-ray))
 
 (api/defendpoint GET "/compare/tables/:id1/:id2"
-  "Get comparison fingerprints for `Table`s with ID1 and ID2."
+  "Get comparison x-ray for `Table`s with ID1 and ID2."
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> [id1 id2]
-       (map (partial api/read-check Table))
-       (apply f/compare-fingerprints
+       (map #(api/read-check Table (Integer/parseInt %)))
+       (apply fe/compare-features
               {:max-cost (max-cost max_query_cost max_computation_cost)})
-       f/x-ray))
+       fe/x-ray))
 
-(api/defendpoint GET "/compare/cards/:id1/:id2"
-  "Get comparison fingerprints for `Card`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (->> [id1 id2]
-       (map (partial api/read-check Card))
-       (apply f/compare-fingerprints
-              {:max-cost (max-cost max_query_cost max_computation_cost)})
-       f/x-ray))
+;; (api/defendpoint GET "/compare/cards/:id1/:id2"
+;;   "Get comparison x-ray for `Card`s with ID1 and ID2."
+;;   [id1 id2 max_query_cost max_computation_cost]
+;;   {max_query_cost       MaxQueryCost
+;;    max_computation_cost MaxComputationCost}
+;;   (->> [id1 id2]
+;;        (map (partial api/read-check Card))
+;;        (apply fe/compare-features
+;;               {:max-cost (max-cost max_query_cost max_computation_cost)})
+;;        fe/x-ray))
 
 (api/defendpoint GET "/compare/segments/:id1/:id2"
-  "Get comparison fingerprints for `Segment`s with ID1 and ID2."
+  "Get comparison x-ray for `Segment`s with ID1 and ID2."
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (->> [id1 id2]
-       (map (partial api/read-check Segment))
-       (apply f/compare-fingerprints
+       (map #(api/read-check Segment (Integer/parseInt %)))
+       (apply fe/compare-features
               {:max-cost (max-cost max_query_cost max_computation_cost)})
-       f/x-ray))
+       fe/x-ray))
 
 (api/defendpoint GET "/compare/segment/:sid/table/:tid"
-  "Compare `Segment` with `Table`."
+  "Get comparison x-ray for `Segment` and `Table`."
   [sid tid max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
-  (f/x-ray
-   (f/compare-fingerprints
+  (fe/x-ray
+   (fe/compare-features
     {:max-cost (max-cost max_query_cost max_computation_cost)}
     (api/read-check Segment sid)
     (api/read-check Table tid))))
