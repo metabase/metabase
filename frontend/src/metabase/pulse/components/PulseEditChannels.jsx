@@ -194,6 +194,7 @@ export default class PulseEditChannels extends Component {
                     <SchedulePicker
                         schedule={_.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type") }
                         scheduleOptions={channelSpec.schedules}
+                        textBeforeInterval="Sent"
                         textBeforeSendTime={`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || "Messages"} will be sent at `}
                         onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
                     />

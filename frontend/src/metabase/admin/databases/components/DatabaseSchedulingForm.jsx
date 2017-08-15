@@ -105,6 +105,7 @@ export default class DatabaseSchedulingForm extends Component {
                                     }
                                     scheduleOptions={["hourly", "daily"]}
                                     onScheduleChange={this.updateSchemaSyncSchedule}
+                                    textBeforeInterval="Scan"
                                 />
                             </div>
 
@@ -138,6 +139,7 @@ export default class DatabaseSchedulingForm extends Component {
                                                     }
                                                     scheduleOptions={["daily", "weekly", "monthly"]}
                                                     onScheduleChange={this.updateFieldScanSchedule}
+                                                    textBeforeInterval="Scan"
                                                 />
                                             </div>
                                         </SyncOption>
