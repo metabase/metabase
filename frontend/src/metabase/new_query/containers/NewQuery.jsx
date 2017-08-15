@@ -17,6 +17,7 @@ import { getMetadata, getTables } from "metabase/selectors/metadata";
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
+import Query from "metabase-lib/lib/queries/Query";
 
 const mapStateToProps = state => ({
     query: getCurrentQuery(state),

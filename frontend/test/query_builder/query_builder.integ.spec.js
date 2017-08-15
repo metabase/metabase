@@ -59,6 +59,7 @@ import { TestTable } from "metabase/visualizations/visualizations/Table";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
 import { delay } from "metabase/lib/promise";
+import * as Urls from "metabase/lib/urls";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -67,7 +68,7 @@ const PRODUCT_TITLE_ID = 27;
 const initQbWithDbAndTable = (dbId, tableId) => {
     return async () => {
         const store = await createTestStore()
-        store.pushPath("/question");
+        store.pushPath(Urls.plainQuestion());
         const qb = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
 
@@ -95,7 +96,7 @@ describe("QueryBuilder", () => {
         it("renders normally on page load", async () => {
             const store = await createTestStore()
 
-            store.pushPath("/question");
+            store.pushPath(Urls.plainQuestion());
             const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
             await store.waitForActions([INITIALIZE_QB]);
 

@@ -142,6 +142,12 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, r
     }
 );
 
+
+export const REDIRECT_TO_NEW_QUESTION_FLOW = "metabase/qb/REDIRECT_TO_NEW_QUESTION_FLOW";
+export const redirectToNewQuestionFlow = createAction(REDIRECT_TO_NEW_QUESTION_FLOW, () =>
+    (dispatch) => dispatch(push("/question/new"))
+)
+
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
@@ -252,7 +258,7 @@ export const initializeQB = (location, params) => {
             // we are starting a new/empty card
             // if no options provided in the hash, redirect to the new question flow
             if (!options.db && !options.table && !options.segment && !options.metric) {
-                dispatch(push("/question/new"))
+                dispatch(redirectToNewQuestionFlow())
                 return;
             }
 
