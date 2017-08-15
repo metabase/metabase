@@ -53,7 +53,7 @@ node-5() {
 }
 node-6() {
     if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
-        run_step ./bin/build version frontend-fast sample-dataset uberjar
+        run_step ./bin/build version sample-dataset uberjar
     fi
 
     # NOTE Atte Keinänen 6/23/17: Reuse the existing E2E infra for running integrated tests (they require the prebuild jar too)
