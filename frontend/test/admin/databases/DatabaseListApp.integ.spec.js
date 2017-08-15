@@ -48,7 +48,6 @@ describe('dashboard list', () => {
 
         const wrapper = app.find(DatabaseListApp)
         expect(wrapper.length).toEqual(1)
-
     })
 
     describe('adds', () => {
