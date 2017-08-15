@@ -77,16 +77,18 @@
     (h/categorical? histogram) (h/equidistant-bins histogram)
     (h/empty? histogram)       []
     :else
-    (let [{:keys [min max]} (h.impl/bounds histogram)
-          {:keys [min-value max-value bin-width]}
-          (binning/nicer-breakout
-           {:min-value min
-            :max-value max
-            :num-bins  (->> histogram
-                            h/optimal-bin-width
-                            (binning/calculate-num-bins min max))
-            :strategy  :num-bins})]
-      (h/equidistant-bins min-value max-value bin-width histogram))))
+    (let [{:keys [min max]} (h.impl/bounds histogram)]
+      (if (= min max)
+        [[min 1.0]]
+        (let [{:keys [min-value max-value bin-width]}
+              (binning/nicer-breakout
+               {:min-value min
+                :max-value max
+                :num-bins  (->> histogram
+                                h/optimal-bin-width
+                                (binning/calculate-num-bins min max))
+                :strategy  :num-bins})]
+          (h/equidistant-bins min-value max-value bin-width histogram))))))
 
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
