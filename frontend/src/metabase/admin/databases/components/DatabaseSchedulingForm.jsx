@@ -115,13 +115,13 @@ export default class DatabaseSchedulingForm extends Component {
                                     can be a somewhat resource-intensive process, particularly if you have a very large
                                     database.</p>
 
-                                  <h3>How often do the values in the tables of this database change?</h3>
+                                  <h3>When should Metabase automatically scan and cache field values?</h3>
                                 <ol className="bordered shadowed mt3">
                                     <li className="border-bottom">
                                         <SyncOption
                                             selected={unsavedDatabase.is_full_sync}
-                                            name="Often"
-                                            description="Metabase should re-scan at regular intervals"
+                                            name="Regularly"
+                                            description="I'll set a schedule"
                                             select={() => this.setIsFullSync(true)}
                                         >
 
@@ -146,7 +146,7 @@ export default class DatabaseSchedulingForm extends Component {
                                         <SyncOption
                                             selected={!unsavedDatabase.is_full_sync}
                                             name="Never"
-                                            description="Metabase should only re-scan when I tell it to manually"
+                                            description="I'll do this manually if I need to"
                                             select={() => this.setIsFullSync(false)}
                                         />
                                     </li>
