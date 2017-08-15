@@ -27,6 +27,8 @@ import Toggle from "metabase/components/Toggle";
 import { TestModal } from "metabase/components/Modal";
 import Select from "metabase/components/Select";
 import ColumnarSelector from "metabase/components/ColumnarSelector";
+import { click, clickButton } from "__support__/enzyme_utils";
+import { MetabaseApi } from "metabase/services";
 
 // Currently a lot of duplication with SegmentPane tests
 describe("DatabaseEditApp", () => {
@@ -40,11 +42,6 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
-
-            const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
-            expect(schedulingForm.length).toBe(1)
-
-            dbEditApp.find(Tab).first().simulate("click");
 
             const editForm = dbEditApp.find(DatabaseEditForms)
             expect(editForm.length).toBe(1)
@@ -72,15 +69,19 @@ describe("DatabaseEditApp", () => {
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
+            const editForm = dbEditApp.find(DatabaseEditForms)
+            expect(editForm.length).toBe(1)
+            click(dbEditApp.find(Tab).last());
+
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
-            expect(schedulingForm.find(Select).first().text()).toEqual("Daily");
+            expect(schedulingForm.find(Select).first().text()).toEqual("Hourly");
 
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
 
-            expect(syncOptionOften.props().name).toEqual("Often");
+            expect(syncOptionOften.props().name).toEqual("Regularly");
             expect(syncOptionOften.props().selected).toEqual(true);
         });
 
@@ -90,39 +91,19 @@ describe("DatabaseEditApp", () => {
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
+            click(dbEditApp.find(Tab).last());
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             const dbSyncSelect = schedulingForm.find(Select).first()
-            dbSyncSelect.simulate("click");
+            click(dbSyncSelect)
 
             const dailyOption = schedulingForm.find(ColumnarSelector).find("li").at(1).children();
             expect(dailyOption.text()).toEqual("Daily")
-            dailyOption.simulate("click");
+            click(dailyOption);
 
             expect(dbSyncSelect.text()).toEqual("Daily");
 
-            schedulingForm.find('button[children="Save"]').simulate("click");
+            clickButton(schedulingForm.find('button[children="Save changes"]'));
 
-            await store.waitForActions([UPDATE_DATABASE])
-        });
-
-        it("lets you change the table change frequency to Rarely", async () => {
-            const store = await createTestStore()
-            store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
-            await store.waitForActions([INITIALIZE_DATABASE])
-
-            const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
-            const dbSyncSelect = schedulingForm.find(Select).first()
-            dbSyncSelect.simulate("click");
-
-            const syncOptions = schedulingForm.find(SyncOption);
-            const syncOptionRarely = syncOptions.at(1);
-
-            expect(syncOptionRarely.props().selected).toEqual(false);
-            syncOptionRarely.simulate("click");
-            expect(syncOptionRarely.props().selected).toEqual(true);
-
-            schedulingForm.find('button[children="Save"]').get(0).click();
             await store.waitForActions([UPDATE_DATABASE])
         });
 
@@ -132,18 +113,19 @@ describe("DatabaseEditApp", () => {
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
+            click(dbEditApp.find(Tab).last())
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             const dbSyncSelect = schedulingForm.find(Select).first()
-            dbSyncSelect.simulate("click");
+            click(dbSyncSelect)
 
             const syncOptions = schedulingForm.find(SyncOption);
-            const syncOptionsNever = syncOptions.at(2);
+            const syncOptionsNever = syncOptions.at(1);
 
             expect(syncOptionsNever.props().selected).toEqual(false);
-            syncOptionsNever.simulate("click");
+            click(syncOptionsNever)
             expect(syncOptionsNever.props().selected).toEqual(true);
 
-            schedulingForm.find('button[children="Save"]').get(0).click();
+            clickButton(schedulingForm.find('button[children="Save changes"]'));
             await store.waitForActions([UPDATE_DATABASE])
 
         });
@@ -154,14 +136,15 @@ describe("DatabaseEditApp", () => {
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
+            click(dbEditApp.find(Tab).last())
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
-            expect(schedulingForm.find(Select).first().text()).toEqual("Hourly");
+            expect(schedulingForm.find(Select).first().text()).toEqual("Daily");
 
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
-            const syncOptionNever = syncOptions.at(2);
+            const syncOptionNever = syncOptions.at(1);
             expect(syncOptionOften.props().selected).toEqual(false);
             expect(syncOptionNever.props().selected).toEqual(true);
         })
@@ -172,11 +155,23 @@ describe("DatabaseEditApp", () => {
             const store = await createTestStore()
             const database = (await store.dispatch(initializeDatabase(1))).payload
             await store.dispatch(saveDatabase(
-                // reset to "Often" setting for field fingerprinting
                 {
                     ...database,
-
-                    is_full_sync: true
+                    is_full_sync: true,
+                    schedules: {
+                        "cache_field_values": {
+                            "schedule_day": null,
+                            "schedule_frame": null,
+                            "schedule_hour": null,
+                            "schedule_type": "hourly"
+                        },
+                        "metadata_sync": {
+                            "schedule_day": null,
+                            "schedule_frame": null,
+                            "schedule_hour": null,
+                            "schedule_type": "hourly"
+                        }
+                    }
                 },
                 {
                     ...database.details,
@@ -193,7 +188,7 @@ describe("DatabaseEditApp", () => {
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
-            dbEditApp.find(".Button--syncDbSchema").simulate("click")
+            clickButton(dbEditApp.find(".Button--syncDbSchema"))
             await store.waitForActions([SYNC_DATABASE_SCHEMA])
             // TODO: do we have any way to see that the sync is actually in progress in the backend?
         });
@@ -204,20 +199,25 @@ describe("DatabaseEditApp", () => {
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
-            dbEditApp.find(".Button--rescanFieldValues").simulate("click")
+            clickButton(dbEditApp.find(".Button--rescanFieldValues"))
             await store.waitForActions([RESCAN_DATABASE_FIELDS])
             // TODO: do we have any way to see that the field rescanning is actually in progress in the backend?
         });
 
+        // TODO Atte Keinänen 8/15/17: Does losing field values potentially cause test failures in other test suites?
         it("lets you discard saved field values", async () => {
+            // To be safe, let's mock the API method
+            MetabaseApi.db_discard_values = jest.fn();
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
 
-            dbEditApp.find(".Button--discardSavedFieldValues").simulate("click")
-            dbEditApp.find(TestModal).find(".Button--danger").simulate("click");
+            click(dbEditApp.find(".Button--discardSavedFieldValues"))
+            clickButton(dbEditApp.find(TestModal).find(".Button--danger"))
             await store.waitForActions([DISCARD_SAVED_FIELD_VALUES])
+
+            expect(MetabaseApi.db_discard_values.mock.calls.length).toBe(1);
         })
 
         // Disabled because removal&recovery causes the db id to change
@@ -230,7 +230,7 @@ describe("DatabaseEditApp", () => {
             // await store.waitForActions([INITIALIZE_DATABASE])
             //
             // try {
-            //     dbEditApp.find(".Button--deleteDatabase").simulate("click")
+            //     click(dbEditApp.find(".Button--deleteDatabase"))
             //     console.log(dbEditApp.debug());
             //     await store.waitForActions([DELETE_DATABASE])
             //     await store.dispatch(addSampleDataset())

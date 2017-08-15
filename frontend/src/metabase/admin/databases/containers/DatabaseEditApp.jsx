@@ -42,17 +42,18 @@ export const Tab = ({ name, setTab, currentTab }) => {
     return (
         <div
             className={cx('cursor-pointer py2', {'text-brand': isCurrentTab })}
-            style={isCurrentTab ? { borderBottom: "3px solid #2D86D4" } : {}}
+            // TODO Use css classes instead?
+            style={isCurrentTab ? { borderBottom: "3px solid #509EE3" } : {}}
             onClick={() => setTab(name)}>
             <h3>{name}</h3>
         </div>
     )
 }
 
-export const Tabs = ({ currentTab, setTab }) =>
+export const Tabs = ({ tabs, currentTab, setTab }) =>
     <div className="border-bottom">
         <ol className="Form-offset flex align center">
-            {['Connection', 'Scheduling'].map((tab, index) =>
+            {tabs.map((tab, index) =>
                 <li key={index} className="mr3">
                     <Tab
                         name={tab}
@@ -80,7 +81,7 @@ const mapDispatchToProps = {
 export default class DatabaseEditApp extends Component {
 
     state = {
-        currentTab: 'scheduling'
+        currentTab: 'connection'
     }
 
     static propTypes = {
@@ -106,19 +107,25 @@ export default class DatabaseEditApp extends Component {
         let { database } = this.props;
         const { currentTab } = this.state;
 
+        const editingExistingDatabase = database && database.id != null
+        const addingNewDatabase = !editingExistingDatabase
+
         return (
             <div className="wrapper">
                 <Breadcrumbs className="py4" crumbs={[
                     ["Databases", "/admin/databases"],
-                    [database && database.id != null ? database.name : "Add Database"]
+                    [addingNewDatabase ? "Add Database" : database.name]
                 ]} />
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed pt0">
-                            <Tabs
-                                currentTab={currentTab}
-                                setTab={tab => this.setState({ currentTab: tab.toLowerCase() })}
-                            />
+                            { editingExistingDatabase &&
+                                <Tabs
+                                    tabs={['Connection', 'Scheduling']}
+                                    currentTab={currentTab}
+                                    setTab={tab => this.setState({currentTab: tab.toLowerCase()})}
+                                />
+                            }
                             <LoadingAndErrorWrapper loading={!database} error={null}>
                                 { () =>
                                     <div>
