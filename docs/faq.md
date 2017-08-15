@@ -45,6 +45,23 @@ Metabase allows you to [click on your charts or tables to explore or zoom in](ht
 
 However, in [Metabase version 0.25 we introduced nested queries](http://www.metabase.com/blog/Metabase-0.25#nested-questions), a feature that lets you use the results of SQL/native queries as the starting table for GUI-based questions. This means you'll be able to use sophisticated SQL/native queries to create the exact segments you need, and you and your team will be able to use drill-through and actions if you create GUI-based questions from those segments.
 
+## Dashboards
+
+### Can I add headings, free text, section dividers, or images to my dashboards?
+Not currently, but these are all enhancements that we're considering.
+
+### Why do my cards fade out when I use dashboard filters?
+When one or more dashboard filters are active, any card on that dashboard that isn't connected to *every currently active filter* will fade out a bit to clarify that they are not being affected by all active filters. We understand this behavior is contentious, so we're [actively discussing it on GitHub](https://github.com/metabase/metabase/issues/4220).
+
+### Can I set permissions to choose which users can view which dashboards?
+Not directly. But if a user does not have permission to view *any* of the cards that a dashboard includes, she won't see that dashboard listed in the Dashboards section, and won't be allowed to see that dashboard if given a direct link to it. Additionally, we're currently actively considering placing dashboards inside collections, which would allow administrators to use collection permissions to restrict user group access to dashboards the same way they currently can to restrict access to saved questions.
+
+### Why can't I make my dashboard cards smaller?
+Metabase has minimum size limits for dashboard cards to ensure that numbers and charts on dashboards are legible. You might be asking this question because you're trying to fit a lot of things in a dashboard, and another way we're exploring to solve *that* problem is by making it easier to put more than one series or metric in the same question, which would reduce the number of cards required to be on a dashboard in the first place.
+
+### When I make a number card on a dashboard small, the number changes. Why?
+In an effort to make sure that dashboards are legible, Metabase changes the way charts and numbers in cards look at different sizes. When a number card is small, Metabase abbreviates numbers like 42,177 to 42k, for example.
+
 
 ## Pulses and Metabot
 
