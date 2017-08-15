@@ -4,6 +4,7 @@ import Question from "metabase-lib/lib/Question";
 
 // provides functions for building urls to things we care about
 
+export const newQuestion = () => "/question/new";
 export function question(cardId, hash = "", query = "") {
     if (hash && typeof hash === "object") {
         hash = serializeCardForUrl(hash);
