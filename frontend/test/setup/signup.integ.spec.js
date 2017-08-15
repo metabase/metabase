@@ -4,13 +4,11 @@ import {
     BROWSER_HISTORY_REPLACE
 } from "__support__/integrated_tests";
 import {
-    click,
     clickButton,
     setInputValue
 } from "__support__/enzyme_utils";
 
 import { mount } from "enzyme";
-import { delay } from "metabase/lib/promise"
 import Setup from "metabase/setup/components/Setup";
 import { SET_ACTIVE_STEP } from "metabase/setup/actions";
 

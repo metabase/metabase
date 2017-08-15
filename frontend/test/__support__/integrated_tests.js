@@ -99,8 +99,8 @@ export function switchToTestFixtureDatabase() {
     api.basename = process.env.TEST_FIXTURE_BACKEND_HOST;
 }
 
-const isPlainDatabase = () => api.basename === process.env.PLAIN_BACKEND_HOST;
-const isTestFixtureDatabase = () => api.basename === process.env.TEST_FIXTURE_BACKEND_HOST;
+export const isPlainDatabase = () => api.basename === process.env.PLAIN_BACKEND_HOST;
+export const isTestFixtureDatabase = () => api.basename === process.env.TEST_FIXTURE_BACKEND_HOST;
 
 /**
  * Creates an augmented Redux store for testing the whole app including browser history manipulation. Includes:
