@@ -42,9 +42,7 @@ import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
 // new question
-import NewQuestionStart from "metabase/new_query/containers/Start";
-import NewQuestionMetrics from "metabase/new_query/containers/Metrics";
-import NewQuestionSegments from "metabase/new_query/containers/Segments";
+import { NewQuestionStart } from "metabase/new_query/router_wrappers";
 
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
@@ -203,8 +201,8 @@ export const getRoutes = (store) =>
                     { /* NEW QUESTION FLOW */ }
                     <Route path="new">
                         <IndexRoute component={NewQuestionStart} />
-                        <Route path="metrics" component={NewQuestionMetrics} />
-                        <Route path="segments" component={NewQuestionSegments} />
+                        {/*<Route path="metrics" component={NewQuestionMetrics} />*/}
+                        {/*<Route path="segments" component={NewQuestionSegments} />*/}
                     </Route>
                 </Route>
                 <Route path="/question/:cardId" component={QueryBuilder} />

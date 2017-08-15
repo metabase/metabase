@@ -1,71 +1,110 @@
-import React, { Component } from "react";
-import cx from "classnames";
+/* @flow */
 
-class NewQueryOption extends Component {
-   props: {
-       image: string,
-       title: string,
-       description: string,
-       onClick: () => void
-   };
+import React, { Component } from 'react'
+import { connect } from 'react-redux'
 
-   state = {
-       hover: false
-   };
+import { fetchDatabases, fetchTableMetadata } from 'metabase/redux/metadata'
+import { resetQuery, updateQuery } from '../new_query'
 
-   render() {
-       const { width, image, title, description, onClick } = this.props;
-       const { hover } = this.state;
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-       return (
-           <div
-               className="bg-white p1 align-center bordered rounded cursor-pointer transition-all text-centered text-brand-light"
-               style={{
-                   boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
-                   height: "310px"
-               }}
-               onMouseOver={() => this.setState({hover: true})}
-               onMouseLeave={() => this.setState({hover: false})}
-               onClick={onClick}
-           >
-               <div className="flex align-center layout-centered" style={{ height: "160px" }}>
-                   <img
-                       src={`${image}.png`}
-                       style={{ width: width ? `${width}px` : "210px" }}
-                       srcSet={`${image}@2x.png 2x`}
-                   />
+import Table from "metabase-lib/lib/metadata/Table";
+import Database from "metabase-lib/lib/metadata/Database";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
+import type { TableId } from "metabase/meta/types/Table";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { getMetadata, getTables } from "metabase/selectors/metadata";
+import NewQueryOption from "metabase/new_query/components/NewQueryOption";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
 
-               </div>
-               <div className="text-grey-2 text-normal mt2 mb2 text-paragraph" style={{lineHeight: "1.5em"}}>
-                   <h2 className={cx("transition-all", {"text-grey-5": !hover}, {"text-brand": hover})}>{title}</h2>
-                   <p className={"text-grey-4"}>{description}</p>
-               </div>
-           </div>
-       );
-   }
+const mapStateToProps = state => ({
+    query: getCurrentQuery(state),
+    plainNativeQuery: getPlainNativeQuery(state),
+    metadata: getMetadata(state),
+    tables: getTables(state)
+})
+
+const mapDispatchToProps = {
+    fetchDatabases,
+    fetchTableMetadata,
+    resetQuery,
+    updateQuery
 }
 
-export default class NewQuery extends Component {
-    props: {
-        onClose: () => void
-    };
 
-    state = {
-        addingSavedMetric: false
+type Props = {
+    // Component parameters
+    onComplete: (StructuredQuery) => void,
+
+    // Properties injected with redux connect
+    query: StructuredQuery,
+    plainNativeQuery: NativeQuery,
+
+    resetQuery: () => void,
+    updateQuery: (Query) => void,
+
+    fetchDatabases: () => void,
+    fetchTableMetadata: (TableId) => void,
+
+    metadata: Metadata
+}
+
+export class NewQuery extends Component {
+    props: Props
+
+    componentWillMount() {
+        this.props.fetchDatabases();
+        this.props.resetQuery();
     }
 
+    startGuiQuery = (database: Database) => {
+        this.props.onComplete(this.props.query);
+    }
+
+    startNativeQuery = (table: Table) => {
+        this.props.onComplete(this.props.plainNativeQuery);
+    }
+
+    // NOTE: Not in the first iteration yet!
+    //
+    // showMetricSearch = () => {
+    //
+    // }
+    //
+    // showSegmentSearch = () => {
+    //
+    // }
+    //
+    // startMetricQuery = (metric: Metric) => {
+    //     this.props.fetchTableMetadata(metric.table().id);
+    //
+    //     this.props.updateQuery(
+    //         this.props.query
+    //             .setDatabase(metric.database)
+    //             .setTable(metric.table)
+    //             .addAggregation(metric.aggregationClause())
+    //     )
+    //         this.props.onComplete(updatedQuery);
+    // }
+
     render() {
+        const { query } = this.props
+
+        if (!query) {
+            return <LoadingAndErrorWrapper loading={true}/>
+        }
+
         return (
             <div className="flex-full full ml-auto mr-auto pl1 pr1 mt2 mb2 align-center"
                  style={{maxWidth: "800px"}}>
                 <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2">
-                    <li className="Grid-cell">
-                        {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+
+                    {/*<li className="Grid-cell">
                         <NewQueryOption
                             image="/app/img/questions_illustration"
                             title="Metrics"
                             description="See data over time, as a map, or pivoted to help you understand trends or changes."
-                            onClick={() => this.setState({addingSavedMetric: true})}
                         />
                     </li>
                     <li className="Grid-cell">
@@ -74,16 +113,16 @@ export default class NewQuery extends Component {
                             title="Segments"
                             description="Explore tables and see what’s going on underneath your charts."
                             width={180}
-                            onClick={() => alert("Not implemented yet.")}
                         />
-                    </li>
+                    </li>*/}
+
                     <li className="Grid-cell">
                         {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                         <NewQueryOption
                             image="/app/img/custom_question"
                             title="Custom"
                             description="Use the simple query builder to create your own new custom question."
-                            onClick={() => this.setState({addingSavedMetric: true})}
+                            onClick={this.startGuiQuery}
                         />
                     </li>
                     <li className="Grid-cell">
@@ -91,11 +130,13 @@ export default class NewQuery extends Component {
                             image="/app/img/sql_illustration"
                             title="SQL"
                             description="Use SQL or other native languages for data prep or manipulation."
-                            onClick={() => alert("Not implemented yet.")}
+                            onClick={this.startNativeQuery}
                         />
                     </li>
                 </ol>
             </div>
-        );
+        )
     }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(NewQuery)

@@ -250,6 +250,12 @@ export const initializeQB = (location, params) => {
 
         } else {
             // we are starting a new/empty card
+            // if no options provided in the hash, redirect to the new question flow
+            if (!options.db && !options.table && !options.segment && !options.metric) {
+                dispatch(push("/question/new"))
+                return;
+            }
+
             const databaseId = (options.db) ? parseInt(options.db) : undefined;
             card = startNewCard("query", databaseId);
 
