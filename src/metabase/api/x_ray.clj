@@ -99,6 +99,23 @@
               {:max-cost (max-cost max_query_cost max_computation_cost)})
        fe/x-ray))
 
+(api/defendpoint GET "/compare/tables/:id1/:id2/field/:field"
+  "Get comparison x-ray for `Field` named `field` from `Table`s with ID1 and
+   ID2."
+  [id1 id2 field max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (let [{:keys [comparison constituents]}
+        (->> [id1 id2]
+             (map #(api/read-check Table (Integer/parseInt %)))
+             (apply fe/compare-features
+                    {:max-cost (max-cost max_query_cost max_computation_cost)})
+             fe/x-ray)]
+    {:constituents         [(-> constituents first :constituents (get field))
+                            (-> constituents second :constituents (get field))]
+     :comparison           (-> comparison (get field))
+     :largest-contributors (-> comparison (get field) :largest-contributors)}))
+
 ;; (api/defendpoint GET "/compare/cards/:id1/:id2"
 ;;   "Get comparison x-ray for `Card`s with ID1 and ID2."
 ;;   [id1 id2 max_query_cost max_computation_cost]
@@ -121,6 +138,23 @@
               {:max-cost (max-cost max_query_cost max_computation_cost)})
        fe/x-ray))
 
+(api/defendpoint GET "/compare/segments/:id1/:id2/field/:field"
+  "Get comparison x-ray for `Field` named `field` from `Segment`s with
+   ID1 and ID2."
+  [id1 id2 field max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (let [{:keys [comparison constituents]}
+        (->> [id1 id2]
+             (map #(api/read-check Segment (Integer/parseInt %)))
+             (apply fe/compare-features
+                    {:max-cost (max-cost max_query_cost max_computation_cost)})
+             fe/x-ray)]
+    {:constituents         [(-> constituents first :constituents (get field))
+                            (-> constituents second :constituents (get field))]
+     :comparison           (-> comparison (get field))
+     :largest-contributors (-> comparison (get field) :largest-contributors)}))
+
 (api/defendpoint GET "/compare/segment/:sid/table/:tid"
   "Get comparison x-ray for `Segment` and `Table`."
   [sid tid max_query_cost max_computation_cost]
@@ -131,5 +165,30 @@
     {:max-cost (max-cost max_query_cost max_computation_cost)}
     (api/read-check Segment sid)
     (api/read-check Table tid))))
+
+(api/defendpoint GET "/compare/segment/:sid/table/:tid/field/:field"
+  "Get comparison x-ray for `Field` named `field` from `Segment` `SID` and table
+   `TID`."
+  [sid tid field max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (let [{:keys [comparison constituents]}
+        (fe/x-ray
+         (fe/compare-features
+          {:max-cost (max-cost max_query_cost max_computation_cost)}
+          (api/read-check Segment sid)
+          (api/read-check Table tid)))]
+    {:constituents         [(-> constituents first :constituents (get field))
+                            (-> constituents second :constituents (get field))]
+     :comparison           (-> comparison (get field))
+     :largest-contributors (-> comparison (get field) :largest-contributors)}))
+
+(api/defendpoint GET "/compare/valid-pairs"
+  "Get a list of model pairs that can be compared."
+  []
+  [["field" "field"]
+   ["segment" "segment"
+    "table" "table"
+    "segment" "table"]])
 
 (api/define-routes)
