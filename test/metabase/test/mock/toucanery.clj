@@ -54,6 +54,11 @@
     [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
      {:keypath "movies.description", :value "A cinematic adventure."}]))
 
+;; enough so it can get fingerprinted, but not be a category
+(defn- table-rows-sample [_ _ fields]
+  (for [i (range 500)]
+    (repeat (count fields) i)))
+
 
 (defrecord ToucaneryDriver []
   clojure.lang.Named
@@ -62,12 +67,12 @@
 (extend ToucaneryDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:describe-database     describe-database
-          :describe-table        describe-table
-          :features              (constantly #{:dynamic-schema :nested-fields})
-          :details-fields        (constantly [])
-          :field-values-lazy-seq (fn [& _] (range 500)) ; enough so it can get fingerprinted, but not be a category
-          :table-rows-seq        table-rows-seq}))
+         {:describe-database describe-database
+          :describe-table    describe-table
+          :features          (constantly #{:dynamic-schema :nested-fields})
+          :details-fields    (constantly [])
+          :table-rows-seq    table-rows-seq
+          :table-rows-sample table-rows-sample}))
 
 (driver/register-driver! :toucanery (ToucaneryDriver.))
 

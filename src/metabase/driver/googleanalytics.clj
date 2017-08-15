@@ -242,7 +242,6 @@
                                                   :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                   :required     true}])
           :execute-query            (u/drop-first-arg (partial qp/execute-query do-query))
-          :field-values-lazy-seq    (constantly [])
           :process-query-in-context (u/drop-first-arg process-query-in-context)
           :mbql->native             (u/drop-first-arg qp/mbql->native)
           :table-rows-seq           (u/drop-first-arg table-rows-seq)}))

@@ -2,7 +2,9 @@
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.models.table :as table]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table] :as table]]
             [metabase.test
              [data :as data]
              [util :refer [resolve-private-vars]]]
@@ -96,14 +98,16 @@
               :base-type :type/Integer}}}
   (driver/describe-table (PrestoDriver.) (data/db) (db/select-one 'Table :id (data/id :venues))))
 
-;;; FIELD-VALUES-LAZY-SEQ
+;;; TABLE-ROWS-SAMPLE
 (datasets/expect-with-engine :presto
-  ["Red Medicine"
-   "Stout Burgers & Beers"
-   "The Apple Pan"
-   "Wurstküche"
-   "Brite Spot Family Restaurant"]
-  (take 5 (driver/field-values-lazy-seq (PrestoDriver.) (db/select-one 'Field :id (data/id :venues :name)))))
+  [["Red Medicine"]
+   ["Stout Burgers & Beers"]
+   ["The Apple Pan"]
+   ["Wurstküche"]
+   ["Brite Spot Family Restaurant"]]
+  (take 5 (driver/table-rows-sample (PrestoDriver.)
+                                    (Table (data/id :venues))
+                                    [(Field (data/id :venues :name))])))
 
 ;;; TABLE-ROWS-SEQ
 (datasets/expect-with-engine :presto

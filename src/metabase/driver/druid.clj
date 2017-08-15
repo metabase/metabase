@@ -8,9 +8,11 @@
              [util :as u]]
             [metabase.driver.druid.query-processor :as qp]
             [metabase.models
+             [database :refer [Database]]
              [field :as field]
              [table :as table]]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util.ssh :as ssh]
+            [toucan.db :as db]))
 
 ;;; ### Request helper fns
 
@@ -98,49 +100,21 @@
                       {:schema nil, :name table-name}))})))
 
 
-;;; ### field-values-lazy-seq
+;;; ### table-rows-sample
 
-(defn- field-values-lazy-seq-fetch-one-page [details table-name field-name & [paging-identifiers]]
-  {:pre [(map? details) (or (string? table-name) (keyword? table-name)) (or (string? field-name) (keyword? field-name)) (or (nil? paging-identifiers) (map? paging-identifiers))]}
-  (let [[{{:keys [pagingIdentifiers events]} :result}] (do-query details {:queryType   :select
-                                                                          :dataSource  table-name
-                                                                          :intervals   ["1900-01-01/2100-01-01"]
-                                                                          :granularity :all
-                                                                          :dimensions  [field-name]
-                                                                          :metrics     []
-                                                                          :pagingSpec  (merge {:threshold driver/field-values-lazy-seq-chunk-size}
-                                                                                              (when paging-identifiers
-                                                                                                {:pagingIdentifiers paging-identifiers}))})]
-    ;; return pair of [paging-identifiers values]
-    [ ;; Paging identifiers return the largest offset of their results, e.g. 49 for page 1.
-     ;; We need to inc that number so the next page starts after that (e.g. 50)
-     (let [[[k offset]] (seq pagingIdentifiers)]
-       {k (inc offset)})
-     ;; Unnest the values
-     (for [event events]
-       (get-in event [:event (keyword field-name)]))]))
-
-(defn- field-values-lazy-seq
-  ([field]
-   (field-values-lazy-seq (:details (table/database (field/table field)))
-                          (:name (field/table field))
-                          (:name field)
-                          0
-                          nil))
-
-  ([details table-name field-name total-items-fetched paging-identifiers]
-   {:pre [(map? details)
-          (or (string? table-name) (keyword? table-name))
-          (or (string? field-name) (keyword? field-name))
-          (integer? total-items-fetched)
-          (or (nil? paging-identifiers) (map? paging-identifiers))]}
-   (lazy-seq (let [[paging-identifiers values] (field-values-lazy-seq-fetch-one-page details table-name field-name paging-identifiers)
-                   total-items-fetched         (+ total-items-fetched driver/field-values-lazy-seq-chunk-size)]
-               (concat values
-                       (when (and (seq values)
-                                  (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                  (= (count values) driver/field-values-lazy-seq-chunk-size))
-                         (field-values-lazy-seq details table-name field-name total-items-fetched paging-identifiers)))))))
+(defn- table-rows-sample [table fields]
+  (let [db-details (db/select-one-field :details Database :id (:db_id table))
+        [results]  (do-query db-details {:queryType   :select
+                                         :dataSource  (:name table)
+                                         :intervals   ["1900-01-01/2100-01-01"]
+                                         :granularity :all
+                                         :dimensions  (map :name fields)
+                                         :metrics     []
+                                         :pagingSpec  {:threshold driver/max-sample-rows}})]
+    ;; Unnest the values
+    (for [event (get-in results [:result :events])]
+      (for [field fields]
+        (get-in event [:event (keyword (:name field))])))))
 
 
 ;;; ### DruidrDriver Class Definition
@@ -165,7 +139,7 @@
                                                  :default      8082}]))
           :execute-query         (fn [_ query] (qp/execute-query do-query query))
           :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
-          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
+          ;; :table-rows-sample     (u/drop-first-arg table-rows-sample)
           :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 
 (defn -init-driver

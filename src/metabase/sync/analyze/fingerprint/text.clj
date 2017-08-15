@@ -7,7 +7,7 @@
 
 (s/defn ^:private ^:always-validate average-length :- (s/constrained Double #(>= % 0))
   "Return the average length of VALUES."
-  [values :- i/ValuesSample]
+  [values :- i/FieldSample]
   (let [total-length (reduce + (for [value values]
                                  (count (str value))))]
     (/ (double total-length)
@@ -15,7 +15,7 @@
 
 (s/defn ^:private ^:always-validate percent-satisfying-predicate :- i/Percent
   "Return the percentage of VALUES that satisfy PRED."
-  [pred :- (s/pred fn?), values :- i/ValuesSample]
+  [pred :- (s/pred fn?), values :- i/FieldSample]
   (let [total-count    (count values)
         pred           #(boolean (u/ignore-exceptions (pred %)))
         matching-count (count (get (group-by pred values) true []))]
@@ -32,7 +32,7 @@
 
 (s/defn ^:always-validate text-fingerprint :- i/TextFingerprint
   "Generate a fingerprint containing information about values that belong to a `:type/Text` Field."
-  [values :- i/ValuesSample]
+  [values :- i/FieldSample]
   {:percent-json   (percent-satisfying-predicate valid-serialized-json? values)
    :percent-url    (percent-satisfying-predicate u/is-url? values)
    :percent-email  (percent-satisfying-predicate u/is-email? values)

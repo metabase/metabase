@@ -57,6 +57,11 @@
                                :schema nil}
             :dest-column-name "studio"}})))
 
+;; enough values that it won't get marked as a Category, but still get a fingerprint or w/e
+(defn- table-rows-sample [_ _ fields]
+  (for [i (range 500)]
+    (repeat (count fields) i)))
+
 (extend SyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
@@ -65,8 +70,7 @@
           :describe-table-fks    describe-table-fks
           :features              (constantly #{:foreign-keys})
           :details-fields        (constantly [])
-          ;; enough values that it won't get marked as a Category, but still get a fingerprint or w/e
-          :field-values-lazy-seq (fn [& _] (range 500))}))
+          :table-rows-sample     table-rows-sample}))
 
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
@@ -153,6 +157,15 @@
                                   :name         "studio"
                                   :display_name "Studio"
                                   :base_type    :type/Text})]})]
+  (tt/with-temp Database [db {:engine :sync-test}]
+    (sync-database! db)
+    ;; we are purposely running the sync twice to test for possible logic issues which only manifest
+    ;; on resync of a database, such as adding tables that already exist or duplicating fields
+    (sync-database! db)
+    (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
+
+;; NOCOMMIT
+(defn- x []
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest

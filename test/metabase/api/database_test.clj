@@ -171,9 +171,10 @@
                             id))]
     (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
       (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-                                         "WARNING: deleting randomly created databases:\n%s\n"
+                                         "WARNING: deleting randomly created databases:\n%s"
                                          "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
-                 (u/pprint-to-str dbs))))
+                 (u/pprint-to-str (for [db dbs]
+                                    (dissoc db :features))))))
     (db/delete! Database :id [:not-in ids-to-skip])))
 
 

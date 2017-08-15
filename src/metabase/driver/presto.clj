@@ -181,17 +181,15 @@
      :columns (map (comp keyword :name) columns)
      :rows    rows}))
 
-(defn- field-values-lazy-seq [{field-name :name, :as field}]
+(defn- table-rows-sample [table fields]
   ;; TODO - look into making this actually lazy
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
+  (let [{:keys [details]} (table/database table)
         sql               (format "SELECT %s FROM %s LIMIT %d"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            driver/max-sync-lazy-seq-results)
-        {:keys [rows]}    (execute-presto-query! details sql)]
-    (for [row rows]
-      (first row))))
+                                  (str/join ", " (for [{field-name :name} fields]
+                                                   (quote-name field-name)))
+                                  (quote+combine-names (:schema table) (:name table))
+                                  driver/max-sample-rows)]
+    (:rows (execute-presto-query! details sql))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -312,7 +310,7 @@
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
+          :table-rows-sample                 (u/drop-first-arg table-rows-sample)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :table-rows-seq                    (u/drop-first-arg table-rows-seq)})
 
