@@ -30,7 +30,7 @@ export const SyncOption = ({ selected, name, description, children, select }) =>
         </div>
         <div className="Form-offset ml1">
             <div className={cx({ 'text-brand': selected })}>
-                <h4>{name} - {description}</h4>
+                <h4>{name}, {description}</h4>
             </div>
             { selected && children && <div className="mt2">{children}</div> }
         </div>
@@ -121,7 +121,7 @@ export default class DatabaseSchedulingForm extends Component {
                                         <SyncOption
                                             selected={unsavedDatabase.is_full_sync}
                                             name="Regularly"
-                                            description="I'll set a schedule"
+                                            description="on a schedule"
                                             select={() => this.setIsFullSync(true)}
                                         >
 
