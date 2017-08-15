@@ -36,12 +36,18 @@ const mapStateToProps = (state, props) => ({
     formState: getFormState(state, props)
 });
 
-export const Tab = ({ name, setTab, currentTab }) =>
-    <div
-        className={cx('cursor-pointer py3', {'text-brand': currentTab === name.toLowerCase() })}
-        onClick={() => setTab(name)}>
-        <h3>{name}</h3>
-    </div>
+export const Tab = ({ name, setTab, currentTab }) => {
+    const isCurrentTab = currentTab === name.toLowerCase()
+
+    return (
+        <div
+            className={cx('cursor-pointer py2', {'text-brand': isCurrentTab })}
+            style={isCurrentTab ? { borderBottom: "3px solid #2D86D4" } : {}}
+            onClick={() => setTab(name)}>
+            <h3>{name}</h3>
+        </div>
+    )
+}
 
 export const Tabs = ({ currentTab, setTab }) =>
     <div className="border-bottom">
