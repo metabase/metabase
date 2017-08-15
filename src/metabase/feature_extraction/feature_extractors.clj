@@ -73,8 +73,10 @@
 
 (defn- nice-bins
   [histogram]
-  (if (h/categorical? histogram)
-    (h/equidistant-bins histogram)
+  (cond
+    (h/categorical? histogram) (h/equidistant-bins histogram)
+    (h/empty? histogram)       []
+    :else
     (let [{:keys [min max]} (h.impl/bounds histogram)
           {:keys [min-value max-value bin-width]}
           (binning/nicer-breakout
@@ -246,8 +248,8 @@
   (stats/somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
-  "Given a coll of `[DateTime, Any]` pairs with periodicty `step` fill missing
-   periods with 0."
+  "Given a coll of `[DateTime, Any]` pairs evenly spaced `step` apart, fill
+   missing points with 0."
   [step ts]
   (let [ts-index (into {} ts)]
     (into []
