@@ -2,21 +2,21 @@ import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 
-import { fetchCardFingerPrint } from 'metabase/reference/reference'
+import { fetchCardXray } from 'metabase/xray/xray'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import SimpleStat from 'metabase/xray/SimpleStat'
 
 type Props = {
-    fetchCardFingerPrint: () => void,
-    fingerprint: {}
+    fetchCardXray: () => void,
+    xray: {}
 }
 
-const FingerPrintList = ({ fingerprint }) =>
+const XrayList = ({ xray }) =>
     <div>
         <ol className="full">
-            { Object.keys(fingerprint).map(fieldName => {
-                const f = fingerprint[fieldName]
+            { Object.keys(xray).map(fieldName => {
+                const f = xray[fieldName]
                 return (
                     <li key={fieldName}>
                         <h4>{fieldName}</h4>
@@ -39,7 +39,7 @@ const FingerPrintList = ({ fingerprint }) =>
         </ol>
     </div>
 
-const FingerprintGrid = ({ fingerprint, fields, distribution }) =>
+const XrayGrid = ({ xray, fields, distribution }) =>
     <div className="full">
         <ol>
             <li className="border-bottom border-dark">
@@ -59,8 +59,8 @@ const FingerprintGrid = ({ fingerprint, fields, distribution }) =>
                     )}
                 </ol>
             </li>
-            { Object.keys(fingerprint).map(key => {
-                const field = fingerprint[key]
+            { Object.keys(xray).map(key => {
+                const field = xray[key]
                 return (
                     <li className="border-bottom">
                         <ol className="Grid Grid--gutters">
@@ -111,39 +111,39 @@ class CardXRay extends Component {
     }
 
     componentDidMount () {
-        this.props.fetchCardFingerPrint(this.props.params.cardId)
+        this.props.fetchCardxray(this.props.params.cardId)
     }
 
 
     render () {
-        const { fingerprint } = this.props
+        const { xray } = this.props
         return (
             <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
                 <div className="my4 py4">
                     <h1>Xray</h1>
                 </div>
-                <LoadingAndErrorWrapper loading={!fingerprint}>
+                <LoadingAndErrorWrapper loading={!xray}>
                     { () =>
                         <div className="full">
                             { this.state.grid ?(
                                 <div className="mt3">
                                     <div className="my4">
                                         <h2 className="py3 my3">Overview</h2>
-                                        <FingerprintGrid
-                                            fingerprint={fingerprint}
+                                        <XrayGrid
+                                            xray={xray}
                                             fields={['count', 'min', 'max', 'mean', 'median']}
                                             distribution={false}
                                         />
                                     </div>
                                     <div className="my4">
                                         <h2 className="py3 my3">I am a cool math wizard</h2>
-                                        <FingerprintGrid
-                                            fingerprint={fingerprint}
+                                        <XrayGrid
+                                            xray={xray}
                                             fields={['skewness', 'has-nils?', 'all-distinct?', 'range-vs-spread', 'sum-of-squares', 'range-vs-sd']}
                                             distribution={true}
                                         />
                                     </div>
-                                    { fingerprint['CREATED_AT'] && (
+                                    { xray['CREATED_AT'] && (
                                         <div className="my4">
                                             <h2 className="py3 my3">Time breakdown</h2>
                                             <div className="my3">
@@ -163,12 +163,12 @@ class CardXRay extends Component {
                                 </div>
                             )
                             : (
-                                <FingerPrintList fingerprint={fingerprint} />
+                                <XrayList xray={xray} />
                             )}
                             <pre>
 
                                 <code>
-                                    { JSON.stringify(fingerprint, null, 2) }
+                                    { JSON.stringify(xray, null, 2) }
                                 </code>
                             </pre>
                         </div>
@@ -180,11 +180,11 @@ class CardXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    fingerprint: state.reference.tableFingerprint,
+    xray: state.xray.tablexray,
 })
 
 const mapDispatchToProps = {
-    fetchCardFingerPrint: fetchCardFingerPrint
+    fetchCardxray: fetchCardXray
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)

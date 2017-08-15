@@ -2,8 +2,12 @@ import {
     login,
     whenOffline,
     createSavedQuestion,
-    createTestStore,
+    createTestStore
 } from "__support__/integrated_tests";
+import {
+    click,
+    clickButton, setInputValue
+} from "__support__/enzyme_utils"
 
 import React from 'react';
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
@@ -71,7 +75,6 @@ const initQbWithDbAndTable = (dbId, tableId) => {
         store.dispatch(setQueryDatabase(dbId));
         store.dispatch(setQuerySourceTable(tableId));
         await store.waitForActions([FETCH_TABLE_METADATA]);
-        store.resetDispatchedActions();
 
         return { store, qb }
     }
@@ -106,11 +109,11 @@ describe("QueryBuilder", () => {
             const { store, qb } = await initQBWithReviewsTable();
 
             // Run the raw data query
-            qb.find(RunButton).simulate("click");
+            click(qb.find(RunButton));
             await store.waitForActions([QUERY_COMPLETED]);
 
             const vizSettings = qb.find(VisualizationSettings);
-            vizSettings.find(".Icon-gear").simulate("click");
+            click(vizSettings.find(".Icon-gear"));
 
             const settingsModal = vizSettings.find(".test-modal")
             const table = settingsModal.find(TableSimple);
@@ -123,12 +126,12 @@ describe("QueryBuilder", () => {
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
             expect(fieldsToIncludeCheckboxes.length).toBe(6)
 
-            fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parent().find("span").text() === "Created At").simulate("click");
+            click(fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parent().find("span").text() === "Created At"))
 
             expect(table.find('div[children="Created At"]').length).toBe(0);
 
             // Save the settings
-            doneButton.simulate("click");
+            click(doneButton);
             expect(vizSettings.find(".test-modal").length).toBe(0);
 
             // Don't test the contents of actual table visualization here as react-virtualized doesn't seem to work
@@ -169,7 +172,7 @@ describe("QueryBuilder", () => {
 
             const runButton = qbWrapper.find(RunButton);
             expect(runButton.text()).toBe("Cancel");
-            expect(runButton.simulate("click"));
+            click(runButton);
 
             await store.waitForActions([CANCEL_QUERY, QUERY_ERRORED]);
             expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe(savedQuestion.displayName())
@@ -226,7 +229,7 @@ describe("QueryBuilder", () => {
 
                 const runButton = qbWrapper.find(RunButton);
                 expect(runButton.text()).toBe("Cancel");
-                expect(runButton.simulate("click"));
+                click(runButton);
 
                 await store.waitForActions([CANCEL_QUERY, QUERY_ERRORED]);
                 expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("New question")
@@ -269,13 +272,13 @@ describe("QueryBuilder", () => {
                 // would make testing with selectors more natural
                 const filterSection = qb.find('.GuiBuilder-filtered-by');
                 const addFilterButton = filterSection.find('.AddButton');
-                addFilterButton.simulate("click");
+                click(addFilterButton);
 
                 const filterPopover = filterSection.find(FilterPopover);
 
                 const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="Rating"]')
                 expect(ratingFieldButton.length).toBe(1);
-                ratingFieldButton.simulate('click');
+                click(ratingFieldButton);
             })
 
             it("lets you see its field values in filter popover", () => {
@@ -296,14 +299,13 @@ describe("QueryBuilder", () => {
                 const widgetCheckbox = widgetFieldItem.find(CheckBox);
 
                 expect(widgetCheckbox.props().checked).toBe(false);
-                widgetFieldItem.children().first().simulate("click");
+                click(widgetFieldItem.children().first());
                 expect(widgetCheckbox.props().checked).toBe(true);
 
                 const addFilterButton = filterPopover.find('button[children="Add filter"]')
-                addFilterButton.simulate("click");
+                clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
-                store.resetDispatchedActions();
 
                 expect(qb.find(FilterPopover).length).toBe(0);
                 const filterWidget = qb.find(FilterWidget);
@@ -314,7 +316,7 @@ describe("QueryBuilder", () => {
             it("lets you set 'Rating is 5 or 4' filter", async () => {
                 // reopen the filter popover by clicking filter widget
                 const filterWidget = qb.find(FilterWidget);
-                filterWidget.find(FieldName).simulate('click');
+                click(filterWidget.find(FieldName));
 
                 const filterPopover = qb.find(FilterPopover);
                 const fieldItems = filterPopover.find('li');
@@ -322,11 +324,11 @@ describe("QueryBuilder", () => {
                 const gadgetCheckbox = widgetFieldItem.find(CheckBox);
 
                 expect(gadgetCheckbox.props().checked).toBe(false);
-                widgetFieldItem.children().first().simulate("click");
+                click(widgetFieldItem.children().first());
                 expect(gadgetCheckbox.props().checked).toBe(true);
 
                 const addFilterButton = filterPopover.find('button[children="Update filter"]')
-                addFilterButton.simulate("click");
+                clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
 
@@ -336,7 +338,7 @@ describe("QueryBuilder", () => {
 
             it("lets you remove the added filter", async () => {
                 const filterWidget = qb.find(FilterWidget);
-                filterWidget.find(".Icon-close").simulate('click');
+                click(filterWidget.find(".Icon-close"))
                 await store.waitForActions([SET_DATASET_QUERY])
 
                 expect(qb.find(FilterWidget).length).toBe(0);
@@ -353,13 +355,13 @@ describe("QueryBuilder", () => {
             it("lets you add ID field as a filter", async () => {
                 const filterSection = qb.find('.GuiBuilder-filtered-by');
                 const addFilterButton = filterSection.find('.AddButton');
-                addFilterButton.simulate("click");
+                click(addFilterButton);
 
                 const filterPopover = filterSection.find(FilterPopover);
 
                 const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="ID"]')
                 expect(ratingFieldButton.length).toBe(1);
-                ratingFieldButton.simulate('click');
+                click(ratingFieldButton)
             })
 
             it("lets you see a correct number of operators in filter popover", () => {
@@ -367,7 +369,7 @@ describe("QueryBuilder", () => {
 
                 const operatorSelector = filterPopover.find(OperatorSelector);
                 const moreOptionsIcon = operatorSelector.find(".Icon-chevrondown");
-                moreOptionsIcon.simulate("click");
+                click(moreOptionsIcon);
 
                 expect(operatorSelector.find("button").length).toBe(9)
             })
@@ -375,13 +377,12 @@ describe("QueryBuilder", () => {
             it("lets you set 'ID is 10' filter", async () => {
                 const filterPopover = qb.find(FilterPopover);
                 const filterInput = filterPopover.find("textarea");
-                filterInput.simulate('change', { target: { value: "10" }})
+                setInputValue(filterInput, "10")
 
                 const addFilterButton = filterPopover.find('button[children="Add filter"]')
-                addFilterButton.simulate("click");
+                clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
-                store.resetDispatchedActions();
 
                 expect(qb.find(FilterPopover).length).toBe(0);
                 const filterWidget = qb.find(FilterWidget);
@@ -391,16 +392,16 @@ describe("QueryBuilder", () => {
 
             it("lets you update the filter to 'ID is 10 or 11'", async () => {
                 const filterWidget = qb.find(FilterWidget);
-                filterWidget.find(FieldName).simulate('click');
+                click(filterWidget.find(FieldName))
 
                 const filterPopover = qb.find(FilterPopover);
                 const filterInput = filterPopover.find("textarea");
 
                 // Intentionally use a value with lots of extra spaces
-                filterInput.simulate('change', { target: { value: "  10,      11" }})
+                setInputValue(filterInput, "  10,      11")
 
                 const addFilterButton = filterPopover.find('button[children="Update filter"]')
-                addFilterButton.simulate("click");
+                clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
 
@@ -410,25 +411,25 @@ describe("QueryBuilder", () => {
 
             it("lets you update the filter to 'ID is between 1 or 100'", async () => {
                 const filterWidget = qb.find(FilterWidget);
-                filterWidget.find(FieldName).simulate('click');
+                click(filterWidget.find(FieldName))
 
                 const filterPopover = qb.find(FilterPopover);
                 const operatorSelector = filterPopover.find(OperatorSelector);
-                operatorSelector.find('button[children="Between"]').simulate("click");
+                clickButton(operatorSelector.find('button[children="Between"]'));
 
                 const betweenInputs = filterPopover.find("textarea");
                 expect(betweenInputs.length).toBe(2);
 
                 expect(betweenInputs.at(0).props().value).toBe("10, 11");
 
-                betweenInputs.at(1).simulate('change', { target: { value: "asdasd" }})
+                setInputValue(betweenInputs.at(1), "asdasd")
                 const updateFilterButton = filterPopover.find('button[children="Update filter"]')
                 expect(updateFilterButton.props().className).toMatch(/disabled/);
 
-                betweenInputs.at(0).simulate('change', { target: { value: "1" }})
-                betweenInputs.at(1).simulate('change', { target: { value: "100" }})
+                setInputValue(betweenInputs.at(0), "1")
+                setInputValue(betweenInputs.at(1), "100")
 
-                updateFilterButton.simulate("click");
+                clickButton(updateFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
                 expect(qb.find(FilterPopover).length).toBe(0);
@@ -446,12 +447,12 @@ describe("QueryBuilder", () => {
             it("lets you group by Total with the default binning option", async () => {
                 const breakoutSection = qb.find('.GuiBuilder-groupedBy');
                 const addBreakoutButton = breakoutSection.find('.AddButton');
-                addBreakoutButton.simulate("click");
+                click(addBreakoutButton);
 
                 const breakoutPopover = breakoutSection.find("#BreakoutPopover")
                 const subtotalFieldButton = breakoutPopover.find(FieldList).find('h4[children="Total"]')
                 expect(subtotalFieldButton.length).toBe(1);
-                subtotalFieldButton.simulate('click');
+                click(subtotalFieldButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
 
@@ -460,7 +461,7 @@ describe("QueryBuilder", () => {
             });
             it("produces correct results for default binning option", async () => {
                 // Run the raw data query
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 // We can use the visible row count as we have a low number of result rows
@@ -475,21 +476,20 @@ describe("QueryBuilder", () => {
             })
             it("lets you change the binning strategy to 100 bins", async () => {
                 const breakoutWidget = qb.find(BreakoutWidget).first();
-                breakoutWidget.find(FieldName).children().first().simulate("click")
+                click(breakoutWidget.find(FieldName).children().first())
                 const breakoutPopover = qb.find("#BreakoutPopover")
 
                 const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="Auto binned"]')
                 expect(subtotalFieldButton.length).toBe(1);
-                subtotalFieldButton.simulate('click');
+                click(subtotalFieldButton)
 
-                qb.find(DimensionPicker).find('a[children="100 bins"]').simulate("click");
+                click(qb.find(DimensionPicker).find('a[children="100 bins"]'));
 
                 await store.waitForActions([SET_DATASET_QUERY])
                 expect(breakoutWidget.text()).toBe("Total: 100 bins");
             });
             it("produces correct results for 100 bins", async () => {
-                store.resetDispatchedActions();
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 expect(qb.find(".ShownRowCount").text()).toBe("Showing 95 rows");
@@ -501,18 +501,17 @@ describe("QueryBuilder", () => {
             })
             it("lets you disable the binning", async () => {
                 const breakoutWidget = qb.find(BreakoutWidget).first();
-                breakoutWidget.find(FieldName).children().first().simulate("click")
+                click(breakoutWidget.find(FieldName).children().first())
                 const breakoutPopover = qb.find("#BreakoutPopover")
 
                 const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="100 bins"]')
                 expect(subtotalFieldButton.length).toBe(1);
-                subtotalFieldButton.simulate('click');
+                click(subtotalFieldButton);
 
-                qb.find(DimensionPicker).find('a[children="Don\'t bin"]').simulate("click");
+                click(qb.find(DimensionPicker).find('a[children="Don\'t bin"]'));
             });
             it("produces the expected count of rows when no binning", async () => {
-                store.resetDispatchedActions();
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 // We just want to see that there are a lot more rows than there would be if a binning was active
@@ -533,17 +532,17 @@ describe("QueryBuilder", () => {
             it("lets you group by Latitude with the default binning option", async () => {
                 const breakoutSection = qb.find('.GuiBuilder-groupedBy');
                 const addBreakoutButton = breakoutSection.find('.AddButton');
-                addBreakoutButton.simulate("click");
+                click(addBreakoutButton);
 
                 const breakoutPopover = breakoutSection.find("#BreakoutPopover")
 
                 const userSectionButton = breakoutPopover.find(FieldList).find('h3[children="User"]')
                 expect(userSectionButton.length).toBe(1);
-                userSectionButton.simulate("click");
+                click(userSectionButton);
 
                 const subtotalFieldButton = breakoutPopover.find(FieldList).find('h4[children="Latitude"]')
                 expect(subtotalFieldButton.length).toBe(1);
-                subtotalFieldButton.simulate('click');
+                click(subtotalFieldButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
 
@@ -553,7 +552,7 @@ describe("QueryBuilder", () => {
 
             it("produces correct results for default binning option", async () => {
                 // Run the raw data query
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 expect(qb.find(".ShownRowCount").text()).toBe("Showing 18 rows");
@@ -567,22 +566,21 @@ describe("QueryBuilder", () => {
 
             it("lets you group by Latitude with the 'Bin every 1 degree'", async () => {
                 const breakoutWidget = qb.find(BreakoutWidget).first();
-                breakoutWidget.find(FieldName).children().first().simulate("click")
+                click(breakoutWidget.find(FieldName).children().first())
                 const breakoutPopover = qb.find("#BreakoutPopover")
 
                 const subtotalFieldButton = breakoutPopover.find(FieldList).find('.List-item--selected h4[children="Auto binned"]')
                 expect(subtotalFieldButton.length).toBe(1);
-                subtotalFieldButton.simulate('click');
+                click(subtotalFieldButton);
 
-                qb.find(DimensionPicker).find('a[children="Bin every 1 degree"]').simulate("click");
+                click(qb.find(DimensionPicker).find('a[children="Bin every 1 degree"]'));
 
                 await store.waitForActions([SET_DATASET_QUERY])
                 expect(breakoutWidget.text()).toBe("Latitude: 1°");
             });
             it("produces correct results for 'Bin every 1 degree'", async () => {
                 // Run the raw data query
-                store.resetDispatchedActions();
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 expect(qb.find(".ShownRowCount").text()).toBe("Showing 180 rows");
@@ -611,7 +609,7 @@ describe("QueryBuilder", () => {
                 }));
 
 
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 const table = qb.find(TestTable);
@@ -622,13 +620,12 @@ describe("QueryBuilder", () => {
 
                 const countCell = firstRowCells.last();
                 expect(countCell.text()).toBe("387");
-                countCell.children().first().simulate("click");
+                click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
                 await delay(150);
 
-                store.resetDispatchedActions();
-                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+                click(qb.find(ChartClickActions).find('div[children="Zoom in"]'));
 
                 store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
 
@@ -653,7 +650,7 @@ describe("QueryBuilder", () => {
                     }
                 }));
 
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 const table = qb.find(TestTable);
@@ -664,13 +661,12 @@ describe("QueryBuilder", () => {
 
                 const countCell = firstRowCells.last();
                 expect(countCell.text()).toBe("417");
-                countCell.children().first().simulate("click");
+                click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
                 await delay(150);
 
-                store.resetDispatchedActions();
-                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+                click(qb.find(ChartClickActions).find('div[children="Zoom in"]'));
 
                 store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
 
@@ -698,7 +694,7 @@ describe("QueryBuilder", () => {
                     }
                 }));
 
-                qb.find(RunButton).simulate("click");
+                click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 const table = qb.find(TestTable);
@@ -710,13 +706,12 @@ describe("QueryBuilder", () => {
 
                 const countCell = firstRowCells.last();
                 expect(countCell.text()).toBe("1,079");
-                countCell.children().first().simulate("click");
+                click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
                 await delay(150);
 
-                store.resetDispatchedActions();
-                qb.find(ChartClickActions).find('div[children="Zoom in"]').simulate("click");
+                click(qb.find(ChartClickActions).find('div[children="Zoom in"]'));
 
                 store.waitForActions([NAVIGATE_TO_NEW_CARD, UPDATE_URL, QUERY_COMPLETED]);
 
@@ -767,13 +762,13 @@ describe("QueryBuilder", () => {
                 // open filter popover
                 const filterSection = qb.find('.GuiBuilder-filtered-by');
                 const newFilterButton = filterSection.find('.AddButton');
-                newFilterButton.simulate("click");
+                click(newFilterButton);
 
                 // choose the field to be filtered
                 const filterPopover = filterSection.find(FilterPopover);
                 const ratingFieldButton = filterPopover.find(FieldList).find('h4[children="Rating Description"]')
                 expect(ratingFieldButton.length).toBe(1);
-                ratingFieldButton.simulate('click');
+                click(ratingFieldButton)
 
                 // check that field values seem correct
                 const fieldItems = filterPopover.find('li');
@@ -785,15 +780,14 @@ describe("QueryBuilder", () => {
                 const widgetFieldItem = fieldItems.last();
                 const widgetCheckbox = widgetFieldItem.find(CheckBox);
                 expect(widgetCheckbox.props().checked).toBe(false);
-                widgetFieldItem.children().first().simulate("click");
+                click(widgetFieldItem.children().first());
                 expect(widgetCheckbox.props().checked).toBe(true);
 
                 // add the filter
                 const addFilterButton = filterPopover.find('button[children="Add filter"]')
-                addFilterButton.simulate("click");
+                clickButton(addFilterButton);
 
                 await store.waitForActions([SET_DATASET_QUERY])
-                store.resetDispatchedActions();
 
                 // validate the filter text value
                 expect(qb.find(FilterPopover).length).toBe(0);
@@ -805,7 +799,7 @@ describe("QueryBuilder", () => {
             it("shows remapped value correctly in Raw Data query with Table visualization", async () => {
                 const { store, qb } = await initQBWithReviewsTable();
 
-                qb.find(RunButton).simulate("click");
+                clickButton(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 const table = qb.find(TestTable);
@@ -825,7 +819,7 @@ describe("QueryBuilder", () => {
             it("shows remapped values correctly in Raw Data query with Table visualization", async () => {
                 const { store, qb } = await initQBWithReviewsTable();
 
-                qb.find(RunButton).simulate("click");
+                clickButton(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 const table = qb.find(TestTable);

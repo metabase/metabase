@@ -1,6 +1,5 @@
-(ns metabase.fingerprinting.stl
-  "Seasonal-Trend Decomposition
-  https://www.wessa.net/download/stl.pdf"
+(ns metabase.feature-extraction.stl
+  "Seasonal-Trend Decomposition"
   (:import (com.github.brandtg.stl StlDecomposition StlResult StlConfig)))
 
 (def ^:private setters
@@ -12,7 +11,8 @@
    :periodic?                   (memfn ^StlConfig setPeriodic periodic?)})
 
 (defn decompose
-  "Decompose time series into trend, seasonal component, and residual."
+  "Decompose time series into trend, seasonal component, and residual.
+   https://www.wessa.net/download/stl.pdf"
   ([period ts]
    (decompose period {} ts))
   ([period opts ts]
