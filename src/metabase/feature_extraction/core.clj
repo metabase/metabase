@@ -1,13 +1,14 @@
 (ns metabase.feature-extraction.core
   "Feature extraction for various models."
   (:require [clojure.walk :refer [postwalk]]
+            [kixi.stats.math :as math]
+            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
              [comparison :as comparison]
              [costs :as costs]
              [feature-extractors :as fe]
              [descriptions :refer [add-descriptions]]]
-            [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -125,7 +126,7 @@
                    (for [[feature difference] largest-contributors]
                      {:feature      feature
                       :field        field
-                      :contribution (* distance difference)})))
+                      :contribution (* (math/sqrt distance) difference)})))
          (comparison/head-tails-breaks :contribution))
     (->> comparisons
          :largest-contributors
