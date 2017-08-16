@@ -93,8 +93,14 @@ export const createDatabase = function (database) {
             // update the db metadata already here because otherwise there will be a gap between "Adding..." status
             // and seeing the db that was just added
             await dispatch(fetchDatabases())
-            dispatch(push('/admin/databases?created=' + createdDatabase.id));
-            dispatch.action(CREATE_DATABASE, { database: createdDatabase })
+
+            if (database.details["let-user-control-scheduling"]) {
+                // Move to the scheduling settings
+                dispatch(push(`/admin/databases/${createdDatabase.id}?showSchedulingAfterDbCreation`));
+            } else {
+                dispatch(push('/admin/databases?created=' + createdDatabase.id));
+                dispatch.action(CREATE_DATABASE, { database: createdDatabase })
+            }
         } catch (error) {
             console.error("error creating a database", error);
             MetabaseAnalytics.trackEvent("Databases", "Create Failed", database.engine);

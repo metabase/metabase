@@ -30,6 +30,7 @@ import {
 } from "../database";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CreatedDatabaseModal from "metabase/admin/databases/components/CreatedDatabaseModal";
 
 const mapStateToProps = (state, props) => ({
     database:  getEditingDatabase(state, props),
@@ -79,9 +80,15 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-    state = {
-        currentTab: 'connection'
+        const showSchedulingAfterDbCreation = "showSchedulingAfterDbCreation" in props.location.query
+
+        this.state = {
+            justCreated: showSchedulingAfterDbCreation,
+            currentTab: showSchedulingAfterDbCreation ? 'scheduling' : 'connection',
+        };
     }
 
     static propTypes = {
@@ -96,6 +103,7 @@ export default class DatabaseEditApp extends Component {
         deleteDatabase: PropTypes.func.isRequired,
         saveDatabase: PropTypes.func.isRequired,
         selectEngine: PropTypes.func.isRequired,
+        location: PropTypes.object
     };
 
     async componentWillMount() {
@@ -105,7 +113,7 @@ export default class DatabaseEditApp extends Component {
 
     render() {
         let { database } = this.props;
-        const { currentTab } = this.state;
+        const { justCreated, currentTab } = this.state;
 
         const editingExistingDatabase = database && database.id != null
         const addingNewDatabase = !editingExistingDatabase
@@ -220,6 +228,16 @@ export default class DatabaseEditApp extends Component {
                         </div>
                     }
                 </section>
+                <ModalWithTrigger
+                    ref="createdDatabaseModal"
+                    isInitiallyOpen={justCreated}
+                >
+                    <CreatedDatabaseModal
+                        databaseId={parseInt(justCreated)}
+                        onDone={() => this.refs.createdDatabaseModal.toggle() }
+                        onClose={() => this.refs.createdDatabaseModal.toggle() }
+                    />
+                </ModalWithTrigger>
             </div>
         );
     }
