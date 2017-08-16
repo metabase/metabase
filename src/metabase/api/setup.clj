@@ -1,6 +1,5 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
-            [medley.core :as m]
             [metabase
              [driver :as driver]
              [email :as email]
@@ -10,7 +9,7 @@
              [util :as u]]
             [metabase.api
              [common :as api]
-             [database :refer [DBEngine]]]
+             [database :as database-api :refer [DBEngine]]]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [database :refer [Database]]
@@ -29,14 +28,18 @@
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body}]
+  [:as {{:keys [token]
+         {:keys [name engine details is_full_sync schedules]} :database
+         {:keys [first_name last_name email password]}        :user
+         {:keys [allow_tracking site_name]}                   :prefs} :body}]
   {token          SetupToken
    site_name      su/NonBlankString
    first_name     su/NonBlankString
    last_name      su/NonBlankString
    email          su/Email
    password       su/ComplexPassword
-   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))}
+   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))
+   schedules      (s/maybe database-api/ExpandedSchedulesMap)}
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -54,13 +57,16 @@
                                                allow_tracking))      ; the setting will set itself correctly whether a boolean or boolean string is specified
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
-      (->> (db/insert! Database
-             :name         name
-             :engine       engine
-             :details      details
-             :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
-                               is_full_sync))
-           (events/publish-event! :database-create)))
+      (let [db (db/insert! Database
+                 (merge
+                  {:name         name
+                   :engine       engine
+                   :details      details
+                   :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
+                                     is_full_sync)}
+                  (when schedules
+                    (database-api/schedule-map->cron-strings schedules))))]
+        (events/publish-event! :database-create db)))
     ;; clear the setup token now, it's no longer needed
     (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
