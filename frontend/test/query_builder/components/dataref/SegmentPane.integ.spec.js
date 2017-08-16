@@ -23,6 +23,7 @@ import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table";
 import UseForButton from "metabase/query_builder/components/dataref/UseForButton";
 import { SegmentApi } from "metabase/services";
+import * as Urls from "metabase/lib/urls";
 
 // Currently a lot of duplication with SegmentPane tests
 describe("SegmentPane", () => {
@@ -35,7 +36,7 @@ describe("SegmentPane", () => {
         segment = await SegmentApi.create(orders_past_30_days_segment);
         store = await createTestStore()
 
-        store.pushPath("/question");
+        store.pushPath(Urls.plainQuestion());
         queryBuilder = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
     })

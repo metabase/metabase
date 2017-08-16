@@ -44,6 +44,7 @@ import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
 import CopyWidget from "metabase/components/CopyWidget";
+import * as Urls from "metabase/lib/urls";
 
 async function updateQueryText(store, queryText) {
     // We don't have Ace editor so we have to trigger the Redux action manually
@@ -120,7 +121,7 @@ describe("parameters", () => {
             const store = await createTestStore();
 
             // load public sharing settings
-            store.pushPath('/question');
+            store.pushPath(Urls.plainQuestion());
             const app = mount(store.getAppContainer())
             await store.waitForActions([INITIALIZE_QB]);
 
