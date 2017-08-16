@@ -111,31 +111,6 @@ export default class DatabaseDetailsForm extends Component {
             is_full_sync: details.is_full_sync
         };
 
-        const letUserControlScheduling = details["let-user-control-scheduling"];
-        if (!letUserControlScheduling) {
-            // if we don't let user control the scheduling settings, let's override them with Metabase defaults
-            // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults and refactor this logic
-            // to a Redux action; it doesn't really make sense that it is in a React component
-            request = {
-                ...request,
-                is_full_sync: true,
-                schedules: {
-                    "cache_field_values": {
-                        "schedule_day": null,
-                        "schedule_frame": null,
-                        "schedule_hour": null,
-                        "schedule_type": "hourly"
-                    },
-                    "metadata_sync": {
-                        "schedule_day": null,
-                        "schedule_frame": null,
-                        "schedule_hour": null,
-                        "schedule_type": "hourly"
-                    }
-                }
-            }
-        }
-
         for (let field of engines[engine]['details-fields']) {
             let val = details[field.name] === "" ? null : details[field.name];
 

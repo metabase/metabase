@@ -121,10 +121,32 @@ export const updateDatabase = function(database) {
 // NOTE Atte Keinänen 7/26/17: Original monolithic saveDatabase was broken out to smaller actions
 // but `saveDatabase` action creator is still left here for keeping the interface for React components unchanged
 export const saveDatabase = function(database, details) {
+    // If we don't let user control the scheduling settings, let's override them with Metabase defaults
+    // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
+    const letUserControlScheduling = details["let-user-control-scheduling"];
+    const overridesIfNoUserControl = letUserControlScheduling ? {} : {
+        is_full_sync: true,
+        schedules: {
+            "cache_field_values": {
+                "schedule_day": null,
+                "schedule_frame": null,
+                "schedule_hour": null,
+                "schedule_type": "hourly"
+            },
+            "metadata_sync": {
+                "schedule_day": null,
+                "schedule_frame": null,
+                "schedule_hour": null,
+                "schedule_type": "hourly"
+            }
+        }
+    }
+
     return async function(dispatch, getState) {
         const databaseWithDetails = {
             ...database,
-            details
+            details,
+            ...overridesIfNoUserControl
         };
         const isUnsavedDatabase = !databaseWithDetails.id
         if (isUnsavedDatabase) {
