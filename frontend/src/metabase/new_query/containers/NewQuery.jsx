@@ -97,7 +97,7 @@ export class NewQuery extends Component {
         }
 
         return (
-            <div className="flex-full full ml-auto mr-auto pl1 pr1 mt2 mb2 align-center"
+            <div className="flex-full full ml-auto mr-auto px1 mt4 mb2 align-center"
                  style={{maxWidth: "800px"}}>
                 <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2">
 
@@ -121,16 +121,16 @@ export class NewQuery extends Component {
                         {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                         <NewQueryOption
                             image="/app/img/custom_question"
-                            title="Custom"
-                            description="Use the simple query builder to create your own new custom question."
+                            title="New question"
+                            description="Use the simple query builder to see trends, lists of things, or to create your own metrics."
                             onClick={this.startGuiQuery}
                         />
                     </li>
                     <li className="Grid-cell">
                         <NewQueryOption
-                            image="/app/img/sql_illustration"
+                            image="/app/img/sql_illustration@2x"
                             title="SQL"
-                            description="Use SQL or other native languages for data prep or manipulation."
+                            description="For more complicated questions, you can write your own SQL."
                             onClick={this.startNativeQuery}
                         />
                     </li>

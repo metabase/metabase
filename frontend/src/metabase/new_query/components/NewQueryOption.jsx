@@ -19,7 +19,7 @@ export default class NewQueryOption extends Component {
 
        return (
            <div
-               className="bg-white p1 align-center bordered rounded cursor-pointer transition-all text-centered text-brand-light"
+               className="bg-white p3 align-center bordered rounded cursor-pointer transition-all text-centered text-brand-light"
                style={{
                    boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
                    height: "310px"
