@@ -7,6 +7,7 @@ import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 
+import { shallowEqual } from "recompose";
 
 // TODO - this should be somewhere more centralized
 function isEmpty(str) {
@@ -47,6 +48,7 @@ export default class DatabaseDetailsForm extends Component {
         engines: PropTypes.object.isRequired,
         formError: PropTypes.object,
         hiddenFields: PropTypes.object,
+        isNewDatabase: PropTypes.boolean,
         submitButtonText: PropTypes.string.isRequired,
         submitFn: PropTypes.func.isRequired,
         submitting: PropTypes.boolean
@@ -80,7 +82,7 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (this.props.details !== nextProps.details) {
+        if (!shallowEqual(this.props.details, nextProps.details)) {
             this.setState({ details: nextProps.details })
         }
     }
@@ -262,8 +264,10 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     render() {
-        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText, submitting } = this.props;
-        let { valid } = this.state;
+        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText, isNewDatabase, submitting } = this.props;
+        let { valid, details } = this.state;
+
+        const willProceedToNextDbCreationStep = isNewDatabase && details["let-user-control-scheduling"];
 
         let fields = [
             {
@@ -291,7 +295,7 @@ export default class DatabaseDetailsForm extends Component {
 
                 <div className="Form-actions">
                     <button className={cx("Button", {"Button--primary": valid})} disabled={!valid || submitting}>
-                        {submitting ? "Saving..." : submitButtonText}
+                        {submitting ? "Saving..." : (willProceedToNextDbCreationStep ? "Next" : submitButtonText)}
                     </button>
                     <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
                 </div>

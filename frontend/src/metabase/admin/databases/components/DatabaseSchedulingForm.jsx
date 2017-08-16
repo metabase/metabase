@@ -68,7 +68,6 @@ export default class DatabaseSchedulingForm extends Component {
 
     setIsFullSync = (isFullSync) => {
         // TODO: Add event tracking
-
         this.setState(assocIn(this.state, ["unsavedDatabase", "is_full_sync"], isFullSync));
     }
 
@@ -79,7 +78,7 @@ export default class DatabaseSchedulingForm extends Component {
         this.props.save(unsavedDatabase, unsavedDatabase.details);
     }
     render() {
-        const { formState: { formError, formSuccess } } = this.props
+        const { submitButtonText, formState: { formError, formSuccess, isSubmitting } } = this.props
         const { unsavedDatabase } = this.state
 
         return (
@@ -157,8 +156,10 @@ export default class DatabaseSchedulingForm extends Component {
 
                         </div>
                         <div className="Form-actions mt4">
-                            <button className={"Button Button--primary"}>Save changes</button>
-                            <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
+                            <button className={"Button Button--primary"} disabled={isSubmitting}>
+                                {isSubmitting ? "Saving..." : submitButtonText }
+                            </button>
+                            <FormMessage formError={formError} formSuccess={formSuccess}/>
                         </div>
                     </form>
                 }

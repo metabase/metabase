@@ -51,18 +51,59 @@ describe("DatabaseEditApp", () => {
                 expect.stringContaining("sample-dataset.db;USER=GUEST;PASSWORD=guest")
             )
 
-            const fullSyncField = editForm.find(FormField).filterWhere((f) => f.props().fieldName === "is_full_sync");
-            expect(fullSyncField.length).toBe(1);
-            expect(fullSyncField.find(Toggle).props().value).toBe(true);
+            const letUserControlSchedulingField =
+                editForm.find(FormField).filterWhere((f) => f.props().fieldName === "let-user-control-scheduling");
+            expect(letUserControlSchedulingField.length).toBe(1);
+            expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(false);
         });
 
-        it("lets you modify the connection settings", () => {
-            pending();
-            // should be pretty straight-forward to do using the selectors of previous test
+        it("lets you modify the connection settings", async () => {
+            const store = await createTestStore()
+            store.pushPath("/admin/databases/1");
+            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            await store.waitForActions([INITIALIZE_DATABASE])
+
+            const editForm = dbEditApp.find(DatabaseEditForms)
+            const letUserControlSchedulingField =
+                editForm.find(FormField).filterWhere((f) => f.props().fieldName === "let-user-control-scheduling");
+            click(letUserControlSchedulingField.find(Toggle))
+
+            // Connection and Scheduling tabs shouldn't be visible yet
+            expect(dbEditApp.find(Tab).length).toBe(0)
+
+            clickButton(editForm.find('button[children="Save"]'));
+
+            await store.waitForActions([UPDATE_DATABASE])
+
+            // Tabs should be now visible as user-controlled scheduling is enabled
+            expect(dbEditApp.find(Tab).length).toBe(2)
         });
+
+        afterAll(async () => {
+            // revert all changes that have been made
+            // use a direct API call for the sake of simplicity / reliability
+            const store = await createTestStore()
+            const database = (await store.dispatch(initializeDatabase(1))).payload
+            await store.dispatch(saveDatabase(database, {
+                    ...database.details,
+                    "let-user-control-scheduling": false
+                }
+            ))
+        })
     })
 
     describe("Scheduling tab", () => {
+        beforeAll(async () => {
+            // Enable the user-controlled scheduling for these tests
+            const store = await createTestStore()
+            const database = (await store.dispatch(initializeDatabase(1))).payload
+            await store.dispatch(saveDatabase(database, {
+                    ...database.details,
+                    "let-user-control-scheduling": true
+                }
+            ))
+        })
+
         it("shows the initial scheduling settings correctly", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
@@ -175,7 +216,7 @@ describe("DatabaseEditApp", () => {
                 },
                 {
                     ...database.details,
-                    is_static: false
+                    "let-user-control-scheduling": false
                 }
             ))
         })

@@ -15,12 +15,14 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
 import {
     getEditingDatabase,
-    getFormState
+    getFormState,
+    getDatabaseCreationStep
 } from "../selectors";
 
 import {
     reset,
     initializeDatabase,
+    proceedWithDbCreation,
     saveDatabase,
     syncDatabaseSchema,
     rescanDatabaseFields,
@@ -30,11 +32,11 @@ import {
 } from "../database";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import CreatedDatabaseModal from "metabase/admin/databases/components/CreatedDatabaseModal";
 
 const mapStateToProps = (state, props) => ({
-    database:  getEditingDatabase(state, props),
-    formState: getFormState(state, props)
+    database:  getEditingDatabase(state),
+    databaseCreationStep: getDatabaseCreationStep(state),
+    formState: getFormState(state)
 });
 
 export const Tab = ({ name, setTab, currentTab }) => {
@@ -69,6 +71,7 @@ export const Tabs = ({ tabs, currentTab, setTab }) =>
 const mapDispatchToProps = {
     reset,
     initializeDatabase,
+    proceedWithDbCreation,
     saveDatabase,
     syncDatabaseSchema,
     rescanDatabaseFields,
@@ -83,16 +86,14 @@ export default class DatabaseEditApp extends Component {
     constructor(props, context) {
         super(props, context);
 
-        const showSchedulingAfterDbCreation = "showSchedulingAfterDbCreation" in props.location.query
-
         this.state = {
-            justCreated: showSchedulingAfterDbCreation,
-            currentTab: showSchedulingAfterDbCreation ? 'scheduling' : 'connection',
+            currentTab: 'connection'
         };
     }
 
     static propTypes = {
         database: PropTypes.object,
+        databaseCreationStep: PropTypes.string,
         formState: PropTypes.object.isRequired,
         params: PropTypes.object.isRequired,
         reset: PropTypes.func.isRequired,
@@ -100,6 +101,7 @@ export default class DatabaseEditApp extends Component {
         syncDatabaseSchema: PropTypes.func.isRequired,
         rescanDatabaseFields: PropTypes.func.isRequired,
         discardSavedFieldValues: PropTypes.func.isRequired,
+        proceedWithDbCreation: PropTypes.func.isRequired,
         deleteDatabase: PropTypes.func.isRequired,
         saveDatabase: PropTypes.func.isRequired,
         selectEngine: PropTypes.func.isRequired,
@@ -111,13 +113,24 @@ export default class DatabaseEditApp extends Component {
         await this.props.initializeDatabase(this.props.params.databaseId);
     }
 
+    componentWillReceiveProps(nextProps) {
+        const addingNewDatabase = !nextProps.database || !nextProps.database.id
+
+       if (addingNewDatabase) {
+            // Update the current creation step (= active tab) if adding a new database
+            this.setState({ currentTab: nextProps.databaseCreationStep });
+        }
+    }
+
     render() {
-        let { database } = this.props;
-        const { justCreated, currentTab } = this.state;
+        let { database, formState } = this.props;
+        const { currentTab } = this.state;
 
         const editingExistingDatabase = database && database.id != null
         const addingNewDatabase = !editingExistingDatabase
+
         const letUserControlScheduling = database && database.details && database.details["let-user-control-scheduling"]
+        const showTabs = editingExistingDatabase && letUserControlScheduling
 
         return (
             <div className="wrapper">
@@ -128,7 +141,7 @@ export default class DatabaseEditApp extends Component {
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed pt0">
-                            { letUserControlScheduling &&
+                            { showTabs &&
                                 <Tabs
                                     tabs={['Connection', 'Scheduling']}
                                     currentTab={currentTab}
@@ -144,16 +157,21 @@ export default class DatabaseEditApp extends Component {
                                             details={database ? database.details : null}
                                             engines={MetabaseSettings.get('engines')}
                                             hiddenFields={{ssl: true}}
-                                            formState={this.props.formState}
+                                            formState={formState}
                                             selectEngine={this.props.selectEngine}
-                                            save={this.props.saveDatabase}
+                                            save={ addingNewDatabase
+                                                ? this.props.proceedWithDbCreation
+                                                : this.props.saveDatabase
+                                            }
                                         />
                                         }
                                         { currentTab === 'scheduling' &&
                                         <DatabaseSchedulingForm
                                             database={database}
-                                            formState={this.props.formState}
+                                            formState={formState}
+                                            // Use saveDatabase both for db creation and updating
                                             save={this.props.saveDatabase}
+                                            submitButtonText={ addingNewDatabase ? "Save" : "Save changes" }
                                         />
                                         }
                                     </div>
@@ -163,7 +181,7 @@ export default class DatabaseEditApp extends Component {
                     </div>
 
                     { /* Sidebar Actions */ }
-                    { database && database.id != null &&
+                    { editingExistingDatabase &&
                         <div className="Grid-cell Cell--1of3">
                             <div className="Actions bordered rounded shadowed">
                                 <div className="Actions-group">
@@ -228,16 +246,6 @@ export default class DatabaseEditApp extends Component {
                         </div>
                     }
                 </section>
-                <ModalWithTrigger
-                    ref="createdDatabaseModal"
-                    isInitiallyOpen={justCreated}
-                >
-                    <CreatedDatabaseModal
-                        databaseId={parseInt(justCreated)}
-                        onDone={() => this.refs.createdDatabaseModal.toggle() }
-                        onClose={() => this.refs.createdDatabaseModal.toggle() }
-                    />
-                </ModalWithTrigger>
             </div>
         );
     }

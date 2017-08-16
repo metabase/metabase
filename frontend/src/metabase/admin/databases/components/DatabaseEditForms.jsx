@@ -44,6 +44,7 @@ export default class DatabaseEditForms extends Component {
                             ...database,
                             id: this.props.database.id
                         }, database.details)}
+                        isNewDatabase={!database.id}
                         submitButtonText={'Save'}
                         submitting={isSubmitting}>
                     </DatabaseDetailsForm>

@@ -379,6 +379,10 @@
       {:status 400
        :body   details-or-error})))
 
+(api/defendpoint POST "/validate"
+                 "Validate that we can connect to a database given a set of details."
+                 [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
+                 {:valid true})
 
 ;;; ------------------------------------------------------------ POST /api/database/sample_dataset ------------------------------------------------------------
 
