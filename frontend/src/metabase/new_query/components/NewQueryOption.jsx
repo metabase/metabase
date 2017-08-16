@@ -19,7 +19,7 @@ export default class NewQueryOption extends Component {
 
        return (
            <div
-               className="bg-white p3 align-center bordered rounded cursor-pointer transition-all text-centered text-brand-light"
+               className="bg-white p3 align-center bordered rounded cursor-pointer transition-all text-centered"
                style={{
                    boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
                    height: "310px"
@@ -36,8 +36,8 @@ export default class NewQueryOption extends Component {
                    />
 
                </div>
-               <div className="text-grey-2 text-normal mt2 mb2 text-paragraph" style={{lineHeight: "1.5em"}}>
-                   <h2 className={cx("transition-all", {"text-grey-5": !hover}, {"text-brand": hover})}>{title}</h2>
+               <div className="text-normal mt2 mb2 text-paragraph" style={{lineHeight: "1.5em"}}>
+                   <h2 className={cx("transition-all", {"text-brand": hover})}>{title}</h2>
                    <p className={"text-grey-4"}>{description}</p>
                </div>
            </div>

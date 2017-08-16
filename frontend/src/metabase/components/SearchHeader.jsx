@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
-const SearchHeader = ({ searchText, setSearchText }) =>
+const SearchHeader = ({ searchText, setSearchText, autoFocus }) =>
     <div className={S.searchHeader}>
         <Icon className={S.searchIcon} name="search" size={18} />
         <input
@@ -16,12 +16,14 @@ const SearchHeader = ({ searchText, setSearchText }) =>
             placeholder="Filter this list..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
+            autoFocus={!!autoFocus}
         />
     </div>
 
 SearchHeader.propTypes = {
     searchText: PropTypes.string.isRequired,
     setSearchText: PropTypes.func.isRequired,
+    autoFocus: PropTypes.bool
 };
 
 export default SearchHeader;
