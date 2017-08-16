@@ -22,7 +22,9 @@
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
-;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   HELPER FNS                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn count-of-venues-card []
   {:dataset_query {:database (data/id)
@@ -62,7 +64,9 @@
 
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           GET /api/public/card/:uuid                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Check that we *cannot* fetch a PublicCard if the setting is disabled
 (expect
@@ -111,7 +115,9 @@
         (update-in [(data/id :categories :name) :values] count))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                         GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Check that we *cannot* execute a PublicCard if the setting is disabled
 (expect
@@ -174,7 +180,9 @@
               [:json_query :parameters]))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        GET /api/public/dashboard/:uuid                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Check that we *cannot* fetch PublicDashboard if setting is disabled
 (expect
@@ -211,7 +219,9 @@
       (fetch-public-dashboard dash))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid/card/:card-id ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                 GET /api/public/dashboard/:uuid/card/:card-id                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- dashcard-url-path [dash card]
   (str "public/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
@@ -281,7 +291,9 @@
           (qp-test/rows (http/client :get 200 (dashcard-url-path dash card-2))))))))
 
 
-;;; ------------------------------------------------------------ Check that parameter information comes back with Dashboard ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                           Check that parameter information comes back with Dashboard                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; double-check that the Field has FieldValues
 (expect
@@ -297,7 +309,8 @@
   (db/update! Dashboard (u/get-id dashboard) :parameters [{:name "Price", :type "category", :slug "price"}]))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
-  (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card), :target ["dimension" dimension]}]))
+  (db/update! DashboardCard (u/get-id dashcard)
+    :parameter_mappings [{:card_id (u/get-id card), :target ["dimension" dimension]}]))
 
 (defn- GET-param-values [dashboard]
   (tu/with-temporary-setting-values [enable-public-sharing true]
@@ -307,7 +320,11 @@
 (expect
   (price-param-values)
   (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/get-id card) :dataset_query {:native {:template_tags {:price {:name "price", :display_name "Price", :type "dimension", :dimension ["field-id" (data/id :venues :price)]}}}})
+    (db/update! Card (u/get-id card)
+      :dataset_query {:native {:template_tags {:price {:name         "price"
+                                                       :display_name "Price"
+                                                       :type         "dimension"
+                                                       :dimension    ["field-id" (data/id :venues :price)]}}}})
     (add-price-param-to-dashboard! dash)
     (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
     (GET-param-values dash)))

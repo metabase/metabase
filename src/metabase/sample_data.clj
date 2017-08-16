@@ -1,4 +1,6 @@
 (ns metabase.sample-data
+  "Code for adding the Sample Dataset to our Databases, and updating its details if needed (for example, if the JAR is
+   moved, we'll need to update the details so we have the new path to the file.)"
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
@@ -15,8 +17,10 @@
   (let [resource (io/resource sample-dataset-filename)]
     (when-not resource
       (throw (Exception. (format "Can't load sample dataset: the DB file '%s' can't be found." sample-dataset-filename))))
+    ;; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from
+    ;; `lein`, which has no `file:` prefix)
     {:db (-> (.getPath resource)
-             (s/replace #"^file:" "zip:")           ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from `lein`, which has no `file:` prefix)
+             (s/replace #"^file:" "zip:")
              (s/replace #"\.mv\.db$" "")            ; strip the .mv.db suffix from the path
              (s/replace #"%20" " ")                 ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
              (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB

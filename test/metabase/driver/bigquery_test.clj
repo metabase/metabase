@@ -16,13 +16,17 @@
 (expect-with-engine :bigquery
   [[100]
    [99]]
-  (get-in (qp/process-query {:native   {:query "SELECT [test_data.venues.id] FROM [test_data.venues] ORDER BY [test_data.venues.id] DESC LIMIT 2;"}
+  (get-in (qp/process-query {:native   {:query (str "SELECT [test_data.venues.id]\n"
+                                                    "FROM [test_data.venues]\n"
+                                                    "ORDER BY [test_data.venues.id] DESC\n"
+                                                    "LIMIT 2;")}
                              :type     :native
                              :database (data/id)})
           [:data :rows]))
 
 
-;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
+;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing
+;; ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
    :cols    (mapv #(merge col-defaults %)
@@ -30,9 +34,11 @@
                    {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
                    {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}])}
 
-  (select-keys (:data (qp/process-query {:native   {:query "SELECT [test_data.checkins.venue_id] AS [venue_id], [test_data.checkins.user_id] AS [user_id], [test_data.checkins.id] AS [checkins_id]
-                                                            FROM [test_data.checkins]
-                                                            LIMIT 2"}
+  (select-keys (:data (qp/process-query {:native   {:query (str "SELECT [test_data.checkins.venue_id] AS [venue_id],"
+                                                                "  [test_data.checkins.user_id] AS [user_id], "
+                                                                "  [test_data.checkins.id] AS [checkins_id]\n"
+                                                                "FROM [test_data.checkins]\n"
+                                                                "LIMIT 2\n")}
                                          :type     :native
                                          :database (data/id)}))
                [:cols :columns]))

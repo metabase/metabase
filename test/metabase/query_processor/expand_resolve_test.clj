@@ -144,29 +144,39 @@
                                   :name   "VENUES"
                                   :id     true}
                    :filter       {:filter-type :=
-                                  :field       (merge field-defaults
-                                                      {:field-id           true
-                                                       :fk-field-id        (id :venues :category_id)
-                                                       :field-name         "NAME"
-                                                       :field-display-name "Name"
-                                                       :base-type          :type/Text
-                                                       :special-type       :type/Name
-                                                       :table-id           (id :categories)
-                                                       :table-name         "CATEGORIES__via__CATEGORY_ID"
-                                                       :values             category-field-values
-                                                       :fingerprint        {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})
+                                  :field       (merge
+                                                field-defaults
+                                                {:field-id           true
+                                                 :fk-field-id        (id :venues :category_id)
+                                                 :field-name         "NAME"
+                                                 :field-display-name "Name"
+                                                 :base-type          :type/Text
+                                                 :special-type       :type/Name
+                                                 :table-id           (id :categories)
+                                                 :table-name         "CATEGORIES__via__CATEGORY_ID"
+                                                 :values             category-field-values
+                                                 :fingerprint        {:global {:distinct-count 75}
+                                                                      :type   {:type/Text {:percent-json   0.0
+                                                                                           :percent-url    0.0
+                                                                                           :percent-email  0.0
+                                                                                           :average-length 8.333333333333334}}}})
                                   :value       {:value "abc"
-                                                :field (merge field-defaults
-                                                              {:field-id           true
-                                                               :fk-field-id        (id :venues :category_id)
-                                                               :field-name         "NAME"
-                                                               :field-display-name "Name"
-                                                               :base-type          :type/Text
-                                                               :special-type       :type/Name
-                                                               :table-id           (id :categories)
-                                                               :table-name         "CATEGORIES__via__CATEGORY_ID"
-                                                               :values             category-field-values
-                                                               :fingerprint        {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})}}
+                                                :field (merge
+                                                        field-defaults
+                                                        {:field-id           true
+                                                         :fk-field-id        (id :venues :category_id)
+                                                         :field-name         "NAME"
+                                                         :field-display-name "Name"
+                                                         :base-type          :type/Text
+                                                         :special-type       :type/Name
+                                                         :table-id           (id :categories)
+                                                         :table-name         "CATEGORIES__via__CATEGORY_ID"
+                                                         :values             category-field-values
+                                                         :fingerprint        {:global {:distinct-count 75}
+                                                                              :type   {:type/Text {:percent-json   0.0
+                                                                                                   :percent-url    0.0
+                                                                                                   :percent-email  0.0
+                                                                                                   :average-length 8.333333333333334}}}})}}
                    :join-tables  [{:source-field {:field-id   true
                                                   :field-name "CATEGORY_ID"}
                                    :pk-field     {:field-id   true

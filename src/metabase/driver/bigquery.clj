@@ -25,7 +25,8 @@
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
+            TableList TableList$Tables TableReference TableRow TableSchema]
            [java.util Collections Date]
            [metabase.query_processor.interface DateTimeValue Value]))
 
@@ -45,8 +46,9 @@
 ;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------
 
 (defn- ^TableList list-tables
-  "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are present, you may
-    fetch subsequent pages by specifying the PAGE-TOKEN; the token for the next page is returned with a page when one exists."
+  "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are
+   present, you may fetch subsequent pages by specifying the PAGE-TOKEN; the token for the next page is returned with
+   a page when one exists."
   ([database]
    (list-tables database nil))
 
@@ -252,12 +254,15 @@
 
 (declare driver)
 
-;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out where things is from
+;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out
+;; where things is from
 (defn- qualify-fields-and-tables-with-dataset-id [{{{:keys [dataset-id]} :details} :database, :as query}]
   (walk/postwalk (fn [x]
                    (cond
-                     (instance? metabase.query_processor.interface.Field x)     (assoc x :schema-name dataset-id) ; TODO - it is inconvenient that we use different keys for `schema` across different
-                     (instance? metabase.query_processor.interface.JoinTable x) (assoc x :schema      dataset-id) ; classes. We should one day refactor to use the same key everywhere.
+                     ;; TODO - it is inconvenient that we use different keys for `schema` across different classes. We
+                     ;; should one day refactor to use the same key everywhere.
+                     (instance? metabase.query_processor.interface.Field x)     (assoc x :schema-name dataset-id)
+                     (instance? metabase.query_processor.interface.JoinTable x) (assoc x :schema      dataset-id)
                      :else                                                      x))
                  (assoc-in query [:query :source-table :schema] dataset-id)))
 
@@ -274,7 +279,8 @@
     sql))
 
 (defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
-  ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
+  ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset
+  ;; and table IDs
   (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
         columns       (for [column columns]
                         (keyword (demangle-name column)))
@@ -304,9 +310,11 @@
                   (update results :columns (partial map keyword)))]
     (assoc results :annotate? mbql?)))
 
-;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
-;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
-;;        Or perhaps investigate a lower-level way to disable the functionality in HoneySQL, perhaps by swapping out a function somewhere
+;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared
+;; statement parameters (`?`)
+;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for
+;; `prepare-value` (?) Or perhaps investigate a lower-level way to disable the functionality in HoneySQL, perhaps by
+;; swapping out a function somewhere
 (defprotocol ^:private IPrepareValue
   (^:private prepare-value [this]))
 (extend-protocol IPrepareValue
@@ -334,13 +342,15 @@
                     ag-type)))
     :else (str schema-name \. table-name \. field-name)))
 
-;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
+;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
+;; currently only used for SQL params so it's not a huge deal at this point
 (defn- field->identifier [{table-id :table_id, :as field}]
   (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
         dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
     (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
 
-;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
+;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting
+;; functions in SELECT
 ;; BAD:
 ;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
 ;; FROM [sad_toucan_incidents.incidents]
@@ -407,7 +417,8 @@
     (update-select-subclause-aliases select-subclauses deduped)))
 
 (defn- apply-aggregation
-  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results."
+  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls
+   `deduplicate-select-aliases` on the results."
   [driver honeysql-form query]
   (-> (sqlqp/apply-aggregation driver honeysql-form query)
       (update :select deduplicate-select-aliases)))
@@ -420,7 +431,8 @@
   (-> honeysql-form
       ;; Group by all the breakout fields
       ((partial apply h/group)  (map field->breakout-identifier breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
+      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
+      ;; twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field breakout-fields
                                             :when (not (contains? (set fields-fields) field))]
                                         (sqlqp/as (sqlqp/formatted field) field)))))
@@ -437,7 +449,8 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
-;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
+;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
+;; at most 128 characters long.
 (defn- format-custom-field-name ^String [^String custom-field-name]
   (s/join (take 128 (-> (s/trim custom-field-name)
                         (s/replace #"[^\w\d_]" "_")

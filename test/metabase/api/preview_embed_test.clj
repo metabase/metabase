@@ -7,9 +7,10 @@
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/card/:token ------------------------------------------------------------
+;;; GET /api/preview_embed/card/:token
 
-(defn- card-url [card & [additional-token-params]] (str "preview_embed/card/" (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))))
+(defn- card-url [card & [additional-token-params]]
+  (str "preview_embed/card/" (embed-test/card-token card (merge {:_embedding_params {}} additional-token-params))))
 
 ;; it should be possible to use this endpoint successfully if all the conditions are met
 (expect
@@ -53,7 +54,7 @@
                                                                                   :params            {:c 100}}))))))
 
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------------------------------
+;;; GET /api/preview_embed/card/:token/query
 
 (defn- card-query-url [card & [additional-token-params]]
   (str "preview_embed/card/"
@@ -153,9 +154,11 @@
       ((test-users/user->client :crowberto) :get 200 (str (card-query-url card {:_embedding_params {:abc "enabled"}}) "?abc=200")))))
 
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/dashboard/:token ------------------------------------------------------------
+;;; GET /api/preview_embed/dashboard/:token
 
-(defn- dashboard-url [dashboard & [additional-token-params]] (str "preview_embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}} additional-token-params))))
+(defn- dashboard-url [dashboard & [additional-token-params]]
+  (str "preview_embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}}
+                                                                          additional-token-params))))
 
 ;; it should be possible to call this endpoint successfully...
 (expect
@@ -196,13 +199,17 @@
                                                 {:slug "c", :name "c", :type "date"}
                                                 {:slug "d", :name "d", :type "date"}]}]
       (:parameters ((test-users/user->client :crowberto) :get 200 (dashboard-url dash {:params            {:c 100},
-                                                                                       :_embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}))))))
+                                                                                       :_embedding_params {:a "locked"
+                                                                                                           :b "disabled"
+                                                                                                           :c "enabled"
+                                                                                                           :d "enabled"}}))))))
 
 
-;;; ------------------------------------------------------------ GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id ------------------------------------------------------------
+;;; GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id
 
 (defn- dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
-  (str "preview_embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}} additional-token-params))
+  (str "preview_embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
+                                                                                         additional-token-params))
        "/dashcard/" (u/get-id dashcard)
        "/card/" (:card_id dashcard)))
 
