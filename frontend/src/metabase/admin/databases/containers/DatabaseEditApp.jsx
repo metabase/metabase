@@ -109,6 +109,7 @@ export default class DatabaseEditApp extends Component {
 
         const editingExistingDatabase = database && database.id != null
         const addingNewDatabase = !editingExistingDatabase
+        const letUserControlScheduling = database && database.details && database.details["let-user-control-scheduling"]
 
         return (
             <div className="wrapper">
@@ -119,7 +120,7 @@ export default class DatabaseEditApp extends Component {
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed pt0">
-                            { editingExistingDatabase &&
+                            { letUserControlScheduling &&
                                 <Tabs
                                     tabs={['Connection', 'Scheduling']}
                                     currentTab={currentTab}

@@ -79,6 +79,12 @@ export default class DatabaseDetailsForm extends Component {
         }
     }
 
+    componentWillReceiveProps(nextProps) {
+        if (this.props.details !== nextProps.details) {
+            this.setState({ details: nextProps.details })
+        }
+    }
+
     componentDidMount() {
         this.validateForm();
     }
@@ -101,8 +107,34 @@ export default class DatabaseDetailsForm extends Component {
             engine: engine,
             name: details.name,
             details: {},
+            // use the existing is_full_sync setting in case that "let user control scheduling" setting is enabled
             is_full_sync: details.is_full_sync
         };
+
+        const letUserControlScheduling = details["let-user-control-scheduling"];
+        if (!letUserControlScheduling) {
+            // if we don't let user control the scheduling settings, let's override them with Metabase defaults
+            // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults and refactor this logic
+            // to a Redux action; it doesn't really make sense that it is in a React component
+            request = {
+                ...request,
+                is_full_sync: true,
+                schedules: {
+                    "cache_field_values": {
+                        "schedule_day": null,
+                        "schedule_frame": null,
+                        "schedule_hour": null,
+                        "schedule_type": "hourly"
+                    },
+                    "metadata_sync": {
+                        "schedule_day": null,
+                        "schedule_frame": null,
+                        "schedule_hour": null,
+                        "schedule_type": "hourly"
+                    }
+                }
+            }
+        }
 
         for (let field of engines[engine]['details-fields']) {
             let val = details[field.name] === "" ? null : details[field.name];
@@ -112,6 +144,10 @@ export default class DatabaseDetailsForm extends Component {
 
             request.details[field.name] = val;
         }
+
+        // NOTE Atte Keinänen 8/15/17: Is it a little hacky approach or not to add to the `details` field property
+        // that are not part of the details schema of current db engine?
+        request.details["let-user-control-scheduling"] = details["let-user-control-scheduling"];
 
         submitFn(request);
     }
@@ -175,13 +211,13 @@ export default class DatabaseDetailsForm extends Component {
         } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
             // don't show tunnel fields if tunnel isn't enabled
             return null;
-        } else if (field.name === "is_full_sync") {
-            let on = (this.state.details.is_full_sync == undefined) ? false : this.state.details.is_full_sync;
+        } else if (field.name === "let-user-control-scheduling") {
+            let on = (this.state.details["let-user-control-scheduling"] == undefined) ? false : this.state.details["let-user-control-scheduling"];
             return (
                 <FormField key={field.name} fieldName={field.name}>
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <Toggle value={on} onChange={(val) => this.onChange("is_full_sync", val)}/>
+                            <Toggle value={on} onChange={(val) => this.onChange("let-user-control-scheduling", val)}/>
                         </div>
                         <div className="px2">
                             <h3>This is a large database, so let me choose when Metabase syncs and scans</h3>
@@ -263,7 +299,7 @@ export default class DatabaseDetailsForm extends Component {
             },
             ...engines[engine]['details-fields'],
             {
-                name: "is_full_sync",
+                name: "let-user-control-scheduling",
                 required: true
             }
         ];
