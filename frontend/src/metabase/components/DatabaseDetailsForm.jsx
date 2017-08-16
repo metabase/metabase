@@ -176,7 +176,7 @@ export default class DatabaseDetailsForm extends Component {
             // don't show tunnel fields if tunnel isn't enabled
             return null;
         } else if (field.name === "is_full_sync") {
-            let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
+            let on = (this.state.details.is_full_sync == undefined) ? false : this.state.details.is_full_sync;
             return (
                 <FormField key={field.name} fieldName={field.name}>
                     <div className="flex align-center Form-offset">
@@ -184,10 +184,10 @@ export default class DatabaseDetailsForm extends Component {
                             <Toggle value={on} onChange={(val) => this.onChange("is_full_sync", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>Enable in-depth database analysis</h3>
+                            <h3>This is a large database, so let me choose when Metabase syncs and scans</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
-                                This allows us to present you with better metadata for your tables and is required for some features of Metabase.
-                                We recommend leaving this on unless your database is large and you're concerned about performance.
+                                By default, Metabase does a lightweight hourly sync, and an intensive daily scan of field values.
+                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
                             </div>
                         </div>
                     </div>
