@@ -162,9 +162,11 @@ export default class DatabaseStep extends Component {
                             You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.
                         </div>
 
-                        <FormField fieldName="engine">
-                            {this.renderEngineSelect()}
-                        </FormField>
+                        {!inSchedulingStep ?
+                            <FormField fieldName="engine">
+                                {this.renderEngineSelect()}
+                            </FormField>
+                        : null }
 
                         { engine !== "" && !inSchedulingStep ?
                           <DatabaseDetailsForm
