@@ -141,6 +141,22 @@ export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (car
     }
 )
 
+const FETCH_SEGMENT_TABLE_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_FIELD_COMPARISON';
+export const fetchSegmentTableFieldComparison = createThunkAction(
+    FETCH_SEGMENT_TABLE_FIELD_COMPARISON,
+    (requestParams) =>
+        async (dispatch) => {
+            requestParams.cost = COSTS[requestParams.cost].method
+            console.log(requestParams)
+            try {
+                const comparison = await XRayApi.segment_table_field_compare(requestParams)
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
 const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
 export const loadComparison = createAction(LOAD_COMPARISON)
 
