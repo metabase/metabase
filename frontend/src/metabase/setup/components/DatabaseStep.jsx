@@ -12,6 +12,8 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import _ from "underscore";
+import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
+import DatabaseSchedulingForm from "metabase/admin/databases/components/DatabaseSchedulingForm";
 
 export default class DatabaseStep extends Component {
     constructor(props, context) {
@@ -39,25 +41,25 @@ export default class DatabaseStep extends Component {
         MetabaseAnalytics.trackEvent('Setup', 'Choose Database', engine);
     }
 
-    async detailsCaptured(details) {
+    connectionDetailsCaptured = async (database) => {
         this.setState({
             'formError': null
         });
 
         // make sure that we are trying ssl db connections to start with
-        details.details.ssl = true;
+        database.details.ssl = true;
 
         try {
             // validate the details before we move forward
-            await this.props.validateDatabase(details);
+            await this.props.validateDatabase(database);
 
         } catch (error) {
             let formError = error;
-            details.details.ssl = false;
+            database.details.ssl = false;
 
             try {
                 // ssl connection failed, lets try non-ssl
-                await this.props.validateDatabase(details);
+                await this.props.validateDatabase(database);
 
                 formError = null;
 
@@ -76,10 +78,34 @@ export default class DatabaseStep extends Component {
             }
         }
 
-        // now that they are good, store them
+        if (database.details["let-user-control-scheduling"]) {
+            // Show the scheduling step if user has chosen to control scheduling manually
+            // Add the default schedules because DatabaseSchedulingForm requires them and update the db state
+            // Keep the step same as we conditionally show the scheduling settings in this component
+            this.props.setDatabaseDetails({
+                'nextStep': this.props.stepNumber,
+                'details': {
+                    ...database,
+                    is_full_sync: true,
+                    schedules: DEFAULT_SCHEDULES
+                }
+            });
+        } else {
+            // now that they are good, store them
+            this.props.setDatabaseDetails({
+                'nextStep': this.props.stepNumber + 1,
+                'details': database
+            });
+
+            MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
+        }
+
+    }
+
+    schedulingDetailsCaptured = async (database) => {
         this.props.setDatabaseDetails({
             'nextStep': this.props.stepNumber + 1,
-            'details': details
+            'details': database
         });
 
         MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
@@ -123,6 +149,8 @@ export default class DatabaseStep extends Component {
             stepText = (databaseDetails === null) ? "I'll add my own data later" : 'Connecting to '+databaseDetails.name;
         }
 
+        const inSchedulingStep = databaseDetails && databaseDetails.details["let-user-control-scheduling"];
+
         if (activeStep !== stepNumber) {
             return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
@@ -138,17 +166,29 @@ export default class DatabaseStep extends Component {
                             {this.renderEngineSelect()}
                         </FormField>
 
-                        { engine !== "" ?
+                        { engine !== "" && !inSchedulingStep ?
                           <DatabaseDetailsForm
                               details={(databaseDetails && 'details' in databaseDetails) ? databaseDetails.details : null}
                               engine={engine}
                               engines={engines}
                               formError={formError}
                               hiddenFields={{ ssl: true }}
-                              submitFn={this.detailsCaptured.bind(this)}
+                              submitFn={this.connectionDetailsCaptured}
                               submitButtonText={'Next'}>
                           </DatabaseDetailsForm>
                           : null }
+
+                        { engine !== "" && inSchedulingStep ?
+                            <div className="text-default">
+                                <DatabaseSchedulingForm
+                                    database={databaseDetails}
+                                    formState={{ formError }}
+                                    // Use saveDatabase both for db creation and updating
+                                    save={this.schedulingDetailsCaptured}
+                                    submitButtonText={ "Next"}
+                                />
+                            </div>
+                            : null }
 
                           <div className="Form-field Form-offset">
                               <a className="link" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
