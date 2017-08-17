@@ -16,8 +16,7 @@ import {
     SYNC_DATABASE_SCHEMA,
     DISCARD_SAVED_FIELD_VALUES,
     UPDATE_DATABASE,
-    saveDatabase,
-    initializeDatabase, MIGRATE_TO_NEW_SCHEDULING_SETTINGS
+    MIGRATE_TO_NEW_SCHEDULING_SETTINGS, DEFAULT_SCHEDULES
 } from "metabase/admin/databases/database";
 import DatabaseEditApp, { Tab } from "metabase/admin/databases/containers/DatabaseEditApp";
 import DatabaseEditForms from "metabase/admin/databases/components/DatabaseEditForms";
@@ -29,7 +28,6 @@ import Select from "metabase/components/Select";
 import ColumnarSelector from "metabase/components/ColumnarSelector";
 import { click, clickButton } from "__support__/enzyme_utils";
 import { MetabaseApi } from "metabase/services";
-import { getEditingDatabase } from "metabase/admin/databases/selectors";
 import _ from "underscore";
 
 // Currently a lot of duplication with SegmentPane tests
@@ -171,7 +169,7 @@ describe("DatabaseEditApp", () => {
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
-            expect(schedulingForm.find(Select).first().text()).toEqual("Daily");
+            expect(schedulingForm.find(Select).first().text()).toEqual("Hourly");
 
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
@@ -251,20 +249,7 @@ describe("DatabaseEditApp", () => {
             await MetabaseApi.db_update({
                 ...database,
                 is_full_sync: true,
-                schedules: {
-                    "cache_field_values": {
-                        "schedule_day": null,
-                        "schedule_frame": null,
-                        "schedule_hour": null,
-                        "schedule_type": "hourly"
-                    },
-                    "metadata_sync": {
-                        "schedule_day": null,
-                        "schedule_frame": null,
-                        "schedule_hour": 0,
-                        "schedule_type": "daily"
-                    }
-                },
+                schedules: DEFAULT_SCHEDULES,
                 details: {
                     ...database.details,
                     "let-user-control-scheduling": false
