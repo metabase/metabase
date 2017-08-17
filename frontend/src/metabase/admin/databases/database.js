@@ -138,18 +138,22 @@ export const proceedWithDbCreation = function (database) {
         if (database.details["let-user-control-scheduling"]) {
             try {
                 dispatch.action(VALIDATE_DATABASE_STARTED);
-                await MetabaseApi.db_validate(database);
+                const { valid } = await MetabaseApi.db_validate({ details: database });
 
-                dispatch.action(SET_DATABASE_CREATION_STEP, {
-                    // NOTE Atte Keinänen: DatabaseSchedulingForm needs `editingDatabase` with `schedules` so I decided that
-                    // it makes sense to set the value of editingDatabase as part of SET_DATABASE_CREATION_STEP
-                    database: {
-                        ...database,
-                        is_full_sync: true,
-                        schedules: DEFAULT_SCHEDULES
-                    },
-                    step: DB_EDIT_FORM_SCHEDULING_TAB
-                });
+                if (valid) {
+                    dispatch.action(SET_DATABASE_CREATION_STEP, {
+                        // NOTE Atte Keinänen: DatabaseSchedulingForm needs `editingDatabase` with `schedules` so I decided that
+                        // it makes sense to set the value of editingDatabase as part of SET_DATABASE_CREATION_STEP
+                        database: {
+                            ...database,
+                            is_full_sync: true,
+                            schedules: DEFAULT_SCHEDULES
+                        },
+                        step: DB_EDIT_FORM_SCHEDULING_TAB
+                    });
+                } else {
+                    dispatch.action(VALIDATE_DATABASE_FAILED, { error: { data: { message: "Couldn't connect to the database. Please check the connection details." } } });
+                }
             } catch(error) {
                 dispatch.action(VALIDATE_DATABASE_FAILED, { error });
             }
