@@ -34,7 +34,7 @@
              [hydrate :refer [hydrate]]])
   (:import metabase.models.database.DatabaseInstance))
 
-(def DBEngine
+(def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
   (su/with-api-error-message (s/constrained su/NonBlankString driver/is-engine? "Valid database engine")
     "value must be a valid database engine."))
@@ -299,6 +299,7 @@
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
   [engine {:keys [host port] :as details}]
+  ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
   (when-not config/is-test?
     (let [engine  (keyword engine)
           details (assoc details :engine engine)]
@@ -321,17 +322,25 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(defn- test-connection-details
+(s/defn ^:private ^:always-validate test-connection-details :- su/Map
   "Try a making a connection to database ENGINE with DETAILS.
    Tries twice: once with SSL, and a second time without if the first fails.
    If either attempt is successful, returns the details used to successfully connect.
-   Otherwise returns the connection error message."
-  [engine details]
-  (let [error (test-database-connection engine details)]
-    (if (and error
-             (true? (:ssl details)))
-      (recur engine (assoc details :ssl false))
-      (or error details))))
+   Otherwise returns a map with the connection error message. (This map will also
+   contain the key `:valid` = `false`, which you can use to distinguish an error from
+   valid details.)"
+  [engine :- DBEngineString, details :- su/Map]
+  (let [details (if (supports-ssl? engine)
+                  (assoc details :ssl true)
+                  details)]
+    ;; this loop tries connecting over ssl and non-ssl to establish a connection
+    ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
+    (loop [details details]
+      (let [error (test-database-connection engine details)]
+        (if (and error
+                 (true? (:ssl details)))
+          (recur (assoc details :ssl false))
+          (or error details))))))
 
 
 (def ^:private CronSchedulesMap
@@ -353,19 +362,14 @@
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync schedules]} :body}]
   {name         su/NonBlankString
-   engine       DBEngine
+   engine       DBEngineString
    details      su/Map
    is_full_sync (s/maybe s/Bool)
    schedules    (s/maybe ExpandedSchedulesMap)}
   (api/check-superuser)
-  ;; this function tries connecting over ssl and non-ssl to establish a connection
-  ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-  (let [details          (if (supports-ssl? engine)
-                           (assoc details :ssl true)
-                           details)
-        details-or-error (test-connection-details engine details)
-        is-full-sync?    (or (nil? is_full_sync)
-                             (boolean is_full_sync))]
+  (let [is-full-sync?    (or (nil? is_full_sync)
+                             (boolean is_full_sync))
+        details-or-error (test-connection-details engine details)]
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
@@ -383,9 +387,14 @@
        :body   details-or-error})))
 
 (api/defendpoint POST "/validate"
-                 "Validate that we can connect to a database given a set of details."
-                 [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
-                 {:valid true})
+  "Validate that we can connect to a database given a set of details."
+  ;; TODO - why do we pass the DB in under the key `details`?
+  [:as {{{:keys [engine details]} :details} :body}]
+  {engine  DBEngineString
+   details su/Map}
+  (api/check-superuser)
+  (let [details-or-error (test-connection-details engine details)]
+    {:valid (not (false? (:valid details-or-error)))}))
 
 ;;; ------------------------------------------------------------ POST /api/database/sample_dataset ------------------------------------------------------------
 
@@ -403,7 +412,7 @@
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest schedules]} :body}]
   {name               (s/maybe su/NonBlankString)
-   engine             (s/maybe DBEngine)
+   engine             (s/maybe DBEngineString)
    details            (s/maybe su/Map)
    schedules          (s/maybe ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
