@@ -89,10 +89,18 @@
 
 (expect
   [["TEST" "SHARE"]
-   3]
+   3
+   []
+   [[17 1.0]]]
   (let [dataset (#'fe/histogram->dataset {:name "TEST"} hist)]
     [(:columns dataset)
-     (count (:rows dataset))]))
+     (count (:rows dataset))
+     (->> (transduce identity h/histogram [])
+          (#'fe/histogram->dataset {:name "TEST"})
+          :rows)
+     (->> (transduce identity h/histogram [17])
+          (#'fe/histogram->dataset {:name "TEST"})
+          :rows)]))
 
 (expect
   [(t/date-time 2017 8)

@@ -134,11 +134,11 @@
   "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
-    {:distance             (transduce (map val)
-                                      (redux/post-complete
-                                       magnitude
-                                       #(/ % (math/sqrt (count differences))))
-                                      differences)
-     :components           differences
-     :largest-contributors (head-tails-breaks second differences)
-     :thereshold           interestingness-thershold}))
+    {:distance         (transduce (map val)
+                                  (redux/post-complete
+                                   magnitude
+                                   #(/ % (math/sqrt (count differences))))
+                                  differences)
+     :components       differences
+     :top-contributors (head-tails-breaks second differences)
+     :thereshold       interestingness-thershold}))

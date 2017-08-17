@@ -111,10 +111,9 @@
              (apply fe/compare-features
                     {:max-cost (max-cost max_query_cost max_computation_cost)})
              fe/x-ray)]
-    {:constituents         [(-> constituents first :constituents (get field))
-                            (-> constituents second :constituents (get field))]
-     :comparison           (-> comparison (get field))
-     :largest-contributors (-> comparison (get field) :largest-contributors)}))
+    {:constituents     constituents
+     :comparison       (-> comparison (get field))
+     :top-contributors (-> comparison (get field) :top-contributors)}))
 
 ;; (api/defendpoint GET "/compare/cards/:id1/:id2"
 ;;   "Get comparison x-ray for `Card`s with ID1 and ID2."
@@ -150,10 +149,9 @@
              (apply fe/compare-features
                     {:max-cost (max-cost max_query_cost max_computation_cost)})
              fe/x-ray)]
-    {:constituents         [(-> constituents first :constituents (get field))
-                            (-> constituents second :constituents (get field))]
-     :comparison           (-> comparison (get field))
-     :largest-contributors (-> comparison (get field) :largest-contributors)}))
+    {:constituents     constituents
+     :comparison       (-> comparison (get field))
+     :top-contributors (-> comparison (get field) :top-contributors)}))
 
 (api/defendpoint GET "/compare/segment/:sid/table/:tid"
   "Get comparison x-ray for `Segment` and `Table`."
@@ -178,10 +176,9 @@
           {:max-cost (max-cost max_query_cost max_computation_cost)}
           (api/read-check Segment sid)
           (api/read-check Table tid)))]
-    {:constituents         [(-> constituents first :constituents (get field))
-                            (-> constituents second :constituents (get field))]
-     :comparison           (-> comparison (get field))
-     :largest-contributors (-> comparison (get field) :largest-contributors)}))
+    {:constituents     constituents
+     :comparison       (-> comparison (get field))
+     :top-contributors (-> comparison (get field) :top-contributors)}))
 
 (api/defendpoint GET "/compare/valid-pairs"
   "Get a list of model pairs that can be compared."
