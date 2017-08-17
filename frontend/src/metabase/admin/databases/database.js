@@ -49,6 +49,7 @@ export const CREATE_DATABASE_FAILED = 'metabase/admin/databases/CREATE_DATABASE_
 export const DELETE_DATABASE_STARTED = 'metabase/admin/databases/DELETE_DATABASE_STARTED'
 export const DELETE_DATABASE_FAILED = "metabase/admin/databases/DELETE_DATABASE_FAILED";
 export const CLEAR_FORM_STATE = 'metabase/admin/databases/CLEAR_FORM_STATE'
+export const MIGRATE_TO_NEW_SCHEDULING_SETTINGS = 'metabase/admin/databases/MIGRATE_TO_NEW_SCHEDULING_SETTINGS'
 
 export const reset = createAction(RESET);
 
@@ -66,12 +67,38 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, function() {
     };
 });
 
+// Migrates old "Enable in-depth database analysis" option to new "Let me choose when Metabase syncs and scans" option
+// Migration is run as a separate action because that makes it easy to track in tests
+const migrateDatabaseToNewSchedulingSettings = (database) => {
+    return async function(dispatch, getState) {
+        if (database.details["let-user-control-scheduling"] == undefined) {
+            dispatch.action(MIGRATE_TO_NEW_SCHEDULING_SETTINGS, {
+                ...database,
+                details: {
+                    ...database.details,
+                    // if user has enabled in-depth analysis already, we will run sync&scan in default schedule anyway
+                    // otherwise let the user control scheduling
+                    "let-user-control-scheduling": !database.is_full_sync
+                }
+            })
+        } else {
+            console.log(`${MIGRATE_TO_NEW_SCHEDULING_SETTINGS} is no-op as scheduling settings are already set`)
+        }
+    }
+}
+
 // initializeDatabase
-export const initializeDatabase = createThunkAction(INITIALIZE_DATABASE, function(databaseId) {
+export const initializeDatabase = function(databaseId) {
     return async function(dispatch, getState) {
         if (databaseId) {
             try {
-                return await MetabaseApi.db_get({"dbId": databaseId});
+                const database = await MetabaseApi.db_get({"dbId": databaseId});
+                dispatch.action(INITIALIZE_DATABASE, database)
+
+                // If the new scheduling toggle isn't set, run the migration
+                if (database.details["let-user-control-scheduling"] == undefined) {
+                    dispatch(migrateDatabaseToNewSchedulingSettings(database))
+                }
             } catch (error) {
                 if (error.status == 404) {
                     //$location.path('/admin/databases/');
@@ -80,15 +107,16 @@ export const initializeDatabase = createThunkAction(INITIALIZE_DATABASE, functio
                 }
             }
         } else {
-            return {
+            const newDatabase = {
                 name: '',
                 engine: Object.keys(MetabaseSettings.get('engines'))[0],
                 details: {},
                 created: false
             }
+            dispatch.action(INITIALIZE_DATABASE, newDatabase);
         }
     }
-})
+}
 
 
 // addSampleDataset
@@ -259,11 +287,12 @@ const databases = handleActions({
 }, null);
 
 const editingDatabase = handleActions({
-    [RESET]: { next: () => null },
-    [INITIALIZE_DATABASE]: { next: (state, { payload }) => payload },
-    [UPDATE_DATABASE]: { next: (state, { payload }) => payload.database || state },
-    [DELETE_DATABASE]: { next: (state, { payload }) => null },
-    [SELECT_ENGINE]: { next: (state, { payload }) => ({...state, engine: payload }) },
+    [RESET]: () => null,
+    [INITIALIZE_DATABASE]: (state, { payload }) => payload,
+    [MIGRATE_TO_NEW_SCHEDULING_SETTINGS]: (state, { payload }) => payload,
+    [UPDATE_DATABASE]: (state, { payload }) => payload.database || state,
+    [DELETE_DATABASE]: (state, { payload }) => null,
+    [SELECT_ENGINE]: (state, { payload }) => ({...state, engine: payload }),
     [SET_DATABASE_CREATION_STEP]: (state, { payload: { database } }) => database
 }, null);
 

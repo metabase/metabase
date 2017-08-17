@@ -17,7 +17,7 @@ import {
     DISCARD_SAVED_FIELD_VALUES,
     UPDATE_DATABASE,
     saveDatabase,
-    initializeDatabase
+    initializeDatabase, MIGRATE_TO_NEW_SCHEDULING_SETTINGS
 } from "metabase/admin/databases/database";
 import DatabaseEditApp, { Tab } from "metabase/admin/databases/containers/DatabaseEditApp";
 import DatabaseEditForms from "metabase/admin/databases/components/DatabaseEditForms";
@@ -29,6 +29,8 @@ import Select from "metabase/components/Select";
 import ColumnarSelector from "metabase/components/ColumnarSelector";
 import { click, clickButton } from "__support__/enzyme_utils";
 import { MetabaseApi } from "metabase/services";
+import { getEditingDatabase } from "metabase/admin/databases/selectors";
+import _ from "underscore";
 
 // Currently a lot of duplication with SegmentPane tests
 describe("DatabaseEditApp", () => {
@@ -40,7 +42,7 @@ describe("DatabaseEditApp", () => {
         it("shows the connection settings for sample dataset correctly", async () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
-            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
+            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
             await store.waitForActions([INITIALIZE_DATABASE])
 
             const editForm = dbEditApp.find(DatabaseEditForms)
@@ -50,11 +52,6 @@ describe("DatabaseEditApp", () => {
             expect(editForm.find('input[name="db"]').props().value).toEqual(
                 expect.stringContaining("sample-dataset.db;USER=GUEST;PASSWORD=guest")
             )
-
-            const letUserControlSchedulingField =
-                editForm.find(FormField).filterWhere((f) => f.props().fieldName === "let-user-control-scheduling");
-            expect(letUserControlSchedulingField.length).toBe(1);
-            expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(false);
         });
 
         it("lets you modify the connection settings", async () => {
@@ -66,6 +63,7 @@ describe("DatabaseEditApp", () => {
             const editForm = dbEditApp.find(DatabaseEditForms)
             const letUserControlSchedulingField =
                 editForm.find(FormField).filterWhere((f) => f.props().fieldName === "let-user-control-scheduling");
+            expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(false);
             click(letUserControlSchedulingField.find(Toggle))
 
             // Connection and Scheduling tabs shouldn't be visible yet
@@ -79,29 +77,85 @@ describe("DatabaseEditApp", () => {
             expect(dbEditApp.find(Tab).length).toBe(2)
         });
 
+        // NOTE Atte Keinänen 8/17/17: See migrateDatabaseToNewSchedulingSettings for more information about migration process
+        it("shows the analysis toggle correctly for non-migrated analysis settings when `is_full_sync` is true", async () => {
+            // Set is_full_sync to false here inline and remove the let-user-control-scheduling setting
+            const database = await MetabaseApi.db_get({"dbId": 1})
+            await MetabaseApi.db_update({
+                ...database,
+                is_full_sync: true,
+                details: _.omit(database.details, "let-user-control-scheduling")
+            });
+
+            const store = await createTestStore()
+            store.pushPath("/admin/databases/1");
+            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
+            await store.waitForActions([INITIALIZE_DATABASE, MIGRATE_TO_NEW_SCHEDULING_SETTINGS])
+
+            const editForm = dbEditApp.find(DatabaseEditForms)
+            expect(editForm.length).toBe(1)
+            expect(editForm.find("select").props().defaultValue).toBe("h2")
+            expect(editForm.find('input[name="name"]').props().value).toBe("Sample Dataset")
+            expect(editForm.find('input[name="db"]').props().value).toEqual(
+                expect.stringContaining("sample-dataset.db;USER=GUEST;PASSWORD=guest")
+            )
+
+            const letUserControlSchedulingField =
+                editForm.find(FormField).filterWhere((f) => f.props().fieldName === "let-user-control-scheduling");
+            expect(letUserControlSchedulingField.length).toBe(1);
+            expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(false);
+            expect(dbEditApp.find(Tab).length).toBe(0)
+        });
+
+        it("shows the analysis toggle correctly for non-migrated analysis settings when `is_full_sync` is false", async () => {
+            // Set is_full_sync to true here inline and remove the let-user-control-scheduling setting
+            const database = await MetabaseApi.db_get({"dbId": 1})
+            await MetabaseApi.db_update({
+                ...database,
+                is_full_sync: false,
+                details: _.omit(database.details, "let-user-control-scheduling")
+            });
+
+            // Start the actual interaction test
+            const store = await createTestStore()
+            store.pushPath("/admin/databases/1");
+            const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
+            await store.waitForActions([INITIALIZE_DATABASE, MIGRATE_TO_NEW_SCHEDULING_SETTINGS])
+
+            const editForm = dbEditApp.find(DatabaseEditForms)
+            const letUserControlSchedulingField =
+                editForm.find(FormField).filterWhere((f) => f.props().fieldName === "let-user-control-scheduling");
+            expect(letUserControlSchedulingField.length).toBe(1);
+            expect(letUserControlSchedulingField.find(Toggle).props().value).toBe(true);
+            expect(dbEditApp.find(Tab).length).toBe(2)
+        })
+
         afterAll(async () => {
             // revert all changes that have been made
             // use a direct API call for the sake of simplicity / reliability
-            const store = await createTestStore()
-            const database = (await store.dispatch(initializeDatabase(1))).payload
-            await store.dispatch(saveDatabase(database, {
+            const database = await MetabaseApi.db_get({"dbId": 1})
+            await MetabaseApi.db_update({
+                ...database,
+                is_full_sync: true,
+                details: {
                     ...database.details,
                     "let-user-control-scheduling": false
                 }
-            ))
+            });
         })
     })
 
     describe("Scheduling tab", () => {
         beforeAll(async () => {
             // Enable the user-controlled scheduling for these tests
-            const store = await createTestStore()
-            const database = (await store.dispatch(initializeDatabase(1))).payload
-            await store.dispatch(saveDatabase(database, {
+            const database = await MetabaseApi.db_get({"dbId": 1})
+            await MetabaseApi.db_update({
+                ...database,
+                details: {
                     ...database.details,
                     "let-user-control-scheduling": true
                 }
-            ))
+            });
         })
 
         it("shows the initial scheduling settings correctly", async () => {
@@ -117,7 +171,7 @@ describe("DatabaseEditApp", () => {
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
-            expect(schedulingForm.find(Select).first().text()).toEqual("Hourly");
+            expect(schedulingForm.find(Select).first().text()).toEqual("Daily");
 
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
@@ -128,6 +182,7 @@ describe("DatabaseEditApp", () => {
 
         it("lets you change the db sync period", async () => {
             const store = await createTestStore()
+
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
@@ -192,33 +247,29 @@ describe("DatabaseEditApp", () => {
 
         afterAll(async () => {
             // revert all changes that have been made
-            // use a direct API call for the sake of simplicity / reliability
-            const store = await createTestStore()
-            const database = (await store.dispatch(initializeDatabase(1))).payload
-            await store.dispatch(saveDatabase(
-                {
-                    ...database,
-                    is_full_sync: true,
-                    schedules: {
-                        "cache_field_values": {
-                            "schedule_day": null,
-                            "schedule_frame": null,
-                            "schedule_hour": null,
-                            "schedule_type": "hourly"
-                        },
-                        "metadata_sync": {
-                            "schedule_day": null,
-                            "schedule_frame": null,
-                            "schedule_hour": null,
-                            "schedule_type": "hourly"
-                        }
+            const database = await MetabaseApi.db_get({"dbId": 1})
+            await MetabaseApi.db_update({
+                ...database,
+                is_full_sync: true,
+                schedules: {
+                    "cache_field_values": {
+                        "schedule_day": null,
+                        "schedule_frame": null,
+                        "schedule_hour": null,
+                        "schedule_type": "hourly"
+                    },
+                    "metadata_sync": {
+                        "schedule_day": null,
+                        "schedule_frame": null,
+                        "schedule_hour": 0,
+                        "schedule_type": "daily"
                     }
                 },
-                {
+                details: {
                     ...database.details,
                     "let-user-control-scheduling": false
                 }
-            ))
+            });
         })
     })
 
