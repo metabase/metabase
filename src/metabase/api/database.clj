@@ -152,7 +152,7 @@
 
 ;;; ------------------------------------------------------------ GET /api/database/:id ------------------------------------------------------------
 
-(def ^:private ExpandedSchedulesMap
+(def ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
    This same key is used in reverse to update the schedules."
   (su/with-api-error-message
@@ -339,7 +339,10 @@
   {(s/optional-key :metadata_sync_schedule)      cron-util/CronScheduleString
    (s/optional-key :cache_field_values_schedule) cron-util/CronScheduleString})
 
-(s/defn ^:private ^:always-validate schedule-map->cron-strings :- CronSchedulesMap
+(s/defn ^:always-validate schedule-map->cron-strings :- CronSchedulesMap
+  "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
+   Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
+   insert/update."
   [{:keys [metadata_sync cache_field_values]} :- ExpandedSchedulesMap]
   (cond-> {}
     metadata_sync      (assoc :metadata_sync_schedule      (cron-util/schedule-map->cron-string metadata_sync))
