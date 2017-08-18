@@ -1,3 +1,5 @@
+import { click } from "__support__/enzyme_utils";
+
 import React from 'react'
 import { shallow } from 'enzyme'
 import sinon from 'sinon'
@@ -29,7 +31,7 @@ describe('Step indicators', () => {
             )
 
             const targetIndicator = wrapper.find('li').first()
-            targetIndicator.simulate('click')
+            click(targetIndicator);
             expect(goToStep.calledWith(1)).toEqual(true)
         })
     })

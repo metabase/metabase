@@ -9,7 +9,7 @@
              [util :as u]]
             [metabase.api
              [common :as api]
-             [database :as database-api :refer [DBEngine]]]
+             [database :as database-api :refer [DBEngineString]]]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [database :refer [Database]]
@@ -83,12 +83,14 @@
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
   {token  SetupToken
-   engine DBEngine}
+   engine DBEngineString}
   (let [engine           (keyword engine)
         details          (assoc details :engine engine)
         response-invalid (fn [field m] {:status 400 :body (if (= :general field)
                                                             {:message m}
                                                             {:errors {field m}})})]
+    ;; TODO - as @atte mentioned this should just use the same logic as we use in POST /api/database/, which tries with
+    ;; both SSL and non-SSL.
     (try
       (cond
         (driver/can-connect-with-details? engine details :rethrow-exceptions) {:valid true}

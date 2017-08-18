@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { fetchCardComparison } from 'metabase/reference/reference'
+import { fetchCardComparison } from 'metabase/xray/xray'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 

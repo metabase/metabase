@@ -1,8 +1,13 @@
 // Converted from an old Selenium E2E test
 import {
     login,
-    createTestStore, clickRouterLink,
+    createTestStore
 } from "__support__/integrated_tests";
+import {
+    click,
+    clickButton,
+    setInputValue
+} from "__support__/enzyme_utils"
 import { mount } from "enzyme";
 import {
     CREATE_METRIC,
@@ -44,54 +49,48 @@ describe("admin/datamodel", () => {
 
             // Open "Orders" table section
             const adminListItems = app.find(".AdminList-item");
-            adminListItems.at(0).simulate("click");
+            click(adminListItems.at(0));
             await store.waitForActions([SELECT_TABLE]);
-            store.resetDispatchedActions()
 
             // Toggle its visibility to "Hidden"
-            app.find("#VisibilityTypes > span").at(1).simulate("click");
+            click(app.find("#VisibilityTypes > span").at(1))
             await store.waitForActions([UPDATE_TABLE]);
-            store.resetDispatchedActions()
 
             // Toggle "Why hide" to "Irrelevant/Cruft"
-            app.find("#VisibilitySubTypes > span").at(2).simulate("click")
+            click(app.find("#VisibilitySubTypes > span").at(2))
             await store.waitForActions([UPDATE_TABLE]);
-            store.resetDispatchedActions()
 
             // Unhide
-            app.find("#VisibilityTypes > span").at(0).simulate("click");
+            click(app.find("#VisibilityTypes > span").at(0))
 
             // Open "People" table section
-            adminListItems.at(1).simulate("click");
+            click(adminListItems.at(1));
             await store.waitForActions([SELECT_TABLE]);
-            store.resetDispatchedActions()
 
             // hide fields from people table
             // Set Address field to "Only in Detail Views"
             const columnsListItems = app.find(ColumnsList).find("li")
 
-            columnsListItems.first().find(".TableEditor-field-visibility").simulate("click");
+            click(columnsListItems.first().find(".TableEditor-field-visibility"));
             const onlyInDetailViewsRow = app.find(ColumnarSelector).find(".ColumnarSelector-row").at(1)
             expect(onlyInDetailViewsRow.text()).toMatch(/Only in Detail Views/);
-            onlyInDetailViewsRow.simulate("click");
+            click(onlyInDetailViewsRow);
             await store.waitForActions([UPDATE_FIELD]);
-            store.resetDispatchedActions();
 
             // Set Birth Date field to "Do Not Include"
-            columnsListItems.at(1).find(".TableEditor-field-visibility").simulate("click");
+            click(columnsListItems.at(1).find(".TableEditor-field-visibility"));
             // different ColumnarSelector than before so do a new lookup
             const doNotIncludeRow = app.find(ColumnarSelector).find(".ColumnarSelector-row").at(2)
             expect(doNotIncludeRow.text()).toMatch(/Do Not Include/);
-            doNotIncludeRow.simulate("click");
+            click(doNotIncludeRow);
 
             await store.waitForActions([UPDATE_FIELD]);
-            store.resetDispatchedActions();
 
             // modify special type for address field
-            columnsListItems.first().find(".TableEditor-field-special-type").simulate("click")
+            click(columnsListItems.first().find(".TableEditor-field-special-type"))
             const entityNameTypeRow = app.find(ColumnarSelector).find(".ColumnarSelector-row").at(1)
             expect(entityNameTypeRow.text()).toMatch(/Entity Name/);
-            entityNameTypeRow.simulate("click");
+            click(entityNameTypeRow);
             await store.waitForActions([UPDATE_FIELD]);
 
             // TODO Atte Keinänen 8/9/17: Currently this test doesn't validate that the updates actually are reflected in QB
@@ -105,39 +104,36 @@ describe("admin/datamodel", () => {
             const app = mount(store.getAppContainer())
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
-            store.resetDispatchedActions();
 
             // Click the new segment button and check that we get properly redirected
-            clickRouterLink(app.find(SegmentsList).find(Link));
+            click(app.find(SegmentsList).find(Link));
             expect(store.getPath()).toBe('/admin/datamodel/segment/create?table=2')
             await store.waitForActions([FETCH_TABLE_METADATA, UPDATE_PREVIEW_SUMMARY]);
-            store.resetDispatchedActions();
 
             // Add "Email Is Not gmail" filter
-            app.find(".GuiBuilder-filtered-by a").first().simulate("click");
+            click(app.find(".GuiBuilder-filtered-by a").first())
 
             const filterPopover = app.find(FilterPopover);
-            filterPopover.find(FieldList).find('h4[children="Email"]').simulate("click");
+            click(filterPopover.find(FieldList).find('h4[children="Email"]'));
 
             const operatorSelector = filterPopover.find(OperatorSelector);
-            operatorSelector.find('button[children="Is not"]').simulate("click");
+            clickButton(operatorSelector.find('button[children="Is not"]'));
 
             const addFilterButton = filterPopover.find(".Button.disabled");
 
-            filterPopover.find('textarea.border-purple').simulate('change', { target: { value: "gmail" }})
-            await addFilterButton.simulate("click");
+            setInputValue(filterPopover.find('textarea.border-purple'), "gmail");
+            await clickButton(addFilterButton);
 
             await store.waitForActions([UPDATE_PREVIEW_SUMMARY]);
 
             // Add name and description
-            app.find("input[name='name']").simulate('change', { target: { value: 'Gmail users' }});
-            app.find("textarea[name='description']").simulate("change", { target: { value: 'All people using Gmail for email'}});
+            setInputValue(app.find("input[name='name']"), "Gmail users")
+            setInputValue(app.find("textarea[name='description']"), "change")
 
             // Save the segment
-            app.find('button[children="Save changes"]').simulate("click");
+            click(app.find('button[children="Save changes"]'))
 
             await store.waitForActions([CREATE_SEGMENT, INITIALIZE_METADATA]);
-            store.resetDispatchedActions();
             expect(store.getPath()).toBe("/admin/datamodel/database/1/table/2")
 
             // Validate that the segment got actually added
@@ -152,21 +148,20 @@ describe("admin/datamodel", () => {
             const app = mount(store.getAppContainer())
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
-            store.resetDispatchedActions();
 
             // Click the new metric button and check that we get properly redirected
-            clickRouterLink(app.find(MetricsList).find(Link));
+            click(app.find(MetricsList).find(Link));
             expect(store.getPath()).toBe('/admin/datamodel/metric/create?table=2')
             await store.waitForActions([FETCH_TABLE_METADATA, UPDATE_PREVIEW_SUMMARY]);
 
-            app.find("#Query-section-aggregation").simulate("click");
-            app.find("#AggregationPopover").find('h4[children="Count of rows"]').simulate("click");
+            click(app.find("#Query-section-aggregation"));
+            click(app.find("#AggregationPopover").find('h4[children="Count of rows"]'))
 
-            app.find("input[name='name']").simulate('change', { target: { value: 'User count' }});
-            app.find("textarea[name='description']").simulate("change", { target: { value: 'Total number of users'}});
+            setInputValue(app.find("input[name='name']"), 'User count');
+            setInputValue(app.find("textarea[name='description']"), 'Total number of users');
 
             // Save the metric
-            app.find('button[children="Save changes"]').simulate("click");
+            click(app.find('button[children="Save changes"]'))
 
             await store.waitForActions([CREATE_METRIC, INITIALIZE_METADATA]);
             expect(store.getPath()).toBe("/admin/datamodel/database/1/table/2")

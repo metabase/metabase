@@ -1,9 +1,9 @@
-(ns metabase.fingerprinting.comparison
-  "Fingerprint similarity comparison."
+(ns metabase.feature-extraction.comparison
+  "Feature vector similarity comparison."
   (:require [clojure.set :as set]
             [kixi.stats.math :as math]
-            [metabase.fingerprinting
-             [fingerprinters :as fingerprinters]
+            [metabase.feature-extraction
+             [feature-extractors :as fe]
              [histogram :as h]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram))
@@ -23,7 +23,8 @@
                            :magnitude-b (redux/pre-step magnitude second)
                            :product     (redux/pre-step + (partial apply *))})
               (fn [{:keys [magnitude-a magnitude-b product]}]
-                (- 1 (/ product magnitude-a magnitude-b))))
+                (some->> (fe/safe-divide product magnitude-a magnitude-b)
+                         (- 1 ))))
              (map vector a b)))
 
 (defmulti
@@ -35,10 +36,10 @@
 (defmethod difference [Number Number]
   [a b]
   (cond
-    (every? zero? [a b]) 0
-    (zero? (max a b))    1
-    :else                (/ (- (max a b) (min a b))
-                            (max a b))))
+    (== a b 0)        0
+    (zero? (max a b)) 1
+    :else             (/ (- (max a b) (min a b))
+                         (max a b))))
 
 (defmethod difference [Boolean Boolean]
   [a b]
@@ -47,6 +48,14 @@
 (defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
   [a b]
   (* 0.5 (cosine-distance a b)))
+
+(defmethod difference [nil Object]
+  [a b]
+  1)
+
+(defmethod difference [Object nil]
+  [a b]
+  1)
 
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
@@ -65,11 +74,11 @@
   [pmf-a pmf-b]
   (let [categories-a (into #{} (map first) pmf-a)
         categories-b (into #{} (map first) pmf-b)]
-    [(->> (set/difference categories-a categories-b)
+    [(->> (set/difference categories-b categories-a)
           (map #(vector % 0))
           (concat pmf-a)
           (sort-by first))
-     (->> (set/difference categories-b categories-a)
+     (->> (set/difference categories-a categories-b)
           (map #(vector % 0))
           (concat pmf-b)
           (sort-by first))]))
@@ -87,25 +96,27 @@
   ([prefix m]
    (into {}
      (mapcat (fn [[k v]]
-               (let [k (keyword (some-> prefix str (subs 1)) (name k))]
+               (let [k (if prefix
+                         (keyword (str (name prefix) "_" (name k)))
+                         k)]
                  (if (map? v)
                    (flatten-map k v)
                    [[k v]]))))
      m)))
 
 (defn pairwise-differences
-  "Pairwise differences of (feature) vectors `a` and `b`."
+  "Pairwise differences of feature vectors `a` and `b`."
   [a b]
   (into {}
     (map (fn [[k a] [_ b]]
            [k (difference a b)])
-         (flatten-map (fingerprinters/comparison-vector a))
-         (flatten-map (fingerprinters/comparison-vector b)))))
+         (flatten-map (fe/comparison-vector a))
+         (flatten-map (fe/comparison-vector b)))))
 
 (def ^:private ^:const ^Double interestingness-thershold 0.2)
 
-(defn fingerprint-distance
-  "Distance metric between fingerprints `a` and `b`."
+(defn features-distance
+  "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
     {:distance   (transduce (map val)
@@ -113,5 +124,5 @@
                              magnitude
                              #(/ % (math/sqrt (count differences))))
                             differences)
-     :components (sort-by val > differences)
+     :components differences
      :thereshold interestingness-thershold}))

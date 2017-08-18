@@ -3,6 +3,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.api.database :as database-api]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -561,3 +562,43 @@
 (expect
   "You don't have permissions to do that."
   ((user->client :rasta) :post 403 (format "database/%d/discard_values" (data/id))))
+
+
+;;; Tests for /POST /api/database/validate
+
+;; For some stupid reason the *real* version of `test-database-connection` is set up to do nothing for tests. I'm
+;; guessing it's done that way so we can save invalid DBs for some silly tests. Instead of doing it the right way
+;; and using `with-redefs` to disable it in the few tests where it makes sense, we actually have to use `with-redefs`
+;; here to simulate its *normal* behavior. :unamused:
+(defn- test-database-connection [engine details]
+  (if (driver/can-connect-with-details? (keyword engine) details)
+    nil
+    {:valid false, :message "Error!"}))
+
+(expect
+  "You don't have permissions to do that."
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :rasta) :post 403 "database/validate"
+     {:details {:engine :h2, :details (:details (data/db))}})))
+
+(expect
+  (:details (data/db))
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (#'database-api/test-connection-details "h2" (:details (data/db)))))
+
+(expect
+  {:valid true}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :crowberto) :post 200 "database/validate"
+     {:details {:engine :h2, :details (:details (data/db))}})))
+
+(expect
+  {:valid false, :message "Error!"}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (#'database-api/test-connection-details "h2" {:db "ABC"})))
+
+(expect
+  {:valid false}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :crowberto) :post 200 "database/validate"
+     {:details {:engine :h2, :details {:db "ABC"}}})))

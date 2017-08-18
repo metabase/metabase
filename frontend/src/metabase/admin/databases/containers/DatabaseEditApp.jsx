@@ -15,12 +15,14 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
 import {
     getEditingDatabase,
-    getFormState
+    getFormState,
+    getDatabaseCreationStep
 } from "../selectors";
 
 import {
     reset,
     initializeDatabase,
+    proceedWithDbCreation,
     saveDatabase,
     syncDatabaseSchema,
     rescanDatabaseFields,
@@ -32,22 +34,30 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 const mapStateToProps = (state, props) => ({
-    database:  getEditingDatabase(state, props),
-    formState: getFormState(state, props)
+    database:  getEditingDatabase(state),
+    databaseCreationStep: getDatabaseCreationStep(state),
+    formState: getFormState(state)
 });
 
-export const Tab = ({ name, setTab, currentTab }) =>
-    <div
-        className={cx('cursor-pointer py3', {'text-brand': currentTab === name.toLowerCase() })}
-        onClick={() => setTab(name)}>
-        <h3>{name}</h3>
-    </div>
+export const Tab = ({ name, setTab, currentTab }) => {
+    const isCurrentTab = currentTab === name.toLowerCase()
 
-export const Tabs = ({ currentTab, setTab }) =>
+    return (
+        <div
+            className={cx('cursor-pointer py2', {'text-brand': isCurrentTab })}
+            // TODO Use css classes instead?
+            style={isCurrentTab ? { borderBottom: "3px solid #509EE3" } : {}}
+            onClick={() => setTab(name)}>
+            <h3>{name}</h3>
+        </div>
+    )
+}
+
+export const Tabs = ({ tabs, currentTab, setTab }) =>
     <div className="border-bottom">
         <ol className="Form-offset flex align center">
-            {['Connection', 'Scheduling'].map((tab, index) =>
-                <li key={index}>
+            {tabs.map((tab, index) =>
+                <li key={index} className="mr3">
                     <Tab
                         name={tab}
                         setTab={setTab}
@@ -61,6 +71,7 @@ export const Tabs = ({ currentTab, setTab }) =>
 const mapDispatchToProps = {
     reset,
     initializeDatabase,
+    proceedWithDbCreation,
     saveDatabase,
     syncDatabaseSchema,
     rescanDatabaseFields,
@@ -72,13 +83,17 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-    state = {
-        currentTab: 'scheduling'
+        this.state = {
+            currentTab: 'connection'
+        };
     }
 
     static propTypes = {
         database: PropTypes.object,
+        databaseCreationStep: PropTypes.string,
         formState: PropTypes.object.isRequired,
         params: PropTypes.object.isRequired,
         reset: PropTypes.func.isRequired,
@@ -86,9 +101,11 @@ export default class DatabaseEditApp extends Component {
         syncDatabaseSchema: PropTypes.func.isRequired,
         rescanDatabaseFields: PropTypes.func.isRequired,
         discardSavedFieldValues: PropTypes.func.isRequired,
+        proceedWithDbCreation: PropTypes.func.isRequired,
         deleteDatabase: PropTypes.func.isRequired,
         saveDatabase: PropTypes.func.isRequired,
         selectEngine: PropTypes.func.isRequired,
+        location: PropTypes.object
     };
 
     async componentWillMount() {
@@ -96,23 +113,41 @@ export default class DatabaseEditApp extends Component {
         await this.props.initializeDatabase(this.props.params.databaseId);
     }
 
+    componentWillReceiveProps(nextProps) {
+        const addingNewDatabase = !nextProps.database || !nextProps.database.id
+
+       if (addingNewDatabase) {
+            // Update the current creation step (= active tab) if adding a new database
+            this.setState({ currentTab: nextProps.databaseCreationStep });
+        }
+    }
+
     render() {
-        let { database } = this.props;
+        let { database, formState } = this.props;
         const { currentTab } = this.state;
+
+        const editingExistingDatabase = database && database.id != null
+        const addingNewDatabase = !editingExistingDatabase
+
+        const letUserControlScheduling = database && database.details && database.details["let-user-control-scheduling"]
+        const showTabs = editingExistingDatabase && letUserControlScheduling
 
         return (
             <div className="wrapper">
                 <Breadcrumbs className="py4" crumbs={[
                     ["Databases", "/admin/databases"],
-                    [database && database.id != null ? database.name : "Add Database"]
+                    [addingNewDatabase ? "Add Database" : database.name]
                 ]} />
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed pt0">
-                            <Tabs
-                                currentTab={currentTab}
-                                setTab={tab => this.setState({ currentTab: tab.toLowerCase() })}
-                            />
+                            { showTabs &&
+                                <Tabs
+                                    tabs={['Connection', 'Scheduling']}
+                                    currentTab={currentTab}
+                                    setTab={tab => this.setState({currentTab: tab.toLowerCase()})}
+                                />
+                            }
                             <LoadingAndErrorWrapper loading={!database} error={null}>
                                 { () =>
                                     <div>
@@ -122,16 +157,21 @@ export default class DatabaseEditApp extends Component {
                                             details={database ? database.details : null}
                                             engines={MetabaseSettings.get('engines')}
                                             hiddenFields={{ssl: true}}
-                                            formState={this.props.formState}
+                                            formState={formState}
                                             selectEngine={this.props.selectEngine}
-                                            save={this.props.saveDatabase}
+                                            save={ addingNewDatabase
+                                                ? this.props.proceedWithDbCreation
+                                                : this.props.saveDatabase
+                                            }
                                         />
                                         }
                                         { currentTab === 'scheduling' &&
                                         <DatabaseSchedulingForm
                                             database={database}
-                                            formState={this.props.formState}
+                                            formState={formState}
+                                            // Use saveDatabase both for db creation and updating
                                             save={this.props.saveDatabase}
+                                            submitButtonText={ addingNewDatabase ? "Save" : "Save changes" }
                                         />
                                         }
                                     </div>
@@ -141,9 +181,9 @@ export default class DatabaseEditApp extends Component {
                     </div>
 
                     { /* Sidebar Actions */ }
-                    { database && database.id != null &&
+                    { editingExistingDatabase &&
                         <div className="Grid-cell Cell--1of3">
-                            <div className="Actions  bordered rounded shadowed">
+                            <div className="Actions bordered rounded shadowed">
                                 <div className="Actions-group">
                                     <label className="Actions-groupLabel block text-bold">Actions</label>
                                     <ol>
@@ -157,7 +197,7 @@ export default class DatabaseEditApp extends Component {
                                                 successText="Sync triggered!"
                                             />
                                         </li>
-                                        <li>
+                                        <li className="mt2">
                                             <ActionButton
                                                 actionFn={() => this.props.rescanDatabaseFields(database.id)}
                                                 className="Button Button--rescanFieldValues"
@@ -170,30 +210,37 @@ export default class DatabaseEditApp extends Component {
                                     </ol>
                                 </div>
 
-                                <div className="Actions-group Actions--dangerZone">
-                                    <label className="Actions-groupLabel block text-bold">Danger Zone:</label>
-                                    <ModalWithTrigger
-                                        ref="discardSavedFieldValuesModal"
-                                        triggerClasses="Button Button--danger Button--discardSavedFieldValues"
-                                        triggerElement="Discard saved field values"
-                                    >
-                                        <ConfirmContent
-                                            title="Discard saved field values"
-                                            onClose={() => this.refs.discardSavedFieldValuesModal.toggle()}
-                                            onAction={() => this.props.discardSavedFieldValues(database.id)}
-                                        />
-                                    </ModalWithTrigger>
-                                    <ModalWithTrigger
-                                        ref="deleteDatabaseModal"
-                                        triggerClasses="Button Button--deleteDatabase Button--danger"
-                                        triggerElement="Remove this database"
-                                    >
-                                        <DeleteDatabaseModal
-                                            database={database}
-                                            onClose={() => this.refs.deleteDatabaseModal.toggle()}
-                                            onDelete={() => this.props.deleteDatabase(database.id, true)}
-                                        />
-                                    </ModalWithTrigger>
+                                <div className="Actions-group">
+                                    <label className="Actions-groupLabel block text-bold">Danger Zone</label>
+                                    <ol>
+                                        <li>
+                                            <ModalWithTrigger
+                                                ref="discardSavedFieldValuesModal"
+                                                triggerClasses="Button Button--danger Button--discardSavedFieldValues"
+                                                triggerElement="Discard saved field values"
+                                            >
+                                                <ConfirmContent
+                                                    title="Discard saved field values"
+                                                    onClose={() => this.refs.discardSavedFieldValuesModal.toggle()}
+                                                    onAction={() => this.props.discardSavedFieldValues(database.id)}
+                                                />
+                                            </ModalWithTrigger>
+                                        </li>
+
+                                        <li className="mt2">
+                                            <ModalWithTrigger
+                                                ref="deleteDatabaseModal"
+                                                triggerClasses="Button Button--deleteDatabase Button--danger"
+                                                triggerElement="Remove this database"
+                                            >
+                                                <DeleteDatabaseModal
+                                                    database={database}
+                                                    onClose={() => this.refs.deleteDatabaseModal.toggle()}
+                                                    onDelete={() => this.props.deleteDatabase(database.id, true)}
+                                                />
+                                            </ModalWithTrigger>
+                                        </li>
+                                    </ol>
                                 </div>
                             </div>
                         </div>

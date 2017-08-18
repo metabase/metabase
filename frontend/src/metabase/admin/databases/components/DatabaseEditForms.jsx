@@ -19,7 +19,7 @@ export default class DatabaseEditForms extends Component {
 
         let errors = {};
         return (
-            <div>
+            <div className="mt4">
                 <div className={cx("Form-field", {"Form--fieldError": errors["engine"]})}>
                     <label className="Form-label Form-offset">Database type: <span>{errors["engine"]}</span></label>
                     <label className="Select Form-offset mt1">
@@ -44,6 +44,7 @@ export default class DatabaseEditForms extends Component {
                             ...database,
                             id: this.props.database.id
                         }, database.details)}
+                        isNewDatabase={!database.id}
                         submitButtonText={'Save'}
                         submitting={isSubmitting}>
                     </DatabaseDetailsForm>

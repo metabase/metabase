@@ -48,6 +48,8 @@ export default class SchedulePicker extends Component {
         // TODO: hourly option?
         // available schedules, e.g. [ "daily", "weekly", "monthly"]
         scheduleOptions: PropTypes.object.isRequired,
+        // text before Daily/Weekly/Monthly... option
+        textBeforeInterval: PropTypes.string,
         // text prepended to "12:00 PM PST, your Metabase timezone"
         textBeforeSendTime: PropTypes.string,
         onScheduleChange: PropTypes.func.isRequired,
@@ -84,7 +86,8 @@ export default class SchedulePicker extends Component {
             if (value === "monthly") {
                 newSchedule = { ...newSchedule, "schedule_frame": "first", "schedule_day": "mon" };
             }
-
+        }
+        else if (name === "schedule_frame") {
             // when the monthly schedule frame is the 15th, clear out the schedule_day
             if (value === "mid") {
                 newSchedule = { ...newSchedule, "schedule_day": null };
@@ -108,7 +111,7 @@ export default class SchedulePicker extends Component {
                     value={_.find(MONTH_DAY_OPTIONS, (o) => o.value === schedule.schedule_frame)}
                     options={MONTH_DAY_OPTIONS}
                     optionNameFn={o => o.name}
-                    className="bg-white"
+                    className="h4 text-bold bg-white"
                     optionValueFn={o => o.value}
                     onChange={(o) => this.onPropertyChange("schedule_frame", o) }
                 />
@@ -119,7 +122,7 @@ export default class SchedulePicker extends Component {
                             options={DAY_OPTIONS}
                             optionNameFn={o => o.name}
                             optionValueFn={o => o.value}
-                            className="bg-white"
+                            className="h4 text-bold bg-white"
                             onChange={(o) => this.onPropertyChange("schedule_day", o) }
                         />
                     </span>
@@ -139,7 +142,7 @@ export default class SchedulePicker extends Component {
                     options={DAY_OF_WEEK_OPTIONS}
                     optionNameFn={o => o.name}
                     optionValueFn={o => o.value}
-                    className="bg-white"
+                    className="h4 text-bold bg-white"
                     onChange={(o) => this.onPropertyChange("schedule_day", o) }
                 />
             </span>
@@ -157,7 +160,7 @@ export default class SchedulePicker extends Component {
             <div className="mt1">
                 <span className="h4 text-bold mr1">at</span>
                 <Select
-                    className="mr1 bg-white"
+                    className="mr1 h4 text-bold bg-white"
                     value={_.find(HOUR_OPTIONS, (o) => o.value === hour)}
                     options={HOUR_OPTIONS}
                     optionNameFn={o => o.name}
@@ -170,7 +173,7 @@ export default class SchedulePicker extends Component {
                     optionNameFn={o => o.name}
                     optionValueFn={o => o.value}
                     onChange={(o) => this.onPropertyChange("schedule_hour", hour + o * 12) }
-                    className="bg-white"
+                    className="h4 text-bold bg-white"
                 />
                 { textBeforeSendTime &&
                     <div className="mt2 h4 text-bold text-grey-3 border-top pt2">
@@ -182,13 +185,13 @@ export default class SchedulePicker extends Component {
     }
 
     render() {
-        let { schedule, scheduleOptions } = this.props;
+        let { schedule, scheduleOptions, textBeforeInterval } = this.props;
 
         const scheduleType = schedule.schedule_type;
 
         return (
             <div className="mt1">
-                <span className="h4 text-bold mr1">Sent</span>
+                <span className="h4 text-bold mr1">{ textBeforeInterval }</span>
                 <Select
                     className="h4 text-bold bg-white"
                     value={scheduleType}

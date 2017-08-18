@@ -4,6 +4,11 @@ import {
 } from "__support__/integrated_tests";
 
 import {
+    clickButton,
+    setInputValue,
+    click
+} from "__support__/enzyme_utils"
+import {
     DELETE_FIELD_DIMENSION,
     deleteFieldDimension,
     FETCH_TABLE_METADATA,
@@ -56,7 +61,6 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
     store.pushPath(`/admin/datamodel/database/1/table/${tableId}/${fieldId}`);
     const fieldApp = mount(store.connectContainer(<FieldApp />));
     await store.waitForActions([FETCH_IDFIELDS]);
-    store.resetDispatchedActions();
     return { store, fieldApp }
 }
 
@@ -80,11 +84,10 @@ describe("FieldApp", () => {
             const descriptionInput = header.find(Input).at(1);
             expect(descriptionInput.props().value).toBe(staticFixtureMetadata.fields['1'].description);
 
-            nameInput.simulate('change', {target: {value: newTitle}});
+            setInputValue(nameInput, newTitle);
             await store.waitForActions([UPDATE_FIELD])
-            store.resetDispatchedActions();
 
-            descriptionInput.simulate('change', {target: {value: newDescription}});
+            setInputValue(descriptionInput, newDescription);
             await store.waitForActions([UPDATE_FIELD])
         })
 
@@ -124,8 +127,8 @@ describe("FieldApp", () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: CREATED_AT_ID });
 
             const visibilitySelect = fieldApp.find(FieldVisibilityPicker);
-            visibilitySelect.simulate('click');
-            visibilitySelect.find(TestPopover).find("li").at(1).children().first().simulate("click");
+            click(visibilitySelect);
+            click(visibilitySelect.find(TestPopover).find("li").at(1).children().first());
 
             await store.waitForActions([UPDATE_FIELD])
         })
@@ -160,10 +163,10 @@ describe("FieldApp", () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: CREATED_AT_ID });
             const picker = fieldApp.find(SpecialTypeAndTargetPicker)
             const typeSelect = picker.find(Select).at(0)
-            typeSelect.simulate('click');
+            click(typeSelect);
 
             const noSpecialTypeButton = typeSelect.find(TestPopover).find("li").last().children().first()
-            noSpecialTypeButton.simulate("click");
+            click(noSpecialTypeButton);
 
             await store.waitForActions([UPDATE_FIELD])
             expect(picker.text()).toMatch(/Select a special type/);
@@ -173,14 +176,14 @@ describe("FieldApp", () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: CREATED_AT_ID });
             const picker = fieldApp.find(SpecialTypeAndTargetPicker)
             const typeSelect = picker.find(Select).at(0)
-            typeSelect.simulate('click');
+            click(typeSelect);
 
             const noSpecialTypeButton = typeSelect.find(TestPopover)
                 .find("li")
                 .filterWhere(li => li.text() === "Number").first()
                 .children().first();
 
-            noSpecialTypeButton.simulate("click");
+            click(noSpecialTypeButton);
 
             await store.waitForActions([UPDATE_FIELD])
             expect(picker.text()).toMatch(/Number/);
@@ -190,23 +193,22 @@ describe("FieldApp", () => {
             const { store, fieldApp } = await initFieldApp({ fieldId: CREATED_AT_ID });
             const picker = fieldApp.find(SpecialTypeAndTargetPicker)
             const typeSelect = picker.find(Select).at(0)
-            typeSelect.simulate('click');
+            click(typeSelect);
 
             const foreignKeyButton = typeSelect.find(TestPopover).find("li").at(2).children().first();
-            foreignKeyButton.simulate("click");
+            click(foreignKeyButton);
             await store.waitForActions([UPDATE_FIELD])
-            store.resetDispatchedActions();
 
             expect(picker.text()).toMatch(/Foreign KeySelect a target/);
             const fkFieldSelect = picker.find(Select).at(1)
-            fkFieldSelect.simulate('click');
+            click(fkFieldSelect);
 
             const productIdField = fkFieldSelect.find(TestPopover)
                 .find("li")
                 .filterWhere(li => /The numerical product number./.test(li.text()))
                 .first().children().first();
 
-            productIdField.simulate('click')
+            click(productIdField)
             await store.waitForActions([UPDATE_FIELD])
             expect(picker.text()).toMatch(/Foreign KeyProducts → ID/);
         })
@@ -231,7 +233,7 @@ describe("FieldApp", () => {
             const mappingTypePicker = section.find(Select).first();
             expect(mappingTypePicker.text()).toBe('Use original value')
 
-            mappingTypePicker.simulate('click');
+            click(mappingTypePicker);
             const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
             expect(pickerOptions.length).toBe(1);
         })
@@ -242,28 +244,27 @@ describe("FieldApp", () => {
             const mappingTypePicker = section.find(Select);
             expect(mappingTypePicker.text()).toBe('Use original value')
 
-            mappingTypePicker.simulate('click');
+            click(mappingTypePicker);
             const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
             expect(pickerOptions.length).toBe(2);
 
             const useFKButton = pickerOptions.at(1).children().first()
-            useFKButton.simulate('click');
+            click(useFKButton);
             store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
-            store.resetDispatchedActions();
             // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
             await delay(500);
 
             const fkFieldSelect = section.find(SelectButton);
 
             expect(fkFieldSelect.text()).toBe("Name");
-            fkFieldSelect.simulate('click');
+            click(fkFieldSelect);
 
             const sourceField = fkFieldSelect.parent().find(TestPopover)
                 .find("li")
                 .filterWhere(li => /Source/.test(li.text()))
                 .first().children().first();
 
-            sourceField.simulate('click')
+            click(sourceField)
             store.waitForActions([FETCH_TABLE_METADATA])
             // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
             await delay(500);
@@ -277,7 +278,7 @@ describe("FieldApp", () => {
             expect(mappingTypePicker.text()).toBe('Use foreign key')
 
             const fkFieldSelect = section.find(SelectButton);
-            fkFieldSelect.simulate('click');
+            click(fkFieldSelect);
 
             const popover = fkFieldSelect.parent().find(TestPopover);
             expect(popover.length).toBe(1);
@@ -292,10 +293,10 @@ describe("FieldApp", () => {
             const mappingTypePicker = section.find(Select);
             expect(mappingTypePicker.text()).toBe('Use foreign key')
 
-            mappingTypePicker.simulate('click');
+            click(mappingTypePicker);
             const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
             const useOriginalValue = pickerOptions.first().children().first()
-            useOriginalValue.simulate('click');
+            click(useOriginalValue);
 
             store.waitForActions([DELETE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
         })
@@ -306,7 +307,7 @@ describe("FieldApp", () => {
             const mappingTypePicker = section.find(Select);
 
             expect(mappingTypePicker.text()).toBe('Use original value')
-            mappingTypePicker.simulate('click');
+            click(mappingTypePicker);
             const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
             expect(pickerOptions.length).toBe(1);
         });
@@ -318,12 +319,12 @@ describe("FieldApp", () => {
             const mappingTypePicker = section.find(Select);
 
             expect(mappingTypePicker.text()).toBe('Use original value')
-            mappingTypePicker.simulate('click');
+            click(mappingTypePicker);
             const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
             expect(pickerOptions.length).toBe(2);
 
             const customMappingButton = pickerOptions.at(1).children().first()
-            customMappingButton.simulate('click');
+            click(customMappingButton);
 
             store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
             // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
@@ -338,15 +339,15 @@ describe("FieldApp", () => {
             const firstMapping = fieldValueMappings.at(0);
             expect(firstMapping.find("h3").text()).toBe("1");
             expect(firstMapping.find(Input).props().value).toBe("1");
-            firstMapping.find(Input).simulate('change', {target: {value: "Terrible"}});
+            setInputValue(firstMapping.find(Input), "Terrible")
 
             const lastMapping = fieldValueMappings.last();
             expect(lastMapping.find("h3").text()).toBe("5");
             expect(lastMapping.find(Input).props().value).toBe("5");
-            lastMapping.find(Input).simulate('change', {target: {value: "Extraordinarily awesome"}});
+            setInputValue(lastMapping.find(Input), "Extraordinarily awesome")
 
             const saveButton = valueRemappingsSection.find(ButtonWithStatus)
-            saveButton.simulate("click");
+            clickButton(saveButton)
 
             store.waitForActions([UPDATE_FIELD_VALUES]);
         });
