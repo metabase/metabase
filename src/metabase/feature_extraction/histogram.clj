@@ -53,7 +53,7 @@
    `max` and projects histogram into that interval rather than hisogram bounds."
   ([^Histogram histogram]
    (if (categorical? histogram)
-     (-> histogram impl/bins :target :counts)
+     (-> histogram impl/bins first :target :counts)
      (equidistant-bins (optimal-bin-width histogram) histogram)))
   ([bin-width ^Histogram histogram]
    (let [{:keys [min max]} (impl/bounds histogram)]

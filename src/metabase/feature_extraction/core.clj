@@ -117,19 +117,19 @@
                                          (map x-ray constituents)
                                          (m/map-vals prettify constituents)))))))
 
-(defn- largest-contributors
+(defn- top-contributors
   [comparisons]
   (if (map? comparisons)
     (->> comparisons
          (comparison/head-tails-breaks (comp :distance val))
-         (mapcat (fn [[field {:keys [largest-contributors distance]}]]
-                   (for [[feature difference] largest-contributors]
+         (mapcat (fn [[field {:keys [top-contributors distance]}]]
+                   (for [[feature difference] top-contributors]
                      {:feature      feature
                       :field        field
                       :contribution (* (math/sqrt distance) difference)})))
          (comparison/head-tails-breaks :contribution))
     (->> comparisons
-         :largest-contributors
+         :top-contributors
          (map (fn [[feature difference]]
                 {:feature    feature
                  :difference difference})))))
@@ -146,6 +146,6 @@
                              (:constituents b)))
                       (comparison/features-distance (:features a)
                                                     (:features b)))]
-    {:constituents         [a b]
-     :comparison           comparisons
-     :largest-contributors (largest-contributors comparisons)}))
+    {:constituents     [a b]
+     :comparison       comparisons
+     :top-contributors (top-contributors comparisons)}))

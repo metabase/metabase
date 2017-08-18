@@ -7,24 +7,25 @@ import Tooltip from 'metabase/components/Tooltip'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import ItemLink from 'metabase/xray/components/ItemLink'
 
-import CostSelect from 'metabase/xray/components/CostSelect'
 import Histogram from 'metabase/xray/Histogram'
+
+import ComparisonHeader from 'metabase/xray/components/ComparisonHeader'
 
 import { getIconForField } from 'metabase/lib/schema_metadata'
 import { distanceToPhrase } from 'metabase/xray/utils'
 
-const ComparisonField = ({ field }) =>
-    <li
-        key={field.id}
-        className="my2 mr2 inline-block"
-    >
-        <Tooltip tooltip={field.description}>
-            <div className="flex align-center">
-                <Icon name={getIconForField(field)} className="mr1 text-grey-2" size={22} />
-                <h3>{field.display_name}</h3>
-            </div>
-        </Tooltip>
-    </li>
+// right now we rely on knowing that itemB is the only one that
+// can contain a table
+const fieldLinkUrl = (itemA, itemB, fieldName) => {
+    let url = `segments/${itemA.id}/${itemB.id}`
+    if(itemB.itemType === 'table') {
+        url = `segment/${itemA.id}/table/${itemB.id}`
+    }
+    return `/xray/compare/${url}/field/${fieldName}/approximate`
+}
+
+const itemLinkUrl = (item) =>
+    `/xray/${item.itemType}/${item.id}/approximate`
 
 const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
     <div className="flex">
@@ -47,15 +48,20 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
         </div>
     </div>
 
-const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor }) =>
-    <div className="flex" style={{ height: 60 }}>
-        <div
-            className="flex-full"
-        >
+const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = false, height = 60}) =>
+    <div className="flex" style={{ height }}>
+        <div className="flex-full">
             <Histogram
-                histogram={itemA}
+                histogram={{
+                    rows: [
+                        ...itemA.rows,
+                        ...itemB.rows
+                    ],
+                    cols: itemA.cols,
+                    columns: itemA.columns
+                }}
                 color={[itemAColor.main, itemBColor.main]}
-                showAxis={false}
+                showAxis={showAxis}
             />
         </div>
     </div>
@@ -72,24 +78,16 @@ const XRayComparison = ({
 }) =>
     <XRayPageWrapper>
         <div>
-            <div className="my4 flex align-center">
-                <h1 className="flex align-center">
-                    <Icon name="compare" className="mr1" size={32} />
-                    Comparing
-                </h1>
-                <div className="ml-auto">
-                    <CostSelect
-                        currentCost={cost}
-                    />
-                </div>
-            </div>
+            <ComparisonHeader
+                cost={cost}
+            />
             <div className="flex">
                 <ItemLink
-                    link={`/xray/${itemA.itemType}/${itemA.id}/approximate`}
+                    link={itemLinkUrl(itemA)}
                     item={itemA}
                 />
                 <ItemLink
-                    link={`/xray/${itemB.itemType}/${itemB.id}/approximate`}
+                    link={itemLinkUrl(itemB)}
                     item={itemB}
                 />
             </div>
@@ -101,12 +99,12 @@ const XRayComparison = ({
             <div className="flex my1">
                 <h1
                     className="mr1"
-                    style={{ color: itemA.color.main}}
+                    style={{ color: itemA.color.text}}
                 >
                     {itemA.constituents[fields[0].name].count.value}
                 </h1>
                 <span className="h1 text-grey-1 mr1">/</span>
-                <h1 style={{ color: itemB.color.main}}>
+                <h1 style={{ color: itemB.color.text}}>
                     {itemB.constituents[fields[1].name].count.value}
                 </h1>
             </div>
@@ -117,9 +115,45 @@ const XRayComparison = ({
                 <Heading heading="Potentially interesting differences" />
                 <ol className="Grid Grid--gutters Grid--1of3">
                     { contributors.map(contributor =>
-                        <li className="Grid-cell">
+                        <li className="Grid-cell" key={contributor[0].field.id}>
+
+                            <h3 className="mb2">
+                                {contributor[0].field.display_name}
+                            </h3>
+
                             <div className="bg-white shadowed rounded bordered">
-                                { /* <ComparisonField field={field} /> */}
+                                { contributor[0].feature.type === 'histogram' && (
+                                    <div>
+                                        <div className="p2 flex align-center">
+                                            <h4>{contributor[0].feature.label}</h4>
+                                            <Tooltip tooltip={contributor[0].feature.description}>
+                                                <Icon
+                                                    name="infooutlined"
+                                                    className="ml1 text-grey-4"
+                                                    size={14}
+                                                />
+                                            </Tooltip>
+                                        </div>
+                                        <div className="py1">
+                                            <CompareHistograms
+                                                itemA={contributor[0].feature.value.a}
+                                                itemB={contributor[0].feature.value.b}
+                                                itemAColor={itemA.color}
+                                                itemBColor={itemB.color}
+                                                showAxis={true}
+                                                height={120}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex">
+                                    <Link
+                                        to={fieldLinkUrl(itemA, itemB, contributor[0].field.name)}
+                                        className="text-grey-3 text-brand-hover no-decoration transition-color ml-auto text-bold px2 pb2"
+                                    >
+                                        View full comparison
+                                    </Link>
+                                </div>
                             </div>
                         </li>
                     )}
@@ -131,10 +165,10 @@ const XRayComparison = ({
         <div className="bordered rounded bg-white shadowed">
 
             <div className="flex p2">
-                <h4 className="mr1" style={{ color: itemA.color}}>
+                <h4 className="mr1" style={{ color: itemA.color.text}}>
                     {itemA.name}
                 </h4>
-                <h4 style={{ color: itemB.color}}>
+                <h4 style={{ color: itemB.color.text}}>
                     {itemB.name}
                 </h4>
             </div>

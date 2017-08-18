@@ -45,12 +45,21 @@ export const getComparisonContributors = createSelector(
     [getComparison],
     (comparison) => {
         if(comparison) {
-            return comparison['top-contributors'] && comparison['top-contributors'].map(contributor => {
+            const top = comparison['top-contributors']
+            return top && top.map(contributor => {
                 return Object.keys(comparison.constituents[0].constituents)
                       .map(key => {
                           if(key === contributor.field.toUpperCase()) {
                               return {
-                                  ...comparison.constituents[0].constituents[contributor.field]
+                                  field: comparison.constituents[0].constituents[contributor.field].field,
+                                  feature: {
+                                      ...comparison.constituents[0].constituents[contributor.field][contributor.feature],
+                                      value: {
+                                          a: comparison.constituents[0].constituents[contributor.field][contributor.feature].value,
+                                          b: comparison.constituents[1].constituents[contributor.field][contributor.feature].value
+                                      },
+                                      type: contributor.feature
+                                  }
                               }
                           }
                       })
@@ -64,7 +73,7 @@ export const getTitle = ({ comparison, itemA, itemB }) =>
 
 const getItemColor = (index) => ({
     main: index === 0 ? normal.teal : normal.purple,
-    text: index === 0 ? normal.teal : normal.purple
+    text: index === 0 ? '#57C5DA' : normal.purple
 })
 
 const genItem = (item, itemType, index) => ({

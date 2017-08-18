@@ -147,9 +147,23 @@ export const fetchSegmentTableFieldComparison = createThunkAction(
     (requestParams) =>
         async (dispatch) => {
             requestParams.cost = COSTS[requestParams.cost].method
-            console.log(requestParams)
             try {
                 const comparison = await XRayApi.segment_table_field_compare(requestParams)
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
+const FETCH_SEGMENT_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_FIELD_COMPARISON';
+export const fetchSegmentFieldComparison = createThunkAction(
+    FETCH_SEGMENT_FIELD_COMPARISON,
+    (requestParams) =>
+        async (dispatch) => {
+            requestParams.cost = COSTS[requestParams.cost].method
+            try {
+                const comparison = await XRayApi.segment_field_compare(requestParams)
                 return dispatch(loadComparison(comparison))
             } catch (error) {
                 console.error(error)
