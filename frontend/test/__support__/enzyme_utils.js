@@ -44,3 +44,8 @@ export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
     if (blur) inputWrapper.simulate("blur")
 }
 
+export const chooseSelectOption = (optionWrapper) => {
+    const optionValue = optionWrapper.prop('value');
+    const parentSelect = optionWrapper.closest("select");
+    parentSelect.simulate('change', { target: { value: optionValue } });
+}

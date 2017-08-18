@@ -73,6 +73,7 @@ const init = async() => {
 const cleanup = async (exitCode = 0) => {
     await jasmineAfterAllCleanup();
     await BackendResource.stop(serverWithTestDbFixture);
+    await BackendResource.stop(serverWithPlainDb);
     process.exit(exitCode);
 }
 

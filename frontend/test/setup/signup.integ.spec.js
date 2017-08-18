@@ -4,13 +4,27 @@ import {
     BROWSER_HISTORY_REPLACE
 } from "__support__/integrated_tests";
 import {
+    chooseSelectOption,
+    click,
     clickButton,
     setInputValue
 } from "__support__/enzyme_utils";
 
+import path from "path";
 import { mount } from "enzyme";
 import Setup from "metabase/setup/components/Setup";
-import { SET_ACTIVE_STEP } from "metabase/setup/actions";
+import {
+    SET_ACTIVE_STEP, SET_ALLOW_TRACKING, SET_DATABASE_DETAILS, SET_USER_DETAILS,
+    VALIDATE_PASSWORD
+} from "metabase/setup/actions";
+import { delay } from "metabase/lib/promise";
+import UserStep from "metabase/setup/components/UserStep";
+import DatabaseConnectionStep from "metabase/setup/components/DatabaseConnectionStep";
+import PreferencesStep from "metabase/setup/components/PreferencesStep";
+import Toggle from "metabase/components/Toggle";
+import FormField from "metabase/components/form/FormField";
+import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
+import { SyncOption } from "metabase/admin/databases/components/DatabaseSchedulingForm";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 describe("setup wizard", () => {
@@ -34,63 +48,150 @@ describe("setup wizard", () => {
         clickButton(app.find(".Button.Button--primary"))
         await store.waitForActions([SET_ACTIVE_STEP])
 
-        const nextButton = app.find('button[children="Next"]')
+        const userStep = app.find(UserStep)
+        expect(userStep.find('.SetupStep--active').length).toBe(1)
+
+        const nextButton = userStep.find('button[children="Next"]')
         expect(nextButton.props().disabled).toBe(true)
 
-        setInputValue(app.find('input[name="firstName"]'), 'Testy')
-        setInputValue(app.find('input[name="lastName"]'), 'McTestface')
-        setInputValue(app.find('input[name="email"]'), 'testy@metabase.com')
+        setInputValue(userStep.find('input[name="first_name"]'), 'Testy')
+        setInputValue(userStep.find('input[name="last_name"]'), 'McTestface')
+        setInputValue(userStep.find('input[name="email"]'), 'testy@metabase.com')
+        setInputValue(userStep.find('input[name="site_name"]'), 'Epic Team')
+
         // test first with a weak password
-        setInputValue(app.find('input[name="password"]'), '12341234')
-        setInputValue(app.find('input[name="passwordConfirm"]'), '12341234')
-        setInputValue(app.find('input[name="siteName"]'), '1234')
+        setInputValue(userStep.find('input[name="password"]'), 'password')
+        await store.waitForActions([VALIDATE_PASSWORD])
+        setInputValue(userStep.find('input[name="password_confirm"]'), 'password')
 
         // the form shouldn't be valid yet
         expect(nextButton.props().disabled).toBe(true)
 
         // then with a strong password, generated with my beloved password manager
-        setInputValue(app.find('input[name="password"]'), 'QJbHYJN3tPW[29AoBM3#rsfB4@hshp>gC8mDmUTtbGTfExY]#nBjmtX@NmEJwxBc')
-        setInputValue(app.find('input[name="passwordConfirm"]'), 'QJbHYJN3tPW[29AoBM3#rsfB4@hshp>gC8mDmUTtbGTfExY]#nBjmtX@NmEJwxBc')
+        const strongPassword = 'QJbHYJN3tPW[29AoBM3#rsfB4@hshp>gC8mDmUTtbGTfExY]#nBjmtX@NmEJwxBc'
+        setInputValue(userStep.find('input[name="password"]'), strongPassword)
+        await store.waitForActions([VALIDATE_PASSWORD])
+        setInputValue(userStep.find('input[name="password_confirm"]'), strongPassword)
 
-        // THIS FAILS! That's because UserStep has some React anti-patterns.
+        // Due to the chained setState calls in UserStep we have to add a tiny delay here
+        await delay(50);
+
         expect(nextButton.props().disabled).toBe(false)
         clickButton(nextButton);
+        await store.waitForActions([SET_USER_DETAILS])
+        expect(app.find(DatabaseConnectionStep).find('.SetupStep--active').length).toBe(1)
+
+        // test that you can return to user settings if you want
+        click(userStep.find("h3"));
+        const newUserStep = app.find(UserStep)
+        expect(newUserStep.find('.SetupStep--active').length).toBe(1)
+        expect(userStep.find('input[name="first_name"]').prop('defaultValue')).toBe("Testy");
+        expect(userStep.find('input[name="password"]').prop('defaultValue')).toBe(strongPassword);
+
+        // re-enter database settings after that
+        clickButton(newUserStep.find('button[children="Next"]'));
+        await store.waitForActions([SET_ACTIVE_STEP])
     })
 
-    it("should allow you to add a database", async () => {
-        // // add h2 database
-        // await waitForElement(driver, "option[value=h2]");
-        //
-        // const h2Option = findElement(driver, "option[value=h2]");
-        // await h2Option.click();
-        // await waitForElementAndSendKeys(driver, "[name=name]", 'Metabase H2');
-        // const dbPath = path.resolve(__dirname, '../support/fixtures/metabase.db');
-        // await waitForElementAndSendKeys(driver, "[name=db]", `file:${dbPath}`);
-        // await waitForElementAndClick(driver, ".Button.Button--primary");
+    it("should allow you to set connection settings for a new database", async () => {
+        const databaseStep = app.find(DatabaseConnectionStep)
+        expect(databaseStep.find('.SetupStep--active').length).toBe(1)
+
+        // add h2 database
+        chooseSelectOption(app.find("option[value='h2']"));
+        setInputValue(databaseStep.find("input[name='name']"), "Metabase H2");
+
+        const nextButton = databaseStep.find('button[children="Next"]')
+        expect(nextButton.props().disabled).toBe(true);
+
+        const dbPath = path.resolve(__dirname, '../legacy-selenium/support/fixtures/metabase.db');
+        setInputValue(databaseStep.find("input[name='db']"), `file:${dbPath}`);
+
+        expect(nextButton.props().disabled).toBe(undefined);
+        clickButton(nextButton);
+        await store.waitForActions([SET_DATABASE_DETAILS])
+
+        const preferencesStep = app.find(PreferencesStep)
+        expect(preferencesStep.find('.SetupStep--active').length).toBe(1)
+    })
+
+    it("should show you scheduling step if you select \"Let me choose when Metabase syncs and scans\"", async () => {
+        // we can conveniently test returning to database settings now as well
+        const connectionStep = app.find(DatabaseConnectionStep)
+        click(connectionStep.find("h3"))
+        expect(connectionStep.find('.SetupStep--active').length).toBe(1)
+
+        const letUserControlSchedulingToggle = connectionStep
+            .find(FormField)
+            .filterWhere((f) => f.props().fieldName === "let-user-control-scheduling")
+            .find(Toggle);
+
+        expect(letUserControlSchedulingToggle.length).toBe(1);
+        expect(letUserControlSchedulingToggle.prop('value')).toBe(false);
+        click(letUserControlSchedulingToggle);
+        expect(letUserControlSchedulingToggle.prop('value')).toBe(true);
+
+        const nextButton = connectionStep.find('button[children="Next"]')
+        clickButton(nextButton);
+        await store.waitForActions([SET_DATABASE_DETAILS])
+
+        const schedulingStep = app.find(DatabaseSchedulingStep);
+        expect(schedulingStep.find('.SetupStep--active').length).toBe(1)
+
+        // disable the deep analysis
+        const syncOptions = schedulingStep.find(SyncOption);
+        const syncOptionsNever = syncOptions.at(1);
+        click(syncOptionsNever)
+
+        // proceed to tracking preferences step again
+        const nextButton2 = schedulingStep.find('button[children="Next"]')
+        clickButton(nextButton2);
+        await store.waitForActions([SET_DATABASE_DETAILS])
     })
 
     it("should let you opt in/out from user tracking", async () => {
-        //
-        // await waitForElement(driver, ".SetupStep.rounded.full.relative.SetupStep--active:last-of-type");
-        // await waitForElementAndClick(driver, ".Button.Button--primary");
-        //
-        // await waitForElement(driver, "a[href='/?new']");
-        // await waitForElementAndClick(driver, ".Button.Button--primary");
-        //
-        // await waitForUrl(driver, `${server.host}/?new`);
-        // await waitForElement(driver, ".Modal h2:first-child");
-        // const onboardingModalHeading = await findElement(driver, ".Modal h2:first-child");
-        // expect(await onboardingModalHeading.getText()).toBe('Testy, welcome to Metabase!');
+        const preferencesStep = app.find(PreferencesStep)
+        expect(preferencesStep.find('.SetupStep--active').length).toBe(1)
+
+        // tracking is enabled by default
+        const trackingToggle = preferencesStep.find(Toggle)
+        expect(trackingToggle.prop('value')).toBe(true)
+
+        click(trackingToggle)
+        await store.waitForActions([SET_ALLOW_TRACKING])
+        expect(trackingToggle.prop('value')).toBe(false)
     })
 
     // NOTE Atte Keinänen 8/15/17:
     // If you want to develop tests incrementally, you should disable this step as this will complete the setup
-    // That is an irreversible action (you have to nuke the db in order to see the setup screen again
+    // That is an irreversible action (you have to nuke the db in order to see the setup screen again)
+    it("should let you finish setup and subscribe to newsletter", async () => {
+        const preferencesStep = app.find(PreferencesStep)
+        const nextButton = preferencesStep.find('button[children="Next"]')
+        click(nextButton)
+    });
+
     it("should show you the onboarding modal", async () => {
+        const allSetUpSection = app.find(".SetupStep").last()
+        expect(allSetUpSection.find('.SetupStep--active').length).toBe(1)
+
+        const takeToMetabaseButton = allSetUpSection.find("a[href='/?new']")
+        click(takeToMetabaseButton)
+
+        // listen to router redirect here ...? maybe not need for that
+        expect(store.getUrl()).toBe("/?new");
+
+        const modal = app.find(".Modal h2:first-child")
+
+        // const onboardingModalHeading = await findElement(driver, ".Modal h2:first-child");
+        // expect(await onboardingModalHeading.getText()).toBe('Testy, welcome to Metabase!');
+    })
+
+    it("should result in an installation with an expected state", async () => {
 
     })
 
     afterAll(async () => {
-        // Problem with setup guide test is that you can't reset the db to the initial state
+        // The challenge with setup guide test is that you can't reset the db to the initial state
     })
 });
