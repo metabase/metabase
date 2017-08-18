@@ -125,11 +125,11 @@ export default class UserStep extends Component {
         const stepText = (activeStep <= stepNumber) ? 'What should we call you?' : 'Hi, ' + userDetails.first_name + '. nice to meet you!';
 
         if (activeStep !== stepNumber) {
-            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
+            return (<CollapsedStep stepNumber={stepNumber} stepCircleText="1" stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
             return (
                 <section className="SetupStep SetupStep--active rounded full relative">
-                    <StepTitle title={stepText} number={stepNumber} />
+                    <StepTitle title={stepText} circleText={"1"} />
                     <form name="userForm" onSubmit={this.formSubmitted.bind(this)} noValidate className="mt2">
                         <FormField className="Grid mb3" fieldName="first_name" formError={formError}>
                             <div>

@@ -13,9 +13,8 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import _ from "underscore";
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
-import DatabaseSchedulingForm from "metabase/admin/databases/components/DatabaseSchedulingForm";
 
-export default class DatabaseStep extends Component {
+export default class DatabaseConnectionStep extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = { 'engine': "", 'formError': null };
@@ -81,9 +80,8 @@ export default class DatabaseStep extends Component {
         if (database.details["let-user-control-scheduling"]) {
             // Show the scheduling step if user has chosen to control scheduling manually
             // Add the default schedules because DatabaseSchedulingForm requires them and update the db state
-            // Keep the step same as we conditionally show the scheduling settings in this component
             this.props.setDatabaseDetails({
-                'nextStep': this.props.stepNumber,
+                'nextStep': this.props.stepNumber + 1,
                 'details': {
                     ...database,
                     is_full_sync: true,
@@ -93,7 +91,8 @@ export default class DatabaseStep extends Component {
         } else {
             // now that they are good, store them
             this.props.setDatabaseDetails({
-                'nextStep': this.props.stepNumber + 1,
+                // skip the scheduling step
+                'nextStep': this.props.stepNumber + 2,
                 'details': database
             });
 
@@ -102,22 +101,13 @@ export default class DatabaseStep extends Component {
 
     }
 
-    schedulingDetailsCaptured = async (database) => {
-        this.props.setDatabaseDetails({
-            'nextStep': this.props.stepNumber + 1,
-            'details': database
-        });
-
-        MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
-    }
-
     skipDatabase() {
         this.setState({
             'engine': ""
         });
 
         this.props.setDatabaseDetails({
-            'nextStep': this.props.stepNumber + 1,
+            'nextStep': this.props.stepNumber + 2,
             'details': null
         });
 
@@ -149,28 +139,28 @@ export default class DatabaseStep extends Component {
             stepText = (databaseDetails === null) ? "I'll add my own data later" : 'Connecting to '+databaseDetails.name;
         }
 
-        const inSchedulingStep = databaseDetails && databaseDetails.details["let-user-control-scheduling"];
 
         if (activeStep !== stepNumber) {
-            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
+            return (<CollapsedStep stepNumber={stepNumber} stepCircleText="2" stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
             return (
                 <section className="SetupStep rounded full relative SetupStep--active">
-                    <StepTitle title={stepText} number={stepNumber} />
+                    <StepTitle title={stepText} circleText={"2"} />
                     <div className="mb4">
                         <div style={{maxWidth: 600}} className="Form-field Form-offset">
                             You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.
                         </div>
 
-                        {!inSchedulingStep ?
-                            <FormField fieldName="engine">
-                                {this.renderEngineSelect()}
-                            </FormField>
-                        : null }
+                        <FormField fieldName="engine">
+                            {this.renderEngineSelect()}
+                        </FormField>
 
-                        { engine !== "" && !inSchedulingStep ?
+                        { engine !== "" ?
                           <DatabaseDetailsForm
-                              details={(databaseDetails && 'details' in databaseDetails) ? databaseDetails.details : null}
+                              details={
+                                  (databaseDetails && 'details' in databaseDetails)
+                                      ? {...databaseDetails.details, name: databaseDetails.name, is_full_sync: databaseDetails.is_full_sync}
+                                      : null}
                               engine={engine}
                               engines={engines}
                               formError={formError}
@@ -179,18 +169,6 @@ export default class DatabaseStep extends Component {
                               submitButtonText={'Next'}>
                           </DatabaseDetailsForm>
                           : null }
-
-                        { engine !== "" && inSchedulingStep ?
-                            <div className="text-default">
-                                <DatabaseSchedulingForm
-                                    database={databaseDetails}
-                                    formState={{ formError }}
-                                    // Use saveDatabase both for db creation and updating
-                                    save={this.schedulingDetailsCaptured}
-                                    submitButtonText={ "Next"}
-                                />
-                            </div>
-                            : null }
 
                           <div className="Form-field Form-offset">
                               <a className="link" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
