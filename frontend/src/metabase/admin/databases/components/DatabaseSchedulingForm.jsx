@@ -88,7 +88,10 @@ export default class DatabaseSchedulingForm extends Component {
 
                         <div className="Form-offset mr4 mt4">
                             <div>
-                                <h4 className="text-bold text-uppercase">Database syncing</h4>
+                                <div style={{maxWidth: 600}}>
+                                    To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.
+                                </div>
+                                <h4 className="mt4 text-bold text-uppercase">Database syncing</h4>
                                 <p className="text-paragraph text-measure">This is a lightweight process that checks for
                                     updates to this database’s schema. In most cases, you should be fine leaving this
                                     set to sync hourly.</p>
