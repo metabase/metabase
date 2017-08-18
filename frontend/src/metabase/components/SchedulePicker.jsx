@@ -86,7 +86,8 @@ export default class SchedulePicker extends Component {
             if (value === "monthly") {
                 newSchedule = { ...newSchedule, "schedule_frame": "first", "schedule_day": "mon" };
             }
-
+        }
+        else if (name === "schedule_frame") {
             // when the monthly schedule frame is the 15th, clear out the schedule_day
             if (value === "mid") {
                 newSchedule = { ...newSchedule, "schedule_day": null };
