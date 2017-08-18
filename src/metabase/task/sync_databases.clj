@@ -14,7 +14,7 @@
              [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
-            [metabase.util.schema :as su]
+            [metabase.util.cron :as cron-util]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
@@ -39,7 +39,9 @@
 
 
 (jobs/defjob UpdateFieldValues [job-context]
-  (field-values/update-field-values! (job-context->database job-context)))
+  (let [database (job-context->database job-context)]
+    (when (:is_full_sync database)
+      (field-values/update-field-values! (job-context->database job-context)))))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -75,7 +77,7 @@
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/get-id database))))
 
-(s/defn ^:private ^:always-validate cron-schedule :- su/CronScheduleString
+(s/defn ^:private ^:always-validate cron-schedule :- cron-util/CronScheduleString
   "Fetch the appropriate cron schedule string for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))

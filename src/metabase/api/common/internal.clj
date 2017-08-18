@@ -46,12 +46,15 @@
              {arg nil})))
 
 (defn- dox-for-schema
-  "Look up the docstr for annotation."
+  "Look up the docstring for SCHEMA for use in auto-generated API documentation.
+   In most cases this is defined by wrapping the schema with `with-api-error-message`."
   [schema]
   (if-not schema
     ""
     (or (su/api-error-message schema)
-        (log/warn "We don't have a nice error message for schema:" schema))))
+        (log/warn "We don't have a nice error message for schema:"
+                  schema
+                  "Consider wrapping it in `su/with-api-error-message`."))))
 
 (defn- format-route-schema-dox [param->schema]
   (when (seq param->schema)

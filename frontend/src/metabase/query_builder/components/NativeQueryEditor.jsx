@@ -275,6 +275,7 @@ export default class NativeQueryEditor extends Component {
                             databases={databases}
                             datasetQuery={query.datasetQuery()}
                             setDatabaseFn={this.setDatabaseId}
+                            isInitiallyOpen={database == null}
                         />
                     </div>
                 )
