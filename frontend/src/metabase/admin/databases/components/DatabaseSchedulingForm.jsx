@@ -109,7 +109,7 @@ export default class DatabaseSchedulingForm extends Component {
                             </div>
 
                             <div className="mt4">
-                                <h4 className="text-bold text-default text-uppercase">Caching Field Values</h4>
+                                <h4 className="text-bold text-default text-uppercase">Scanning for Filter Values</h4>
                                 <p className="text-paragraph text-measure">Metabase can scan the values present in each
                                     field in this database to enable checkbox filters in dashboards and questions. This
                                     can be a somewhat resource-intensive process, particularly if you have a very large
