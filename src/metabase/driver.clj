@@ -351,7 +351,7 @@
    thrown yourself (e.g., so you can pass the exception message along to the user).
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
-  [engine details-map & [rethrow-exceptions]]
+  ^Boolean [engine details-map & [rethrow-exceptions]]
   {:pre [(keyword? engine) (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try

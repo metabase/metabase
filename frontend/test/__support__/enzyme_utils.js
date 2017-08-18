@@ -1,6 +1,9 @@
 import Button from "metabase/components/Button";
 
 export const click = (enzymeWrapper) => {
+    if (enzymeWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `click(wrapper)` is empty.")
+    }
     const nodeType = enzymeWrapper.type();
     if (nodeType === Button || nodeType === "button") {
         console.trace(

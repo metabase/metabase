@@ -204,6 +204,15 @@
   {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? true}
   (check-if-sync-processes-ran-for-db
     {:engine                      :postgres
+     :is_full_sync                true
+     :metadata_sync_schedule      (cron-schedule-for-next-year)
+     :cache_field_values_schedule "* * * * * ? *"}))
+
+;; ...but if DB is not "full sync" it should not get updated FieldValues
+(expect
+  {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? false}
+  (check-if-sync-processes-ran-for-db
+    {:engine                      :postgres
      :is_full_sync                false
      :metadata_sync_schedule      (cron-schedule-for-next-year)
      :cache_field_values_schedule "* * * * * ? *"}))
