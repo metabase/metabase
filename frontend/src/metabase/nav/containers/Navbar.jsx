@@ -138,7 +138,7 @@ export default class Navbar extends Component {
                         <MainNavLink to="/reference/guide" name="Data Reference" eventName="DataReference" />
                     </li>
                     <li className="pl3 hide sm-show">
-                        <Link to={Urls.question()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
+                        <Link to={Urls.newQuestion()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
                             New <span>Question</span>
                         </Link>
                     </li>

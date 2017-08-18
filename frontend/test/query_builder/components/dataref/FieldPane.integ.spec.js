@@ -19,6 +19,7 @@ import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryButton from "metabase/components/QueryButton";
 import Table from "metabase/visualizations/visualizations/Table";
 import UseForButton from "metabase/query_builder/components/dataref/UseForButton";
+import * as Urls from "metabase/lib/urls";
 
 // Currently a lot of duplication with FieldPane tests
 describe("FieldPane", () => {
@@ -29,7 +30,7 @@ describe("FieldPane", () => {
         await login();
         store = await createTestStore()
 
-        store.pushPath("/question");
+        store.pushPath(Urls.plainQuestion());
         queryBuilder = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
     })

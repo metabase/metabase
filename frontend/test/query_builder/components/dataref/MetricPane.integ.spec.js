@@ -18,6 +18,7 @@ import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
+import * as Urls from "metabase/lib/urls";
 
 describe("MetricPane", () => {
     let store = null;
@@ -28,7 +29,7 @@ describe("MetricPane", () => {
         await createMetric(vendor_count_metric);
         store = await createTestStore()
 
-        store.pushPath("/question");
+        store.pushPath(Urls.plainQuestion());
         queryBuilder = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
     })

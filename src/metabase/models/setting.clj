@@ -58,9 +58,9 @@
 (def ^:private SettingDefinition
   {:name        s/Keyword
    :description s/Str            ; used for docstring and is user-facing in the admin panel
-   :default     s/Any            ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
-   :type        Type
-   :getter      clojure.lang.IFn
+   :default     s/Any
+   :type        Type             ; all values are stored in DB as Strings,
+   :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
    :setter      clojure.lang.IFn
    :internal?   s/Bool})         ; should the API never return this setting? (default: false)
 

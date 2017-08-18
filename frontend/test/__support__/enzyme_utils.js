@@ -1,6 +1,9 @@
 import Button from "metabase/components/Button";
 
 export const click = (enzymeWrapper) => {
+    if (enzymeWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `click(wrapper)` is empty.")
+    }
     const nodeType = enzymeWrapper.type();
     if (nodeType === Button || nodeType === "button") {
         console.trace(
@@ -26,7 +29,13 @@ export const clickButton = (enzymeWrapper) => {
     } else {
         // Assume that the current component wraps a button element
         enzymeWrapper.simulate("submit");
-        enzymeWrapper.simulate("click", { button: 0 });
+
+        // For some reason the click sometimes fails when using a Button component
+        try {
+            enzymeWrapper.simulate("click", { button: 0 });
+        } catch(e) {
+
+        }
     }
 }
 

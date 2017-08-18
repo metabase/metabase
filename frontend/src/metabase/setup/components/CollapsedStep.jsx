@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 export default class CollapsedStep extends Component {
     static propTypes = {
         stepNumber: PropTypes.number.isRequired,
+        stepCircleText: PropTypes.string.isRequired,
         stepText: PropTypes.string.isRequired,
         setActiveStep: PropTypes.func.isRequired,
         isCompleted: PropTypes.bool.isRequired,
@@ -20,7 +21,7 @@ export default class CollapsedStep extends Component {
     }
 
     render() {
-        let { isCompleted, stepNumber, stepText } = this.props;
+        let { isCompleted, stepCircleText, stepText } = this.props;
 
         const classes = cx({
             'SetupStep': true,
@@ -35,7 +36,7 @@ export default class CollapsedStep extends Component {
             <section className={classes}>
                 <div className="flex align-center py2">
                     <span className="SetupStep-indicator flex layout-centered absolute bordered">
-                        <span className="SetupStep-number">{stepNumber}</span>
+                        <span className="SetupStep-number">{stepCircleText}</span>
                         <Icon name={'check'} className="SetupStep-check" size={16}></Icon>
                     </span>
                     <h3 className="SetupStep-title ml4 my1" onClick={this.gotoStep.bind(this)}>{stepText}</h3>

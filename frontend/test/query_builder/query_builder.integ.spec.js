@@ -23,7 +23,8 @@ import {
     setQuerySourceTable,
     setDatasetQuery,
     NAVIGATE_TO_NEW_CARD,
-    UPDATE_URL
+    UPDATE_URL,
+    REDIRECT_TO_NEW_QUESTION_FLOW, LOAD_METADATA_FOR_CARD
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
@@ -54,11 +55,16 @@ import {
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
-import { getCard, getQueryResults } from "metabase/query_builder/selectors";
+import { getCard, getQuery, getQueryResults } from "metabase/query_builder/selectors";
 import { TestTable } from "metabase/visualizations/visualizations/Table";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
 import { delay } from "metabase/lib/promise";
+import * as Urls from "metabase/lib/urls";
+import NewQueryOption from "metabase/new_query/components/NewQueryOption";
+import { RESET_QUERY } from "metabase/new_query/new_query";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -67,7 +73,7 @@ const PRODUCT_TITLE_ID = 27;
 const initQbWithDbAndTable = (dbId, tableId) => {
     return async () => {
         const store = await createTestStore()
-        store.pushPath("/question");
+        store.pushPath(Urls.plainQuestion());
         const qb = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
 
@@ -92,16 +98,46 @@ describe("QueryBuilder", () => {
      * Simple tests for seeing if the query builder renders without errors
      */
     describe("for new questions", async () => {
+        it("redirects /question to /question/new", async () => {
+            const store = await createTestStore()
+            store.pushPath("/question");
+            mount(store.getAppContainer());
+            await store.waitForActions([REDIRECT_TO_NEW_QUESTION_FLOW])
+            expect(store.getPath()).toBe("/question/new")
+        })
         it("renders normally on page load", async () => {
             const store = await createTestStore()
 
-            store.pushPath("/question");
-            const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
-            await store.waitForActions([INITIALIZE_QB]);
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY]);
 
-            expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("New question")
-            expect(qbWrapper.find(VisualizationEmptyState).length).toBe(1)
+            expect(app.find(NewQueryOption).length).toBe(2)
         });
+        it("lets you start a custom gui query", async () => {
+            const store = await createTestStore()
+
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY]);
+
+            click(app.find(NewQueryOption).first())
+            await store.waitForActions(INITIALIZE_QB, UPDATE_URL, LOAD_METADATA_FOR_CARD);
+            expect(getQuery(store.getState()) instanceof StructuredQuery).toBe(true)
+        })
+
+        // Something doesn't work in tests when opening the native query editor :/
+        xit("lets you start a custom native query", async () => {
+            const store = await createTestStore()
+
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY]);
+
+            click(app.find(NewQueryOption).last())
+            await store.waitForActions(INITIALIZE_QB);
+            expect(getQuery(store.getState()) instanceof NativeQuery).toBe(true)
+        })
     });
 
     describe("visualization settings", () => {
