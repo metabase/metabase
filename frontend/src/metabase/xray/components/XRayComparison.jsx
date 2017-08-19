@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router'
 import Color from 'color'
+import Visualization from 'metabase/visualizations/components/Visualization'
 
 import Icon from 'metabase/components/Icon'
 import Tooltip from 'metabase/components/Tooltip'
@@ -51,17 +52,38 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
 const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = false, height = 60}) =>
     <div className="flex" style={{ height }}>
         <div className="flex-full">
-            <Histogram
-                histogram={{
-                    rows: [
-                        ...itemA.rows,
-                        ...itemB.rows
-                    ],
-                    cols: itemA.cols,
-                    columns: itemA.columns
-                }}
-                color={[itemAColor.main, itemBColor.main]}
-                showAxis={showAxis}
+            <Visualization
+                className="full-height"
+                series={[
+                    {
+                        card: {
+                            display: "bar",
+                            visualization_settings: {
+                                "graph.colors": [itemAColor, itemBColor],
+                                "graph.x_axis.axis_enabled": showAxis,
+                                "graph.x_axis.labels_enabled": showAxis,
+                                "graph.y_axis.axis_enabled": showAxis,
+                                "graph.y_axis.labels_enabled": showAxis
+                            }
+                        },
+                        data: itemA
+                    },
+                    {
+                        card: {
+                            display: "bar",
+                            visualization_settings: {
+                                "graph.colors": [itemAColor, itemBColor],
+                                "graph.x_axis.axis_enabled": showAxis,
+                                "graph.x_axis.labels_enabled": showAxis,
+                                "graph.y_axis.axis_enabled": showAxis,
+                                "graph.y_axis.labels_enabled": showAxis
+                            }
+                        },
+                        data: itemB
+                    },
+
+                ]}
+                showTitle={false}
             />
         </div>
     </div>
@@ -138,8 +160,8 @@ const XRayComparison = ({
                                             <CompareHistograms
                                                 itemA={contributor[0].feature.value.a}
                                                 itemB={contributor[0].feature.value.b}
-                                                itemAColor={itemA.color}
-                                                itemBColor={itemB.color}
+                                                itemAColor={itemA.color.main}
+                                                itemBColor={itemB.color.main}
                                                 showAxis={true}
                                                 height={120}
                                             />
@@ -220,9 +242,9 @@ const XRayComparison = ({
                                     { itemA.constituents[field.name]['histogram'] && (
                                     <CompareHistograms
                                         itemA={itemA.constituents[field.name]['histogram'].value}
-                                        itemAColor={itemA.color}
+                                        itemAColor={itemA.color.main}
                                         itemB={itemB.constituents[field.name]['histogram'].value}
-                                        itemBColor={itemB.color}
+                                        itemBColor={itemB.color.main}
                                     />
                                     )}
                                 </td>
