@@ -250,10 +250,11 @@
 
 (defn- table-rows-sample [driver table fields]
   (->> (binding [*jdbc-options* {:as-arrays? true}]
-         (query driver (table/database table) table (apply-limit driver
-                                                                 {:select (for [field fields]
-                                                                            (keyword (:name field)))}
-                                                                 {:limit  driver/max-sample-rows})))
+         (query driver (table/database table) (apply-limit driver
+                                                           {:select (for [field fields]
+                                                                      (keyword (:name field)))
+                                                            :from   [(qualify+escape table)]}
+                                                           {:limit driver/max-sample-rows})))
        ;; the first row coming back will be the columns list so go ahead and drop it like it's hot
        (drop 1)))
 
