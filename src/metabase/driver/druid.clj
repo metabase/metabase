@@ -126,21 +126,21 @@
 (u/strict-extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?          (u/drop-first-arg can-connect?)
-          :describe-database     (u/drop-first-arg describe-database)
-          :describe-table        (u/drop-first-arg describe-table)
-          :details-fields        (constantly (ssh/with-tunnel-config
-                                               [{:name         "host"
-                                                 :display-name "Host"
-                                                 :default      "http://localhost"}
-                                                {:name         "port"
-                                                 :display-name "Broker node port"
-                                                 :type         :integer
-                                                 :default      8082}]))
-          :execute-query         (fn [_ query] (qp/execute-query do-query query))
-          :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
-          ;; :table-rows-sample     (u/drop-first-arg table-rows-sample)
-          :mbql->native          (u/drop-first-arg qp/mbql->native)}))
+         {:can-connect?      (u/drop-first-arg can-connect?)
+          :describe-database (u/drop-first-arg describe-database)
+          :describe-table    (u/drop-first-arg describe-table)
+          :details-fields    (constantly (ssh/with-tunnel-config
+                                           [{:name         "host"
+                                             :display-name "Host"
+                                             :default      "http://localhost"}
+                                            {:name         "port"
+                                             :display-name "Broker node port"
+                                             :type         :integer
+                                             :default      8082}]))
+          :execute-query     (fn [_ query] (qp/execute-query do-query query))
+          :features          (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
+          :table-rows-sample (u/drop-first-arg table-rows-sample)
+          :mbql->native      (u/drop-first-arg qp/mbql->native)}))
 
 (defn -init-driver
   "Register the druid driver1"
