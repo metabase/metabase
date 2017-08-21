@@ -23,7 +23,7 @@ import {
 import path from "path";
 import { mount } from "enzyme";
 import Setup from "metabase/setup/components/Setup";
-import { delay } from "metabase/lib/promise";
+import { delay } from "metabase/lib/promise";
 import UserStep from "metabase/setup/components/UserStep";
 import DatabaseConnectionStep from "metabase/setup/components/DatabaseConnectionStep";
 import PreferencesStep from "metabase/setup/components/PreferencesStep";
