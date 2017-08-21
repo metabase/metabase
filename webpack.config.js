@@ -41,7 +41,7 @@ if (IS_WATCHING) {
 
 // Babel:
 var BABEL_CONFIG = {
-    cacheDirectory: ".babel_cache"
+    cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache"
 };
 
 // Build mapping of CSS variables
