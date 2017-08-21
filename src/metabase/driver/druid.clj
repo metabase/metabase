@@ -63,7 +63,6 @@
            (let [message (or (u/ignore-exceptions
                                (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
                              (.getMessage e))]
-
              (log/error (u/format-color 'red "Error running query:\n%s" message))
              ;; Re-throw a new exception with `message` set to the extracted message
              (throw (Exception. message e)))))))
@@ -100,23 +99,6 @@
                       {:schema nil, :name table-name}))})))
 
 
-;;; ### table-rows-sample
-
-(defn- table-rows-sample [table fields]
-  (let [db-details (db/select-one-field :details Database :id (:db_id table))
-        [results]  (do-query db-details {:queryType   :select
-                                         :dataSource  (:name table)
-                                         :intervals   ["1900-01-01/2100-01-01"]
-                                         :granularity :all
-                                         :dimensions  (map :name fields)
-                                         :metrics     []
-                                         :pagingSpec  {:threshold driver/max-sample-rows}})]
-    ;; Unnest the values
-    (for [event (get-in results [:result :events])]
-      (for [field fields]
-        (get-in event [:event (keyword (:name field))])))))
-
-
 ;;; ### DruidrDriver Class Definition
 
 (defrecord DruidDriver []
@@ -139,10 +121,9 @@
                                              :default      8082}]))
           :execute-query     (fn [_ query] (qp/execute-query do-query query))
           :features          (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
-          :table-rows-sample (u/drop-first-arg table-rows-sample)
           :mbql->native      (u/drop-first-arg qp/mbql->native)}))
 
 (defn -init-driver
-  "Register the druid driver1"
+  "Register the druid driver."
   []
   (driver/register-driver! :druid (DruidDriver.)))

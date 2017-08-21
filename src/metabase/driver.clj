@@ -194,20 +194,25 @@
 
   ;; TODO - Not 100% sure we need this method since it seems like we could just use an MBQL query to fetch this info.
   (table-rows-sample ^clojure.lang.Sequential [this, ^TableInstance table, fields]
-    "Return a sample of rows in TABLE with the specified FIELDS. This is used to implement some methods of the
+    "*OPTIONAL*. Return a sample of rows in TABLE with the specified FIELDS. This is used to implement some methods of the
      database sync process which require rows of data during execution. At this time, this should just return a basic
      sequence of rows in the fastest way possible, with no special sorting or any sort of randomization done to ensure
      a good sample. (Improved sampling is something we plan to add in the future.)
 
   The sample should return up to `max-sample-rows` rows, which is currently `10000`."))
 
-(defn- table-rows-sample-via-qp [_ table fields]
-  (let [results ((resolve 'metabase.query-processor/process-query) {:database (:db_id table)
-                                                                    :type     :query
-                                                                    :query    {:source-table (u/get-id table)
-                                                                               :fields       (vec (for [field fields]
-                                                                                                    [:field-id (u/get-id field)]))
-                                                                               :limit        max-sample-rows}})]
+(defn- table-rows-sample-via-qp
+  "Default implementation of `table-rows-sample` that just runs a basic MBQL query to fetch values for a Table.
+   Prefer this to writing your own implementation of `table-rows-sample`; those are around for purely historical
+   reasons and may be removed in the future."
+  [_ table fields]
+  (let [results ((resolve 'metabase.query-processor/process-query)
+                 {:database (:db_id table)
+                  :type     :query
+                  :query    {:source-table (u/get-id table)
+                             :fields       (vec (for [field fields]
+                                                  [:field-id (u/get-id field)]))
+                             :limit        max-sample-rows}})]
     (get-in results [:data :rows])))
 
 
