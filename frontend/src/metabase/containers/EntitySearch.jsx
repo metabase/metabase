@@ -51,7 +51,7 @@ export default class EntitySearch extends Component {
     }
 
     applyFiltersAfterFilterChange =
-        _.debounce(() => this.applyFiltersForEntities(this.props.entities), 300)
+        _.debounce(() => this.applyFiltersForEntities(this.props.entities), 200)
 
     applyFiltersForEntities = (entities) => {
         const { searchText } = this.state;
@@ -181,7 +181,7 @@ class GroupedSearchResultsList extends Component {
                 groupName: currentGrouping.getGroupName(entitiesInGroup[0]),
                 entitiesInGroup
             }))
-            .sortBy(({ groupName }) => groupName)
+            .sortBy(({ groupName }) => groupName.toLowerCase())
             .value()
     }
 
@@ -221,7 +221,7 @@ const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
 
 const SearchResultsList = ({ entities, chooseEntity }) =>
     <ol className="flex-full">
-        { entities.map((entity) =>
+        { _.sortBy(entities, ({ name }) => name.toLowerCase()).map((entity) =>
             <SearchResultListItem entity={entity} chooseEntity={chooseEntity} />
         )}
     </ol>

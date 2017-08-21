@@ -109,11 +109,12 @@ export class NewQuery extends Component {
     }
 
     startSegmentQuery = (segment: Segment) => {
-        this.props.fetchTableMetadata(segment.table().id);
+        this.props.fetchTableMetadata(segment.table.id);
 
         const updatedQuery = this.props.query
-            .setDatabase(segment.database)
+            .setDatabase(segment.table.database)
             .setTable(segment.table)
+            .addFilter(segment.definition.filter)
         // how to set the segment ...?
 
         this.props.onComplete(updatedQuery);

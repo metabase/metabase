@@ -20,7 +20,7 @@ export default class SegmentSearch extends Component {
     }
 
     componentDidMount() {
-        this.props.fetchSegments()
+        this.props.fetchSegments(true)
     }
 
     render() {

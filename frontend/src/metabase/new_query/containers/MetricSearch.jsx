@@ -20,7 +20,7 @@ export default class MetricSearch extends Component {
     }
 
     componentDidMount() {
-        this.props.fetchMetrics()
+        this.props.fetchMetrics(true)
     }
 
     render() {

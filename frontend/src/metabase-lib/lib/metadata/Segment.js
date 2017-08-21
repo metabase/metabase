@@ -15,6 +15,7 @@ export default class Segment extends Base {
     database: Database;
     table: Table;
 
+
     newQuestion(): Question {
         // $FlowFixMe
         return new Question();
