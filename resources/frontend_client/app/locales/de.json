@@ -1,0 +1,52 @@
+{
+  "charset": "utf-8",
+  "headers": {
+    "#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#": "",
+    "content-type": "text/plain; charset=UTF-8",
+    "plural-forms": "nplurals=2; plural=(n != 1);",
+    "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#": "",
+    "project-id-version": "metabase",
+    "report-msgid-bugs-to": "docs@metabase.com",
+    "pot-creation-date": "2017-08-21 21:16+0200",
+    "po-revision-date": "2017-08-21 21:17+0200",
+    "last-translator": "Tom Robinson <tom@metabase.com>",
+    "language-team": "German <translation-team-de@lists.sourceforge.net>",
+    "language": "de",
+    "mime-version": "1.0",
+    "content-transfer-encoding": "8bit"
+  },
+  "translations": {
+    "": {
+      "Dashboards": {
+        "msgid": "Dashboards",
+        "msgstr": [
+          "Übersicht"
+        ]
+      },
+      "Questions": {
+        "msgid": "Questions",
+        "msgstr": [
+          "Fragen"
+        ]
+      },
+      "Pulses": {
+        "msgid": "Pulses",
+        "msgstr": [
+          "Impuse"
+        ]
+      },
+      "Data Reference": {
+        "msgid": "Data Reference",
+        "msgstr": [
+          "Daten Referenz"
+        ]
+      },
+      "New Question": {
+        "msgid": "New Question",
+        "msgstr": [
+          "Neue Frage"
+        ]
+      }
+    }
+  }
+}

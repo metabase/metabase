@@ -63,7 +63,7 @@ function _init(reducers, getRoutes, callback) {
     });
 
     // TODO: detect user's prefered locale
-    loadLocale("en");
+    loadLocale("de");
 
     if (callback) {
         callback(store);

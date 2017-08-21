@@ -47,4 +47,4 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /crate-*
 *.po~
 /resources/locales.clj
-/locales/*.pot
+/locales/metabase-*.pot
