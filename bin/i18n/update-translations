@@ -1,0 +1,7 @@
+#!/bin/sh
+
+set -eu
+
+./bin/i18n/update-translation-template
+
+find locales -name "*.po" -exec sh -c './bin/i18n/update-translation $(basename {} .po)' \;
