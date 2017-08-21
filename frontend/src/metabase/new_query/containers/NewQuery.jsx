@@ -138,44 +138,48 @@ export class NewQuery extends Component {
             )
         } else {
             return (
-                <div className="flex-full full ml-auto mr-auto px1 mt4 mb2 align-center"
-                     style={{maxWidth: "800px"}}>
-                    <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2">
-                        <li className="Grid-cell">
-                            <NewQueryOption
-                                image="/app/img/questions_illustration"
-                                title="Metrics"
-                                description="See data over time, as a map, or pivoted to help you understand trends or changes."
-                                onClick={this.showMetricSearch}
-                            />
-                        </li>
-                        <li className="Grid-cell">
-                            <NewQueryOption
-                                image="/app/img/list_illustration"
-                                title="Segments"
-                                description="Explore tables and see what’s going on underneath your charts."
-                                width={180}
-                                onClick={this.showSegmentSearch}
-                            />
-                        </li>
-                        <li className="Grid-cell">
-                            {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
-                            <NewQueryOption
-                                image="/app/img/custom_question"
-                                title="New question"
-                                description="Use the simple query builder to see trends, lists of things, or to create your own metrics."
-                                onClick={this.startGuiQuery}
-                            />
-                        </li>
-                        <li className="Grid-cell">
-                            <NewQueryOption
-                                image="/app/img/sql_illustration"
-                                title="SQL"
-                                description="For more complicated questions, you can write your own SQL."
-                                onClick={this.startNativeQuery}
-                            />
-                        </li>
-                    </ol>
+                <div className="bg-slate-extra-light full-height flex">
+                    <div className="flex-full full ml-auto mr-auto px1 mt4 mb2 align-center"
+                         style={{maxWidth: "800px"}}>
+                         <div className="full-height flex align-center justify-center">
+                            <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2">
+                                <li className="Grid-cell">
+                                    <NewQueryOption
+                                        image="/app/img/questions_illustration"
+                                        title="Metrics"
+                                        description="See data over time, as a map, or pivoted to help you understand trends or changes."
+                                        onClick={this.showMetricSearch}
+                                    />
+                                </li>
+                                <li className="Grid-cell">
+                                    <NewQueryOption
+                                        image="/app/img/list_illustration"
+                                        title="Segments"
+                                        description="Explore tables and see what’s going on underneath your charts."
+                                        width={180}
+                                        onClick={this.showSegmentSearch}
+                                    />
+                                </li>
+                                <li className="Grid-cell">
+                                    {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+                                    <NewQueryOption
+                                        image="/app/img/custom_question"
+                                        title="New question"
+                                        description="Use the simple query builder to see trends, lists of things, or to create your own metrics."
+                                        onClick={this.startGuiQuery}
+                                    />
+                                </li>
+                                <li className="Grid-cell">
+                                    <NewQueryOption
+                                        image="/app/img/sql_illustration"
+                                        title="SQL"
+                                        description="For more complicated questions, you can write your own SQL."
+                                        onClick={this.startNativeQuery}
+                                    />
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
             )
         }
