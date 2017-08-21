@@ -22,14 +22,18 @@ import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
+import chalk from "chalk";
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
 
 import { refreshSiteSettings } from "metabase/redux/settings";
+
 import { getRoutes as getNormalRoutes } from "metabase/routes";
 import { getRoutes as getPublicRoutes } from "metabase/routes-public";
 import { getRoutes as getEmbedRoutes } from "metabase/routes-embed";
+
+import moment from "moment";
 
 let hasStartedCreatingStore = false;
 let hasFinishedCreatingStore = false
@@ -61,6 +65,9 @@ export function logout() {
     loginSession = null
 }
 
+/**
+ * Lets you recover the previous login session after calling logout
+ */
 export function restorePreviousLogin() {
     if (previousLoginSession) {
         loginSession = previousLoginSession
@@ -70,7 +77,7 @@ export function restorePreviousLogin() {
 }
 
 /**
- * Calls the provided function while simulating that the browser is offline.
+ * Calls the provided function while simulating that the browser is offline
  */
 export async function whenOffline(callWhenOffline) {
     simulateOfflineMode = true;
@@ -83,6 +90,206 @@ export async function whenOffline(callWhenOffline) {
             simulateOfflineMode = false;
             throw e;
         });
+}
+
+/**
+ * Creates an augmented Redux store for testing the whole app including browser history manipulation. Includes:
+ * - A simulated browser history that is used by react-router
+ * - Methods for
+ *     * manipulating the simulated browser history
+ *     * waiting until specific Redux actions have been dispatched
+ *     * getting a React container subtree for the current route
+ */
+export const createTestStore = async ({ publicApp = false, embedApp = false } = {}) => {
+    hasFinishedCreatingStore = false;
+    hasStartedCreatingStore = true;
+
+    const history = useRouterHistory(createMemoryHistory)();
+    const getRoutes = publicApp ? getPublicRoutes : (embedApp ? getEmbedRoutes : getNormalRoutes);
+    const reducers = (publicApp || embedApp) ? publicReducers : normalReducers;
+    const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history, getRoutes));
+    store._setFinalStoreInstance(store);
+
+    if (!publicApp) {
+        await store.dispatch(refreshSiteSettings());
+    }
+
+    hasFinishedCreatingStore = true;
+
+    return store;
+}
+
+const testStoreEnhancer = (createStore, history, getRoutes) => {
+    return (...args) => {
+        const store = createStore(...args);
+
+        const testStoreExtensions = {
+            _originalDispatch: store.dispatch,
+            _onActionDispatched: null,
+            _allDispatchedActions: [],
+            _latestDispatchedActions: [],
+            _finalStoreInstance: null,
+
+            /**
+             * Redux dispatch method middleware that records all dispatched actions
+             */
+            dispatch: (action) => {
+                const result = store._originalDispatch(action);
+
+                const actionWithTimestamp = [{
+                    ...action,
+                    timestamp: Date.now()
+                }]
+                store._allDispatchedActions = store._allDispatchedActions.concat(actionWithTimestamp);
+                store._latestDispatchedActions = store._latestDispatchedActions.concat(actionWithTimestamp);
+
+                if (store._onActionDispatched) store._onActionDispatched();
+                return result;
+            },
+
+            /**
+             * Waits until all actions with given type identifiers have been called or fails if the maximum waiting
+             * time defined in `timeout` is exceeded.
+             *
+             * Convenient in tests for waiting specific actions to be executed after mounting a React container.
+             */
+            waitForActions: (actionTypes, {timeout = 8000} = {}) => {
+                if (store._onActionDispatched) {
+                    return Promise.reject(new Error("You have an earlier `store.waitForActions(...)` still in progress – have you forgotten to prepend `await` to the method call?"))
+                }
+
+                actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
+
+                // Returns all actions that are triggered after the last action which belongs to `actionTypes
+                const getRemainingActions = () => {
+                    const lastActionIndex = _.findLastIndex(store._latestDispatchedActions, (action) => actionTypes.includes(action.type))
+                    return store._latestDispatchedActions.slice(lastActionIndex + 1)
+                }
+
+                const allActionsAreTriggered = () => _.every(actionTypes, actionType =>
+                    store._latestDispatchedActions.filter((action) => action.type === actionType).length > 0
+                );
+
+                if (allActionsAreTriggered()) {
+                    // Short-circuit if all action types are already in the history of dispatched actions
+                    return Promise.resolve();
+                } else {
+                    return new Promise((resolve, reject) => {
+                        const timeoutID = setTimeout(() => {
+                            store._onActionDispatched = null;
+
+                            return reject(
+                                new Error(
+                                    `All these actions were not dispatched within ${timeout}ms:\n` +
+                                    chalk.cyan(actionTypes.join("\n")) +
+                                    "\n\nDispatched actions since the last call of `waitForActions`:\n" +
+                                    (store._latestDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions") +
+                                    "\n\nDispatched actions since the initialization of test suite:\n" +
+                                    (store._allDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions")
+                                )
+                            )
+                        }, timeout)
+
+                        store._onActionDispatched = () => {
+                            if (allActionsAreTriggered()) {
+                                store._latestDispatchedActions = getRemainingActions();
+                                store._onActionDispatched = null;
+                                clearTimeout(timeoutID);
+                                resolve()
+                            }
+                        };
+                    });
+                }
+            },
+
+            /**
+             * Logs the actions that have been dispatched so far
+             */
+            debug: () => {
+                console.log(
+                    chalk.bold("Dispatched actions since last call of `waitForActions`:\n") +
+                    (store._latestDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions") +
+                    chalk.bold("\n\nDispatched actions since initialization of test suite:\n") +
+                    store._allDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions"
+                )
+            },
+
+            /**
+             * Methods for manipulating the simulated browser history
+             */
+            pushPath: (path) => history.push(path),
+            goBack: () => history.goBack(),
+            getPath: () => urlFormat(history.getCurrentLocation()),
+
+            warnIfStoreCreationNotComplete: () => {
+                if (!hasFinishedCreatingStore) {
+                    console.warn(
+                        "Seems that you haven't waited until the store creation has completely finished. " +
+                        "This means that site settings might not have been completely loaded. " +
+                        "Please add `await` in front of createTestStore call.")
+                }
+            },
+
+            /**
+             * For testing an individual component that is rendered to the router context.
+             * The component will receive the same router props as it would if it was part of the complete app component tree.
+             *
+             * This is usually a lot faster than `getAppContainer` but doesn't work well with react-router links.
+             */
+            connectContainer: (reactContainer) => {
+                store.warnIfStoreCreationNotComplete();
+
+                const routes = createRoutes(getRoutes(store._finalStoreInstance))
+                return store._connectWithStore(
+                    <Router
+                        routes={routes}
+                        history={history}
+                        render={(props) => React.cloneElement(reactContainer, props)}
+                    />
+                );
+            },
+
+            /**
+             * Renders the whole app tree.
+             * Useful if you want to navigate between different sections of your app in your tests.
+             */
+            getAppContainer: () => {
+                store.warnIfStoreCreationNotComplete();
+
+                return store._connectWithStore(
+                    <Router history={history}>
+                        {getRoutes(store._finalStoreInstance)}
+                    </Router>
+                )
+            },
+
+            /** For having internally access to the store with all middlewares included **/
+            _setFinalStoreInstance: (finalStore) => {
+                store._finalStoreInstance = finalStore;
+            },
+
+            _formatDispatchedAction: (action) =>
+                moment(action.timestamp).format("hh:mm:ss.SSS") + " " + chalk.cyan(action.type),
+
+            // eslint-disable-next-line react/display-name
+            _connectWithStore: (reactContainer) =>
+                <Provider store={store._finalStoreInstance}>
+                    {reactContainer}
+                </Provider>
+
+        }
+
+        return Object.assign(store, testStoreExtensions);
+    }
+}
+
+// Commonly used question helpers that are temporarily here
+// TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
+export const createSavedQuestion = async (unsavedQuestion) => {
+    const savedCard = await CardApi.create(unsavedQuestion.card())
+    const savedQuestion = unsavedQuestion.setCard(savedCard);
+    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
+    return savedQuestion
 }
 
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
@@ -125,9 +332,9 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 
     if (result.status >= 200 && result.status <= 299) {
         if (options.transformResponse) {
-           return options.transformResponse(resultBody, { data });
+            return options.transformResponse(resultBody, { data });
         } else {
-           return resultBody
+            return resultBody
         }
     } else {
         const error = { status: result.status, data: resultBody, isCancelled: false }
@@ -149,174 +356,6 @@ if (process.env.E2E_HOST) {
         'Please use `yarn run test-integrated` or `yarn run test-integrated-watch` for running integration tests.'
     )
     process.quit(0)
-}
-
-/**
- * Creates an augmented Redux store for testing the whole app including browser history manipulation. Includes:
- * - A simulated browser history that is used by react-router
- * - Methods for
- *     * manipulating the browser history
- *     * waiting until specific Redux actions have been dispatched
- *     * getting a React container subtree for the current route
- */
-
-export const createTestStore = async ({ publicApp = false, embedApp = false } = {}) => {
-    hasFinishedCreatingStore = false;
-    hasStartedCreatingStore = true;
-
-    const history = useRouterHistory(createMemoryHistory)();
-    const getRoutes = publicApp ? getPublicRoutes : (embedApp ? getEmbedRoutes : getNormalRoutes);
-    const reducers = (publicApp || embedApp) ? publicReducers : normalReducers;
-    const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history, getRoutes));
-    store.setFinalStoreInstance(store);
-
-    if (!publicApp) {
-        await store.dispatch(refreshSiteSettings());
-    }
-
-    hasFinishedCreatingStore = true;
-
-    return store;
-}
-
-const testStoreEnhancer = (createStore, history, getRoutes) => {
-    return (...args) => {
-        const store = createStore(...args);
-
-        const testStoreExtensions = {
-            _originalDispatch: store.dispatch,
-            _onActionDispatched: null,
-            _dispatchedActions: [],
-            _finalStoreInstance: null,
-
-            setFinalStoreInstance: (finalStore) => {
-                store._finalStoreInstance = finalStore;
-            },
-
-            dispatch: (action) => {
-                const result = store._originalDispatch(action);
-                store._dispatchedActions = store._dispatchedActions.concat([action]);
-                if (store._onActionDispatched) store._onActionDispatched();
-                return result;
-            },
-
-            resetDispatchedActions: () => {
-                store._dispatchedActions = [];
-            },
-
-            /**
-             * Waits until all actions with given type identifiers have been called or fails if the maximum waiting
-             * time defined in `timeout` is exceeded.
-             *
-             * Convenient in tests for waiting specific actions to be executed after mounting a React container.
-             */
-            waitForActions: (actionTypes, {timeout = 8000} = {}) => {
-                actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
-
-                const allActionsAreTriggered = () => _.every(actionTypes, actionType =>
-                    store._dispatchedActions.filter((action) => action.type === actionType).length > 0
-                );
-
-                if (allActionsAreTriggered()) {
-                    // Short-circuit if all action types are already in the history of dispatched actions
-                    return;
-                } else {
-                    return new Promise((resolve, reject) => {
-                        store._onActionDispatched = () => {
-                            if (allActionsAreTriggered()) resolve()
-                        };
-                        setTimeout(() => {
-                            store._onActionDispatched = null;
-
-                            if (allActionsAreTriggered()) {
-                                // TODO: Figure out why we sometimes end up here instead of _onActionDispatched hook
-                                resolve()
-                            } else {
-                                return reject(
-                                    new Error(
-                                        `Actions ${actionTypes.join(", ")} were not dispatched within ${timeout}ms. ` +
-                                        `Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`
-                                    )
-                                )
-                            }
-
-                        }, timeout)
-                    });
-                }
-            },
-
-            logDispatchedActions: () => {
-                console.log(`Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`);
-            },
-
-            pushPath: (path) => history.push(path),
-            goBack: () => history.goBack(),
-            getPath: () => urlFormat(history.getCurrentLocation()),
-
-            warnIfStoreCreationNotComplete: () => {
-                if (!hasFinishedCreatingStore) {
-                    console.warn(
-                        "Seems that you don't wait until the store creation has completely finished. " +
-                        "This means that site settings might not have been completely loaded. " +
-                        "Please add `await` in front of createTestStore call.")
-                }
-            },
-
-            connectContainer: (reactContainer) => {
-                store.warnIfStoreCreationNotComplete();
-
-                const routes = createRoutes(getRoutes(store._finalStoreInstance))
-                return store._connectWithStore(
-                    <Router
-                        routes={routes}
-                        history={history}
-                        render={(props) => React.cloneElement(reactContainer, props)}
-                    />
-                );
-            },
-
-            getAppContainer: () => {
-                store.warnIfStoreCreationNotComplete();
-
-                return store._connectWithStore(
-                    <Router history={history}>
-                        {getRoutes(store._finalStoreInstance)}
-                    </Router>
-                )
-            },
-
-            // eslint-disable-next-line react/display-name
-            _connectWithStore: (reactContainer) =>
-                <Provider store={store._finalStoreInstance}>
-                    {reactContainer}
-                </Provider>
-
-        }
-
-        return Object.assign(store, testStoreExtensions);
-    }
-}
-
-export const clickRouterLink = (linkEnzymeWrapper) => {
-    // This hits an Enzyme bug so we should find some other way to warn the user :/
-    // https://github.com/airbnb/enzyme/pull/769
-
-    // if (linkEnzymeWrapper.closest(Router).length === 0) {
-    //     console.warn(
-    //         "Trying to click a link with a component mounted with `store.connectContainer(container)`. Usually " +
-    //         "you want to use `store.getAppContainer()` instead because it has a complete support for react-router."
-    //     )
-    // }
-
-    linkEnzymeWrapper.simulate('click', {button: 0});
-}
-// Commonly used question helpers that are temporarily here
-// TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
-export const createSavedQuestion = async (unsavedQuestion) => {
-    const savedCard = await CardApi.create(unsavedQuestion.card())
-    const savedQuestion = unsavedQuestion.setCard(savedCard);
-    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
-    return savedQuestion
 }
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;

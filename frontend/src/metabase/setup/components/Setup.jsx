@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 
@@ -9,14 +10,15 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import UserStep from './UserStep.jsx';
-import DatabaseStep from './DatabaseStep.jsx';
+import DatabaseConnectionStep from './DatabaseConnectionStep.jsx';
 import PreferencesStep from './PreferencesStep.jsx';
+import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 const WELCOME_STEP_NUMBER = 0;
 const USER_STEP_NUMBER = 1;
-const DATABASE_STEP_NUMBER = 2;
-const PREFERENCES_STEP_NUMBER = 3;
-
+const DATABASE_CONNECTION_STEP_NUMBER = 2;
+const DATABASE_SCHEDULING_STEP_NUMBER = 3;
+const PREFERENCES_STEP_NUMBER = 4;
 
 export default class Setup extends Component {
     static propTypes = {
@@ -24,6 +26,7 @@ export default class Setup extends Component {
         setupComplete: PropTypes.bool.isRequired,
         userDetails: PropTypes.object,
         setActiveStep: PropTypes.func.isRequired,
+        databaseDetails: PropTypes.object.isRequired
     }
 
     completeWelcome() {
@@ -44,8 +47,20 @@ export default class Setup extends Component {
         );
     }
 
+    componentWillReceiveProps(nextProps) {
+        // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
+        if (this.props.activeStep !== nextProps.activeStep && nextProps.activeStep === 3) {
+            setTimeout(() => {
+                if (this.refs.databaseSchedulingStepContainer) {
+                    const node = ReactDOM.findDOMNode(this.refs.databaseSchedulingStepContainer);
+                    node && node.scrollIntoView && node.scrollIntoView()
+                }
+            }, 10)
+        }
+    }
+
     render() {
-        let { activeStep, setupComplete, userDetails } = this.props;
+        let { activeStep, setupComplete, databaseDetails, userDetails } = this.props;
 
         if (activeStep === WELCOME_STEP_NUMBER) {
             return (
@@ -76,7 +91,15 @@ export default class Setup extends Component {
                         <div className="SetupSteps full">
 
                             <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
-                            <DatabaseStep {...this.props} stepNumber={DATABASE_STEP_NUMBER} />
+                            <DatabaseConnectionStep {...this.props} stepNumber={DATABASE_CONNECTION_STEP_NUMBER} />
+
+                            { /* Have the ref for scrolling in componentWillReceiveProps */ }
+                            <div ref="databaseSchedulingStepContainer">
+                                { /* Show db scheduling step only if the user has explicitly set the "Let me choose when Metabase syncs and scans" toggle to true */ }
+                                { databaseDetails && databaseDetails.details && databaseDetails.details["let-user-control-scheduling"] &&
+                                    <DatabaseSchedulingStep {...this.props} stepNumber={DATABASE_SCHEDULING_STEP_NUMBER} />
+                                }
+                            </div>
                             <PreferencesStep {...this.props} stepNumber={PREFERENCES_STEP_NUMBER} />
 
                             { setupComplete ?

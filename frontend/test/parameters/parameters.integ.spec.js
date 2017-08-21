@@ -5,6 +5,11 @@ import {
     createTestStore,
     restorePreviousLogin
 } from "__support__/integrated_tests";
+import {
+    click, clickButton,
+    setInputValue
+} from "__support__/enzyme_utils"
+
 import { mount } from "enzyme";
 
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
@@ -39,6 +44,7 @@ import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
 import CopyWidget from "metabase/components/CopyWidget";
+import * as Urls from "metabase/lib/urls";
 
 async function updateQueryText(store, queryText) {
     // We don't have Ace editor so we have to trigger the Redux action manually
@@ -81,7 +87,7 @@ describe("parameters", () => {
             expect(enabledToggleContainer.text()).toBe("Disabled");
 
             // toggle it on
-            enabledToggleContainer.find(Toggle).simulate("click");
+            click(enabledToggleContainer.find(Toggle));
             await store.waitForActions([UPDATE_SETTING])
 
             // make sure it's enabled
@@ -97,7 +103,7 @@ describe("parameters", () => {
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
-            app.find(EmbeddingLegalese).find('button[children="Enable"]').simulate('click');
+            click(app.find(EmbeddingLegalese).find('button[children="Enable"]'));
             await store.waitForActions([UPDATE_SETTING])
 
             expect(app.find(EmbeddingLegalese).length).toBe(0);
@@ -115,13 +121,12 @@ describe("parameters", () => {
             const store = await createTestStore();
 
             // load public sharing settings
-            store.pushPath('/question');
+            store.pushPath(Urls.plainQuestion());
             const app = mount(store.getAppContainer())
             await store.waitForActions([INITIALIZE_QB]);
 
-            app.find(".Icon-sql").simulate("click");
+            click(app.find(".Icon-sql"));
             await store.waitForActions([SET_QUERY_MODE]);
-            store.resetDispatchedActions();
 
             await updateQueryText(store, "select count(*) from products where {{category}}");
 
@@ -129,72 +134,71 @@ describe("parameters", () => {
 
             const fieldFilterVarType = tagEditorSidebar.find('.ColumnarSelector-row').at(3);
             expect(fieldFilterVarType.text()).toBe("Field Filter");
-            fieldFilterVarType.simulate("click");
+            click(fieldFilterVarType);
 
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
-            store.resetDispatchedActions();
 
             await delay(100);
 
-            tagEditorSidebar.find(".TestPopoverBody .AdminSelect").first().simulate("change", {target: {value: "cat"}})
+            setInputValue(tagEditorSidebar.find(".TestPopoverBody .AdminSelect").first(), "cat")
             const categoryRow = tagEditorSidebar.find(".TestPopoverBody .ColumnarSelector-row").first();
             expect(categoryRow.text()).toBe("ProductsCategory");
-            categoryRow.simulate("click");
+            click(categoryRow);
 
             await store.waitForActions([UPDATE_TEMPLATE_TAG, FETCH_FIELD_VALUES])
 
             // close the template variable sidebar
-            tagEditorSidebar.find(".Icon-close").simulate("click");
+            click(tagEditorSidebar.find(".Icon-close"));
 
             // test without the parameter
-            app.find(RunButton).simulate("click");
+            click(app.find(RunButton));
             await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
-            await store.resetDispatchedActions();
             expect(app.find(Scalar).text()).toBe(COUNT_ALL);
 
             // test the parameter
-            app.find(Parameters).find("a").first().simulate("click");
-            app.find(CategoryWidget).find('li[children="Doohickey"]').simulate("click");
-            app.find(RunButton).simulate("click");
+            click(app.find(Parameters).find("a").first());
+            click(app.find(CategoryWidget).find('li[children="Doohickey"]'));
+            click(app.find(RunButton));
             await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
             expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);
 
             // save the question, required for public link/embedding
-            app.find(".Header-buttonSection a").first().find("a").simulate("click");
+            click(app.find(".Header-buttonSection a").first().find("a"))
             await store.waitForActions([LOAD_COLLECTIONS]);
-            app.find(SaveQuestionModal).find("input[name='name']").first().simulate("change", {target: {value: "sql parametrized"}})
 
-            app.find(SaveQuestionModal).find("button").last().simulate("click");
+            setInputValue(app.find(SaveQuestionModal).find("input[name='name']"), "sql parametrized");
+
+            clickButton(app.find(SaveQuestionModal).find("button").last());
             await store.waitForActions([NOTIFY_CARD_CREATED]);
 
-            app.find('#QuestionSavedModal .Button[children="Not now"]').simulate("click");
+            click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(
             await delay(200);
 
             // open sharing panel
-            app.find(".Icon-share").simulate("click");
+            click(app.find(".Icon-share"));
 
             // "Embed this question in an application"
-            app.find(SharingPane).find("h3").last().simulate("click");
+            click(app.find(SharingPane).find("h3").last());
 
             // make the parameter editable
-            app.find(".AdminSelect-content[children='Disabled']").simulate("click");
+            click(app.find(".AdminSelect-content[children='Disabled']"));
 
-            app.find(".TestPopoverBody .Icon-pencil").simulate("click");
+            click(app.find(".TestPopoverBody .Icon-pencil"))
 
             await delay(200);
 
-            app.find("div[children='Publish']").simulate("click");
+            click(app.find("div[children='Publish']"));
             await store.waitForActions([UPDATE_ENABLE_EMBEDDING, UPDATE_EMBEDDING_PARAMS])
 
             // save the embed url for next tests
             embedUrl = getRelativeUrlWithoutHash(app.find(PreviewPane).find("iframe").prop("src"));
 
             // back to main share panel
-            app.find(EmbedTitle).simulate("click");
+            click(app.find(EmbedTitle));
 
             // toggle public link on
-            app.find(SharingPane).find(Toggle).simulate("click");
+            click(app.find(SharingPane).find(Toggle));
             await store.waitForActions([CREATE_PUBLIC_LINK]);
 
             // save the public url for next tests
@@ -209,7 +213,6 @@ describe("parameters", () => {
                 const app = mount(store.getAppContainer())
 
                 await store.waitForActions([ADD_PARAM_VALUES]);
-                store.resetDispatchedActions();
 
                 // Loading the query results is done in PublicQuestion itself so we have to add a delay here
                 await delay(200);
@@ -217,8 +220,8 @@ describe("parameters", () => {
                 expect(app.find(Scalar).text()).toBe(COUNT_ALL + "sql parametrized");
 
                 // manually click parameter (sadly the query results loading happens inline again)
-                app.find(Parameters).find("a").first().simulate("click");
-                app.find(CategoryWidget).find('li[children="Doohickey"]').simulate("click");
+                click(app.find(Parameters).find("a").first());
+                click(app.find(CategoryWidget).find('li[children="Doohickey"]'));
                 await delay(200);
                 expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY + "sql parametrized");
 

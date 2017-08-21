@@ -20,7 +20,7 @@
   padding: 0.5rem 0.75rem;
   background: #FBFCFD;
   border: 1px solid #ddd;
-  color: #444;
+  color: var(--default-font-color);
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;

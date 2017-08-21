@@ -5,9 +5,9 @@ import _ from "underscore";
 import { assoc, assocIn } from "icepick";
 
 import RecipientPicker from "./RecipientPicker.jsx";
-import SchedulePicker from "./SchedulePicker.jsx";
 import SetupMessage from "./SetupMessage.jsx";
 
+import SchedulePicker from "metabase/components/SchedulePicker.jsx";
 import ActionButton from "metabase/components/ActionButton.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -22,6 +22,11 @@ import cx from "classnames";
 const CHANNEL_ICONS = {
     email: "mail",
     slack: "slack"
+};
+
+const CHANNEL_NOUN_PLURAL = {
+    "email": "Emails",
+    "slack": "Slack messages"
 };
 
 export default class PulseEditChannels extends Component {
@@ -87,27 +92,24 @@ export default class PulseEditChannels extends Component {
         let { pulse } = this.props;
         let channels = [...pulse.channels];
 
-        if (_.contains(['schedule_type', 'schedule_day', 'schedule_hour', 'schedule_frame'], name)) {
-            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", channels[index].channel_type+":"+name, value);
-        }
-
         channels[index] = { ...channels[index], [name]: value };
 
-        // default to Monday when user wants a weekly schedule
-        if (name === "schedule_type" && value === "weekly") {
-            channels[index] = { ...channels[index], ["schedule_day"]: "mon" };
-        }
+        this.props.setPulse({ ...pulse, channels });
+    }
 
-        // default to First, Monday when user wants a monthly schedule
-        if (name === "schedule_type" && value === "monthly") {
-            channels[index] = { ...channels[index], ["schedule_frame"]: "first", ["schedule_day"]: "mon" };
-        }
+    // changedProp contains the schedule property that user just changed
+    // newSchedule may contain also other changed properties as some property changes reset other properties
+    onChannelScheduleChange(index, newSchedule, changedProp) {
+        let { pulse } = this.props;
+        let channels = [...pulse.channels];
 
-        // when the monthly schedule frame is the 15th, clear out the schedule_day
-        if (name === "schedule_frame" && value === "mid") {
-            channels[index] = { ...channels[index], ["schedule_day"]: null };
-        }
+        MetabaseAnalytics.trackEvent(
+            (this.props.pulseId) ? "PulseEdit" : "PulseCreate",
+            channels[index].channel_type + ":" + changedProp.name,
+            changedProp.value
+        );
 
+        channels[index] = { ...channels[index], ...newSchedule };
         this.props.setPulse({ ...pulse, channels });
     }
 
@@ -190,9 +192,11 @@ export default class PulseEditChannels extends Component {
                 }
                 { channelSpec.schedules &&
                     <SchedulePicker
-                        channel={channel}
-                        channelSpec={channelSpec}
-                        onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
+                        schedule={_.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type") }
+                        scheduleOptions={channelSpec.schedules}
+                        textBeforeInterval="Sent"
+                        textBeforeSendTime={`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || "Messages"} will be sent at `}
+                        onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
                     />
                 }
                 <div className="pt2">
