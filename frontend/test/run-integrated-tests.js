@@ -42,10 +42,8 @@ const login = async (apiHost) => {
 }
 
 const init = async() => {
-    await Promise.all([
-        BackendResource.start(serverWithTestDbFixture),
-        BackendResource.start(serverWithPlainDb)
-    ])
+    await BackendResource.start(serverWithTestDbFixture)
+    await BackendResource.start(serverWithPlainDb)
 
     const sharedLoginSession = await login(testFixtureBackendHost)
 
