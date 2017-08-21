@@ -31,13 +31,18 @@
 (defn- load-template [path variables]
   (stencil/render-string (load-file-at-path path) variables))
 
+(defn- load-localization []
+  ;; TODO: detect language
+  (load-file-at-path "frontend_client/app/locales/de.json"))
+
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
         (load-template (str "frontend_client/" entry ".html")
-                       {:bootstrap_json (escape-script (json/generate-string (public-settings/public-settings)))
-                        :uri            (escape-script (json/generate-string uri))
-                        :base_href      (escape-script (json/generate-string (base-href)))
-                        :embed_code     (when embeddable? (embed/head uri))})
+                       {:bootstrap_json    (escape-script (json/generate-string (public-settings/public-settings)))
+                        :localization_json (escape-script (load-localization))
+                        :uri               (escape-script (json/generate-string uri))
+                        :base_href         (escape-script (json/generate-string (base-href)))
+                        :embed_code        (when embeddable? (embed/head uri))})
         (load-file-at-path "frontend_client/init.html"))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
