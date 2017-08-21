@@ -6,6 +6,8 @@ import { Link } from 'react-router'
 import { saturated } from 'metabase/lib/colors'
 
 import { fetchCardXray } from 'metabase/xray/xray'
+import Icon from 'metabase/components/Icon'
+import Tooltip from 'metabase/components/Tooltip'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import Visualization from 'metabase/visualizations/components/Visualization'
 
@@ -19,7 +21,14 @@ type Props = {
 const GrowthRateDisplay = ({ period }) =>
     <div className="Grid-cell">
         <div className="p4 border-right">
-            <h4>{period.label}</h4>
+            <h4 className="flex align-center">
+                {period.label}
+                { period.description && (
+                    <Tooltip tooltip={period.description}>
+                        <Icon name="infooutlined" style={{ marginLeft: 8 }} size={14} />
+                    </Tooltip>
+                )}
+            </h4>
             <h1
                 className={cxs({
                     color: period.value > 0 ? saturated.green : saturated.red
@@ -35,7 +44,7 @@ class CardXRay extends Component {
 
     componentDidMount () {
         const { cardId, cost } = this.props.params
-        this.props.fetchCardxray(cardId, cost)
+        this.props.fetchCardXray(cardId, cost)
     }
 
 
@@ -68,16 +77,16 @@ class CardXRay extends Component {
 
                             <Heading heading="Growth rate" />
                             <div className="Grid Grid--1of4 bg-white bordered rounded shadowed">
-                                { xray.features.DoD && (
+                                { xray.features.DoD.value && (
                                     <GrowthRateDisplay period={xray.features.DoD} />
                                 )}
-                                { xray.features.WoW && (
+                                { xray.features.WoW.value && (
                                     <GrowthRateDisplay period={xray.features.WoW} />
                                 )}
-                                { xray.features.MoM && (
+                                { xray.features.MoM.value && (
                                     <GrowthRateDisplay period={xray.features.MoM} />
                                 )}
-                                { xray.features.YoY && (
+                                { xray.features.YoY.value && (
                                     <GrowthRateDisplay period={xray.features.YoY} />
                                 )}
                             </div>
@@ -94,7 +103,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
-    fetchCardxray: fetchCardXray
+    fetchCardXray
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)
