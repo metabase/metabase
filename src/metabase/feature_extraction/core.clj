@@ -84,7 +84,8 @@
      :features     (merge
                     (field->features (assoc opts :query query) fields rows)
                     {:card  card
-                     :table (Table (:table_id card))})}))
+                     :table (Table (:table_id card))})
+     :dataset      dataset}))
 
 (defmethod extract-features (type Segment)
   [opts segment]
