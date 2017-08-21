@@ -22,7 +22,7 @@ export default class NewQueryOption extends Component {
                className="bg-white p3 align-center bordered rounded cursor-pointer transition-all text-centered"
                style={{
                    boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
-                   height: "310px"
+                   height: 340
                }}
                onMouseOver={() => this.setState({hover: true})}
                onMouseLeave={() => this.setState({hover: false})}

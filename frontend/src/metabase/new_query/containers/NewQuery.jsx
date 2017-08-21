@@ -139,10 +139,9 @@ export class NewQuery extends Component {
         } else {
             return (
                 <div className="bg-slate-extra-light full-height flex">
-                    <div className="flex-full full ml-auto mr-auto px1 mt4 mb2 align-center"
-                         style={{maxWidth: "800px"}}>
+                    <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
                          <div className="full-height flex align-center justify-center">
-                            <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2">
+                            <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2 large-Grid--normal">
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/questions_illustration"
