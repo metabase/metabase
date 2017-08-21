@@ -14,7 +14,6 @@ import {
 } from 'metabase/xray/selectors'
 
 import {
-    fetchSegmentFieldComparison,
     fetchSegmentTableFieldComparison
 } from 'metabase/xray/xray'
 
@@ -36,8 +35,6 @@ class SegmentFieldComparison extends Component {
 
         const {
             segmentId,
-            segmentId1,
-            segmentId2,
             tableId,
             fieldName,
             cost
