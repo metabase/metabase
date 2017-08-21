@@ -97,6 +97,7 @@ import CardComparison from "metabase/xray/containers/CardComparison.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
+
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";

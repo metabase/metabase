@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
@@ -30,8 +29,8 @@ export default class DatabaseConnectionStep extends Component {
         setDatabaseDetails: PropTypes.func.isRequired,
     }
 
-    chooseDatabaseEngine() {
-        let engine = ReactDOM.findDOMNode(this.refs.engine).value;
+    chooseDatabaseEngine = (e) => {
+        let engine = e.target.value
 
         this.setState({
             'engine': engine
@@ -121,7 +120,7 @@ export default class DatabaseConnectionStep extends Component {
 
         return (
             <label className="Select Form-offset mt1">
-                <select ref="engine" defaultValue={engine} onChange={this.chooseDatabaseEngine.bind(this)}>
+                <select defaultValue={engine} onChange={this.chooseDatabaseEngine}>
                     <option value="">Select the type of Database you use</option>
                     {engineNames.map(opt => <option key={opt} value={opt}>{engines[opt]['driver-name']}</option>)}
                 </select>

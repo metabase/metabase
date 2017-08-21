@@ -1,8 +1,3 @@
-/**
- * THIS TEST WILL BE DISABLED IN PRODUCTION UNTIL METABASE-LIB IS MERGED
- * (Integrated tests need additional CI setup that I didn"t want to copy to this branch)
- */
-
 import {
     login,
     createTestStore
@@ -29,6 +24,9 @@ import ColumnarSelector from "metabase/components/ColumnarSelector";
 import { click, clickButton } from "__support__/enzyme_utils";
 import { MetabaseApi } from "metabase/services";
 import _ from "underscore";
+
+// NOTE ATTE KEINÄNEN 8/17/17:
+// This test suite has overlap (albeit intentional) with both DatabaseListApp.integ.spec and signup.integ.spec
 
 // Currently a lot of duplication with SegmentPane tests
 describe("DatabaseEditApp", () => {

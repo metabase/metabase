@@ -44,7 +44,7 @@ let simulateOfflineMode = false;
 /**
  * Login to the Metabase test instance with default credentials
  */
-export async function login() {
+export async function login({ username = "bob@metabase.com", password = "12341234" } = {}) {
     if (hasStartedCreatingStore) {
         console.warn(
             "Warning: You have created a test store before calling login() which means that up-to-date site settings " +
@@ -53,10 +53,10 @@ export async function login() {
         )
     }
 
-    if (process.env.SHARED_LOGIN_SESSION_ID) {
-        loginSession = { id: process.env.SHARED_LOGIN_SESSION_ID }
+    if (isTestFixtureDatabase() && process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID) {
+        loginSession = { id: process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID }
     } else {
-        loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
+        loginSession = await SessionApi.create({ username, password });
     }
 }
 
@@ -92,6 +92,16 @@ export async function whenOffline(callWhenOffline) {
         });
 }
 
+export function switchToPlainDatabase() {
+    api.basename = process.env.PLAIN_BACKEND_HOST;
+}
+export function switchToTestFixtureDatabase() {
+    api.basename = process.env.TEST_FIXTURE_BACKEND_HOST;
+}
+
+export const isPlainDatabase = () => api.basename === process.env.PLAIN_BACKEND_HOST;
+export const isTestFixtureDatabase = () => api.basename === process.env.TEST_FIXTURE_BACKEND_HOST;
+
 /**
  * Creates an augmented Redux store for testing the whole app including browser history manipulation. Includes:
  * - A simulated browser history that is used by react-router
@@ -119,9 +129,26 @@ export const createTestStore = async ({ publicApp = false, embedApp = false } = 
     return store;
 }
 
+/**
+ * History state change events you can listen to in tests
+ */
+export const BROWSER_HISTORY_PUSH = `integrated-tests/BROWSER_HISTORY_PUSH`
+export const BROWSER_HISTORY_REPLACE = `integrated-tests/BROWSER_HISTORY_REPLACE`
+export const BROWSER_HISTORY_POP = `integrated-tests/BROWSER_HISTORY_POP`
+
 const testStoreEnhancer = (createStore, history, getRoutes) => {
+
     return (...args) => {
         const store = createStore(...args);
+
+        // Because we don't have an access to internal actions of react-router,
+        // let's create synthetic actions from actual history changes instead
+        history.listen((location) => {
+            store.dispatch({
+                type: `integrated-tests/BROWSER_HISTORY_${location.action}`,
+                location: location
+            })
+        });
 
         const testStoreExtensions = {
             _originalDispatch: store.dispatch,
@@ -172,6 +199,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
                 if (allActionsAreTriggered()) {
                     // Short-circuit if all action types are already in the history of dispatched actions
+                    store._latestDispatchedActions = getRemainingActions();
                     return Promise.resolve();
                 } else {
                     return new Promise((resolve, reject) => {
@@ -206,6 +234,10 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
              * Logs the actions that have been dispatched so far
              */
             debug: () => {
+                if (store._onActionDispatched) {
+                    console.log("You have `store.waitForActions(...)` still in progress – have you forgotten to prepend `await` to the method call?")
+                }
+
                 console.log(
                     chalk.bold("Dispatched actions since last call of `waitForActions`:\n") +
                     (store._latestDispatchedActions.map(store._formatDispatchedAction).join("\n") || "No dispatched actions") +
@@ -349,8 +381,9 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
 }
 
 // Set the correct base url to metabase/lib/api module
-if (process.env.E2E_HOST) {
-    api.basename = process.env.E2E_HOST;
+if (process.env.TEST_FIXTURE_BACKEND_HOST && process.env.TEST_FIXTURE_BACKEND_HOST) {
+    // Default to the test db fixture
+    api.basename = process.env.TEST_FIXTURE_BACKEND_HOST;
 } else {
     console.log(
         'Please use `yarn run test-integrated` or `yarn run test-integrated-watch` for running integration tests.'
