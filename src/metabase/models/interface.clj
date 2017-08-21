@@ -3,8 +3,8 @@
             [clojure.core.memoize :as memoize]
             [metabase.util :as u]
             [metabase.util
-             [encryption :as encryption]
-             [schema :as su]]
+             [cron :as cron-util]
+             [encryption :as encryption]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan.models :as models])
@@ -63,7 +63,7 @@
   :out decompress)
 
 (defn- validate-cron-string [s]
-  (s/validate (s/maybe su/CronScheduleString) s))
+  (s/validate (s/maybe cron-util/CronScheduleString) s))
 
 (models/add-type! :cron-string
   :in  validate-cron-string

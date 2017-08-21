@@ -2,6 +2,10 @@ import {
     createTestStore,
     login
 } from "__support__/integrated_tests";
+import {
+    click, clickButton,
+    setInputValue
+} from "__support__/enzyme_utils"
 
 import { DashboardApi, PublicApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
@@ -109,14 +113,14 @@ describe("Dashboard", () => {
             await store.waitForActions([FETCH_DASHBOARD])
 
             // Test dashboard renaming
-            app.find(".Icon.Icon-pencil").simulate("click");
+            click(app.find(".Icon.Icon-pencil"));
             await store.waitForActions([SET_EDITING_DASHBOARD]);
 
             const headerInputs = app.find(".Header-title input")
-            headerInputs.first().simulate("change", {target: {value: "Customer Analysis Paralysis"}})
-            headerInputs.at(1).simulate("change", {target: {value: ""}}) // Test empty description
+            setInputValue(headerInputs.first(), "Customer Analysis Paralysis")
+            setInputValue(headerInputs.at(1), "")
 
-            app.find(EditBar).find(".Button--primary.Button").simulate("click");
+            clickButton(app.find(EditBar).find(".Button--primary.Button"));
             await store.waitForActions([SAVE_DASHBOARD_AND_CARDS, FETCH_DASHBOARD])
 
             await delay(200)
@@ -133,26 +137,28 @@ describe("Dashboard", () => {
             await store.waitForActions([FETCH_DASHBOARD])
 
             // Test parameter filter creation
-            app.find(".Icon.Icon-pencil").simulate("click");
+            click(app.find(".Icon.Icon-pencil"));
             await store.waitForActions([SET_EDITING_DASHBOARD]);
-            app.find(".Icon.Icon-funneladd").simulate("click");
+            click(app.find(".Icon.Icon-funneladd"));
             // Choose Time filter type
-            app.find(ParameterOptionsSection)
-                .filterWhere((section) => section.text().match(/Time/))
-                .simulate("click");
+            click(
+                app.find(ParameterOptionsSection)
+                    .filterWhere((section) => section.text().match(/Time/))
+            );
 
             // Choose Relative date filter
-            app.find(ParameterOptionItem)
-                .filterWhere((item) => item.text().match(/Relative Date/))
-                .simulate("click");
+            click(
+                app.find(ParameterOptionItem)
+                    .filterWhere((item) => item.text().match(/Relative Date/))
+            )
 
             await store.waitForActions(ADD_PARAMETER)
 
-            app.find(ParameterValueWidget).simulate("click");
-            app.find(PredefinedRelativeDatePicker).find("button[children='Yesterday']").simulate("click");
+            click(app.find(ParameterValueWidget));
+            clickButton(app.find(PredefinedRelativeDatePicker).find("button[children='Yesterday']"));
             expect(app.find(ParameterValueWidget).text()).toEqual("Yesterday");
 
-            app.find(HeaderModal).find("button[children='Done']").simulate("click")
+            clickButton(app.find(HeaderModal).find("button[children='Done']"))
 
             // Wait until the header modal exit animation is finished
             await store.waitForActions([SET_EDITING_PARAMETER_ID])

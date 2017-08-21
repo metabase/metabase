@@ -1,8 +1,8 @@
 import {
     login,
-    createTestStore,
-    clickRouterLink
+    createTestStore
 } from "__support__/integrated_tests";
+import { click } from "__support__/enzyme_utils"
 
 import React from 'react';
 import { mount } from 'enzyme';
@@ -171,7 +171,7 @@ describe("The Reference Section", () => {
 
             const usefulQuestionLink = fieldDetails.find(UsefulQuestions).find(QueryButton).first().find("a");
             expect(usefulQuestionLink.text()).toBe("Number of Orders grouped by Created At")
-            clickRouterLink(usefulQuestionLink);
+            click(usefulQuestionLink);
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 

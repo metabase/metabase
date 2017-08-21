@@ -1,3 +1,5 @@
+import { click } from "__support__/enzyme_utils";
+
 import React from 'react'
 import { shallow } from 'enzyme'
 import sinon from 'sinon'
@@ -12,7 +14,7 @@ describe('new user onboarding modal', () => {
             const nextButton = wrapper.find('a')
 
             expect(wrapper.state().step).toEqual(1)
-            nextButton.simulate('click')
+            click(nextButton)
             expect(wrapper.state().step).toEqual(2)
         })
 
@@ -26,7 +28,7 @@ describe('new user onboarding modal', () => {
 
             const nextButton = wrapper.find('a')
             expect(nextButton.text()).toEqual('Let\'s go')
-            nextButton.simulate('click')
+            click(nextButton);
             expect(onClose.called).toEqual(true)
         })
     })

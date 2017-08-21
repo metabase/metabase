@@ -160,7 +160,8 @@
   {:pre [(keyword? aggregation-type)]}
   (if-not field
     ;; aggregation clauses w/o a field
-    (do (assert (= aggregation-type :count)
+    (do (assert (or (= aggregation-type :count)
+                    (= aggregation-type :cumulative-count))
           (format "Aggregations of type '%s' must specify a field." aggregation-type))
         :%count.*)
     ;; aggregation clauses w/ a Field

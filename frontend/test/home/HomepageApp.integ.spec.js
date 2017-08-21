@@ -1,7 +1,9 @@
 import {
     login,
-    createTestStore, createSavedQuestion, clickRouterLink
+    createTestStore,
+    createSavedQuestion
 } from "__support__/integrated_tests";
+import { click } from "__support__/enzyme_utils"
 
 import React from 'react';
 import { mount } from "enzyme";
@@ -76,7 +78,7 @@ describe("HomepageApp", () => {
 
             const activityFeed = homepageApp.find(Activity);
             const metricLink = activityFeed.find(ActivityItem).find('a[children="Vendor count"]').first();
-            clickRouterLink(metricLink)
+            click(metricLink)
             
             await store.waitForActions([QUERY_COMPLETED]);
             expect(app.find(Scalar).text()).toBe("200");

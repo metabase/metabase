@@ -72,7 +72,7 @@
 (defmethod extract-features (type Card)
   [opts card]
   (let [query (-> card :dataset_query :query)
-        {:keys [rows cols :as dataset]} (metadata/query-values
+        {:keys [rows cols] :as dataset} (metadata/query-values
                                          (metadata/db-id card)
                                          (merge (extract-query-opts opts)
                                                 query))
