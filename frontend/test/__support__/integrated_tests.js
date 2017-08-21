@@ -44,7 +44,7 @@ let simulateOfflineMode = false;
 /**
  * Login to the Metabase test instance with default credentials
  */
-export async function login() {
+export async function login({ username = "bob@metabase.com", password = "12341234" } = {}) {
     if (hasStartedCreatingStore) {
         console.warn(
             "Warning: You have created a test store before calling login() which means that up-to-date site settings " +
@@ -56,7 +56,7 @@ export async function login() {
     if (isTestFixtureDatabase() && process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID) {
         loginSession = { id: process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID }
     } else {
-        loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
+        loginSession = await SessionApi.create({ username, password });
     }
 }
 

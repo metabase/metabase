@@ -1,7 +1,7 @@
 import {
     createTestStore,
     switchToPlainDatabase,
-    BROWSER_HISTORY_REPLACE
+    BROWSER_HISTORY_REPLACE, login
 } from "__support__/integrated_tests";
 import {
     chooseSelectOption,
@@ -10,13 +10,19 @@ import {
     setInputValue
 } from "__support__/enzyme_utils";
 
+import {
+    COMPLETE_SETUP,
+    SET_ACTIVE_STEP,
+    SET_ALLOW_TRACKING,
+    SET_DATABASE_DETAILS,
+    SET_USER_DETAILS,
+    SUBMIT_SETUP,
+    VALIDATE_PASSWORD
+} from "metabase/setup/actions";
+
 import path from "path";
 import { mount } from "enzyme";
 import Setup from "metabase/setup/components/Setup";
-import {
-    SET_ACTIVE_STEP, SET_ALLOW_TRACKING, SET_DATABASE_DETAILS, SET_USER_DETAILS,
-    VALIDATE_PASSWORD
-} from "metabase/setup/actions";
 import { delay } from "metabase/lib/promise";
 import UserStep from "metabase/setup/components/UserStep";
 import DatabaseConnectionStep from "metabase/setup/components/DatabaseConnectionStep";
@@ -25,11 +31,17 @@ import Toggle from "metabase/components/Toggle";
 import FormField from "metabase/components/form/FormField";
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 import { SyncOption } from "metabase/admin/databases/components/DatabaseSchedulingForm";
+import { FETCH_ACTIVITY } from "metabase/home/actions";
+import NewUserOnboardingModal from "metabase/home/components/NewUserOnboardingModal";
+import StepIndicators from "metabase/components/StepIndicators";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 describe("setup wizard", () => {
     let store = null;
     let app = null;
+
+    const email = 'testy@metabase.com'
+    const strongPassword = 'QJbHYJN3tPW[29AoBM3#rsfB4@hshp>gC8mDmUTtbGTfExY]#nBjmtX@NmEJwxBc'
 
     beforeAll(async () => {
         switchToPlainDatabase();
@@ -56,7 +68,7 @@ describe("setup wizard", () => {
 
         setInputValue(userStep.find('input[name="first_name"]'), 'Testy')
         setInputValue(userStep.find('input[name="last_name"]'), 'McTestface')
-        setInputValue(userStep.find('input[name="email"]'), 'testy@metabase.com')
+        setInputValue(userStep.find('input[name="email"]'), email)
         setInputValue(userStep.find('input[name="site_name"]'), 'Epic Team')
 
         // test first with a weak password
@@ -68,7 +80,6 @@ describe("setup wizard", () => {
         expect(nextButton.props().disabled).toBe(true)
 
         // then with a strong password, generated with my beloved password manager
-        const strongPassword = 'QJbHYJN3tPW[29AoBM3#rsfB4@hshp>gC8mDmUTtbGTfExY]#nBjmtX@NmEJwxBc'
         setInputValue(userStep.find('input[name="password"]'), strongPassword)
         await store.waitForActions([VALIDATE_PASSWORD])
         setInputValue(userStep.find('input[name="password_confirm"]'), strongPassword)
@@ -168,27 +179,38 @@ describe("setup wizard", () => {
     it("should let you finish setup and subscribe to newsletter", async () => {
         const preferencesStep = app.find(PreferencesStep)
         const nextButton = preferencesStep.find('button[children="Next"]')
-        click(nextButton)
-    });
+        clickButton(nextButton)
+        await store.waitForActions([COMPLETE_SETUP, SUBMIT_SETUP])
 
-    it("should show you the onboarding modal", async () => {
         const allSetUpSection = app.find(".SetupStep").last()
         expect(allSetUpSection.find('.SetupStep--active').length).toBe(1)
 
-        const takeToMetabaseButton = allSetUpSection.find("a[href='/?new']")
-        click(takeToMetabaseButton)
+        expect(allSetUpSection.find('a[href="/?new"]').length).toBe(1)
+    });
 
-        // listen to router redirect here ...? maybe not need for that
-        expect(store.getUrl()).toBe("/?new");
+    it("should show you the onboarding modal", async () => {
+        // we can't persist the cookies of previous step so do the login manually here
+        await login({ username: email, password: strongPassword })
+        // redirect to `?new` caused some trouble in tests so create a new store for testing the modal interaction
+        const loggedInStore = await createTestStore();
+        loggedInStore.pushPath("/?new")
+        const loggedInApp = mount(loggedInStore.getAppContainer());
 
-        const modal = app.find(".Modal h2:first-child")
+        await loggedInStore.waitForActions([FETCH_ACTIVITY])
 
-        // const onboardingModalHeading = await findElement(driver, ".Modal h2:first-child");
-        // expect(await onboardingModalHeading.getText()).toBe('Testy, welcome to Metabase!');
-    })
+        const modal = loggedInApp.find(NewUserOnboardingModal)
+        const stepIndicators = modal.find(StepIndicators)
+        expect(modal.length).toBe(1)
+        expect(stepIndicators.prop('currentStep')).toBe(1);
 
-    it("should result in an installation with an expected state", async () => {
+        click(modal.find('a[children="Next"]'))
+        expect(stepIndicators.prop('currentStep')).toBe(2);
 
+        click(modal.find('a[children="Next"]'))
+        expect(stepIndicators.prop('currentStep')).toBe(3);
+
+        click(modal.find('a[children="Let\'s go"]'))
+        expect(loggedInApp.find(NewUserOnboardingModal).length).toBe(0);
     })
 
     afterAll(async () => {

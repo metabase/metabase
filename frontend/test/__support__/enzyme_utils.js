@@ -17,6 +17,9 @@ export const click = (enzymeWrapper) => {
 }
 
 export const clickButton = (enzymeWrapper) => {
+    if (enzymeWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `clickButton(wrapper)` is empty.")
+    }
     // `clickButton` is separate from `click` because `wrapper.closest(..)` sometimes results in error
     // if the parent element isn't found, https://github.com/airbnb/enzyme/issues/410
 
@@ -40,11 +43,19 @@ export const clickButton = (enzymeWrapper) => {
 }
 
 export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
+    if (inputWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `setInputValue(...)` is empty.")
+    }
+
     inputWrapper.simulate('change', { target: { value: value } });
     if (blur) inputWrapper.simulate("blur")
 }
 
 export const chooseSelectOption = (optionWrapper) => {
+    if (optionWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `chooseSelectOption(...)` is empty.")
+    }
+
     const optionValue = optionWrapper.prop('value');
     const parentSelect = optionWrapper.closest("select");
     parentSelect.simulate('change', { target: { value: optionValue } });
