@@ -117,6 +117,22 @@
               :pk? true}}}
   (driver/describe-table (MongoDriver.) (data/db) (Table (data/id :venues))))
 
+
+;;; table-rows-sample
+(datasets/expect-with-engine :mongo
+  [[1 "Red Medicine"]
+   [2 "Stout Burgers & Beers"]
+   [3 "The Apple Pan"]
+   [4 "Wurstküche"]
+   [5 "Brite Spot Family Restaurant"]]
+  (driver/sync-in-context (MongoDriver.) (data/db)
+    (fn []
+      (vec (take 5 (driver/table-rows-sample (MongoDriver.)
+                                             (Table (data/id :venues))
+                                             [(Field (data/id :venues :id))
+                                              (Field (data/id :venues :name))]))))))
+
+
 ;; ## Big-picture tests for the way data should look post-sync
 
 ;; Test that Tables got synced correctly, and row counts are correct
