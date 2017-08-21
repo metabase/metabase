@@ -48,10 +48,11 @@ export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId
 )
 
 const FETCH_CARD_XRAY = 'metabase/xray/FETCH_CARD_XRAY';
-export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId) =>
+export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =>
     async () => {
         try {
-            const xray = await XRayApi.card_xray({ cardId });
+            const c = COSTS[cost]
+            const xray = await XRayApi.card_xray({ cardId, ...c.method });
             return xray;
         } catch (error) {
             console.error(error);
@@ -180,6 +181,9 @@ export default handleActions({
     },
     [FETCH_TABLE_XRAY]: {
         next: (state, { payload }) => assoc(state, 'tableXray', payload)
+    },
+    [FETCH_CARD_XRAY]: {
+        next: (state, { payload }) => assoc(state, 'cardXray', payload)
     },
     [FETCH_SEGMENT_XRAY]: {
         next: (state, { payload }) => assoc(state, 'segmentXray', payload)
