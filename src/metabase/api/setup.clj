@@ -17,6 +17,7 @@
              [session :refer [Session]]
              [user :as user :refer [User]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [trs trsn tru trun]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -107,9 +108,9 @@
         num-tables         (db/count 'Table)
         num-cards          (db/count 'Card)
         num-users          (db/count 'User)]
-    [{:title       "Add a database"
-      :group       "Get connected"
-      :description "Connect to your data so your whole team can start to explore."
+    [{:title       (trs "Add a database")
+      :group       (trs "Get connected")
+      :description (trs "Connect to your data so your whole team can start to explore.")
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
