@@ -8,8 +8,6 @@ import Tooltip from 'metabase/components/Tooltip'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import ItemLink from 'metabase/xray/components/ItemLink'
 
-import Histogram from 'metabase/xray/Histogram'
-
 import ComparisonHeader from 'metabase/xray/components/ComparisonHeader'
 
 import { getIconForField } from 'metabase/lib/schema_metadata'
@@ -45,7 +43,8 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
                 color: itemBColor.text,
                 backgroundColor: Color(itemBColor.main).lighten(0.4)
             }}
-        > <h3>{itemB}</h3>
+        >
+            <h3>{itemB}</h3>
         </div>
     </div>
 
