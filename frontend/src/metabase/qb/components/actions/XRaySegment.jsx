@@ -5,19 +5,24 @@ import type {
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
-    console.log(card);
-    if (card.id) {
-        return [
-            {
-                name: "underlying-data",
-                title: "XRay this Card",
-                icon: "table",
-                url: () => {
-                    return `/xray/card/${card.id}`;
-                }
-            }
-        ];
+import { isSegmentFilter } from "metabase/lib/query/filter";
+
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    if (question.card().id) {
+        return question
+            .query()
+            .filters()
+            .filter(filter => isSegmentFilter(filter))
+            .map(filter => {
+                const id = filter[1];
+                const segment = question.metadata().segments[id];
+                return {
+                    name: "xray-segment",
+                    title: `XRay ${segment && segment.name}`,
+                    icon: "table",
+                    url: () => `/xray/segment/${id}/approximate`
+                };
+            });
     } else {
         return [];
     }
