@@ -10,6 +10,7 @@ import type { LocationDescriptor } from "metabase/meta/types";
 import Ellipsified from "metabase/components/Ellipsified";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
+import EmptyState from "metabase/components/EmptyState";
 
 type Props = {
     // Component parameters
@@ -108,11 +109,31 @@ export default class EntitySearch extends Component {
                                 autoFocus
                             />
                         </div>
-                        <GroupedSearchResultsList
-                            currentGrouping={currentGrouping}
-                            entities={filteredEntities}
-                            chooseEntity={chooseEntity}
-                        />
+                        { filteredEntities.length > 0 &&
+                            <GroupedSearchResultsList
+                                currentGrouping={currentGrouping}
+                                entities={filteredEntities}
+                                chooseEntity={chooseEntity}
+                            />
+                        }
+                        { filteredEntities.length === 0 &&
+                            <div className="mt4">
+                                <EmptyState
+                                    message={
+                                        <div className="mt4">
+                                            <h3 className="text-grey-5">No results found</h3>
+                                            <p className="text-grey-4">Try adjusting your filter to find what you’re
+                                                looking for.</p>
+                                        </div>
+                                    }
+                                    image="/app/img/empty_dashboard"
+                                    imageHeight="210px"
+                                    action="Create a dashboard"
+                                    imageClassName="mln2"
+                                    smallDescription
+                                />
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
