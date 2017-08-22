@@ -34,7 +34,7 @@
   "Fetch *all* `Segments`."
   []
   (filter mi/can-read? (-> (db/select Segment, :is_active true, {:order-by [[:%lower.name :asc]]})
-                               (hydrate :creator))))
+                           (hydrate :creator))))
 
 
 (api/defendpoint PUT "/:id"

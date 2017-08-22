@@ -72,7 +72,8 @@
    ["33 Taps"]
    ["800 Degrees Neapolitan Pizzeria"]
    ["BCD Tofu House"]]
-  (->> (#'sql/table-rows-sample datasets/*driver* (Table (data/id :venues)) [(Field (data/id :venues :name))])
+  (->> (driver/table-rows-sample (Table (data/id :venues))
+         [(Field (data/id :venues :name))])
        ;; since order is not guaranteed do some sorting here so we always get the same results
        (sort-by first)
        (take 5)))
