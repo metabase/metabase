@@ -34,7 +34,7 @@ const GrowthRateDisplay = ({ period }) =>
                     color: period.value > 0 ? saturated.green : saturated.red
                 })}
             >
-                {period.value && (period.value).toFixed(2)}%
+                {period.value && (period.value * 100).toFixed(2)}%
             </h1>
         </div>
     </div>
