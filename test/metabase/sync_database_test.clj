@@ -16,8 +16,10 @@
             [metabase.test
              [data :refer :all]
              [util :as tu]]
+            [metabase.test.mock.util :as mock-util]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -57,20 +59,15 @@
                                :schema nil}
             :dest-column-name "studio"}})))
 
-;; enough values that it won't get marked as a Category, but still get a fingerprint or w/e
-(defn- table-rows-sample [_ _ fields]
-  (for [i (range 500)]
-    (repeat (count fields) i)))
-
 (extend SyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:describe-database     describe-database
-          :describe-table        describe-table
-          :describe-table-fks    describe-table-fks
-          :features              (constantly #{:foreign-keys})
-          :details-fields        (constantly [])
-          :table-rows-sample     table-rows-sample}))
+         {:describe-database        describe-database
+          :describe-table           describe-table
+          :describe-table-fks       describe-table-fks
+          :features                 (constantly #{:foreign-keys})
+          :details-fields           (constantly [])
+          :process-query-in-context mock-util/process-query-in-context}))
 
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
@@ -98,7 +95,7 @@
    :entity_type             nil
    :entity_name             nil
    :visibility_type         nil
-   :rows                    nil
+   :rows                    1000
    :active                  true
    :created_at              true
    :updated_at              true})

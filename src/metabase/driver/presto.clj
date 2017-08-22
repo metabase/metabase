@@ -181,15 +181,6 @@
      :columns (map (comp keyword :name) columns)
      :rows    rows}))
 
-(defn- table-rows-sample [table fields]
-  ;; TODO - look into making this actually lazy
-  (let [{:keys [details]} (table/database table)
-        sql               (format "SELECT %s FROM %s LIMIT %d"
-                                  (str/join ", " (for [{field-name :name} fields]
-                                                   (quote-name field-name)))
-                                  (quote+combine-names (:schema table) (:name table))
-                                  driver/max-sample-rows)]
-    (:rows (execute-presto-query! details sql))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -204,13 +195,6 @@
 
     #".*" ; default
     message))
-
-(defn- table-rows-seq [{:keys [details]} {:keys [schema name]}]
-  (let [sql                        (format "SELECT * FROM %s" (quote+combine-names schema name))
-        {:keys [rows], :as result} (execute-presto-query! details sql)
-        columns                    (map (comp keyword :name) (:columns result))]
-    (for [row rows]
-      (zipmap columns row))))
 
 
 ;;; ISQLDriver implementation
@@ -310,9 +294,7 @@
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
-          :table-rows-sample                 (u/drop-first-arg table-rows-sample)
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :table-rows-seq                    (u/drop-first-arg table-rows-seq)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

@@ -248,17 +248,6 @@
   (query driver database table {:select [:*]}))
 
 
-(defn- table-rows-sample [driver table fields]
-  (->> (binding [*jdbc-options* {:as-arrays? true}]
-         (query driver (table/database table) (apply-limit driver
-                                                           {:select (for [field fields]
-                                                                      (keyword (:name field)))
-                                                            :from   [(qualify+escape table)]}
-                                                           {:limit driver/max-sample-rows})))
-       ;; the first row coming back will be the columns list so go ahead and drop it like it's hot
-       (drop 1)))
-
-
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
@@ -395,5 +384,4 @@
           :features                features
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
           :notify-database-updated notify-database-updated
-          :table-rows-seq          table-rows-seq
-          :table-rows-sample       table-rows-sample}))
+          :table-rows-seq          table-rows-seq}))

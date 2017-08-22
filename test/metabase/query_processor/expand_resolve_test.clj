@@ -4,7 +4,7 @@
             [metabase.query-processor.middleware
              [expand :as ql]
              [resolve :as resolve]
-             [source-table :as st]]
+             [source-table :as source-table]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
@@ -30,7 +30,7 @@
   resolving the source table and the middleware that resolves the rest
   of the expanded query into a single function to make tests more
   concise."
-  (comp resolve/resolve (st/resolve-source-table-middleware identity)))
+  (comp resolve/resolve (source-table/resolve-source-table-middleware identity)))
 
 (def ^:private field-ph-defaults
   {:fk-field-id        nil
@@ -55,12 +55,12 @@
    :values          []})
 
 (def ^:private price-field-values
-  {:field-value-id true
-   :created-at true
-   :updated-at true
-   :values [1 2 3 4]
+  {:field-value-id        true
+   :created-at            true
+   :updated-at            true
+   :values                [1 2 3 4]
    :human-readable-values {}
-   :field-id true})
+   :field-id              true})
 
 ;; basic rows query w/ filter
 (expect
@@ -91,7 +91,8 @@
                                                    :schema-name        "PUBLIC"
                                                    :table-name         "VENUES"
                                                    :values             price-field-values
-                                                   :fingerprint        {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}})
+                                                   :fingerprint        {:global {:distinct-count 4}
+                                                                        :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}})
                               :value       {:value 1
                                             :field (merge field-defaults
                                                           {:field-id           true
@@ -103,7 +104,8 @@
                                                            :schema-name        "PUBLIC"
                                                            :table-name         "VENUES"
                                                            :values             price-field-values
-                                                           :fingerprint        {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}})}}
+                                                           :fingerprint        {:global {:distinct-count 4}
+                                                                                :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}})}}
 
 
                :join-tables nil}
@@ -154,7 +156,11 @@
                                                        :table-id           (id :categories)
                                                        :table-name         "CATEGORIES__via__CATEGORY_ID"
                                                        :values             category-field-values
-                                                       :fingerprint        {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})
+                                                       :fingerprint        {:global {:distinct-count 75}
+                                                                            :type   {:type/Text {:percent-json   0.0
+                                                                                                 :percent-url    0.0
+                                                                                                 :percent-email  0.0
+                                                                                                 :average-length 8.333333333333334}}}})
                                   :value       {:value "abc"
                                                 :field (merge field-defaults
                                                               {:field-id           true
@@ -166,7 +172,11 @@
                                                                :table-id           (id :categories)
                                                                :table-name         "CATEGORIES__via__CATEGORY_ID"
                                                                :values             category-field-values
-                                                               :fingerprint        {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333333333333334}}}})}}
+                                                               :fingerprint        {:global {:distinct-count 75}
+                                                                                    :type   {:type/Text {:percent-json   0.0
+                                                                                                         :percent-url    0.0
+                                                                                                         :percent-email  0.0
+                                                                                                         :average-length 8.333333333333334}}}})}}
                    :join-tables  [{:source-field {:field-id   true
                                                   :field-name "CATEGORY_ID"}
                                    :pk-field     {:field-id   true
@@ -179,8 +189,8 @@
     :table-ids    #{(id :categories)}}]
   (tu/boolean-ids-and-timestamps
    (let [expanded-form (ql/expand (wrap-inner-query (query venues
-                                                      (ql/filter (ql/= $category_id->categories.name
-                                                                       "abc")))))]
+                                                           (ql/filter (ql/= $category_id->categories.name
+                                                                            "abc")))))]
      (mapv obj->map [expanded-form
                      (resolve' expanded-form)]))))
 
@@ -217,7 +227,7 @@
                                                                :special-type       nil
                                                                :table-id           (id :users)
                                                                :table-name         "USERS__via__USER_ID"
-                                                               :fingerprint        {:global {:distinct-count 15}}})
+                                                               :fingerprint        {:global {:distinct-count 11}}})
                                                 :unit  :year}
                                   :value       {:value (u/->Timestamp "1980-01-01")
                                                 :field {:field
@@ -231,7 +241,7 @@
                                                                 :visibility-type    :normal
                                                                 :table-id           (id :users)
                                                                 :table-name         "USERS__via__USER_ID"
-                                                                :fingerprint        {:global {:distinct-count 15}}})
+                                                                :fingerprint        {:global {:distinct-count 11}}})
                                                         :unit :year}}}
                    :join-tables  [{:source-field {:field-id   (id :checkins :user_id)
                                                   :field-name "USER_ID"}
@@ -259,11 +269,11 @@
                :aggregation  [{:aggregation-type :sum
                                :custom-name      nil
                                :field            (merge field-ph-defaults
-                                                        {:field-id           true
-                                                         :fk-field-id        (id :checkins :venue_id)})}]
+                                                        {:field-id    true
+                                                         :fk-field-id (id :checkins :venue_id)})}]
                :breakout     [(merge field-ph-defaults
-                                     {:field-id           true
-                                      :datetime-unit      :day-of-week})]}}
+                                     {:field-id      true
+                                      :datetime-unit :day-of-week})]}}
    ;; resolved form
    {:database     (id)
     :type         :query
@@ -282,7 +292,8 @@
                                                              :fk-field-id        (id :checkins :venue_id)
                                                              :table-name         "VENUES__via__VENUE_ID"
                                                              :values             price-field-values
-                                                             :fingerprint {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}})}]
+                                                             :fingerprint        {:global {:distinct-count 4}
+                                                                                  :type   {:type/Number {:min 1, :max 4, :avg 2.03}}}})}]
                    :breakout     [{:field (merge field-defaults
                                                  {:base-type          :type/Date
                                                   :table-id           (id :checkins)
@@ -305,8 +316,8 @@
     :fk-field-ids #{(id :checkins :venue_id)}
     :table-ids    #{(id :venues) (id :checkins)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query checkins
-                                                     (ql/aggregation (ql/sum $venue_id->venues.price))
-                                                     (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
+                                                          (ql/aggregation (ql/sum $venue_id->venues.price))
+                                                          (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
     (tu/boolean-ids-and-timestamps
      (mapv obj->map [expanded-form
                      (resolve' expanded-form)]))))

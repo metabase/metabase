@@ -34,10 +34,9 @@
    [3 "The Apple Pan"]
    [4 "Wurstküche"]
    [5 "Brite Spot Family Restaurant"]]
-  (->> (driver/table-rows-sample (BigQueryDriver.)
-                                 (Table (data/id :venues))
-                                 [(Field (data/id :venues :id))
-                                  (Field (data/id :venues :name))])
+  (->> (driver/table-rows-sample (Table (data/id :venues))
+         [(Field (data/id :venues :id))
+          (Field (data/id :venues :name))])
        (sort-by first)
        (take 5)))
 

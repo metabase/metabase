@@ -187,16 +187,6 @@
     (post-process-native (execute-bigquery database query-string))))
 
 
-(defn- table-rows-sample [{table-name :name, :as table} fields]
-  (let [{{dataset-name :dataset-id} :details, :as db} (table/database table)]
-    (:rows (process-native* db (format "SELECT %s FROM [%s.%s] LIMIT %d"
-                                       (str/join ", " (for [{field-name :name} fields]
-                                                        (format "[%s.%s.%s]" dataset-name table-name field-name)))
-                                       dataset-name table-name driver/max-sample-rows)))))
-
-
-
-
 ;;; # Generic SQL Driver Methods
 
 (defn- date-add [unit timestamp interval]
@@ -503,7 +493,6 @@
                                                            (when-not config/is-test?
                                                              ;; during unit tests don't treat bigquery as having FK support
                                                              #{:foreign-keys})))
-          :table-rows-sample        (u/drop-first-arg table-rows-sample)
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
           :mbql->native             (u/drop-first-arg mbql->native)}))
 

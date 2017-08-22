@@ -3,10 +3,10 @@
             [medley.core :as m]
             [metabase.models
              [database :refer [Database]]
-             field
-             [setting :refer [defsetting]]
-             table]
+             [setting :refer [defsetting]]]
+            [metabase.sync.interface :as si]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
@@ -15,13 +15,7 @@
 
 ;;; ## INTERFACE + CONSTANTS
 
-(def ^:const max-sample-rows
-  "The maximum number of values we should return when using `table-rows-sample`.
-   This many is probably fine for inferring special types and what-not; we don't want
-   to scan millions of values at any rate."
-  10000)
-
-(def ^:const connection-error-messages
+(def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
   {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
    :ssh-tunnel-auth-fail               "We couldn't connect to the ssh tunnel host. Check the username, password"
@@ -124,13 +118,16 @@
   *  `:foreign-keys` - Does this database support foreign key relationships?
   *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
-  *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently, everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
-  *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
-  *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
+  *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently,
+      everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
+  *  `:standard-deviation-aggregations` - Does this driver support standard deviation aggregations?
+  *  `:expressions` - Does this driver support expressions (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
-  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"
-  *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples are CTEs or subselects in SQL queries.")
+  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like
+      \"sum(x) + count(y)\" or \"avg(x + y)\"
+  *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
+      are CTEs or subselects in SQL queries.")
 
   (format-custom-field-name ^String [this, ^String custom-field-name]
     "*OPTIONAL*. Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the
@@ -189,31 +186,8 @@
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name`
      and `:schema` keys. (It is guaranteed too satisfy the `DatabaseMetadataTable` schema in
      `metabase.sync.interface`.) Currently, this is only used for iterating over the values in a `_metabase_metadata`
-     table. As such, the results are not expected to be returned lazily.
-     There is no expectation that the results be returned in any given order.")
-
-  ;; TODO - Not 100% sure we need this method since it seems like we could just use an MBQL query to fetch this info.
-  (table-rows-sample ^clojure.lang.Sequential [this, ^TableInstance table, fields]
-    "*OPTIONAL*. Return a sample of rows in TABLE with the specified FIELDS. This is used to implement some methods of the
-     database sync process which require rows of data during execution. At this time, this should just return a basic
-     sequence of rows in the fastest way possible, with no special sorting or any sort of randomization done to ensure
-     a good sample. (Improved sampling is something we plan to add in the future.)
-
-  The sample should return up to `max-sample-rows` rows, which is currently `10000`."))
-
-(defn- table-rows-sample-via-qp
-  "Default implementation of `table-rows-sample` that just runs a basic MBQL query to fetch values for a Table.
-   Prefer this to writing your own implementation of `table-rows-sample`; those are around for purely historical
-   reasons and may be removed in the future."
-  [_ table fields]
-  (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
-    (get-in results [:data :rows])))
+     table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
+     returned in any given order."))
 
 
 (def IDriverDefaultsMixin
@@ -226,8 +200,10 @@
    :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)
    :sync-in-context                   (fn [_ _ f] (f))
-   :table-rows-seq                    (constantly nil)
-   :table-rows-sample                 table-rows-sample-via-qp})
+   :table-rows-seq                    (fn [driver & _]
+                                        (throw
+                                         (NoSuchMethodException.
+                                          (str (name driver) " does not implement table-rows-seq."))))})
 
 
 ;;; ## CONFIG
@@ -262,8 +238,8 @@
     (log/warn (format "No -init-driver function found for '%s'" (name ns-symb)))))
 
 (defn find-and-load-drivers!
-  "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
-   function which provides a uniform way for Driver initialization to be done."
+  "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the
+   `driver-init` function which provides a uniform way for Driver initialization to be done."
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
@@ -381,3 +357,23 @@
         (when rethrow-exceptions
           (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
+
+
+(def ^:const max-sample-rows
+  "The maximum number of values we should return when using `table-rows-sample`.
+   This many is probably fine for inferring special types and what-not; we don't want
+   to scan millions of values at any rate."
+  10000)
+
+;; TODO - move this to the metadata-queries namespace or something like that instead
+(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+  [table :- si/TableInstance, fields :- [si/FieldInstance]]
+  (let [results ((resolve 'metabase.query-processor/process-query)
+                 {:database (:db_id table)
+                  :type     :query
+                  :query    {:source-table (u/get-id table)
+                             :fields       (vec (for [field fields]
+                                                  [:field-id (u/get-id field)]))
+                             :limit        max-sample-rows}})]
+    (get-in results [:data :rows])))

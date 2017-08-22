@@ -115,7 +115,11 @@
             :base_type    (data/expected-base-type->actual :type/Text)
             :name         (data/format-name "name")
             :display_name "Name"
-            :fingerprint  {:global {:distinct-count 75}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 8.333}}}})))
+            :fingerprint  {:global {:distinct-count 75}
+                           :type   {:type/Text {:percent-json   0.0
+                                                :percent-url    0.0
+                                                :percent-email  0.0
+                                                :average-length 8.333}}}})))
 
 ;; #### users
 (defn users-col
@@ -135,13 +139,17 @@
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
                   :display_name "Name"
-                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 13.267}}}}
+                  :fingerprint  {:global {:distinct-count 15}
+                                 :type   {:type/Text {:percent-json   0.0
+                                                      :percent-url    0.0
+                                                      :percent-email  0.0
+                                                      :average-length 13.267}}}}
      :last_login {:special_type nil
                   :base_type    (data/expected-base-type->actual :type/DateTime)
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default
-                  :fingerprint  {:global {:distinct-count 15}}})))
+                  :fingerprint  {:global {:distinct-count 11}}})))
 
 ;; #### venues
 (defn venues-columns
