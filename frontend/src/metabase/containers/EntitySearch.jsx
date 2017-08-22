@@ -129,7 +129,7 @@ const SEARCH_GROUPINGS = [
     },
     {
         name: "Table",
-        icon: "table",
+        icon: "table2",
         groupBy: (entity) => entity.table.id,
         getGroupName: (entity) => entity.table.display_name
     },
@@ -179,7 +179,7 @@ export class SearchGroupingOption extends Component {
         return (
             <li
                 className={cx(
-                    "my2 cursor-pointer text-uppercase",
+                    "my2 cursor-pointer text-uppercase text-green-saturated-hover",
                     {"text-grey-4": !active},
                     {"text-green-saturated": active}
                 )}
@@ -240,7 +240,7 @@ export class GroupedSearchResultsList extends Component {
 
 export const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
     <div>
-        <div className="flex align-center border-grey-1 bordered mt3 px2 py2" style={{ backgroundColor: "#F8F9FA" }}>
+        <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px2 py2">
             <Icon className="mr2 text-grey-3" name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
@@ -272,20 +272,19 @@ export class SearchResultListItem extends Component {
 
         return (
             <li
-                className="flex py2 px3 cursor-pointer bg-grey-0-hover border-bottom"
+                className="flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom"
                 onClick={this.onClick}
             >
-                <h3 className="text-brand flex-full"> { entity.name } </h3>
+                <h4 className="text-brand flex-full"> { entity.name } </h4>
                 { hasDescription && // take care of cutting off long description
-                <div className="text-grey-4" style={{ maxWidth: "450px"}}>
+                <div className="text-grey-4 text-small" style={{ maxWidth: "450px"}}>
                     <Ellipsified>{ entity.description }</Ellipsified>
                 </div>
                 }
                 { !hasDescription &&
-                <div className="text-grey-2"> No description </div>
+                <div className="text-grey-2 text-small"> No description </div>
                 }
             </li>
         )
     }
 }
-

@@ -27,6 +27,7 @@
   --error-color: #EF8C8C;
   --slate-color: #9BA5B1;
   --slate-light-color: #DFE8EA;
+  --slate-almost-extra-light-color: #EDF2F5;
   --slate-extra-light-color: #F9FBFC;
 }
 
@@ -154,7 +155,9 @@
 
 .bg-slate { background-color: var(--slate-color); }
 .bg-slate-light { background-color: var(--slate-light-color); }
+.bg-slate-almost-extra-light { background-color: var(--slate-almost-extra-light-color);}
 .bg-slate-extra-light { background-color: var(--slate-extra-light-color); }
+.bg-slate-extra-light-hover:hover { background-color: var(--slate-extra-light-color); }
 
 .text-dark, :local(.text-dark) {
     color: var(--dark-color);
