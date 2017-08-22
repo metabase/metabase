@@ -114,8 +114,7 @@ export class NewQuery extends Component {
         const updatedQuery = this.props.query
             .setDatabase(segment.table.database)
             .setTable(segment.table)
-            .addFilter(segment.definition.filter)
-        // how to set the segment ...?
+            .addFilter(segment.filterClause())
 
         this.props.onComplete(updatedQuery);
     }

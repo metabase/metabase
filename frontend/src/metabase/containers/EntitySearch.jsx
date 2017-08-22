@@ -10,7 +10,6 @@ import type { LocationDescriptor } from "metabase/meta/types";
 import Ellipsified from "metabase/components/Ellipsified";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 type Props = {
     // Component parameters
@@ -51,8 +50,7 @@ export default class EntitySearch extends Component {
         this.setState({ searchText }, this.applyFiltersAfterFilterChange)
     }
 
-    applyFiltersAfterFilterChange =
-        _.debounce(() => this.applyFiltersForEntities(this.props.entities), 200)
+    applyFiltersAfterFilterChange = () => this.applyFiltersForEntities(this.props.entities)
 
     applyFiltersForEntities = (entities) => {
         const { searchText } = this.state;
@@ -85,7 +83,7 @@ export default class EntitySearch extends Component {
                         <Icon
                             className="Entity-search-back-button shadowed cursor-pointer text-grey-4 mr2 flex align-center circle p2 bg-white transition-background transition-color"
                             style={{
-                                border: "1px soli #DCE1E4",
+                                border: "1px solid #DCE1E4",
                                 boxShadow: "0 2px 4px 0 #DCE1E4"
                             }}
                             name="backArrow"
@@ -95,16 +93,21 @@ export default class EntitySearch extends Component {
                             <h2>{title}</h2>
                         </div>
                     </div>
-                    <div className="bg-white">
-                        <SearchHeader
-                            searchText={searchText}
-                            setSearchText={this.setSearchText}
-                            autoFocus
-                        />
+                    <div>
                         <SearchGroupingOptions
                             currentGrouping={currentGrouping}
                             setGrouping={this.setGrouping}
                         />
+                        <div
+                            className="bg-white bordered border-grey-1 rounded"
+                            style={{ padding: "5px 15px" }}
+                        >
+                            <SearchHeader
+                                searchText={searchText}
+                                setSearchText={this.setSearchText}
+                                autoFocus
+                            />
+                        </div>
                         <GroupedSearchResultsList
                             currentGrouping={currentGrouping}
                             entities={filteredEntities}
@@ -174,7 +177,14 @@ class SearchGroupingOption extends Component {
         const { grouping, active } = this.props;
 
         return (
-            <li className={cx("my2 text-uppercase", { "text-brand": active })} onClick={this.onSetGrouping}>
+            <li
+                className={cx(
+                    "my2 cursor-pointer text-uppercase",
+                    {"text-grey-4": !active},
+                    {"text-green-saturated": active}
+                )}
+                onClick={this.onSetGrouping}
+            >
                 {grouping.name}
             </li>
         )
@@ -230,21 +240,21 @@ class GroupedSearchResultsList extends Component {
 
 const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
     <div>
-        <div className="flex">
-            <Icon className="mr1" name={groupIcon} size={12} />
+        <div className="flex align-center border-grey-1 bordered mt3 px2 py2" style={{ backgroundColor: "#F8F9FA" }}>
+            <Icon className="mr2 text-grey-3" name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
         <SearchResultsList entities={entities} />
     </div>
 
 const SearchResultsList = ({ entities, chooseEntity }) =>
-    <ol className="flex-full">
+    <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom border-grey-1">
         { _.sortBy(entities, ({ name }) => name.toLowerCase()).map((entity) =>
             <SearchResultListItem entity={entity} chooseEntity={chooseEntity} />
         )}
+        <li style={{ height: "45px" }} />
     </ol>
 
-// const SearchResultListItem = ({ entity, chooseEntity }) => {
 class SearchResultListItem extends Component {
     props: {
         entity: any,
@@ -261,8 +271,8 @@ class SearchResultListItem extends Component {
         const hasDescription = !!entity.description;
 
         return (
-            <div
-                className="flex py2 cursor-pointer bg-grey-0-hover"
+            <li
+                className="flex py2 px3 cursor-pointer bg-grey-0-hover border-bottom"
                 onClick={this.onClick}
             >
                 <h3 className="text-brand flex-full"> { entity.name } </h3>
@@ -274,7 +284,7 @@ class SearchResultListItem extends Component {
                 { !hasDescription &&
                 <div className="text-grey-2"> No description </div>
                 }
-            </div>
+            </li>
         )
     }
 }

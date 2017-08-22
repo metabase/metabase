@@ -7,7 +7,7 @@
     .Entity-search-grouping-options {
         position: absolute;
         margin-left: -150px;
-        margin-top: -32px;
+        margin-top: 22px;
     }
 }
 
@@ -27,4 +27,8 @@
     .Entity-search-grouping-options > ul > li {
         margin-right: 10px;
     }
+}
+
+.Entity-search input {
+    width: 100%;
 }

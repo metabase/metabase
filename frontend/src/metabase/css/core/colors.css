@@ -22,6 +22,7 @@
   --orange-color: #F9A354;
   --purple-color: #A989C5;
   --green-color: #9CC177;
+  --green-saturated-color: #84BB4C;
   --dark-color: #4C545B;
   --error-color: #EF8C8C;
   --slate-color: #9BA5B1;
@@ -104,6 +105,11 @@
 .text-green,
 .text-green-hover:hover {
     color: var(--green-color);
+}
+
+.text-green-saturated,
+.text-green-saturated-hover:hover {
+    color: var(--green-saturated-color);
 }
 
 .text-orange,
