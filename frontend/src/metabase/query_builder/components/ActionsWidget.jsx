@@ -19,7 +19,10 @@ type Props = {
     card: Card,
     question: Question,
     setCardAndRun: (card: Card) => void,
-    navigateToNewCardInsideQB: (any) => void
+    navigateToNewCardInsideQB: (any) => void,
+    router: {
+        push: (string) => void
+    }
 };
 
 type State = {
