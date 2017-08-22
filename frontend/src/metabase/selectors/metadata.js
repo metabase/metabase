@@ -27,8 +27,8 @@ export const getNormalizedTables = state => state.metadata.tables;
 export const getNormalizedFields = state => state.metadata.fields;
 export const getNormalizedMetrics = state => state.metadata.metrics;
 export const getNormalizedSegments = state => state.metadata.segments;
-export const getMetadataRequestStates = state => (state.requests && state.requests.metadata) || {};
 
+export const getMetadataFetched = state => state.requests.fetched.metadata || {}
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -53,8 +53,6 @@ export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
-
-export const getMetadataLoaded = createSelector([getMetadataRequestStates], getLoadedStatuses);
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
 export const getMetadata = createSelector(

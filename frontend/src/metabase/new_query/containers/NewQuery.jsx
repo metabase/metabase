@@ -16,7 +16,7 @@ import Database from "metabase-lib/lib/metadata/Database";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
 import type { TableId } from "metabase/meta/types/Table";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { getMetadata, getMetadataLoaded } from "metabase/selectors/metadata";
+import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
@@ -31,7 +31,7 @@ const mapStateToProps = state => ({
     query: getCurrentQuery(state),
     plainNativeQuery: getPlainNativeQuery(state),
     metadata: getMetadata(state),
-    metadataLoaded: getMetadataLoaded(state),
+    metadataFetched: getMetadataFetched(state),
     isAdmin: getUserIsAdmin(state)
 })
 
@@ -129,10 +129,10 @@ export class NewQuery extends Component {
     }
 
     render() {
-        const { query, metadata, metadataLoaded, isAdmin } = this.props
+        const { query, metadata, metadataFetched, isAdmin } = this.props
         const { currentStep } = this.state;
 
-        if (!query || !metadataLoaded.metrics || !metadataLoaded.segments) {
+        if (!query || !metadataFetched.metrics || !metadataFetched.segments) {
             return <LoadingAndErrorWrapper loading={true}/>
         }
 

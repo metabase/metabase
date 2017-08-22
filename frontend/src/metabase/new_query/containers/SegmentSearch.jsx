@@ -5,16 +5,16 @@ import { connect } from 'react-redux'
 import { fetchDatabases, fetchSegments } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
-import { getMetadata, getMetadataLoaded } from "metabase/selectors/metadata";
+import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { Segment } from "metabase/meta/types/Segment";
 
-@connect(state => ({ metadata: getMetadata(state), metadataLoaded: getMetadataLoaded(state) }), { fetchSegments, fetchDatabases })
+@connect(state => ({ metadata: getMetadata(state), metadataFetched: getMetadataFetched(state) }), { fetchSegments, fetchDatabases })
 export default class SegmentSearch extends Component {
     props: {
         metadata: Metadata,
-        metadataLoaded: any,
+        metadataFetched: any,
         fetchSegments: () => void,
         fetchDatabases: () => void,
         onChooseSegment: (Segment) => void
@@ -26,9 +26,9 @@ export default class SegmentSearch extends Component {
     }
 
     render() {
-        const { metadataLoaded, metadata, onChooseSegment } = this.props;
+        const { metadataFetched, metadata, onChooseSegment } = this.props;
 
-        const isLoading = !metadataLoaded.segments || !metadataLoaded.databases
+        const isLoading = !metadataFetched.segments || !metadataFetched.databases
 
         return (
             <LoadingAndErrorWrapper loading={isLoading}>

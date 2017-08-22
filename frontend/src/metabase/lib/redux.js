@@ -65,7 +65,7 @@ export const fetchData = async ({
     const existingData = getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['fetch']);
     try {
-        const requestState = getIn(getState(), ["requests", ...statePath]);
+        const requestState = getIn(getState(), ["requests", "states", ...statePath]);
         if (!requestState || requestState.error || reload) {
             dispatch(setRequestState({ statePath, state: "LOADING" }));
             const data = await getData();
