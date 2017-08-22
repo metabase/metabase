@@ -18,7 +18,9 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [clj-time.format :as tformat]
+            [clj-time.core :as time])
   (:import java.util.Date
            [metabase.query_processor.interface DateTimeValue Value]))
 
@@ -40,25 +42,34 @@
 
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
+  (println "getting ready to parse " s)
   (or (u/ignore-exceptions (u/parse-date "HH:mm:ss.SSS ZZ" s))
       (u/parse-date "HH:mm:ss.SSS ZZZ" s)))
 
 (defn- parse-timestamp-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
+  (println "getting ready to parse " s)
   (or (u/ignore-exceptions (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
       (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
-(defn- field-type->parser [field-type]
+(def ^:private presto-date-time-formatter
+  (u/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+
+(defn- field-type->parser [report-timezone field-type]
   (condp re-matches field-type
     #"decimal.*"                bigdec
     #"time"                     (partial u/parse-date :hour-minute-second-ms)
     #"time with time zone"      parse-time-with-tz
-    #"timestamp"                (partial u/parse-date "yyyy-MM-dd HH:mm:ss.SSS")
+    #"timestamp"                (partial u/parse-date
+                                         (if-let [report-tz (and report-timezone
+                                                                 (time/time-zone-for-id report-timezone))]
+                                           (tformat/with-zone presto-date-time-formatter report-tz)
+                                           presto-date-time-formatter))
     #"timestamp with time zone" parse-timestamp-with-tz
     #".*"                       identity))
 
-(defn- parse-presto-results [columns data]
-  (let [parsers (map (comp field-type->parser :type) columns)]
+(defn- parse-presto-results [report-timezone columns data]
+  (let [parsers (map (comp #(field-type->parser report-timezone %) :type) columns)]
     (for [row data]
       (for [[value parser] (partition 2 (interleave row parsers))]
         (when (some? value)
@@ -68,7 +79,7 @@
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
     (when error
       (throw (ex-info (or (:message error) "Error running query.") error)))
-    (let [rows    (parse-presto-results columns data)
+    (let [rows    (parse-presto-results (:report-timezone details) columns data)
           results {:columns (or columns prev-columns)
                    :rows    (vec (concat prev-rows rows))}]
       (if (nil? nextUri)
@@ -82,7 +93,7 @@
                                                                   (assoc (details->request details-with-tunnel) :body query, :as :json))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
-      (let [rows    (parse-presto-results (or columns []) (or data []))
+      (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
             results {:columns (or columns [])
                      :rows    rows}]
         (if (nil? nextUri)

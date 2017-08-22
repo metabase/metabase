@@ -14,12 +14,11 @@
   (if (i/has-questionable-timezone-support? *driver*)
     10
     9)
-  (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (count (rows (data/dataset sad-toucan-incidents
-                               (data/run-query incidents
-                                               (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
-                                                                  (ql/< $timestamp "2015-06-03")))
-                                               (ql/order-by (ql/asc $timestamp))))))))
+  (count (rows (data/dataset sad-toucan-incidents
+                 (data/run-query incidents
+                   (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
+                                      (ql/< $timestamp "2015-06-03")))
+                   (ql/order-by (ql/asc $timestamp)))))))
 
 (expect-with-non-timeseries-dbs
   (cond
