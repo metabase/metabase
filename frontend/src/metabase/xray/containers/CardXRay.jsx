@@ -69,6 +69,16 @@ class CardXRay extends Component {
                                                 card: xray.features.card,
                                                 data: xray.dataset
                                             },
+                                            {
+                                                card: {
+                                                    display: 'line',
+                                                    name: 'Linear regression',
+                                                    visualization_settings: {
+
+                                                    }
+                                                },
+                                                data: xray.features['linear-regression'].value
+                                            }
                                         ]}
                                         className="full-height"
                                     />
