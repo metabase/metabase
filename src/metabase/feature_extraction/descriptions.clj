@@ -73,7 +73,9 @@
                             :description "Last 365 days over previous 365 days growth"}
    :WoW                    {:label       "Week over week"
                             :description "Last 7 days over previous 7 days growth"}
-   :DoD                    {:label "Day over day"}})
+   :DoD                    {:label "Day over day"}
+   :growth-series          {:label       "Growth series"
+                            :description "Series of relative changes"}})
 
 (def ^{:arglists '([features])} add-descriptions
   "Add descriptions of features to naked values where applicable."
