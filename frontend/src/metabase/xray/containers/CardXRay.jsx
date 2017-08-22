@@ -87,7 +87,7 @@ class CardXRay extends Component {
                                             {
                                                 card: {
                                                     display: 'line',
-                                                    name: 'Trend',
+                                                    name: 'Growth Trend',
                                                     visualization_settings: {
 
                                                     }
@@ -99,7 +99,68 @@ class CardXRay extends Component {
                                     />
                                 </div>
                             </div>
+                        </div>
 
+                        <Heading heading="Growth series" />
+                        <div className="full my2">
+                            <div className="bg-white bordered rounded shadowed" style={{ height: 320}}>
+                                <Visualization
+                                    series={[
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Trend',
+                                                visualization_settings: {
+
+                                                }
+                                            },
+                                            data: xray.features['growth-series']
+                                        }
+                                    ]}
+                                    className="full-height"
+                                />
+                            </div>
+                        </div>
+
+                        <Heading heading="Seasonal decomposition" />
+                        <div className="full my2">
+                            <div className="bg-white bordered rounded shadowed" style={{ height: 320}}>
+                                <Visualization
+                                    series={[
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Trend',
+                                                visualization_settings: {
+
+                                                }
+                                            },
+                                            data: xray.features['seasonal-decomposition'].value.trend
+                                        },
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Seasonal',
+                                                visualization_settings: {
+
+                                                }
+                                            },
+                                            data: xray.features['seasonal-decomposition'].value.seasonal
+                                        },
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Residual',
+                                                visualization_settings: {
+
+                                                }
+                                            },
+                                            data: xray.features['seasonal-decomposition'].value.residual
+                                        }
+                                    ]}
+                                    className="full-height"
+                                />
+                            </div>
                         </div>
                     </XRayPageWrapper>
                 }
