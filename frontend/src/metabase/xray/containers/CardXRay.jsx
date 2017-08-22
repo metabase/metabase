@@ -61,23 +61,23 @@ class CardXRay extends Component {
                             </Link>
                         </div>
                         <Heading heading="Growth rate" />
-                        <div className="Grid Grid--1of4 bg-white bordered rounded shadowed">
-                            { xray.features.DoD.value && (
-                                <GrowthRateDisplay period={xray.features.DoD} />
-                            )}
-                            { xray.features.WoW.value && (
-                                <GrowthRateDisplay period={xray.features.WoW} />
-                            )}
-                            { xray.features.MoM.value && (
-                                <GrowthRateDisplay period={xray.features.MoM} />
-                            )}
-                            { xray.features.YoY.value && (
-                                <GrowthRateDisplay period={xray.features.YoY} />
-                            )}
-                        </div>
-                        <div>
-                            <div className="full my2">
-                                <div className="bg-white bordered rounded shadowed" style={{ height: 320}}>
+                        <div className="bg-white bordered rounded shadowed">
+                            <div className="Grid Grid--1of4 border-bottom">
+                                { xray.features.DoD.value && (
+                                    <GrowthRateDisplay period={xray.features.DoD} />
+                                )}
+                                { xray.features.WoW.value && (
+                                    <GrowthRateDisplay period={xray.features.WoW} />
+                                )}
+                                { xray.features.MoM.value && (
+                                    <GrowthRateDisplay period={xray.features.MoM} />
+                                )}
+                                { xray.features.YoY.value && (
+                                    <GrowthRateDisplay period={xray.features.YoY} />
+                                )}
+                            </div>
+                            <div className="full">
+                                <div style={{ height: 320}}>
                                     <Visualization
                                         series={[
                                             {
@@ -102,8 +102,8 @@ class CardXRay extends Component {
                         </div>
 
                         <Heading heading="Growth series" />
-                        <div className="full my2">
-                            <div className="bg-white bordered rounded shadowed" style={{ height: 320}}>
+                        <div className="full">
+                            <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
                                     series={[
                                         {
@@ -114,7 +114,7 @@ class CardXRay extends Component {
 
                                                 }
                                             },
-                                            data: xray.features['growth-series']
+                                            data: xray.features['growth-series'].value
                                         }
                                     ]}
                                     className="full-height"
@@ -123,8 +123,8 @@ class CardXRay extends Component {
                         </div>
 
                         <Heading heading="Seasonal decomposition" />
-                        <div className="full my2">
-                            <div className="bg-white bordered rounded shadowed" style={{ height: 320}}>
+                        <div className="full">
+                            <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
                                     series={[
                                         {
