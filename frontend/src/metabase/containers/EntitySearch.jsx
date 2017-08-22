@@ -148,7 +148,7 @@ const SEARCH_GROUPINGS = [
 ]
 const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
 
-const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
+export const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
     <div className="Entity-search-grouping-options">
         <h3 className="mb3">View by</h3>
         <ul>
@@ -162,7 +162,7 @@ const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
         </ul>
     </div>
 
-class SearchGroupingOption extends Component {
+export class SearchGroupingOption extends Component {
     props: {
         grouping: any,
         active: boolean,
@@ -190,7 +190,7 @@ class SearchGroupingOption extends Component {
         )
     }
 }
-class GroupedSearchResultsList extends Component {
+export class GroupedSearchResultsList extends Component {
     props: {
         currentGrouping: any,
         entities: any,
@@ -238,7 +238,7 @@ class GroupedSearchResultsList extends Component {
     }
 }
 
-const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
+export const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
     <div>
         <div className="flex align-center border-grey-1 bordered mt3 px2 py2" style={{ backgroundColor: "#F8F9FA" }}>
             <Icon className="mr2 text-grey-3" name={groupIcon} />
@@ -247,7 +247,7 @@ const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
         <SearchResultsList entities={entities} />
     </div>
 
-const SearchResultsList = ({ entities, chooseEntity }) =>
+export const SearchResultsList = ({ entities, chooseEntity }) =>
     <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom border-grey-1">
         { _.sortBy(entities, ({ name }) => name.toLowerCase()).map((entity) =>
             <SearchResultListItem entity={entity} chooseEntity={chooseEntity} />
@@ -255,7 +255,7 @@ const SearchResultsList = ({ entities, chooseEntity }) =>
         <li style={{ height: "45px" }} />
     </ol>
 
-class SearchResultListItem extends Component {
+export class SearchResultListItem extends Component {
     props: {
         entity: any,
         chooseEntity: (any) => void

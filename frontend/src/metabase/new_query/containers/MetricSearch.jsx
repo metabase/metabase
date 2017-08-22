@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { fetchMetrics } from "metabase/redux/metadata";
@@ -9,7 +7,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import HeaderWithBack from "metabase/components/HeaderWithBack";
 
 @connect(state => ({ metadata: getMetadata(state) }), { fetchMetrics })
 export default class MetricSearch extends Component {

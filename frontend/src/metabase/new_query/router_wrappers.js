@@ -31,7 +31,6 @@ export class NewQuestionStart extends Component {
 @connect(null, { onChangeLocation: push })
 export class NewQuestionMetricSearch extends Component {
     newQuestionFromQuery = (query) => {
-        console.log(query);
         this.props.onChangeLocation(query.question().getUrl())
     }
 

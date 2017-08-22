@@ -34,7 +34,7 @@ import {
     deleteFieldDimension,
     updateFieldDimension,
     updateFieldValues,
-    FETCH_TABLE_METADATA
+    FETCH_TABLE_METADATA, FETCH_METRICS, FETCH_SEGMENTS
 } from "metabase/redux/metadata";
 import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
@@ -65,6 +65,11 @@ import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import { RESET_QUERY } from "metabase/new_query/new_query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import EntitySearch, {
+    SearchGroupingOption, SearchResultListItem,
+    SearchResultsGroup
+} from "metabase/containers/EntitySearch";
+import { MetricApi, SegmentApi } from "metabase/services";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -97,7 +102,27 @@ describe("QueryBuilder", () => {
     /**
      * Simple tests for seeing if the query builder renders without errors
      */
-    describe("for new questions", async () => {
+    fdescribe("for new questions", async () => {
+        let metricId = null;
+        let segmentId = null;
+
+        beforeAll(async () => {
+            // TODO: Move these test metric/segment definitions to a central place
+            const metricDef = {name: "A Metric", description: "For testing new question flow", table_id: 1,show_in_getting_started: true,
+                definition: {database: 1, query: {aggregation: ["count"]}}}
+            const segmentDef = {name: "A Segment", description: "For testing new question flow", table_id: 1, show_in_getting_started: true,
+                definition: {database: 1, query: {filter: ["abc"]}}}
+
+            // Needed for question creation flow
+            metricId = (await MetricApi.create(metricDef)).id;
+            segmentId = (await SegmentApi.create(segmentDef)).id;
+        })
+
+        afterAll(async () => {
+            await MetricApi.delete({ metricId, revision_message: "The lifetime of this metric was just a few seconds" })
+            await SegmentApi.delete({ segmentId, revision_message: "Sadly this segment didn't enjoy a long life either" })
+        })
+
         it("redirects /question to /question/new", async () => {
             const store = await createTestStore()
             store.pushPath("/question");
@@ -112,31 +137,83 @@ describe("QueryBuilder", () => {
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY]);
 
-            expect(app.find(NewQueryOption).length).toBe(2)
+            expect(app.find(NewQueryOption).length).toBe(4)
         });
-        it("lets you start a custom gui query", async () => {
+        it("lets you start a custom gui question", async () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY]);
 
-            click(app.find(NewQueryOption).first())
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "New question"))
             await store.waitForActions(INITIALIZE_QB, UPDATE_URL, LOAD_METADATA_FOR_CARD);
             expect(getQuery(store.getState()) instanceof StructuredQuery).toBe(true)
         })
 
         // Something doesn't work in tests when opening the native query editor :/
-        xit("lets you start a custom native query", async () => {
+        xit("lets you start a custom native question", async () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY]);
 
-            click(app.find(NewQueryOption).last())
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "SQL"))
             await store.waitForActions(INITIALIZE_QB);
             expect(getQuery(store.getState()) instanceof NativeQuery).toBe(true)
+        })
+
+        it("lets you start a question from a metric", async () => {
+            const store = await createTestStore()
+
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY]);
+
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics"))
+            await store.waitForActions(FETCH_METRICS);
+            expect(store.getPath()).toBe("/question/new/metric")
+
+            const entitySearch = app.find(EntitySearch)
+            const viewByCreator = entitySearch.find(SearchGroupingOption).last()
+            expect(viewByCreator.text()).toBe("Creator");
+            click(viewByCreator)
+
+            const group = entitySearch.find(SearchResultsGroup)
+            expect(group.prop('groupName')).toBe("Bob E2E")
+
+            const metricSearchResult =
+                group.find(SearchResultListItem).filterWhere((item) => /A Metric/.test(item.text()))
+            click(metricSearchResult)
+
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+        })
+
+        it("lets you start a question from a segment", async () => {
+            const store = await createTestStore()
+
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY]);
+
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Segments"))
+            await store.waitForActions(FETCH_SEGMENTS);
+            expect(store.getPath()).toBe("/question/new/segment")
+
+            const entitySearch = app.find(EntitySearch)
+            const viewByTable = entitySearch.find(SearchGroupingOption).at(1)
+            expect(viewByTable.text()).toBe("Table");
+            click(viewByTable)
+
+            const group = entitySearch.find(SearchResultsGroup)
+            expect(group.prop('groupName')).toBe("Sample Dataset")
+
+            const metricSearchResult =
+                group.find(SearchResultListItem).filterWhere((item) => /A Segment/.test(item.text()))
+            click(metricSearchResult)
+
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
         })
     });
 
@@ -737,7 +814,6 @@ describe("QueryBuilder", () => {
                 const firstRowCells = table.find("tbody tr").first().find("td");
                 expect(firstRowCells.length).toBe(2);
 
-                // lat-long formatting should be improved when it comes to trailing zeros
                 expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
 
                 const countCell = firstRowCells.last();
