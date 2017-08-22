@@ -19,8 +19,8 @@ export default class MetricSearch extends Component {
     }
 
     componentDidMount() {
-        this.props.fetchMetrics()
-        this.props.fetchDatabases()
+        this.props.fetchDatabases() // load databases if not loaded yet
+        this.props.fetchMetrics(true) // metrics may change more often so always reload them
     }
 
     render() {
@@ -33,7 +33,10 @@ export default class MetricSearch extends Component {
                 {() =>
                     <EntitySearch
                         title="Which metric?"
-                        entities={metadata.metricsList()}
+                        // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
+                        // all metrics (also retired ones) and is missing `is_active` prop. Currently this
+                        // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
+                        entities={metadata.metricsList().filter((metric) => metric.isActive())}
                         chooseEntity={onChooseMetric}
                     />
                 }

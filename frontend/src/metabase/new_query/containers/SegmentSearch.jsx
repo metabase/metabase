@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { fetchDatabases, fetchSegments } from "metabase/redux/metadata";
@@ -21,8 +19,8 @@ export default class SegmentSearch extends Component {
     }
 
     componentDidMount() {
-        this.props.fetchSegments()
-        this.props.fetchDatabases()
+        this.props.fetchDatabases() // load databases if not loaded yet
+        this.props.fetchSegments(true) // metrics may change more often so always reload them
     }
 
     render() {
@@ -35,7 +33,10 @@ export default class SegmentSearch extends Component {
                 {() =>
                     <EntitySearch
                         title="Which segment?"
-                        entities={metadata.segmentsList()}
+                        // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
+                        // all segments (also retired ones) and they are missing both `is_active` and `creator` props. Currently this
+                        // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
+                        entities={metadata.segmentsList().filter((segment) => segment.isActive())}
                         chooseEntity={onChooseSegment}
                     />
                 }

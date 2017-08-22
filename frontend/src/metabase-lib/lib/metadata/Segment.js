@@ -18,4 +18,8 @@ export default class Segment extends Base {
     filterClause(): FilterClause {
         return ["SEGMENT", this.id];
     }
+
+    isActive(): boolean {
+        return !!this.is_active
+    }
 }
