@@ -105,24 +105,9 @@
    ["The Apple Pan"]
    ["Wurstküche"]
    ["Brite Spot Family Restaurant"]]
-  (take 5 (driver/table-rows-sample (PrestoDriver.)
-                                    (Table (data/id :venues))
-                                    [(Field (data/id :venues :name))])))
+  (take 5 (driver/table-rows-sample (Table (data/id :venues))
+            [(Field (data/id :venues :name))])))
 
-;;; TABLE-ROWS-SEQ
-(datasets/expect-with-engine :presto
-  [{:name "Red Medicine",                 :price 3, :category_id  4, :id 1}
-   {:name "Stout Burgers & Beers",        :price 2, :category_id 11, :id 2}
-   {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
-   {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
-   {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (sort-by :id (driver/table-rows-seq (PrestoDriver.)
-                                                        (db/select-one 'Database :id (data/id))
-                                                        (db/select-one 'Table :id (data/id :venues)))))]
-    (-> (dissoc row :latitude :longitude)
-        (update :price int)
-        (update :category_id int)
-        (update :id int))))
 
 ;;; APPLY-PAGE
 (expect

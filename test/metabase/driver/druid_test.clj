@@ -27,10 +27,9 @@
    ["100"  "PizzaHacker"                 "2014-07-26T07:00:00.000Z"]
    ["1000" "Tito's Tacos"                "2014-06-03T07:00:00.000Z"]
    ["101"  "Golden Road Brewing"         "2015-09-04T07:00:00.000Z"]]
-  (->> (driver/table-rows-sample (DruidDriver.)
-                                 (Table (data/id :checkins))
-                                 [(Field (data/id :checkins :id))
-                                  (Field (data/id :checkins :venue_name))])
+  (->> (driver/table-rows-sample (Table (data/id :checkins))
+         [(Field (data/id :checkins :id))
+          (Field (data/id :checkins :venue_name))])
        (sort-by first)
        (take 5)))
 

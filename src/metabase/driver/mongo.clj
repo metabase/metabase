@@ -147,20 +147,6 @@
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
-(s/defn ^:private ^:always-validate table-rows-sample [table :- si/TableInstance, fields :- [si/FieldInstance]]
-  (assert *mongo-connection*
-    "You must have an open Mongo connection in order to get lazy results with table-rows-sample.")
-  (let [fields  (for [field fields]
-                  (let [name-components (rest (field/qualified-name-components field))]
-                    (assert (seq name-components))
-                    (assoc field :name-components name-components)))
-        results (mq/with-collection *mongo-connection* (:name table)
-                  (mq/fields (for [field fields]
-                               (str/join \. (:name-components field)))))]
-    (for [row results]
-      (for [field fields]
-        (get-in row (map keyword (:name-components field)))))))
-
 
 (defrecord MongoDriver []
   clojure.lang.Named
@@ -203,7 +189,6 @@
                                                              :placeholder  "readPreference=nearest&replicaSet=test"}]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
-          :table-rows-sample                 (u/drop-first-arg table-rows-sample)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)

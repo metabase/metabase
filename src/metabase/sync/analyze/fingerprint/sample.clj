@@ -13,15 +13,7 @@
   "Procure a sequence of table rows, up to `max-sample-rows` (10,000 at the time of this writing), for
    use in the fingerprinting sub-stage of analysis. Returns `nil` if no rows are available."
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  ;; TODO - we should make `->driver` a method so we can pass things like Fields into it
-  (let [db-id    (:db_id table)
-        driver   (driver/->driver db-id)
-        database (Database db-id)]
-    (driver/sync-in-context driver database
-      (fn []
-        (->> (driver/table-rows-sample driver table fields)
-             (take driver/max-sample-rows)
-             seq)))))
+  (seq (driver/table-rows-sample table fields)))
 
 (s/defn ^:private ^:always-validate table-sample->field-sample :- (s/maybe i/FieldSample)
   "Fetch a sample for the Field whose values are at INDEX in the TABLE-SAMPLE.
@@ -34,8 +26,7 @@
 
 (s/defn ^:always-validate sample-fields :- [(s/pair i/FieldInstance "Field", (s/maybe i/FieldSample) "FieldSample")]
   "Fetch samples for a series of FIELDS. Returns tuples of Field and sample.
-   This may return `nil` if the driver doesn't support `table-rows-sample` or the sample could not be fetched for some
-   other reason."
+   This may return `nil` if the sample could not be fetched for some other reason."
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (when-let [table-sample (basic-sample table fields)]
     (for [[i field] (m/indexed fields)]
