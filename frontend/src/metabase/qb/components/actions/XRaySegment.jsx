@@ -1,7 +1,6 @@
 /* @flow */
-/*
- * NOTE(@kdoh) 8/5/2017 - Disabling this file until we add Card XRay support
- * import type {
+
+import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
@@ -15,7 +14,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
                 title: "XRay this Card",
                 icon: "table",
                 url: () => {
-                    return "/xray/card/" + card.id;
+                    return `/xray/card/${card.id}`;
                 }
             }
         ];
@@ -23,4 +22,3 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
         return [];
     }
 };
-*/
