@@ -55,7 +55,7 @@ class CardXRay extends Component {
                 { () =>
                     <XRayPageWrapper>
                         <div className="my2">
-                            <h1>{xray.features.card.name} XRay</h1>
+                            <h1 className="my3">{xray.features.card.name} XRay</h1>
                             <Link to={`/xray/table/${xray.features.table.id}/approximate`}>
                                 Xray {xray.features.table.display_name}
                             </Link>
@@ -77,7 +77,7 @@ class CardXRay extends Component {
                                 )}
                             </div>
                             <div className="full">
-                                <div style={{ height: 320}}>
+                                <div className="py1 px2" style={{ height: 320}}>
                                     <Visualization
                                         series={[
                                             {
