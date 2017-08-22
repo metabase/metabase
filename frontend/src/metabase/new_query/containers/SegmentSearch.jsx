@@ -28,14 +28,12 @@ export default class SegmentSearch extends Component {
 
         return (
             <LoadingAndErrorWrapper loading={!segments}>
-                { () =>
-                    <div className="wrapper pt4 pb1">
-                        <HeaderWithBack name="Which segment?" />
-                        <EntitySearch
-                            entities={segments}
-                            chooseEntity={this.props.onChooseSegment}
-                        />
-                    </div>
+                {() =>
+                    <EntitySearch
+                        title="Which segment?"
+                        entities={segments}
+                        chooseEntity={this.props.onChooseSegment}
+                    />
                 }
             </LoadingAndErrorWrapper>
         )

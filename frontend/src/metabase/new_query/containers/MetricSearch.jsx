@@ -28,14 +28,12 @@ export default class MetricSearch extends Component {
 
         return (
             <LoadingAndErrorWrapper loading={!metrics}>
-                { () =>
-                    <div className="wrapper pt4 pb1">
-                        <HeaderWithBack name="Which metric?" />
-                        <EntitySearch
-                            entities={metrics}
-                            chooseEntity={this.props.onChooseMetric}
-                        />
-                    </div>
+                {() =>
+                    <EntitySearch
+                        title="Which metric?"
+                        entities={metrics}
+                        chooseEntity={this.props.onChooseMetric}
+                    />
                 }
             </LoadingAndErrorWrapper>
         )

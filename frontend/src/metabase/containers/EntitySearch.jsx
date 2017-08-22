@@ -1,7 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { replace as replaceAction } from "react-router-redux";
-import { withRouter } from "react-router";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -11,9 +10,11 @@ import type { LocationDescriptor } from "metabase/meta/types";
 import Ellipsified from "metabase/components/Ellipsified";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 type Props = {
     // Component parameters
+    title: string,
     entities: any[],
     chooseEntity: (any) => void,
 
@@ -74,25 +75,42 @@ export default class EntitySearch extends Component {
     }
 
     render() {
-        const { chooseEntity } = this.props;
+        const { title, chooseEntity } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
         return (
-            <div>
-                {/*<HeaderWithBack name="Which metric?" />*/}
-                <SearchHeader
-                    searchText={searchText}
-                    setSearchText={this.setSearchText}
-                    autoFocus
-                />
-
-                <div className="flex">
-                    <SearchGroupingOptions currentGrouping={currentGrouping} setGrouping={this.setGrouping} />
-                    <GroupedSearchResultsList
-                        currentGrouping={currentGrouping}
-                        entities={filteredEntities}
-                        chooseEntity={chooseEntity}
-                    />
+            <div className="bg-slate-extra-light full Entity-search">
+                <div className="wrapper wrapper--small pt4 pb1">
+                    <div className="flex mb4 align-center" style={{ height: "50px" }}>
+                        <Icon
+                            className="Entity-search-back-button shadowed cursor-pointer text-grey-4 mr2 flex align-center circle p2 bg-white transition-background transition-color"
+                            style={{
+                                border: "1px soli #DCE1E4",
+                                boxShadow: "0 2px 4px 0 #DCE1E4"
+                            }}
+                            name="backArrow"
+                            onClick={ () => window.history.back() }
+                        />
+                        <div className="text-centered flex-full">
+                            <h2>{title}</h2>
+                        </div>
+                    </div>
+                    <div className="bg-white">
+                        <SearchHeader
+                            searchText={searchText}
+                            setSearchText={this.setSearchText}
+                            autoFocus
+                        />
+                        <SearchGroupingOptions
+                            currentGrouping={currentGrouping}
+                            setGrouping={this.setGrouping}
+                        />
+                        <GroupedSearchResultsList
+                            currentGrouping={currentGrouping}
+                            entities={filteredEntities}
+                            chooseEntity={chooseEntity}
+                        />
+                    </div>
                 </div>
             </div>
         )
@@ -128,8 +146,8 @@ const SEARCH_GROUPINGS = [
 const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
 
 const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
-    <div>
-        <h3>Group by</h3>
+    <div className="Entity-search-grouping-options">
+        <h3 className="mb3">View by</h3>
         <ul>
             { SEARCH_GROUPINGS.map((groupingOption) =>
                 <SearchGroupingOption
@@ -156,7 +174,7 @@ class SearchGroupingOption extends Component {
         const { grouping, active } = this.props;
 
         return (
-            <li className={cx({ "text-brand": active })} onClick={this.onSetGrouping}>
+            <li className={cx("my2 text-uppercase", { "text-brand": active })} onClick={this.onSetGrouping}>
                 {grouping.name}
             </li>
         )
@@ -192,7 +210,7 @@ class GroupedSearchResultsList extends Component {
 
         if (groups) {
             return (
-                <div>
+                <div className="full">
                     {this.getGroups().map(({ groupName, entitiesInGroup }) =>
                         <SearchResultsGroup
                             groupName={groupName}
