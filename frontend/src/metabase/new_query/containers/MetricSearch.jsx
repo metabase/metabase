@@ -1,35 +1,40 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { fetchMetrics } from "metabase/redux/metadata";
+import { fetchMetrics, fetchDatabases } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata, getMetadataLoaded } from "metabase/selectors/metadata";
 
 import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchMetrics })
+@connect(state => ({ metadata: getMetadata(state), metadataLoaded: getMetadataLoaded(state) }), { fetchMetrics, fetchDatabases })
 export default class MetricSearch extends Component {
     props: {
         metadata: Metadata,
+        metadataLoaded: any,
         fetchMetrics: () => void,
+        fetchDatabases: () => void,
         onChooseMetric: (Metric) => void
     }
 
     componentDidMount() {
-        this.props.fetchMetrics(true)
+        this.props.fetchMetrics()
+        this.props.fetchDatabases()
     }
 
     render() {
-        const metrics = this.props.metadata.metricsList()
+        const { metadataLoaded, metadata, onChooseMetric } = this.props;
+
+        const isLoading = !metadataLoaded.metrics || !metadataLoaded.databases
 
         return (
-            <LoadingAndErrorWrapper loading={!metrics}>
+            <LoadingAndErrorWrapper loading={isLoading}>
                 {() =>
                     <EntitySearch
                         title="Which metric?"
-                        entities={metrics}
-                        chooseEntity={this.props.onChooseMetric}
+                        entities={metadata.metricsList()}
+                        chooseEntity={onChooseMetric}
                     />
                 }
             </LoadingAndErrorWrapper>

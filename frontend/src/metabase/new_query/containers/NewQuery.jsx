@@ -1,7 +1,12 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { fetchDatabases, fetchTableMetadata } from 'metabase/redux/metadata'
+import {
+    fetchMetrics,
+    fetchSegments,
+    fetchTableMetadata
+} from 'metabase/redux/metadata'
+
 import { resetQuery, updateQuery } from '../new_query'
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -11,7 +16,7 @@ import Database from "metabase-lib/lib/metadata/Database";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
 import type { TableId } from "metabase/meta/types/Table";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata, getMetadataLoaded } from "metabase/selectors/metadata";
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
@@ -20,20 +25,23 @@ import MetricSearch from "metabase/new_query/containers/MetricSearch";
 import Segment from "metabase-lib/lib/metadata/Segment";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import SegmentSearch from "metabase/new_query/containers/SegmentSearch";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 const mapStateToProps = state => ({
     query: getCurrentQuery(state),
     plainNativeQuery: getPlainNativeQuery(state),
-    metadata: getMetadata(state)
+    metadata: getMetadata(state),
+    metadataLoaded: getMetadataLoaded(state),
+    isAdmin: getUserIsAdmin(state)
 })
 
 const mapDispatchToProps = {
-    fetchDatabases,
+    fetchMetrics,
+    fetchSegments,
     fetchTableMetadata,
     resetQuery,
     updateQuery
 }
-
 
 type Props = {
     // Component parameters
@@ -44,14 +52,15 @@ type Props = {
     // Properties injected with redux connect
     query: StructuredQuery,
     plainNativeQuery: NativeQuery,
+    metadata: Metadata,
+    isAdmin: boolean,
 
     resetQuery: () => void,
     updateQuery: (Query) => void,
 
-    fetchDatabases: () => void,
+    fetchMetrics: () => void,
+    fetchSegments: () => void,
     fetchTableMetadata: (TableId) => void,
-
-    metadata: Metadata,
 }
 
 export class NewQuery extends Component {
@@ -65,7 +74,9 @@ export class NewQuery extends Component {
     }
 
     componentWillMount() {
-        this.props.fetchDatabases();
+        this.props.fetchMetrics()
+        this.props.fetchSegments()
+
         this.props.resetQuery();
     }
 
@@ -118,12 +129,15 @@ export class NewQuery extends Component {
     }
 
     render() {
-        const { query } = this.props
+        const { query, metadata, metadataLoaded, isAdmin } = this.props
         const { currentStep } = this.state;
 
-        if (!query) {
+        if (!query || !metadataLoaded.metrics || !metadataLoaded.segments) {
             return <LoadingAndErrorWrapper loading={true}/>
         }
+
+        const showMetricOption = isAdmin || metadata.metricsList().length > 0
+        const showSegmentOption = isAdmin || metadata.segmentsList().length > 0
 
         if (currentStep === "metricSearch") {
             return (
@@ -139,23 +153,27 @@ export class NewQuery extends Component {
                     <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
                          <div className="full-height flex align-center justify-center">
                             <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2 large-Grid--normal">
-                                <li className="Grid-cell">
-                                    <NewQueryOption
-                                        image="/app/img/questions_illustration"
-                                        title="Metrics"
-                                        description="See data over time, as a map, or pivoted to help you understand trends or changes."
-                                        onClick={this.showMetricSearch}
-                                    />
-                                </li>
-                                <li className="Grid-cell">
-                                    <NewQueryOption
-                                        image="/app/img/list_illustration"
-                                        title="Segments"
-                                        description="Explore tables and see what’s going on underneath your charts."
-                                        width={180}
-                                        onClick={this.showSegmentSearch}
-                                    />
-                                </li>
+                                { showMetricOption &&
+                                    <li className="Grid-cell">
+                                        <NewQueryOption
+                                            image="/app/img/questions_illustration"
+                                            title="Metrics"
+                                            description="See data over time, as a map, or pivoted to help you understand trends or changes."
+                                            onClick={this.showMetricSearch}
+                                        />
+                                    </li>
+                                }
+                                { showSegmentOption &&
+                                    <li className="Grid-cell">
+                                        <NewQueryOption
+                                            image="/app/img/list_illustration"
+                                            title="Segments"
+                                            description="Explore tables and see what’s going on underneath your charts."
+                                            width={180}
+                                            onClick={this.showSegmentSearch}
+                                        />
+                                    </li>
+                                }
                                 <li className="Grid-cell">
                                     {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                                     <NewQueryOption

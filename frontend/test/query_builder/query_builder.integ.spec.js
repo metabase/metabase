@@ -34,7 +34,10 @@ import {
     deleteFieldDimension,
     updateFieldDimension,
     updateFieldValues,
-    FETCH_TABLE_METADATA, FETCH_METRICS, FETCH_SEGMENTS
+    FETCH_TABLE_METADATA,
+    FETCH_METRICS,
+    FETCH_SEGMENTS,
+    FETCH_DATABASES
 } from "metabase/redux/metadata";
 import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
@@ -70,6 +73,7 @@ import EntitySearch, {
     SearchResultsGroup
 } from "metabase/containers/EntitySearch";
 import { MetricApi, SegmentApi } from "metabase/services";
+import AggregationWidget from "metabase/query_builder/components/AggregationWidget";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -135,7 +139,7 @@ describe("QueryBuilder", () => {
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY]);
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
 
             expect(app.find(NewQueryOption).length).toBe(4)
         });
@@ -144,7 +148,7 @@ describe("QueryBuilder", () => {
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY]);
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "New question"))
             await store.waitForActions(INITIALIZE_QB, UPDATE_URL, LOAD_METADATA_FOR_CARD);
@@ -157,7 +161,7 @@ describe("QueryBuilder", () => {
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY]);
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "SQL"))
             await store.waitForActions(INITIALIZE_QB);
@@ -169,10 +173,10 @@ describe("QueryBuilder", () => {
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY]);
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics"))
-            await store.waitForActions(FETCH_METRICS);
+            await store.waitForActions(FETCH_DATABASES);
             expect(store.getPath()).toBe("/question/new/metric")
 
             const entitySearch = app.find(EntitySearch)
@@ -183,11 +187,14 @@ describe("QueryBuilder", () => {
             const group = entitySearch.find(SearchResultsGroup)
             expect(group.prop('groupName')).toBe("Bob E2E")
 
-            const metricSearchResult =
-                group.find(SearchResultListItem).filterWhere((item) => /A Metric/.test(item.text()))
+            const metricSearchResult = group.find(SearchResultListItem)
+                .filterWhere((item) => /A Metric/.test(item.text()))
             click(metricSearchResult)
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+            expect(
+                app.find(AggregationWidget).find(".View-section-aggregation").text()
+            ).toBe("A Metric")
         })
 
         it("lets you start a question from a segment", async () => {
@@ -195,10 +202,10 @@ describe("QueryBuilder", () => {
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY]);
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Segments"))
-            await store.waitForActions(FETCH_SEGMENTS);
+            await store.waitForActions(FETCH_DATABASES);
             expect(store.getPath()).toBe("/question/new/segment")
 
             const entitySearch = app.find(EntitySearch)
@@ -207,13 +214,14 @@ describe("QueryBuilder", () => {
             click(viewByTable)
 
             const group = entitySearch.find(SearchResultsGroup)
-            expect(group.prop('groupName')).toBe("Sample Dataset")
+            expect(group.prop('groupName')).toBe("Orders")
 
-            const metricSearchResult =
-                group.find(SearchResultListItem).filterWhere((item) => /A Segment/.test(item.text()))
+            const metricSearchResult = group.find(SearchResultListItem)
+                .filterWhere((item) => /A Segment/.test(item.text()))
             click(metricSearchResult)
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+            expect(app.find(FilterWidget).find(".Filter-section-value").text()).toBe("A Segment")
         })
     });
 

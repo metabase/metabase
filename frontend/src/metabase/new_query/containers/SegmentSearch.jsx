@@ -1,35 +1,42 @@
+/* @flow */
+
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { fetchSegments } from "metabase/redux/metadata";
+import { fetchDatabases, fetchSegments } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata, getMetadataLoaded } from "metabase/selectors/metadata";
 
-import type { Metric } from "metabase/meta/types/Metric";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { Segment } from "metabase/meta/types/Segment";
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchSegments })
+@connect(state => ({ metadata: getMetadata(state), metadataLoaded: getMetadataLoaded(state) }), { fetchSegments, fetchDatabases })
 export default class SegmentSearch extends Component {
     props: {
         metadata: Metadata,
-        fetchMetrics: () => void,
-        onChooseSegment: (Metric) => void
+        metadataLoaded: any,
+        fetchSegments: () => void,
+        fetchDatabases: () => void,
+        onChooseSegment: (Segment) => void
     }
 
     componentDidMount() {
-        this.props.fetchSegments(true)
+        this.props.fetchSegments()
+        this.props.fetchDatabases()
     }
 
     render() {
-        const segments = this.props.metadata.segmentsList()
+        const { metadataLoaded, metadata, onChooseSegment } = this.props;
+
+        const isLoading = !metadataLoaded.segments || !metadataLoaded.databases
 
         return (
-            <LoadingAndErrorWrapper loading={!segments}>
+            <LoadingAndErrorWrapper loading={isLoading}>
                 {() =>
                     <EntitySearch
                         title="Which segment?"
-                        entities={segments}
-                        chooseEntity={this.props.onChooseSegment}
+                        entities={metadata.segmentsList()}
+                        chooseEntity={onChooseSegment}
                     />
                 }
             </LoadingAndErrorWrapper>

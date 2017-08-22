@@ -9,6 +9,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
+import _ from "underscore";
 import { getIn } from "icepick";
 import { getFieldValues } from "metabase/lib/query/field";
 
@@ -26,6 +27,7 @@ export const getNormalizedTables = state => state.metadata.tables;
 export const getNormalizedFields = state => state.metadata.fields;
 export const getNormalizedMetrics = state => state.metadata.metrics;
 export const getNormalizedSegments = state => state.metadata.segments;
+export const getMetadataRequestStates = state => (state.requests && state.requests.metadata) || {};
 
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
@@ -52,6 +54,8 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
+export const getMetadataLoaded = createSelector([getMetadataRequestStates], getLoadedStatuses);
+
 // fully connected graph of all databases, tables, fields, segments, and metrics
 export const getMetadata = createSelector(
     [
@@ -68,6 +72,7 @@ export const getMetadata = createSelector(
         meta.fields    = copyObjects(meta, fields, Field)
         meta.segments  = copyObjects(meta, segments, Segment)
         meta.metrics   = copyObjects(meta, metrics, Metric)
+        // meta.loaded    = getLoadedStatuses(requestStates)
 
         hydrateList(meta.databases, "tables", meta.tables);
 
@@ -137,6 +142,9 @@ export const getParameterFieldValues = (state, props) => {
     }
 }
 
+function getLoadedStatuses(metadataRequestStates) {
+    return _.mapObject(metadataRequestStates, (entity) => entity.fetch && entity.fetch.state === "LOADED")
+}
 // UTILS:
 
 // clone each object in the provided mapping of objects

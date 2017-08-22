@@ -21,7 +21,7 @@ type Props = {
     replace: (location: LocationDescriptor) => void,
 
     // Injected by withRouter HOC
-    location: LocationDescriptor
+    location: LocationDescriptor,
 }
 
 @connect(null, { replace: replaceAction })
@@ -238,13 +238,13 @@ export class GroupedSearchResultsList extends Component {
     }
 }
 
-export const SearchResultsGroup = ({ groupName, groupIcon, entities }) =>
+export const SearchResultsGroup = ({ groupName, groupIcon, entities, chooseEntity }) =>
     <div>
         <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px2 py2">
             <Icon className="mr2 text-grey-3" name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
-        <SearchResultsList entities={entities} />
+        <SearchResultsList entities={entities} chooseEntity={chooseEntity} />
     </div>
 
 export const SearchResultsList = ({ entities, chooseEntity }) =>
