@@ -90,6 +90,14 @@
                 :strategy  :num-bins})]
           (h/equidistant-bins min-value max-value bin-width histogram))))))
 
+(defn- series->dataset
+  ([fields series] (series->dataset identity fields series))
+  ([keyfn fields series]
+   {:rows    (for [[x y] series]
+               [(keyfn x) y])
+    :columns (map :name fields)
+    :cols    (map #(dissoc % :remapped_from) fields)}))
+
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
@@ -276,7 +284,10 @@
                  :week        52
                  :day         365)]
     (when (>= (count ts) (* 2 period))
-      (select-keys (stl/decompose period ts) [:trend :seasonal :residual]))))
+      (let [{:keys [trend seasonal residual xs]} (stl/decompose period ts)]
+        {:trend    (map vector xs trend)
+         :seasonal (map vector xs seasonal)
+         :residual (map vector xs residual)}))))
 
 (defn- last-n-days
   [n offset {:keys [breakout filter] :as query}]
@@ -348,9 +359,42 @@
       (dissoc :resolution)
       ((get-method comparison-vector :default))))
 
+(defn- unpack-linear-regression
+  [keyfn x-field series [c k]]
+  (series->dataset keyfn
+                   [x-field
+                    {:name         "TREND"
+                     :display_name "Linear regression trend"
+                     :base_type    :type/Float}]
+                   (for [[x y] series]
+                     [x (+ (* k x) c)])))
+
 (defmethod x-ray [DateTime Num]
-  [features]
-  (dissoc features :series))
+  [{:keys [field series] :as features}]
+  (let [x-field (first field)]
+    (-> features
+        (dissoc :series)
+        (update :growth-series (partial series->dataset from-double field))
+        (update :linear-regression
+                (partial unpack-linear-regression from-double x-field series))
+        (update-in [:seasonal-decomposition :trend]
+                   (partial series->dataset from-double
+                            [x-field
+                             {:name         "TREND"
+                              :display_name "Growth trend"
+                              :base_type    :type/Float}]))
+        (update-in [:seasonal-decomposition :seasonal]
+                   (partial series->dataset from-double
+                            [(first field)
+                             {:name         "SEASONAL"
+                              :display_name "Seasonal component"
+                              :base_type    :type/Float}]))
+        (update-in [:seasonal-decomposition :residual]
+                   (partial series->dataset from-double
+                            [(first field)
+                             {:name         "RESIDUAL"
+                              :display_name "Decomposition residual"
+                              :base_type    :type/Float}])))))
 
 ;; (defmethod feature-extractor [Category Any]
 ;;   [opts [x y]]
