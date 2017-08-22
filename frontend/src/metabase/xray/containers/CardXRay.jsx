@@ -114,7 +114,13 @@ class CardXRay extends Component {
 
                                                 }
                                             },
-                                            data: xray.features['growth-series'].value
+                                            data: {
+                                                ...xray.features['growth-series'].value,
+                                                // multiple row value by 100 to display as a %
+                                                rows: xray.features['growth-series'].value.rows.map(row =>
+                                                    [row[0], row[1]*100]
+                                                )
+                                            }
                                         }
                                     ]}
                                     className="full-height"
