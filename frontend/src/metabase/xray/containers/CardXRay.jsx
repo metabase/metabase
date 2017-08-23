@@ -102,7 +102,7 @@ class CardXRay extends Component {
                             </div>
                         </div>
 
-                        <Heading heading="Growth series" />
+                        <Heading heading={xray.features['growth-series'].label} />
                         <div className="full">
                             <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
@@ -131,7 +131,7 @@ class CardXRay extends Component {
 
                         <Periodicity xray={Object.values(xray.constituents)[0]} />
 
-                        <Heading heading="Seasonal decomposition" />
+                        <Heading heading={xray.features['seasonal-decomposition'].label} />
                         <div className="full">
                             <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
@@ -140,9 +140,7 @@ class CardXRay extends Component {
                                             card: {
                                                 display: 'line',
                                                 name: 'Trend',
-                                                visualization_settings: {
-
-                                                }
+                                                visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.trend
                                         },
@@ -150,9 +148,7 @@ class CardXRay extends Component {
                                             card: {
                                                 display: 'line',
                                                 name: 'Seasonal',
-                                                visualization_settings: {
-
-                                                }
+                                                visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.seasonal
                                         },
@@ -160,9 +156,7 @@ class CardXRay extends Component {
                                             card: {
                                                 display: 'line',
                                                 name: 'Residual',
-                                                visualization_settings: {
-
-                                                }
+                                                visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.residual
                                         }
