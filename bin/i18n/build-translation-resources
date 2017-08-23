@@ -9,13 +9,14 @@ fi
 
 POT_NAME="locales/metabase.pot"
 LOCALES=$(find locales -type f -name "*.po" -exec basename {} .po \;)
+LOCALES_QUOTED=$(echo "$LOCALES" | awk '{ printf "\"%s\" ", $0 }')
 
 FRONTEND_LANG_DIR="resources/frontend_client/app/locales"
 
 # backend
 cat << EOF > "resources/locales.clj"
 {
-  :locales  #{"de_DE" "en"}
+  :locales  #{$LOCALES_QUOTED}
   :packages ["metabase"]
   :bundle   "metabase.Messages"
 }

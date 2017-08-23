@@ -13,6 +13,7 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
+            [puppetlabs.i18n.core :refer [trs locale-negotiator user-locale]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 
@@ -32,8 +33,12 @@
   (stencil/render-string (load-file-at-path path) variables))
 
 (defn- load-localization []
-  ;; TODO: detect language
-  (load-file-at-path "frontend_client/app/locales/de.json"))
+  (if (user-locale)
+    (try
+      (load-file-at-path (str "frontend_client/app/locales/" (user-locale) ".json"))
+    (catch Throwable e
+      "null"))
+    "null"))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
@@ -47,9 +52,9 @@
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 
-(def ^:private index  (partial entrypoint "index"  (not :embeddable)))
-(def ^:private public (partial entrypoint "public" :embeddable))
-(def ^:private embed  (partial entrypoint "embed"  :embeddable))
+(def ^:private index  (locale-negotiator (partial entrypoint "index"  (not :embeddable))))
+(def ^:private public (locale-negotiator (partial entrypoint "public" :embeddable)))
+(def ^:private embed  (locale-negotiator (partial entrypoint "embed"  :embeddable)))
 
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
