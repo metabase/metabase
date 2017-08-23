@@ -9,7 +9,6 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
-import _ from "underscore";
 import { getIn } from "icepick";
 import { getFieldValues } from "metabase/lib/query/field";
 
@@ -140,9 +139,6 @@ export const getParameterFieldValues = (state, props) => {
     }
 }
 
-function getLoadedStatuses(metadataRequestStates) {
-    return _.mapObject(metadataRequestStates, (entity) => entity.fetch && entity.fetch.state === "LOADED")
-}
 // UTILS:
 
 // clone each object in the provided mapping of objects

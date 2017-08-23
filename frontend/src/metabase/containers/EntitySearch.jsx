@@ -111,6 +111,8 @@ export default class EntitySearch extends Component {
         const { title, chooseEntity } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
+        const hasUngroupedResults = !currentGrouping.groupBy && filteredEntities.length > 0
+
         return (
             <div className="bg-slate-extra-light full Entity-search">
                 <div className="wrapper wrapper--small pt4 pb4">
@@ -134,7 +136,7 @@ export default class EntitySearch extends Component {
                             setGrouping={this.setGrouping}
                         />
                         <div
-                            className="bg-white bordered border-grey-1 rounded"
+                            className={cx("bg-white bordered border-grey-1", { "rounded": !hasUngroupedResults }, { "rounded-top": hasUngroupedResults })}
                             style={{ padding: "5px 15px" }}
                         >
                             <SearchHeader
@@ -286,6 +288,29 @@ class SearchResultsList extends Component {
         page: 0
     }
 
+    getPaginationSection = (start, end, entityCount) => {
+        const { page } = this.state
+
+        const currentEntitiesText = start === end ? `${start + 1}` : `${start + 1}-${end + 1}`
+        return (
+            <li className="py1 px3 flex justify-end align-center">
+                <span className="text-bold">{ currentEntitiesText }</span>&nbsp;of&nbsp;<span
+                className="text-bold">{entityCount}</span>
+                <span
+                    className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": start !== 0}, {"bg-grey-1 text-grey-3": start === 0})}
+                    style={{width: "25px", height: "25px"}}
+                    onClick={() => this.setState({page: page - 1})}>
+                            <Icon name="chevronleft" size={15}/>
+                        </span>
+                <span
+                    className={cx("flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": end + 1 < entityCount}, {"bg-grey-1 text-grey-3": end + 1 >= entityCount})}
+                    style={{width: "25px", height: "25px"}}
+                    onClick={() => this.setState({page: page + 1})}>
+                            <Icon name="chevronright" size={15}/>
+                        </span>
+            </li>
+        )
+    }
     render() {
         const { entities, chooseEntity } = this.props
         const { page } = this.state
@@ -294,6 +319,7 @@ class SearchResultsList extends Component {
 
         let start = PAGE_SIZE * page;
         let end = Math.min(entities.length - 1, PAGE_SIZE * (page + 1) - 1);
+        const entityCount = entities.length;
 
         const entitiesInCurrentPage = entities.slice(start, end + 1)
 
@@ -302,22 +328,7 @@ class SearchResultsList extends Component {
                 {entitiesInCurrentPage.map((entity) =>
                     <SearchResultListItem entity={entity} chooseEntity={chooseEntity}/>
                 )}
-                {showPagination &&
-                    <li className="py1 px3 flex justify-end align-center">
-                        <span className="text-bold">{start + 1}-{end + 1}</span>&nbsp;of&nbsp;<span className="text-bold">{entities.length}</span>
-                        <span className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": start !== 0}, {"bg-grey-1 text-grey-3": start === 0})}
-                              style={{width: "25px", height: "25px"}}
-                              onClick={() => this.setState({page: page - 1})}>
-                            <Icon name="chevronleft" size={15}/>
-                        </span>
-                        <span
-                            className={cx("flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": end + 1 < entities.length}, {"bg-grey-1 text-grey-3": end + 1 >= entities.length})}
-                            style={{width: "25px", height: "25px"}}
-                            onClick={() => this.setState({page: page + 1})}>
-                            <Icon name="chevronright" size={15}/>
-                        </span>
-                    </li>
-                }
+                {showPagination && this.getPaginationSection(start, end, entityCount)}
             </ol>
         )
     }

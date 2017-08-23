@@ -106,7 +106,7 @@ describe("QueryBuilder", () => {
     /**
      * Simple tests for seeing if the query builder renders without errors
      */
-    fdescribe("for new questions", async () => {
+    describe("for new questions", async () => {
         let metricId = null;
         let segmentId = null;
 
@@ -150,7 +150,7 @@ describe("QueryBuilder", () => {
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
 
-            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "New question"))
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Custom"))
             await store.waitForActions(INITIALIZE_QB, UPDATE_URL, LOAD_METADATA_FOR_CARD);
             expect(getQuery(store.getState()) instanceof StructuredQuery).toBe(true)
         })
@@ -214,7 +214,7 @@ describe("QueryBuilder", () => {
             click(viewByTable)
 
             const group = entitySearch.find(SearchResultsGroup)
-            expect(group.prop('groupName')).toBe("Orders")
+                .filterWhere((group) => group.prop('groupName') === "Orders")
 
             const metricSearchResult = group.find(SearchResultListItem)
                 .filterWhere((item) => /A Segment/.test(item.text()))

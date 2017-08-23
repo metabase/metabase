@@ -42,8 +42,7 @@ export const fetched = handleActions({
                     getIn(state, statePathWithoutFetch) || payload.state === "LOADED"
                 )
             } else {
-
-
+                return state
             }
         }
     }
