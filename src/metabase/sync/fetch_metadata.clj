@@ -24,7 +24,7 @@
     (when (driver/driver-supports? driver :foreign-keys)
       (driver/describe-table-fks driver database table))))
 
-(s/defn ^:always-validate db-timezone :- s/Str
+(s/defn ^:always-validate db-timezone :- i/TimeZoneId
   [database :- i/DatabaseInstance]
   (let [db-time  ^DateTime (driver/current-db-time (driver/->driver database) database)]
     (-> db-time .getChronology .getZone .getID)))
