@@ -19,7 +19,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                 return {
                     name: "xray-segment",
                     title: `XRay ${segment && segment.name}`,
-                    icon: "table",
+                    icon: "beaker",
                     url: () => `/xray/segment/${id}/approximate`
                 };
             });
