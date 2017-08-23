@@ -12,6 +12,36 @@ import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 
+const PAGE_SIZE = 10
+
+const SEARCH_GROUPINGS = [
+    {
+        name: "Name",
+        icon: "calendar",
+        groupBy: null,
+        getGroupName: null
+    },
+    {
+        name: "Table",
+        icon: "table2",
+        groupBy: (entity) => entity.table.id,
+        getGroupName: (entity) => entity.table.display_name
+    },
+    {
+        name: "Database",
+        icon: "database",
+        groupBy: (entity) => entity.table.db.id,
+        getGroupName: (entity) => entity.table.db.name
+    },
+    {
+        name: "Creator",
+        icon: "mine",
+        groupBy: (entity) => entity.creator.id,
+        getGroupName: (entity) => entity.creator.common_name
+    },
+]
+const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
+
 type Props = {
     // Component parameters
     title: string,
@@ -27,6 +57,7 @@ type Props = {
 
 @connect(null, { replace: replaceAction })
 export default class EntitySearch extends Component {
+    searchHeaderInput: ?HTMLButtonElement
     props: Props
 
     constructor(props) {
@@ -71,6 +102,7 @@ export default class EntitySearch extends Component {
 
     setGrouping = (grouping) => {
         this.setState({ currentGrouping: grouping })
+        this.searchHeaderInput.focus()
     }
 
     render() {
@@ -107,6 +139,7 @@ export default class EntitySearch extends Component {
                                 searchText={searchText}
                                 setSearchText={this.setSearchText}
                                 autoFocus
+                                inputRef={el => this.searchHeaderInput = el}
                             />
                         </div>
                         { filteredEntities.length > 0 &&
@@ -139,34 +172,6 @@ export default class EntitySearch extends Component {
         )
     }
 }
-
-const SEARCH_GROUPINGS = [
-    {
-        name: "Name",
-        icon: "calendar",
-        groupBy: null,
-        getGroupName: null
-    },
-    {
-        name: "Table",
-        icon: "table2",
-        groupBy: (entity) => entity.table.id,
-        getGroupName: (entity) => entity.table.display_name
-    },
-    {
-        name: "Database",
-        icon: "database",
-        groupBy: (entity) => entity.table.db.id,
-        getGroupName: (entity) => entity.table.db.name
-    },
-    {
-        name: "Creator",
-        icon: "mine",
-        groupBy: (entity) => entity.creator.id,
-        getGroupName: (entity) => entity.creator.common_name
-    },
-]
-const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
 
 export const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
     <div className="Entity-search-grouping-options">
@@ -267,13 +272,51 @@ export const SearchResultsGroup = ({ groupName, groupIcon, entities, chooseEntit
         <SearchResultsList entities={entities} chooseEntity={chooseEntity} />
     </div>
 
-export const SearchResultsList = ({ entities, chooseEntity }) =>
-    <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom border-grey-1">
-        { _.sortBy(entities, ({ name }) => name.toLowerCase()).map((entity) =>
-            <SearchResultListItem entity={entity} chooseEntity={chooseEntity} />
-        )}
-        <li style={{ height: "45px" }} />
-    </ol>
+
+class SearchResultsList extends Component {
+    props: {
+        entities: any[],
+        chooseEntity: () => void
+    }
+
+    state = {
+        page: 0
+    }
+
+    render() {
+        const { entities, chooseEntity } = this.props
+        const { page } = this.state
+
+        const showPagination = PAGE_SIZE < entities.length
+
+        let start = PAGE_SIZE * page;
+        let end = Math.min(entities.length - 1, PAGE_SIZE * (page + 1) - 1);
+
+        const entitiesInCurrentPage = entities.slice(start, end + 1)
+
+        return (
+            <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom border-grey-1">
+                {entitiesInCurrentPage.map((entity) =>
+                    <SearchResultListItem entity={entity} chooseEntity={chooseEntity}/>
+                )}
+                {showPagination &&
+                    <li className="flex justify-end align-center" style={{height: "45px"}}>
+                        <span className="text-bold">Rows {start + 1}-{end + 1}</span>&nbsp;of&nbsp;<span className="text-bold">{entities.length}</span>
+                        <span className={cx("text-brand-hover px1 cursor-pointer", {disabled: start === 0})}
+                              onClick={() => this.setState({page: page - 1})}>
+                            <Icon name="left" size={10}/>
+                        </span>
+                        <span
+                            className={cx("text-brand-hover pr1 cursor-pointer", {disabled: end + 1 >= entities.length})}
+                            onClick={() => this.setState({page: page + 1})}>
+                            <Icon name="right" size={10}/>
+                        </span>
+                    </li>
+                }
+            </ol>
+        )
+    }
+}
 
 export class SearchResultListItem extends Component {
     props: {

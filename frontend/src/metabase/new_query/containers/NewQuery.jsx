@@ -138,6 +138,7 @@ export class NewQuery extends Component {
 
         const showMetricOption = isAdmin || metadata.metricsList().length > 0
         const showSegmentOption = isAdmin || metadata.segmentsList().length > 0
+        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
 
         if (currentStep === "metricSearch") {
             return (
@@ -178,7 +179,7 @@ export class NewQuery extends Component {
                                     {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                                     <NewQueryOption
                                         image="/app/img/custom_question"
-                                        title="New question"
+                                        title={ showCustomInsteadOfNewQuestionText ? "Custom" : "New question"}
                                         description="Use the simple query builder to see trends, lists of things, or to create your own metrics."
                                         onClick={this.startGuiQuery}
                                     />

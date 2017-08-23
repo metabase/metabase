@@ -4,6 +4,7 @@ import { fetchMetrics, fetchDatabases } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
 import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
+import _ from 'underscore'
 
 import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -41,15 +42,18 @@ export default class MetricSearch extends Component {
         return (
             <LoadingAndErrorWrapper loading={isLoading}>
                 {() => {
-                    const activeMetrics = metadata.metricsList().filter((metric) => metric.isActive());
+                    const sortedActiveMetrics = _.chain(metadata.metricsList())
+                        .filter((metric) => metric.isActive())
+                        .sortBy(({name}) => name.toLowerCase())
+                        .value()
 
-                    if (activeMetrics.length > 0) {
+                    if (sortedActiveMetrics.length > 0) {
                         return <EntitySearch
                             title="Which metric?"
                             // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
                             // all metrics (also retired ones) and is missing `is_active` prop. Currently this
                             // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
-                            entities={activeMetrics}
+                            entities={sortedActiveMetrics}
                             chooseEntity={onChooseMetric}
                         />
                     } else {
@@ -58,8 +62,8 @@ export default class MetricSearch extends Component {
                                 <EmptyState
                                     message={<span>Defining common metrics for your team makes it even easier to ask questions</span>}
                                     image="/app/img/metrics_illustration"
-                                    action="Create a metric"
-                                    link="/admin/datamodel/database/"
+                                    action="How to create metrics"
+                                    link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
                                     className="mt2"
                                     imageClassName="mln2"
                                 />
