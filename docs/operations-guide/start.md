@@ -3,7 +3,6 @@
 
 *  [How to install Metabase](#installing-and-running-metabase)
 *  [How to upgrade Metabase](#upgrading-metabase)
-*  [Tips for troubleshooting various issues](#troubleshooting-common-problems)
 *  [Configuring the application database](#configuring-the-metabase-application-database)
 *  [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
 *  [Running database migrations manually](#running-metabase-database-migrations-manually)
@@ -67,74 +66,6 @@ Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstal
 
 #### [Upgrading Heroku deployments](running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
 Step-by-step instructions on how to upgrade Metabase running on Heroku.
-
-# Troubleshooting Common Problems
-
-### Metabase fails to start due to database locks
-
-Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly. The error message will look something like:
-
-    liquibase.exception.DatabaseException: liquibase.exception.LockException: Could not acquire change log lock.
-
-When this happens, go to a terminal where Metabase is installed and run:
-
-    java -jar metabase.jar migrate release-locks
-
-in the command line to manually clear the locks. Then restart your Metabase instance.
-
-### Metabase fails to start due to PermGen OutOfMemoryErrors
-
-On Java 7, Metabase may fail to launch with a message like
-
-    java.lang.OutOfMemoryError: PermGen space
-
-or one like
-
-    Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler
-
-If this happens, setting a few JVM options should fix your issue:
-
-    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar target/uberjar/metabase.jar
-
-You can also pass JVM arguments by setting the environment variable `JAVA_TOOL_OPTIONS`, e.g.
-
-    JAVA_TOOL_OPTIONS='-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m'
-
-Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
-
-### Metabase fails to start due to Heap Space OutOfMemoryErrors
-
-Normally, the JVM can figure out how much RAM is available on the system and automatically set a sensible upper bound for heap memory usage. On certain shared hosting
-environments, however, this doesn't always work perfectly. If Metabase fails to start with an error message like
-
-    java.lang.OutOfMemoryError: Java heap space
-
-You'll just need to set a JVM option to let it know explicitly how much memory it should use for the heap space:
-
-    java -Xmx2g -jar metabase.jar
-
-Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase isn't the only process that'll be running. Generally, leaving 1-2 GB of RAM for these other processes should be enough; for example, you might set `-Xmx` to `1g` for an instance with 2 GB of RAM, `2g` for one with 4 GB of RAM, `6g` for an instance with 8 GB of RAM, and so forth. You may need to experiment with these settings a bit to find the right number.
-
-As above, you can use the environment variable `JAVA_TOOL_OPTIONS` to set JVM args instead of passing them directly to `java`. This is useful when running the Docker image,
-for example.
-
-    docker run -d -p 3000:3000 -e "JAVA_TOOL_OPTIONS=-Xmx2g" metabase/metabase
-
-### Metabase fails to connect to H2 Database on Windows 10
-
-In some situations the Metabase JAR needs to be unblocked so it has permissions to create local files for the application database.
-
-On Windows 10, if you see an error message like
-
-    Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
-
-when running the JAR, you can unblock the file by right-clicking, clicking "Properties," and then clicking "Unblock."
-See Microsoft's documentation [here](https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/) for more details on unblocking downloaded files.
-
-There are a few other reasons why Metabase might not be able to connect to your H2 DB. Metabase connects to the DB over a TCP port, and it's possible
-that something in your `ipconfig` configuration is blocking the H2 port. See the discussion [here](https://github.com/metabase/metabase/issues/1871) for
-details on how to resolve this issue.
-
 
 # Configuring the Metabase Application Database
 
@@ -377,3 +308,14 @@ By default Metabase will include emoji characters in logs. You can disable this 
 
     export MB_EMOJI_IN_LOGS="false"
     java -jar metabase.jar
+
+# Configuring Logging Level
+
+By default, Metabase logs quite a bit of information. Luckily, Metabase uses [Log4j](http://logging.apache.org/log4j) under the hood, meaning the logging is completely configurable.
+
+Metabase's default logging configuration can be found [here](https://github.com/metabase/metabase/blob/master/resources/log4j.properties). You can override this properties file and tell
+Metabase to use your own logging configuration file by passing a `-Dlog4j.configuration` argument when running Metabase:
+
+    java -Dlog4j.configuration=file:/path/to/custom/log4j.properties -jar metabase.jar
+
+The easiest way to get started customizing logging would be to use a copy of default `log4j.properties` file linked to above and adjust that to meet your needs. Keep in mind that you'll need to restart Metabase for changes to the file to take effect.

@@ -8,10 +8,13 @@
             [schema.core :as s]))
 
 (defn with-api-error-message
-  "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails validation."
+  "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
+  validation."
   {:style/indent 1}
   [schema api-error-message]
-  {:pre [(map? schema)]}
+  ;; Has to be a schema (or similar) record type because a simple map would just end up adding a new required key.
+  ;; One easy way to get around this is to just wrap your schema in `s/named`
+  {:pre [(record? schema)]}
   (assoc schema :api-error-message api-error-message))
 
 (defn- existing-schema->api-error-message
@@ -22,18 +25,21 @@
     (= existing-schema s/Int)                           "value must be an integer."
     (= existing-schema s/Str)                           "value must be a string."
     (= existing-schema s/Bool)                          "value must be a boolean."
-    (instance? java.util.regex.Pattern existing-schema) (format "value must be a string that matches the regex `%s`." existing-schema)))
+    (instance? java.util.regex.Pattern existing-schema) (format "value must be a string that matches the regex `%s`."
+                                                                existing-schema)))
 
 (defn api-error-message
   "Extract the API error messages attached to a schema, if any.
    This functionality is fairly sophisticated:
 
     (api-error-message (s/maybe (non-empty [NonBlankString])))
-    ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string. The array cannot be empty.\""
+    ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
+            The array cannot be empty.\""
   [schema]
   (or (:api-error-message schema)
       (existing-schema->api-error-message schema)
-      ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like "value may be nil, or if non-nil, value must be ..."
+      ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like
+      ;; "value may be nil, or if non-nil, value must be ..."
       (when (instance? schema.core.Maybe schema)
         (when-let [message (api-error-message (:schema schema))]
           (str "value may be nil, or if non-nil, " message)))
@@ -42,7 +48,9 @@
         (format "value must be one of: %s." (str/join ", " (for [v (sort (:vs schema))]
                                                              (str "`" v "`")))))
       ;; For cond-pre schemas we'll generate something like
-      ;; value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
+      ;; value must satisfy one of the following requirements:
+      ;; 1) value must be a boolean.
+      ;; 2) value must be a valid boolean string ('true' or 'false').
       (when (instance? schema.core.CondPre schema)
         (str "value must satisfy one of the following requirements: "
              (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
@@ -55,12 +63,15 @@
 
 
 (defn non-empty
-  "Add an addditonal constraint to SCHEMA (presumably an array) that requires it to be non-empty (i.e., it must satisfy `seq`)."
+  "Add an addditonal constraint to SCHEMA (presumably an array) that requires it to be non-empty
+   (i.e., it must satisfy `seq`)."
   [schema]
   (with-api-error-message (s/constrained schema seq "Non-empty")
     (str (api-error-message schema) " The array cannot be empty.")))
 
-;;; ------------------------------------------------------------ Util Schemas ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 USEFUL SCHEMAS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def NonBlankString
   "Schema for a string that cannot be blank."

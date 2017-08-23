@@ -30,7 +30,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
             question: () =>
                 question
                     .summarize(["count"])
-                    .pivot(getFieldRefFromColumn(column))
+                    .pivot([getFieldRefFromColumn(column)])
         }
     ];
 };

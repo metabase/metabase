@@ -233,6 +233,7 @@
     bottom: 0;
     right: 0;
     cursor: nwse-resize;
+    z-index: 1; /* ensure the handle is above the card contents */
 }
 
 .Dash--editing .DashCard .react-resizable-handle:after {

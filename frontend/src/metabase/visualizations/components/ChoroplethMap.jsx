@@ -12,7 +12,7 @@ import ChartWithLegend from "./ChartWithLegend.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
 import LeafletChoropleth from "./LeafletChoropleth.jsx";
 
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import { computeMinimalBounds, getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
 
 import d3 from "d3";
 import ss from "simple-statistics";
@@ -146,7 +146,7 @@ export default class ChoroplethMap extends Component {
         const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["map.dimension"]);
         const metricIndex = _.findIndex(cols, (col) => col.name === settings["map.metric"]);
 
-        const getRowKey       = (row) => String(row[dimensionIndex]).toLowerCase();
+        const getRowKey       = (row) => getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
         const getRowValue     = (row) => row[metricIndex] || 0;
         const getFeatureName  = (feature) => String(feature.properties[nameProperty]);
         const getFeatureKey   = (feature) => String(feature.properties[keyProperty]).toLowerCase();

@@ -16,7 +16,6 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
@@ -109,31 +108,6 @@
 
 ;;; IDriver implementation
 
-(defn- field-avg-length [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(round(avg(length(%s))) AS integer) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (or v 0)))
-
-(defn- field-percent-urls [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (if (= v "NaN") 0.0 v)))
-
-(defn- analyze-table [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
-     :field-avg-length-fn   field-avg-length
-     :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
-
 (defn- can-connect? [{:keys [catalog] :as details}]
   (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
     (= v "information_schema")))
@@ -207,17 +181,6 @@
      :columns (map (comp keyword :name) columns)
      :rows    rows}))
 
-(defn- field-values-lazy-seq [{field-name :name, :as field}]
-  ;; TODO - look into making this actually lazy
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT %s FROM %s LIMIT %d"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            driver/max-sync-lazy-seq-results)
-        {:keys [rows]}    (execute-presto-query! details sql)]
-    (for [row rows]
-      (first row))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -232,13 +195,6 @@
 
     #".*" ; default
     message))
-
-(defn- table-rows-seq [{:keys [details]} {:keys [schema name]}]
-  (let [sql                        (format "SELECT * FROM %s" (quote+combine-names schema name))
-        {:keys [rows], :as result} (execute-presto-query! details sql)
-        columns                    (map (comp keyword :name) (:columns result))]
-    (for [row rows]
-      (zipmap columns row))))
 
 
 ;;; ISQLDriver implementation
@@ -298,8 +254,7 @@
 (u/strict-extend PrestoDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:analyze-table                     analyze-table
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
@@ -334,13 +289,12 @@
                                                                       :standard-deviation-aggregations
                                                                       :expressions
                                                                       :native-parameters
-                                                                      :expression-aggregations}
+                                                                      :expression-aggregations
+                                                                      :binning}
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :table-rows-seq                    (u/drop-first-arg table-rows-seq)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -350,7 +304,6 @@
           :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"information_schema"})
-          :field-percent-urls        (u/drop-first-arg field-percent-urls)
           :prepare-value             (u/drop-first-arg prepare-value)
           :quote-style               (constantly :ansi)
           :stddev-fn                 (constantly :stddev_samp)

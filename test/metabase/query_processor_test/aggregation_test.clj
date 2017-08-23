@@ -5,7 +5,8 @@
              [util :as u]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.util :as tu]))
 
 ;;; ------------------------------------------------------------ "COUNT" AGGREGATION ------------------------------------------------------------
 
@@ -72,11 +73,12 @@
      :columns     (venues-columns)
      :cols        (venues-cols)
      :native_form true}
-    (->> (data/run-query venues
+    (-> (data/run-query venues
            (ql/limit 10)
            (ql/order-by (ql/asc $id)))
-         booleanize-native-form
-         formatted-venues-rows))
+        booleanize-native-form
+        formatted-venues-rows
+        tu/round-fingerprint-cols))
 
 
 ;;; ------------------------------------------------------------ STDDEV AGGREGATION ------------------------------------------------------------
@@ -230,7 +232,8 @@
          (ql/aggregation (ql/cum-sum $id))
          (ql/breakout $name))
        booleanize-native-form
-       (format-rows-by [str int])))
+       (format-rows-by [str int])
+       tu/round-fingerprint-cols))
 
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
@@ -295,7 +298,8 @@
          (ql/aggregation (ql/cum-count))
          (ql/breakout $name))
        booleanize-native-form
-       (format-rows-by [str int])))
+       (format-rows-by [str int])
+       tu/round-fingerprint-cols))
 
 
 ;;; Cumulative count w/ a different breakout field that requires grouping

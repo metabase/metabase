@@ -97,6 +97,7 @@ export const MetabaseApi = {
     db_list_with_tables:         GET("/api/database?include_tables=true&include_cards=true"),
     db_real_list_with_tables:    GET("/api/database?include_tables=true&include_cards=false"),
     db_create:                  POST("/api/database"),
+    db_validate:                POST("/api/database/validate"),
     db_add_sample_dataset:      POST("/api/database/sample_dataset"),
     db_get:                      GET("/api/database/:dbId"),
     db_update:                   PUT("/api/database/:id"),
@@ -106,7 +107,9 @@ export const MetabaseApi = {
     db_fields:                   GET("/api/database/:dbId/fields"),
     db_idfields:                 GET("/api/database/:dbId/idfields"),
     db_autocomplete_suggestions: GET("/api/database/:dbId/autocomplete_suggestions?prefix=:prefix"),
-    db_sync_metadata:           POST("/api/database/:dbId/sync"),
+    db_sync_schema:             POST("/api/database/:dbId/sync_schema"),
+    db_rescan_values:           POST("/api/database/:dbId/rescan_values"),
+    db_discard_values:          POST("/api/database/:dbId/discard_values"),
     table_list:                  GET("/api/table"),
     // table_get:                   GET("/api/table/:tableId"),
     table_update:                PUT("/api/table/:id"),
@@ -121,6 +124,19 @@ export const MetabaseApi = {
                                         table.metrics.push(...GA.metrics);
                                         table.segments.push(...GA.segments);
                                     }
+
+                                    if (table && table.fields) {
+                                        // replace dimension_options IDs with objects
+                                        for (const field of table.fields) {
+                                            if (field.dimension_options) {
+                                                field.dimension_options = field.dimension_options.map(id => table.dimension_options[id])
+                                            }
+                                            if (field.default_dimension_option) {
+                                                field.default_dimension_option = table.dimension_options[field.default_dimension_option];
+                                            }
+                                        }
+                                    }
+
                                     return table;
                                  }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
@@ -132,7 +148,21 @@ export const MetabaseApi = {
     field_dimension_update:     POST("/api/field/:fieldId/dimension"),
     field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
     dataset:                    POST("/api/dataset"),
-    dataset_duration:           POST("/api/dataset/duration"),
+    dataset_duration:           POST("/api/dataset/duration")
+};
+
+export const XRayApi = {
+    // X-Rays
+    field_xray:            GET("api/x-ray/field/:fieldId"),
+    table_xray:            GET("api/x-ray/table/:tableId"),
+    segment_xray:          GET("api/x-ray/segment/:segmentId"),
+    card_xray:             GET("api/x-ray/card/:cardId"),
+
+    field_compare:         GET("api/x-ray/compare/fields/:fieldId1/:fieldId2"),
+    table_compare:         GET("api/x-ray/compare/tables/:tableId1/:tableId2"),
+    segment_compare:       GET("api/x-ray/compare/segments/:segmentId1/:segmentId2"),
+    segment_table_compare: GET("api/x-ray/compare/segment/:segmentId/table/:tableId"),
+    card_compare:          GET("api/x-ray/compare/cards/:cardId1/:cardId2")
 };
 
 export const PulseApi = {

@@ -5,11 +5,15 @@ global.afterAll = (method) => { jasmineAfterAllCleanup = method; }
 import { spawn } from "child_process";
 
 // use require for BackendResource to run it after the mock afterAll has been set
-const BackendResource = require("./e2e/support/backend.js").BackendResource
-const server = BackendResource.get({});
-const apiHost = process.env.E2E_HOST || server.host;
+const BackendResource = require("./legacy-selenium/support/backend.js").BackendResource
 
-const login = async () => {
+const serverWithTestDbFixture = BackendResource.get({});
+const testFixtureBackendHost = serverWithTestDbFixture.host;
+
+const serverWithPlainDb = BackendResource.get({ dbKey: "" });
+const plainBackendHost = serverWithPlainDb.host;
+
+const login = async (apiHost) => {
     const loginFetchOptions = {
         method: "POST",
         headers: new Headers({
@@ -38,13 +42,16 @@ const login = async () => {
 }
 
 const init = async() => {
-    await BackendResource.start(server)
-    const sharedLoginSession = await login()
+    await BackendResource.start(serverWithTestDbFixture)
+    await BackendResource.start(serverWithPlainDb)
+
+    const sharedLoginSession = await login(testFixtureBackendHost)
 
     const env = {
         ...process.env,
-        "E2E_HOST": apiHost,
-        "SHARED_LOGIN_SESSION_ID": sharedLoginSession.id
+        "TEST_FIXTURE_BACKEND_HOST": testFixtureBackendHost,
+        "PLAIN_BACKEND_HOST": plainBackendHost,
+        "TEST_FIXTURE_SHARED_LOGIN_SESSION_ID": sharedLoginSession.id
     }
     const userArgs = process.argv.slice(2);
     const jestProcess = spawn(
@@ -63,7 +70,8 @@ const init = async() => {
 
 const cleanup = async (exitCode = 0) => {
     await jasmineAfterAllCleanup();
-    await BackendResource.stop(server);
+    await BackendResource.stop(serverWithTestDbFixture);
+    await BackendResource.stop(serverWithPlainDb);
     process.exit(exitCode);
 }
 

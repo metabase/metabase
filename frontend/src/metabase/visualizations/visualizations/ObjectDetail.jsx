@@ -70,7 +70,7 @@ export default class ObjectDetail extends Component {
         } else {
             if (value === null || value === undefined || value === "") {
                 cellValue = (<span className="text-grey-2">Empty</span>);
-            } else if (isa(value.special_type, TYPE.SerializedJSON)) {
+            } else if (isa(column.special_type, TYPE.SerializedJSON)) {
                 let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else if (typeof value === "object") {
@@ -108,7 +108,7 @@ export default class ObjectDetail extends Component {
     renderDetailsTable() {
         const { data: { cols, rows }} = this.props;
         return cols.map((column, columnIndex) =>
-            <div className="Grid mb2" key={columnIndex}>
+            <div className="Grid Grid--1of2 mb2" key={columnIndex}>
                 <div className="Grid-cell">
                     {this.cellRenderer(column, rows[0][columnIndex], true)}
                 </div>

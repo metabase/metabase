@@ -106,7 +106,7 @@ export default class NativeQueryEditor extends Component {
 
     componentDidUpdate() {
         const { query } = this.props;
-        if (!query) {
+        if (!query || !this._editor) {
             return;
         }
 
@@ -275,6 +275,7 @@ export default class NativeQueryEditor extends Component {
                             databases={databases}
                             datasetQuery={query.datasetQuery()}
                             setDatabaseFn={this.setDatabaseId}
+                            isInitiallyOpen={database == null}
                         />
                     </div>
                 )

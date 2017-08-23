@@ -1,9 +1,10 @@
 (ns metabase.test.mock.moviedb
   "A simple relational schema based mocked for testing. 4 tables w/ some FKs."
-  (:require [metabase.driver :as driver]))
+  (:require [metabase.driver :as driver]
+            [metabase.test.mock.util :refer [table-defaults field-defaults]]))
 
 
-(def ^:private ^:const moviedb-tables
+(def ^:private moviedb-tables
   {"movies"
    {:name   "movies"
     :schema nil
@@ -56,7 +57,15 @@
     :fks    #{{:fk-column-name   "movie_id"
                :dest-table       {:name   "movies"
                                   :schema nil}
-               :dest-column-name "id"}}}})
+               :dest-column-name "id"}}}
+
+   "_metabase_metadata"
+   {:name   "_metabase_metadata"
+    :schema nil
+    :fields #{{:name      "keypath"
+               :base-type :type/Text}
+              {:name      "value"
+               :base-type :type/Text}}}})
 
 
 (defrecord MovieDbDriver []
@@ -80,15 +89,15 @@
       set))
 
 (defn- table-rows-seq [_ _ table]
-  [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
-   {:keypath "movies.description", :value "A cinematic adventure."}])
+  (when (= (:name table) "_metabase_metadata")
+    [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
+     {:keypath "movies.description", :value "A cinematic adventure."}]))
 
 
 (extend MovieDbDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table      (constantly nil)
-          :describe-database  describe-database
+         {:describe-database  describe-database
           :describe-table     describe-table
           :describe-table-fks describe-table-fks
           :features           (constantly #{:foreign-keys})
@@ -97,115 +106,7 @@
 
 (driver/register-driver! :moviedb (MovieDbDriver.))
 
-(def ^:private ^:const raw-table-defaults
-  {:schema      nil
-   :database_id true
-   :updated_at  true
-   :details     {}
-   :active      true
-   :id          true
-   :created_at  true})
-
-(def ^:private ^:const raw-field-defaults
-  {:raw_table_id        true
-   :fk_target_column_id false
-   :updated_at          true
-   :active              true
-   :id                  true
-   :is_pk               false
-   :created_at          true
-   :column_type         nil})
-
-
-(def ^:const moviedb-raw-tables
-  [(merge raw-table-defaults
-          {:columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text"}})]
-           :name    "actors"})
-   (merge raw-table-defaults
-          {:columns [(merge raw-field-defaults
-                            {:name    "filming"
-                             :details {:base-type "type/Boolean"}})
-                     (merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "title"
-                             :details {:base-type "type/Text"}})]
-           :name    "movies"})
-   (merge raw-table-defaults
-          {:columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name                "movie_id"
-                             :details             {:base-type "type/Integer"}
-                             :fk_target_column_id true})
-                     (merge raw-field-defaults
-                            {:name    "stars"
-                             :details {:base-type "type/Integer"}})]
-           :name    "reviews"})
-   (merge raw-table-defaults
-          {:columns [(merge raw-field-defaults
-                            {:name                "actor_id"
-                             :details             {:base-type "type/Integer"}
-                             :fk_target_column_id true})
-                     (merge raw-field-defaults
-                            {:name    "character"
-                             :details {:base-type "type/Text"}})
-                     (merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name                "movie_id"
-                             :details             {:base-type "type/Integer"}
-                             :fk_target_column_id true})
-                     (merge raw-field-defaults
-                            {:name    "salary"
-                             :details {:base-type "type/Decimal"}})]
-           :name    "roles"})])
-
-
-(def ^:private ^:const table-defaults
-  {:description             nil
-   :entity_type             nil
-   :caveats                 nil
-   :points_of_interest      nil
-   :show_in_getting_started false
-   :schema                  nil
-   :raw_table_id            true
-   :rows                    nil
-   :updated_at              true
-   :entity_name             nil
-   :active                  true
-   :id                      true
-   :db_id                   true
-   :visibility_type         nil
-   :created_at              true})
-
-(def ^:privaet ^:const field-defaults
-  {:description        nil
-   :table_id           true
-   :caveats            nil
-   :points_of_interest nil
-   :special_type       nil
-   :fk_target_field_id false
-   :updated_at         true
-   :active             true
-   :parent_id          false
-   :id                 true
-   :raw_column_id      true
-   :last_analyzed      false
-   :position           0
-   :visibility_type    :normal
-   :preview_display    true
-   :created_at         true})
-
-(def ^:const moviedb-tables-and-fields
+(def moviedb-tables-and-fields
   [(merge table-defaults
           {:name         "actors"
            :fields       [(merge field-defaults

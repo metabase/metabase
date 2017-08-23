@@ -2,7 +2,9 @@
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.models.table :as table]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table] :as table]]
             [metabase.test
              [data :as data]
              [util :refer [resolve-private-vars]]]
@@ -96,47 +98,16 @@
               :base-type :type/Integer}}}
   (driver/describe-table (PrestoDriver.) (data/db) (db/select-one 'Table :id (data/id :venues))))
 
-;;; ANALYZE-TABLE
+;;; TABLE-ROWS-SAMPLE
 (datasets/expect-with-engine :presto
-  {:row_count 100
-   :fields    [{:id (data/id :venues :category_id), :values [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]}
-               {:id (data/id :venues :id)}
-               {:id (data/id :venues :latitude)}
-               {:id (data/id :venues :longitude)}
-               {:id (data/id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (data/id :venues :name))}
-               {:id (data/id :venues :price), :values [1 2 3 4]}]}
-  (let [venues-table (db/select-one 'Table :id (data/id :venues))]
-    (driver/analyze-table (PrestoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
+  [["Red Medicine"]
+   ["Stout Burgers & Beers"]
+   ["The Apple Pan"]
+   ["Wurstküche"]
+   ["Brite Spot Family Restaurant"]]
+  (take 5 (driver/table-rows-sample (Table (data/id :venues))
+            [(Field (data/id :venues :name))])))
 
-;;; FIELD-VALUES-LAZY-SEQ
-(datasets/expect-with-engine :presto
-  ["Red Medicine"
-   "Stout Burgers & Beers"
-   "The Apple Pan"
-   "Wurstküche"
-   "Brite Spot Family Restaurant"]
-  (take 5 (driver/field-values-lazy-seq (PrestoDriver.) (db/select-one 'Field :id (data/id :venues :name)))))
-
-;;; TABLE-ROWS-SEQ
-(datasets/expect-with-engine :presto
-  [{:name "Red Medicine",                 :price 3, :category_id  4, :id 1}
-   {:name "Stout Burgers & Beers",        :price 2, :category_id 11, :id 2}
-   {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
-   {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
-   {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (sort-by :id (driver/table-rows-seq (PrestoDriver.)
-                                                        (db/select-one 'Database :id (data/id))
-                                                        (db/select-one 'RawTable :id (db/select-one-field :raw_table_id 'Table, :id (data/id :venues))))))]
-    (-> (dissoc row :latitude :longitude)
-        (update :price int)
-        (update :category_id int)
-        (update :id int))))
-
-;;; FIELD-PERCENT-URLS
-(datasets/expect-with-engine :presto
-  0.5
-  (data/dataset half-valid-urls
-    (sql/field-percent-urls (PrestoDriver.) (db/select-one 'Field :id (data/id :urls :url)))))
 
 ;;; APPLY-PAGE
 (expect
