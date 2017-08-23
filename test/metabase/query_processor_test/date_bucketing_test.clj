@@ -327,8 +327,6 @@
     (supports-report-timezone? *engine*)
     [[23 49] [24 47] [25 39] [26 58] [27 7]]
 
-
-
     (contains? #{:mongo :redshift :bigquery :postgres :vertica :h2 :presto} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 

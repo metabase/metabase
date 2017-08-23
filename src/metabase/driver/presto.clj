@@ -1,5 +1,8 @@
 (ns metabase.driver.presto
   (:require [clj-http.client :as http]
+            [clj-time
+             [core :as time]
+             [format :as tformat]]
             [clojure
              [set :as set]
              [string :as str]]
@@ -12,15 +15,10 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            [metabase.models
-             [field :as field]
-             [table :as table]]
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]
-            [clj-time.format :as tformat]
-            [clj-time.core :as time])
+             [ssh :as ssh]])
   (:import java.util.Date
            [metabase.query_processor.interface DateTimeValue Value]))
 
@@ -42,13 +40,11 @@
 
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
-  (println "getting ready to parse " s)
   (or (u/ignore-exceptions (u/parse-date "HH:mm:ss.SSS ZZ" s))
       (u/parse-date "HH:mm:ss.SSS ZZZ" s)))
 
 (defn- parse-timestamp-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
-  (println "getting ready to parse " s)
   (or (u/ignore-exceptions (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
       (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
