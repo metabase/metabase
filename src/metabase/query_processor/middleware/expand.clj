@@ -10,10 +10,13 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue DateTimeField Expression
-            ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime RelativeDateTimeValue StringFilter Value ValuePlaceholder]))
+  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue
+            DateTimeField Expression ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime
+            RelativeDateTimeValue StringFilter Value ValuePlaceholder]))
 
-;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                CLAUSE HANDLERS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - check that there's a matching :aggregation clause in the query ?
 (s/defn ^:ql ^:always-validate aggregate-field :- AgFieldRef
@@ -139,7 +142,8 @@
 (defn- field-or-expression [f]
   (if (instance? Expression f)
     ;; recursively call field-or-expression on all the args inside the expression unless they're numbers
-    ;; plain numbers are always assumed to be numeric literals here; you must use MBQL '98 `:field-id` syntax to refer to Fields inside an expression <3
+    ;; plain numbers are always assumed to be numeric literals here; you must use MBQL '98 `:field-id` syntax to refer
+    ;; to Fields inside an expression <3
     (update f :args #(for [arg %]
                        (if (number? arg)
                          arg
@@ -467,7 +471,9 @@
 (defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
 
 
-;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   EXPANSION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; QL functions are any public function in this namespace marked with `^:ql`.
 (def ^:private token->ql-fn
@@ -499,10 +505,10 @@
 (defn- walk-expand-ql-sexprs
   "Walk QUERY depth-first and expand QL bracketed S-expressions."
   [x]
-  (cond (map? x)    (into x (for [[k v] x]                    ; do `into x` instead of `into {}` so we can keep the original class,
-                              [k (walk-expand-ql-sexprs v)])) ; e.g. FieldPlaceholder
-        (vector? x) (expand-ql-sexpr (mapv walk-expand-ql-sexprs x))
-        :else       x))
+  (cond (map? x)        (into x (for [[k v] x]                    ; do `into x` instead of `into {}` so we can keep the original class,
+                                  [k (walk-expand-ql-sexprs v)])) ; e.g. FieldPlaceholder
+        (sequential? x) (expand-ql-sexpr (mapv walk-expand-ql-sexprs x))
+        :else           x))
 
 
 (s/defn ^:always-validate expand-inner :- i/Query
@@ -521,8 +527,8 @@
         query))))
 
 (defn expand
-  "Expand a query dictionary as it comes in from the API and return an \"expanded\" form, (almost) ready for use by the Query Processor.
-   This includes steps like token normalization and function dispatch.
+  "Expand a query dictionary as it comes in from the API and return an \"expanded\" form, (almost) ready for use by
+   the Query Processor. This includes steps like token normalization and function dispatch.
 
      (expand {:query {\"SOURCE_TABLE\" 10, \"FILTER\" [\"=\" 100 200]}})
 
@@ -532,7 +538,8 @@
                                   :value       {:field-placeholder {:field-id 100}
                                                 :value 200}}}}
 
-   The \"placeholder\" objects above are fetched from the DB and replaced in the next QP step, in `metabase.query-processor.middleware.resolve`."
+   The \"placeholder\" objects above are fetched from the DB and replaced in the next QP step, in
+   `metabase.query-processor.middleware.resolve`."
   [outer-query]
   (update outer-query :query expand-inner))
 
@@ -554,7 +561,9 @@
        expand-inner))
 
 
-;;; ------------------------------------------------------------ Other Helper Fns ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                OTHER HELPER FNS                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn is-clause?
   "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
