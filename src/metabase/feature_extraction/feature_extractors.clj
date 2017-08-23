@@ -121,7 +121,11 @@
   [field]
   (if (sequential? field)
     (mapv field-type field)
-    [(:base_type field) (or (:special_type field) :type/*)]))
+    [(if (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
+            :week-of-year :month-of-year :quarter-of-year} (:unit field))
+       :type/Integer
+       (:base_type field))
+     (or (:special_type field) :type/*)]))
 
 (defmulti
   ^{:doc "Returns a transducer that extracts features from given coll.
@@ -275,14 +279,19 @@
 (defn- decompose-timeseries
   "Decompose given timeseries with expected periodicty `period` into trend,
    seasonal component, and reminder.
-   `period` can be one of `hour`, `:day`, `day-of-week`, `week`, or `:month`."
+   `period` can be one of `:hour`, `:day`, `:day-of-week`, `:week`, `:quarter`,
+   `:day-of-month`, `:minute` or `:month`."
   [period ts]
-  (let [period (case period
-                 :hour        24
-                 :day-of-week 7
-                 :month       12
-                 :week        52
-                 :day         365)]
+  (when-let [period (case period
+                      :hour         24
+                      :minute       60
+                      :day-of-week  7
+                      :day-of-month 30
+                      :month        12
+                      :week         52
+                      :quarter      4
+                      :day          365
+                      nil)]
     (when (>= (count ts) (* 2 period))
       (let [{:keys [trend seasonal residual xs]} (stl/decompose period ts)]
         {:trend    (map vector xs trend)
@@ -325,10 +334,13 @@
                                          conj
                                          (partial fill-timeseries
                                                   (case resolution
-                                                    :month (t/months 1)
-                                                    :week  (t/weeks 1)
-                                                    :day   (t/days 1)
-                                                    :hour  (t/hours 1)))))})
+                                                    :month   (t/months 1)
+                                                    :quarter (t/months 4)
+                                                    :year    (t/years 1)
+                                                    :week    (t/weeks 1)
+                                                    :day     (t/days 1)
+                                                    :hour    (t/hours 1)
+                                                    :minute  (t/minutes 1)))))})
       (fn [[x y]]
         [(-> x t.format/parse to-double) y]))
      (merge-juxt
@@ -374,7 +386,11 @@
   (let [x-field (first field)]
     (-> features
         (dissoc :series)
-        (update :growth-series (partial series->dataset from-double field))
+        (update :growth-series (partial series->dataset from-double
+                                        [x-field
+                                         {:name         "GROWTH"
+                                          :display_name "Growth"
+                                          :base_type    :type/Float}]))
         (update :linear-regression
                 (partial unpack-linear-regression from-double x-field series))
         (update-in [:seasonal-decomposition :trend]
