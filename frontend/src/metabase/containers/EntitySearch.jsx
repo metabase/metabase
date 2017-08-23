@@ -209,7 +209,7 @@ export class SearchGroupingOption extends Component {
         return (
             <li
                 className={cx(
-                    "my2 cursor-pointer text-uppercase text-green-saturated-hover",
+                    "my2 cursor-pointer text-uppercase text-small text-green-saturated-hover",
                     {"text-grey-4": !active},
                     {"text-green-saturated": active}
                 )}
@@ -271,7 +271,7 @@ export class GroupedSearchResultsList extends Component {
 export const SearchResultsGroup = ({ groupName, groupIcon, entities, chooseEntity }) =>
     <div>
         <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px3 py2">
-            <Icon className="mr1 text-grey-3" name={groupIcon} />
+            <Icon className="mr1" style={{color: "#BCC5CA"}} name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
         <SearchResultsList entities={entities} chooseEntity={chooseEntity} />
@@ -297,17 +297,17 @@ class SearchResultsList extends Component {
                 <span className="text-bold">{ currentEntitiesText }</span>&nbsp;of&nbsp;<span
                 className="text-bold">{entityCount}</span>
                 <span
-                    className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": start !== 0}, {"bg-grey-1 text-grey-3": start === 0})}
-                    style={{width: "25px", height: "25px"}}
+                    className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-2 text-white": start !== 0}, {"bg-grey-0 text-grey-1": start === 0})}
+                    style={{width: "22px", height: "22px"}}
                     onClick={() => this.setState({page: page - 1})}>
-                            <Icon name="chevronleft" size={15}/>
-                        </span>
+                            <Icon name="chevronleft" size={14}/>
+                </span>
                 <span
-                    className={cx("flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": end + 1 < entityCount}, {"bg-grey-1 text-grey-3": end + 1 >= entityCount})}
-                    style={{width: "25px", height: "25px"}}
+                    className={cx("flex align-center justify-center rounded", {"cursor-pointer bg-grey-2 text-white": end + 1 < entityCount}, {"bg-grey-0 text-grey-1": end + 1 >= entityCount})}
+                    style={{width: "22px", height: "22px"}}
                     onClick={() => this.setState({page: page + 1})}>
-                            <Icon name="chevronright" size={15}/>
-                        </span>
+                            <Icon name="chevronright" size={14}/>
+                </span>
             </li>
         )
     }
@@ -355,14 +355,6 @@ export class SearchResultListItem extends Component {
                 onClick={this.onClick}
             >
                 <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
-                { hasDescription && // take care of cutting off long description
-                <div className="text-grey-4 text-small" style={{ maxWidth: "400px"}}>
-                    <Ellipsified>{ entity.description }</Ellipsified>
-                </div>
-                }
-                { !hasDescription &&
-                <div className="text-grey-2 text-small"> No description </div>
-                }
             </li>
         )
     }

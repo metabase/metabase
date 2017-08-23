@@ -153,7 +153,7 @@ export class NewQuery extends Component {
                 <div className="bg-slate-extra-light full-height flex">
                     <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
                          <div className="full-height flex align-center justify-center">
-                            <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2 large-Grid--normal">
+                            <ol className="flex-full Grid Grid--guttersXl small-Grid--1of2 large-Grid--normal">
                                 { showMetricOption &&
                                     <li className="Grid-cell">
                                         <NewQueryOption
