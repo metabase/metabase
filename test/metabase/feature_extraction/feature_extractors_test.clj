@@ -90,14 +90,15 @@
 (expect
   [["TEST" "SHARE"]
    3
-   []
+   true
    [[17 1.0]]]
   (let [dataset (#'fe/histogram->dataset {:name "TEST"} hist)]
     [(:columns dataset)
      (count (:rows dataset))
      (->> (transduce identity h/histogram [])
           (#'fe/histogram->dataset {:name "TEST"})
-          :rows)
+          :rows
+          empty?)
      (->> (transduce identity h/histogram [17])
           (#'fe/histogram->dataset {:name "TEST"})
           :rows)]))
