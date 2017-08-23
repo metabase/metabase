@@ -1,7 +1,6 @@
 import React, { Component } from 'react'
 import cxs from 'cxs'
 import { connect } from 'react-redux'
-import { Link } from 'react-router'
 
 import { saturated } from 'metabase/lib/colors'
 
@@ -57,9 +56,6 @@ class CardXRay extends Component {
                     <XRayPageWrapper>
                         <div className="my2">
                             <h1 className="my3">{xray.features.card.name} XRay</h1>
-                            <Link to={`/xray/table/${xray.features.table.id}/approximate`}>
-                                Xray {xray.features.table.display_name}
-                            </Link>
                         </div>
                         <Heading heading="Growth rate" />
                         <div className="bg-white bordered rounded shadowed">
