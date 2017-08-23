@@ -1,9 +1,5 @@
 @import '../questions/Questions.css';
 
-:local(.searchHeader) {
-    composes: flex align-center from "style";
-}
-
 :local(.searchIcon) {
     color: var(--muted-color);
 }

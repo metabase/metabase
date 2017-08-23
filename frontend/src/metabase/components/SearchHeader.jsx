@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 
 const SearchHeader = ({ searchText, setSearchText, autoFocus, inputRef, resetSearchText }) =>
-    <div className={S.searchHeader}>
+    <div className="flex align-center">
         <Icon className={S.searchIcon} name="search" size={18} />
         <input
             className={cx("input bg-transparent", S.searchBox)}
@@ -20,8 +20,8 @@ const SearchHeader = ({ searchText, setSearchText, autoFocus, inputRef, resetSea
         { resetSearchText && searchText !== "" &&
             <Icon
                 name="close"
-                className="flex-align-right cursor-pointer flex-no-shrink"
-                size={12}
+                className="cursor-pointer text-grey-2"
+                size={18}
                 onClick={resetSearchText}
             />
         }

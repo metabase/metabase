@@ -12,7 +12,7 @@ import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 5
 
 const SEARCH_GROUPINGS = [
     {
@@ -82,6 +82,8 @@ export default class EntitySearch extends Component {
         this.setState({ searchText }, this.applyFiltersAfterFilterChange)
     }
 
+    resetSearchText = () => this.setSearchText("")
+
     applyFiltersAfterFilterChange = () => this.applyFiltersForEntities(this.props.entities)
 
     applyFiltersForEntities = (entities) => {
@@ -111,7 +113,7 @@ export default class EntitySearch extends Component {
 
         return (
             <div className="bg-slate-extra-light full Entity-search">
-                <div className="wrapper wrapper--small pt4 pb1">
+                <div className="wrapper wrapper--small pt4 pb4">
                     <div className="flex mb4 align-center" style={{ height: "50px" }}>
                         <Icon
                             className="Entity-search-back-button shadowed cursor-pointer text-grey-4 mr2 flex align-center circle p2 bg-white transition-background transition-color"
@@ -140,6 +142,7 @@ export default class EntitySearch extends Component {
                                 setSearchText={this.setSearchText}
                                 autoFocus
                                 inputRef={el => this.searchHeaderInput = el}
+                                resetSearchText={this.resetSearchText}
                             />
                         </div>
                         { filteredEntities.length > 0 &&
@@ -300,16 +303,18 @@ class SearchResultsList extends Component {
                     <SearchResultListItem entity={entity} chooseEntity={chooseEntity}/>
                 )}
                 {showPagination &&
-                    <li className="flex justify-end align-center" style={{height: "45px"}}>
-                        <span className="text-bold">Rows {start + 1}-{end + 1}</span>&nbsp;of&nbsp;<span className="text-bold">{entities.length}</span>
-                        <span className={cx("text-brand-hover px1 cursor-pointer", {disabled: start === 0})}
+                    <li className="py1 px3 flex justify-end align-center">
+                        <span className="text-bold">{start + 1}-{end + 1}</span>&nbsp;of&nbsp;<span className="text-bold">{entities.length}</span>
+                        <span className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": start !== 0}, {"bg-grey-1 text-grey-3": start === 0})}
+                              style={{width: "25px", height: "25px"}}
                               onClick={() => this.setState({page: page - 1})}>
-                            <Icon name="left" size={10}/>
+                            <Icon name="chevronleft" size={15}/>
                         </span>
                         <span
-                            className={cx("text-brand-hover pr1 cursor-pointer", {disabled: end + 1 >= entities.length})}
+                            className={cx("flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": end + 1 < entities.length}, {"bg-grey-1 text-grey-3": end + 1 >= entities.length})}
+                            style={{width: "25px", height: "25px"}}
                             onClick={() => this.setState({page: page + 1})}>
-                            <Icon name="right" size={10}/>
+                            <Icon name="chevronright" size={15}/>
                         </span>
                     </li>
                 }
