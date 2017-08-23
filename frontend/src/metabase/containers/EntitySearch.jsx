@@ -126,9 +126,8 @@ export default class EntitySearch extends Component {
                                                 looking for.</p>
                                         </div>
                                     }
-                                    image="/app/img/empty_dashboard"
-                                    imageHeight="210px"
-                                    action="Create a dashboard"
+                                    image="/app/img/empty_question"
+                                    imageHeight="213px"
                                     imageClassName="mln2"
                                     smallDescription
                                 />
@@ -261,8 +260,8 @@ export class GroupedSearchResultsList extends Component {
 
 export const SearchResultsGroup = ({ groupName, groupIcon, entities, chooseEntity }) =>
     <div>
-        <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px2 py2">
-            <Icon className="mr2 text-grey-3" name={groupIcon} />
+        <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px3 py2">
+            <Icon className="mr1 text-grey-3" name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
         <SearchResultsList entities={entities} chooseEntity={chooseEntity} />
@@ -296,9 +295,9 @@ export class SearchResultListItem extends Component {
                 className="flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom"
                 onClick={this.onClick}
             >
-                <h4 className="text-brand flex-full"> { entity.name } </h4>
+                <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
                 { hasDescription && // take care of cutting off long description
-                <div className="text-grey-4 text-small" style={{ maxWidth: "450px"}}>
+                <div className="text-grey-4 text-small" style={{ maxWidth: "400px"}}>
                     <Ellipsified>{ entity.description }</Ellipsified>
                 </div>
                 }
