@@ -18,7 +18,7 @@
           "extract": {
             "output": "locales/metabase-frontend.pot"
           },
-          "discover": ["t"]
+          "discover": ["t", "jt"]
         }]
       ]
     }
