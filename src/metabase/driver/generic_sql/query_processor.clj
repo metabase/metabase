@@ -471,11 +471,11 @@
 (defn- run-query-without-timezone [driver settings connection query]
   (do-in-transaction connection (partial run-query query nil)))
 
-(defn- run-query-with-timezone [driver settings connection query]
+(defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query (some-> settings :report-timezone TimeZone/getTimeZone) transaction-connection)))
+                                    (run-query query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))
     (catch SQLException e
       (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
