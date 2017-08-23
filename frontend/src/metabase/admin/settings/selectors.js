@@ -52,6 +52,16 @@ const SECTIONS = [
                 allowValueCollection: true
             },
             {
+                key: "site-locale",
+                display_name: "Language",
+                type: "select",
+                options: [
+                    { name: "Default", value: "" },
+                    ...MetabaseSettings.get("available_locales").map(([value, name]) => ({ name, value }))
+                ],
+                placeholder: "Select a language"
+            },
+            {
                 key: "anon-tracking-enabled",
                 display_name: "Anonymous Tracking",
                 type: "boolean"

@@ -7,8 +7,10 @@
              [common :as common]
              [setting :as setting :refer [defsetting]]]
             [metabase.util.password :as password]
+            [puppetlabs.i18n.core :refer [available-locales]]
             [toucan.db :as db])
-  (:import java.util.TimeZone))
+  (:import java.util.Locale
+           java.util.TimeZone))
 
 (defsetting check-for-updates
   "Identify when new versions of Metabase are available."
@@ -32,6 +34,10 @@
             (setting/set-string! :site-url (when new-value
                                              (cond->> (s/replace new-value #"/$" "")
                                                (not (s/starts-with? new-value "http")) (str "http://"))))))
+
+(defsetting site-locale
+  "The default language for this Metabase instance. This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface."
+  :type :string)
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
@@ -142,6 +148,7 @@
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
+   :available_locales     (vec (map (fn [locale] [locale (.getDisplayName (Locale/forLanguageTag locale))]) (available-locales)))
    :map_tile_server_url   (map-tile-server-url)
    :password_complexity   password/active-password-complexity
    :public_sharing        (enable-public-sharing)

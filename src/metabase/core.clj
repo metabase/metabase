@@ -21,7 +21,10 @@
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models.user :refer [User]]
+            [metabase.models
+             [user :refer [User]]
+             [setting :as setting]]
+            [puppetlabs.i18n.core :as i18n :refer [trs trsn tru trun]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
@@ -31,7 +34,16 @@
              [params :refer [wrap-params]]
              [session :refer [wrap-session]]]
             [toucan.db :as db])
-  (:import org.eclipse.jetty.server.Server))
+  (:import java.util.Locale
+           org.eclipse.jetty.server.Server))
+
+;; HACK: replace this with setting event listener
+(defn sync-locale []
+  (let [site-locale    (setting/get :site-locale)
+        current-locale (.toLanguageTag (Locale/getDefault))]
+    (log/info (trs "Hello World!"))
+    (if (and site-locale (not= current-locale site-locale))
+      (Locale/setDefault (Locale/forLanguageTag site-locale)))))
 
 ;;; CONFIG
 
@@ -132,6 +144,10 @@
 
     ;; start the metabot thread
     (metabot/start-metabot!))
+
+  (sync-locale)
+  (future (while true (do (Thread/sleep 1000) (sync-locale))))
+  ; (java.util.Locale/setDefault (new java.util.Locale "de"))
 
   (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
