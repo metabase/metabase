@@ -3,12 +3,17 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.api.database :as database-api]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
              [database :as database :refer [Database]]
              [field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [table :refer [Table]]]
+            [metabase.sync
+             [field-values :as field-values]
+             [sync-metadata :as sync-metadata]]
             [metabase.test
              [data :as data :refer :all]
              [util :as tu :refer [match-$]]]
@@ -80,15 +85,25 @@
 
 ;; # DB LIFECYCLE ENDPOINTS
 
+(defn- add-schedules [db]
+  (assoc db :schedules {:cache_field_values {:schedule_day   nil
+                                             :schedule_frame nil
+                                             :schedule_hour  0
+                                             :schedule_type  "daily"}
+                        :metadata_sync      {:schedule_day   nil
+                                             :schedule_frame nil
+                                             :schedule_hour  nil
+                                             :schedule_type  "hourly"}}))
+
 ;; ## GET /api/database/:id
 ;; regular users *should not* see DB details
 (expect
-  (dissoc (db-details) :details)
+  (add-schedules (dissoc (db-details) :details))
   ((user->client :rasta) :get 200 (format "database/%d" (id))))
 
 ;; superusers *should* see DB details
 (expect
-  (db-details)
+  (add-schedules (db-details))
   ((user->client :crowberto) :get 200 (format "database/%d" (id))))
 
 ;; ## POST /api/database
@@ -96,14 +111,14 @@
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (merge default-db-details
          (match-$ db
-           {:created_at         $
-            :engine             :postgres
-            :is_full_sync       false
-            :id                 $
-            :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-            :updated_at         $
-            :name               $
-            :features           (driver/features (driver/engine->driver :postgres))}))
+           {:created_at   $
+            :engine       :postgres
+            :is_full_sync false
+            :id           $
+            :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+            :updated_at   $
+            :name         $
+            :features     (driver/features (driver/engine->driver :postgres))}))
   (Database (:id db)))
 
 
@@ -171,9 +186,10 @@
                             id))]
     (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
       (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-                                         "WARNING: deleting randomly created databases:\n%s\n"
+                                         "WARNING: deleting randomly created databases:\n%s"
                                          "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
-                 (u/pprint-to-str dbs))))
+                 (u/pprint-to-str (for [db dbs]
+                                    (dissoc db :features))))))
     (db/delete! Database :id [:not-in ids-to-skip])))
 
 
@@ -435,7 +451,8 @@
 
 
 ;; make sure that GET /api/database/:id/metadata works for the Saved Questions 'virtual' database
-(tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card") :result_metadata [{:name "age_in_bird_years"}])]]
+(tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card")
+                                   :result_metadata [{:name "age_in_bird_years"}])]]
   (saved-questions-virtual-db
     (assoc (virtual-table-for-card card)
       :fields [{:name         "age_in_bird_years"
@@ -448,3 +465,141 @@
 (expect
   nil
   ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                CRON SCHEDULES!                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private schedule-map-for-last-friday-at-11pm
+  {:schedule_day   "fri"
+   :schedule_frame "last"
+   :schedule_hour  23
+   :schedule_type  "monthly"})
+
+(def ^:private schedule-map-for-hourly
+  {:schedule_day   nil
+   :schedule_frame nil
+   :schedule_hour  nil
+   :schedule_type  "hourly"})
+
+;; Can we create a NEW database and give it custom schedules?
+(expect
+  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+   :metadata_sync_schedule      "0 0 * * * ? *"}
+  (do-with-temp-db-created-via-api {:schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
+                                                :metadata_sync      schedule-map-for-hourly}}
+    (fn [db]
+      (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db)))))
+
+;; Can we UPDATE the schedules for an existing database?
+(expect
+  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+   :metadata_sync_schedule      "0 0 * * * ? *"}
+  (tt/with-temp Database [db {:engine "h2"}]
+    ((user->client :crowberto) :put 200 (format "database/%d" (u/get-id db))
+     (assoc db
+       :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
+                   :metadata_sync      schedule-map-for-hourly}))
+    (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))
+
+;; If we FETCH a database will it have the correct 'expanded' schedules?
+(expect
+  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+   :metadata_sync_schedule      "0 0 * * * ? *"
+   :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
+                                 :metadata_sync      schedule-map-for-hourly}}
+  (tt/with-temp Database [db {:metadata_sync_schedule      "0 0 * * * ? *"
+                              :cache_field_values_schedule "0 0 23 ? * 6L *"}]
+    (-> ((user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
+        (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules]))))
+
+;; Can we trigger a metadata sync for a DB?
+(expect
+  (let [sync-called? (atom false)]
+    (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
+      (with-redefs [sync-metadata/sync-db-metadata! (fn [synced-db]
+                                                      (when (= (u/get-id synced-db) (u/get-id db))
+                                                        (reset! sync-called? true)))]
+        ((user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
+        @sync-called?))))
+
+;; (Non-admins should not be allowed to trigger sync)
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "database/%d/sync_schema" (data/id))))
+
+;; Can we RESCAN all the FieldValues for a DB?
+(expect
+  (let [update-field-values-called? (atom false)]
+    (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
+      (with-redefs [field-values/update-field-values! (fn [synced-db]
+                                                        (when (= (u/get-id synced-db) (u/get-id db))
+                                                          (reset! update-field-values-called? true)))]
+        ((user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
+        @update-field-values-called?))))
+
+;; (Non-admins should not be allowed to trigger re-scan)
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "database/%d/rescan_values" (data/id))))
+
+;; Can we DISCARD all the FieldValues for a DB?
+(expect
+  {:values-1-still-exists? false
+   :values-2-still-exists? false}
+  (tt/with-temp* [Database    [db       {:engine "h2", :details (:details (data/db))}]
+                  Table       [table-1  {:db_id (u/get-id db)}]
+                  Table       [table-2  {:db_id (u/get-id db)}]
+                  Field       [field-1  {:table_id (u/get-id table-1)}]
+                  Field       [field-2  {:table_id (u/get-id table-2)}]
+                  FieldValues [values-1 {:field_id (u/get-id field-1), :values [1 2 3 4]}]
+                  FieldValues [values-2 {:field_id (u/get-id field-2), :values [1 2 3 4]}]]
+    ((user->client :crowberto) :post 200 (format "database/%d/discard_values" (u/get-id db)))
+    {:values-1-still-exists? (db/exists? FieldValues :id (u/get-id values-1))
+     :values-2-still-exists? (db/exists? FieldValues :id (u/get-id values-2))}))
+
+;; (Non-admins should not be allowed to discard all FieldValues)
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "database/%d/discard_values" (data/id))))
+
+
+;;; Tests for /POST /api/database/validate
+
+;; For some stupid reason the *real* version of `test-database-connection` is set up to do nothing for tests. I'm
+;; guessing it's done that way so we can save invalid DBs for some silly tests. Instead of doing it the right way
+;; and using `with-redefs` to disable it in the few tests where it makes sense, we actually have to use `with-redefs`
+;; here to simulate its *normal* behavior. :unamused:
+(defn- test-database-connection [engine details]
+  (if (driver/can-connect-with-details? (keyword engine) details)
+    nil
+    {:valid false, :message "Error!"}))
+
+(expect
+  "You don't have permissions to do that."
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :rasta) :post 403 "database/validate"
+     {:details {:engine :h2, :details (:details (data/db))}})))
+
+(expect
+  (:details (data/db))
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (#'database-api/test-connection-details "h2" (:details (data/db)))))
+
+(expect
+  {:valid true}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :crowberto) :post 200 "database/validate"
+     {:details {:engine :h2, :details (:details (data/db))}})))
+
+(expect
+  {:valid false, :message "Error!"}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (#'database-api/test-connection-details "h2" {:db "ABC"})))
+
+(expect
+  {:valid false}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :crowberto) :post 200 "database/validate"
+     {:details {:engine :h2, :details {:db "ABC"}}})))

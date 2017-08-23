@@ -12,10 +12,10 @@
             [metabase.util :as u])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table
+            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
+            TableSchema]
            metabase.driver.bigquery.BigQueryDriver))
-
-(resolve-private-vars metabase.driver.bigquery post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
@@ -75,9 +75,10 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (post-process-native (google/execute (.query (.jobs bigquery) project-id
-                                                              (doto (QueryRequest.)
-                                                                (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
+  (ffirst (:rows (#'bigquery/post-process-native
+                  (google/execute (.query (.jobs bigquery) project-id
+                                          (doto (QueryRequest.)
+                                            (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-honeysql-form->GoogleDateTime

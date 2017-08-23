@@ -5,13 +5,13 @@
 
 (s/defn ^:private ^:always-validate average :- s/Num
   "Return the average of VALUES."
-  [values :- i/ValuesSample]
+  [values :- i/FieldSample]
   (/ (double (reduce + values))
      (double (count values))))
 
 (s/defn ^:always-validate number-fingerprint :- i/NumberFingerprint
   "Generate a fingerprint containing information about values that belong to a `:type/Number` Field."
-  [values :- i/ValuesSample]
+  [values :- i/FieldSample]
   {:min (apply min values)
    :max (apply max values)
    :avg (average values)})

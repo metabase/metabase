@@ -59,11 +59,23 @@
 ;;; |                                            SAMPLING & FINGERPRINTS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ValuesSample
-  "Schema for a sample of VALUES returned by the `sample` sub-stage of analysis and passed into the `fingerprint`
+(def FieldSample
+  "Schema for a sample of values returned by the `sample` sub-stage of analysis and passed into the `fingerprint`
    stage. Guaranteed to be non-empty and non-nil."
   ;; Validating against this is actually pretty quick, in the order of microseconds even for a 10,000 value sequence
   (s/constrained [(s/pred (complement nil?))] seq "Non-empty sequence of non-nil values."))
+
+(def TableSample
+  "Schema for a sample of values of certain Fields for a TABLE. This should basically just be a sequence of rows where
+   each row is a sequence of values in the same order as the Fields passed in (basically the format you get from JDBC
+   when `:as-arrays?` is `false`).
+
+   e.g. if Fields passed in were `ID` and `Name` the Table sample should look something like:
+
+     [[1 \"Rasta Toucan\"]
+      [2 \"Lucky Pigeon\"]
+      [3 \"Kanye Nest\"]]"
+  [[s/Any]])
 
 
 (def GlobalFingerprint

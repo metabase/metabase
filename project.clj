@@ -5,7 +5,7 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "240"]
+  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "205"]
             "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]

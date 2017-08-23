@@ -1,6 +1,9 @@
 import Button from "metabase/components/Button";
 
 export const click = (enzymeWrapper) => {
+    if (enzymeWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `click(wrapper)` is empty.")
+    }
     const nodeType = enzymeWrapper.type();
     if (nodeType === Button || nodeType === "button") {
         console.trace(
@@ -14,6 +17,9 @@ export const click = (enzymeWrapper) => {
 }
 
 export const clickButton = (enzymeWrapper) => {
+    if (enzymeWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `clickButton(wrapper)` is empty.")
+    }
     // `clickButton` is separate from `click` because `wrapper.closest(..)` sometimes results in error
     // if the parent element isn't found, https://github.com/airbnb/enzyme/issues/410
 
@@ -26,12 +32,31 @@ export const clickButton = (enzymeWrapper) => {
     } else {
         // Assume that the current component wraps a button element
         enzymeWrapper.simulate("submit");
-        enzymeWrapper.simulate("click", { button: 0 });
+
+        // For some reason the click sometimes fails when using a Button component
+        try {
+            enzymeWrapper.simulate("click", { button: 0 });
+        } catch(e) {
+
+        }
     }
 }
 
 export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
+    if (inputWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `setInputValue(...)` is empty.")
+    }
+
     inputWrapper.simulate('change', { target: { value: value } });
     if (blur) inputWrapper.simulate("blur")
 }
 
+export const chooseSelectOption = (optionWrapper) => {
+    if (optionWrapper.length === 0) {
+        throw new Error("The wrapper you provided for `chooseSelectOption(...)` is empty.")
+    }
+
+    const optionValue = optionWrapper.prop('value');
+    const parentSelect = optionWrapper.closest("select");
+    parentSelect.simulate('change', { target: { value: optionValue } });
+}

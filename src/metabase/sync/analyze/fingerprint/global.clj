@@ -5,7 +5,7 @@
 
 (s/defn ^:always-validate global-fingerprint :- i/GlobalFingerprint
   "Generate a fingerprint of global information for Fields of all types."
-  [values :- i/ValuesSample]
+  [values :- i/FieldSample]
   ;; TODO - this logic isn't as nice as the old logic that actually called the DB
   ;; We used to do (queries/field-distinct-count field field-values/low-cardinality-threshold)
   ;; Consider whether we are so married to the idea of only generating fingerprints from samples that we

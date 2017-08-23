@@ -131,7 +131,7 @@
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
     (let [parsed-rows (try
                         (->> (mc/find-maps conn (:name table))
-                             (take driver/max-sync-lazy-seq-results)
+                             (take driver/max-sample-rows)
                              (reduce
                                (fn [field-defs row]
                                  (loop [[k & more-keys] (keys row)
@@ -146,17 +146,6 @@
        :name   (:name table)
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
-
-(s/defn ^:private ^:always-validate field-values-lazy-seq [field :- si/FieldInstance]
-  (lazy-seq
-   (assert *mongo-connection*
-     "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
-   (let [table           (field/table field)
-         name-components (rest (field/qualified-name-components field))]
-     (assert (seq name-components))
-     (for [row (mq/with-collection *mongo-connection* (:name table)
-                 (mq/fields [(str/join \. name-components)]))]
-       (get-in row (map keyword name-components))))))
 
 
 (defrecord MongoDriver []
@@ -200,7 +189,6 @@
                                                              :placeholder  "readPreference=nearest&replicaSet=test"}]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
