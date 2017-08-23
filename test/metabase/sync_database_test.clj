@@ -161,15 +161,6 @@
     (sync-database! db)
     (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
 
-;; NOCOMMIT
-(defn- x []
-  (tt/with-temp Database [db {:engine :sync-test}]
-    (sync-database! db)
-    ;; we are purposely running the sync twice to test for possible logic issues which only manifest
-    ;; on resync of a database, such as adding tables that already exist or duplicating fields
-    (sync-database! db)
-    (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
-
 
 ;; ## SYNC TABLE
 
