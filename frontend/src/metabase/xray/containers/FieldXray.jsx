@@ -12,7 +12,6 @@ import { getFieldXray } from 'metabase/xray/selectors'
 import COSTS from 'metabase/xray/costs'
 
 import {
-    PERIODICITY,
     ROBOTS,
     STATS_OVERVIEW,
     VALUES_OVERVIEW
@@ -24,6 +23,8 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
+
+import Periodicity from 'metabase/xray/components/Periodicity'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
@@ -42,31 +43,6 @@ type Props = {
         fieldId: number
     },
 }
-
-const Periodicity = ({xray}) =>
-    <div>
-        <Heading heading="Time breakdown" />,
-        <div className="bg-white bordered rounded shadowed">
-            <div className="Grid Grid--gutters Grid--1of4">
-                { PERIODICITY.map(period =>
-                    xray[`histogram-${period}`] && (
-                        <div className="Grid-cell">
-                            <div className="p4 border-right border-bottom">
-                                <div style={{ height: 120}}>
-                                    <h4>
-                                        {xray[`histogram-${period}`].label}
-                                    </h4>
-                                    <Histogram
-                                        histogram={xray[`histogram-${period}`].value}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )
-                )}
-            </div>
-        </div>
-    </div>
 
 const mapStateToProps = state => ({
     xray: getFieldXray(state)

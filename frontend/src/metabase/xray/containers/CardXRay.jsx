@@ -12,6 +12,7 @@ import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import Visualization from 'metabase/visualizations/components/Visualization'
 
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
+import Periodicity from 'metabase/xray/components/Periodicity'
 
 type Props = {
     fetchCardXray: () => void,
@@ -127,6 +128,8 @@ class CardXRay extends Component {
                                 />
                             </div>
                         </div>
+
+                        <Periodicity xray={Object.values(xray.constituents)[0]} />
 
                         <Heading heading="Seasonal decomposition" />
                         <div className="full">
