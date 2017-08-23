@@ -82,7 +82,10 @@ export default class EntitySearch extends Component {
         this.setState({ searchText }, this.applyFiltersAfterFilterChange)
     }
 
-    resetSearchText = () => this.setSearchText("")
+    resetSearchText = () => {
+        this.setSearchText("")
+        this.searchHeaderInput.focus()
+    }
 
     applyFiltersAfterFilterChange = () => this.applyFiltersForEntities(this.props.entities)
 
@@ -303,7 +306,11 @@ class SearchResultsList extends Component {
                             <Icon name="chevronleft" size={15}/>
                         </span>
                 <span
-                    className={cx("flex align-center justify-center rounded", {"cursor-pointer bg-grey-3 text-white": end + 1 < entityCount}, {"bg-grey-1 text-grey-3": end + 1 >= entityCount})}
+                    className={cx(
+                        "flex align-center justify-center rounded",
+                        { "cursor-pointer bg-grey-3 text-white": end + 1 < entityCount },
+                        { "bg-grey-1 text-grey-3": end + 1 >= entityCount }
+                    )}
                     style={{width: "25px", height: "25px"}}
                     onClick={() => this.setState({page: page + 1})}>
                             <Icon name="chevronright" size={15}/>
