@@ -3,7 +3,7 @@
    This is a `:dynamic-schema` db with `:nested-fields`.
    Most notably meant to serve as a representation of a Mongo database."
   (:require [metabase.driver :as driver]
-            [metabase.test.mock.util :refer [table-defaults field-defaults]]))
+            [metabase.test.mock.util :as mock-util]))
 
 
 (def ^:private ^:const toucanery-tables
@@ -62,77 +62,77 @@
 (extend ToucaneryDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:describe-database     describe-database
-          :describe-table        describe-table
-          :features              (constantly #{:dynamic-schema :nested-fields})
-          :details-fields        (constantly [])
-          :field-values-lazy-seq (fn [& _] (range 500)) ; enough so it can get fingerprinted, but not be a category
-          :table-rows-seq        table-rows-seq}))
+         {:describe-database        describe-database
+          :describe-table           describe-table
+          :features                 (constantly #{:dynamic-schema :nested-fields})
+          :details-fields           (constantly [])
+          :table-rows-seq           table-rows-seq
+          :process-query-in-context mock-util/process-query-in-context}))
 
 (driver/register-driver! :toucanery (ToucaneryDriver.))
 
 (def toucanery-tables-and-fields
-  [(merge table-defaults
+  [(merge mock-util/table-defaults
           {:name         "employees"
-           :fields       [(merge field-defaults
+           :fields       [(merge mock-util/field-defaults
                                  {:name         "id"
                                   :display_name "ID"
                                   :base_type    :type/Integer
                                   :special_type :type/PK})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "name"
                                   :display_name "Name"
                                   :base_type    :type/Text
                                   :special_type :type/Name})]
            :display_name "Employees"})
-   (merge table-defaults
+   (merge mock-util/table-defaults
           {:name         "transactions"
-           :fields       [(merge field-defaults
+           :fields       [(merge mock-util/field-defaults
                                  {:name         "age"
                                   :display_name "Age"
                                   :base_type    :type/Integer
                                   :parent_id    true})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "buyer"
                                   :display_name "Buyer"
                                   :base_type    :type/Dictionary})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "cc"
                                   :display_name "Cc"
                                   :base_type    :type/Text
                                   :parent_id    true})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "details"
                                   :display_name "Details"
                                   :base_type    :type/Dictionary
                                   :parent_id    true})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "id"
                                   :display_name "ID"
                                   :base_type    :type/Integer
                                   :special_type :type/PK})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "name"
                                   :display_name "Name"
                                   :base_type    :type/Text
                                   :parent_id    true
                                   :special_type :type/Name})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "name"
                                   :display_name "Name"
                                   :base_type    :type/Text
                                   :parent_id    true
                                   :special_type :type/Name})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "toucan"
                                   :display_name "Toucan"
                                   :base_type    :type/Dictionary})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "ts"
                                   :display_name "Ts"
                                   :base_type    :type/BigInteger
                                   :special_type :type/UNIXTimestampMilliseconds})
-                          (merge field-defaults
+                          (merge mock-util/field-defaults
                                  {:name         "weight"
                                   :display_name "Weight"
                                   :base_type    :type/Decimal

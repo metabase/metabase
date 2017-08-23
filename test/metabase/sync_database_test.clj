@@ -16,8 +16,10 @@
             [metabase.test
              [data :refer :all]
              [util :as tu]]
+            [metabase.test.mock.util :as mock-util]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -60,13 +62,12 @@
 (extend SyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:describe-database     describe-database
-          :describe-table        describe-table
-          :describe-table-fks    describe-table-fks
-          :features              (constantly #{:foreign-keys})
-          :details-fields        (constantly [])
-          ;; enough values that it won't get marked as a Category, but still get a fingerprint or w/e
-          :field-values-lazy-seq (fn [& _] (range 500))}))
+         {:describe-database        describe-database
+          :describe-table           describe-table
+          :describe-table-fks       describe-table-fks
+          :features                 (constantly #{:foreign-keys})
+          :details-fields           (constantly [])
+          :process-query-in-context mock-util/process-query-in-context}))
 
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
@@ -94,7 +95,7 @@
    :entity_type             nil
    :entity_name             nil
    :visibility_type         nil
-   :rows                    nil
+   :rows                    1000
    :active                  true
    :created_at              true
    :updated_at              true})
@@ -153,6 +154,15 @@
                                   :name         "studio"
                                   :display_name "Studio"
                                   :base_type    :type/Text})]})]
+  (tt/with-temp Database [db {:engine :sync-test}]
+    (sync-database! db)
+    ;; we are purposely running the sync twice to test for possible logic issues which only manifest
+    ;; on resync of a database, such as adding tables that already exist or duplicating fields
+    (sync-database! db)
+    (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
+
+;; NOCOMMIT
+(defn- x []
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest

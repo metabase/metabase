@@ -19,40 +19,43 @@
             [toucan.db :as db]))
 
 (s/defn ^:private ^:always-validate type-specific-fingerprint :- (s/maybe i/TypeSpecificFingerprint)
-  "Return type-specific fingerprint info for FIELD and a sample of VALUES if it has an elligible base type
-   such as a derivative of `:type/Text` or of `:type/Number`."
-  [field :- i/FieldInstance, values :- i/ValuesSample]
+  "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
+  [field :- i/FieldInstance, values :- i/FieldSample]
   (condp #(isa? %2 %1) (:base_type field)
     :type/Text   {:type/Text (text/text-fingerprint values)}
     :type/Number {:type/Number (number/number-fingerprint values)}
     nil))
 
-(s/defn ^:private ^:always-validate fingerprint :- (s/maybe i/Fingerprint)
-  "Generate a 'fingerprint' from a SAMPLE of values."
-  ([field :- i/FieldInstance]
-   (when-let [values (sample/basic-sample field)]
-     (fingerprint field values)))
-  ([field :- i/FieldInstance, values :- i/ValuesSample]
-   (merge
-    (when-let [global-fingerprint (global/global-fingerprint values)]
-      {:global global-fingerprint})
-    (when-let [type-specific-fingerprint (type-specific-fingerprint field values)]
-      {:type type-specific-fingerprint}))))
+(s/defn ^:private ^:always-validate fingerprint :- i/Fingerprint
+  "Generate a 'fingerprint' from a FieldSample of VALUES."
+  [field :- i/FieldInstance, values :- i/FieldSample]
+  (merge
+   (when-let [global-fingerprint (global/global-fingerprint values)]
+     {:global global-fingerprint})
+   (when-let [type-specific-fingerprint (type-specific-fingerprint field values)]
+     {:type type-specific-fingerprint})))
 
 
-(s/defn ^:private ^:always-validate fingerprint!
-  "Generate and save a fingerprint for a FIELD."
-  [field :- i/FieldInstance]
-  (sync-util/with-error-handling (format "Error generating fingerprint for %s" (sync-util/name-for-logging field))
-    (when-let [fingerprint (fingerprint field)]
-      (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
-      ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
-      ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
-      ;; latest fingerprints.
-      (db/update! Field (u/get-id field)
-        :fingerprint         fingerprint
-        :fingerprint_version i/latest-fingerprint-version
-        :last_analyzed       nil))))
+(s/defn ^:private ^:always-validate save-fingerprint!
+  [field :- i/FieldInstance, fingerprint :- i/Fingerprint]
+  ;; don't bother saving fingerprint if it's completely empty
+  (when (seq fingerprint)
+    (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
+    ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
+    ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
+    ;; latest fingerprints.
+    (db/update! Field (u/get-id field)
+      :fingerprint         fingerprint
+      :fingerprint_version i/latest-fingerprint-version
+      :last_analyzed       nil)))
+
+(s/defn ^:private ^:always-validate fingerprint-table!
+  [table :- i/TableInstance, fields :- [i/FieldInstance]]
+  (doseq [[field sample] (sample/sample-fields table fields)]
+    (when sample
+      (sync-util/with-error-handling (format "Error generating fingerprint for %s" (sync-util/name-for-logging field))
+        (let [fingerprint (fingerprint field sample)]
+          (save-fingerprint! field fingerprint))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -145,9 +148,9 @@
   (seq (db/select Field
          (honeysql-for-fields-that-need-fingerprint-updating table))))
 
+;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
 (s/defn ^:always-validate fingerprint-fields!
   "Generate and save fingerprints for all the Fields in TABLE that have not been previously analyzed."
   [table :- i/TableInstance]
   (when-let [fields (fields-to-fingerprint table)]
-    (doseq [field fields]
-      (fingerprint! field))))
+    (fingerprint-table! table fields)))

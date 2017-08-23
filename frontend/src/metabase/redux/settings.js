@@ -9,7 +9,7 @@ import { SessionApi, SettingsApi } from "metabase/services";
 import { loadCurrentUser } from "./user";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
+export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 const REFRESH_SETTINGS_LIST = "metabase/settings/REFRESH_SETTINGS_LIST";
 
 export const refreshSiteSettings = createThunkAction(REFRESH_SITE_SETTINGS, () =>

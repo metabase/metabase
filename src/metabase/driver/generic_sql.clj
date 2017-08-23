@@ -231,45 +231,17 @@
   ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
 
 
+(def ^:private ^:dynamic *jdbc-options* {})
+
 (defn- query
   "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
   ([driver database honeysql-form]
    (jdbc/query (db->jdbc-connection-spec database)
-               (honeysql-form->sql+args driver honeysql-form)))
+               (honeysql-form->sql+args driver honeysql-form)
+               *jdbc-options*))
   ([driver database table honeysql-form]
    (query driver database (merge {:from [(qualify+escape table)]}
                                  honeysql-form))))
-
-
-(defn- field-values-lazy-seq [driver field]
-  (let [table          (field/table field)
-        db             (table/database table)
-        field-k        (qualify+escape table field)
-        pk-field       (field/Field (table/pk-field-id table))
-        pk-field-k     (when pk-field
-                         (qualify+escape table pk-field))
-        transform-fn   (if (isa? (:base_type field) :type/Text)
-                         u/jdbc-clob->str
-                         identity)
-        select*        {:select   [[field-k :field]]
-                        :from     [(qualify+escape table)]          ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
-                        :order-by [[(or pk-field-k field-k) :asc]]} ; try to order by the table's Primary Key to avoid doing full table scans
-        fetch-one-page (fn [page-num]
-                         (for [{v :field} (query driver db (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
-                                                                                              :page  (inc page-num)}}))]
-                           (transform-fn v)))
-
-        ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
-        ;; with a recursive call to (lazily) fetch the next chunk of results, until we run out of results or hit the limit.
-        fetch-page     (fn -fetch-page [page-num]
-                         (lazy-seq
-                          (let [results             (fetch-one-page page-num)
-                                total-items-fetched (* (inc page-num) driver/field-values-lazy-seq-chunk-size)]
-                            (concat results (when (and (seq results)
-                                                       (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                                       (= (count results) driver/field-values-lazy-seq-chunk-size))
-                                              (-fetch-page (inc page-num)))))))]
-    (fetch-page 0)))
 
 
 (defn- table-rows-seq [driver database table]
@@ -410,7 +382,6 @@
           :describe-table-fks      describe-table-fks
           :execute-query           (resolve 'metabase.driver.generic-sql.query-processor/execute-query)
           :features                features
-          :field-values-lazy-seq   field-values-lazy-seq
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
           :notify-database-updated notify-database-updated
           :table-rows-seq          table-rows-seq}))

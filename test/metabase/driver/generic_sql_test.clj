@@ -7,7 +7,8 @@
              [table :as table :refer [Table]]]
             [metabase.test.data :refer :all]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.test.data :as data])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -64,14 +65,18 @@
      :dest-column-name "ID"}}
   (driver/describe-table-fks (H2Driver.) (db) @venues-table))
 
-;;; FIELD-VALUES-LAZY-SEQ
+;;; TABLE-ROWS-SAMPLE
 (datasets/expect-with-engines @generic-sql-engines
-  ["Red Medicine"
-   "Stout Burgers & Beers"
-   "The Apple Pan"
-   "Wurstküche"
-   "Brite Spot Family Restaurant"]
-  (take 5 (#'sql/field-values-lazy-seq datasets/*driver* (db/select-one 'Field :id (id :venues :name)))))
+  [["20th Century Cafe"]
+   ["25°"]
+   ["33 Taps"]
+   ["800 Degrees Neapolitan Pizzeria"]
+   ["BCD Tofu House"]]
+  (->> (driver/table-rows-sample (Table (data/id :venues))
+         [(Field (data/id :venues :name))])
+       ;; since order is not guaranteed do some sorting here so we always get the same results
+       (sort-by first)
+       (take 5)))
 
 
 ;;; TABLE-ROWS-SEQ
