@@ -40,10 +40,13 @@ In `/etc/init.d/metabase`, replace configurable items (they look like `<some-var
 
     # where is the Metabase jar located?
     METABASE=</your/path/to/>metabase.jar
+
     # where will our environment variables be stored?
     METABASE_CONFIG=/etc/default/metabase
+
     # which (unprivileged) user should we run Metabase as?
     RUNAS=<your_deploy_user>
+
     # where should we store the pid/log files?
     PIDFILE=/var/run/metabase.pid
     LOGFILE=/var/log/metabase.log
@@ -170,10 +173,13 @@ Now, it's time to register our Metabase service with `systemd` so it will start 
 
     # ensure our metabase script is executable
     $ sudo chmod +x /etc/init.d/metabase
+
     # create the log file we declared in /etc/init.d/metabase
     $ sudo touch /var/log/metabase.log
+
     # ensure unprivileged deploy user owns log (or it won't be able to write)
     $ sudo chown <your_deploy_user>:<your_deploy_user> /var/log/metabase.log
+
     # add to default services
     $ sudo update-rc.d metabase defaults
 
