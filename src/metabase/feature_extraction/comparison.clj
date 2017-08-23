@@ -63,12 +63,14 @@
   "Chi-squared distane between empirical probability distributions `p` and `q`.
    https://stats.stackexchange.com/questions/184101/comparing-two-histograms-using-chi-square-distance"
   [p q]
-  (reduce + (map (fn [pi qi]
-                   (if (zero? (+ pi qi))
-                     0
-                     (/ (math/sq (- pi qi))
-                        (+ pi qi))))
-                 p q)))
+  (/ (reduce + (map (fn [pi qi]
+                      (cond
+                        (zero? pi) qi
+                        (zero? qi) pi
+                        :else      (/ (math/sq (- pi qi))
+                                      (+ pi qi))))
+                    p q))
+     2))
 
 (defn- unify-categories
   "Given two PMFs add missing categories and align them so they both cover the
