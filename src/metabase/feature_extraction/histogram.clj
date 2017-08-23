@@ -58,15 +58,15 @@
   ([bin-width ^Histogram histogram]
    (let [{:keys [min max]} (impl/bounds histogram)]
      (equidistant-bins min max bin-width histogram)))
-  ([min max bin-width ^Histogram histogram]
+  ([min-value max-value bin-width ^Histogram histogram]
    (when-not (empty? histogram)
-     (->> min
+     (->> min-value
           (iterate (partial + bin-width))
           (drop 1)
-          (m/take-upto (partial <= max))
+          (m/take-upto (partial <= max-value))
           (map (fn [p]
                  [p (impl/sum histogram p)]))
-          (concat [[min 0.0]])
+          (concat [[min-value 0.0]])
           (partition 2 1)
           (map (fn [[[x s1] [_ s2]]]
                  [x (- s2 s1)]))))))
