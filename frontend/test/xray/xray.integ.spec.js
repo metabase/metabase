@@ -8,7 +8,7 @@ import {
 } from "__support__/enzyme_utils"
 
 import { mount } from "enzyme";
-import { SegmentApi } from "metabase/services";
+import { CardApi, SegmentApi } from "metabase/services";
 
 import { delay } from "metabase/lib/promise";
 import { FETCH_CARD_XRAY, FETCH_SEGMENT_XRAY, FETCH_TABLE_XRAY } from "metabase/xray/xray";
@@ -19,13 +19,14 @@ import SegmentXRay from "metabase/xray/containers/SegmentXRay";
 import Question from "metabase-lib/lib/Question";
 import CardXRay from "metabase/xray/containers/CardXRay";
 import * as Urls from "metabase/lib/urls";
-import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
+import { INITIALIZE_QB, LOAD_METADATA_FOR_CARD, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
+import { LOAD_TABLE_METADATA } from "metabase/admin/datamodel/datamodel";
 
 describe("xray integration tests", () => {
     let segmentId = null;
-    let segmentQuestion = null;
     let timeBreakoutQuestion = null;
+    let segmentQuestion = null;
 
     beforeAll(async () => {
         await login()
@@ -56,6 +57,8 @@ describe("xray integration tests", () => {
 
     afterAll(async () => {
         await SegmentApi.delete({ segmentId, revision_message: "Sadly this segment didn't enjoy a long life either" })
+        await CardApi.delete({cardId: timeBreakoutQuestion.id()})
+        await CardApi.delete({cardId: segmentQuestion.id()})
     })
 
     describe("for table xray", async () => {
@@ -74,38 +77,34 @@ describe("xray integration tests", () => {
         })
     })
 
-    describe("for segment xray", async () => {
-        it("should render the segment xray page without errors", async () => {
+    // NOTE Atte Keinänen 8/24/17: I wanted to test both QB action widget xray action and the card/segment xray pages
+    // in the same tests so that we see that end-to-end user experience matches our expectations
+
+    describe("query builder actions", async () => {
+        fit("let you see card xray for a timeseries question", async () => {
             const store = await createTestStore()
-            store.pushPath(`/xray/segment/${segmentId}/approximate`);
+            store.pushPath(Urls.question(timeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
 
-            await store.waitForActions(FETCH_SEGMENT_XRAY, { timeout: 5000 })
+            await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
+            // NOTE Atte Keinänen: Not sure why we need this delay to get most of action widget actions to appear :/
+            await delay(500);
 
-            const segmentXRay = app.find(SegmentXRay)
-            expect(segmentXRay.length).toBe(1)
-            expect(segmentXRay.find(CostSelect).length).toBe(1)
-            expect(segmentXRay.text()).toMatch(/A Segment/);
-        })
-    })
+            const actionsWidget = app.find(ActionsWidget)
+            click(actionsWidget.childAt(0))
+            const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
+            click(xrayOptionIcon);
 
-    describe("for question xray", async () => {
-        it("should let you see xray for Order, Count of Rows, Created At: Week", async () => {
-            const store = await createTestStore()
-            store.pushPath(`/xray/card/${timeBreakoutQuestion.id()}/extended`);
-            const app = mount(store.getAppContainer());
 
-            await store.waitForActions(FETCH_CARD_XRAY, { timeout: 5000 })
+            await store.waitForActions(FETCH_CARD_XRAY, {timeout: 5000})
+            expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
             expect(cardXRay.length).toBe(1)
             expect(cardXRay.find(CostSelect).length).toBe(1)
             expect(cardXRay.text()).toMatch(/Time breakout question/);
         })
-    })
 
-    // TODO: Should this be here under xrays test suite or should it be under query builder actions test suite?
-    describe("query builder actions", async () => {
         it("let you see segment xray for a question containing a segment", async () => {
             const store = await createTestStore()
             store.pushPath(Urls.question(segmentQuestion.id()))
