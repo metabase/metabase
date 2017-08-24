@@ -1,7 +1,6 @@
 import React, { Component } from 'react'
 import cxs from 'cxs'
 import { connect } from 'react-redux'
-import { Link } from 'react-router'
 
 import { saturated } from 'metabase/lib/colors'
 
@@ -12,6 +11,7 @@ import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import Visualization from 'metabase/visualizations/components/Visualization'
 
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
+import Periodicity from 'metabase/xray/components/Periodicity'
 
 type Props = {
     fetchCardXray: () => void,
@@ -56,9 +56,6 @@ class CardXRay extends Component {
                     <XRayPageWrapper>
                         <div className="my2">
                             <h1 className="my3">{xray.features.card.name} XRay</h1>
-                            <Link to={`/xray/table/${xray.features.table.id}/approximate`}>
-                                Xray {xray.features.table.display_name}
-                            </Link>
                         </div>
                         <Heading heading="Growth rate" />
                         <div className="bg-white bordered rounded shadowed">
@@ -101,7 +98,7 @@ class CardXRay extends Component {
                             </div>
                         </div>
 
-                        <Heading heading="Growth series" />
+                        <Heading heading={xray.features['growth-series'].label} />
                         <div className="full">
                             <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
@@ -128,7 +125,9 @@ class CardXRay extends Component {
                             </div>
                         </div>
 
-                        <Heading heading="Seasonal decomposition" />
+                        <Periodicity xray={Object.values(xray.constituents)[0]} />
+
+                        <Heading heading={xray.features['seasonal-decomposition'].label} />
                         <div className="full">
                             <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
                                 <Visualization
@@ -137,9 +136,7 @@ class CardXRay extends Component {
                                             card: {
                                                 display: 'line',
                                                 name: 'Trend',
-                                                visualization_settings: {
-
-                                                }
+                                                visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.trend
                                         },
@@ -147,9 +144,7 @@ class CardXRay extends Component {
                                             card: {
                                                 display: 'line',
                                                 name: 'Seasonal',
-                                                visualization_settings: {
-
-                                                }
+                                                visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.seasonal
                                         },
@@ -157,9 +152,7 @@ class CardXRay extends Component {
                                             card: {
                                                 display: 'line',
                                                 name: 'Residual',
-                                                visualization_settings: {
-
-                                                }
+                                                visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.residual
                                         }
