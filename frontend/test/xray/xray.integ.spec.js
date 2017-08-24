@@ -100,7 +100,6 @@ describe("xray integration tests", () => {
 
             const cardXRay = app.find(CardXRay)
             expect(cardXRay.length).toBe(1)
-            expect(cardXRay.find(CostSelect).length).toBe(1)
             expect(cardXRay.text()).toMatch(/Time breakout question/);
         })
 
