@@ -16,7 +16,7 @@ import {
     getEngineNativeRequiresTable
 } from "metabase/lib/engine";
 
-import { chain, getIn, assocIn } from "icepick";
+import { chain, assoc, getIn, assocIn } from "icepick";
 import _ from "underscore";
 
 import type {
@@ -92,6 +92,21 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     /* Methods unique to this query type */
+
+    /**
+     * @returns a new query with the provided Database set.
+     */
+    setDatabase(database: Database): NativeQuery {
+        if (database.id !== this.databaseId()) {
+            // TODO: this should reset the rest of the query?
+            return new NativeQuery(
+                this._originalQuestion,
+                assoc(this.datasetQuery(), "database", database.id)
+            );
+        } else {
+            return this;
+        }
+    }
 
     hasWritePermission(): boolean {
         const database = this.database();

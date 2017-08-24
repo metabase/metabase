@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
 import {
+    fetchDatabases,
     fetchMetrics,
     fetchSegments,
 } from 'metabase/redux/metadata'
@@ -26,6 +27,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
+    fetchDatabases,
     fetchMetrics,
     fetchSegments,
     resetQuery
@@ -45,6 +47,7 @@ type Props = {
 
     resetQuery: () => void,
 
+    fetchDatabases: () => void,
     fetchMetrics: () => void,
     fetchSegments: () => void,
 }
@@ -53,6 +56,7 @@ export class NewQueryOptions extends Component {
     props: Props
 
     componentWillMount() {
+        this.props.fetchDatabases()
         this.props.fetchMetrics()
         this.props.fetchSegments()
 
@@ -81,7 +85,7 @@ export class NewQueryOptions extends Component {
         return (
             <div className="bg-slate-extra-light full-height flex">
                 <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
-                     <div className="full-height flex align-center justify-center">
+                     <div className="flex align-center justify-center" style={{minHeight: "100%"}}>
                         <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2 large-Grid--normal">
                             { showMetricOption &&
                                 <li className="Grid-cell">

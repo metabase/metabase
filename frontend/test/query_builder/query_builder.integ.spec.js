@@ -75,6 +75,8 @@ import EntitySearch, {
 import { MetricApi, SegmentApi } from "metabase/services";
 import AggregationWidget from "metabase/query_builder/components/AggregationWidget";
 import { SET_REQUEST_STATE } from "metabase/redux/requests";
+import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import DataSelector from "metabase/query_builder/components/DataSelector";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -158,18 +160,28 @@ describe("QueryBuilder", () => {
             expect(getQuery(store.getState()) instanceof StructuredQuery).toBe(true)
         })
 
-        // Something doesn't work in tests when opening the native query editor :/
-        xit("lets you start a custom native question", async () => {
+        it("lets you start a custom native question", async () => {
+            // Don't render Ace editor in tests because it uses many DOM methods that aren't supported by jsdom
+            // see also parameters.integ.js for more notes about Ace editor testing
+            NativeQueryEditor.prototype.loadAceEditor = () => {}
+
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS, FETCH_DATABASES]);
             await store.waitForActions([SET_REQUEST_STATE]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "SQL"))
             await store.waitForActions(INITIALIZE_QB);
             expect(getQuery(store.getState()) instanceof NativeQuery).toBe(true)
+
+            // No database selector visible because in test environment we should
+            // only have a single database
+            expect(app.find(DataSelector).length).toBe(0)
+
+            // The name of the database should be displayed
+            expect(app.find(NativeQueryEditor).text()).toMatch(/Sample Dataset/)
         })
 
         it("lets you start a question from a metric", async () => {
