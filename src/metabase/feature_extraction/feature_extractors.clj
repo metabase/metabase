@@ -456,7 +456,7 @@
   [dt]
   (if (<= (t/day dt) (/ (t/number-of-days-in-the-month dt) 2))
     (t/floor dt t/month)
-    (t/date-time (t/year dt) (inc (t/month dt)))))
+    (t/plus (t/floor dt t/month) (t/months 1))))
 
 (defn- month-frequencies
   [earliest latest]
