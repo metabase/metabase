@@ -125,9 +125,9 @@ class SegmentXRay extends Component {
                             <div className="mt2">
                                 <Heading heading="Fields in this segment" />
                                 <ol>
-                                    { constituents.map(c => {
+                                    { constituents.map((c, i) => {
                                         return (
-                                            <li>
+                                            <li key={i}>
                                                 <Constituent
                                                     constituent={c}
                                                 />
