@@ -4,7 +4,7 @@
  */
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
-import StructuredQuery, { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/lib/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/lib/queries/StructuredQuery";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 
 /**

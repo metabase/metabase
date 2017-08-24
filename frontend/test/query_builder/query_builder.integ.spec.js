@@ -109,7 +109,7 @@ describe("QueryBuilder", () => {
     /**
      * Simple tests for seeing if the query builder renders without errors
      */
-    fdescribe("for new questions", async () => {
+    describe("for new questions", async () => {
         let metricId = null;
         let segmentId = null;
 
