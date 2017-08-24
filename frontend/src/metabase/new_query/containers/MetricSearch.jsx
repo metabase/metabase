@@ -10,33 +10,50 @@ import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import EmptyState from "metabase/components/EmptyState";
 
+import type { StructuredQuery } from "metabase/meta/types/Query";
+import { getCurrentQuery } from "metabase/new_query/selectors";
+import { resetQuery } from '../new_query'
+
 const mapStateToProps = state => ({
+    query: getCurrentQuery(state),
     metadata: getMetadata(state),
     metadataFetched: getMetadataFetched(state)
 })
 const mapDispatchToProps = {
     fetchMetrics,
     fetchDatabases,
+    resetQuery
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class MetricSearch extends Component {
     props: {
+        getUrlForQuery: (StructuredQuery) => void,
+        query: StructuredQuery,
         metadata: Metadata,
         metadataFetched: any,
         fetchMetrics: () => void,
         fetchDatabases: () => void,
-        onChooseMetric: (Metric) => void
+        resetQuery: () => void,
     }
 
     componentDidMount() {
         this.props.fetchDatabases() // load databases if not loaded yet
         this.props.fetchMetrics(true) // metrics may change more often so always reload them
+        this.props.resetQuery();
+    }
+
+    getUrlForMetric = (metric: Metric) => {
+        const updatedQuery = this.props.query
+            .setDatabase(metric.table.db)
+            .setTable(metric.table)
+            .addAggregation(metric.aggregationClause())
+
+        return this.props.getUrlForQuery(updatedQuery);
     }
 
     render() {
-        const { metadataFetched, metadata, onChooseMetric } = this.props;
-
+        const { metadataFetched, metadata } = this.props;
         const isLoading = !metadataFetched.metrics || !metadataFetched.databases
 
         return (
@@ -48,14 +65,16 @@ export default class MetricSearch extends Component {
                         .value()
 
                     if (sortedActiveMetrics.length > 0) {
-                        return <EntitySearch
-                            title="Which metric?"
-                            // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
-                            // all metrics (also retired ones) and is missing `is_active` prop. Currently this
-                            // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
-                            entities={sortedActiveMetrics}
-                            chooseEntity={onChooseMetric}
-                        />
+                        return (
+                            <EntitySearch
+                                title="Which metric?"
+                                // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
+                                // all metrics (also retired ones) and is missing `is_active` prop. Currently this
+                                // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
+                                entities={sortedActiveMetrics}
+                                getUrlForEntity={this.getUrlForMetric}
+                            />
+                        )
                     } else {
                         return (
                             <div className="mt2 flex-full flex align-center justify-center bg-slate-extra-light">

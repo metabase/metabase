@@ -4,7 +4,7 @@ import { handleActions, createAction } from "metabase/lib/redux";
 import { getIn, assocIn } from "icepick";
 import { combineReducers } from "redux";
 
-const SET_REQUEST_STATE = "metabase/requests/SET_REQUEST_STATE";
+export const SET_REQUEST_STATE = "metabase/requests/SET_REQUEST_STATE";
 const CLEAR_REQUEST_STATE = "metabase/requests/CLEAR_REQUEST_STATE";
 
 export const setRequestState = createAction(SET_REQUEST_STATE);

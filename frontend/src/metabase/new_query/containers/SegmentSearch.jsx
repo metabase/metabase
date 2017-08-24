@@ -11,32 +11,50 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { Segment } from "metabase/meta/types/Segment";
 import EmptyState from "metabase/components/EmptyState";
 
+import type { StructuredQuery } from "metabase/meta/types/Query";
+import { getCurrentQuery } from "metabase/new_query/selectors";
+import { resetQuery } from '../new_query'
+
 const mapStateToProps = state => ({
+    query: getCurrentQuery(state),
     metadata: getMetadata(state),
     metadataFetched: getMetadataFetched(state)
 })
 const mapDispatchToProps = {
     fetchSegments,
     fetchDatabases,
+    resetQuery
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentSearch extends Component {
     props: {
+        getUrlForQuery: (StructuredQuery) => void,
+        query: StructuredQuery,
         metadata: Metadata,
         metadataFetched: any,
         fetchSegments: () => void,
         fetchDatabases: () => void,
-        onChooseSegment: (Segment) => void
+        resetQuery: () => void
     }
 
     componentDidMount() {
         this.props.fetchDatabases() // load databases if not loaded yet
         this.props.fetchSegments(true) // segments may change more often so always reload them
+        this.props.resetQuery();
+    }
+
+    getUrlForSegment = (segment: Segment) => {
+        const updatedQuery = this.props.query
+            .setDatabase(segment.table.database)
+            .setTable(segment.table)
+            .addFilter(segment.filterClause())
+
+        return this.props.getUrlForQuery(updatedQuery);
     }
 
     render() {
-        const { metadataFetched, metadata, onChooseSegment } = this.props;
+        const { metadataFetched, metadata } = this.props;
 
         const isLoading = !metadataFetched.segments || !metadataFetched.databases
 
@@ -55,7 +73,7 @@ export default class SegmentSearch extends Component {
                         return <EntitySearch
                             title="Which segment?"
                             entities={sortedActiveSegments}
-                            chooseEntity={onChooseSegment}
+                            getUrlForEntity={this.getUrlForSegment}
                         />
                     } else {
                         return (

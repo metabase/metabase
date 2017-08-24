@@ -2,27 +2,22 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import NewQuery from "metabase/new_query/containers/NewQuery";
+import NewQueryOptions from "./containers/NewQueryOptions";
+import SegmentSearch from "./containers/SegmentSearch";
+import MetricSearch from "./containers/MetricSearch";
 
 @connect(null, { onChangeLocation: push })
 export class NewQuestionStart extends Component {
-    newQuestionFromQuery = (query) => {
-        this.props.onChangeLocation(query.question().getUrl())
-    }
-
-    reflectUpdatedStepInUrl = (step) => {
-        if (step === "metricSearch") {
-            this.props.onChangeLocation("/question/new/metric")
-        } else if (step === "segmentSearch") {
-            this.props.onChangeLocation("/question/new/segment")
-        }
+    getUrlForQuery = (query) => {
+        return query.question().getUrl()
     }
 
     render() {
         return (
-            <NewQuery
-                onComplete={this.newQuestionFromQuery}
-                onCurrentStepChanged={this.reflectUpdatedStepInUrl}
+            <NewQueryOptions
+                getUrlForQuery={this.getUrlForQuery}
+                metricSearchUrl="/question/new/metric"
+                segmentSearchUrl="/question/new/segment"
             />
         )
     }
@@ -30,14 +25,14 @@ export class NewQuestionStart extends Component {
 
 @connect(null, { onChangeLocation: push })
 export class NewQuestionMetricSearch extends Component {
-    newQuestionFromQuery = (query) => {
-        this.props.onChangeLocation(query.question().getUrl())
+    getUrlForQuery = (query) => {
+        return query.question().getUrl()
     }
 
     render() {
         return (
-            <NewQuery
-                onComplete={this.newQuestionFromQuery}
+            <MetricSearch
+                getUrlForQuery={this.getUrlForQuery}
                 defaultStep={"metricSearch"}
             />
         )
@@ -46,14 +41,14 @@ export class NewQuestionMetricSearch extends Component {
 
 @connect(null, { onChangeLocation: push })
 export class NewQuestionSegmentSearch extends Component {
-    newQuestionFromQuery = (query) => {
-        this.props.onChangeLocation(query.question().getUrl())
+    getUrlForQuery = (query) => {
+        return query.question().getUrl()
     }
 
     render() {
         return (
-            <NewQuery
-                onComplete={this.newQuestionFromQuery}
+            <SegmentSearch
+                getUrlForQuery={this.getUrlForQuery}
                 defaultStep={"segmentSearch"}
             />
         )
