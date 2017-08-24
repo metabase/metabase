@@ -140,7 +140,7 @@ export default class EntitySearch extends Component {
                             setGrouping={this.setGrouping}
                         />
                         <div
-                            className={cx("bg-white bordered border-grey-1", { "rounded": !hasUngroupedResults }, { "rounded-top": hasUngroupedResults })}
+                            className={cx("bg-white bordered", { "rounded": !hasUngroupedResults }, { "rounded-top": hasUngroupedResults })}
                             style={{ padding: "5px 15px" }}
                         >
                             <SearchHeader
@@ -274,7 +274,7 @@ export class GroupedSearchResultsList extends Component {
 
 export const SearchResultsGroup = ({ groupName, groupIcon, entities, getUrlForEntity }) =>
     <div>
-        <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px3 py2">
+        <div className="flex align-center bg-slate-almost-extra-light bordered mt3 px3 py2">
             <Icon className="mr1" style={{color: "#BCC5CA"}} name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
@@ -332,7 +332,7 @@ class SearchResultsList extends Component {
         const entitiesInCurrentPage = entities.slice(start, end + 1)
 
         return (
-            <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom border-grey-1">
+            <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom">
                 {entitiesInCurrentPage.map((entity, index) =>
                     <SearchResultListItem key={index} entity={entity} getUrlForEntity={getUrlForEntity}/>
                 )}
@@ -359,14 +359,6 @@ export class SearchResultListItem extends Component {
                     to={getUrlForEntity(entity)}
                 >
                     <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
-                    { hasDescription && // take care of cutting off long description
-                    <div className="text-grey-4 text-small" style={{ maxWidth: "400px"}}>
-                        <Ellipsified>{ entity.description }</Ellipsified>
-                    </div>
-                    }
-                    { !hasDescription &&
-                    <div className="text-grey-2 text-small"> No description </div>
-                    }
                 </Link>
             </li>
         )
