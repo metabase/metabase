@@ -48,10 +48,11 @@ export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId
 )
 
 const FETCH_CARD_XRAY = 'metabase/xray/FETCH_CARD_XRAY';
-export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId) =>
+export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =>
     async () => {
         try {
-            const xray = await XRayApi.card_xray({ cardId });
+            const c = COSTS[cost]
+            const xray = await XRayApi.card_xray({ cardId, ...c.method });
             return xray;
         } catch (error) {
             console.error(error);
@@ -141,6 +142,36 @@ export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (car
     }
 )
 
+const FETCH_SEGMENT_TABLE_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_FIELD_COMPARISON';
+export const fetchSegmentTableFieldComparison = createThunkAction(
+    FETCH_SEGMENT_TABLE_FIELD_COMPARISON,
+    (requestParams) =>
+        async (dispatch) => {
+            requestParams.cost = COSTS[requestParams.cost].method
+            try {
+                const comparison = await XRayApi.segment_table_field_compare(requestParams)
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
+const FETCH_SEGMENT_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_FIELD_COMPARISON';
+export const fetchSegmentFieldComparison = createThunkAction(
+    FETCH_SEGMENT_FIELD_COMPARISON,
+    (requestParams) =>
+        async (dispatch) => {
+            requestParams.cost = COSTS[requestParams.cost].method
+            try {
+                const comparison = await XRayApi.segment_field_compare(requestParams)
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
 const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
 export const loadComparison = createAction(LOAD_COMPARISON)
 
@@ -150,6 +181,9 @@ export default handleActions({
     },
     [FETCH_TABLE_XRAY]: {
         next: (state, { payload }) => assoc(state, 'tableXray', payload)
+    },
+    [FETCH_CARD_XRAY]: {
+        next: (state, { payload }) => assoc(state, 'cardXray', payload)
     },
     [FETCH_SEGMENT_XRAY]: {
         next: (state, { payload }) => assoc(state, 'segmentXray', payload)

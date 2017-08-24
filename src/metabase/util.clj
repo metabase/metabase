@@ -853,3 +853,10 @@
     0
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
+
+(defn update-when
+  "Like clojure.core/update but does not create a new key if it does not exist."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
