@@ -117,14 +117,19 @@
 ;(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
+(defn- periodic-date-time?
+  [field]
+  (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
+     :week-of-year :month-of-year :quarter-of-year} (:unit field)))
+
 (defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
-    [(if (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
-            :week-of-year :month-of-year :quarter-of-year} (:unit field))
-       :type/Integer
-       (:base_type field))
+    [(cond
+       (periodic-date-time? field)                 :type/Integer
+       (isa? (:special_type field) :type/DateTime) :type/DateTime
+       :else                                       (:base_type field))
      (or (:special_type field) :type/*)]))
 
 (defmulti

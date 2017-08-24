@@ -10,7 +10,7 @@ import {
 
 import { XRayApi } from 'metabase/services'
 
-const FETCH_FIELD_XRAY = 'metabase/xray/FETCH_FIELD_XRAY'
+export const FETCH_FIELD_XRAY = 'metabase/xray/FETCH_FIELD_XRAY'
 export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost) =>
     async () => {
         try {
@@ -22,7 +22,7 @@ export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost
     }
 )
 
-const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
+export const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
 export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost) =>
     async () => {
         try {
@@ -35,7 +35,7 @@ export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost
 )
 
 
-const FETCH_SEGMENT_XRAY = 'metabase/xray/FETCH_SEGMENT_XRAY'
+export const FETCH_SEGMENT_XRAY = 'metabase/xray/FETCH_SEGMENT_XRAY'
 export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId, cost) =>
     async () => {
         try {
@@ -47,7 +47,7 @@ export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId
     }
 )
 
-const FETCH_CARD_XRAY = 'metabase/xray/FETCH_CARD_XRAY';
+export const FETCH_CARD_XRAY = 'metabase/xray/FETCH_CARD_XRAY';
 export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =>
     async () => {
         try {
@@ -60,7 +60,7 @@ export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =
     }
 )
 
-const FETCH_FIELD_COMPARISON = 'metabase/xray/FETCH_FIELD_COMPARISON';
+export const FETCH_FIELD_COMPARISON = 'metabase/xray/FETCH_FIELD_COMPARISON';
 export const fetchFieldComparison = createThunkAction(
     FETCH_FIELD_COMPARISON,
     (fieldId1, fieldId2) =>
@@ -88,7 +88,7 @@ export const fetchTableComparison = createThunkAction(
         }
 )
 
-const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
 export const fetchSegmentComparison = createThunkAction(
     FETCH_SEGMENT_COMPARISON,
     (segmentId1, segmentId2, cost) =>
@@ -103,7 +103,7 @@ export const fetchSegmentComparison = createThunkAction(
         }
 )
 
-const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
 export const fetchSegmentTableComparison = createThunkAction(
     FETCH_SEGMENT_TABLE_COMPARISON,
     (segmentId, tableId, cost) =>
@@ -118,7 +118,7 @@ export const fetchSegmentTableComparison = createThunkAction(
         }
 )
 
-const FETCH_METRIC_COMPARISON = 'metabase/xray/FETCH_METRIC_COMPARISON';
+export const FETCH_METRIC_COMPARISON = 'metabase/xray/FETCH_METRIC_COMPARISON';
 export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, function(metricId1, metricId2) {
     async () => {
         try {
@@ -130,7 +130,7 @@ export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, 
     }
 })
 
-const FETCH_CARD_COMPARISON = 'metabase/xray/FETCH_CARD_COMPARISON';
+export const FETCH_CARD_COMPARISON = 'metabase/xray/FETCH_CARD_COMPARISON';
 export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (cardId1, cardId2) =>
     async () => {
         try {
@@ -142,7 +142,7 @@ export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (car
     }
 )
 
-const FETCH_SEGMENT_TABLE_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_FIELD_COMPARISON';
+export const FETCH_SEGMENT_TABLE_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_FIELD_COMPARISON';
 export const fetchSegmentTableFieldComparison = createThunkAction(
     FETCH_SEGMENT_TABLE_FIELD_COMPARISON,
     (requestParams) =>
@@ -157,7 +157,7 @@ export const fetchSegmentTableFieldComparison = createThunkAction(
         }
 )
 
-const FETCH_SEGMENT_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_FIELD_COMPARISON';
+export const FETCH_SEGMENT_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_FIELD_COMPARISON';
 export const fetchSegmentFieldComparison = createThunkAction(
     FETCH_SEGMENT_FIELD_COMPARISON,
     (requestParams) =>
@@ -172,7 +172,7 @@ export const fetchSegmentFieldComparison = createThunkAction(
         }
 )
 
-const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
+export const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
 export const loadComparison = createAction(LOAD_COMPARISON)
 
 export default handleActions({
