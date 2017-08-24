@@ -153,10 +153,10 @@ export const MetabaseApi = {
 
 export const XRayApi = {
     // X-Rays
-    field_xray:            GET("api/x-ray/field/:fieldId"),
-    table_xray:            GET("api/x-ray/table/:tableId"),
-    segment_xray:          GET("api/x-ray/segment/:segmentId"),
-    card_xray:             GET("api/x-ray/card/:cardId"),
+    field_xray:                  GET("/api/x-ray/field/:fieldId"),
+    table_xray:                  GET("/api/x-ray/table/:tableId"),
+    segment_xray:                GET("/api/x-ray/segment/:segmentId"),
+    card_xray:                   GET("/api/x-ray/card/:cardId"),
 
     field_compare:               GET("api/x-ray/compare/fields/:fieldId1/:fieldId2"),
     table_compare:               GET("api/x-ray/compare/tables/:tableId1/:tableId2"),
