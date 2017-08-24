@@ -69,7 +69,11 @@ export const fetchData = async ({
         if (!requestState || requestState.error || reload) {
             dispatch(setRequestState({ statePath, state: "LOADING" }));
             const data = await getData();
-            dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+            // NOTE Atte Keinänen 8/23/17:
+            // Dispatch `setRequestState` after clearing the call stack because we want to the actual data to be updated
+            // before we notify components via `state.requests.fetches` that fetching the data is completed
+            setTimeout(() => dispatch(setRequestState({ statePath, state: "LOADED" })), 0);
 
             return data;
         }

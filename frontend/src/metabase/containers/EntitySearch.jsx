@@ -11,8 +11,9 @@ import Ellipsified from "metabase/components/Ellipsified";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
+import { Link } from "react-router";
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 10
 
 const SEARCH_GROUPINGS = [
     {
@@ -46,7 +47,7 @@ type Props = {
     // Component parameters
     title: string,
     entities: any[],
-    chooseEntity: (any) => void,
+    getUrlForEntity: (any) => void,
 
     // Properties injected with redux connect
     replace: (location: LocationDescriptor) => void,
@@ -111,7 +112,7 @@ export default class EntitySearch extends Component {
     }
 
     render() {
-        const { title, chooseEntity } = this.props;
+        const { title, getUrlForEntity } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
         const hasUngroupedResults = !currentGrouping.groupBy && filteredEntities.length > 0
@@ -154,7 +155,7 @@ export default class EntitySearch extends Component {
                             <GroupedSearchResultsList
                                 currentGrouping={currentGrouping}
                                 entities={filteredEntities}
-                                chooseEntity={chooseEntity}
+                                getUrlForEntity={getUrlForEntity}
                             />
                         }
                         { filteredEntities.length === 0 &&
@@ -187,6 +188,7 @@ export const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
         <ul>
             { SEARCH_GROUPINGS.map((groupingOption) =>
                 <SearchGroupingOption
+                    key={groupingOption.name}
                     grouping={groupingOption}
                     active={currentGrouping === groupingOption}
                     setGrouping={setGrouping}
@@ -227,12 +229,11 @@ export class GroupedSearchResultsList extends Component {
     props: {
         currentGrouping: any,
         entities: any,
-        chooseEntity: (any) => void
+        getUrlForEntity: (any) => void
     }
 
     getGroups = () => {
         const { currentGrouping, entities } = this.props;
-
         if (currentGrouping.groupBy === null) return null;
 
         return _.chain(entities)
@@ -247,44 +248,44 @@ export class GroupedSearchResultsList extends Component {
     }
 
     render() {
-        const { currentGrouping, entities, chooseEntity } = this.props;
-
+        const { currentGrouping, entities, getUrlForEntity } = this.props;
         const groups = this.getGroups()
 
         if (groups) {
             return (
                 <div className="full">
-                    {this.getGroups().map(({ groupName, entitiesInGroup }) =>
+                    {this.getGroups().map(({ groupName, entitiesInGroup }, index) =>
                         <SearchResultsGroup
+                            key={index}
                             groupName={groupName}
                             groupIcon={currentGrouping.icon}
                             entities={entitiesInGroup}
-                            chooseEntity={chooseEntity}
+                            getUrlForEntity={getUrlForEntity}
                         />
                     )}
                 </div>
             )
         } else {
             // Current grouping seems no-op so just render the results list
-            return <SearchResultsList entities={entities} chooseEntity={chooseEntity} />
+            return <SearchResultsList entities={entities} getUrlForEntity={getUrlForEntity} />
         }
     }
 }
 
-export const SearchResultsGroup = ({ groupName, groupIcon, entities, chooseEntity }) =>
+export const SearchResultsGroup = ({ groupName, groupIcon, entities, getUrlForEntity }) =>
     <div>
         <div className="flex align-center bg-slate-almost-extra-light border-grey-1 bordered mt3 px3 py2">
             <Icon className="mr1" style={{color: "#BCC5CA"}} name={groupIcon} />
             <h4>{groupName}</h4>
         </div>
-        <SearchResultsList entities={entities} chooseEntity={chooseEntity} />
+        <SearchResultsList entities={entities} getUrlForEntity={getUrlForEntity} />
     </div>
 
 
 class SearchResultsList extends Component {
     props: {
         entities: any[],
-        chooseEntity: () => void
+        getUrlForEntity: () => void
     }
 
     state = {
@@ -319,7 +320,7 @@ class SearchResultsList extends Component {
         )
     }
     render() {
-        const { entities, chooseEntity } = this.props
+        const { entities, getUrlForEntity } = this.props
         const { page } = this.state
 
         const showPagination = PAGE_SIZE < entities.length
@@ -332,8 +333,8 @@ class SearchResultsList extends Component {
 
         return (
             <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom border-grey-1">
-                {entitiesInCurrentPage.map((entity) =>
-                    <SearchResultListItem entity={entity} chooseEntity={chooseEntity}/>
+                {entitiesInCurrentPage.map((entity, index) =>
+                    <SearchResultListItem key={index} entity={entity} getUrlForEntity={getUrlForEntity}/>
                 )}
                 {showPagination && this.getPaginationSection(start, end, entityCount)}
             </ol>
@@ -344,24 +345,29 @@ class SearchResultsList extends Component {
 export class SearchResultListItem extends Component {
     props: {
         entity: any,
-        chooseEntity: (any) => void
-    }
-
-    onClick = () => {
-        const { entity, chooseEntity } = this.props;
-        chooseEntity(entity)
+        getUrlForEntity: (any) => void
     }
 
     render() {
-        const { entity } = this.props;
+        const { entity, getUrlForEntity } = this.props;
         const hasDescription = !!entity.description;
 
         return (
-            <li
-                className="flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom"
-                onClick={this.onClick}
-            >
-                <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
+            <li>
+                <Link
+                    className="no-decoration flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom"
+                    to={getUrlForEntity(entity)}
+                >
+                    <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
+                    { hasDescription && // take care of cutting off long description
+                    <div className="text-grey-4 text-small" style={{ maxWidth: "400px"}}>
+                        <Ellipsified>{ entity.description }</Ellipsified>
+                    </div>
+                    }
+                    { !hasDescription &&
+                    <div className="text-grey-2 text-small"> No description </div>
+                    }
+                </Link>
             </li>
         )
     }

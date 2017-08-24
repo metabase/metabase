@@ -74,6 +74,7 @@ import EntitySearch, {
 } from "metabase/containers/EntitySearch";
 import { MetricApi, SegmentApi } from "metabase/services";
 import AggregationWidget from "metabase/query_builder/components/AggregationWidget";
+import { SET_REQUEST_STATE } from "metabase/redux/requests";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -106,7 +107,7 @@ describe("QueryBuilder", () => {
     /**
      * Simple tests for seeing if the query builder renders without errors
      */
-    describe("for new questions", async () => {
+    fdescribe("for new questions", async () => {
         let metricId = null;
         let segmentId = null;
 
@@ -140,6 +141,7 @@ describe("QueryBuilder", () => {
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
 
             expect(app.find(NewQueryOption).length).toBe(4)
         });
@@ -149,6 +151,7 @@ describe("QueryBuilder", () => {
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Custom"))
             await store.waitForActions(INITIALIZE_QB, UPDATE_URL, LOAD_METADATA_FOR_CARD);
@@ -162,6 +165,7 @@ describe("QueryBuilder", () => {
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "SQL"))
             await store.waitForActions(INITIALIZE_QB);
@@ -174,9 +178,11 @@ describe("QueryBuilder", () => {
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics"))
             await store.waitForActions(FETCH_DATABASES);
+            await store.waitForActions([SET_REQUEST_STATE]);
             expect(store.getPath()).toBe("/question/new/metric")
 
             const entitySearch = app.find(EntitySearch)
@@ -189,7 +195,7 @@ describe("QueryBuilder", () => {
 
             const metricSearchResult = group.find(SearchResultListItem)
                 .filterWhere((item) => /A Metric/.test(item.text()))
-            click(metricSearchResult)
+            click(metricSearchResult.childAt(0))
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             expect(
@@ -203,9 +209,11 @@ describe("QueryBuilder", () => {
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Segments"))
             await store.waitForActions(FETCH_DATABASES);
+            await store.waitForActions([SET_REQUEST_STATE]);
             expect(store.getPath()).toBe("/question/new/segment")
 
             const entitySearch = app.find(EntitySearch)
@@ -218,7 +226,7 @@ describe("QueryBuilder", () => {
 
             const metricSearchResult = group.find(SearchResultListItem)
                 .filterWhere((item) => /A Segment/.test(item.text()))
-            click(metricSearchResult)
+            click(metricSearchResult.childAt(0))
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             expect(app.find(FilterWidget).find(".Filter-section-value").text()).toBe("A Segment")
