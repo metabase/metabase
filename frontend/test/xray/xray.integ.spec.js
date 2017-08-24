@@ -19,9 +19,8 @@ import SegmentXRay from "metabase/xray/containers/SegmentXRay";
 import Question from "metabase-lib/lib/Question";
 import CardXRay from "metabase/xray/containers/CardXRay";
 import * as Urls from "metabase/lib/urls";
-import { INITIALIZE_QB, LOAD_METADATA_FOR_CARD, QUERY_COMPLETED } from "metabase/query_builder/actions";
+import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
-import { LOAD_TABLE_METADATA } from "metabase/admin/datamodel/datamodel";
 
 describe("xray integration tests", () => {
     let segmentId = null;
@@ -81,7 +80,7 @@ describe("xray integration tests", () => {
     // in the same tests so that we see that end-to-end user experience matches our expectations
 
     describe("query builder actions", async () => {
-        fit("let you see card xray for a timeseries question", async () => {
+        it("let you see card xray for a timeseries question", async () => {
             const store = await createTestStore()
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
