@@ -107,9 +107,10 @@ export class NewQueryOptions extends Component {
                             <li className="Grid-cell">
                                 {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                                 <NewQueryOption
-                                    image="/app/img/custom_question"
+                                    image="/app/img/query_builder_illustration"
                                     title={ showCustomInsteadOfNewQuestionText ? "Custom" : "New question"}
                                     description="Use the simple query builder to see trends, lists of things, or to create your own metrics."
+                                    width={180}
                                     to={this.getGuiQueryUrl}
                                 />
                             </li>
