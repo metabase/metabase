@@ -89,7 +89,7 @@ export default class EntitySearch extends Component {
         const options = parseHashOptions(this.props.location.search.substring(1))
         if (Object.keys(options).length > 0) {
             if (options.search) {
-                this.setSearchText(options.search)
+                this.setSearchText(String(options.search))
             }
             if (options.grouping) {
                 const grouping = SEARCH_GROUPINGS.find((grouping) => grouping.id === options.grouping)
