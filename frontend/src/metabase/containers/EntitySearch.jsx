@@ -295,25 +295,32 @@ class SearchResultsList extends Component {
         const { page } = this.state
 
         const currentEntitiesText = start === end ? `${start + 1}` : `${start + 1}-${end + 1}`
+        const isInBeginning = start === 0
+        const isInEnd = end + 1 >= entityCount
+
         return (
             <li className="py1 px3 flex justify-end align-center">
                 <span className="text-bold">{ currentEntitiesText }</span>&nbsp;of&nbsp;<span
                 className="text-bold">{entityCount}</span>
                 <span
-                    className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-2 text-white": start !== 0}, {"bg-grey-0 text-grey-1": start === 0})}
+                    className={cx(
+                        "mx1 flex align-center justify-center rounded",
+                        { "cursor-pointer bg-grey-2 text-white": !isInBeginning },
+                        { "bg-grey-0 text-grey-1": isInBeginning }
+                    )}
                     style={{width: "22px", height: "22px"}}
-                    onClick={() => this.setState({page: page - 1})}>
-                            <Icon name="chevronleft" size={14}/>
+                    onClick={() => !isInBeginning && this.setState({page: page - 1})}>
+                    <Icon name="chevronleft" size={14}/>
                 </span>
                 <span
                     className={cx(
                         "flex align-center justify-center rounded",
-                        { "cursor-pointer bg-grey-2 text-white": end + 1 < entityCount },
-                        { "bg-grey-0 text-grey-2": end + 1 >= entityCount }
+                        { "cursor-pointer bg-grey-2 text-white": !isInEnd },
+                        { "bg-grey-0 text-grey-2": isInEnd }
                     )}
                     style={{width: "22px", height: "22px"}}
-                    onClick={() => this.setState({page: page + 1})}>
-                            <Icon name="chevronright" size={14}/>
+                    onClick={() => !isInEnd && this.setState({page: page + 1})}>
+                        <Icon name="chevronright" size={14}/>
                 </span>
             </li>
         )
