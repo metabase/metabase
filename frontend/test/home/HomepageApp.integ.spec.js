@@ -15,7 +15,6 @@ import {
 import { delay } from 'metabase/lib/promise';
 
 import HomepageApp from "metabase/home/containers/HomepageApp";
-import { createMetric, createSegment } from "metabase/admin/datamodel/datamodel";
 import { FETCH_ACTIVITY } from "metabase/home/actions";
 import { QUERY_COMPLETED } from "metabase/query_builder/actions";
 
@@ -23,20 +22,31 @@ import Activity from "metabase/home/components/Activity";
 import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
+import { CardApi, MetricApi, SegmentApi } from "metabase/services";
 
 describe("HomepageApp", () => {
+    let questionId = null;
+    let segmentId = null;
+    let metricId = null;
+
     beforeAll(async () => {
         await login()
 
         // Create some entities that will show up in the top of activity feed
         // This test doesn't care if there already are existing items in the feed or not
         // Delays are required for having separable creation times for each entity
-        await createSavedQuestion(unsavedOrderCountQuestion)
+        questionId = (await createSavedQuestion(unsavedOrderCountQuestion)).id()
         await delay(100);
-        await createSegment(orders_past_30_days_segment);
+        segmentId = (await SegmentApi.create(orders_past_30_days_segment)).id;
         await delay(100);
-        await createMetric(vendor_count_metric);
+        metricId = (await MetricApi.create(vendor_count_metric)).id;
         await delay(100);
+    })
+
+    afterAll(async () => {
+        await MetricApi.delete({ metricId, revision_message: "Let's exterminate this metric" })
+        await SegmentApi.delete({ segmentId, revision_message: "Let's exterminate this segment" })
+        await CardApi.delete({ cardId: questionId })
     })
 
     describe("activity feed", async () => {

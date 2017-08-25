@@ -1,12 +1,13 @@
 import React, { Component } from "react";
 import cx from "classnames";
+import { Link } from "react-router";
 
 export default class NewQueryOption extends Component {
    props: {
        image: string,
        title: string,
        description: string,
-       onClick: () => void
+       to: string
    };
 
    state = {
@@ -14,19 +15,20 @@ export default class NewQueryOption extends Component {
    };
 
    render() {
-       const { width, image, title, description, onClick } = this.props;
+       const { width, image, title, description, to } = this.props;
        const { hover } = this.state;
 
        return (
-           <div
-               className="bg-white p3 align-center bordered rounded cursor-pointer transition-all text-centered text-brand-light"
+           <Link
+               className="block no-decoration bg-white px3 pt4 align-center bordered rounded cursor-pointer transition-all text-centered"
                style={{
+                   boxSizing: "border-box",
                    boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
-                   height: "310px"
+                   height: 340
                }}
                onMouseOver={() => this.setState({hover: true})}
                onMouseLeave={() => this.setState({hover: false})}
-               onClick={onClick}
+               to={to}
            >
                <div className="flex align-center layout-centered" style={{ height: "160px" }}>
                    <img
@@ -36,11 +38,11 @@ export default class NewQueryOption extends Component {
                    />
 
                </div>
-               <div className="text-grey-2 text-normal mt2 mb2 text-paragraph" style={{lineHeight: "1.5em"}}>
-                   <h2 className={cx("transition-all", {"text-grey-5": !hover}, {"text-brand": hover})}>{title}</h2>
-                   <p className={"text-grey-4"}>{description}</p>
+               <div className="text-normal mt2 mb2 text-paragraph" style={{lineHeight: "1.25em"}}>
+                   <h2 className={cx("transition-all", {"text-brand": hover})}>{title}</h2>
+                   <p className={"text-grey-4 text-small"}>{description}</p>
                </div>
-           </div>
+           </Link>
        );
    }
 }
