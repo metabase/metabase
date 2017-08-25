@@ -77,11 +77,11 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                                 height={120}
                             />
                         ) : (
-                            <div className="flex align-center">
-                                <h1 style={{ color: itemA.color.text }}>
+                            <div className="flex align-center px2 py3">
+                                <h1 className="p3" style={{ color: itemA.color.text }}>
                                     {contributor.feature.value.a}
                                 </h1>
-                                <h1 style={{ color: itemB.color.text }}>
+                                <h1 className="p3" style={{ color: itemB.color.text }}>
                                     {contributor.feature.value.b}
                                 </h1>
                             </div>
