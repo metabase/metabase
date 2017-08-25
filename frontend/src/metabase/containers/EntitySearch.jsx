@@ -13,13 +13,15 @@ import EmptyState from "metabase/components/EmptyState";
 import { Link } from "react-router";
 import { KEYCODE_DOWN, KEYCODE_ENTER, KEYCODE_UP } from "metabase/lib/keyboard";
 
-const PAGE_SIZE = 3
+const PAGE_SIZE = 10
 
 const SEARCH_GROUPINGS = [
     {
         name: "Name",
         icon: null,
+        // Name grouping is a no-op grouping so always put all results to same group with identifier `0`
         groupBy: () => 0,
+        // Setting name to null hides the group header in SearchResultsGroup component
         getGroupName: () => null
     },
     {
@@ -44,18 +46,11 @@ const SEARCH_GROUPINGS = [
 const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
 
 type Props = {
-    // Component parameters
     title: string,
+    // Sorted list of entities like segments or metrics
     entities: any[],
-    getUrlForEntity: (any) => void,
-
-    // Properties injected with redux connect
-    replace: (location: LocationDescriptor) => void,
-
-    // Injected by withRouter HOC
-    location: LocationDescriptor,
+    getUrlForEntity: (any) => void
 }
-
 
 export default class EntitySearch extends Component {
     searchHeaderInput: ?HTMLButtonElement
@@ -75,11 +70,6 @@ export default class EntitySearch extends Component {
     }
 
     setSearchText = (searchText) => {
-        // TODO: we maybe want to reflect the search text in the url, at least in new question flow
-        // this.props.replace({
-        //     pathname: location.pathname,
-        //     search: `?search=${searchText}`
-        // });
         this.setState({ searchText }, this.applyFiltersAfterFilterChange)
     }
 
@@ -95,8 +85,7 @@ export default class EntitySearch extends Component {
 
         if (searchText !== "") {
             const filteredEntities = entities.filter(({ name, description }) =>
-                caseInsensitiveSearch(name, searchText) ||
-                (description && caseInsensitiveSearch(description, searchText))
+                caseInsensitiveSearch(name, searchText)
             )
 
             this.setState({ filteredEntities })
@@ -111,9 +100,11 @@ export default class EntitySearch extends Component {
         this.searchHeaderInput.focus()
     }
 
+    // Returns an array of groups based on current grouping. The groups are sorted by their name.
+    // Entities inside each group aren't separately sorted as EntitySearch expects that the `entities`
+    // is already in the desired order.
     getGroups = () => {
         const { currentGrouping, filteredEntities } = this.state;
-        if (currentGrouping.groupBy === null) return null;
 
         return _.chain(filteredEntities)
             .groupBy(currentGrouping.groupBy)
@@ -250,6 +241,8 @@ export class GroupedSearchResultsList extends Component {
 
     state = {
         highlightedItemIndex: 0,
+        // `currentPages` is used as a map-like structure for storing the current pagination page for each group.
+        // If a given group has no value in currentPages, then it is assumed to be in the first page (`0`).
         currentPages: {}
     }
 
@@ -268,6 +261,9 @@ export class GroupedSearchResultsList extends Component {
         })
     }
 
+    /**
+     * Returns the count of currently visible entities for each result group.
+     */
     getVisibleEntityCounts() {
         const { groups } = this.props;
         const { currentPages } = this.state
@@ -289,6 +285,11 @@ export class GroupedSearchResultsList extends Component {
         }
     }
 
+    /**
+     * Returns `{ groupIndex, itemIndex }` which describes that which item in which group is currently highlighted.
+     * Calculates it based on current visible entities (as pagination affects which entities are visible on given time)
+     * and the current highlight index that is modified with up and down arrow keys
+     */
     getHighlightPosition() {
         const { highlightedItemIndex } = this.state
         const visibleEntityCounts = this.getVisibleEntityCounts()
@@ -306,6 +307,9 @@ export class GroupedSearchResultsList extends Component {
         }
     }
 
+    /**
+     * Sets the current pagination page by finding the group that match the `entities` list of entities
+     */
     setCurrentPage = (entities, page) => {
         const { groups } = this.props;
         const { currentPages } = this.state;
@@ -448,6 +452,10 @@ export class SearchResultListItem extends Component {
     componentWillUnmount() {
         window.removeEventListener("keydown", this.onKeyDown, true);
     }
+    /**
+     * If the current search result entity is highlighted via arrow keys, then we want to
+     * let the press of Enter to navigate to that entity
+     */
     onKeyDown = (e) => {
         const { highlight, entity, getUrlForEntity, onChangeLocation } = this.props;
         if (highlight && e.keyCode === KEYCODE_ENTER) {
