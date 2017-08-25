@@ -272,7 +272,7 @@ export const getRoutes = (store) =>
                             <Route path="field/:fieldName/:cost" component={SegmentFieldComparison} />
                         </Route>
                         { /* NYI */ }
-                        <Route paht="fields/:fieldId1/:fieldId2" component={FieldComparison} />
+                        <Route path="fields/:fieldId1/:fieldId2" component={FieldComparison} />
                         <Route path="tables/:tableId1/:tableId2" component={TableComparison} />
                         <Route path="cards/:cardId1/:cardId2" component={CardComparison} />
                     </Route>
