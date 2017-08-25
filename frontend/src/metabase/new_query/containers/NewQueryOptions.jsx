@@ -74,7 +74,7 @@ export class NewQueryOptions extends Component {
     render() {
         const { query, metadata, metadataFetched, isAdmin, metricSearchUrl, segmentSearchUrl } = this.props
 
-        if (!query || !metadataFetched.metrics || !metadataFetched.segments) {
+        if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
             return <LoadingAndErrorWrapper loading={true}/>
         }
 
