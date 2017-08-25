@@ -4,14 +4,19 @@ global.afterAll = (method) => { jasmineAfterAllCleanup = method; }
 
 import { spawn } from "child_process";
 
-// use require for BackendResource to run it after the mock afterAll has been set
+// Use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./legacy-selenium/support/backend.js").BackendResource
 
+// Backend that uses a test fixture database
+// If you need to update the fixture, you can run Metabase with `MB_DB_TYPE=h2 MB_DB_FILE=frontend/test/legacy-selenium/support/fixtures/metabase.db`
 const serverWithTestDbFixture = BackendResource.get({});
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
 const serverWithPlainDb = BackendResource.get({ dbKey: "" });
 const plainBackendHost = serverWithPlainDb.host;
+
+const userArgs = process.argv.slice(2);
+const isJestWatchMode = userArgs[0] === "--watch"
 
 const login = async (apiHost) => {
     const loginFetchOptions = {
@@ -53,7 +58,7 @@ const init = async() => {
         "PLAIN_BACKEND_HOST": plainBackendHost,
         "TEST_FIXTURE_SHARED_LOGIN_SESSION_ID": sharedLoginSession.id
     }
-    const userArgs = process.argv.slice(2);
+
     const jestProcess = spawn(
         "yarn",
         ["run", "jest", "--", "--maxWorkers=1", "--config", "jest.integ.conf.json", ...userArgs],
@@ -69,19 +74,33 @@ const init = async() => {
 }
 
 const cleanup = async (exitCode = 0) => {
+    console.log('Cleaning up...')
     await jasmineAfterAllCleanup();
     await BackendResource.stop(serverWithTestDbFixture);
     await BackendResource.stop(serverWithPlainDb);
     process.exit(exitCode);
+
 }
 
-init()
-    .then(cleanup)
-    .catch((e) => {
-        console.error(e);
-        cleanup(1);
-    });
+const askWhetherToQuit = (exitCode) => {
+    console.log('Jest process exited. Press [ctrl-c] to quit the integrated test runner or [Enter] to restart Jest.');
+    process.stdin.once('data', launch);
+}
+
+const launch = () =>
+    init()
+        .then(isJestWatchMode ? askWhetherToQuit : cleanup)
+        .catch((e) => {
+            console.error(e);
+            cleanup(1);
+        })
+
+launch()
 
 process.on('SIGTERM', () => {
     cleanup();
+})
+
+process.on('SIGINT', () => {
+    cleanup()
 })
