@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { replace as replaceAction } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -11,15 +11,16 @@ import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import { Link } from "react-router";
+import { KEYCODE_DOWN, KEYCODE_ENTER, KEYCODE_UP } from "metabase/lib/keyboard";
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 3
 
 const SEARCH_GROUPINGS = [
     {
         name: "Name",
-        icon: "calendar",
-        groupBy: null,
-        getGroupName: null
+        icon: null,
+        groupBy: () => 0,
+        getGroupName: () => null
     },
     {
         name: "Table",
@@ -55,7 +56,7 @@ type Props = {
     location: LocationDescriptor,
 }
 
-@connect(null, { replace: replaceAction })
+
 export default class EntitySearch extends Component {
     searchHeaderInput: ?HTMLButtonElement
     props: Props
@@ -110,11 +111,26 @@ export default class EntitySearch extends Component {
         this.searchHeaderInput.focus()
     }
 
+    getGroups = () => {
+        const { currentGrouping, filteredEntities } = this.state;
+        if (currentGrouping.groupBy === null) return null;
+
+        return _.chain(filteredEntities)
+            .groupBy(currentGrouping.groupBy)
+            .pairs()
+            .map(([groupId, entitiesInGroup]) => ({
+                groupName: currentGrouping.getGroupName(entitiesInGroup[0]),
+                entitiesInGroup
+            }))
+            .sortBy(({ groupName }) => groupName !== null && groupName.toLowerCase())
+            .value()
+    }
+
     render() {
         const { title, getUrlForEntity } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
-        const hasUngroupedResults = !currentGrouping.groupBy && filteredEntities.length > 0
+        const hasUngroupedResults = !currentGrouping.icon && filteredEntities.length > 0
 
         return (
             <div className="bg-slate-extra-light full Entity-search">
@@ -152,8 +168,8 @@ export default class EntitySearch extends Component {
                         </div>
                         { filteredEntities.length > 0 &&
                             <GroupedSearchResultsList
-                                currentGrouping={currentGrouping}
-                                entities={filteredEntities}
+                                groupingIcon={currentGrouping.icon}
+                                groups={this.getGroups()}
                                 getUrlForEntity={getUrlForEntity}
                             />
                         }
@@ -224,67 +240,136 @@ export class SearchGroupingOption extends Component {
         )
     }
 }
+
 export class GroupedSearchResultsList extends Component {
     props: {
-        currentGrouping: any,
-        entities: any,
-        getUrlForEntity: (any) => void
+        groupingIcon: string,
+        groups: any,
+        getUrlForEntity: (any) => void,
     }
 
-    getGroups = () => {
-        const { currentGrouping, entities } = this.props;
-        if (currentGrouping.groupBy === null) return null;
+    state = {
+        highlightedItemIndex: 0,
+        currentPages: {}
+    }
 
-        return _.chain(entities)
-            .groupBy(currentGrouping.groupBy)
-            .pairs()
-            .map(([groupId, entitiesInGroup]) => ({
-                groupName: currentGrouping.getGroupName(entitiesInGroup[0]),
-                entitiesInGroup
-            }))
-            .sortBy(({ groupName }) => groupName.toLowerCase())
-            .value()
+    componentDidMount() {
+        window.addEventListener("keydown", this.onKeyDown, true);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener("keydown", this.onKeyDown, true);
+    }
+
+    componentWillReceiveProps() {
+        this.setState({
+            highlightedItemIndex: 0,
+            currentPages: {}
+        })
+    }
+
+    getVisibleEntityCounts() {
+        const { groups } = this.props;
+        const { currentPages } = this.state
+        return groups.map((group, index) =>
+            Math.min(PAGE_SIZE, group.entitiesInGroup.length - (currentPages[index] || 0) * PAGE_SIZE)
+        )
+    }
+
+    onKeyDown = (e) => {
+        const { highlightedItemIndex } = this.state
+
+        if (e.keyCode === KEYCODE_UP) {
+            this.setState({ highlightedItemIndex: Math.max(0, highlightedItemIndex - 1) })
+            e.preventDefault();
+        } else if (e.keyCode === KEYCODE_DOWN) {
+            const visibleEntityCount = this.getVisibleEntityCounts().reduce((a, b) => a + b)
+            this.setState({ highlightedItemIndex: Math.min(highlightedItemIndex + 1, visibleEntityCount - 1) })
+            e.preventDefault();
+        }
+    }
+
+    getHighlightPosition() {
+        const { highlightedItemIndex } = this.state
+        const visibleEntityCounts = this.getVisibleEntityCounts()
+
+        let entitiesInPreviousGroups = 0
+        for (let groupIndex = 0; groupIndex < visibleEntityCounts.length; groupIndex++) {
+            const visibleEntityCount = visibleEntityCounts[groupIndex]
+            const indexInCurrentGroup = highlightedItemIndex - entitiesInPreviousGroups
+
+            if (indexInCurrentGroup <= visibleEntityCount - 1) {
+                return { groupIndex, itemIndex: indexInCurrentGroup }
+            }
+
+           entitiesInPreviousGroups += visibleEntityCount
+        }
+    }
+
+    setCurrentPage = (entities, page) => {
+        const { groups } = this.props;
+        const { currentPages } = this.state;
+        const groupIndex = groups.findIndex((group) => group.entitiesInGroup === entities)
+
+        this.setState({
+            highlightedItemIndex: 0,
+            currentPages: {
+                ...currentPages,
+                [groupIndex]: page
+            }
+        })
     }
 
     render() {
-        const { currentGrouping, entities, getUrlForEntity } = this.props;
-        const groups = this.getGroups()
+        const { groupingIcon, groups, getUrlForEntity } = this.props;
+        const { currentPages } = this.state;
 
-        if (groups) {
-            return (
-                <div className="full">
-                    {this.getGroups().map(({ groupName, entitiesInGroup }, index) =>
-                        <SearchResultsGroup
-                            key={index}
-                            groupName={groupName}
-                            groupIcon={currentGrouping.icon}
-                            entities={entitiesInGroup}
-                            getUrlForEntity={getUrlForEntity}
-                        />
-                    )}
-                </div>
-            )
-        } else {
-            // Current grouping seems no-op so just render the results list
-            return <SearchResultsList entities={entities} getUrlForEntity={getUrlForEntity} />
-        }
+        const highlightPosition = this.getHighlightPosition(groups)
+
+        return (
+            <div className="full">
+                {groups.map(({ groupName, entitiesInGroup }, groupIndex) =>
+                    <SearchResultsGroup
+                        key={groupIndex}
+                        groupName={groupName}
+                        groupIcon={groupingIcon}
+                        entities={entitiesInGroup}
+                        getUrlForEntity={getUrlForEntity}
+                        highlightItemAtIndex={groupIndex === highlightPosition.groupIndex ? highlightPosition.itemIndex : undefined}
+                        currentPage={currentPages[groupIndex] || 0}
+                        setCurrentPage={this.setCurrentPage}
+                    />
+                )}
+            </div>
+        )
     }
 }
 
-export const SearchResultsGroup = ({ groupName, groupIcon, entities, getUrlForEntity }) =>
+export const SearchResultsGroup = ({ groupName, groupIcon, entities, getUrlForEntity, highlightItemAtIndex, currentPage, setCurrentPage }) =>
     <div>
-        <div className="flex align-center bg-slate-almost-extra-light bordered mt3 px3 py2">
-            <Icon className="mr1" style={{color: "#BCC5CA"}} name={groupIcon} />
-            <h4>{groupName}</h4>
-        </div>
-        <SearchResultsList entities={entities} getUrlForEntity={getUrlForEntity} />
+        { groupName !== null &&
+            <div className="flex align-center bg-slate-almost-extra-light bordered mt3 px3 py2">
+                <Icon className="mr1" style={{color: "#BCC5CA"}} name={groupIcon}/>
+                <h4>{groupName}</h4>
+            </div>
+        }
+        <SearchResultsList
+            entities={entities}
+            getUrlForEntity={getUrlForEntity}
+            highlightItemAtIndex={highlightItemAtIndex}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+        />
     </div>
 
 
 class SearchResultsList extends Component {
     props: {
         entities: any[],
-        getUrlForEntity: () => void
+        getUrlForEntity: () => void,
+        highlightItemAtIndex?: number,
+        currentPage: number,
+        setCurrentPage: (entities, number) => void
     }
 
     state = {
@@ -292,7 +377,7 @@ class SearchResultsList extends Component {
     }
 
     getPaginationSection = (start, end, entityCount) => {
-        const { page } = this.state
+        const { entities, currentPage, setCurrentPage } = this.props
 
         const currentEntitiesText = start === end ? `${start + 1}` : `${start + 1}-${end + 1}`
         return (
@@ -302,7 +387,7 @@ class SearchResultsList extends Component {
                 <span
                     className={cx("mx1 flex align-center justify-center rounded", {"cursor-pointer bg-grey-2 text-white": start !== 0}, {"bg-grey-0 text-grey-1": start === 0})}
                     style={{width: "22px", height: "22px"}}
-                    onClick={() => this.setState({page: page - 1})}>
+                    onClick={() => setCurrentPage(entities, currentPage - 1)}>
                             <Icon name="chevronleft" size={14}/>
                 </span>
                 <span
@@ -312,20 +397,19 @@ class SearchResultsList extends Component {
                         { "bg-grey-0 text-grey-2": end + 1 >= entityCount }
                     )}
                     style={{width: "22px", height: "22px"}}
-                    onClick={() => this.setState({page: page + 1})}>
+                    onClick={() => setCurrentPage(entities, currentPage + 1)}>
                             <Icon name="chevronright" size={14}/>
                 </span>
             </li>
         )
     }
     render() {
-        const { entities, getUrlForEntity } = this.props
-        const { page } = this.state
+        const { currentPage, entities, getUrlForEntity, highlightItemAtIndex } = this.props
 
         const showPagination = PAGE_SIZE < entities.length
 
-        let start = PAGE_SIZE * page;
-        let end = Math.min(entities.length - 1, PAGE_SIZE * (page + 1) - 1);
+        let start = PAGE_SIZE * currentPage;
+        let end = Math.min(entities.length - 1, PAGE_SIZE * (currentPage + 1) - 1);
         const entityCount = entities.length;
 
         const entitiesInCurrentPage = entities.slice(start, end + 1)
@@ -333,7 +417,7 @@ class SearchResultsList extends Component {
         return (
             <ol className="Entity-search-results-list flex-full bg-white border-left border-right border-bottom rounded-bottom">
                 {entitiesInCurrentPage.map((entity, index) =>
-                    <SearchResultListItem key={index} entity={entity} getUrlForEntity={getUrlForEntity}/>
+                    <SearchResultListItem key={index} entity={entity} getUrlForEntity={getUrlForEntity} highlight={ highlightItemAtIndex === index } />
                 )}
                 {showPagination && this.getPaginationSection(start, end, entityCount)}
             </ol>
@@ -341,20 +425,37 @@ class SearchResultsList extends Component {
     }
 }
 
+@connect(null, { onChangeLocation: push })
 export class SearchResultListItem extends Component {
     props: {
         entity: any,
-        getUrlForEntity: (any) => void
+        getUrlForEntity: (any) => void,
+        highlight?: boolean,
+
+        onChangeLocation: (string) => void
+    }
+
+    componentDidMount() {
+        window.addEventListener("keydown", this.onKeyDown, true);
+    }
+    componentWillUnmount() {
+        window.removeEventListener("keydown", this.onKeyDown, true);
+    }
+    onKeyDown = (e) => {
+        const { highlight, entity, getUrlForEntity, onChangeLocation } = this.props;
+        if (highlight && e.keyCode === KEYCODE_ENTER) {
+            onChangeLocation(getUrlForEntity(entity))
+        }
     }
 
     render() {
-        const { entity, getUrlForEntity } = this.props;
+        const { entity, highlight, getUrlForEntity } = this.props;
 
         return (
             <li>
                 <Link
-                    className="no-decoration flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom"
-                    to={getUrlForEntity(entity)}
+                className={cx("no-decoration flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom", { "bg-grey-0": highlight })}
+                to={getUrlForEntity(entity)}
                 >
                     <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
                 </Link>
