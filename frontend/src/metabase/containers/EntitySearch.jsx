@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -9,13 +9,16 @@ import SearchHeader from "metabase/components/SearchHeader";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
-import { Link } from "react-router";
+import { Link, withRouter } from "react-router";
 import { KEYCODE_DOWN, KEYCODE_ENTER, KEYCODE_UP } from "metabase/lib/keyboard";
+import { LocationDescriptor } from "metabase/meta/types/index";
+import { parseHashOptions, updateQueryString } from "metabase/lib/browser";
 
 const PAGE_SIZE = 10
 
 const SEARCH_GROUPINGS = [
     {
+        id: "name",
         name: "Name",
         icon: null,
         // Name grouping is a no-op grouping so always put all results to same group with identifier `0`
@@ -24,18 +27,21 @@ const SEARCH_GROUPINGS = [
         getGroupName: () => null
     },
     {
+        id: "table",
         name: "Table",
         icon: "table2",
         groupBy: (entity) => entity.table.id,
         getGroupName: (entity) => entity.table.display_name
     },
     {
+        id: "database",
         name: "Database",
         icon: "database",
         groupBy: (entity) => entity.table.db.id,
         getGroupName: (entity) => entity.table.db.name
     },
     {
+        id: "creator",
         name: "Creator",
         icon: "mine",
         groupBy: (entity) => entity.creator.id,
@@ -48,9 +54,16 @@ type Props = {
     title: string,
     // Sorted list of entities like segments or metrics
     entities: any[],
-    getUrlForEntity: (any) => void
+    getUrlForEntity: (any) => void,
+
+    onReplaceLocation: (LocationDescriptor) => void,
+
+    // Injected by withRouter HOC
+    location: LocationDescriptor
 }
 
+@connect(null, { onReplaceLocation: replace })
+@withRouter
 export default class EntitySearch extends Component {
     searchHeaderInput: ?HTMLButtonElement
     props: Props
@@ -64,12 +77,38 @@ export default class EntitySearch extends Component {
         };
     }
 
+    componentDidMount = () => {
+        this.parseQueryString()
+    }
+
     componentWillReceiveProps = (nextProps) => {
         this.applyFiltersForEntities(nextProps.entities)
     }
 
+    parseQueryString = () => {
+        const options = parseHashOptions(this.props.location.search.substring(1))
+        if (Object.keys(options).length > 0) {
+            if (options.search) {
+                this.setSearchText(options.search)
+            }
+            if (options.grouping) {
+                const grouping = SEARCH_GROUPINGS.find((grouping) => grouping.id === options.grouping)
+                if (grouping) {
+                    this.setGrouping(grouping)
+                }
+            }
+        }
+    }
+
+    updateUrl = (queryOptionsUpdater) => {
+        const { onReplaceLocation, location } = this.props;
+        onReplaceLocation(updateQueryString(location, queryOptionsUpdater))
+
+    }
+
     setSearchText = (searchText) => {
         this.setState({ searchText }, this.applyFiltersAfterFilterChange)
+        this.updateUrl((currentOptions) => ({ ...currentOptions, search: searchText}))
     }
 
     resetSearchText = () => {
@@ -96,6 +135,10 @@ export default class EntitySearch extends Component {
 
     setGrouping = (grouping) => {
         this.setState({ currentGrouping: grouping })
+        this.updateUrl((currentOptions) => grouping !== DEFAULT_SEARCH_GROUPING
+            ? { ...currentOptions, grouping: grouping.id }
+            : _.omit(currentOptions, 'grouping')
+        )
         this.searchHeaderInput.focus()
     }
 
@@ -120,7 +163,7 @@ export default class EntitySearch extends Component {
         const { title, getUrlForEntity } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
-        const hasUngroupedResults = !currentGrouping.icon && filteredEntities.length > 0
+        const hasUngroupedResults = currentGrouping === DEFAULT_SEARCH_GROUPING && filteredEntities.length > 0
 
         return (
             <div className="bg-slate-extra-light full Entity-search">
