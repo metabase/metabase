@@ -18,7 +18,10 @@ const Histogram = ({ histogram, color, showAxis }) =>
                         "graph.y_axis.labels_enabled": showAxis
                     }
                 },
-                data: histogram.rows.map(row => [[row[0], row[1]*100]])
+                data: {
+                    ...histogram,
+                    rows: histogram.rows.map(row => [row[0], row[1] * 100])
+                }
             }
         ]}
         showTitle={false}

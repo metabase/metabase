@@ -6,7 +6,7 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
-            [clojure.math.numeric-tower :refer [round]]
+            [clojure.math.numeric-tower :refer [floor]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -459,9 +459,7 @@
 
 (defn- round-to-month
   [dt]
-  (if (<= (t/day dt) (/ (t/number-of-days-in-the-month dt) 2))
-    (t/floor dt t/month)
-    (t/plus (t/floor dt t/month) (t/months 1))))
+  (t/floor dt t/month))
 
 (defn- month-frequencies
   [earliest latest]
@@ -469,7 +467,7 @@
         latest      (round-to-month latest)
         start-month (t/month earliest)
         duration    (t/in-months (t/interval earliest latest))]
-    (->> (range (dec start-month) (+ start-month duration))
+    (->> (range (dec start-month) (+ start-month duration 1))
          (map #(inc (mod % 12)))
          frequencies)))
 
@@ -478,8 +476,8 @@
   (let [earilest      (round-to-month latest)
         latest        (round-to-month latest)
         start-quarter (quarter earliest)
-        duration      (round (/ (t/in-months (t/interval earliest latest)) 3))]
-    (->> (range (dec start-quarter) (+ start-quarter duration))
+        duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
+    (->> (range (dec start-quarter) (+ start-quarter duration 1))
          (map #(inc (mod % 4)))
          frequencies)))
 
