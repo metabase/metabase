@@ -203,7 +203,7 @@ describe("QueryBuilder", () => {
             click(viewByCreator)
 
             const group = entitySearch.find(SearchResultsGroup)
-            expect(group.prop('groupName')).toBe("Bob E2E")
+            expect(group.prop('groupName')).toBe("Bobby Tables")
 
             const metricSearchResult = group.find(SearchResultListItem)
                 .filterWhere((item) => /A Metric/.test(item.text()))
