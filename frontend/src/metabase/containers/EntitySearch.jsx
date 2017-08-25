@@ -52,17 +52,17 @@ const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
 
 type Props = {
     title: string,
-    // Sorted list of entities like segments or metrics
-    entities: any[],
+    entities: any[], // Sorted list of entities like segments or metrics
     getUrlForEntity: (any) => void,
+    backButtonUrl: ?string,
 
     onReplaceLocation: (LocationDescriptor) => void,
+    onChangeLocation: (LocationDescriptor) => void,
 
-    // Injected by withRouter HOC
-    location: LocationDescriptor
+    location: LocationDescriptor // Injected by withRouter HOC
 }
 
-@connect(null, { onReplaceLocation: replace })
+@connect(null, { onReplaceLocation: replace, onChangeLocation: push  })
 @withRouter
 export default class EntitySearch extends Component {
     searchHeaderInput: ?HTMLButtonElement
@@ -160,7 +160,7 @@ export default class EntitySearch extends Component {
     }
 
     render() {
-        const { title, getUrlForEntity } = this.props;
+        const { title, backButtonUrl, getUrlForEntity, onChangeLocation } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
         const hasUngroupedResults = currentGrouping === DEFAULT_SEARCH_GROUPING && filteredEntities.length > 0
@@ -176,7 +176,7 @@ export default class EntitySearch extends Component {
                                 boxShadow: "0 2px 4px 0 #DCE1E4"
                             }}
                             name="backArrow"
-                            onClick={ () => window.history.back() }
+                            onClick={ () => backButtonUrl ? onChangeLocation(backButtonUrl) : window.history.back() }
                         />
                         <div className="text-centered flex-full">
                             <h2>{title}</h2>
