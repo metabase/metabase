@@ -30,6 +30,8 @@ const mapDispatchToProps = {
 export default class SegmentSearch extends Component {
     props: {
         getUrlForQuery: (StructuredQuery) => void,
+        backButtonUrl: string,
+
         query: StructuredQuery,
         metadata: Metadata,
         metadataFetched: any,
@@ -54,7 +56,7 @@ export default class SegmentSearch extends Component {
     }
 
     render() {
-        const { metadataFetched, metadata } = this.props;
+        const { backButtonUrl, metadataFetched, metadata } = this.props;
 
         const isLoading = !metadataFetched.segments || !metadataFetched.databases
 
@@ -74,6 +76,7 @@ export default class SegmentSearch extends Component {
                             title="Which segment?"
                             entities={sortedActiveSegments}
                             getUrlForEntity={this.getUrlForSegment}
+                            backButtonUrl={backButtonUrl}
                         />
                     } else {
                         return (
