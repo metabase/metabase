@@ -6,7 +6,6 @@ import cx from "classnames";
 
 import SearchHeader from "metabase/components/SearchHeader";
 
-import type { LocationDescriptor } from "metabase/meta/types";
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
