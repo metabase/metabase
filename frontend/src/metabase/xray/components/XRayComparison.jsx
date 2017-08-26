@@ -134,7 +134,6 @@ const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = fa
                     },
 
                 ]}
-                showTitle={false}
             />
         </div>
     </div>
@@ -233,7 +232,7 @@ const XRayComparison = ({
                                 <td className="border-right">
                                     <Link
                                         to={`/xray/field/${field.id}/approximate`}
-                                        className="px2 no-decoration flex align-center text-brand-hover"
+                                        className="px2 no-decoration text-brand flex align-center"
                                     >
                                         <Icon name={getIconForField(field)} className="text-grey-2 mr1" />
                                         <h3>{field.display_name}</h3>
