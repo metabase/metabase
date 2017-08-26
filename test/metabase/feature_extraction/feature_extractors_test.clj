@@ -106,7 +106,7 @@
 
 (expect
   [(t/date-time 2017 8)
-   (t/date-time 2018 1)
+   (t/date-time 2017 12)
    (t/date-time 2017 8)]
   [(#'fe/round-to-month (t/date-time 2017 8 15))
    (#'fe/round-to-month (t/date-time 2017 12 20))
