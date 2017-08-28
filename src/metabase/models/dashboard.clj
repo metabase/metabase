@@ -65,50 +65,6 @@
     (merge defaults dashboard)))
 
 
-(defn- update-field-values-for-new-dashboard!
-  "If the newly added DASHBOARD has any params we need to update the FieldValues for Fields that belong to 'On-Demand'
-   Databases."
-  [dashboard]
-  (when (seq (:parameters dashboard))
-    (let [dashboard (hydrate dashboard [:ordered_cards :card])
-          field-ids (params/dashboard->param-field-ids dashboard)]
-      (when (seq field-ids)
-        (log/info "Dashboard references Fields in params:" field-ids)
-        (field-values/update-field-values-for-on-demand-dbs! field-ids)))))
-
-(defn- post-insert [dashboard]
-  (u/prog1 dashboard
-    (update-field-values-for-new-dashboard! dashboard)))
-
-
-(defn- dashboard-id->param-field-ids [dashboard-or-id]
-  (params/dashboard->param-field-ids (hydrate (Dashboard (u/get-id dashboard-or-id))
-                                              [:ordered_cards :card])))
-
-
-(defn- update-field-values-for-existing-dashboard!
-  "If the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
-   for any Fields that belong to an 'On-Demand' synced DB."
-  [dashboard]
-  (when-let [params (seq (:parameters dashboard))]
-    (let [old-param-field-ids (dashboard-id->param-field-ids dashboard)]
-      ;; TODO - since there is no `post-update` method in Toucan (yet) we'll just have to run this async
-      ;; after the actual save has happened so we can be sure any newly added Cards are in place. :unamused: HACK
-      (future
-        (let [new-param-field-ids (dashboard-id->param-field-ids dashboard)]
-          (when (and (seq new-param-field-ids)
-                     (not= old-param-field-ids new-param-field-ids))
-            (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
-              (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
-                        "Is Now:" new-param-field-ids
-                        "Newly Added:" newly-added-param-field-ids)
-              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))))))
-
-(defn- pre-update [dashboard]
-  (u/prog1 dashboard
-    (update-field-values-for-existing-dashboard! dashboard)))
-
-
 (u/strict-extend (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
@@ -116,8 +72,6 @@
           :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
-          :post-insert post-insert
-          :pre-update  pre-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
@@ -203,3 +157,61 @@
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
           :revert-to-revision! (u/drop-first-arg revert-dashboard!)
           :diff-str            (u/drop-first-arg diff-dashboards-str)}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 OTHER CRUD FNS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- dashboard-id->param-field-ids
+  "Get the set of Field IDs referenced by the parameters in this Dashboard."
+  [dashboard-or-id]
+  (let [dash (Dashboard (u/get-id dashboard-or-id))]
+    (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
+
+
+(defn- update-field-values-for-on-demand-dbs!
+  "If the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
+   for any Fields that belong to an 'On-Demand' synced DB."
+  [dashboard-or-id old-param-field-ids new-param-field-ids]
+  (when (and (seq new-param-field-ids)
+             (not= old-param-field-ids new-param-field-ids))
+    (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+      (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
+                "Is Now:" new-param-field-ids
+                "Newly Added:" newly-added-param-field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+
+
+(defn add-dashcard!
+  "Add a Card to a Dashboard.
+   This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
+   for example updating FieldValues for On-Demand DBs.
+   Returns newly created DashboardCard."
+  {:style/indent 2}
+  [dashboard-or-id card-or-id & [dashcard-options]]
+  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
+        dashboard-card      (-> (assoc dashcard-options
+                                  :dashboard_id (u/get-id dashboard-or-id)
+                                  :card_id      (u/get-id card-or-id))
+                                ;; if :series info gets passed in make sure we pass it along as a sequence of IDs
+                                (update :series #(filter identity (map u/get-id %))))]
+    (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
+      (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
+        (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids)))))
+
+(defn update-dashcards!
+  "Update the DASHCARDS belonging to DASHBOARD-OR-ID.
+   This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
+   are performed when finished, for example updating FieldValues for On-Demand DBs.
+   Returns `nil`."
+  {:style/indent 1}
+  [dashboard-or-id dashcards]
+  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
+        dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/get-id dashboard-or-id))]
+    (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
+      ;; ensure the dashcard we are updating is part of the given dashboard
+      (when (contains? dashcard-ids dashcard-id)
+        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
+    (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
+      (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))
