@@ -250,12 +250,8 @@ export default class ObjectDetail extends Component {
                     <div className="Grid-cell ObjectDetail-infoMain p4">{this.renderDetailsTable()}</div>
                     <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                 </div>
-                <div className="absolute left" onClick={this.decrementDetail}>
-                    <Icon name="chevronleft" />
-                </div>
-                <div className="absolute right"  onClick={this.incrementDetail}>
-                    <Icon name="chevronright" />
-                </div>
+                <Icon name="chevronleft" onClick={this.decrementDetail} />
+                <Icon name="chevronright" onClick={this.incrementDetail} />
             </div>
         );
     }
