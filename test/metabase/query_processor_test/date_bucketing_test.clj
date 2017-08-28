@@ -216,7 +216,10 @@
 ;; (UTC on startup). When we change that timezone, it then assumes the
 ;; data was also stored in that timezone. This leads to incorrect
 ;; results. In this example it applies the pacific offset twice
-(expect-with-non-timeseries-dbs-except #{:h2}
+;;
+;; SQLServer is excluded as the SQLServer driver returns incorrect
+;; timestamps if the JVM timezone doesn't match SQLServer's timezone
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
   (cond
     ;; These databases are always in UTC so aren't impacted by changes in report-timezone
     (contains? #{:sqlite :crate} *engine*)
@@ -508,7 +511,10 @@
 ;; stored. This causes H2 to (incorrectly) apply the timezone shift
 ;; twice, so instead of -07:00 it will become -14:00. Leaving out the
 ;; test rather than validate wrong results.
-(expect-with-non-timeseries-dbs-except #{:h2}
+;;
+;; SQLServer is excluded as the SQLServer driver returns incorrect
+;; timestamps if the JVM timezone doesn't match SQLServer's timezone
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (results-by-day date-formatter-without-time
@@ -701,7 +707,10 @@
 ;; Setting the JVM timezone will change how the datetime results are
 ;; displayed but don't impact the calculation of the begin/end of the
 ;; week
-(expect-with-non-timeseries-dbs-except #{:h2}
+;;
+;; SQLServer is excluded as the SQLServer driver returns incorrect
+;; timestamps if the JVM timezone doesn't match SQLServer's timezone
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (results-by-week date-formatter-without-time
@@ -742,11 +751,8 @@
     (supports-report-timezone? *engine*)
     [[23 49] [24 47] [25 39] [26 58] [27 7]]
 
-    (contains? #{:mongo :redshift :bigquery :postgres :vertica :h2 :presto} *engine*)
-    [[23 46] [24 47] [25 40] [26 60] [27 7]]
-
     :else
-    [[23 49] [24 47] [25 39] [26 58] [27 7]])
+    [[23 46] [24 47] [25 40] [26 60] [27 7]])
   (sad-toucan-incidents-with-bucketing :week-of-year pacific-tz))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
