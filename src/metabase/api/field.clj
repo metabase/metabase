@@ -116,9 +116,9 @@
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
-  [id :as {{dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_id} :body}]
-  {dimension-type         (s/enum "internal" "external")
-   dimension-name         su/NonBlankString
+  [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
+  {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
+   dimension-name          (su/api-param "name" su/NonBlankString)
    human_readable_field_id (s/maybe su/IntGreaterThanZero)}
   (let [field (api/write-check Field id)]
     (api/check (or (= dimension-type "internal")

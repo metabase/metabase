@@ -27,6 +27,7 @@ export const getNormalizedFields = state => state.metadata.fields;
 export const getNormalizedMetrics = state => state.metadata.metrics;
 export const getNormalizedSegments = state => state.metadata.segments;
 
+export const getMetadataFetched = state => state.requests.fetched.metadata || {}
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -68,6 +69,7 @@ export const getMetadata = createSelector(
         meta.fields    = copyObjects(meta, fields, Field)
         meta.segments  = copyObjects(meta, segments, Segment)
         meta.metrics   = copyObjects(meta, metrics, Metric)
+        // meta.loaded    = getLoadedStatuses(requestStates)
 
         hydrateList(meta.databases, "tables", meta.tables);
 

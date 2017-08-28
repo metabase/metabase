@@ -411,7 +411,8 @@
     ;; run the Cards which will populate their result_metadata columns
     (doseq [card [stamp-card coin-card]]
       ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
-    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their Collection name as their Schema
+    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
+    ;; Collection name as their Schema
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
 
 (defn- fetch-virtual-database []
@@ -426,8 +427,24 @@
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))
 
+;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
+;; nested queries
+(tt/expect-with-temp [Database [druid-db   {:engine :druid, :details {}}]
+                      Card     [druid-card {:name             "Druid Card"
+                                            :dataset_query    {:database (u/get-id druid-db)
+                                                               :type     :native
+                                                               :native   {:query "[DRUID QUERY GOES HERE]"}}
+                                            :result_metadata [{:name "sparrows"}]
+                                            :database_id     (u/get-id druid-db)}]
+                      Card     [ok-card (assoc (card-with-native-query "OK Card")
+                                          :result_metadata [{:name "finches"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
 
-;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count aggregations
+
+;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count
+;; aggregations
 (defn- ok-mbql-card []
   (assoc (card-with-mbql-query "OK Card"
            :source-table (data/id :checkins))

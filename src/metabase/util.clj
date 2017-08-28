@@ -333,11 +333,6 @@
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
   (jdbc-clob->str [this]
-    (jdbc-clob->str (.getCharacterStream this)))
-
-  ;; SQL Server -- See also http://jtds.sourceforge.net/doc/net/sourceforge/jtds/jdbc/ClobImpl.html
-  net.sourceforge.jtds.jdbc.ClobImpl
-  (jdbc-clob->str [this]
     (jdbc-clob->str (.getCharacterStream this))))
 
 

@@ -64,8 +64,8 @@
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
     (when-let [driver (driver/database-id->driver database-id)]
-      (driver/driver-supports? driver :nested-queries)
-      (mi/can-read? card))))
+      (and (driver/driver-supports? driver :nested-queries)
+           (mi/can-read? card)))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
