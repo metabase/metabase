@@ -1,7 +1,7 @@
 (ns metabase.models.card
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [medley.core :as m]
             [metabase
              [public-settings :as public-settings]
              [query :as q]
@@ -22,8 +22,7 @@
             [metabase.query-processor.util :as qputil]
             [toucan
              [db :as db]
-             [models :as models]]
-            [clojure.set :as set]))
+             [models :as models]]))
 
 (models/defmodel Card :report_card)
 
@@ -193,7 +192,8 @@
     ;; On-Demand DB Fields
     (when (and (:dataset_query card)
                (:native (:dataset_query card)))
-      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query]))
+      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query]
+                                                                       :id (u/get-id card)))
             new-param-field-ids (params/card->template-tag-field-ids card)]
         (when (and (seq new-param-field-ids)
                    (not= old-param-field-ids new-param-field-ids))
