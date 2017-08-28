@@ -28,7 +28,7 @@
 ;; in that timezone (manifesting itself as an offset for that
 ;; time). Using the JVM timezone that doesn't match the database
 ;; timezone (assuming the database doesn't support a report timezone)
-;; can lead to incorrect or at least deceiving results.
+;; can lead to incorrect results.
 ;;
 ;; The second place timezones can impact this is calculations in the
 ;; database. A good example of this is grouping something by day. In
@@ -60,7 +60,7 @@
 
 (defn- call-with-jvm-tz
   "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the
-  JVM timezone back the way it found it when it exits."
+  various timezone settings back the way it found it when it exits."
   [^DateTimeZone dtz f]
   (let [orig-tz (TimeZone/getDefault)
         orig-dtz (time/default-time-zone)
@@ -88,6 +88,7 @@
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))
 
 (defn- sad-toucan-incidents-with-bucketing
+  "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
    (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
           (data/run-query incidents
@@ -107,11 +108,10 @@
 
 (def ^:private pacific-tz (time/time-zone-for-id "America/Los_Angeles"))
 (def ^:private eastern-tz (time/time-zone-for-id "America/New_York"))
-(def ^:private utc-tz (time/time-zone-for-id "UTC"))
+(def ^:private utc-tz     (time/time-zone-for-id "UTC"))
 
 (defn- source-date-formatter
-  "Create a date formatter, interpretting the datestring as being in
-  `TZ` when timezone is omitted from the datestring"
+  "Create a date formatter, interpretting the datestring as being in `TZ`"
   [tz]
   (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) tz))
 
@@ -122,13 +122,13 @@
   (tformat/with-zone (tformat/formatters :date-time) tz))
 
 (def ^:private result-date-formatter-without-tz
-  "sqlite and crate return datestrings that do not include their
+  "sqlite and crate return date strings that do not include their
   timezone, this formatter is useful for those DBs"
   (tformat/formatters :mysql))
 
 (def ^:private date-formatter-without-time
-  "sqlite and crate return datestrings that do not include their
-  timezone, this formatter is useful for those DBs"
+  "sqlite and crate return dates that do not include their time, this
+  formatter is useful for those DBs"
   (tformat/formatters :date))
 
 (defn- adjust-date
@@ -163,32 +163,31 @@
 
 (defn- sad-toucan-result
   "Creates a sad toucan resultset using the given `SOURCE-FORMATTER`
-  and `RESULT-FORMATTER`. Pairs the dates with the record counts
-  supplied in `COUNTS`"
-  [source-formatter result-formatter counts]
+  and `RESULT-FORMATTER`. Pairs the dates with the record counts."
+  [source-formatter result-formatter]
   (mapv vector
         (adjust-date source-formatter result-formatter sad-toucan-dates)
-        counts))
+        (repeat 1)))
 
 ;; Bucket sad toucan events by their default bucketing, which is the full datetime value
 (expect-with-non-timeseries-dbs
   (cond
     ;; Timezone is omitted by these databases
     (contains? #{:sqlite :crate} *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
     (oracle? *engine*)
-    (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific timezone
     (supports-report-timezone? *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     ;; Databases that don't support report timezone will always return the time using the JVM's timezone setting
     ;; Our tests force UTC time, so this should always be UTC
     :else
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz) (repeat 1)))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz)))
   (sad-toucan-incidents-with-bucketing :default pacific-tz))
 
 ;; Buckets sad toucan events like above, but uses the eastern timezone as the report timezone
@@ -196,18 +195,18 @@
   (cond
     ;; These databases are always in UTC so aren't impacted by changes in report-timezone
     (contains? #{:sqlite :crate} *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     (oracle? *engine*)
-    (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
     (supports-report-timezone? *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz))
 
     ;; The change in report timezone has no affect on this group
     :else
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz) (repeat 1)))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz)))
 
   (sad-toucan-incidents-with-bucketing :default eastern-tz))
 
@@ -221,20 +220,18 @@
 ;; timestamps if the JVM timezone doesn't match SQLServer's timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
   (cond
-    ;; These databases are always in UTC so aren't impacted by changes in report-timezone
     (contains? #{:sqlite :crate} *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     (oracle? *engine*)
-    (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The JVM timezone should have no impact on a database that uses a report timezone
     (supports-report-timezone? *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz))
 
-    ;; The change in report timezone has no affect on this group
     :else
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz) (repeat 1)))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz)))
 
   (with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :default eastern-tz)))
@@ -249,22 +246,17 @@
 ;; are the same as the default grouping
 (expect-with-non-timeseries-dbs
   (cond
-    ;; Timezone is omitted by these databases
     (contains? #{:sqlite :crate} *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
     (oracle? *engine*)
-    (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
-    ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific timezone
     (supports-report-timezone? *engine*)
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz) (repeat 1))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
-    ;; Databases that don't support report timezone will always return the time using the JVM's timezone setting
-    ;; Our tests force UTC time, so this should always be UTC
     :else
-    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz) (repeat 1)))
+    (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz)))
   (sad-toucan-incidents-with-bucketing :minute pacific-tz))
 
 ;; Grouping by minute of hour is not affected by timezones
@@ -636,16 +628,17 @@
 ;; timezone. It queries only a UTC H2 datatabase to find how those
 ;; counts would change if time was in pacific time. The results of
 ;; this test are also in the UTC test above and pacific test below,
-;; but this is still useful for debugging as it doesn't involve change
+;; but this is still useful for debugging as it doesn't involve changing
 ;; timezones or database settings
 (datasets/expect-with-engines #{:h2}
   [3 0 -1 -2 0]
   (map #(new-weekly-events-after-tz-shift % pacific-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))
 
-;; Sad toucan incidents by week. UTC databases should be the same as
-;; the above UTC test, databases that support report timezone will
-;; have different counts as the week starts and ends 7 hours earlier
+;; Sad toucan incidents by week. Databases in UTC that don't support
+;; report timezones will be the same as the UTC test above. Databases
+;; that support report timezone will have different counts as the week
+;; starts and ends 7 hours earlier
 (expect-with-non-timeseries-dbs
   (cond
     (contains? #{:sqlite :crate} *engine*)
