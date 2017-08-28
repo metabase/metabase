@@ -1,13 +1,14 @@
 (ns metabase.feature-extraction.core
   "Feature extraction for various models."
   (:require [clojure.walk :refer [postwalk]]
+            [kixi.stats.math :as math]
+            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
              [comparison :as comparison]
              [costs :as costs]
              [feature-extractors :as fe]
              [descriptions :refer [add-descriptions]]]
-            [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -71,7 +72,7 @@
 (defmethod extract-features (type Card)
   [opts card]
   (let [query (-> card :dataset_query :query)
-        {:keys [rows cols :as dataset]} (metadata/query-values
+        {:keys [rows cols] :as dataset} (metadata/query-values
                                          (metadata/db-id card)
                                          (merge (extract-query-opts opts)
                                                 query))
@@ -83,7 +84,8 @@
      :features     (merge
                     (field->features (assoc opts :query query) fields rows)
                     {:card  card
-                     :table (Table (:table_id card))})}))
+                     :table (Table (:table_id card))})
+     :dataset      dataset}))
 
 (defmethod extract-features (type Segment)
   [opts segment]
@@ -105,33 +107,46 @@
        x))
    features))
 
-(defn- update-when
-  [m k f & args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))
-
 (defn x-ray
   "Turn feature vector into an x-ray."
   [features]
   (let [prettify (comp add-descriptions (partial trim-decimals 2) fe/x-ray)]
     (-> features
-        (update-when :features prettify)
-        (update-when :constituents (fn [constituents]
-                                     (if (sequential? constituents)
-                                       (map x-ray constituents)
-                                       (m/map-vals prettify constituents)))))))
+        (u/update-when :features prettify)
+        (u/update-when :constituents (fn [constituents]
+                                       (if (sequential? constituents)
+                                         (map x-ray constituents)
+                                         (m/map-vals prettify constituents)))))))
+
+(defn- top-contributors
+  [comparisons]
+  (if (map? comparisons)
+    (->> comparisons
+         (comparison/head-tails-breaks (comp :distance val))
+         (mapcat (fn [[field {:keys [top-contributors distance]}]]
+                   (for [[feature difference] top-contributors]
+                     {:feature      feature
+                      :field        field
+                      :contribution (* (math/sqrt distance) difference)})))
+         (comparison/head-tails-breaks :contribution))
+    (->> comparisons
+         :top-contributors
+         (map (fn [[feature difference]]
+                {:feature    feature
+                 :difference difference})))))
 
 (defn compare-features
   "Compare feature vectors of two models."
   [opts a b]
-  (let [[a b] (map (partial extract-features opts) [a b])]
-    {:constituents [a b]
-     :comparison   (if (:constituents a)
-                     (into {}
-                       (map (fn [[field a] [_ b]]
-                              [field (comparison/features-distance a b)])
-                            (:constituents a)
-                            (:constituents b)))
-                     (comparison/features-distance (:features a)
-                                                   (:features b)))}))
+  (let [[a b]       (map (partial extract-features opts) [a b])
+        comparisons (if (:constituents a)
+                      (into {}
+                        (map (fn [[field a] [_ b]]
+                               [field (comparison/features-distance a b)])
+                             (:constituents a)
+                             (:constituents b)))
+                      (comparison/features-distance (:features a)
+                                                    (:features b)))]
+    {:constituents     [a b]
+     :comparison       comparisons
+     :top-contributors (top-contributors comparisons)}))

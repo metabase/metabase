@@ -5,31 +5,32 @@ import _ from 'underscore'
 import title from 'metabase/hoc/Title'
 
 import { fetchSegmentComparison } from 'metabase/xray/xray'
-import { getComparison, getComparisonFields } from 'metabase/xray/selectors'
+import {
+    getComparison,
+    getComparisonFields,
+    getComparisonContributors,
+    getSegmentItem,
+    getTitle
+} from 'metabase/xray/selectors'
 
-import { normal } from 'metabase/lib/colors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 
-const mapStateToProps = (state) => {
-    console.log(getComparisonFields(state))
-    return {
+const mapStateToProps = (state) => ({
         comparison: getComparison(state),
-        fields: getComparisonFields(state)
-    }
-}
+        fields: getComparisonFields(state),
+        contributors: getComparisonContributors(state),
+        itemA: getSegmentItem(state, 0),
+        itemB: getSegmentItem(state, 1)
+})
 
 const mapDispatchToProps = {
     fetchSegmentComparison
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({comparison}) =>
-    comparison && (
-        `${comparison.constituents[0].features.segment.name} / ${comparison.constituents[1].features.segment.name}`
-    )
-)
+@title(props => getTitle(props))
 class SegmentComparison extends Component {
 
     componentWillMount () {
@@ -38,7 +39,15 @@ class SegmentComparison extends Component {
     }
 
     render () {
-        const { params, comparison, fields } = this.props
+        const {
+            contributors,
+            params,
+            comparison,
+            fields,
+            itemA,
+            itemB
+        } = this.props
+
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
@@ -55,21 +64,10 @@ class SegmentComparison extends Component {
                             'Histogram',
                             'Nil%',
                         ]}
+                        contributors={contributors}
                         comparison={comparison.comparison}
-                        itemA={{
-                            name: comparison.constituents[0].features.segment.name,
-                            constituents: comparison.constituents[0].constituents,
-                            itemType: 'segment',
-                            color: normal.green,
-                            id: comparison.constituents[0].features.segment.id,
-                        }}
-                        itemB={{
-                            name: comparison.constituents[1].features.segment.name,
-                            constituents: comparison.constituents[1].constituents,
-                            itemType: 'segment',
-                            color: normal.orange,
-                            id: comparison.constituents[1].features.segment.id,
-                        }}
+                        itemA={itemA}
+                        itemB={itemB}
                     />
                 }
             </LoadingAndErrorWrapper>
