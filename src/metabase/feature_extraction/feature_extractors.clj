@@ -6,7 +6,7 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
-            [clojure.math.numeric-tower :refer [round]]
+            [clojure.math.numeric-tower :refer [floor]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -476,7 +476,7 @@
   (let [earilest      (round-to-month latest)
         latest        (round-to-month latest)
         start-quarter (quarter earliest)
-        duration      (round (/ (t/in-months (t/interval earliest latest)) 3))]
+        duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
     (->> (range (dec start-quarter) (+ start-quarter duration))
          (map #(inc (mod % 4)))
          frequencies)))
