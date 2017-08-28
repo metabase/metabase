@@ -216,9 +216,9 @@
 ;; data was also stored in that timezone. This leads to incorrect
 ;; results. In this example it applies the pacific offset twice
 ;;
-;; SQLServer is excluded as the SQLServer driver returns incorrect
-;; timestamps if the JVM timezone doesn't match SQLServer's timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
+;; SQLServer and Redshift are exlcluded as they give incorrect results when the JVM
+;; timezone doesn't match the database's timezone
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
@@ -504,9 +504,9 @@
 ;; twice, so instead of -07:00 it will become -14:00. Leaving out the
 ;; test rather than validate wrong results.
 ;;
-;; SQLServer is excluded as the SQLServer driver returns incorrect
-;; timestamps if the JVM timezone doesn't match SQLServer's timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
+;; SQLServer and Redshift are exlcluded as they give incorrect results when the JVM
+;; timezone doesn't match the database's timezone
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (results-by-day date-formatter-without-time
@@ -701,9 +701,9 @@
 ;; displayed but don't impact the calculation of the begin/end of the
 ;; week
 ;;
-;; SQLServer is excluded as the SQLServer driver returns incorrect
-;; timestamps if the JVM timezone doesn't match SQLServer's timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver}
+;; SQLServer and Redshift are exlcluded as they give incorrect results when the JVM
+;; timezone doesn't match the database's timezone
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (results-by-week date-formatter-without-time
