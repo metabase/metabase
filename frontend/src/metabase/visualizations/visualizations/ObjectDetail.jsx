@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
+import { connect } from 'react-redux'
 
 import ExpandableString from 'metabase/query_builder/components/ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
@@ -13,6 +14,8 @@ import { singularize, inflect } from 'inflection';
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isQueryable } from "metabase/lib/table";
 
+import { viewPreviousObjectDetail, viewNextObjectDetail } from 'metabase/query_builder/actions'
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -20,6 +23,14 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps;
 
+const mapStateToProps = () => ({})
+
+const mapDispatchToProps = {
+    viewPreviousObjectDetail,
+    viewNextObjectDetail
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class ObjectDetail extends Component {
     props: Props;
 
@@ -200,6 +211,14 @@ export default class ObjectDetail extends Component {
         );
     }
 
+    incrementDetail = () => {
+        this.props.viewNextObjectDetail()
+    }
+
+    decrementDetail = () => {
+        this.props.viewPreviousObjectDetail()
+    }
+
     render() {
         if(!this.props.data) {
             return false;
@@ -230,6 +249,12 @@ export default class ObjectDetail extends Component {
                 <div className="Grid">
                     <div className="Grid-cell ObjectDetail-infoMain p4">{this.renderDetailsTable()}</div>
                     <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
+                </div>
+                <div className="absolute left" onClick={this.decrementDetail}>
+                    <Icon name="chevronleft" />
+                </div>
+                <div className="absolute right"  onClick={this.incrementDetail}>
+                    <Icon name="chevronright" />
                 </div>
             </div>
         );
