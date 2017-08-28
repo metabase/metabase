@@ -66,9 +66,11 @@ export default class DatabaseSchedulingForm extends Component {
         this.setState(assocIn(this.state, ["unsavedDatabase", "schedules", "cache_field_values"], newSchedule));
     }
 
-    setIsFullSync = (isFullSync) => {
+    setIsFullSyncIsOnDemand = (isFullSync, isOnDemand) => {
         // TODO: Add event tracking
-        this.setState(assocIn(this.state, ["unsavedDatabase", "is_full_sync"], isFullSync));
+        let state = assocIn(this.state, ["unsavedDatabase", "is_full_sync"], isFullSync);
+        state = assocIn(state, ["unsavedDatabase", "is_on_demand"], isOnDemand);
+        this.setState(state);
     }
 
     onSubmitForm = (event) => {
@@ -77,6 +79,7 @@ export default class DatabaseSchedulingForm extends Component {
         const { unsavedDatabase } = this.state
         this.props.save(unsavedDatabase, unsavedDatabase.details);
     }
+
     render() {
         const { submitButtonText, formState: { formError, formSuccess, isSubmitting } } = this.props
         const { unsavedDatabase } = this.state
@@ -118,14 +121,14 @@ export default class DatabaseSchedulingForm extends Component {
                                     can be a somewhat resource-intensive process, particularly if you have a very large
                                     database.</p>
 
-                                  <h3>When should Metabase automatically scan and cache field values?</h3>
+                                <h3>When should Metabase automatically scan and cache field values?</h3>
                                 <ol className="bordered shadowed mt3">
                                     <li className="border-bottom">
                                         <SyncOption
                                             selected={unsavedDatabase.is_full_sync}
                                             name="Regularly"
                                             description="on a schedule"
-                                            select={() => this.setIsFullSync(true)}
+                                            select={() => this.setIsFullSyncIsOnDemand(true, false)}
                                         >
 
                                             <div className="flex align-center">
@@ -148,10 +151,22 @@ export default class DatabaseSchedulingForm extends Component {
                                     </li>
                                     <li>
                                         <SyncOption
-                                            selected={!unsavedDatabase.is_full_sync}
+                                            selected={!unsavedDatabase.is_full_sync && unsavedDatabase.is_on_demand}
+                                            name="Only when adding a new filter widget"
+                                            select={() => this.setIsFullSyncIsOnDemand(false, true)}
+                                        >
+                                            <p>
+                                                When a user adds a new filter to a dashboard or a SQL question, Metabase will
+                                                scan the field(s) mapped to that filter in order to show the list of selectable values.
+                                            </p>
+                                        </SyncOption>
+                                    </li>
+                                    <li>
+                                        <SyncOption
+                                            selected={!unsavedDatabase.is_full_sync && !unsavedDatabase.is_on_demand}
                                             name="Never"
                                             description="I'll do this manually if I need to"
-                                            select={() => this.setIsFullSync(false)}
+                                            select={() => this.setIsFullSyncIsOnDemand(false, false)}
                                         />
                                     </li>
                                 </ol>

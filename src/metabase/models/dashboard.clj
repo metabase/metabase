@@ -7,8 +7,12 @@
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
+             [field :refer [Field]]
+             [field-values :as field-values]
              [interface :as i]
-             [revision :as revision]]
+             [params :as params]
+             [revision :as revision]
+             [table :refer [Table]]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [toucan
              [db :as db]
@@ -32,33 +36,6 @@
         (some i/can-read? cards))))
 
 
-;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
-
-(defn- pre-delete [dashboard]
-  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
-
-(defn- pre-insert [dashboard]
-  (let [defaults {:parameters   []}]
-    (merge defaults dashboard)))
-
-
-(models/defmodel Dashboard :report_dashboard)
-
-(u/strict-extend (class Dashboard)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
-          :pre-delete  pre-delete
-          :pre-insert  pre-insert
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?  can-read?
-          :can-write? can-read?}))
-
-
 ;;; ---------------------------------------- Hydration ----------------------------------------
 
 (defn ordered-cards
@@ -74,20 +51,56 @@
                :order-by [[:dashcard.created_at :asc]]})))
 
 
-;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------
+;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
 
-(defn create-dashboard!
-  "Create a `Dashboard`"
-  [{:keys [name description parameters], :as dashboard} user-id]
-  {:pre [(map? dashboard)
-         (u/maybe? u/sequence-of-maps? parameters)
-         (integer? user-id)]}
-  (->> (db/insert! Dashboard
-         :name        name
-         :description description
-         :parameters  (or parameters [])
-         :creator_id  user-id)
-       (events/publish-event! :dashboard-create)))
+(models/defmodel Dashboard :report_dashboard)
+
+
+(defn- update-field-values-for-on-demand-dbs! [dashboard]
+  (let [dashboard (hydrate dashboard [:ordered_cards :card])
+        field-ids (params/dashboard->param-field-ids dashboard)]
+    (field-values/update-field-values-for-on-demand-dbs! field-ids)))
+
+
+(defn- pre-delete [dashboard]
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
+  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+
+(defn- pre-insert [dashboard]
+  (let [defaults {:parameters []}]
+    (merge defaults dashboard)))
+
+(defn- post-insert [dashboard]
+  ;; If the newly added DASHBOARD has any params we need to update the FieldValues where appropriate
+  (when (seq (:parameters dashboard))
+    (update-field-values-for-on-demand-dbs! dashboard)))
+
+(defn- pre-update [dashboard]
+  (u/prog1 dashboard
+    (when-let [params (seq (:parameters dashboard))]
+      (let [original-params (db/select-one-field :parameters Dashboard :id (u/get-id dashboard))]
+        ;; if the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
+        ;; for any Fields that belong to an "On-Demand" synced DB
+        (when-not (= params original-params)
+          ;; TODO - since there is no `post-update` method in Toucan (yet) we'll just have to run this async
+          ;; after the actual save has happened so we can be sure any newly added Cards are in place. :unamused: HACK
+          (future (update-field-values-for-on-demand-dbs! dashboard)))))))
+
+
+(u/strict-extend (class Dashboard)
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
+          :pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-insert post-insert
+          :pre-update  pre-update
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  can-read?
+          :can-write? can-read?}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

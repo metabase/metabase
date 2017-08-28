@@ -58,10 +58,16 @@
 
 (api/defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name parameters], :as dashboard} :body}]
-  {name       su/NonBlankString
-   parameters [su/Map]}
-  (dashboard/create-dashboard! dashboard api/*current-user-id*))
+  [:as {{:keys [name description parameters], :as dashboard} :body}]
+  {name        su/NonBlankString
+   parameters  [su/Map]
+   description (s/maybe s/Str)}
+  (->> (db/insert! Dashboard
+         :name        name
+         :description description
+         :parameters  (or parameters [])
+         :creator_id  api/*current-user-id*)
+       (events/publish-event! :dashboard-create)))
 
 
 ;;; ------------------------------------------------------------ Hiding Unreadable Cards ------------------------------------------------------------
