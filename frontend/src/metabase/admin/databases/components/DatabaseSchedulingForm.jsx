@@ -9,8 +9,8 @@ import SchedulePicker from "metabase/components/SchedulePicker";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-export const SyncOption = ({ selected, name, description, children, select }) =>
-    <div className={cx("py2 relative", {"cursor-pointer": !selected})} onClick={() => select(name.toLowerCase()) }>
+export const SyncOption = ({ selected, name, children, select }) =>
+    <div className={cx("py3 relative", {"cursor-pointer": !selected})} onClick={() => select(name.toLowerCase()) }>
         <div
             className={cx('circle ml2 flex align-center justify-center absolute')}
             style={{
@@ -30,7 +30,7 @@ export const SyncOption = ({ selected, name, description, children, select }) =>
         </div>
         <div className="Form-offset ml1">
             <div className={cx({ 'text-brand': selected })}>
-                <h4>{name}, {description}</h4>
+                <h3>{name}</h3>
             </div>
             { selected && children && <div className="mt2">{children}</div> }
         </div>
@@ -90,10 +90,13 @@ export default class DatabaseSchedulingForm extends Component {
                     <form onSubmit={this.onSubmitForm} noValidate>
 
                         <div className="Form-offset mr4 mt4">
-                            <div>
-                                <div style={{maxWidth: 600}}>
-                                    To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.
-                                </div>
+                            <div style={{maxWidth: 600}} className="border-bottom pb2">
+                                <p className="text-paragraph text-measure">
+                                  To do some of its magic, Metabase needs to scan your database. We will also <em>re</em>scan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.
+                                </p>
+                            </div>
+
+                            <div className="border-bottom pb4">
                                 <h4 className="mt4 text-bold text-uppercase">Database syncing</h4>
                                 <p className="text-paragraph text-measure">This is a lightweight process that checks for
                                     updates to this database’s schema. In most cases, you should be fine leaving this
@@ -126,8 +129,7 @@ export default class DatabaseSchedulingForm extends Component {
                                     <li className="border-bottom">
                                         <SyncOption
                                             selected={unsavedDatabase.is_full_sync}
-                                            name="Regularly"
-                                            description="on a schedule"
+                                            name="Regularly, on a schedule"
                                             select={() => this.setIsFullSyncIsOnDemand(true, false)}
                                         >
 
@@ -149,13 +151,13 @@ export default class DatabaseSchedulingForm extends Component {
                                             </div>
                                         </SyncOption>
                                     </li>
-                                    <li>
+                                    <li className="border-bottom pr2">
                                         <SyncOption
                                             selected={!unsavedDatabase.is_full_sync && unsavedDatabase.is_on_demand}
                                             name="Only when adding a new filter widget"
                                             select={() => this.setIsFullSyncIsOnDemand(false, true)}
                                         >
-                                            <p>
+                                            <p className="text-paragraph text-measure">
                                                 When a user adds a new filter to a dashboard or a SQL question, Metabase will
                                                 scan the field(s) mapped to that filter in order to show the list of selectable values.
                                             </p>
@@ -164,8 +166,7 @@ export default class DatabaseSchedulingForm extends Component {
                                     <li>
                                         <SyncOption
                                             selected={!unsavedDatabase.is_full_sync && !unsavedDatabase.is_on_demand}
-                                            name="Never"
-                                            description="I'll do this manually if I need to"
+                                            name="Never, I'll do this manually if I need to"
                                             select={() => this.setIsFullSyncIsOnDemand(false, false)}
                                         />
                                     </li>
