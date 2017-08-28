@@ -62,6 +62,7 @@
    :name                        "test-data"
    :is_sample                   false
    :is_full_sync                true
+   :is_on_demand                false
    :description                 nil
    :caveats                     nil
    :points_of_interest          nil
