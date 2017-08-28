@@ -114,7 +114,7 @@
 
 (expect
   {1 3 2 3 3 3 4 2}
-  (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 8 12)))
+  (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 9 12)))
 
 (expect
   {1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}

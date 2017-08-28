@@ -31,12 +31,12 @@ export const getComparisonFields = createSelector(
     (comparison) => {
         if(comparison) {
             return Object.keys(comparison.constituents[0].constituents)
-                             .map(key => {
-                                 return {
-                                     ...comparison.constituents[0].constituents[key].field,
-                                     distance: comparison.comparison[key].distance
-                                 }
-                             })
+                .map(key => {
+                    return {
+                        ...comparison.constituents[0].constituents[key].field,
+                        distance: comparison.comparison[key].distance
+                    }
+                })
         }
     }
 )
@@ -45,25 +45,26 @@ export const getComparisonContributors = createSelector(
     [getComparison],
     (comparison) => {
         if(comparison) {
-            const top = comparison['top-contributors']
-            return top && top.map(contributor => {
-                return Object.keys(comparison.constituents[0].constituents)
-                      .map(key => {
-                          if(key === contributor.field.toUpperCase()) {
-                              return {
-                                  field: comparison.constituents[0].constituents[contributor.field].field,
-                                  feature: {
-                                      ...comparison.constituents[0].constituents[contributor.field][contributor.feature],
-                                      value: {
-                                          a: comparison.constituents[0].constituents[contributor.field][contributor.feature].value,
-                                          b: comparison.constituents[1].constituents[contributor.field][contributor.feature].value
-                                      },
-                                      type: contributor.feature
-                                  }
-                              }
-                          }
-                      })
+
+            const getValue = (constituent, { field, feature }) => {
+                return constituent.constituents[field][feature].value
+            }
+
+            const genContributor = ({ field, feature }) => ({
+                field: comparison.constituents[0].constituents[field],
+                feature: {
+                    ...comparison.constituents[0].constituents[field][feature],
+                    value: {
+                        a: getValue(comparison.constituents[0], { field, feature }),
+                        b: getValue(comparison.constituents[1], { field, feature })
+                    },
+                    type: feature
+                }
             })
+
+            const top = comparison['top-contributors']
+
+            return top && top.map(genContributor)
         }
     }
 )

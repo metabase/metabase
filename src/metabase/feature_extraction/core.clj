@@ -134,7 +134,7 @@
     (->> comparisons
          (comparison/head-tails-breaks (comp :distance val))
          (mapcat (fn [[field {:keys [top-contributors distance]}]]
-                   (for [[feature difference] top-contributors]
+                   (for [[feature {:keys [difference]}] top-contributors]
                      {:feature      feature
                       :field        field
                       :contribution (* (math/sqrt distance) difference)})))
@@ -160,4 +160,7 @@
     {:constituents     [a b]
      :comparison       comparisons
      :top-contributors (top-contributors comparisons)
-     :sample?          (some :sample? [a b])}))
+     :sample?          (some :sample? [a b])
+     :significant?     (if (:constituents a)
+                         (some :significant? (vals comparisons))
+                         (:significant? comparisons))}))

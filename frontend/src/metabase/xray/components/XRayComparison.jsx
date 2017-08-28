@@ -48,6 +48,58 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
         </div>
     </div>
 
+const Contributor = ({ contributor, itemA, itemB }) =>
+    <div>
+        <h3 className="mb2">
+            {contributor.field.display_name}
+        </h3>
+
+        <div className="bg-white shadowed rounded bordered">
+                <div>
+                    <div className="p2 flex align-center">
+                        <h4>{contributor.feature.label}</h4>
+                        <Tooltip tooltip={contributor.feature.description}>
+                            <Icon
+                                name="infooutlined"
+                                className="ml1 text-grey-4"
+                                size={14}
+                            />
+                        </Tooltip>
+                    </div>
+                    <div className="py1">
+                        { contributor.feature.type === 'histogram' ? (
+                            <CompareHistograms
+                                itemA={contributor.feature.value.a}
+                                itemB={contributor.feature.value.b}
+                                itemAColor={itemA.color.main}
+                                itemBColor={itemB.color.main}
+                                showAxis={true}
+                                height={120}
+                            />
+                        ) : (
+                            <div className="flex align-center px2 py3">
+                                <h1 className="p3" style={{ color: itemA.color.text }}>
+                                    {contributor.feature.value.a}
+                                </h1>
+                                <h1 className="p3" style={{ color: itemB.color.text }}>
+                                    {contributor.feature.value.b}
+                                </h1>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+            <div className="flex">
+                <Link
+                    to={fieldLinkUrl(itemA, itemB, contributor.field.name)}
+                    className="text-grey-3 text-brand-hover no-decoration transition-color ml-auto text-bold px2 pb2"
+                >
+                    View full comparison
+                    </Link>
+                </div>
+            </div>
+    </div>
+
 const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = false, height = 60}) =>
     <div className="flex" style={{ height }}>
         <div className="flex-full">
@@ -82,7 +134,6 @@ const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = fa
                     },
 
                 ]}
-                showTitle={false}
             />
         </div>
     </div>
@@ -136,46 +187,12 @@ const XRayComparison = ({
                 <Heading heading="Potentially interesting differences" />
                 <ol className="Grid Grid--gutters Grid--1of3">
                     { contributors.map(contributor =>
-                        <li className="Grid-cell" key={contributor[0].field.id}>
-
-                            <h3 className="mb2">
-                                {contributor[0].field.display_name}
-                            </h3>
-
-                            <div className="bg-white shadowed rounded bordered">
-                                { contributor[0].feature.type === 'histogram' && (
-                                    <div>
-                                        <div className="p2 flex align-center">
-                                            <h4>{contributor[0].feature.label}</h4>
-                                            <Tooltip tooltip={contributor[0].feature.description}>
-                                                <Icon
-                                                    name="infooutlined"
-                                                    className="ml1 text-grey-4"
-                                                    size={14}
-                                                />
-                                            </Tooltip>
-                                        </div>
-                                        <div className="py1">
-                                            <CompareHistograms
-                                                itemA={contributor[0].feature.value.a}
-                                                itemB={contributor[0].feature.value.b}
-                                                itemAColor={itemA.color.main}
-                                                itemBColor={itemB.color.main}
-                                                showAxis={true}
-                                                height={120}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex">
-                                    <Link
-                                        to={fieldLinkUrl(itemA, itemB, contributor[0].field.name)}
-                                        className="text-grey-3 text-brand-hover no-decoration transition-color ml-auto text-bold px2 pb2"
-                                    >
-                                        View full comparison
-                                    </Link>
-                                </div>
-                            </div>
+                        <li className="Grid-cell" key={contributor.field.id}>
+                            <Contributor
+                                contributor={contributor}
+                                itemA={itemA}
+                                itemB={itemB}
+                            />
                         </li>
                     )}
                 </ol>
@@ -215,7 +232,7 @@ const XRayComparison = ({
                                 <td className="border-right">
                                     <Link
                                         to={`/xray/field/${field.id}/approximate`}
-                                        className="px2 no-decoration flex align-center text-brand-hover"
+                                        className="px2 no-decoration text-brand flex align-center"
                                     >
                                         <Icon name={getIconForField(field)} className="text-grey-2 mr1" />
                                         <h3>{field.display_name}</h3>
