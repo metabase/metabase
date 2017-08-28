@@ -467,7 +467,7 @@
         latest      (round-to-month latest)
         start-month (t/month earliest)
         duration    (t/in-months (t/interval earliest latest))]
-    (->> (range (dec start-month) (+ start-month duration 1))
+    (->> (range (dec start-month) (+ start-month duration))
          (map #(inc (mod % 12)))
          frequencies)))
 
@@ -477,7 +477,7 @@
         latest        (round-to-month latest)
         start-quarter (quarter earliest)
         duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
-    (->> (range (dec start-quarter) (+ start-quarter duration 1))
+    (->> (range (dec start-quarter) (+ start-quarter duration))
          (map #(inc (mod % 4)))
          frequencies)))
 
