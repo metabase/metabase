@@ -19,7 +19,10 @@ type Props = {
     card: Card,
     question: Question,
     setCardAndRun: (card: Card) => void,
-    navigateToNewCardInsideQB: (any) => void
+    navigateToNewCardInsideQB: (any) => void,
+    router: {
+        push: (string) => void
+    }
 };
 
 type State = {
@@ -95,7 +98,7 @@ export default class ActionsWidget extends Component {
     }
 
     handleActionClick = (index: number) => {
-        const { question } = this.props;
+        const { question, router } = this.props;
         const mode = question.mode()
         if (mode) {
             const action = mode.actions()[index];
@@ -108,6 +111,8 @@ export default class ActionsWidget extends Component {
                     this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
                 }
                 this.close();
+            } else if (action && action.url) {
+                router.push(action.url())
             }
         } else {
             console.warn("handleActionClick: Question mode is missing")

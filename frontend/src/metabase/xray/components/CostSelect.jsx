@@ -17,6 +17,7 @@ const CostSelect = ({ currentCost, location }) => {
                     <Link
                         to={`${urlWithoutCost}/${cost}`}
                         className="no-decoration"
+                        key={cost}
                     >
                         <li
                             key={cost}

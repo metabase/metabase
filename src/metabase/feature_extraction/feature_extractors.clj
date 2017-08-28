@@ -6,7 +6,7 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
-            [clojure.math.numeric-tower :refer [round]]
+            [clojure.math.numeric-tower :refer [floor]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -71,61 +71,72 @@
    (.offer acc x)
    acc))
 
+(defn- nice-bins
+  [histogram]
+  (cond
+    (h/categorical? histogram) (h/equidistant-bins histogram)
+    (h/empty? histogram)       []
+    :else
+    (let [{:keys [min max]} (h.impl/bounds histogram)]
+      (if (= min max)
+        [[min 1.0]]
+        (let [{:keys [min-value max-value bin-width]}
+              (binning/nicer-breakout
+               {:min-value min
+                :max-value max
+                :num-bins  (->> histogram
+                                h/optimal-bin-width
+                                (binning/calculate-num-bins min max))
+                :strategy  :num-bins})]
+          (h/equidistant-bins min-value max-value bin-width histogram))))))
+
+(defn- series->dataset
+  ([fields series] (series->dataset identity fields series))
+  ([keyfn fields series]
+   {:rows    (for [[x y] series]
+               [(keyfn x) y])
+    :columns (map :name fields)
+    :cols    (map #(dissoc % :remapped_from) fields)}))
+
+(defn- histogram->dataset
+  ([field histogram] (histogram->dataset identity field histogram))
+  ([keyfn field histogram]
+   {:rows    (let [norm (safe-divide (h.impl/total-count histogram))]
+               (for [[bin count] (nice-bins histogram)]
+                 [(keyfn bin) (* count norm)]))
+    :columns [(:name field) "SHARE"]
+    :cols    [(dissoc field :remapped_from)
+              {:name         "SHARE"
+               :display_name "Share"
+               :description  "Share of corresponding bin in the overall population."
+               :base_type    :type/Float}]}))
+
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
 ;(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
-(defn- equidistant-bins
-  [histogram]
-  (if (h/categorical? histogram)
-    (-> histogram h.impl/bins first :target :counts)
-    (let [{:keys [min max]} (h.impl/bounds histogram)]
-      (cond
-        (nil? min)  []
-        (= min max) [[min 1.0]]
-        :else       (let [{:keys [min-value num-bins bin-width]}
-                          (binning/nicer-breakout
-                           {:min-value min
-                            :max-value max
-                            :num-bins  (->> histogram
-                                            h/optimal-bin-width
-                                            (binning/calculate-num-bins min max))
-                            :strategy  :num-bins})]
-                      (->> min-value
-                           (iterate (partial + bin-width))
-                           (take (inc num-bins))
-                           (map (fn [x]
-                                  [x (h.impl/sum histogram x)]))
-                           (partition 2 1)
-                           (map (fn [[[x s1] [_ s2]]]
-                                  [x (- s2 s1)]))))))))
-
-(defn- histogram->dataset
-  ([field histogram] (histogram->dataset identity field histogram))
-  ([keyfn field histogram]
-   {:rows    (let [norm (safe-divide (h.impl/total-count histogram))]
-               (for [[k v] (equidistant-bins histogram)]
-                 [(keyfn k) (* v norm)]))
-    :columns [(:name field) "SHARE"]
-    :cols [(dissoc field :remapped_from)
-           {:name         "SHARE"
-            :display_name "Share"
-            :description  "Share of corresponding bin in the overall population."
-            :base_type    :type/Float}]}))
+(defn- periodic-date-time?
+  [field]
+  (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
+     :week-of-year :month-of-year :quarter-of-year} (:unit field)))
 
 (defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
-    [(:base_type field) (or (:special_type field) :type/*)]))
+    [(cond
+       (periodic-date-time? field)                 :type/Integer
+       (isa? (:special_type field) :type/DateTime) :type/DateTime
+       :else                                       (:base_type field))
+     (or (:special_type field) :type/*)]))
 
 (defmulti
   ^{:doc "Returns a transducer that extracts features from given coll.
           What features are extracted depends on the type of corresponding
           `Field`(s), amount of data points available (some algorithms have a
-          minimum data points requirement) and `max-cost.computation` setting.
+          minimum data points requirement) and `max-cost` setting.
           Note we are heavily using data sketches so some summary values may be
           approximate."
     :arglists '([opts field])}
@@ -137,8 +148,10 @@
   x-ray :type)
 
 (defmethod x-ray :default
-  [features]
-  (dissoc features :has-nils? :all-distinct?))
+  [{:keys [field] :as features}]
+  (-> features
+      (dissoc :has-nils? :all-distinct?)
+      (u/update-when :histogram (partial histogram->dataset field))))
 
 (defmulti
   ^{:doc "Feature vector for comparison/difference purposes."
@@ -153,12 +166,13 @@
   [{:keys [histogram]}]
   (let [nil-count   (h/nil-count histogram)
         total-count (h/total-count histogram)]
-    {:histogram   histogram
-     :percentiles (apply h.impl/percentiles histogram percentiles)
-     :nil%        (/ nil-count (max total-count 1))
-     :has-nils?   (pos? nil-count)
-     :count       total-count
-     :entropy     (h/entropy histogram)}))
+    (merge {:histogram   histogram
+            :nil%        (/ nil-count (max total-count 1))
+            :has-nils?   (pos? nil-count)
+            :count       total-count
+            :entropy     (h/entropy histogram)}
+           (when-not (h/categorical? histogram)
+             {:percentiles (apply h.impl/percentiles histogram percentiles)}))))
 
 (defn- cardinality-extractor
   [{:keys [cardinality histogram]}]
@@ -176,25 +190,29 @@
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
   (redux/post-complete
-   (redux/fuse {:histogram      h/histogram
-                :cardinality    cardinality
-                :kurtosis       stats/kurtosis
-                :skewness       stats/skewness
-                :sum            (redux/with-xform + (remove nil?))
-                :sum-of-squares (redux/with-xform + (comp (remove nil?)
-                                                          (map math/sq)))})
+   (redux/fuse (merge
+                {:histogram      h/histogram
+                 :cardinality    cardinality
+                 :kurtosis       stats/kurtosis
+                 :skewness       stats/skewness
+                 :sum            (redux/with-xform + (remove nil?))
+                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
+                                                           (map math/sq)))}
+                (when (isa? (:special_type field) :type/Category)
+                  {:histogram-categorical h/histogram-categorical})))
    (merge-juxt
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
-    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-      (let [var         (or (h.impl/variance histogram) 0)
-            sd          (math/sqrt var)
-            min         (h.impl/minimum histogram)
-            max         (h.impl/maximum histogram)
-            mean        (h.impl/mean histogram)
-            median      (h.impl/median histogram)
-            range       (some-> max (- min))]
+    (fn [{:keys [histogram kurtosis skewness sum sum-of-squares
+                 histogram-categorical]}]
+      (let [var    (or (h.impl/variance histogram) 0)
+            sd     (math/sqrt var)
+            min    (h.impl/minimum histogram)
+            max    (h.impl/maximum histogram)
+            mean   (h.impl/mean histogram)
+            median (h.impl/median histogram)
+            range  (some-> max (- min))]
         (merge
          {:positive-definite? (some-> min (>= 0))
           :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
@@ -213,7 +231,8 @@
           :var                var
           :sd                 sd
           :kurtosis           kurtosis
-          :skewness           skewness}
+          :skewness           skewness
+          :histogram          (or histogram-categorical histogram)}
          (when (costs/full-scan? max-cost)
            {:sum            sum
             :sum-of-squares sum-of-squares})))))))
@@ -248,8 +267,8 @@
   (stats/somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
-  "Given a coll of `[DateTime, Any]` pairs with periodicty `step` fill missing
-   periods with 0."
+  "Given a coll of `[DateTime, Any]` pairs evenly spaced `step` apart, fill
+   missing points with 0."
   [step ts]
   (let [ts-index (into {} ts)]
     (into []
@@ -265,16 +284,24 @@
 (defn- decompose-timeseries
   "Decompose given timeseries with expected periodicty `period` into trend,
    seasonal component, and reminder.
-   `period` can be one of `hour`, `:day`, `day-of-week`, `week`, or `:month`."
+   `period` can be one of `:hour`, `:day`, `:day-of-week`, `:week`, `:quarter`,
+   `:day-of-month`, `:minute` or `:month`."
   [period ts]
-  (let [period (case period
-                 :hour        24
-                 :day-of-week 7
-                 :month       12
-                 :week        52
-                 :day         365)]
+  (when-let [period (case period
+                      :hour         24
+                      :minute       60
+                      :day-of-week  7
+                      :day-of-month 30
+                      :month        12
+                      :week         52
+                      :quarter      4
+                      :day          365
+                      nil)]
     (when (>= (count ts) (* 2 period))
-      (select-keys (stl/decompose period ts) [:trend :seasonal :residual]))))
+      (let [{:keys [trend seasonal residual xs]} (stl/decompose period ts)]
+        {:trend    (map vector xs trend)
+         :seasonal (map vector xs seasonal)
+         :residual (map vector xs residual)}))))
 
 (defn- last-n-days
   [n offset {:keys [breakout filter] :as query}]
@@ -312,10 +339,13 @@
                                          conj
                                          (partial fill-timeseries
                                                   (case resolution
-                                                    :month (t/months 1)
-                                                    :week  (t/weeks 1)
-                                                    :day   (t/days 1)
-                                                    :hour  (t/hours 1)))))})
+                                                    :month   (t/months 1)
+                                                    :quarter (t/months 4)
+                                                    :year    (t/years 1)
+                                                    :week    (t/weeks 1)
+                                                    :day     (t/days 1)
+                                                    :hour    (t/hours 1)
+                                                    :minute  (t/minutes 1)))))})
       (fn [[x y]]
         [(-> x t.format/parse to-double) y]))
      (merge-juxt
@@ -346,12 +376,47 @@
       (dissoc :resolution)
       ((get-method comparison-vector :default))))
 
-(defmethod x-ray [DateTime Num]
-  [features]
-  (dissoc features :series))
+(defn- unpack-linear-regression
+  [keyfn x-field series [c k]]
+  (series->dataset keyfn
+                   [x-field
+                    {:name         "TREND"
+                     :display_name "Linear regression trend"
+                     :base_type    :type/Float}]
+                   (for [[x y] series]
+                     [x (+ (* k x) c)])))
 
-;; This one needs way more thinking
-;;
+(defmethod x-ray [DateTime Num]
+  [{:keys [field series] :as features}]
+  (let [x-field (first field)]
+    (-> features
+        (dissoc :series)
+        (update :growth-series (partial series->dataset from-double
+                                        [x-field
+                                         {:name         "GROWTH"
+                                          :display_name "Growth"
+                                          :base_type    :type/Float}]))
+        (update :linear-regression
+                (partial unpack-linear-regression from-double x-field series))
+        (update-in [:seasonal-decomposition :trend]
+                   (partial series->dataset from-double
+                            [x-field
+                             {:name         "TREND"
+                              :display_name "Growth trend"
+                              :base_type    :type/Float}]))
+        (update-in [:seasonal-decomposition :seasonal]
+                   (partial series->dataset from-double
+                            [(first field)
+                             {:name         "SEASONAL"
+                              :display_name "Seasonal component"
+                              :base_type    :type/Float}]))
+        (update-in [:seasonal-decomposition :residual]
+                   (partial series->dataset from-double
+                            [(first field)
+                             {:name         "RESIDUAL"
+                              :display_name "Decomposition residual"
+                              :base_type    :type/Float}])))))
+
 ;; (defmethod feature-extractor [Category Any]
 ;;   [opts [x y]]
 ;;   (rollup (redux/pre-step (feature-extractor opts y) second) first))
@@ -365,12 +430,6 @@
    (merge-juxt
     (field-metadata-extractor field)
     histogram-extractor)))
-
-(defmethod x-ray Text
-  [{:keys [field] :as features}]
-  (-> features
-      (update :histogram (partial histogram->dataset field))
-      ((get-method x-ray :default))))
 
 (defn- quarter
   [dt]
@@ -393,20 +452,14 @@
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
-    (fn [{:keys [histogram histogram-hour histogram-day histogram-month
-                 histogram-quarter]}]
-      {:earliest          (h.impl/minimum histogram)
-       :latest            (h.impl/maximum histogram)
-       :histogram-hour    histogram-hour
-       :histogram-day     histogram-day
-       :histogram-month   histogram-month
-       :histogram-quarter histogram-quarter}))))
+    (fn [{:keys [histogram] :as features}]
+      (-> features
+          (assoc :earliest (h.impl/minimum histogram)
+                 :latest   (h.impl/maximum histogram)))))))
 
 (defn- round-to-month
   [dt]
-  (if (<= (t/day dt) 15)
-    (t/floor dt t/month)
-    (t/date-time (t/year dt) (inc (t/month dt)))))
+  (t/floor dt t/month))
 
 (defn- month-frequencies
   [earliest latest]
@@ -423,7 +476,7 @@
   (let [earilest      (round-to-month latest)
         latest        (round-to-month latest)
         start-quarter (quarter earliest)
-        duration      (round (/ (t/in-months (t/interval earliest latest)) 3))]
+        duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
     (->> (range (dec start-quarter) (+ start-quarter duration))
          (map #(inc (mod % 4)))
          frequencies)))
@@ -486,12 +539,6 @@
     cardinality-extractor
     (field-metadata-extractor field))))
 
-(defmethod x-ray Category
-  [{:keys [field] :as features}]
-  (-> features
-      (update :histogram (partial histogram->dataset field))
-      ((get-method x-ray :default))))
-
 (defmethod feature-extractor :default
   [_ field]
   (redux/post-complete
@@ -503,7 +550,7 @@
       {:count     total-count
        :nil%      (/ nil-count (max total-count 1))
        :has-nils? (pos? nil-count)
-       :type [nil (field-type field)]}))))
+       :type      [nil (field-type field)]}))))
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)

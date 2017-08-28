@@ -5,16 +5,22 @@ import _ from 'underscore'
 import title from 'metabase/hoc/Title'
 
 import { fetchSegmentTableComparison } from 'metabase/xray/xray'
-import { getComparison, getComparisonFields } from 'metabase/xray/selectors'
-
-import { normal } from 'metabase/lib/colors'
+import {
+    getComparison,
+    getComparisonFields,
+    getSegmentItem,
+    getTableItem,
+    getTitle
+} from 'metabase/xray/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 
 const mapStateToProps = state => ({
     comparison: getComparison(state),
-    fields: getComparisonFields(state)
+    fields: getComparisonFields(state),
+    itemA: getSegmentItem(state),
+    itemB: getTableItem(state)
 })
 
 const mapDispatchToProps = {
@@ -22,12 +28,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({comparison}) =>
-    comparison && (
-        `${comparison.constituents[0].features.segment.name} / ${comparison.constituents[1].features.table.display_name}`
-    )
-)
-
+@title(props => getTitle(props))
 class SegmentTableComparison extends Component {
     componentWillMount () {
         const { cost, segmentId, tableId } = this.props.params
@@ -35,7 +36,7 @@ class SegmentTableComparison extends Component {
     }
 
     render () {
-        const { params, fields, comparison } = this.props
+        const { params, fields, comparison, itemA, itemB } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
@@ -53,20 +54,8 @@ class SegmentTableComparison extends Component {
                             'Nil%',
                         ]}
                         comparison={comparison.comparison}
-                        itemA={{
-                            name: comparison.constituents[0].features.segment.name,
-                            constituents: comparison.constituents[0].constituents,
-                            itemType: 'segment',
-                            color: normal.green,
-                            id: comparison.constituents[0].features.segment.id,
-                        }}
-                        itemB={{
-                            name: comparison.constituents[1].features.table.display_name,
-                            constituents: comparison.constituents[1].constituents,
-                            itemType: 'table',
-                            color: normal.orange,
-                            id: comparison.constituents[0].features.table.id,
-                        }}
+                        itemA={itemA}
+                        itemB={itemB}
                     />
                 }
             </LoadingAndErrorWrapper>

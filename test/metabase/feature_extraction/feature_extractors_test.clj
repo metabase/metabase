@@ -89,20 +89,32 @@
 
 (expect
   [["TEST" "SHARE"]
-   3]
+   3
+   true
+   [[17.0 1.0]]]
   (let [dataset (#'fe/histogram->dataset {:name "TEST"} hist)]
     [(:columns dataset)
-     (count (:rows dataset))]))
+     (count (:rows dataset))
+     (->> (transduce identity h/histogram [])
+          (#'fe/histogram->dataset {:name "TEST"})
+          :rows
+          empty?)
+     (->> (transduce identity h/histogram [17])
+          (#'fe/histogram->dataset {:name "TEST"})
+          :rows
+          vec)]))
 
 (expect
   [(t/date-time 2017 8)
-   (t/date-time 2017 9)]
+   (t/date-time 2017 12)
+   (t/date-time 2017 8)]
   [(#'fe/round-to-month (t/date-time 2017 8 15))
+   (#'fe/round-to-month (t/date-time 2017 12 20))
    (#'fe/round-to-month (t/date-time 2017 8 16))])
 
 (expect
   {1 3 2 3 3 3 4 2}
-  (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 8 12)))
+  (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 9 12)))
 
 (expect
   {1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}

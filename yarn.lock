@@ -69,6 +69,10 @@ acorn@^5.0.1:
   version "5.0.3"
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-5.0.3.tgz#c460df08491463f028ccb82eab3730bf01087b3d"
 
+add-px-to-style@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/add-px-to-style/-/add-px-to-style-1.0.0.tgz#d0c135441fa8014a8137904531096f67f28f263a"
+
 adm-zip@0.4.4, adm-zip@~0.4.3:
   version "0.4.4"
   resolved "https://registry.yarnpkg.com/adm-zip/-/adm-zip-0.4.4.tgz#a61ed5ae6905c3aea58b3a657d25033091052736"
@@ -2142,11 +2146,12 @@ custom-event@~1.0.0:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/custom-event/-/custom-event-1.0.1.tgz#5d02a46850adf1b4a317946a3928fccb5bfd0425"
 
-cxs@^3.0.4:
-  version "3.0.4"
-  resolved "https://registry.yarnpkg.com/cxs/-/cxs-3.0.4.tgz#2e1a1537742931a53dbe3157afbf121da62df797"
+cxs@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/cxs/-/cxs-5.0.0.tgz#c017947492b5aa3a8f7230e66baa00aac394db47"
   dependencies:
-    glamor "^2.17.14"
+    objss "^1.0.3"
+    tag-hoc "^1.0.0-0"
 
 cycle@1.0.x:
   version "1.0.3"
@@ -3119,7 +3124,7 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "^2.0.0"
 
-fbjs@^0.8.1, fbjs@^0.8.4, fbjs@^0.8.8, fbjs@^0.8.9:
+fbjs@^0.8.1, fbjs@^0.8.4, fbjs@^0.8.9:
   version "0.8.12"
   resolved "https://registry.yarnpkg.com/fbjs/-/fbjs-0.8.12.tgz#10b5d92f76d45575fd63a217d4ea02bea2f8ed04"
   dependencies:
@@ -3421,14 +3426,6 @@ github-slugger@1.1.1, github-slugger@^1.0.0, github-slugger@^1.1.1:
   resolved "https://registry.yarnpkg.com/github-slugger/-/github-slugger-1.1.1.tgz#5444671f65e5a5a424cfa8ba3255cc1f7baf07ea"
   dependencies:
     emoji-regex "^6.0.0"
-
-glamor@^2.17.14:
-  version "2.20.24"
-  resolved "https://registry.yarnpkg.com/glamor/-/glamor-2.20.24.tgz#a299af2eec687322634ba38e4a0854d8743d2041"
-  dependencies:
-    babel-runtime "^6.18.0"
-    fbjs "^0.8.8"
-    object-assign "^4.1.0"
 
 glob-base@^0.3.0:
   version "0.3.0"
@@ -5738,6 +5735,12 @@ object.values@^1.0.3:
     function-bind "^1.1.0"
     has "^1.0.1"
 
+objss@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/objss/-/objss-1.0.3.tgz#d8b7dc09c94942a15249cb6a090557363fe61bc3"
+  dependencies:
+    add-px-to-style "^1.0.0"
+
 on-finished@~2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/on-finished/-/on-finished-2.3.0.tgz#20f1336481b083cd75337992a16971aa2d906947"
@@ -8045,6 +8048,10 @@ table@^3.7.8:
     lodash "^4.0.0"
     slice-ansi "0.0.4"
     string-width "^2.0.0"
+
+tag-hoc@^1.0.0-0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/tag-hoc/-/tag-hoc-1.0.0.tgz#36ddc5f8831c40926ea520743cbddcc34f3c3ed9"
 
 tapable@^0.1.8, tapable@~0.1.8:
   version "0.1.10"
