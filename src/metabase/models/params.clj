@@ -73,7 +73,7 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- card->template-tag-field-ids
+(defn card->template-tag-field-ids
   "Return a set of Field IDs referenced in template tag parameters in CARD."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template_tags])

@@ -1,18 +1,18 @@
 (ns metabase.models.dashboard
-  (:require [clojure.data :refer [diff]]
+  (:require [clojure
+             [data :refer [diff]]
+             [set :as set]]
+            [clojure.tools.logging :as log]
             [metabase
-             [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [field :refer [Field]]
              [field-values :as field-values]
              [interface :as i]
              [params :as params]
-             [revision :as revision]
-             [table :refer [Table]]]
+             [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [toucan
              [db :as db]
@@ -56,12 +56,6 @@
 (models/defmodel Dashboard :report_dashboard)
 
 
-(defn- update-field-values-for-on-demand-dbs! [dashboard]
-  (let [dashboard (hydrate dashboard [:ordered_cards :card])
-        field-ids (params/dashboard->param-field-ids dashboard)]
-    (field-values/update-field-values-for-on-demand-dbs! field-ids)))
-
-
 (defn- pre-delete [dashboard]
   (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
   (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
@@ -70,21 +64,49 @@
   (let [defaults {:parameters []}]
     (merge defaults dashboard)))
 
-(defn- post-insert [dashboard]
-  ;; If the newly added DASHBOARD has any params we need to update the FieldValues where appropriate
+
+(defn- update-field-values-for-new-dashboard!
+  "If the newly added DASHBOARD has any params we need to update the FieldValues for Fields that belong to 'On-Demand'
+   Databases."
+  [dashboard]
   (when (seq (:parameters dashboard))
-    (update-field-values-for-on-demand-dbs! dashboard)))
+    (let [dashboard (hydrate dashboard [:ordered_cards :card])
+          field-ids (params/dashboard->param-field-ids dashboard)]
+      (when (seq field-ids)
+        (log/info "Dashboard references Fields in params:" field-ids)
+        (field-values/update-field-values-for-on-demand-dbs! field-ids)))))
+
+(defn- post-insert [dashboard]
+  (u/prog1 dashboard
+    (update-field-values-for-new-dashboard! dashboard)))
+
+
+(defn- dashboard-id->param-field-ids [dashboard-or-id]
+  (params/dashboard->param-field-ids (hydrate (Dashboard (u/get-id dashboard-or-id))
+                                              [:ordered_cards :card])))
+
+
+(defn- update-field-values-for-existing-dashboard!
+  "If the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
+   for any Fields that belong to an 'On-Demand' synced DB."
+  [dashboard]
+  (when-let [params (seq (:parameters dashboard))]
+    (let [old-param-field-ids (dashboard-id->param-field-ids dashboard)]
+      ;; TODO - since there is no `post-update` method in Toucan (yet) we'll just have to run this async
+      ;; after the actual save has happened so we can be sure any newly added Cards are in place. :unamused: HACK
+      (future
+        (let [new-param-field-ids (dashboard-id->param-field-ids dashboard)]
+          (when (and (seq new-param-field-ids)
+                     (not= old-param-field-ids new-param-field-ids))
+            (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+              (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
+                        "Is Now:" new-param-field-ids
+                        "Newly Added:" newly-added-param-field-ids)
+              (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (when-let [params (seq (:parameters dashboard))]
-      (let [original-params (db/select-one-field :parameters Dashboard :id (u/get-id dashboard))]
-        ;; if the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
-        ;; for any Fields that belong to an "On-Demand" synced DB
-        (when-not (= params original-params)
-          ;; TODO - since there is no `post-update` method in Toucan (yet) we'll just have to run this async
-          ;; after the actual save has happened so we can be sure any newly added Cards are in place. :unamused: HACK
-          (future (update-field-values-for-on-demand-dbs! dashboard)))))))
+    (update-field-values-for-existing-dashboard! dashboard)))
 
 
 (u/strict-extend (class Dashboard)

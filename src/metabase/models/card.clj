@@ -12,15 +12,18 @@
              [card-label :refer [CardLabel]]
              [collection :as collection]
              [dependency :as dependency]
+             [field-values :as field-values]
              [interface :as i]
              [label :refer [Label]]
+             [params :as params]
              [permissions :as perms]
              [revision :as revision]]
             [metabase.query-processor.middleware.permissions :as qp-perms]
             [metabase.query-processor.util :as qputil]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]]
+            [clojure.set :as set]))
 
 (models/defmodel Card :report_card)
 
@@ -173,11 +176,33 @@
       (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
         (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
 
+(defn- post-insert [card]
+  ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
+  ;; eligible for FieldValues and that belong to a 'On-Demand' database
+  (u/prog1 card
+    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
+      (log/info "Card references Fields in params:" field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+
 (defn- pre-update [{archived? :archived, :as card}]
   (u/prog1 card
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
-      (db/delete! 'DashboardCard :card_id (u/get-id card)))))
+      (db/delete! 'DashboardCard :card_id (u/get-id card)))
+    ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
+    ;; On-Demand DB Fields
+    (when (and (:dataset_query card)
+               (:native (:dataset_query card)))
+      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query]))
+            new-param-field-ids (params/card->template-tag-field-ids card)]
+        (when (and (seq new-param-field-ids)
+                   (not= old-param-field-ids new-param-field-ids))
+          (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+            (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
+                      "Is Now:" new-param-field-ids
+                      "Newly Added:" newly-added-param-field-ids)
+            ;; Now update the FieldValues for the Fields referenced by this Card.
+            (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))))
 
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'PulseCard :card_id id)
@@ -202,6 +227,7 @@
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)
           :pre-insert     (comp populate-query-fields pre-insert)
+          :post-insert    post-insert
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
