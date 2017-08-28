@@ -5,17 +5,10 @@ import {
 } from "__support__/integrated_tests";
 
 import {
-    click,
-    clickButton, setInputValue
+    click
 } from "__support__/enzyme_utils"
 
-import React from 'react';
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { mount } from 'enzyme'
-
-import {
-    unsavedOrderCountQuestion
-} from "__support__/sample_dataset_fixture";
 
 import {
     INITIALIZE_QB,
