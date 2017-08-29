@@ -182,8 +182,6 @@ describe("QueryBuilder", () => {
 
             // The name of the database should be displayed
             expect(app.find(NativeQueryEditor).text()).toMatch(/Sample Dataset/)
-
-            expect(1).toBe(2)
         })
 
         it("lets you start a question from a metric", async () => {
