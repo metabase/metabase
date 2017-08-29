@@ -12,6 +12,8 @@
 @import './components/select.css';
 @import './components/table.css';
 
+@import './containers/entity_search.css';
+
 @import './admin.css';
 @import './card.css';
 @import './dashboard.css';

@@ -234,6 +234,14 @@ ICON_PATHS["horizontal_bar"] = {
 };
 
 // $FlowFixMe
+ICON_PATHS["forwardArrow"] = {
+    path: ICON_PATHS["backArrow"],
+    attrs: {
+        style: { transform: "rotate(-180deg)" }
+    }
+};
+
+// $FlowFixMe
 ICON_PATHS["scalar"] = ICON_PATHS["number"];
 
 export function loadIcon(name) {

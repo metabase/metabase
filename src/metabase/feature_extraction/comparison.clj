@@ -165,6 +165,19 @@
          (flatten-map (fe/comparison-vector a))
          (flatten-map (fe/comparison-vector b)))))
 
+(defn head-tails-breaks
+  "Pick out the cluster of N largest elements.
+   https://en.wikipedia.org/wiki/Head/tail_Breaks"
+  ([keyfn xs] (head-tails-breaks 0.6 keyfn xs))
+  ([threshold keyfn xs]
+   (let [mean (transduce (map keyfn) stats/mean xs)
+         head (filter (comp (partial < mean) keyfn) xs)]
+     (cond
+       (empty? head)                 xs
+       (>= threshold (/ (count head)
+                        (count xs))) (recur threshold keyfn head)
+       :else                         head))))
+
 (def ^:private ^:const ^Double interestingness-thershold 0.2)
 
 (defn features-distance

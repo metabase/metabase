@@ -1,3 +1,4 @@
+/* eslint-disable */
 export var dashboardCount = 0
 export const incrementDashboardCount = () => {
     dashboardCount += 1;
@@ -21,4 +22,10 @@ export const createDashboardInEmptyState = async () => {
     incrementDashboardCount();
     await d.waitUrl(getLatestDashboardUrl());
 
+}
+
+export const removeCurrentDash = async () => {
+    await d.select(".Icon.Icon-pencil").wait().click();
+    await d.select(".EditHeader .flex-align-right a:nth-of-type(2)").wait().click();
+    await d.select(".Button.Button--danger").wait().click();
 }

@@ -281,18 +281,20 @@ export default class Popover extends Component {
  */
 export const TestPopover = (props) =>
     (props.isOpen === undefined || props.isOpen) ?
-        <div
-            id={props.id}
-            className={cx("TestPopover TestPopoverBody", props.className)}
-            style={props.style}
-            // because popover is normally directly attached to body element, other elements should not need
-            // to care about clicks that happen inside the popover
-            onClick={ (e) => { e.stopPropagation(); } }
+        <OnClickOutsideWrapper
+            handleDismissal={(...args) => { props.onClose && props.onClose(...args) }}
+            dismissOnEscape={props.dismissOnEscape}
+            dismissOnClickOutside={props.dismissOnClickOutside}
         >
-            { typeof props.children === "function" ?
-                props.children()
-                :
-                props.children
-            }
-        </div>
+            <div
+                id={props.id}
+                className={cx("TestPopover TestPopoverBody", props.className)}
+                style={props.style}
+                // because popover is normally directly attached to body element, other elements should not need
+                // to care about clicks that happen inside the popover
+                onClick={ (e) => { e.stopPropagation(); } }
+            >
+                { typeof props.children === "function" ? props.children() : props.children}
+            </div>
+        </OnClickOutsideWrapper>
         : null

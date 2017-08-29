@@ -62,12 +62,13 @@
    :name                        "test-data"
    :is_sample                   false
    :is_full_sync                true
+   :is_on_demand                false
    :description                 nil
    :caveats                     nil
    :points_of_interest          nil
    :cache_field_values_schedule "0 50 0 * * ? *"
-   :metadata_sync_schedule      "0 50 * * * ? *"})
-
+   :metadata_sync_schedule      "0 50 * * * ? *"
+   :timezone                    nil})
 
 (defn- db-details
   "Return default column values for a database (either the test database, via `(db)`, or optionally passed in)."
@@ -80,6 +81,7 @@
              :id         $
              :details    $
              :updated_at $
+             :timezone   $
              :features   (map name (driver/features (driver/engine->driver (:engine db))))}))))
 
 
@@ -205,6 +207,7 @@
                                             :engine             (name $engine)
                                             :id                 $
                                             :updated_at         $
+                                            :timezone           $
                                             :name               "test-data"
                                             :native_permissions "write"
                                             :features           (map name (driver/features (driver/engine->driver engine)))}))))
@@ -215,6 +218,7 @@
                                         :id                 $
                                         :updated_at         $
                                         :name               $
+                                        :timezone           $
                                         :native_permissions "write"
                                         :features           (map name (driver/features (driver/engine->driver :postgres)))})))))
   (do
@@ -232,6 +236,7 @@
                        :id                 $
                        :updated_at         $
                        :name               $
+                       :timezone           $
                        :native_permissions "write"
                        :tables             []
                        :features           (map name (driver/features (driver/engine->driver :postgres)))}))
@@ -244,6 +249,7 @@
                                               :engine             (name $engine)
                                               :id                 $
                                               :updated_at         $
+                                              :timezone           $
                                               :name               "test-data"
                                               :native_permissions "write"
                                               :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
@@ -287,6 +293,7 @@
             :id         $
             :updated_at $
             :name       "test-data"
+            :timezone   $
             :features   (mapv name (driver/features (driver/engine->driver :h2)))
             :tables     [(merge default-table-details
                                 (match-$ (Table (id :categories))

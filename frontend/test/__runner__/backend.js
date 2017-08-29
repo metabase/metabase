@@ -4,11 +4,9 @@ import path from "path";
 import { spawn } from "child_process";
 
 import fetch from 'isomorphic-fetch';
-import { delay } from '../../../src/metabase/lib/promise';
+import { delay } from '../../src/metabase/lib/promise';
 
-import createSharedResource from "./shared-resource";
-
-export const DEFAULT_DB = "frontend/test/legacy-selenium/support/fixtures/metabase.db";
+export const DEFAULT_DB = __dirname + "/test_db_fixture.db";
 
 let testDbId = 0;
 const getDbFile = () => path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
@@ -74,6 +72,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     async stop(server) {
         if (server.process) {
             server.process.kill('SIGKILL');
+            console.log("Stopped backend (host=" + server.host + " dbKey=" + server.dbKey + ")");
         }
         try {
             if (server.dbFile) {
@@ -93,4 +92,55 @@ export async function isReady(host) {
     } catch (e) {
     }
     return false;
+}
+
+function createSharedResource(resourceName, {
+    defaultOptions,
+    getKey = (options) => JSON.stringify(options),
+    create = (options) => ({}),
+    start = (resource) => {},
+    stop = (resource) => {},
+}) {
+    let entriesByKey = new Map();
+    let entriesByResource = new Map();
+
+    function kill(entry) {
+        if (entriesByKey.has(entry.key)) {
+            entriesByKey.delete(entry.key);
+            entriesByResource.delete(entry.resource);
+            let p = stop(entry.resource).then(null, (err) =>
+                console.log("Error stopping resource", resourceName, entry.key, err)
+            );
+            return p;
+        }
+    }
+
+    return {
+        get(options = defaultOptions) {
+            let key = getKey(options);
+            let entry = entriesByKey.get(key);
+            if (!entry) {
+                entry = {
+                    key: key,
+                    references: 0,
+                    resource: create(options)
+                }
+                entriesByKey.set(entry.key, entry);
+                entriesByResource.set(entry.resource, entry);
+            } else {
+            }
+            ++entry.references;
+            return entry.resource;
+        },
+        async start(resource) {
+            let entry = entriesByResource.get(resource);
+            return start(entry.resource);
+        },
+        async stop(resource) {
+            let entry = entriesByResource.get(resource);
+            if (entry && --entry.references <= 0) {
+                await kill(entry);
+            }
+        }
+    }
 }

@@ -6,7 +6,7 @@
              [sqlserver :as sqlserver]]
             [metabase.test
              [data :as data]
-             [util :refer [obj->json->obj]]]
+             [util :refer [obj->json->obj] :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]))
@@ -27,7 +27,6 @@
   (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
         (data/run-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
-
 
 ;;; Test that additional connection string options work (#5296)
 (expect
@@ -52,3 +51,7 @@
         :additional-options "trustServerCertificate=false"})
       ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with `<version>`
       (update :applicationName #(str/replace % #"\s.*$" " <version>"))))
+
+(expect-with-engine :sqlserver
+  "UTC"
+  (tu/db-timezone-id))

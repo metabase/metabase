@@ -252,6 +252,8 @@
     "You must specify the SID and/or the Service Name."
     message))
 
+(def ^:private oracle-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+(def ^:private oracle-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
 
 (defrecord OracleDriver []
   clojure.lang.Named
@@ -285,7 +287,8 @@
                                                              :type         :password
                                                              :placeholder  "*******"}]))
           :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :current-db-time                   (driver/make-current-db-time-fn oracle-date-formatter oracle-db-time-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
