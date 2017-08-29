@@ -5,11 +5,11 @@
 
   --primary-button-border-color: #509EE3;
   --primary-button-bg-color: #509EE3;
-  --warning-button-border-color: #E35050;
-  --warning-button-bg-color: #E35050;
+  --warning-button-border-color: #EF8C8C;
+  --warning-button-bg-color: #EF8C8C;
+  --danger-button-bg-color: #EF8C8C;
   --selected-button-bg-color: #F4F6F8;
 
-  --danger-button-bg-color: #EF8C8C;
   --success-button-color: var(--success-color);
 }
 
@@ -208,6 +208,10 @@
 .Button--success {
     background-color: var(--success-button-color);
     border-color: var(--success-button-color);
+    color: #fff;
+}
+.Button--success:hover
+{
     color: #fff;
 }
 

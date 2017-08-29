@@ -196,7 +196,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal full form title="Edit Details" onClose={this.onCloseModal}>
+            <Modal full form title={"Edit " + user.first_name + "'s details"} onClose={this.onCloseModal}>
                 <EditUserForm
                     user={user}
                     submitFn={this.onEditDetails.bind(this)}
@@ -252,13 +252,13 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small form
-                title={"We've Re-sent "+user.first_name+"'s Invite"}
+                title={"We've re-sent "+user.first_name+"'s invite"}
                 footer={[
                     <Button primary onClick={this.onCloseModal}>Okay</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
-                <div>Any previous email invites they have will no longer work.</div>
+                <p className="text-paragraph pb2">Any previous email invites they have will no longer work.</p>
             </Modal>
         );
     }
@@ -287,7 +287,7 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={"Reset "+user.first_name+"'s Password"}
+                title={"Reset "+user.first_name+"'s password?"}
                 footer={[
                     <Button onClick={this.onCloseModal}>Cancel</Button>,
                     <Button warning onClick={() => this.onPasswordResetConfirm(user)}>Reset</Button>
