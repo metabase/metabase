@@ -5,6 +5,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import SearchHeader from "metabase/components/SearchHeader";
+import DirectionalButton from "metabase/components/DirectionalButton";
 
 import { caseInsensitiveSearch } from "metabase/lib/string";
 import Icon from "metabase/components/Icon";
@@ -169,15 +170,9 @@ export default class EntitySearch extends Component {
             <div className="bg-slate-extra-light full Entity-search">
                 <div className="wrapper wrapper--small pt4 pb4">
                     <div className="flex mb4 align-center" style={{ height: "50px" }}>
-                        <Icon
-                            className="Entity-search-back-button shadowed cursor-pointer text-grey-4 mr2 flex align-center circle p2 bg-white transition-background transition-color"
-                            style={{
-                                border: "1px solid #DCE1E4",
-                                boxShadow: "0 2px 4px 0 #DCE1E4"
-                            }}
-                            name="backArrow"
-                            onClick={ () => backButtonUrl ? onChangeLocation(backButtonUrl) : window.history.back() }
-                        />
+                        <div className="Entity-search-back-button mr2" onClick={ () => backButtonUrl ? onChangeLocation(backButtonUrl) : window.history.back() }>
+                            <DirectionalButton direction="back" />
+                        </div>
                         <div className="text-centered flex-full">
                             <h2>{title}</h2>
                         </div>
