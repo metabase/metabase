@@ -172,7 +172,7 @@ describe("DatabaseEditApp", () => {
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
 
-            expect(syncOptionOften.props().name).toEqual("Regularly");
+            expect(syncOptionOften.props().name).toEqual("Regularly, on a schedule");
             expect(syncOptionOften.props().selected).toEqual(true);
         });
 
