@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalContent from "metabase/components/ModalContent.jsx";
-import Toggle from 'metabase/components/Toggle.jsx';
 
 
 export default class RemoveFromDashboardModal extends Component {
@@ -34,18 +33,6 @@ export default class RemoveFromDashboardModal extends Component {
     }
 
     render() {
-        var removeWarning;
-        if (this.state.deleteCard) {
-            removeWarning = (
-                <div>
-                    <p>It will be removed from:</p>
-                    <ul>
-                        <li></li>
-                    </ul>
-                </div>
-            )
-        }
-
         return (
             <ModalContent
                 title="Remove this question?"
