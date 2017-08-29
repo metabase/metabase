@@ -61,17 +61,13 @@ export default class RemoveFromDashboardModal extends Component {
 
         return (
             <ModalContent
-                title="Remove from Dashboard"
+                title="Remove this question?"
                 onClose={() => this.props.onClose()}
             >
-                <div className="flex-full px4 pb3 text-grey-4">
-                    <p>Are you sure you want to do this?</p>
-                    {deleteCardOption}
-                </div>
 
-                <div className="Form-actions">
-                    <button className="Button Button--danger" onClick={() => this.onRemove()}>Yes</button>
-                    <button className="Button Button--primary ml1" onClick={this.props.onClose}>No</button>
+                <div className="Form-actions flex-align-right">
+                    <button className="Button Button" onClick={this.props.onClose}>Cancel</button>
+                    <button className="Button Button--danger ml2" onClick={() => this.onRemove()}>Remove</button>
                 </div>
             </ModalContent>
         );

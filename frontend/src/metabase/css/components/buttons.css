@@ -27,6 +27,9 @@
   font-family: "Lato", sans-serif;
   border-radius: var(--default-button-border-radius);
 }
+.Button:hover {
+  color: var(--brand-color);
+}
 
 @media screen and (--breakpoint-min-lg) {
     .Button {
@@ -197,6 +200,7 @@
 }
 
 .Button--danger:hover {
+    color: white;
     background-color: color(var(--danger-button-bg-color) shade(10%));
     border-color: color(var(--danger-button-bg-color) shade(10%));
 }

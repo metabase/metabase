@@ -182,9 +182,9 @@ export default class PeopleListingApp extends Component {
 
     renderAddPersonModal(modalDetails) {
         return (
-            <Modal title="Add Person" onClose={this.onCloseModal}>
+            <Modal title="Who do you want to add?" onClose={this.onCloseModal}>
                 <EditUserForm
-                    buttonText="Add Person"
+                    buttonText="Add"
                     submitFn={this.onAddPerson.bind(this)}
                     groups={this.props.groups}
                 />
@@ -268,15 +268,15 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={"Remove "+user.common_name}
+                title={"Remove " + user.common_name + "?"}
                 footer={[
                     <Button onClick={this.onCloseModal}>Cancel</Button>,
-                    <Button warning onClick={() => this.onRemoveUserConfirm(user)}>Remove</Button>
+                    <Button className="Button--danger" onClick={() => this.onRemoveUserConfirm(user)}>Remove</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    Are you sure you want to do this? {user.first_name} won't be able to log in anymore.  This can't be undone.
+                    {user.first_name} won't be able to log in anymore.  This can't be undone.
                 </div>
             </Modal>
         );
@@ -362,7 +362,7 @@ export default class PeopleListingApp extends Component {
             {() =>
                 <AdminPaneLayout
                     title="People"
-                    buttonText="Add person"
+                    buttonText="Add someone"
                     buttonAction={() => this.props.showModal({type: MODAL_ADD_PERSON})}
                 >
                     <section className="pb4">

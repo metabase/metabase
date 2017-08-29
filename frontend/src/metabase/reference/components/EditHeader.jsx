@@ -20,6 +20,17 @@ const EditHeader = ({
             You are editing this page
         </div>
         <div className={S.editHeaderButtons}>
+            <button
+                type="button"
+                className={cx("Button", "Button--white", "Button--small", S.cancelButton)}
+                onClick={() => {
+                    endEditing();
+                    reinitializeForm();
+                }}
+            >
+                Cancel
+            </button>
+
             { hasRevisionHistory ?
                 <RevisionMessageModal
                     action={() => onSubmit()}
@@ -31,7 +42,7 @@ const EditHeader = ({
                         type="button"
                         disabled={submitting}
                     >
-                        SAVE
+                        Save
                     </button>
                 </RevisionMessageModal> :
                 <button
@@ -39,20 +50,9 @@ const EditHeader = ({
                     type="submit"
                     disabled={submitting}
                 >
-                    SAVE
+                    Save
                 </button>
             }
-
-            <button
-                type="button"
-                className={cx("Button", "Button--white", "Button--small", S.cancelButton)}
-                onClick={() => {
-                    endEditing();
-                    reinitializeForm();
-                }}
-            >
-                CANCEL
-            </button>
         </div>
     </div>;
 EditHeader.propTypes = {

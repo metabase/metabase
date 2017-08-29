@@ -29,11 +29,11 @@ export default class SecretKeyWidget extends Component {
                 <SettingInput {...this.props} />
                 { setting.value ?
                     <Confirm
-                        title="Generate a new key?"
-                        ontent="This will cause existing embeds to stop working until they are updated with the new key."
+                        title="Regenerate embedding key?"
+                        content="This will cause existing embeds to stop working until they are updated with the new key."
                         action={this._generateToken}
                     >
-                        <Button className="ml1" primary medium>Regenerate Key</Button>
+                        <Button className="ml1" primary medium>Regenerate key</Button>
                     </Confirm>
                 :
                     <Button className="ml1" primary medium onClick={this._generateToken}>Generate Key</Button>
