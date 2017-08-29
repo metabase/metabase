@@ -5,7 +5,8 @@ import {
 } from "__support__/integrated_tests";
 
 import {
-    click
+    click,
+    dispatchBrowserEvent
 } from "__support__/enzyme_utils"
 
 import { mount } from 'enzyme'
@@ -55,6 +56,18 @@ describe('ObjectDetail', () => {
 
             await store.waitForActions([QUERY_COMPLETED]);
 
+            expect(app.find('.ObjectDetail h1').text()).toEqual("2")
+
+            // test keyboard shortcuts
+
+            // left arrow
+            dispatchBrowserEvent('keydown', { key: 'ArrowLeft' })
+            await store.waitForActions([QUERY_COMPLETED]);
+            expect(app.find('.ObjectDetail h1').text()).toEqual("1")
+
+            // left arrow
+            dispatchBrowserEvent('keydown', { key: 'ArrowRight' })
+            await store.waitForActions([QUERY_COMPLETED]);
             expect(app.find('.ObjectDetail h1').text()).toEqual("2")
         })
     })
