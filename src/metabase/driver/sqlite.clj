@@ -151,22 +151,27 @@
   clojure.lang.Named
   (getName [_] "SQLite"))
 
+;; SQLite defaults everything to UTC
+(def ^:private sqlite-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss"))
+(def ^:private sqlite-db-time-query "select cast(datetime('now') as text);")
+
 (u/strict-extend SQLiteDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly [{:name         "db"
-                                        :display-name "Filename"
-                                        :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
-                                        :required     true}])
-          :features       (fn [this]
-                            (set/difference (sql/features this)
-                                            ;; SQLite doesn't have a standard deviation function
-                                            #{:standard-deviation-aggregations}
-                                            ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
-                                            ;; so for now we'll just skip the foreign key stuff in the tests.
-                                            (when config/is-test?
-                                              #{:foreign-keys})))})
+         {:date-interval   (u/drop-first-arg date-interval)
+          :details-fields  (constantly [{:name         "db"
+                                         :display-name "Filename"
+                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
+                                         :required     true}])
+          :features        (fn [this]
+                             (set/difference (sql/features this)
+                                             ;; SQLite doesn't have a standard deviation function
+                                             #{:standard-deviation-aggregations}
+                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
+                                             ;; so for now we'll just skip the foreign key stuff in the tests.
+                                             (when config/is-test?
+                                               #{:foreign-keys})))
+          :current-db-time (driver/make-current-db-time-fn sqlite-date-formatter sqlite-db-time-query)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables

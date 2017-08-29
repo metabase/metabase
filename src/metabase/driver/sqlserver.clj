@@ -155,6 +155,9 @@
   clojure.lang.Named
   (getName [_] "SQL Server"))
 
+(def ^:private sqlserver-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
+(def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
+
 (u/strict-extend SQLServerDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -191,7 +194,9 @@
                                           :default      false}
                                          {:name         "additional-options"
                                           :display-name "Additional JDBC connection string options"
-                                          :placeholder  "trustServerCertificate=false"}]))})
+                                          :placeholder  "trustServerCertificate=false"}]))
+          :current-db-time (driver/make-current-db-time-fn sqlserver-date-formatter sqlserver-db-time-query)})
+
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
