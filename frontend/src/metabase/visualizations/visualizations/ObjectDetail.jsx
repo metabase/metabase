@@ -50,8 +50,8 @@ export class ObjectDetail extends Component {
         window.addEventListener('keydown', this.onKeyDown, true)
     }
 
-    componentWillUnMount() {
-        window.removeEventListener('keydown', this.onKeyDown)
+    componentWillUnmount() {
+        window.removeEventListener('keydown', this.onKeyDown, true)
     }
 
     componentWillReceiveProps(nextProps) {
