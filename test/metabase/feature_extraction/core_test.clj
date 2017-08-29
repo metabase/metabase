@@ -21,9 +21,3 @@
                                        0.22
                                        0.221145657
                                        0.00224354565]))
-
-(expect
-  [{:foo 2}
-   {:foo 2 :bar 3}]
-  [(#'fe/update-when {:foo 2} :bar inc)
-   (#'fe/update-when {:foo 2 :bar 2} :bar inc)])

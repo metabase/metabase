@@ -33,7 +33,7 @@ export class NewQuestionMetricSearch extends Component {
         return (
             <MetricSearch
                 getUrlForQuery={this.getUrlForQuery}
-                defaultStep={"metricSearch"}
+                backButtonUrl="/question/new"
             />
         )
     }
@@ -49,7 +49,7 @@ export class NewQuestionSegmentSearch extends Component {
         return (
             <SegmentSearch
                 getUrlForQuery={this.getUrlForQuery}
-                defaultStep={"segmentSearch"}
+                backButtonUrl="/question/new"
             />
         )
     }

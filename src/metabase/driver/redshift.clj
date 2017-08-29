@@ -61,6 +61,11 @@
   clojure.lang.Named
   (getName [_] "Amazon Redshift"))
 
+;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
+;; Redshift is always in UTC and doesn't return it's timezone
+(def ^:private redshift-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS"))
+(def ^:private redshift-db-time-query "select to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS.MS')")
+
 (u/strict-extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -88,7 +93,8 @@
                                                     :type         :password
                                                     :placeholder  "*******"
                                                     :required     true}]))
-          :format-custom-field-name (u/drop-first-arg str/lower-case)})
+          :format-custom-field-name (u/drop-first-arg str/lower-case)
+          :current-db-time          (driver/make-current-db-time-fn redshift-date-formatter redshift-db-time-query)})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin

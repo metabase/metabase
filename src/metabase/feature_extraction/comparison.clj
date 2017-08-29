@@ -1,7 +1,9 @@
 (ns metabase.feature-extraction.comparison
   "Feature vector similarity comparison."
   (:require [clojure.set :as set]
-            [kixi.stats.math :as math]
+            [kixi.stats
+             [core :as stats]
+             [math :as math]]
             [metabase.feature-extraction
              [feature-extractors :as fe]
              [histogram :as h]]
@@ -39,7 +41,7 @@
     (== a b 0)        0
     (zero? (max a b)) 1
     :else             (/ (- (max a b) (min a b))
-                         (max a b))))
+                         (max (math/abs a) (math/abs b)))))
 
 (defmethod difference [Boolean Boolean]
   [a b]
@@ -61,12 +63,14 @@
   "Chi-squared distane between empirical probability distributions `p` and `q`.
    https://stats.stackexchange.com/questions/184101/comparing-two-histograms-using-chi-square-distance"
   [p q]
-  (reduce + (map (fn [pi qi]
-                   (if (zero? (+ pi qi))
-                     0
-                     (/ (math/sq (- pi qi))
-                        (+ pi qi))))
-                 p q)))
+  (/ (reduce + (map (fn [pi qi]
+                      (cond
+                        (zero? pi) qi
+                        (zero? qi) pi
+                        :else      (/ (math/sq (- pi qi))
+                                      (+ pi qi))))
+                    p q))
+     2))
 
 (defn- unify-categories
   "Given two PMFs add missing categories and align them so they both cover the
@@ -113,16 +117,30 @@
          (flatten-map (fe/comparison-vector a))
          (flatten-map (fe/comparison-vector b)))))
 
+(defn head-tails-breaks
+  "Pick out the cluster of N largest elements.
+   https://en.wikipedia.org/wiki/Head/tail_Breaks"
+  ([keyfn xs] (head-tails-breaks 0.6 keyfn xs))
+  ([threshold keyfn xs]
+   (let [mean (transduce (map keyfn) stats/mean xs)
+         head (filter (comp (partial < mean) keyfn) xs)]
+     (cond
+       (empty? head)                 xs
+       (>= threshold (/ (count head)
+                        (count xs))) (recur threshold keyfn head)
+       :else                         head))))
+
 (def ^:private ^:const ^Double interestingness-thershold 0.2)
 
 (defn features-distance
   "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
-    {:distance   (transduce (map val)
-                            (redux/post-complete
-                             magnitude
-                             #(/ % (math/sqrt (count differences))))
-                            differences)
-     :components differences
-     :thereshold interestingness-thershold}))
+    {:distance         (transduce (map val)
+                                  (redux/post-complete
+                                   magnitude
+                                   #(/ % (math/sqrt (count differences))))
+                                  differences)
+     :components       differences
+     :top-contributors (head-tails-breaks second differences)
+     :thereshold       interestingness-thershold}))

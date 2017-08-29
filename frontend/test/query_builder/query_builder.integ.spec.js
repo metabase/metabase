@@ -203,6 +203,7 @@ describe("QueryBuilder", () => {
             const viewByCreator = entitySearch.find(SearchGroupingOption).last()
             expect(viewByCreator.text()).toBe("Creator");
             click(viewByCreator)
+            expect(store.getPath()).toBe("/question/new/metric?grouping=creator")
 
             const group = entitySearch.find(SearchResultsGroup)
             expect(group.prop('groupName')).toBe("Bobby Tables")
@@ -234,6 +235,7 @@ describe("QueryBuilder", () => {
             const viewByTable = entitySearch.find(SearchGroupingOption).at(1)
             expect(viewByTable.text()).toBe("Table");
             click(viewByTable)
+            expect(store.getPath()).toBe("/question/new/segment?grouping=table")
 
             const group = entitySearch.find(SearchResultsGroup)
                 .filterWhere((group) => group.prop('groupName') === "Orders")

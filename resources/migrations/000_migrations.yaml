@@ -3793,3 +3793,30 @@ databaseChangeLog:
                   defaultValue: 0
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 62
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: timezone
+                  type: VARCHAR(254)
+                  remarks: 'Timezone identifier for the database, set by the sync process'
+  - changeSet:
+      id: 63
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_on_demand
+                  type: boolean
+                  remarks: 'Whether we should do On-Demand caching of FieldValues for this DB. This means FieldValues are updated when their Field is used in a Dashboard or Card param.'
+                  defaultValue: false
+                  constraints:
+                    nullable: false

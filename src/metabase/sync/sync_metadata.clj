@@ -13,6 +13,7 @@
              [fields :as sync-fields]
              [fks :as sync-fks]
              [metabase-metadata :as metabase-metadata]
+             [sync-timezone :as sync-tz]
              [tables :as sync-tables]]
             [schema.core :as s]))
 
@@ -20,6 +21,7 @@
   "Sync the metadata for a Metabase DATABASE. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
+    (sync-tz/sync-timezone! database)
     ;; Make sure the relevant table models are up-to-date
     (sync-tables/sync-tables! database)
     ;; Now for each table, sync the fields

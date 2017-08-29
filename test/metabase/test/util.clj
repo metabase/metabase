@@ -1,13 +1,12 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
             [metabase
+             [driver :as driver]
              [task :as task]
              [util :as u]]
             [metabase.models
@@ -27,8 +26,10 @@
              [table :refer [Table]]
              [user :refer [User]]]
             [metabase.test.data :as data]
+            [metabase.test.data.datasets :refer [*driver*]]
             [toucan.util.test :as test])
-  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+  (:import org.joda.time.DateTime
+           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 ;; ## match-$
 
@@ -405,3 +406,15 @@
                                 {:key (.getName (.getKey trigger))}
                                 (when (instance? CronTrigger trigger)
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)}))))}))))))
+
+(defn db-timezone-id
+  "Return the timezone id from the test database. Must be called with
+  `metabase.test.data.datasets/*driver*` bound, such as via
+  `metabase.test.data.datasets/with-engine`"
+  []
+  (assert (bound? #'*driver*))
+  (data/dataset test-data
+    (-> (driver/current-db-time *driver* (data/db))
+        .getChronology
+        .getZone
+        .getID)))

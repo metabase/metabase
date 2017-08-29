@@ -29,6 +29,8 @@ const mapDispatchToProps = {
 export default class MetricSearch extends Component {
     props: {
         getUrlForQuery: (StructuredQuery) => void,
+        backButtonUrl: string,
+
         query: StructuredQuery,
         metadata: Metadata,
         metadataFetched: any,
@@ -53,7 +55,7 @@ export default class MetricSearch extends Component {
     }
 
     render() {
-        const { metadataFetched, metadata } = this.props;
+        const { backButtonUrl, metadataFetched, metadata } = this.props;
         const isLoading = !metadataFetched.metrics || !metadataFetched.databases
 
         return (
@@ -73,6 +75,7 @@ export default class MetricSearch extends Component {
                                 // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
                                 entities={sortedActiveMetrics}
                                 getUrlForEntity={this.getUrlForMetric}
+                                backButtonUrl={backButtonUrl}
                             />
                         )
                     } else {
