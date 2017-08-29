@@ -208,8 +208,8 @@ export default class AddSeriesModal extends Component {
         return (
             <div className="spread flex">
                 <div className="flex flex-column flex-full">
-                    <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Edit data</div>
-                    <div className="flex-full mx1 relative">
+                    <div className="flex-no-shrink h3 pl4 pt4 pb2 text-bold">Edit data</div>
+                    <div className="flex-full ml2 mr1 relative">
                         <Visualization
                             className="spread"
                             series={series}
@@ -230,7 +230,7 @@ export default class AddSeriesModal extends Component {
                     </div>
                     <div className="flex-no-shrink pl4 pb4 pt1">
                         <button className="Button Button--primary" onClick={this.onDone}>Done</button>
-                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.props.onClose}>Cancel</button>
+                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button ml2" onClick={this.props.onClose}>Cancel</button>
                     </div>
                 </div>
                 <div className="border-left flex flex-column" style={{width: 370, backgroundColor: "#F8FAFA", borderColor: "#DBE1DF" }}>

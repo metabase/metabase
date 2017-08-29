@@ -33,7 +33,7 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
                 <AddRow
                     value={text}
                     isValid={textIsValid}
-                    placeholder="Justice League"
+                    placeholder='Something like "Marketing"'
                     onChange={(e) => onTextChange(e.target.value)}
                     onKeyDown={(e) => {
                         if (e.keyCode === KEYCODE_ENTER) {
