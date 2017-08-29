@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery-test
   (:require [expectations :refer :all]
+            [metabase.driver.bigquery]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -110,3 +111,7 @@
                                      (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
                                                      (ql/sum (ql/field-id (data/id :checkins :user_id)))
                                                      (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+
+(expect-with-engine :bigquery
+  "UTC"
+  (tu/db-timezone-id))

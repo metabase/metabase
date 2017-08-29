@@ -3794,6 +3794,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
+      id: 62
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: timezone
+                  type: VARCHAR(254)
+                  remarks: 'Timezone identifier for the database, set by the sync process'
+  - changeSet:
       id: 63
       author: camsaul
       comment: 'Added 0.26.0'
