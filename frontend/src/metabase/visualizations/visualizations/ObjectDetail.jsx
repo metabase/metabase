@@ -34,8 +34,7 @@ const mapDispatchToProps = {
     viewNextObjectDetail
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class ObjectDetail extends Component {
+export class ObjectDetail extends Component {
     props: Props
 
     static uiName = "Object Detail";
@@ -282,3 +281,5 @@ export default class ObjectDetail extends Component {
         );
     }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail)
