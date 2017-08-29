@@ -46,19 +46,6 @@ export default class RemoveFromDashboardModal extends Component {
             )
         }
 
-        var deleteCardOption;
-        if (this.props.enableDeleteCardOption) {
-            deleteCardOption = (
-                <div className="flex pt1">
-                    <Toggle className="text-warning mr2 mt1" value={this.state.deleteCard} onChange={() => this.setState({ deleteCard: !this.state.deleteCard })}/>
-                    <div>
-                        <p>Also delete this question from Metabase</p>
-                        {removeWarning}
-                    </div>
-                </div>
-            );
-        }
-
         return (
             <ModalContent
                 title="Remove this question?"
