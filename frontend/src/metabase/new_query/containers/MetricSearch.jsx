@@ -62,7 +62,8 @@ export default class MetricSearch extends Component {
             <LoadingAndErrorWrapper loading={isLoading}>
                 {() => {
                     const sortedActiveMetrics = _.chain(metadata.metricsList())
-                        .filter((metric) => metric.isActive())
+                        // Metric shouldn't be retired and it should refer to an existing table
+                        .filter((metric) => metric.isActive() && metric.table)
                         .sortBy(({name}) => name.toLowerCase())
                         .value()
 
