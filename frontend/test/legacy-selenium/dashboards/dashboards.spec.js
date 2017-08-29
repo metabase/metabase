@@ -1,3 +1,5 @@
+/* eslint-disable */
+// NOTE Atte Keinänen 28/8/17: Should be converted to Jest/Enzyme, should be pretty straight-forward.
 import {
     ensureLoggedIn,
     describeE2E
@@ -5,9 +7,8 @@ import {
 
 import {
     createDashboardInEmptyState, getLatestDashboardUrl, getPreviousDashboardUrl,
-    incrementDashboardCount
+    incrementDashboardCount, removeCurrentDash
 } from "./dashboards.utils"
-import {removeCurrentDash} from "../dashboard/dashboard.utils"
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
