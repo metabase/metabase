@@ -67,7 +67,8 @@ export default class SegmentSearch extends Component {
                     // all segments (also retired ones) and they are missing both `is_active` and `creator` props. Currently this
                     // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
                     const sortedActiveSegments = _.chain(metadata.segmentsList())
-                        .filter((segment) => segment.isActive())
+                        // Segment shouldn't be retired and it should refer to an existing table
+                        .filter((segment) => segment.isActive() && segment.table)
                         .sortBy(({name}) => name.toLowerCase())
                         .value()
 

@@ -109,7 +109,10 @@ export default class EntitySearch extends Component {
 
     setSearchText = (searchText) => {
         this.setState({ searchText }, this.applyFiltersAfterFilterChange)
-        this.updateUrl((currentOptions) => ({ ...currentOptions, search: searchText}))
+        this.updateUrl((currentOptions) => searchText !== ""
+            ? ({ ...currentOptions, search: searchText})
+            : _.omit(currentOptions, 'search')
+        )
     }
 
     resetSearchText = () => {
