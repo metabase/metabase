@@ -1,8 +1,9 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import { connect } from 'react-redux'
+import { connect } from 'react-redux';
 
+import DirectionalButton from 'metabase/components/DirectionalButton';
 import ExpandableString from 'metabase/query_builder/components/ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
@@ -259,18 +260,24 @@ export default class ObjectDetail extends Component {
                     <div className="Grid-cell ObjectDetail-infoMain p4">{this.renderDetailsTable()}</div>
                     <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                 </div>
-                <Icon
-                    name="chevronleft"
-                    onClick={this.props.viewPreviousObjectDetail}
-                    className="fixed left cursor-pointer text-brand-hover p3"
+                <div
+                    className={cx("fixed left cursor-pointer text-brand-hover lg-ml2", { "disabled": idValue <= 1 })}
                     style={{ top: '50%', left: '1em', transform: 'translate(0, -50%)' }}
-                />
-                <Icon
-                    name="chevronright"
-                    onClick={this.props.viewNextObjectDetail}
-                    className="fixed right cursor-pointer text-brand-hover p3"
+                >
+                    <DirectionalButton
+                        direction="back"
+                        onClick={this.props.viewPreviousObjectDetail}
+                    />
+                </div>
+                <div
+                    className="fixed right cursor-pointer text-brand-hover lg-ml2"
                     style={{ top: '50%', right: '1em', transform: 'translate(0, -50%)' }}
-                />
+                >
+                    <DirectionalButton
+                        direction="forward"
+                        onClick={this.props.viewNextObjectDetail}
+                    />
+                </div>
             </div>
         );
     }

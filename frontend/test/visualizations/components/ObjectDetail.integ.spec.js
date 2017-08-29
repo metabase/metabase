@@ -44,13 +44,13 @@ describe('ObjectDetail', () => {
 
             expect(app.find('.ObjectDetail h1').text()).toEqual("2")
 
-            const previousObjectTrigger = app.find('.Icon.Icon-chevronleft')
+            const previousObjectTrigger = app.find('.Icon.Icon-backArrow')
             click(previousObjectTrigger)
 
             await store.waitForActions([QUERY_COMPLETED]);
 
             expect(app.find('.ObjectDetail h1').text()).toEqual("1")
-            const nextObjectTrigger = app.find('.Icon.Icon-chevronright')
+            const nextObjectTrigger = app.find('.Icon.Icon-forwardArrow')
             click(nextObjectTrigger)
 
             await store.waitForActions([QUERY_COMPLETED]);
