@@ -111,6 +111,7 @@ export default class DashCardCardParameterMapper extends Component {
                 <PopoverWithTrigger
                     ref="popover"
                     triggerClasses={cx({ "disabled": disabled })}
+                    sizeToFit
                     triggerElement={
                         <Tooltip tooltip={tooltipText} verticalAttachments={["bottom", "top"]}>
                             {/* using div instead of button due to
