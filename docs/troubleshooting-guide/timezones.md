@@ -1,5 +1,14 @@
 ## Overview
-The source of "wrong" numbers in charts or reports is often due to an underlying time zone issue. They are extremely common, both in Metabase and in many other analytics tools and services.
+The source of "wrong" numbers in charts or reports is often due to an underlying time zone issue. They are extremely common, both in Metabase and in many other analytics tools and services. The best way to avoid surprising timezone behavior is by setting the "Report Timezone" in the General settings tab of the Admin Panel. A report timezone is currently supported on the following databases:
+
+- Druid
+- MySQL
+- Oracle
+- PostgreSQL
+- Presto
+- Vertica
+
+The report timezone ensures that the timezone of the query results matches the timezone used by the database for it's date calculations. For databases that don't support setting a timezone via the report timezone, it's best to ensure that the Metabase instance's timezone matches the timezone of the database. The Metabase instance's timezone is the Java Virtual Machine's timezone, typically set via a `-Duser.timezone<..>` parameter or the `JAVA_TIMEZONE` environment variable. How the timezone is set will depend on how you launch Metabase. Note that the Metabase instance's timezone doesn't impact any databases that use a Report Timezone.
 
 
 ## Troubleshooting Process
