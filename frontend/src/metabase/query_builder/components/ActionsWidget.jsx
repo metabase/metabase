@@ -168,7 +168,9 @@ export default class ActionsWidget extends Component {
                                 width: POPOVER_WIDTH,
                                 bottom: "50%",
                                 right: "50%",
-                                zIndex: -1
+                                zIndex: -1,
+                                maxHeight: "600px",
+                                overflow: "scroll"
                             }}
                         >
                             {PopoverComponent
