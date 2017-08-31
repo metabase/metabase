@@ -19,7 +19,7 @@ type DashboardListItemProps = {
     setArchived: (dashId: number, archived: boolean) => void
 }
 
-class DashboardListItem extends Component {
+export class DashboardListItem extends Component {
     props: DashboardListItemProps
 
     state = {
