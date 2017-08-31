@@ -111,8 +111,10 @@ $ yarn run build-watch
 All frontend tests are located in `frontend/test` directory. Run all frontend tests with
 
 ```
-yarn run test
+./bin/build version uberjar && yarn run test
 ```
+
+which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence. 
 
 ### Jest integration tests
 Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
