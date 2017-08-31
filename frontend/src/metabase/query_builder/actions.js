@@ -1357,7 +1357,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     // extract the value we will use to filter our new query
     let originValue;
     for (let i = 0; i < queryResult.data.cols.length; i++) {
-      if (isPK(queryResult.data.cols[i].special_type)) {
+      if (queryResult.data.cols[i].id == fk.destination.id) {
         originValue = queryResult.data.rows[0][i];
       }
     }
@@ -1387,10 +1387,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const { qb: { card, tableForeignKeys } } = getState();
       const queryResult = getFirstQueryResult(getState());
 
-      function getObjectDetailIdValue(data) {
+      function getObjectDetailIdValue(data, fk) {
         for (let i = 0; i < data.cols.length; i++) {
           let coldef = data.cols[i];
-          if (isPK(coldef.special_type)) {
+          if (coldef.id == fk.destination.id) {
             return data.rows[0][i];
           }
         }
@@ -1403,7 +1403,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         fkQuery.query.aggregation = ["count"];
         fkQuery.query.filter = [
           "and",
-          ["=", fk.origin.id, getObjectDetailIdValue(queryResult.data)],
+          ["=", fk.origin.id, getObjectDetailIdValue(queryResult.data, fk)],
         ];
 
         let info = { status: 0, value: null };
