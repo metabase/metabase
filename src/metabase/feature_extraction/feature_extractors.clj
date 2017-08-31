@@ -6,7 +6,6 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
-            [clojure.math.numeric-tower :refer [floor]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -23,8 +22,6 @@
             [redux.core :as redux]
             [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
-
-(def ^:private percentiles (range 0 1 0.1))
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
@@ -161,6 +158,8 @@
 (defmethod comparison-vector :default
   [features]
   (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
+
+(def ^:private percentiles (range 0 1 0.1))
 
 (defn- histogram-extractor
   [{:keys [histogram]}]
@@ -457,29 +456,20 @@
           (assoc :earliest (h.impl/minimum histogram)
                  :latest   (h.impl/maximum histogram)))))))
 
-(defn- round-to-month
-  [dt]
-  (t/floor dt t/month))
-
 (defn- month-frequencies
   [earliest latest]
-  (let [earilest    (round-to-month latest)
-        latest      (round-to-month latest)
-        start-month (t/month earliest)
-        duration    (t/in-months (t/interval earliest latest))]
-    (->> (range (dec start-month) (+ start-month duration))
-         (map #(inc (mod % 12)))
-         frequencies)))
+  (->> (t.periodic/periodic-seq earliest (t/months 1))
+       (take-while (complement (partial t/before? latest)))
+       (map t/month)
+       frequencies))
 
 (defn- quarter-frequencies
   [earliest latest]
-  (let [earilest      (round-to-month latest)
-        latest        (round-to-month latest)
-        start-quarter (quarter earliest)
-        duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
-    (->> (range (dec start-quarter) (+ start-quarter duration))
-         (map #(inc (mod % 4)))
-         frequencies)))
+  (->> (t.periodic/periodic-seq earliest (t/months 1))
+       (take-while (complement (partial t/before? latest)))
+       (m/distinct-by (juxt t/year quarter))
+       (map quarter)
+       frequencies))
 
 (defn- weigh-periodicity
   [weights card]
