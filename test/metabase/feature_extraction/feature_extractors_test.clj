@@ -114,9 +114,11 @@
 
 (expect
   [{1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}
-   {1 1 2 1 5 1 6 1 7 1 8 1 9 1 10 1 11 1 12 1}]
+   {1 1 2 1 5 1 6 1 7 1 8 1 9 1 10 1 11 1 12 1}
+   {5 1 6 1}]
   [(#'fe/month-frequencies (t/date-time 2015) (t/date-time 2017 8 12))
-   (#'fe/month-frequencies (t/date-time 2015 5) (t/date-time 2016 2))])
+   (#'fe/month-frequencies (t/date-time 2015 5) (t/date-time 2016 2))
+   (#'fe/month-frequencies (t/date-time 2015 5 31) (t/date-time 2015 6 28))])
 
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
 (def ^:private datetimes ["2015-06-01" nil "2015-06-11" "2015-01-01"

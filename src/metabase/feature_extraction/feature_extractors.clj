@@ -326,7 +326,10 @@
 
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
-  (let [resolution (let [[head _ resolution] (-> query :breakout first)]
+  (let [resolution (let [[head resolution] (-> query
+                                               :breakout
+                                               first
+                                               ((juxt first last)))]
                      (when (= head "datetime-field")
                        (keyword resolution)))]
     (redux/post-complete
@@ -456,16 +459,20 @@
           (assoc :earliest (h.impl/minimum histogram)
                  :latest   (h.impl/maximum histogram)))))))
 
+(defn- round-to-month
+  [dt]
+  (t/floor dt t/month))
+
 (defn- month-frequencies
   [earliest latest]
-  (->> (t.periodic/periodic-seq earliest (t/months 1))
+  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
        (take-while (complement (partial t/before? latest)))
        (map t/month)
        frequencies))
 
 (defn- quarter-frequencies
   [earliest latest]
-  (->> (t.periodic/periodic-seq earliest (t/months 1))
+  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
        (take-while (complement (partial t/before? latest)))
        (m/distinct-by (juxt t/year quarter))
        (map quarter)
@@ -475,7 +482,7 @@
   [weights card]
   (let [baseline (apply min (vals weights))]
     (update card :rows (partial map (fn [[k v]]
-                                      [k (* v (/ baseline (weights k)))])))))
+                                      [k (* v (/ baseline (weights k 1)))])))))
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
