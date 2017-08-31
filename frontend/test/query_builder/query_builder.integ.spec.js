@@ -114,11 +114,10 @@ describe("QueryBuilder", () => {
         let segmentId = null;
 
         beforeAll(async () => {
-            // TODO: Move these test metric/segment definitions to a central place
             const metricDef = {name: "A Metric", description: "For testing new question flow", table_id: 1,show_in_getting_started: true,
                 definition: {database: 1, query: {aggregation: ["count"]}}}
-            const segmentDef = {name: "A Segment", description: "For testing new question flow", table_id: 1, show_in_getting_started: true,
-                definition: {database: 1, query: {filter: ["abc"]}}}
+            const segmentDef = {name: "A Segment", description: "For testing new question flow", table_id: 1,
+                definition: {source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"]}}
 
             // Needed for question creation flow
             metricId = (await MetricApi.create(metricDef)).id;

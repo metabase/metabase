@@ -139,7 +139,7 @@ describe("parameters", () => {
 
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
 
-            await delay(100);
+            await delay(500);
 
             setInputValue(tagEditorSidebar.find(".TestPopoverBody .AdminSelect").first(), "cat")
             const categoryRow = tagEditorSidebar.find(".TestPopoverBody .ColumnarSelector-row").first();
@@ -174,7 +174,7 @@ describe("parameters", () => {
 
             click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(
-            await delay(200);
+            await delay(500);
 
             // open sharing panel
             click(app.find(".Icon-share"));
@@ -187,7 +187,7 @@ describe("parameters", () => {
 
             click(app.find(".TestPopoverBody .Icon-pencil"))
 
-            await delay(200);
+            await delay(500);
 
             click(app.find("div[children='Publish']"));
             await store.waitForActions([UPDATE_ENABLE_EMBEDDING, UPDATE_EMBEDDING_PARAMS])
