@@ -140,6 +140,8 @@ export const MetabaseApi = {
                                     return table;
                                  }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
+    table_rescan_values:       POST("/api/table/:tableId/rescan_values"),
+    table_discard_values:      POST("/api/table/:tableId/discard_values"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
     field_values:                GET("/api/field/:fieldId/values"),
@@ -147,6 +149,8 @@ export const MetabaseApi = {
     field_update:                PUT("/api/field/:id"),
     field_dimension_update:     POST("/api/field/:fieldId/dimension"),
     field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
+    field_rescan_values:        POST("/api/field/:fieldId/rescan_values"),
+    field_discard_values:       POST("/api/field/:fieldId/discard_values"),
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration")
 };
