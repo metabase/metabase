@@ -54,7 +54,7 @@ class CardXRay extends Component {
             <LoadingAndErrorWrapper loading={!xray}>
                 { () =>
                     <XRayPageWrapper>
-                        <div className="my2">
+                        <div className="mt4 mb2">
                             <h1 className="my3">{xray.features.card.name} XRay</h1>
                         </div>
                         <Heading heading="Growth rate" />
