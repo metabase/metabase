@@ -15,6 +15,7 @@ import { distanceToPhrase } from 'metabase/xray/utils'
 
 // right now we rely on knowing that itemB is the only one that
 // can contain a table
+/*
 const fieldLinkUrl = (itemA, itemB, fieldName) => {
     let url = `segments/${itemA.id}/${itemB.id}`
     if(itemB.itemType === 'table') {
@@ -22,6 +23,7 @@ const fieldLinkUrl = (itemA, itemB, fieldName) => {
     }
     return `/xray/compare/${url}/field/${fieldName}/approximate`
 }
+*/
 
 const itemLinkUrl = (item) =>
     `/xray/${item.itemType}/${item.id}/approximate`
@@ -90,12 +92,14 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                 </div>
 
             <div className="flex">
+                { /*
                 <Link
                     to={fieldLinkUrl(itemA, itemB, contributor.field.name)}
                     className="text-grey-3 text-brand-hover no-decoration transition-color ml-auto text-bold px2 pb2"
                 >
                     View full comparison
-                    </Link>
+                </Link>
+                */}
                 </div>
             </div>
     </div>
