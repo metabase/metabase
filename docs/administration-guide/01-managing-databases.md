@@ -61,7 +61,7 @@ Metabase automatically tries to connect to databases with and without SSL. If it
 
 By default, Metabase performs a lightweight hourly sync of your database, and a nightly deeper analysis of the fields in your tables to power some of Metabase's features, like filter widgets.
 
-If you'd like to change these default settings, find on click on your database in the Databases section of the Admin Panel, and turn on the toggle at the bottom of the form that says "This is a large database, so let me choose when Metabase syncs and scans." (This is an option that used to be called "Enable in-depth analysis.")
+If you'd like to change these default settings, find and click on your database in the Databases section of the Admin Panel, and turn on the toggle at the bottom of the form that says "This is a large database, so let me choose when Metabase syncs and scans." (This is an option that used to be called "Enable in-depth analysis.")
 
 ![Large database toggle](images/large-db-toggle.png)
 
@@ -79,9 +79,9 @@ If you'd like to sync your database manually at any time, click on it from the D
 
 #### Scanning for field values
 
-When Metabase first connects to your database, it tries to guess the types of the fields in your tables based on each field's name. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. If a field is classified wrong, you can always manually edit it from the **Metadata** tab in the Admin Panel.
+When Metabase first connects to your database, it takes a look at the metadata of the fields in your tables and automatically assigns them a field type. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. If a field is classified wrong, you can always manually edit it from the **Metadata** tab in the Admin Panel.
 
-Metabase also by default performs a more intensive daily sampling of each field's values and caches the distinct values in order to make checkbox and select filters work in dashboards and SQL/native questions. This process can slow down large databases, so if you have a particularly large database, you can turn on the option to choose when Metabase scans, and select one of three scan options in the Scheduling tab:
+By default, Metabase also performs a more intensive daily sampling of each field's values and caches the distinct values in order to make checkbox and select filters work in dashboards and SQL/native questions. This process can slow down large databases, so if you have a particularly large database, you can turn on the option to choose when Metabase scans, and select one of three scan options in the Scheduling tab:
 
 ![Scanning options](images/scanning-options.png)
 
