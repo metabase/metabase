@@ -253,7 +253,7 @@ const XRayComparison = ({
                                 </td>
                                 <td
                                     className="px2 border-right"
-                                    style={{minWidth: 400}}
+                                    style={{maxWidth: 200, minHeight: 120 }}
                                 >
                                     { itemA.constituents[field.name]['histogram'] && (
                                     <CompareHistograms
