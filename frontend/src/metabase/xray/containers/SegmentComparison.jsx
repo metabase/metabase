@@ -33,9 +33,17 @@ const mapDispatchToProps = {
 @title(props => getTitle(props))
 class SegmentComparison extends Component {
 
-    componentWillMount () {
+    state = {
+        error: null
+    }
+
+    async componentWillMount () {
         const { cost, segmentId1, segmentId2 } = this.props.params
-        this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
+        try {
+            await this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
     render () {
@@ -48,9 +56,12 @@ class SegmentComparison extends Component {
             itemB
         } = this.props
 
+        const { error } = this.state
+
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
+                error={error}
                 noBackground
             >
                 { () =>
