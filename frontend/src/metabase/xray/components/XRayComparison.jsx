@@ -49,12 +49,12 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
     </div>
 
 const Contributor = ({ contributor, itemA, itemB }) =>
-    <div>
+    <div className="full-height">
         <h3 className="mb2">
             {contributor.field.display_name}
         </h3>
 
-        <div className="bg-white shadowed rounded bordered">
+        <div className="ComparisonContributor bg-white shadowed rounded bordered full-height">
                 <div>
                     <div className="p2 flex align-center">
                         <h4>{contributor.feature.label}</h4>
@@ -78,10 +78,10 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                             />
                         ) : (
                             <div className="flex align-center px2 py3">
-                                <h1 className="p3" style={{ color: itemA.color.text }}>
+                                <h1 className="p2 lg-p3" style={{ color: itemA.color.text }}>
                                     {contributor.feature.value.a}
                                 </h1>
-                                <h1 className="p3" style={{ color: itemB.color.text }}>
+                                <h1 className="p2 lg-p3" style={{ color: itemB.color.text }}>
                                     {contributor.feature.value.b}
                                 </h1>
                             </div>
