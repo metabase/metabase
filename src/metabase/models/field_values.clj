@@ -145,10 +145,9 @@
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
-  "Remove the `FieldValues` for FIELD-ID."
-  [field-id]
-  {:pre [(integer? field-id)]}
-  (db/delete! FieldValues :field_id field-id))
+  "Remove the `FieldValues` for FIELD-OR-ID."
+  [field-or-id]
+  (db/delete! FieldValues :field_id (u/get-id field-or-id)))
 
 
 (defn- table-ids->table-id->is-on-demand?
