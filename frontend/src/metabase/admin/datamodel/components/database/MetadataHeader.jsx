@@ -66,7 +66,7 @@ export default class MetadataHeader extends Component {
         if (!isViewingTable) return null;
 
         return (
-            <span className="ml1">
+            <span className="ml4 mr3">
                 <Link to={`${this.props.location.pathname}/settings`} >
                     <Icon name="gear" />
                 </Link>
