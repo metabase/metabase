@@ -87,8 +87,8 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
             <p>
                 <Code>{"{{variable_name}}"}</Code> creates a variable in this SQL template called "variable_name".
                 Variables can be given types in the side panel, which changes their behavior. All
-                variable types other than "dimension" will cause a filter widget to be placed on this
-                question. When this filter widget is filled in, that value replaces the variable in the SQL
+                variable types other than "Field Filter" will automatically cause a filter widget to be placed on this
+                question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the SQL
                 template.
             </p>
             <TagExample datasetQuery={EXAMPLES.variable} setDatasetQuery={setQueryWithSampleDatasetId} />
