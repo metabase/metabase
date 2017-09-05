@@ -42,19 +42,28 @@ const GrowthRateDisplay = ({ period }) =>
 class CardXRay extends Component {
     props: Props
 
-    componentDidMount () {
+    state = {
+        error: null
+    }
+
+    async componentWillMount () {
         const { cardId, cost } = this.props.params
-        this.props.fetchCardXray(cardId, cost)
+        try {
+            await this.props.fetchCardXray(cardId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
 
     render () {
         const { xray } = this.props
+        const { error } = this.state
         return (
-            <LoadingAndErrorWrapper loading={!xray}>
+            <LoadingAndErrorWrapper loading={!xray} error={error}>
                 { () =>
                     <XRayPageWrapper>
-                        <div className="my2">
+                        <div className="mt4 mb2">
                             <h1 className="my3">{xray.features.card.name} XRay</h1>
                         </div>
                         <Heading heading="Growth rate" />
