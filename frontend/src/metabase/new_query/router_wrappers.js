@@ -2,11 +2,14 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import { withBackground } from 'metabase/hoc/Background'
+
 import NewQueryOptions from "./containers/NewQueryOptions";
 import SegmentSearch from "./containers/SegmentSearch";
 import MetricSearch from "./containers/MetricSearch";
 
 @connect(null, { onChangeLocation: push })
+@withBackground('bg-slate-extra-light')
 export class NewQuestionStart extends Component {
     getUrlForQuery = (query) => {
         return query.question().getUrl()
@@ -24,6 +27,7 @@ export class NewQuestionStart extends Component {
 }
 
 @connect(null, { onChangeLocation: push })
+@withBackground('bg-slate-extra-light')
 export class NewQuestionMetricSearch extends Component {
     getUrlForQuery = (query) => {
         return query.question().getUrl()
@@ -40,6 +44,7 @@ export class NewQuestionMetricSearch extends Component {
 }
 
 @connect(null, { onChangeLocation: push })
+@withBackground('bg-slate-extra-light')
 export class NewQuestionSegmentSearch extends Component {
     getUrlForQuery = (query) => {
         return query.question().getUrl()
