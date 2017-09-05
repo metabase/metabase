@@ -9,7 +9,7 @@
   "Are we running on a Windows machine?"
   (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
 
-(def ^:private ^:const app-defaults
+(def ^:private app-defaults
   "Global application defaults"
   {:mb-run-mode            "prod"
    ;; DB Settings
