@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 
 export const withBackground = (className) => (ComposedComponent) => {
     return class extends Component {
-        static displayName = 'background'
+        static displayName = 'BackgroundApplicator'
 
         componentWillMount () {
             document.body.classList.add(className)
