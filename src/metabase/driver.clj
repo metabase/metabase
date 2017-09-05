@@ -280,6 +280,15 @@
   [driver feature]
   (contains? (features driver) feature))
 
+(defn report-timezone-if-supported
+  "Returns the report-timezone if `DRIVER` supports setting it's
+  timezone and a report-timezone has been specified by the user"
+  [driver]
+  (when (driver-supports? driver :set-timezone)
+    (let [report-tz (report-timezone)]
+      (when-not (empty? report-tz)
+        report-tz))))
+
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
    This is used to infer the types of results that come back from native queries."
