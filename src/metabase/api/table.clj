@@ -85,6 +85,7 @@
                     {:name name
                      :mbql ["datetime-field" nil param]
                      :type "type/DateTime"})
+                  ;; note the order of these options corresponds to the order they will be shown to the user in the UI
                   [["Minute" "minute"]
                    ["Hour" "hour"]
                    ["Day" "day"]
