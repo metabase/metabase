@@ -216,6 +216,12 @@
   (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
   (u/profile "start-normally" (start-normally)))
 
+(defn ^:command reset-password
+  "Reset the password for a user with EMAIL-ADDRESS."
+  [email-address]
+  (require 'metabase.cmd.reset-password)
+  ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
+
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
   []

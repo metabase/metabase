@@ -160,16 +160,5 @@
              ;; Profile Metabase start time with `lein profile`
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
-             ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
-             ;; Create the reset password JAR:  lein with-profile reset-password jar
-             ;;                                   -> ./reset-password-artifacts/reset-password/reset-password.jar
-             ;; Run the reset password JAR:     MB_DB_PATH=/path/to/metabase.db java -classpath /path/to/metabase-uberjar.jar:/path/to/reset-password.jar \
-             ;;                                   metabase.reset_password.core email@address.com
-             :reset-password {:source-paths ["reset_password"]
-                              :main metabase.reset-password.core
-                              :jar-name "reset-password.jar"
-                              ;; Exclude everything except for reset-password specific code in the created jar
-                              :jar-exclusions [#"^(?!metabase/reset_password).*$"]
-                              :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
              ;; get the H2 shell with 'lein h2'
              :h2-shell {:main org.h2.tools.Shell}})
