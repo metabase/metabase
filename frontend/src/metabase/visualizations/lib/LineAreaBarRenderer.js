@@ -345,7 +345,7 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                         // if the chart is stacked and normalized then we need to show the value as a %
                         if(viz_settings['stackable.stack_type'] === "normalized") {
                             // return the value with % for readability, rounded to two digits
-                            return `${(value * 100).toFixed(2)}%`
+                            return `${formatNumber(value * 100)}%`
                         }
                         return value
                     }
