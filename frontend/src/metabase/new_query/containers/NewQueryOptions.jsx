@@ -79,9 +79,16 @@ export class NewQueryOptions extends Component {
             return <LoadingAndErrorWrapper loading={true}/>
         }
 
+
         const showMetricOption = isAdmin || metadata.metricsList().length > 0
         const showSegmentOption = isAdmin || metadata.segmentsList().length > 0
         const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
+
+        // util to check if the user has write permission to a db
+        const hasSQLPermission = (db) => db.native_permissions === "write"
+
+        // to be able to use SQL the user must have write permsissions on at least one db
+        const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
 
         return (
             <div className="full-height flex">
@@ -119,14 +126,16 @@ export class NewQueryOptions extends Component {
                                     to={this.getGuiQueryUrl}
                                 />
                             </li>
-                            <li className="Grid-cell">
-                                <NewQueryOption
-                                    image="/app/img/sql_illustration"
-                                    title="SQL"
-                                    description="For more complicated questions, you can write your own SQL."
-                                    to={this.getNativeQueryUrl}
-                                />
-                            </li>
+                            { showSQLOption &&
+                                <li className="Grid-cell">
+                                    <NewQueryOption
+                                        image="/app/img/sql_illustration"
+                                        title="SQL"
+                                        description="For more complicated questions, you can write your own SQL."
+                                        to={this.getNativeQueryUrl}
+                                    />
+                                </li>
+                            }
                         </ol>
                     </div>
                 </div>
