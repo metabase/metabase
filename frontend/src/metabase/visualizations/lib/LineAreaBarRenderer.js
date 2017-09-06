@@ -341,6 +341,15 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
                     const isArea = this.classList.contains("area");
 
+                    const getTooltipValue = (viz_settings: {}, value: number) => {
+                        // if the chart is stacked and normalized then we need to show the value as a %
+                        if(viz_settings['stackable.stack_type'] === "normalized") {
+                            // return the value with % for readability, rounded to two digits
+                            return `${(value * 100).toFixed(2)}%`
+                        }
+                        return value
+                    }
+
                     let data = [];
                     if (Array.isArray(d.key)) { // scatter
                         if (d.key._origin) {
@@ -358,8 +367,16 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                             cols = series[seriesIndex].data.cols;
                         }
                         data = [
-                            { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
-                            { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
+                            {
+                                key: getFriendlyName(cols[0]),
+                                value: d.data.key,
+                                col: cols[0]
+                            },
+                            {
+                                key: getFriendlyName(cols[1]),
+                                value: getTooltipValue(card.visualization_settings,  d.data.value),
+                                col: cols[1]
+                            }
                         ];
                     }
 
