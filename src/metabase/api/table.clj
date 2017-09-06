@@ -85,21 +85,22 @@
                     {:name name
                      :mbql ["datetime-field" nil param]
                      :type "type/DateTime"})
+                  ;; note the order of these options corresponds to the order they will be shown to the user in the UI
                   [["Minute" "minute"]
-                   ["Minute of Hour" "minute-of-hour"]
                    ["Hour" "hour"]
-                   ["Hour of Day" "hour-of-day"]
                    ["Day" "day"]
+                   ["Week" "week"]
+                   ["Month" "month"]
+                   ["Quarter" "quarter"]
+                   ["Year" "year"]
+                   ["Minute of Hour" "minute-of-hour"]
+                   ["Hour of Day" "hour-of-day"]
                    ["Day of Week" "day-of-week"]
                    ["Day of Month" "day-of-month"]
                    ["Day of Year" "day-of-year"]
-                   ["Week" "week"]
                    ["Week of Year" "week-of-year"]
-                   ["Month" "month"]
                    ["Month of Year" "month-of-year"]
-                   ["Quarter" "quarter"]
-                   ["Quarter of Year" "quarter-of-year"]
-                   ["Year" "year"]])
+                   ["Quarter of Year" "quarter-of-year"]])
              (conj
               (mapv (fn [[name params]]
                       {:name name
