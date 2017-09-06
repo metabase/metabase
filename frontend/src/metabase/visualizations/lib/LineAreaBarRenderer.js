@@ -341,7 +341,7 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
                     const isArea = this.classList.contains("area");
 
-                    const getTooltipValue = (viz_settings: {}, value: number) => {
+                    const getTooltipValue = (viz_settings, value) => {
                         // if the chart is stacked and normalized then we need to show the value as a %
                         if(viz_settings['stackable.stack_type'] === "normalized") {
                             // return the value with % for readability, rounded to two digits
