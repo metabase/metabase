@@ -30,20 +30,30 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(props => getTitle(props))
 class SegmentTableComparison extends Component {
-    componentWillMount () {
+
+    state = {
+        error: null
+    }
+
+    async componentWillMount () {
         const { cost, segmentId, tableId } = this.props.params
-        this.props.fetchSegmentTableComparison(segmentId, tableId, cost)
+        try {
+            await this.props.fetchSegmentTableComparison(segmentId, tableId, cost)
+        } catch (error) {
+            this.setState({ error })
+        }
     }
 
     render () {
         const { params, fields, comparison, itemA, itemB } = this.props
+        const { error } = this.state
         return (
             <LoadingAndErrorWrapper
                 loading={!comparison}
+                error={error}
                 noBackground
             >
                 { () =>
-
                     <XRayComparison
                         cost={params.cost}
                         fields={_.sortBy(fields, 'distance').reverse()}

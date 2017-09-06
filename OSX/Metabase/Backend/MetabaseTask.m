@@ -63,7 +63,7 @@
 		
 		self.task				= [[NSTask alloc] init];
 		self.task.launchPath	= JREPath();
-		self.task.environment	= @{@"MB_DB_FILE": DBPath(),
+		self.task.environment	= @{@"MB_DB_FILE": [DBPath() stringByAppendingString:@";AUTO_SERVER=TRUE"],
 									@"MB_PLUGINS_DIR": PluginsDirPath(),
 									@"MB_JETTY_PORT": @(self.port),
 									@"MB_CLIENT": @"OSX"};

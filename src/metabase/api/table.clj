@@ -1,7 +1,7 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET PUT]]
+            [compojure.core :refer [GET PUT POST]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -12,9 +12,10 @@
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [field :refer [Field with-normal-values]]
-             [field-values :as fv]
+             [field-values :refer [FieldValues] :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
+            [metabase.sync.field-values :as sync-field-values]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -84,21 +85,22 @@
                     {:name name
                      :mbql ["datetime-field" nil param]
                      :type "type/DateTime"})
+                  ;; note the order of these options corresponds to the order they will be shown to the user in the UI
                   [["Minute" "minute"]
-                   ["Minute of Hour" "minute-of-hour"]
                    ["Hour" "hour"]
-                   ["Hour of Day" "hour-of-day"]
                    ["Day" "day"]
+                   ["Week" "week"]
+                   ["Month" "month"]
+                   ["Quarter" "quarter"]
+                   ["Year" "year"]
+                   ["Minute of Hour" "minute-of-hour"]
+                   ["Hour of Day" "hour-of-day"]
                    ["Day of Week" "day-of-week"]
                    ["Day of Month" "day-of-month"]
                    ["Day of Year" "day-of-year"]
-                   ["Week" "week"]
                    ["Week of Year" "week-of-year"]
-                   ["Month" "month"]
                    ["Month of Year" "month-of-year"]
-                   ["Quarter" "quarter"]
-                   ["Quarter of Year" "quarter-of-year"]
-                   ["Year" "year"]])
+                   ["Quarter of Year" "quarter-of-year"]])
              (conj
               (mapv (fn [[name params]]
                       {:name name
@@ -278,6 +280,26 @@
        :origin         (hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
        :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)})))
+
+
+(api/defendpoint POST "/:id/rescan_values"
+  "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
+   are eligible for FieldValues."
+  [id]
+  (api/check-superuser)
+  ;; async so as not to block the UI
+  (future
+    (sync-field-values/update-field-values-for-table! (api/check-404 (Table id))))
+  {:status :success})
+
+(api/defendpoint POST "/:id/discard_values"
+  "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
+   this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
+  [id]
+  (api/check-superuser)
+  (when-let [field-ids (db/select-ids Field :table_id 212)]
+    (db/simple-delete! FieldValues :id [:in field-ids]))
+  {:status :success})
 
 
 (api/define-routes)

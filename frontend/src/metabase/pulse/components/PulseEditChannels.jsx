@@ -155,10 +155,11 @@ export default class PulseEditChannels extends Component {
                         { field.type === "select" ?
                             <Select
                                 className="h4 text-bold bg-white"
-                                value={channel.details[field.name]}
+                                value={channel.details && channel.details[field.name]}
                                 options={field.options}
                                 optionNameFn={o => o}
                                 optionValueFn={o => o}
+                                // Address #5799 where `details` object is missing for some reason
                                 onChange={(o) => this.onChannelPropertyChange(index, "details", { ...channel.details, [field.name]: o })}
                             />
                         : null }

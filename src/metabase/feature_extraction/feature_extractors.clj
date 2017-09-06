@@ -6,7 +6,6 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
-            [clojure.math.numeric-tower :refer [floor]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -23,8 +22,6 @@
             [redux.core :as redux]
             [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
-
-(def ^:private percentiles (range 0 1 0.1))
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
@@ -161,6 +158,8 @@
 (defmethod comparison-vector :default
   [features]
   (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
+
+(def ^:private percentiles (range 0 1 0.1))
 
 (defn- histogram-extractor
   [{:keys [histogram]}]
@@ -325,51 +324,74 @@
   [window query]
   (growth (last-n-days window 0 query) (last-n-days window window query)))
 
+(defn roughly=
+  "Is `x` èqual to `y` within precision `precision` (default 0.05)."
+  ([x y] (roughly= x y 0.05))
+  ([x y precision]
+   (<= (* (- 1 precision) x) y (* (+ 1 precision) x))))
+
+(defn infer-resolution
+  [query series]
+  (or (let [[head resolution] (-> query :breakout first ((juxt first last)))]
+        (when (= head "datetime-field")
+          (keyword resolution)))
+      (let [deltas       (transduce (map (fn [[[a _] [b _]]]
+                                           (- b a)))
+                                    h/histogram
+                                    (partition 2 1 series))
+            median-delta (h.impl/median deltas)]
+        (when (roughly= median-delta (h.impl/minimum deltas))
+          (cond
+            (roughly= median-delta (* 60 1000))                    :minute
+            (roughly= median-delta (* 60 60 1000))                 :hour
+            (roughly= median-delta (* 24 60 60 1000))              :day
+            (roughly= median-delta (* 7 24 60 60 1000))            :week
+            (roughly= median-delta (* (/ 365 12) 24 60 60 1000))   :month
+            (roughly= median-delta (* 3 (/ 365 12) 24 60 60 1000)) :quarter
+            (roughly= median-delta (* 365 24 60 60 1000))          :year
+            :else                                                  nil)))))
+
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
-  (let [resolution (let [[head _ resolution] (-> query :breakout first)]
-                     (when (= head "datetime-field")
-                       (keyword resolution)))]
-    (redux/post-complete
-     (redux/pre-step
-      (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                   :series            (if (nil? resolution)
-                                        conj
-                                        (redux/post-complete
-                                         conj
-                                         (partial fill-timeseries
-                                                  (case resolution
-                                                    :month   (t/months 1)
-                                                    :quarter (t/months 4)
-                                                    :year    (t/years 1)
-                                                    :week    (t/weeks 1)
-                                                    :day     (t/days 1)
-                                                    :hour    (t/hours 1)
-                                                    :minute  (t/minutes 1)))))})
-      (fn [[x y]]
-        [(-> x t.format/parse to-double) y]))
-     (merge-juxt
-      (field-metadata-extractor field)
-      (fn [{:keys [series linear-regression]}]
-        (let [ys-r (->> series (map second) reverse not-empty)]
-          (merge {:resolution             resolution
-                  :series                 series
-                  :linear-regression      linear-regression
-                  :growth-series          (when resolution
-                                            (->> series
-                                                 (partition 2 1)
-                                                 (map (fn [[[_ y1] [x y2]]]
-                                                        [x (growth y2 y1)]))))
-                  :seasonal-decomposition
-                  (when (and resolution
-                             (costs/unbounded-computation? max-cost))
-                    (decompose-timeseries resolution series))}
-                 (when (and (costs/alow-joins? max-cost)
-                            (:aggregation query))
-                   {:YoY (rolling-window-growth 365 query)
-                    :MoM (rolling-window-growth 30 query)
-                    :WoW (rolling-window-growth 7 query)
-                    :DoD (rolling-window-growth 1 query)}))))))))
+  (redux/post-complete
+   (redux/pre-step
+    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                 :series            conj})
+    (fn [[x y]]
+      [(-> x t.format/parse to-double) y]))
+   (merge-juxt
+    (field-metadata-extractor field)
+    (fn [{:keys [series linear-regression]}]
+      (let [resolution (infer-resolution query series)
+            series     (if resolution
+                         (fill-timeseries (case resolution
+                                            :month   (t/months 1)
+                                            :quarter (t/months 4)
+                                            :year    (t/years 1)
+                                            :week    (t/weeks 1)
+                                            :day     (t/days 1)
+                                            :hour    (t/hours 1)
+                                            :minute  (t/minutes 1))
+                                          series)
+                         series)]
+        (merge {:resolution             resolution
+                :series                 series
+                :linear-regression      linear-regression
+                :growth-series          (when resolution
+                                          (->> series
+                                               (partition 2 1)
+                                               (map (fn [[[_ y1] [x y2]]]
+                                                      [x (growth y2 y1)]))))
+                :seasonal-decomposition
+                (when (and resolution
+                           (costs/unbounded-computation? max-cost))
+                  (decompose-timeseries resolution series))}
+               (when (and (costs/alow-joins? max-cost)
+                          (:aggregation query))
+                 {:YoY (rolling-window-growth 365 query)
+                  :MoM (rolling-window-growth 30 query)
+                  :WoW (rolling-window-growth 7 query)
+                  :DoD (rolling-window-growth 1 query)})))))))
 
 (defmethod comparison-vector [DateTime Num]
   [features]
@@ -464,29 +486,24 @@
 
 (defn- month-frequencies
   [earliest latest]
-  (let [earilest    (round-to-month latest)
-        latest      (round-to-month latest)
-        start-month (t/month earliest)
-        duration    (t/in-months (t/interval earliest latest))]
-    (->> (range (dec start-month) (+ start-month duration))
-         (map #(inc (mod % 12)))
-         frequencies)))
+  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
+       (take-while (complement (partial t/before? latest)))
+       (map t/month)
+       frequencies))
 
 (defn- quarter-frequencies
   [earliest latest]
-  (let [earilest      (round-to-month latest)
-        latest        (round-to-month latest)
-        start-quarter (quarter earliest)
-        duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
-    (->> (range (dec start-quarter) (+ start-quarter duration))
-         (map #(inc (mod % 4)))
-         frequencies)))
+  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
+       (take-while (complement (partial t/before? latest)))
+       (m/distinct-by (juxt t/year quarter))
+       (map quarter)
+       frequencies))
 
 (defn- weigh-periodicity
   [weights card]
   (let [baseline (apply min (vals weights))]
     (update card :rows (partial map (fn [[k v]]
-                                      [k (* v (/ baseline (weights k)))])))))
+                                      [k (* v (/ baseline (weights k 1)))])))))
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
