@@ -355,10 +355,11 @@
           (merge {:resolution             resolution
                   :series                 series
                   :linear-regression      linear-regression
-                  :growth-series          (->> series
-                                               (partition 2 1)
-                                               (map (fn [[[_ y1] [x y2]]]
-                                                      [x (growth y2 y1)])))
+                  :growth-series          (when resolution
+                                            (->> series
+                                                 (partition 2 1)
+                                                 (map (fn [[[_ y1] [x y2]]]
+                                                        [x (growth y2 y1)]))))
                   :seasonal-decomposition
                   (when (and resolution
                              (costs/unbounded-computation? max-cost))

@@ -78,8 +78,8 @@
 (def ^:private conditional-descriptions
   {:growth-series (fn [{:keys [resolution]}]
                     (case resolution
-                      :hour     {:label "Hourly growth"
-                                 :description "Series of hour to hour changes"}
+                      :hour    {:label "Hourly growth"
+                                :description "Series of hour to hour changes"}
                       :minute  {:label "Minute growth"
                                 :description "Series of minute to minute changes"}
                       :month   {:label "Monthly growth"
@@ -89,7 +89,8 @@
                       :week    {:label "Weekly growth"
                                 :description "Series of week to week changes"}
                       :quarter {:label "Quarterly growth"
-                                :description "Series of quarter to quarter changes"}))})
+                                :description "Series of quarter to quarter changes"}
+                      nil      nil))})
 
 (defn add-descriptions
   "Add descriptions of features to naked values where applicable."
