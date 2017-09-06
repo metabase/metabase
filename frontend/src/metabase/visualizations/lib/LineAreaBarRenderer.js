@@ -101,8 +101,6 @@ function getDcjsChart(cardType, parent) {
     }
 }
 
-
-
 function initChart(chart, element) {
     // set the bounds
     chart.width(getAvailableCanvasWidth(element));
@@ -328,7 +326,7 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverChange, onVisualizationClick) {
+function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll("title").remove();
@@ -340,15 +338,6 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                     const card = series[seriesIndex].card;
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
                     const isArea = this.classList.contains("area");
-
-                    const getTooltipValue = (viz_settings, value) => {
-                        // if the chart is stacked and normalized then we need to show the value as a %
-                        if(viz_settings['stackable.stack_type'] === "normalized") {
-                            // return the value with % for readability, rounded to two digits
-                            return `${formatNumber(value * 100)}%`
-                        }
-                        return value
-                    }
 
                     let data = [];
                     if (Array.isArray(d.key)) { // scatter
@@ -366,6 +355,7 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                         if (!isSingleSeriesBar) {
                             cols = series[seriesIndex].data.cols;
                         }
+
                         data = [
                             {
                                 key: getFriendlyName(cols[0]),
@@ -374,7 +364,9 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                             },
                             {
                                 key: getFriendlyName(cols[1]),
-                                value: getTooltipValue(card.visualization_settings,  d.data.value),
+                                value: isNormalized
+                                    ? `${formatValue(d.data.value) * 100}%`
+                                    : d.data.value,
                                 col: cols[1]
                             }
                         ];
@@ -1329,7 +1321,7 @@ export default function lineAreaBar(element: Element, {
     }
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(parent, series, isStacked, isScalarSeries, (hovered) => {
+    applyChartTooltips(parent, series, isStacked, isNormalized, isScalarSeries, (hovered) => {
         // disable tooltips while brushing
         if (onHoverChange && !isBrushing) {
             // disable tooltips on lines
