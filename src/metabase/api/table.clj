@@ -165,7 +165,8 @@
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
 
-                                       (isa? base_type :type/DateTime)
+                                       (or (isa? base_type :type/DateTime)
+                                           (isa? special_type :type/DateTime))
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value

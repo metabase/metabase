@@ -558,15 +558,18 @@
       (finally
         (db/update! Field lat-field-id :fingerprint fingerprint)))))
 
+(defn- dimension-options-for-field [response field-name]
+  (->> response
+       :fields
+       (m/find-first #(= field-name (:name %)))
+       :dimension_options))
+
 (defn- extract-dimension-options
   "For the given `FIELD-NAME` find it's dimension_options following
   the indexes given in the field"
   [response field-name]
   (set
-   (for [dim-index (->> response
-                        :fields
-                        (m/find-first #(= field-name (:name %)))
-                        :dimension_options)
+   (for [dim-index (dimension-options-for-field response field-name)
          :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
      strategy)))
 
@@ -592,3 +595,10 @@
 
       (finally
         (db/update! Field (data/id :venues :price) :special_type special_type)))))
+
+;; Ensure unix timestamps show date binning options, not numeric binning options
+(expect
+  (var-get #'table-api/datetime-dimension-indexes)
+  (data/dataset sad-toucan-incidents
+    (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :incidents)))]
+      (dimension-options-for-field response "TIMESTAMP"))))
