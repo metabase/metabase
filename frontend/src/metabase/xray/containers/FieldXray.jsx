@@ -95,29 +95,31 @@ class FieldXRay extends Component {
                     <XRayPageWrapper>
                         <div className="full">
                             <div className="my3 flex align-center">
-                                <div>
+                                <div className="full">
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
                                         to={`/xray/table/${xray.table.id}/approximate`}
                                     >
                                         {xray.table.display_name}
                                     </Link>
-                                    <h1 className="mt2 flex align-center">
-                                        {xray.field.display_name}
-                                        <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">XRay</span>
-                                    </h1>
+                                    <div className="mt2 flex align-center">
+                                        <h1 className="flex align-center">
+                                            {xray.field.display_name}
+                                            <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
+                                            <span className="text-grey-3">XRay</span>
+                                        </h1>
+                                        <div className="ml-auto flex align-center">
+                                            <h3 className="mr2 text-grey-3">Fidelity</h3>
+                                            <CostSelect
+                                                xrayType='field'
+                                                id={xray.field.id}
+                                                currentCost={params.cost}
+                                            />
+                                        </div>
+                                    </div>
                                     <p className="mt1 text-paragraph text-measure">
                                         {xray.field.description}
                                     </p>
-                                </div>
-                                <div className="ml-auto flex align-center">
-                                    <h3 className="mr2 text-grey-3">Fidelity</h3>
-                                    <CostSelect
-                                        xrayType='field'
-                                        id={xray.field.id}
-                                        currentCost={params.cost}
-                                    />
                                 </div>
                             </div>
                             <div className="mt4">

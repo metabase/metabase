@@ -152,12 +152,12 @@ class ChartSettings extends Component {
                 </div>
                 <div className="pt1">
                     { !_.isEqual(this.state.settings, {}) &&
-                        <a className="Button Button--danger float-left" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
+                        <a className="Button Button--danger float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
                     }
 
-                    <div className="float-right">
-                      <a className="Button" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
+                    <div className="float-left">
                       <a className="Button Button--primary ml2" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
+                      <a className="Button ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
                     </div>
                 </div>
             </div>

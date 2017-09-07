@@ -8,10 +8,6 @@
 
 #import "ResetPasswordTask.h"
 
-NSString *ResetPasswordJarPath() {
-	return [[NSBundle mainBundle] pathForResource:@"reset-password" ofType:@"jar"];
-}
-
 @interface ResetPasswordTask ()
 @property (copy) NSString *output;
 @end
@@ -25,7 +21,7 @@ NSString *ResetPasswordJarPath() {
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
 		self.task = [[NSTask alloc] init];
 				
-		NSString *dbPath = [DBPath() stringByAppendingString:@";IFEXISTS=TRUE"];
+		NSString *dbPath = [DBPath() stringByAppendingString:@";IFEXISTS=TRUE;AUTO_SERVER=TRUE"];
 		self.task.environment = @{@"MB_DB_FILE": dbPath, @"HOME": @"/Users/camsaul"};
 		
 		// time travelers from the future: this is hardcoded since I'm the only one who works on this. I give you permission to fix it - Cam
@@ -33,16 +29,18 @@ NSString *ResetPasswordJarPath() {
 		
 		#if DEBUG_RUN_LEIN_TASK
 			self.task.environment			= @{@"MB_DB_FILE": dbPath};
-			self.task.currentDirectoryPath	= @"/Users/camsaul/metabase";
-			self.task.launchPath			= @"/Users/camsaul/scripts/lein";
-			self.task.arguments				= @[@"with-profile", @"reset-password", @"run", emailAddress];
-			NSLog(@"Launching ResetPasswordTask\nMB_DB_FILE='%@' lein with-profile reset-password run %@", dbPath, emailAddress);
+			self.task.currentDirectoryPath	= @"/Users/cam/metabase";
+			self.task.launchPath			= @"/usr/local/bin/lein";
+			self.task.arguments				= @[@"run", @"reset-password", emailAddress];
+			NSLog(@"Launching ResetPasswordTask\nMB_DB_FILE='%@' lein run reset-password %@", dbPath, emailAddress);
 		#else
 			self.task.environment	= @{@"MB_DB_FILE": dbPath};
 			self.task.launchPath	= JREPath();
-			self.task.arguments		= @[@"-classpath", [NSString stringWithFormat:@"%@:%@", UberjarPath(), ResetPasswordJarPath()],
-										@"metabase.reset_password.core", emailAddress];
-			NSLog(@"Launching ResetPasswordTask\nMB_DB_FILE='%@' %@ -classpath %@:%@ metabase.reset_password.core %@", dbPath, JREPath(), UberjarPath(), ResetPasswordJarPath(), emailAddress);
+            self.task.arguments		= @[@"-Djava.awt.headless=true", // this prevents the extra java icon from popping up in the dock when running
+                                        @"-Xverify:none",            // disable bytecode verification for faster launch speed, not really needed here since JAR is packaged as part of signed .app
+                                        @"-jar", UberjarPath(),
+                                        @"reset-password", emailAddress];
+			NSLog(@"Launching ResetPasswordTask\nMB_DB_FILE='%@' %@ -jar %@ reset-password %@", dbPath, JREPath(), UberjarPath(), emailAddress);
 		#endif
 		
 		__weak ResetPasswordTask *weakSelf = self;

@@ -7,15 +7,17 @@
             [metabase.models
              [field-values :as field-values]
              [table :refer [Table]]]
+            [metabase.query-processor.interface :as qpi]
             [metabase.query-processor.middleware.expand :as ql]
             [toucan.db :as db]))
 
 (defn- qp-query [db-id query]
   {:pre [(integer? db-id)]}
-  (-> (qp/process-query
-       {:type     :query
-        :database db-id
-        :query    query})
+  (-> (binding [qpi/*disable-qp-logging* true]
+        (qp/process-query
+          {:type     :query
+           :database db-id
+           :query    query}))
       :data
       :rows))
 

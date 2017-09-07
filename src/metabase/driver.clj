@@ -2,6 +2,7 @@
   (:require [clj-time.format :as tformat]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.config :as config]
             [metabase.models
              [database :refer [Database]]
              [setting :refer [defsetting]]]
@@ -360,10 +361,11 @@
 
 
 ;; ## Implementation-Agnostic Driver API
-
-(def ^:private ^:const can-connect-timeout-ms
-  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds."
-  5000)
+(def ^:private can-connect-timeout-ms
+  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
+   By default, this is 5 seconds. You can configure this value by setting the env var `MB_DB_CONNECTION_TIMEOUT_MS`."
+  (or (config/config-int :mb-db-connection-timeout-ms)
+      5000))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query

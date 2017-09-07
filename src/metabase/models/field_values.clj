@@ -79,6 +79,16 @@
       (when (values-less-than-total-max-length? values)
         values))))
 
+(defn- fixup-human-readable-values
+  "Field values and human readable values are lists that are zipped
+  together. If the field values have changes, the human readable
+  values will need to change too. This function reconstructs the
+  human_readable_values to reflect `NEW-VALUES`. If a new field value
+  is found, a string version of that is used"
+  [{old-values :values, old-hrv :human_readable_values} new-values]
+  (when (seq old-hrv)
+    (let [orig-remappings (zipmap old-values old-hrv)]
+      (map #(get orig-remappings % (str %)) new-values))))
 
 (defn create-or-update-field-values!
   "Create or update the FieldValues object for FIELD. If the FieldValues object already exists, then update values for
@@ -92,8 +102,9 @@
       (and field-values values)
       (do
         (log/debug (format "Storing updated FieldValues for Field %s..." field-name))
-        (db/update! FieldValues (u/get-id field-values)
-          :values values))
+        (db/update-non-nil-keys! FieldValues (u/get-id field-values)
+          :values                values
+          :human_readable_values (fixup-human-readable-values field-values values)))
       ;; if FieldValues object doesn't exist create one
       values
       (do
@@ -134,10 +145,9 @@
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
-  "Remove the `FieldValues` for FIELD-ID."
-  [field-id]
-  {:pre [(integer? field-id)]}
-  (db/delete! FieldValues :field_id field-id))
+  "Remove the `FieldValues` for FIELD-OR-ID."
+  [field-or-id]
+  (db/delete! FieldValues :field_id (u/get-id field-or-id)))
 
 
 (defn- table-ids->table-id->is-on-demand?
