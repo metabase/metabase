@@ -18,6 +18,7 @@ import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { push } from "react-router-redux";
 
 const mapStateToProps = state => ({
     query: getCurrentQuery(state),
@@ -31,7 +32,8 @@ const mapDispatchToProps = {
     fetchDatabases,
     fetchMetrics,
     fetchSegments,
-    resetQuery
+    resetQuery,
+    push
 }
 
 type Props = {
@@ -56,12 +58,44 @@ type Props = {
 export class NewQueryOptions extends Component {
     props: Props
 
-    componentWillMount() {
-        this.props.fetchDatabases()
-        this.props.fetchMetrics()
-        this.props.fetchSegments()
+    state = {
+        showMetricOption: false,
+        showSegmentOption: false,
+        showSQLOption: false
+    }
 
-        this.props.resetQuery();
+    determinePaths () {
+        const { isAdmin, metadata, push } = this.props
+        const showMetricOption = isAdmin || metadata.metricsList().length > 0
+        const showSegmentOption = isAdmin || metadata.segmentsList().length > 0
+
+        // util to check if the user has write permission to a db
+        const hasSQLPermission = (db) => db.native_permissions === "write"
+
+        // to be able to use SQL the user must have write permsissions on at least one db
+        const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
+
+        console.log(showSQLOption, showMetricOption, showSegmentOption)
+
+        // if we can only show one option then we should just redirect
+        if(!showMetricOption && !showSQLOption && !showSegmentOption) {
+            push(this.getGuiQueryUrl())
+        }
+
+        this.setState({
+            showMetricOption,
+            showSegmentOption,
+            showSQLOption,
+        })
+    }
+
+    async componentWillMount() {
+        await this.props.fetchDatabases()
+        await this.props.fetchMetrics()
+        await this.props.fetchSegments()
+        await this.props.resetQuery();
+
+        this.determinePaths()
     }
 
     getGuiQueryUrl = () => {
@@ -73,22 +107,13 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-        const { query, metadata, metadataFetched, isAdmin, metricSearchUrl, segmentSearchUrl } = this.props
+        const { query, metadataFetched, isAdmin, metricSearchUrl, segmentSearchUrl } = this.props
+        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
+        const { showMetricOption, showSegmentOption, showSQLOption } = this.state
 
         if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
             return <LoadingAndErrorWrapper loading={true}/>
         }
-
-
-        const showMetricOption = isAdmin || metadata.metricsList().length > 0
-        const showSegmentOption = isAdmin || metadata.segmentsList().length > 0
-        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
-
-        // util to check if the user has write permission to a db
-        const hasSQLPermission = (db) => db.native_permissions === "write"
-
-        // to be able to use SQL the user must have write permsissions on at least one db
-        const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
 
         return (
             <div className="full-height flex">
