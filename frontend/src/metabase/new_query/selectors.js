@@ -18,7 +18,7 @@ export const getCurrentQuery = state => {
 export const getPlainNativeQuery = state => {
     const metadata = getMetadata(state)
     const question = Question.create({ metadata: getMetadata(state) })
-    const databases = metadata.databasesList().filter(db => !db.is_saved_questions)
+    const databases = metadata.databasesList().filter(db => !db.is_saved_questions && db.native_permissions === "write")
 
     // If we only have a single database, then default to that
     // (native query editor doesn't currently show the db selector if there is only one database available)

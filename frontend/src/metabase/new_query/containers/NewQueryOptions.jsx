@@ -75,8 +75,6 @@ export class NewQueryOptions extends Component {
         // to be able to use SQL the user must have write permsissions on at least one db
         const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
 
-        console.log(showSQLOption, showMetricOption, showSegmentOption)
-
         // if we can only show one option then we should just redirect
         if(!showMetricOption && !showSQLOption && !showSegmentOption) {
             push(this.getGuiQueryUrl())
