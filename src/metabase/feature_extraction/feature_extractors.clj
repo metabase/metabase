@@ -49,8 +49,14 @@
 (defn growth
   "Relative difference between `x1` an `x2`."
   [x2 x1]
-  (when (every? some? [x2 x1])
-    (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
+  (when (and x1 x2)
+    (let [x2 (double x2)
+          x1 (double x1)]
+      (cond
+        (every? neg? [x1 x2])     (growth (- x1) (- x2))
+        (and (neg? x1) (pos? x2)) (- (growth x1 x2))
+        (nil? x1)                 nil
+        :else                     (/ (* (if (neg? x1) -1 1) (- x2 x1)) x1)))))
 
 (defn- merge-juxt
   [& fns]
@@ -192,11 +198,12 @@
    (redux/fuse (merge
                 {:histogram      h/histogram
                  :cardinality    cardinality
-                 :kurtosis       stats/kurtosis
-                 :skewness       stats/skewness
-                 :sum            (redux/with-xform + (remove nil?))
-                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
-                                                           (map math/sq)))}
+                 :kurtosis       (redux/pre-step stats/kurtosis (stats/somef double))
+                 :skewness       (redux/pre-step stats/skewness (stats/somef double))
+                 :sum            (redux/with-xform +
+                                   (keep (stats/somef double)))
+                 :sum-of-squares (redux/with-xform +
+                                   (keep (stats/somef (comp math/sq double))))}
                 (when (isa? (:special_type field) :type/Category)
                   {:histogram-categorical h/histogram-categorical})))
    (merge-juxt
@@ -252,10 +259,14 @@
 (defmethod feature-extractor [Num Num]
   [_ field]
   (redux/post-complete
-   (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                :correlation       (stats/correlation first second)
-                :covariance        (stats/covariance first second)})
-   (field-metadata-extractor field)))
+   (redux/pre-step
+    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                 :correlation       (stats/correlation first second)
+                 :covariance        (stats/covariance first second)})
+    (partial map (stats/somef double)))
+   (merge-juxt
+    (field-metadata-extractor field)
+    identity)))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."

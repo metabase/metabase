@@ -16,16 +16,16 @@
    (safe-divide 4 0)])
 
 (expect
-  [(/ 23 100)
-   0.5
-   -1.0
+  [0.23
+   1.0
+   -0.5
    -5.0
-   1.2]
+   5.0]
   [(growth 123 100)
    (growth -0.1 -0.2)
    (growth -0.4 -0.2)
    (growth -0.4 0.1)
-   (growth 0.1 -0.5)])
+   (growth 0.1 -0.4)])
 
 (expect
   [{:foo 2
