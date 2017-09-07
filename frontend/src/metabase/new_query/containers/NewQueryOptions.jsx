@@ -7,6 +7,7 @@ import {
     fetchSegments,
 } from 'metabase/redux/metadata'
 
+import { withBackground } from 'metabase/hoc/Background'
 import { resetQuery } from '../new_query'
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -83,7 +84,7 @@ export class NewQueryOptions extends Component {
         const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
 
         return (
-            <div className="bg-slate-extra-light full-height flex">
+            <div className="full-height flex">
                 <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
                      <div className="flex align-center justify-center" style={{minHeight: "100%"}}>
                         <ol className="flex-full Grid Grid--guttersXl Grid--full small-Grid--1of2 large-Grid--normal">
@@ -134,4 +135,4 @@ export class NewQueryOptions extends Component {
     }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions)
+export default connect(mapStateToProps, mapDispatchToProps)(withBackground('bg-slate-extra-light')(NewQueryOptions))
