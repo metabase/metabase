@@ -55,12 +55,13 @@
 
 (defmethod estimate-cost (type Field)
   [field]
-  (:rows (Table (:table_id field))))
+  (or (:rows (Table (:table_id field))) -1))
 
 (defmethod estimate-cost (type Card)
   [card]
   (if (or (-> card :dataset_query :native)
-          (-> card :dataset_query :query :aggregation))
+          (-> card :dataset_query :query :aggregation)
+          (nil? (:rows (Table (:table_id card)))))
     -1
     (* 2 (:rows (Table (:table_id card))))))cc
 
@@ -70,8 +71,10 @@
 
 (defmethod estimate-cost (type Table)
   [table]
-  (->> table
-       (fetch-metadata/table-metadata (Database (:db_id table)))
-       :fields
-       count
-       (* (:rows table))))
+  (if (:rows table)
+    (->> table
+         (fetch-metadata/table-metadata (Database (:db_id table)))
+         :fields
+         count
+         (* (:rows table)))
+    -1))
