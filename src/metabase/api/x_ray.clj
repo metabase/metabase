@@ -1,7 +1,9 @@
 (ns metabase.api.x-ray
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction.core :as fe]
+            [metabase.feature-extraction
+             [core :as fe]
+             [costs :as costs]]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -187,5 +189,27 @@
    ["segment" "segment"
     "table" "table"
     "segment" "table"]])
+
+(def ^:private ->model
+  {"table"   Table
+   "field"   Field
+   "segment" Segment
+   "card"    Card})
+
+(def ^:private Model
+  (apply s/enum (keys ->model)))
+
+(api/defendpoint GET "/estimate-cost/:model/:id"
+  "Get estemetaed cost of xraying given model."
+  [model id]
+  {model Model}
+  (str (costs/estimate-cost ((->model model) id))))
+
+(api/defendpoint GET "/estimate-cost/compare/:model1/:id1/:model2/:id2"
+  [model1 id1 model2 id2]
+  {model1 Model
+   model2 Model}
+  (str (+ (costs/estimate-cost ((->model model1) (Integer/parseInt id1)))
+          (costs/estimate-cost ((->model model2) (Integer/parseInt id2))))))
 
 (api/define-routes)

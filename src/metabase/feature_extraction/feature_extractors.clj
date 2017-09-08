@@ -171,11 +171,11 @@
   [{:keys [histogram]}]
   (let [nil-count   (h/nil-count histogram)
         total-count (h/total-count histogram)]
-    (merge {:histogram   histogram
-            :nil%        (/ nil-count (max total-count 1))
-            :has-nils?   (pos? nil-count)
-            :count       total-count
-            :entropy     (h/entropy histogram)}
+    (merge {:histogram histogram
+            :nil%      (/ nil-count (max total-count 1))
+            :has-nils? (pos? nil-count)
+            :count     total-count
+            :entropy   (h/entropy histogram)}
            (when-not (h/categorical? histogram)
              {:percentiles (apply h.impl/percentiles histogram percentiles)}))))
 
@@ -195,25 +195,27 @@
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
   (redux/post-complete
-   (redux/fuse (merge
-                {:histogram      h/histogram
-                 :cardinality    cardinality
-                 :kurtosis       (redux/pre-step stats/kurtosis (stats/somef double))
-                 :skewness       (redux/pre-step stats/skewness (stats/somef double))
-                 :sum            (redux/with-xform +
-                                   (keep (stats/somef double)))
-                 :sum-of-squares (redux/with-xform +
-                                   (keep (stats/somef (comp math/sq double))))}
-                (when (isa? (:special_type field) :type/Category)
-                  {:histogram-categorical h/histogram-categorical})))
+   (redux/fuse
+    (merge
+     {:histogram   h/histogram
+      :cardinality cardinality}
+     (when (costs/full-scan? max-cost)
+       {:sum            (redux/with-xform + (keep (stats/somef double)))
+        :sum-of-squares (redux/with-xform +
+                          (keep (stats/somef (comp math/sq double))))})
+     (when (costs/unbounded-computation? max-cost)
+       {:kurtosis (redux/pre-step stats/kurtosis (stats/somef double))
+        :skewness (redux/pre-step stats/skewness (stats/somef double))})
+     (when (isa? (:special_type field) :type/Category)
+       {:histogram-categorical h/histogram-categorical})))
    (merge-juxt
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
     (fn [{:keys [histogram kurtosis skewness sum sum-of-squares
                  histogram-categorical]}]
-      (let [var    (or (h.impl/variance histogram) 0)
-            sd     (math/sqrt var)
+      (let [var    (h.impl/variance histogram)
+            sd     (some-> var math/sqrt)
             min    (h.impl/minimum histogram)
             max    (h.impl/maximum histogram)
             mean   (h.impl/mean histogram)
@@ -222,11 +224,11 @@
         (merge
          {:positive-definite? (some-> min (>= 0))
           :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-          :var>sd?            (> var sd)
+          :var>sd?            (some->> sd (> var))
           :0<=x<=1?           (when min (<= 0 min max 1))
           :-1<=x<=1?          (when min (<= -1 min max 1))
-          :cv                 (some->> mean (safe-divide sd))
-          :range-vs-sd        (some->> range (safe-divide sd))
+          :cv                 (some-> sd (safe-divide mean))
+          :range-vs-sd        (some->> sd (safe-divide range))
           :mean-median-spread (some->> range (safe-divide (- mean median)))
           :min-vs-max         (some->> max (safe-divide min))
           :range              range
@@ -238,10 +240,9 @@
           :sd                 sd
           :kurtosis           kurtosis
           :skewness           skewness
-          :histogram          (or histogram-categorical histogram)}
-         (when (costs/full-scan? max-cost)
-           {:sum            sum
-            :sum-of-squares sum-of-squares})))))))
+          :histogram          (or histogram-categorical histogram)
+          :sum                sum
+          :sum-of-squares     sum-of-squares}))))))
 
 (defmethod comparison-vector Num
   [features]

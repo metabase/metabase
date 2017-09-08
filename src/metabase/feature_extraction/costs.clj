@@ -1,6 +1,14 @@
 (ns metabase.feature-extraction.costs
   "Predicates for limiting resource expanditure during feature extraction."
-  (:require [schema.core :as s]))
+  (:require [metabase.models
+             [card :refer [Card]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [schema.core :as s]))
 
 (def MaxCost
   "Schema for max-cost parameter."
@@ -36,3 +44,33 @@
 (def ^{:arglists '([max-cost])} alow-joins?
   "Alow bringing in data from other tables if needed."
   (comp #{:joins} :query))
+
+(defmulti
+  ^{:doc "Estimate cost of feature extraction for given model.
+          Cost is equal to the number of values in the corresponding dataset
+          (ie. rows * fields). If cost cannot be estimated (eg. for Cards
+          employing aggregation or defined in SQL), returns nil."
+    :arglists '([model])}
+  estimate-cost type)
+
+(defmethod estimate-cost (type Field)
+  [field]
+  (:rows (Table (:table_id field))))
+
+(defmethod estimate-cost (type Card)
+  [card]
+  (when-not (or (-> card :dataset_query :native)
+                (-> card :dataset_query :query :aggregation))
+    (* 2 (:rows (Table (:table_id card))))))
+
+(defmethod estimate-cost (type Segment)
+  [segment]
+  (estimate-cost (Table (:table_id segment))))
+
+(defmethod estimate-cost (type Table)
+  [table]
+  (->> table
+       (fetch-metadata/table-metadata (Database (:db_id table)))
+       :fields
+       count
+       (* (:rows table))))

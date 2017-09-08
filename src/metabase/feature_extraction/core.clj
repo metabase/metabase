@@ -45,8 +45,11 @@
           * `:max-cost`   a map with keys `:computation` and `:query` which
                           limits maximal resource expenditure when computing
                           features.
-                          See `metabase.feature-extraction.costs` for details."
-    :arglists '([opts field])}
+                          See `metabase.feature-extraction.costs` for details.
+
+                          Note: `extract-features` for `Card`s does not support
+                          sampling."
+    :arglists '([opts model])}
   extract-features #(type %2))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
@@ -97,7 +100,7 @@
       dataset)))
 
 (defn index-of
-  "Return the index of the first element in `coll` for which `pred` reutrns true."
+  "Return index of the first element in `coll` for which `pred` reutrns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
