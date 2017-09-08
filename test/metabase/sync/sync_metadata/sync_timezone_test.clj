@@ -2,7 +2,9 @@
   (:require [clj-time.core :as time]
             [metabase.models.database :refer [Database]]
             [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -28,3 +30,18 @@
        (nil? tz-after-update)
        ;; Check that the value was set again after sync
        (boolean (time/time-zone-for-id (db-timezone db)))])))
+
+(datasets/expect-with-engines #{:postgres}
+  ["UTC" "UTC"]
+  (data/dataset test-data
+    (let [db (db/select-one Database [:name "test-data"])]
+      (sync-tz/sync-timezone! db)
+      [(db-timezone db)
+       ;; This call fails as the dates on PostgreSQL return 'AEST'
+       ;; for the time zone name. The exception is logged, but the
+       ;; timezone column should be left alone and processing should
+       ;; continue
+       (tu/with-temporary-setting-values [report-timezone "Australia/Sydney"]
+         (do
+           (sync-tz/sync-timezone! db)
+           (db-timezone db)))])))

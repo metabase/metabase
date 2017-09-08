@@ -197,24 +197,6 @@
   (current-db-time ^DateTime [this ^DatabaseInstance database]
     "Returns the current time and timezone from the perspective of `DATABASE`."))
 
-(defn create-db-time-formatter
-  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
-  the offset/timezone information. Results of this are threadsafe and
-  can safely be def'd"
-  [date-format-str]
-  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
-
-(defn make-current-db-time-fn
-  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
-  for the current time. Returns a function that executes the query and
-  parses the date returned preserving it's timezone"
-  [date-formatter native-query]
-  (fn [driver database]
-    (some->> (execute-query driver {:database database, :native {:query native-query}})
-             :rows
-             ffirst
-             (tformat/parse date-formatter))))
-
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
   {:date-interval                     (u/drop-first-arg u/relative-date)
@@ -280,6 +262,48 @@
   "Tests if a driver supports a given feature."
   [driver feature]
   (contains? (features driver) feature))
+
+(defn report-timezone-if-supported
+  "Returns the report-timezone if `DRIVER` supports setting it's
+  timezone and a report-timezone has been specified by the user"
+  [driver]
+  (when (driver-supports? driver :set-timezone)
+    (let [report-tz (report-timezone)]
+      (when-not (empty? report-tz)
+        report-tz))))
+
+(defn create-db-time-formatter
+  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
+  the offset/timezone information. Results of this are threadsafe and
+  can safely be def'd"
+  [date-format-str]
+  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
+
+(defn make-current-db-time-fn
+  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
+  for the current time. Returns a function that executes the query and
+  parses the date returned preserving it's timezone"
+  [date-formatter native-query]
+  (fn [driver database]
+    (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
+                     {:settings {:report-timezone report-tz}})
+          time-str (try
+                     (->> (merge settings {:database database, :native {:query native-query}})
+                          (execute-query driver)
+                          :rows
+                          ffirst)
+                     (catch Exception e
+                       (throw
+                        (Exception.
+                         (format "Error querying database '%s' for current time" (:name database)) e))))]
+      (try
+        (when time-str
+          (tformat/parse date-formatter time-str))
+        (catch Exception e
+          (throw
+           (Exception.
+            (format "Unable to parse date string '%s' for database engine '%s'"
+                    time-str (-> database :engine name)) e)))))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
