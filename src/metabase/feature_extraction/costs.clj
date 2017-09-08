@@ -49,7 +49,7 @@
   ^{:doc "Estimate cost of feature extraction for given model.
           Cost is equal to the number of values in the corresponding dataset
           (ie. rows * fields). If cost cannot be estimated (eg. for Cards
-          employing aggregation or defined in SQL), returns nil."
+          employing aggregation or defined in SQL), returns -1."
     :arglists '([model])}
   estimate-cost type)
 
@@ -59,9 +59,10 @@
 
 (defmethod estimate-cost (type Card)
   [card]
-  (when-not (or (-> card :dataset_query :native)
-                (-> card :dataset_query :query :aggregation))
-    (* 2 (:rows (Table (:table_id card))))))
+  (if (or (-> card :dataset_query :native)
+          (-> card :dataset_query :query :aggregation))
+    -1
+    (* 2 (:rows (Table (:table_id card))))))cc
 
 (defmethod estimate-cost (type Segment)
   [segment]
