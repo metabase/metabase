@@ -106,8 +106,8 @@ export class NewQueryOptions extends Component {
 
     render() {
         const { query, metadataFetched, isAdmin, metricSearchUrl, segmentSearchUrl } = this.props
-        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
         const { showMetricOption, showSegmentOption, showSQLOption } = this.state
+        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
 
         if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
             return <LoadingAndErrorWrapper loading={true}/>
