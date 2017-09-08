@@ -1,26 +1,31 @@
 import { createSelector } from 'reselect'
 import { normal } from 'metabase/lib/colors'
 
+export const getLoadingStatus = (state) =>
+    state.xray.loading
+
+/* TODO - these can be collapsed into getXray */
 export const getFieldXray = (state) =>
-    state.xray.fieldXray && state.xray.fieldXray.features
+    state.xray.xray && state.xray.xray.features
 
 export const getTableXray = (state) =>
-    state.xray.tableXray && state.xray.tableXray.features
+    state.xray.xray && state.xray.xray.features
 
 export const getSegmentXray = (state) =>
-    state.xray.segmentXray && state.xray.segmentXray.features
+    state.xray.xray && state.xray.xray.features
 
+/* TODO - these can be collapsed into getConstituents */
 export const getTableConstituents = (state) =>
-    state.xray.tableXray && (
-        Object.keys(state.xray.tableXray.constituents).map(key =>
-            state.xray.tableXray.constituents[key]
+    state.xray.xray && (
+        Object.keys(state.xray.xray.constituents).map(key =>
+            state.xray.xray.constituents[key]
         )
     )
 
 export const getSegmentConstituents = (state) =>
-    state.xray.segmentXray && (
-        Object.keys(state.xray.segmentXray.constituents).map(key =>
-            state.xray.segmentXray.constituents[key]
+    state.xray.xray && (
+        Object.keys(state.xray.xray.constituents).map(key =>
+            state.xray.xray.constituents[key]
         )
     )
 

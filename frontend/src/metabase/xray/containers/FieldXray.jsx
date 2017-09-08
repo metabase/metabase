@@ -7,7 +7,7 @@ import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
 import { fetchFieldXray } from 'metabase/xray/xray'
-import { getFieldXray } from 'metabase/xray/selectors'
+import { getFieldXray, getLoadingStatus } from 'metabase/xray/selectors'
 
 import COSTS from 'metabase/xray/costs'
 
@@ -31,6 +31,7 @@ import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
     fetchFieldXray: () => void,
+    isLoading: boolean,
     xray: {
         table: Table,
         field: Field,
@@ -45,7 +46,8 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    xray: getFieldXray(state)
+    xray: getFieldXray(state),
+    isLoading: getLoadingStatus(state)
 })
 
 const mapDispatchToProps = {
@@ -83,11 +85,11 @@ class FieldXRay extends Component {
     }
 
     render () {
-        const { xray, params } = this.props
+        const { xray, params, isLoading } = this.props
         const { error } = this.state
         return (
             <LoadingAndErrorWrapper
-                loading={!xray}
+                loading={isLoading}
                 error={error}
                 noBackground
             >
