@@ -9,16 +9,21 @@
              [datasets :as datasets :refer [*driver* *engine*]]
              [interface :as i]]))
 
-;; There were 9 "sad toucan incidents" on 2015-06-02
+;; There were 10 "sad toucan incidents" on 2015-06-02 in UTC
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *driver*)
-    10
-    9)
-  (count (rows (data/dataset sad-toucan-incidents
-                 (data/run-query incidents
-                   (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
-                                      (ql/< $timestamp "2015-06-03")))
-                   (ql/order-by (ql/asc $timestamp)))))))
+  10
+
+  ;; There's a race condition with this test. If we happen to grab a
+  ;; connection that is in a session with the timezone set to pacific,
+  ;; we'll get 9 results even when the above if statement is true. It
+  ;; seems to be pretty rare, but explicitly specifying UTC will make
+  ;; the issue go away
+  (tu/with-temporary-setting-values [report-timezone "UTC"]
+    (count (rows (data/dataset sad-toucan-incidents
+                   (data/run-query incidents
+                     (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
+                                        (ql/< $timestamp "2015-06-03")))
+                     (ql/order-by (ql/asc $timestamp))))))))
 
 (expect-with-non-timeseries-dbs
   (cond
