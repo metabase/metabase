@@ -114,3 +114,5 @@ export const getTableItem = (state, index = 1) => createSelector(
 
 export const getComparisonForField = createSelector
 
+export const getMaxCost = state => state.settings.values['xray-max-cost']
+
