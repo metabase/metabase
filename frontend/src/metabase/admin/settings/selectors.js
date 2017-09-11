@@ -372,7 +372,14 @@ const SECTIONS = [
             {
                 key: "enable-xrays",
                 display_name: "Enable X-Rays",
-                type: "boolean"
+                type: "boolean",
+                allowValueCollection: true
+            },
+            {
+                key: "xray-max-cost",
+                type: "string",
+                allowValueCollection: true
+
             }
         ]
     }

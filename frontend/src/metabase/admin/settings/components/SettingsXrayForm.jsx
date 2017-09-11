@@ -6,23 +6,23 @@ import Icon from 'metabase/components/Icon'
 
 import COSTS from 'metabase/xray/costs'
 
-const SettingsXrayForm = ({ settings, elements, updateSetting }) =>
-    <div>
-        <div className="mx2">
-            <h2>X-Rays and Comparisons</h2>
-        </div>
+const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
+    const maxCost = Object.assign({}, ...elements.filter(e => e.key === 'xray-max-cost',))
+    const enabled = Object.assign({}, ...elements.filter(e => e.key === 'enable-xrays',))
+    return (
+        <div>
+            <div className="mx2">
+                <h2>X-Rays and Comparisons</h2>
+            </div>
 
-        <ol className="mt4">
-            { elements.map(element =>
+            <ol className="mt4">
                 <SettingsSetting
-                    key={element.key}
-                    setting={element}
-                    updateSetting={updateSetting}
+                    key={enabled.key}
+                    setting={enabled}
+                    updateSetting={(value) => updateSetting(enabled, value)}
                 />
-            )}
-        </ol>
+            </ol>
 
-        { settings['xrays-enabled'] && (
             <div className="mx2 text-measure">
                 <h3>Maximum Cost</h3>
                 <p className="m0 text-paragraph">
@@ -35,10 +35,10 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) =>
                             <li
                                 className={cx(
                                     'flex align-center mb2 cursor-pointer text-brand-hover',
-                                    { 'text-brand' : settings['xray-max-cost'] === key }
+                                    { 'text-brand' : maxCost.value === key }
                                 )}
                                 key={key}
-                                onClick={() => updateSetting()}
+                                onClick={() => updateSetting(maxCost, key)}
                             >
                                 <Icon
                                     className="flex-no-shrink"
@@ -56,7 +56,8 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) =>
                     })}
                 </ol>
             </div>
-        )}
-    </div>
+        </div>
+    )
+}
 
 export default SettingsXrayForm
