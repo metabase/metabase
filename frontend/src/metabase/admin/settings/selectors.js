@@ -55,10 +55,7 @@ const SECTIONS = [
                 key: "site-locale",
                 display_name: "Language",
                 type: "select",
-                options:  MetabaseSettings.get("available_locales").map(([value, name]) => ({
-                    name,
-                    value: value === "en" ? null : value // HACK: "en" is the default thus will be null
-                })),
+                options:  MetabaseSettings.get("available_locales").map(([value, name]) => ({ name, value })),
                 placeholder: "Select a language"
             },
             {

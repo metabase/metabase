@@ -41,8 +41,7 @@
 (defn sync-locale []
   (let [new-locale     (or (not-empty (setting/get :site-locale)) "en")
         current-locale (.toLanguageTag (Locale/getDefault))]
-    (log/info (trs "Hello World!"))
-    (if (not= current-locale new-locale)
+    (when-not (= current-locale new-locale)
       (Locale/setDefault (Locale/forLanguageTag new-locale)))))
 
 ;;; CONFIG

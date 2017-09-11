@@ -116,9 +116,9 @@
         num-tables         (db/count 'Table)
         num-cards          (db/count 'Card)
         num-users          (db/count 'User)]
-    [{:title       (trs "Add a database")
-      :group       (trs "Get connected")
-      :description (trs "Connect to your data so your whole team can start to explore.")
+    [{:title       (tru "Add a database")
+      :group       (tru "Get connected")
+      :description (tru "Connect to your data so your whole team can start to explore.")
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}

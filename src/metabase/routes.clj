@@ -34,7 +34,6 @@
   (stencil/render-string (load-file-at-path path) variables))
 
 (defn- load-localization []
-  (log/info *locale*)
   (if (and *locale* (not= (str *locale*) "en"))
     (try
       (load-file-at-path (str "frontend_client/app/locales/" *locale* ".json"))
