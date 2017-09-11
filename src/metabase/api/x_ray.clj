@@ -33,8 +33,9 @@
 
 (defn- max-cost
   [query computation]
-  {:query       (keyword query)
-   :computation (keyword computation)})
+  (costs/apply-global-cost-cap
+   {:query       (keyword query)
+    :computation (keyword computation)}))
 
 (api/defendpoint GET "/field/:id"
   "Get x-ray for a `Field` with ID."
