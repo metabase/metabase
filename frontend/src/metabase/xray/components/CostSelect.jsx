@@ -38,7 +38,6 @@ const CostSelect = ({ currentCost, location, maxCost }) => {
                             className={cx(
                                 "flex align-center justify-center cursor-pointer bg-brand-hover text-white-hover transition-background transition-text text-grey-2",
                                 { 'bg-brand text-white': currentCost === cost },
-                                { 'disabled': getDisabled(maxCost).indexOf(cost) > 0 }
                             )}
                         >
                             <Tooltip

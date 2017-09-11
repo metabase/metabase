@@ -8,7 +8,7 @@ import {
 } from "__support__/enzyme_utils"
 
 import { mount } from "enzyme";
-import { CardApi, SegmentApi } from "metabase/services";
+import { CardApi, SegmentApi, SettingsApi } from "metabase/services";
 
 import { delay } from "metabase/lib/promise";
 import { FETCH_CARD_XRAY, FETCH_SEGMENT_XRAY, FETCH_TABLE_XRAY } from "metabase/xray/xray";
@@ -23,7 +23,7 @@ import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
 
 // settings related actions for testing xray administration
-import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/settings";
+import { INITIALIZE_SETTINGS, UPDATE_SETTING, REFRESH_SETTINGS_LIST } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
 
 import Icon from "metabase/components/Icon"
@@ -66,10 +66,11 @@ describe("xray integration tests", () => {
         await SegmentApi.delete({ segmentId, revision_message: "Sadly this segment didn't enjoy a long life either" })
         await CardApi.delete({cardId: timeBreakoutQuestion.id()})
         await CardApi.delete({cardId: segmentQuestion.id()})
+        await SettingsApi.put({ key: 'enable-xrays' }, true)
     })
 
     describe("for table xray", async () => {
-        xit("should render the table xray page without errors", async () => {
+        it("should render the table xray page without errors", async () => {
             const store = await createTestStore()
             store.pushPath(`/xray/table/1/approximate`);
 
@@ -88,7 +89,7 @@ describe("xray integration tests", () => {
     // in the same tests so that we see that end-to-end user experience matches our expectations
 
     describe("query builder actions", async () => {
-        xit("let you see card xray for a timeseries question", async () => {
+        it("let you see card xray for a timeseries question", async () => {
             const store = await createTestStore()
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
@@ -111,7 +112,7 @@ describe("xray integration tests", () => {
             expect(cardXRay.text()).toMatch(/Time breakout question/);
         })
 
-        xit("let you see segment xray for a question containing a segment", async () => {
+        it("let you see segment xray for a question containing a segment", async () => {
             const store = await createTestStore()
             store.pushPath(Urls.question(segmentQuestion.id()))
             const app = mount(store.getAppContainer());
@@ -151,25 +152,34 @@ describe("xray integration tests", () => {
             // there should be a toggle
             expect(xrayToggle.length).toEqual(1)
 
+            expect(store.getState().settings.values['enable-xrays']).toEqual(null)
+
             // the toggle should be on by default
             expect(xrayToggle.props().value).toEqual(true)
 
 
             // toggle the... toggle
             click(xrayToggle)
-            expect(xrayToggle.props().value).toEqual(false)
+            await store.waitForActions([UPDATE_SETTING])
+            expect(store.getState().settings.values['enable-xrays']).toEqual(false)
+
 
             // navigate to a previosuly x-ray-able entity
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
-
             await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
 
-            app = mount(store.getAppContainer())
+            // for some reason a delay is needed to get the full action suite
+            await delay(500);
 
-            console.log('post admin', app.debug())
+            const actionsWidget = app.find(ActionsWidget)
+            click(actionsWidget.childAt(0))
+
+            // there should not be an xray option
+            const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
+            expect(xrayOptionIcon.length).toEqual(0)
         })
 
-        it("should let an admin set the max cost of xrays", async () => {
+        xit("should let an admin set the max cost of xrays", async () => {
             const store = await createTestStore()
 
             store.pushPath('/admin/settings/x_rays')
@@ -181,6 +191,21 @@ describe("xray integration tests", () => {
             const xraySettings = app.find(SettingsXrayForm)
 
             expect(xraySettings.find(Icon).length).toEqual(3)
+
+            const approximate = xraySettings.find('li').first()
+
+            //click(toggle)
+            await store.waitForActions([UPDATE_SETTING])
+
+            store.debug()
+            //console.log(approximate)
+            //:w
+            //jconsole.log(app.debug())
+
+            //click(approximate)
+
+
+            expect(approximate.hasClass('text-brand')).toEqual(true)
 
         })
     })

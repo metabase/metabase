@@ -22,6 +22,8 @@ import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent } from "metabase/meta/Card";
 
+import { getXrayEnabled } from "metabase/xray/selectors";
+
 import {
     getTableMetadata,
     getNativeDatabases,
@@ -291,6 +293,9 @@ export const initializeQB = (location, params) => {
 
         // Fetch the question metadata
         card && dispatch(loadMetadataForCard(card));
+
+        const canXray = getXrayEnabled(getState())
+        card.canXray = canXray
 
         const question = card && new Question(getMetadata(getState()), card);
 

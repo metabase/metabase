@@ -6,7 +6,7 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
-    if (question.card().id) {
+    if (question.card().id && question.canXray()) {
         return [
             {
                 name: "xray-card",
