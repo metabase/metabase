@@ -6,7 +6,6 @@
              [core :as t]
              [format :as t.format]
              [periodic :as t.periodic]]
-            [clojure.math.numeric-tower :refer [floor]]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -23,8 +22,6 @@
             [redux.core :as redux]
             [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
-
-(def ^:private percentiles (range 0 1 0.1))
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
@@ -161,6 +158,8 @@
 (defmethod comparison-vector :default
   [features]
   (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
+
+(def ^:private percentiles (range 0 1 0.1))
 
 (defn- histogram-extractor
   [{:keys [histogram]}]
@@ -327,7 +326,10 @@
 
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
-  (let [resolution (let [[head _ resolution] (-> query :breakout first)]
+  (let [resolution (let [[head resolution] (-> query
+                                               :breakout
+                                               first
+                                               ((juxt first last)))]
                      (when (= head "datetime-field")
                        (keyword resolution)))]
     (redux/post-complete
@@ -463,29 +465,24 @@
 
 (defn- month-frequencies
   [earliest latest]
-  (let [earilest    (round-to-month latest)
-        latest      (round-to-month latest)
-        start-month (t/month earliest)
-        duration    (t/in-months (t/interval earliest latest))]
-    (->> (range (dec start-month) (+ start-month duration))
-         (map #(inc (mod % 12)))
-         frequencies)))
+  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
+       (take-while (complement (partial t/before? latest)))
+       (map t/month)
+       frequencies))
 
 (defn- quarter-frequencies
   [earliest latest]
-  (let [earilest      (round-to-month latest)
-        latest        (round-to-month latest)
-        start-quarter (quarter earliest)
-        duration      (floor (/ (t/in-months (t/interval earliest latest)) 3))]
-    (->> (range (dec start-quarter) (+ start-quarter duration))
-         (map #(inc (mod % 4)))
-         frequencies)))
+  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
+       (take-while (complement (partial t/before? latest)))
+       (m/distinct-by (juxt t/year quarter))
+       (map quarter)
+       frequencies))
 
 (defn- weigh-periodicity
   [weights card]
   (let [baseline (apply min (vals weights))]
     (update card :rows (partial map (fn [[k v]]
-                                      [k (* v (/ baseline (weights k)))])))))
+                                      [k (* v (/ baseline (weights k 1)))])))))
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]

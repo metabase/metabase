@@ -3820,3 +3820,12 @@ databaseChangeLog:
                   defaultValue: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 64
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: raw_table
+          constraintName: fk_rawtable_ref_database
+          remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'

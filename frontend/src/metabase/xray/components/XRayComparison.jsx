@@ -15,6 +15,7 @@ import { distanceToPhrase } from 'metabase/xray/utils'
 
 // right now we rely on knowing that itemB is the only one that
 // can contain a table
+/*
 const fieldLinkUrl = (itemA, itemB, fieldName) => {
     let url = `segments/${itemA.id}/${itemB.id}`
     if(itemB.itemType === 'table') {
@@ -22,6 +23,7 @@ const fieldLinkUrl = (itemA, itemB, fieldName) => {
     }
     return `/xray/compare/${url}/field/${fieldName}/approximate`
 }
+*/
 
 const itemLinkUrl = (item) =>
     `/xray/${item.itemType}/${item.id}/approximate`
@@ -49,12 +51,12 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
     </div>
 
 const Contributor = ({ contributor, itemA, itemB }) =>
-    <div>
+    <div className="full-height">
         <h3 className="mb2">
             {contributor.field.display_name}
         </h3>
 
-        <div className="bg-white shadowed rounded bordered">
+        <div className="ComparisonContributor bg-white shadowed rounded bordered full-height">
                 <div>
                     <div className="p2 flex align-center">
                         <h4>{contributor.feature.label}</h4>
@@ -78,10 +80,10 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                             />
                         ) : (
                             <div className="flex align-center px2 py3">
-                                <h1 className="p3" style={{ color: itemA.color.text }}>
+                                <h1 className="p2 lg-p3" style={{ color: itemA.color.text }}>
                                     {contributor.feature.value.a}
                                 </h1>
-                                <h1 className="p3" style={{ color: itemB.color.text }}>
+                                <h1 className="p2 lg-p3" style={{ color: itemB.color.text }}>
                                     {contributor.feature.value.b}
                                 </h1>
                             </div>
@@ -90,12 +92,14 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                 </div>
 
             <div className="flex">
+                { /*
                 <Link
                     to={fieldLinkUrl(itemA, itemB, contributor.field.name)}
                     className="text-grey-3 text-brand-hover no-decoration transition-color ml-auto text-bold px2 pb2"
                 >
                     View full comparison
-                    </Link>
+                </Link>
+                */}
                 </div>
             </div>
     </div>
@@ -253,7 +257,7 @@ const XRayComparison = ({
                                 </td>
                                 <td
                                     className="px2 border-right"
-                                    style={{minWidth: 400}}
+                                    style={{maxWidth: 200, minHeight: 120 }}
                                 >
                                     { itemA.constituents[field.name]['histogram'] && (
                                     <CompareHistograms

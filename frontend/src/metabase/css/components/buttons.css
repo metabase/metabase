@@ -107,6 +107,7 @@
 }
 
 .Button--purple:hover {
+    color: white;
     background-color: #885AB1;
     border-color: #885AB1;
 }
