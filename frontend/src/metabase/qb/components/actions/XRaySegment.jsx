@@ -18,7 +18,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                 const segment = question.metadata().segments[id];
                 return {
                     name: "xray-segment",
-                    title: `XRay ${segment && segment.name}`,
+                    title: `X-ray ${segment && segment.name}`,
                     icon: "beaker",
                     url: () => `/xray/segment/${id}/approximate`
                 };
