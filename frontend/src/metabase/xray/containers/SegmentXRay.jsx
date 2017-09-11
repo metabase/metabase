@@ -98,7 +98,7 @@ class SegmentXRay extends Component {
                                     <h1 className="mt2 flex align-center">
                                         {xray.segment.name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">XRay</span>
+                                        <span className="text-grey-3">X-ray</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
                                         {xray.segment.description}
