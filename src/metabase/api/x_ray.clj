@@ -1,5 +1,5 @@
 (ns metabase.api.x-ray
-  (:require [compojure.core :refer [GET]]
+  (:require [compojure.core :refer [GET PUT]]
             [metabase.api.common :as api]
             [metabase.feature-extraction.core :as fe]
             [metabase.models
@@ -7,7 +7,8 @@
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [setting :as setting]]
             [schema.core :as s]))
 
 ;; See metabase.feature-extraction.core/extract-features for description of
@@ -187,5 +188,16 @@
    ["segment" "segment"
     "table" "table"
     "segment" "table"]])
+
+(def ^:private Settings
+  {:xray-max-cost (s/enum "exact" "approximate" "extended")
+   :enable-xrays  s/Bool})
+
+(api/defendpoint PUT "/settings"
+  "Update x-ray related settings. You must be a superuser to do this."
+  [:as {settings :body}]
+  {settings Settings}
+  (api/check-superuser)
+  (setting/set-many! settings))
 
 (api/define-routes)

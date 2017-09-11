@@ -1,11 +1,27 @@
 (ns metabase.feature-extraction.costs
   "Predicates for limiting resource expanditure during feature extraction."
-  (:require [schema.core :as s]))
+  (:require [metabase.models
+             [setting :refer [defsetting] :as setting]]
+            [schema.core :as s]))
 
 (def MaxCost
   "Schema for max-cost parameter."
   {:computation (s/enum :linear :unbounded :yolo)
    :query       (s/enum :cache :sample :full-scan :joins)})
+
+(defsetting xray-max-cost
+  "Cap resorce expanditure for all x-rays. (exact, approximate, or extended)"
+  :type    :string
+  :default "extended"
+  :setter  (fn [new-value]
+             (when-not (nil? new-value)
+               (assert (contains? #{"exact" "approximate" "extended"} new-value)))
+             (setting/set-string! :max-cost new-value)))
+
+(defsetting enable-xrays
+  "Should x-raying be available at all?"
+  :type    :boolean
+  :default true)
 
 (def ^{:arglists '([max-cost])} linear-computation?
   "Limit computation to O(n) or better."
