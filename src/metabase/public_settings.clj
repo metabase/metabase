@@ -37,7 +37,8 @@
 
 (defsetting site-locale
   "The default language for this Metabase instance. This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface."
-  :type :string)
+  :type :string
+  :default "en")
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")

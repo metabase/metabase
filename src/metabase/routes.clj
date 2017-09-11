@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [compojure
              [core :refer [context defroutes GET]]
              [route :as route]]
@@ -13,7 +14,7 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
-            [puppetlabs.i18n.core :refer [trs locale-negotiator user-locale]]
+            [puppetlabs.i18n.core :refer [trs locale-negotiator *locale*]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 
@@ -33,10 +34,12 @@
   (stencil/render-string (load-file-at-path path) variables))
 
 (defn- load-localization []
-  (if (user-locale)
+  (log/info *locale*)
+  (if (and *locale* (not= (str *locale*) "en"))
     (try
-      (load-file-at-path (str "frontend_client/app/locales/" (user-locale) ".json"))
+      (load-file-at-path (str "frontend_client/app/locales/" *locale* ".json"))
     (catch Throwable e
+      (log/warn (str "Locale " *locale* " not found."))
       "null"))
     "null"))
 

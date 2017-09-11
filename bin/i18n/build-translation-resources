@@ -14,9 +14,10 @@ LOCALES_QUOTED=$(echo "$LOCALES" | awk '{ printf "\"%s\" ", $0 }')
 FRONTEND_LANG_DIR="resources/frontend_client/app/locales"
 
 # backend
+# NOTE: include "en" even though we don't have a .po file for it because it's the default?
 cat << EOF > "resources/locales.clj"
 {
-  :locales  #{$LOCALES_QUOTED}
+  :locales  #{"en" $LOCALES_QUOTED}
   :packages ["metabase"]
   :bundle   "metabase.Messages"
 }
