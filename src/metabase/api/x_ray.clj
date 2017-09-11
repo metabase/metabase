@@ -1,7 +1,9 @@
 (ns metabase.api.x-ray
   (:require [compojure.core :refer [GET PUT]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction.core :as fe]
+            [metabase.feature-extraction
+             [core :as fe]
+             [costs :as costs]]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -190,7 +192,7 @@
     "segment" "table"]])
 
 (def ^:private Settings
-  {:xray-max-cost (s/enum "exact" "approximate" "extended")
+  {:xray-max-cost costs/MaxCostBundles
    :enable-xrays  s/Bool})
 
 (api/defendpoint PUT "/settings"

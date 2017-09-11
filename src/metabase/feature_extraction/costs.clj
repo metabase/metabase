@@ -5,18 +5,21 @@
             [schema.core :as s]))
 
 (def MaxCost
-  "Schema for max-cost parameter."
+  "Schema for `max-cost` parameter."
   {:computation (s/enum :linear :unbounded :yolo)
    :query       (s/enum :cache :sample :full-scan :joins)})
+
+(def MaxCostBundles
+  "Predefined `max-cost` bundles."
+  (s/maybe (s/enum "exact" "approximate" "extended")))
 
 (defsetting xray-max-cost
   "Cap resorce expanditure for all x-rays. (exact, approximate, or extended)"
   :type    :string
   :default "extended"
   :setter  (fn [new-value]
-             (when-not (nil? new-value)
-               (assert (contains? #{"exact" "approximate" "extended"} new-value)))
-             (setting/set-string! :max-cost new-value)))
+             (s/validate MaxCostBundles new-value)
+             (setting/set-string! :xray-max-cost new-value)))
 
 (defsetting enable-xrays
   "Should x-raying be available at all?"
