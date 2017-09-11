@@ -333,11 +333,6 @@
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
   (jdbc-clob->str [this]
-    (jdbc-clob->str (.getCharacterStream this)))
-
-  ;; SQL Server -- See also http://jtds.sourceforge.net/doc/net/sourceforge/jtds/jdbc/ClobImpl.html
-  net.sourceforge.jtds.jdbc.ClobImpl
-  (jdbc-clob->str [this]
     (jdbc-clob->str (.getCharacterStream this))))
 
 
@@ -539,36 +534,6 @@
      (with-out-str (pprint x))))
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
-
-(def emoji-progress-bar
-  "Create a string that shows progress for something, e.g. a database sync process.
-
-     (emoji-progress-bar 10 40)
-       -> \"[************······································] 😒   25%"
-  (let [^:const meter-width    50
-        ^:const progress-emoji ["😱"  ; face screaming in fear
-                                "😢"  ; crying face
-                                "😞"  ; disappointed face
-                                "😒"  ; unamused face
-                                "😕"  ; confused face
-                                "😐"  ; neutral face
-                                "😬"  ; grimacing face
-                                "😌"  ; relieved face
-                                "😏"  ; smirking face
-                                "😋"  ; face savouring delicious food
-                                "😊"  ; smiling face with smiling eyes
-                                "😍"  ; smiling face with heart shaped eyes
-                                "😎"] ; smiling face with sunglasses
-        percent-done->emoji    (fn [percent-done]
-                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
-    (fn [completed total]
-      (let [percent-done (float (/ completed total))
-            filleds      (int (* percent-done meter-width))
-            blanks       (- meter-width filleds)]
-        (str "["
-             (s/join (repeat filleds "*"))
-             (s/join (repeat blanks "·"))
-             (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
 
 
 (defprotocol ^:private IFilteredStacktrace
@@ -880,3 +845,52 @@
   [m & {:keys [present non-nil]}]
   (merge (select-keys m present)
          (select-non-nil-keys m non-nil)))
+
+(defn order-of-magnitude
+  "Return the order of magnitude as a power of 10 of a given number."
+  [x]
+  (if (zero? x)
+    0
+    (long (math/floor (/ (Math/log (math/abs x))
+                         (Math/log 10))))))
+
+(defn update-when
+  "Like clojure.core/update but does not create a new key if it does not exist."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
+(def ^:private date-time-with-millis-no-t
+  "This primary use for this formatter is for Dates formatted by the
+  built-in SQLite functions"
+  (->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+
+(def ^:private ordered-date-parsers
+  "When using clj-time.format/parse without a formatter, it tries all
+  default formatters, but not ordered by how likely the date
+  formatters will succeed. This leads to very slow parsing as many
+  attempts fail before the right one is found. Using this retains that
+  flexibility but improves performance by trying the most likely ones
+  first"
+  (let [most-likely-default-formatters [:mysql :date-hour-minute-second :date-time :date
+                                        :basic-date-time :basic-date-time-no-ms
+                                        :date-time :date-time-no-ms]]
+    (concat (map time/formatters most-likely-default-formatters)
+            [date-time-with-millis-no-t]
+            (vals (apply dissoc time/formatters most-likely-default-formatters)))))
+
+(defn str->date-time
+  "Like clj-time.format/parse but uses an ordered list of parsers to
+  be faster. Returns the parsed date or nil if it was unable to be
+  parsed."
+  ([^String date-str]
+   (str->date-time date-str nil))
+  ([^String date-str ^TimeZone tz]
+   (let [dtz (some-> tz .getID t/time-zone-for-id)]
+     (first
+      (for [formatter ordered-date-parsers
+            :let [formatter-with-tz (time/with-zone formatter dtz)
+                  parsed-date (ignore-exceptions (time/parse formatter-with-tz date-str))]
+            :when parsed-date]
+        parsed-date)))))

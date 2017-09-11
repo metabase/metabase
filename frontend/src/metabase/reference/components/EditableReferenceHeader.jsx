@@ -10,6 +10,7 @@ import E from "metabase/reference/components/EditButton.css";
 
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Input from "metabase/components/Input.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import EditButton from "metabase/reference/components/EditButton.jsx";
 
@@ -54,21 +55,19 @@ const EditableReferenceHeader = ({
                 style={isEditing && name === 'Details' ? {alignItems: "flex-start"} : {}}
             >
                 { isEditing && name === 'Details' ?
-                    hasDisplayName ?
-                        <input
+                        <Input
                             className={S.headerTextInput}
                             type="text"
                             placeholder={entity.name}
-                            {...displayNameFormField}
-                            defaultValue={entity.display_name}
-                        /> :
-                        <input
-                            className={S.headerTextInput}
-                            type="text"
-                            placeholder={entity.name}
-                            {...nameFormField}
-                            defaultValue={entity.name}
-                        /> :
+                            onChange={
+                                hasDisplayName ? displayNameFormField.onChange : nameFormField.onChange
+                            }
+                            defaultValue={
+                                hasDisplayName ? entity.display_name : entity.name
+                            }
+
+                        />
+                        :
                     [
                         <Ellipsified
                             key="1"

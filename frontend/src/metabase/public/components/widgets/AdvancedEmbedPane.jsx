@@ -83,7 +83,7 @@ const AdvancedEmbedPane = ({
                         { resource.enable_embedding && !_.isEqual(resource.embedding_params, embeddingParams) ?
                             <Button className="ml1" medium onClick={onDiscard}>Discard Changes</Button>
                         : null }
-                        <ActionButton className="ml1" success medium actionFn={onSave} activeText="Updating..." successText="Updated" failedText="Failed!">Publish</ActionButton>
+                        <ActionButton className="ml1" primary medium actionFn={onSave} activeText="Updating..." successText="Updated" failedText="Failed!">Publish</ActionButton>
                     </div>
                 </div>
             : null }

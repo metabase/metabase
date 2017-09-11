@@ -2,7 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
+            [metabase.util
+             [cron :as cron-util]
+             [encryption :as encryption]]
+            [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan.models :as models])
   (:import java.sql.Blob))
@@ -58,6 +61,13 @@
 (models/add-type! :compressed
   :in  compress
   :out decompress)
+
+(defn- validate-cron-string [s]
+  (s/validate (s/maybe cron-util/CronScheduleString) s))
+
+(models/add-type! :cron-string
+  :in  validate-cron-string
+  :out identity)
 
 
 ;;; properties

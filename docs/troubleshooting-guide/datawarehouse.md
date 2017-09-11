@@ -46,3 +46,27 @@ If your credentials are incorrect, you should see an error message letting you k
 
 #### How to fix this:
 If the database name or the user/password combination are incorrect, ask the person running your data warehouse for correct credentials.
+
+
+### Connection time out ("Your question took too long")
+
+#### How to detect this:
+If you see the error message, "Your question took too long," something in your setup timed out. Depending on the specifics of your deployment, this could be a timeout in:
+
+- Your load balancer
+- Your reverse proxy server (e.g. Nginx)
+- Jetty
+- Your database
+- Elastic Beanstalk or EC2
+- Heroku
+- App Engine
+
+#### How to fix this:
+Fixing this depends on your specific setup. Here are some potentially helpful resources:
+
+- [How to Fix 504 Gateway Timeout using Nginx](https://www.scalescale.com/tips/nginx/504-gateway-time-out-using-nginx/)
+- [Configuring Jetty connectors](http://www.eclipse.org/jetty/documentation/9.3.x/configuring-connectors.html)
+- [EC2 Troubleshooting](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html)
+- [Elastic Load Balancing Connection Timeout Management](https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/)
+- [Heroku timeouts](https://devcenter.heroku.com/articles/request-timeout)
+- [App Engine: Dealing with DeadlineExceededErrors](https://cloud.google.com/appengine/articles/deadlineexceedederrors)

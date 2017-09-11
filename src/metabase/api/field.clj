@@ -5,7 +5,7 @@
             [metabase.models
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
-             [field-values :refer [create-field-values-if-needed! field-should-have-field-values? field-values->pairs FieldValues]]]
+             [field-values :as field-values :refer [create-field-values-if-needed! field-should-have-field-values? field-values->pairs FieldValues]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -116,9 +116,9 @@
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
-  [id :as {{dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_id} :body}]
-  {dimension-type         (s/enum "internal" "external")
-   dimension-name         su/NonBlankString
+  [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
+  {dimension-type          (su/api-param "type" (s/enum "internal" "external"))
+   dimension-name          (su/api-param "name" su/NonBlankString)
    human_readable_field_id (s/maybe su/IntGreaterThanZero)}
   (let [field (api/write-check Field id)]
     (api/check (or (= dimension-type "internal")
@@ -194,5 +194,23 @@
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
+
+
+(api/defendpoint POST "/:id/rescan_values"
+  "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
+   FieldValues."
+  [id]
+  (api/check-superuser)
+  (field-values/create-or-update-field-values! (api/check-404 (Field id)))
+  {:status :success})
+
+(api/defendpoint POST "/:id/discard_values"
+  "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
+   Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
+  [id]
+  (api/check-superuser)
+  (field-values/clear-field-values! (api/check-404 (Field id)))
+  {:status :success})
+
 
 (api/define-routes)

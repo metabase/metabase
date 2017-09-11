@@ -7,6 +7,10 @@ import type { DatetimeUnit } from "./Query";
 
 export type ColumnName = string;
 
+export type BinningInfo = {
+    bin_width: number
+}
+
 // TODO: incomplete
 export type Column = {
     id: ?FieldId,
@@ -15,7 +19,8 @@ export type Column = {
     base_type: string,
     special_type: ?string,
     source?: "fields"|"aggregation"|"breakout",
-    unit?: DatetimeUnit
+    unit?: DatetimeUnit,
+    binning_info?: BinningInfo
 };
 
 export type Value = string|number|ISO8601Time|boolean|null|{};

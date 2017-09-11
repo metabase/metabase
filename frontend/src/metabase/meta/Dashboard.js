@@ -76,7 +76,7 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     },
 ];
 
-type ParameterSection = {
+export type ParameterSection = {
     id: string,
     name: string,
     description: string,

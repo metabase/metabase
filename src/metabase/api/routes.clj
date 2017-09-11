@@ -31,7 +31,8 @@
              [table :as table]
              [tiles :as tiles]
              [user :as user]
-             [util :as util]]
+             [util :as util]
+             [x-ray :as x-ray]]
             [metabase.middleware :as middleware]))
 
 (def ^:private +generic-exceptions
@@ -61,6 +62,7 @@
   (context "/email"           [] (+auth email/routes))
   (context "/embed"           [] (+message-only-exceptions embed/routes))
   (context "/field"           [] (+auth field/routes))
+  (context "/x-ray"           [] (+auth x-ray/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
   (context "/geojson"         [] (+auth geojson/routes))
   (context "/label"           [] (+auth label/routes))

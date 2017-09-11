@@ -1,13 +1,17 @@
 (ns metabase.models.dashboard
-  (:require [clojure.data :refer [diff]]
+  (:require [clojure
+             [data :refer [diff]]
+             [set :as set]]
+            [clojure.tools.logging :as log]
             [metabase
-             [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
+             [field-values :as field-values]
              [interface :as i]
+             [params :as params]
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [toucan
@@ -32,33 +36,6 @@
         (some i/can-read? cards))))
 
 
-;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
-
-(defn- pre-delete [dashboard]
-  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
-
-(defn- pre-insert [dashboard]
-  (let [defaults {:parameters   []}]
-    (merge defaults dashboard)))
-
-
-(models/defmodel Dashboard :report_dashboard)
-
-(u/strict-extend (class Dashboard)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
-          :pre-delete  pre-delete
-          :pre-insert  pre-insert
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?  can-read?
-          :can-write? can-read?}))
-
-
 ;;; ---------------------------------------- Hydration ----------------------------------------
 
 (defn ordered-cards
@@ -74,20 +51,32 @@
                :order-by [[:dashcard.created_at :asc]]})))
 
 
-;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------
+;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
 
-(defn create-dashboard!
-  "Create a `Dashboard`"
-  [{:keys [name description parameters], :as dashboard} user-id]
-  {:pre [(map? dashboard)
-         (u/maybe? u/sequence-of-maps? parameters)
-         (integer? user-id)]}
-  (->> (db/insert! Dashboard
-         :name        name
-         :description description
-         :parameters  (or parameters [])
-         :creator_id  user-id)
-       (events/publish-event! :dashboard-create)))
+(models/defmodel Dashboard :report_dashboard)
+
+
+(defn- pre-delete [dashboard]
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
+  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+
+(defn- pre-insert [dashboard]
+  (let [defaults {:parameters []}]
+    (merge defaults dashboard)))
+
+
+(u/strict-extend (class Dashboard)
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
+          :pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  can-read?
+          :can-write? can-read?}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -168,3 +157,61 @@
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
           :revert-to-revision! (u/drop-first-arg revert-dashboard!)
           :diff-str            (u/drop-first-arg diff-dashboards-str)}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 OTHER CRUD FNS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- dashboard-id->param-field-ids
+  "Get the set of Field IDs referenced by the parameters in this Dashboard."
+  [dashboard-or-id]
+  (let [dash (Dashboard (u/get-id dashboard-or-id))]
+    (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
+
+
+(defn- update-field-values-for-on-demand-dbs!
+  "If the parameters have changed since last time this dashboard was saved, we need to update the FieldValues
+   for any Fields that belong to an 'On-Demand' synced DB."
+  [dashboard-or-id old-param-field-ids new-param-field-ids]
+  (when (and (seq new-param-field-ids)
+             (not= old-param-field-ids new-param-field-ids))
+    (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+      (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
+                "Is Now:" new-param-field-ids
+                "Newly Added:" newly-added-param-field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+
+
+(defn add-dashcard!
+  "Add a Card to a Dashboard.
+   This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
+   for example updating FieldValues for On-Demand DBs.
+   Returns newly created DashboardCard."
+  {:style/indent 2}
+  [dashboard-or-id card-or-id & [dashcard-options]]
+  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
+        dashboard-card      (-> (assoc dashcard-options
+                                  :dashboard_id (u/get-id dashboard-or-id)
+                                  :card_id      (u/get-id card-or-id))
+                                ;; if :series info gets passed in make sure we pass it along as a sequence of IDs
+                                (update :series #(filter identity (map u/get-id %))))]
+    (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
+      (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
+        (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids)))))
+
+(defn update-dashcards!
+  "Update the DASHCARDS belonging to DASHBOARD-OR-ID.
+   This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
+   are performed when finished, for example updating FieldValues for On-Demand DBs.
+   Returns `nil`."
+  {:style/indent 1}
+  [dashboard-or-id dashcards]
+  (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
+        dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/get-id dashboard-or-id))]
+    (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
+      ;; ensure the dashcard we are updating is part of the given dashboard
+      (when (contains? dashcard-ids dashcard-id)
+        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
+    (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
+      (update-field-values-for-on-demand-dbs! dashboard-or-id old-param-field-ids new-param-field-ids))))

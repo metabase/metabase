@@ -61,7 +61,8 @@
                     :type     :query
                     :query    {:source-table (str "card__" (u/get-id card))}})
         (m/dissoc-in [:database :features])
-        (m/dissoc-in [:database :details]))))
+        (m/dissoc-in [:database :details])
+        (m/dissoc-in [:database :timezone]))))
 
 ;; make sure that nested nested queries work as expected
 (expect
@@ -100,4 +101,5 @@
                     :type     :query
                     :query    {:source-table (str "card__" (u/get-id card-2)), :limit 25}})
         (m/dissoc-in [:database :features])
-        (m/dissoc-in [:database :details]))))
+        (m/dissoc-in [:database :details])
+        (m/dissoc-in [:database :timezone]))))

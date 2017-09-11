@@ -1,5 +1,8 @@
 (ns metabase.driver.presto
   (:require [clj-http.client :as http]
+            [clj-time
+             [core :as time]
+             [format :as tformat]]
             [clojure
              [set :as set]
              [string :as str]]
@@ -12,11 +15,7 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            [metabase.models
-             [field :as field]
-             [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
@@ -49,17 +48,24 @@
   (or (u/ignore-exceptions (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
       (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
-(defn- field-type->parser [field-type]
+(def ^:private presto-date-time-formatter
+  (u/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+
+(defn- field-type->parser [report-timezone field-type]
   (condp re-matches field-type
     #"decimal.*"                bigdec
     #"time"                     (partial u/parse-date :hour-minute-second-ms)
     #"time with time zone"      parse-time-with-tz
-    #"timestamp"                (partial u/parse-date "yyyy-MM-dd HH:mm:ss.SSS")
+    #"timestamp"                (partial u/parse-date
+                                         (if-let [report-tz (and report-timezone
+                                                                 (time/time-zone-for-id report-timezone))]
+                                           (tformat/with-zone presto-date-time-formatter report-tz)
+                                           presto-date-time-formatter))
     #"timestamp with time zone" parse-timestamp-with-tz
     #".*"                       identity))
 
-(defn- parse-presto-results [columns data]
-  (let [parsers (map (comp field-type->parser :type) columns)]
+(defn- parse-presto-results [report-timezone columns data]
+  (let [parsers (map (comp #(field-type->parser report-timezone %) :type) columns)]
     (for [row data]
       (for [[value parser] (partition 2 (interleave row parsers))]
         (when (some? value)
@@ -69,7 +75,7 @@
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
     (when error
       (throw (ex-info (or (:message error) "Error running query.") error)))
-    (let [rows    (parse-presto-results columns data)
+    (let [rows    (parse-presto-results (:report-timezone details) columns data)
           results {:columns (or columns prev-columns)
                    :rows    (vec (concat prev-rows rows))}]
       (if (nil? nextUri)
@@ -83,7 +89,7 @@
                                                                   (assoc (details->request details-with-tunnel) :body query, :as :json))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
-      (let [rows    (parse-presto-results (or columns []) (or data []))
+      (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
             results {:columns (or columns [])
                      :rows    rows}]
         (if (nil? nextUri)
@@ -108,31 +114,6 @@
         (conj acc value)))))
 
 ;;; IDriver implementation
-
-(defn- field-avg-length [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(round(avg(length(%s))) AS integer) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (or v 0)))
-
-(defn- field-percent-urls [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        {[[v]] :rows}     (execute-presto-query! details sql)]
-    (if (= v "NaN") 0.0 v)))
-
-(defn- analyze-table [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
-     :field-avg-length-fn   field-avg-length
-     :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
 
 (defn- can-connect? [{:keys [catalog] :as details}]
   (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
@@ -207,17 +188,6 @@
      :columns (map (comp keyword :name) columns)
      :rows    rows}))
 
-(defn- field-values-lazy-seq [{field-name :name, :as field}]
-  ;; TODO - look into making this actually lazy
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT %s FROM %s LIMIT %d"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            driver/max-sync-lazy-seq-results)
-        {:keys [rows]}    (execute-presto-query! details sql)]
-    (for [row rows]
-      (first row))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -232,13 +202,6 @@
 
     #".*" ; default
     message))
-
-(defn- table-rows-seq [{:keys [details]} {:keys [schema name]}]
-  (let [sql                        (format "SELECT * FROM %s" (quote+combine-names schema name))
-        {:keys [rows], :as result} (execute-presto-query! details sql)
-        columns                    (map (comp keyword :name) (:columns result))]
-    (for [row rows]
-      (zipmap columns row))))
 
 
 ;;; ISQLDriver implementation
@@ -295,11 +258,13 @@
   clojure.lang.Named
   (getName [_] "Presto"))
 
+(def ^:private presto-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
+(def ^:private presto-db-time-query "select to_iso8601(current_timestamp)")
+
 (u/strict-extend PrestoDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:analyze-table                     analyze-table
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
@@ -334,13 +299,13 @@
                                                                       :standard-deviation-aggregations
                                                                       :expressions
                                                                       :native-parameters
-                                                                      :expression-aggregations}
+                                                                      :expression-aggregations
+                                                                      :binning}
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :table-rows-seq                    (u/drop-first-arg table-rows-seq)})
+          :current-db-time                   (driver/make-current-db-time-fn presto-date-formatter presto-db-time-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -350,7 +315,6 @@
           :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"information_schema"})
-          :field-percent-urls        (u/drop-first-arg field-percent-urls)
           :prepare-value             (u/drop-first-arg prepare-value)
           :quote-style               (constantly :ansi)
           :stddev-fn                 (constantly :stddev_samp)

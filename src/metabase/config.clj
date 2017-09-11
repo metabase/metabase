@@ -9,7 +9,7 @@
   "Are we running on a Windows machine?"
   (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
 
-(def ^:private ^:const app-defaults
+(def ^:private app-defaults
   "Global application defaults"
   {:mb-run-mode            "prod"
    ;; DB Settings
@@ -82,7 +82,14 @@
     (version-info-from-properties-file)
     (version-info-from-shell-script)))
 
-(def ^:const mb-version-string
-  "A formatted version string representing the currently running application."
+(def ^:const ^String mb-version-string
+  "A formatted version string representing the currently running application.
+   Looks something like `v0.25.0-snapshot (1de6f3f nested-queries-icon)`."
   (let [{:keys [tag hash branch]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))
+
+(def ^:const ^String mb-app-id-string
+  "A formatted version string including the word 'Metabase' appropriate for passing along
+   with database connections so admins can identify them as Metabase ones.
+   Looks something like `Metabase v0.25.0.RC1`."
+  (str "Metabase " (mb-version-info :tag)))

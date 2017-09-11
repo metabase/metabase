@@ -21,6 +21,7 @@ Readonly my $release_notes   => artifact('release-notes.html');
 Readonly my $dmg             => artifact('Metabase.dmg');
 
 Readonly my $xcode_project   => get_file_or_die('OSX/Metabase.xcodeproj');
+Readonly my $export_options  => get_file_or_die('OSX/exportOptions.plist');
 
 # Get the version saved in the CFBundle, e.g. '0.11.3.1'
 sub version {
@@ -82,9 +83,9 @@ sub build {
     # Ok, now create the Metabase.app artifact
     system('xcodebuild',
            '-exportArchive',
-           '-exportFormat', 'APP',
+           '-exportOptionsPlist', $export_options,
            '-archivePath', $xcarchive,
-           '-exportPath', $app) == 0 or die $!;
+           '-exportPath', OSX_ARTIFACTS_DIR) == 0 or die $!;
 
     # Ok, we can remove the .xcarchive file now
     remove_tree($xcarchive);

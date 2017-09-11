@@ -73,12 +73,14 @@ export default class ExpressionWidget extends Component {
                 </div>
 
                 <div className="mt2 p2 border-top flex flex-row align-center justify-between">
-                    <div>
-                        <button
-                            className={cx("Button", {"Button--primary": this.isValid()})}
-                            onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
-                            disabled={!this.isValid()}>{this.props.expression ? "Update" : "Done"}</button>
-                        <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
+                    <div className="ml-auto">
+                        <button className="Button" onClick={() => this.props.onCancel()}>Cancel</button>
+                          <button
+                              className={cx("Button ml2", {"Button--primary": this.isValid()})}
+                              onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
+                              disabled={!this.isValid()}>
+                                {this.props.expression ? "Update" : "Done"}
+                          </button>
                     </div>
                     <div>
                         {this.props.expression ?

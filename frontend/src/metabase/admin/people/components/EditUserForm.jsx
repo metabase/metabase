@@ -23,10 +23,16 @@ export default class EditUserForm extends Component {
 
     constructor(props, context) {
         super(props, context);
+
+        const user = props.user
+
         this.state = {
             formError: null,
             valid: false,
-            selectedGroups: {}
+            selectedGroups: {},
+            firstName: user ? user.first_name : null,
+            lastName: user ? user.last_name : null,
+            email: user? user.email : null
         }
     }
 
@@ -41,11 +47,9 @@ export default class EditUserForm extends Component {
         let { valid } = this.state;
         let isValid = true;
 
-        // required: first_name, last_name, email
-        for (var fieldName in this.refs) {
-            let node = ReactDOM.findDOMNode(this.refs[fieldName]);
-            if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
-        }
+        ["firstName", "lastName", "email"].forEach((fieldName) => {
+            if (MetabaseUtils.isEmpty(this.state[fieldName])) isValid = false;
+        });
 
         if(isValid !== valid) {
             this.setState({
@@ -54,7 +58,7 @@ export default class EditUserForm extends Component {
         }
     }
 
-    onChange() {
+    onChange = (e) => {
         this.validateForm();
     }
 
@@ -96,8 +100,8 @@ export default class EditUserForm extends Component {
     }
 
     render() {
-        const { buttonText, user, groups } = this.props;
-        const { formError, valid, selectedGroups } = this.state;
+        const { buttonText, groups } = this.props;
+        const { formError, valid, selectedGroups, firstName, lastName, email } = this.state;
 
         const adminGroup = _.find(groups, isAdminGroup);
 
@@ -106,17 +110,40 @@ export default class EditUserForm extends Component {
                 <div className="px4 pb2">
                     <FormField fieldName="first_name" formError={formError}>
                         <FormLabel title="First name" fieldName="first_name" formError={formError} offset={false}></FormLabel>
-                        <input ref="firstName" className="Form-input full" name="firstName" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
+                        <input
+                            ref="firstName"
+                            className="Form-input full"
+                            name="firstName"
+                            placeholder="Johnny"
+                            value={firstName}
+                            onChange={(e) => { this.setState({ firstName: e.target.value }, () => this.onChange(e)) }}
+                        />
                     </FormField>
 
                     <FormField fieldName="last_name" formError={formError}>
                         <FormLabel title="Last name" fieldName="last_name" formError={formError} offset={false}></FormLabel>
-                        <input ref="lastName" className="Form-input full" name="lastName" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
+                        <input
+                            ref="lastName"
+                            className="Form-input full"
+                            name="lastName"
+                            placeholder="Appleseed"
+                            required
+                            value={lastName}
+                            onChange={(e) => { this.setState({ lastName: e.target.value }, () => this.onChange(e)) }}
+                        />
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>
                         <FormLabel title="Email address" fieldName="email" formError={formError} offset={false}></FormLabel>
-                        <input ref="email" className="Form-input full" name="email" defaultValue={(user) ? user.email : null} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
+                        <input
+                            ref="email"
+                            className="Form-input full"
+                            name="email"
+                            placeholder="youlooknicetoday@email.com"
+                            required
+                            value={email}
+                            onChange={(e) => { this.setState({ email: e.target.value }, () => this.onChange(e)) }}
+                        />
                     </FormField>
 
                     { groups && groups.filter(g => canEditMembership(g) && !isAdminGroup(g)).length > 0 ?
@@ -157,7 +184,7 @@ export default class EditUserForm extends Component {
                         Cancel
                     </Button>
                     <Button primary disabled={!valid}>
-                        { buttonText ? buttonText : "Save Changes" }
+                        { buttonText ? buttonText : "Save changes" }
                     </Button>
                 </ModalFooter>
             </form>

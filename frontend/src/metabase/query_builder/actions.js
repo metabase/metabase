@@ -142,6 +142,11 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, r
     }
 );
 
+export const REDIRECT_TO_NEW_QUESTION_FLOW = "metabase/qb/REDIRECT_TO_NEW_QUESTION_FLOW";
+export const redirectToNewQuestionFlow = createThunkAction(REDIRECT_TO_NEW_QUESTION_FLOW, () =>
+    (dispatch, getState) => dispatch(replace("/question/new"))
+)
+
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
@@ -250,6 +255,12 @@ export const initializeQB = (location, params) => {
 
         } else {
             // we are starting a new/empty card
+            // if no options provided in the hash, redirect to the new question flow
+            if (!options.db && !options.table && !options.segment && !options.metric) {
+                await dispatch(redirectToNewQuestionFlow())
+                return;
+            }
+
             const databaseId = (options.db) ? parseInt(options.db) : undefined;
             card = startNewCard("query", databaseId);
 
@@ -1161,7 +1172,47 @@ export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, 
     }
 )
 
+export const VIEW_NEXT_OBJECT_DETAIL = 'metabase/qb/VIEW_NEXT_OBJECT_DETAIL'
+export const viewNextObjectDetail = () => {
+    return (dispatch, getState) => {
+        const question = getQuestion(getState());
+        let filter = question.query().filters()[0]
 
+
+        let newFilter = ["=", filter[1], filter[2] + 1]
+
+        dispatch.action(VIEW_NEXT_OBJECT_DETAIL)
+
+        dispatch(updateQuestion(
+            question.query().updateFilter(0, newFilter).question()
+        ))
+
+        dispatch(runQuestionQuery());
+    }
+}
+
+export const VIEW_PREVIOUS_OBJECT_DETAIL = 'metabase/qb/VIEW_PREVIOUS_OBJECT_DETAIL'
+
+export const viewPreviousObjectDetail = () => {
+    return (dispatch, getState) => {
+        const question = getQuestion(getState());
+        let filter = question.query().filters()[0]
+
+        if(filter[2] === 1) {
+            return false
+        }
+
+        let newFilter = ["=", filter[1], filter[2] - 1]
+
+        dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL)
+
+        dispatch(updateQuestion(
+            question.query().updateFilter(0, newFilter).question()
+        ))
+
+        dispatch(runQuestionQuery());
+    }
+}
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;

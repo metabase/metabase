@@ -5,7 +5,7 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "240"]
+  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "205"]
             "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
@@ -17,7 +17,7 @@
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
-                 [org.clojure/java.jdbc "0.6.1"]                      ; basic JDBC access from Clojure
+                 [org.clojure/java.jdbc "0.7.0"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
@@ -26,6 +26,7 @@
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.3"]                                      ; Async HTTP library; WebSockets
+                 [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -42,6 +43,7 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
+                 [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev139-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
@@ -50,6 +52,7 @@
                  [com.h2database/h2 "1.4.194"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
+                 [com.microsoft.sqlserver/mssql-jdbc "6.2.1.jre7"]    ; SQLServer JDBC driver. TODO - Switch this to `.jre8` once we officially switch to Java 8
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
@@ -58,6 +61,9 @@
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
+                 [kixi/stats "0.3.8"                                  ; Various statistic measures implemented as transducers
+                  :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
+                               org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -68,7 +74,9 @@
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
-                 [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
+                 [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
+                  :exclusions [org.slf4j/slf4j-api
+                               it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
@@ -77,6 +85,7 @@
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
+                 [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
@@ -114,9 +123,9 @@
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:dependencies [[expectations "2.1.9"]              ; unit tests
+  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
-                   :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
+                   :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
@@ -151,16 +160,5 @@
              ;; Profile Metabase start time with `lein profile`
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
-             ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
-             ;; Create the reset password JAR:  lein with-profile reset-password jar
-             ;;                                   -> ./reset-password-artifacts/reset-password/reset-password.jar
-             ;; Run the reset password JAR:     MB_DB_PATH=/path/to/metabase.db java -classpath /path/to/metabase-uberjar.jar:/path/to/reset-password.jar \
-             ;;                                   metabase.reset_password.core email@address.com
-             :reset-password {:source-paths ["reset_password"]
-                              :main metabase.reset-password.core
-                              :jar-name "reset-password.jar"
-                              ;; Exclude everything except for reset-password specific code in the created jar
-                              :jar-exclusions [#"^(?!metabase/reset_password).*$"]
-                              :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
              ;; get the H2 shell with 'lein h2'
              :h2-shell {:main org.h2.tools.Shell}})

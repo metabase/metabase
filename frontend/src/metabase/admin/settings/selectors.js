@@ -60,6 +60,11 @@ const SECTIONS = [
                 key: "enable-advanced-humanization",
                 display_name: "Friendly Table and Field Names",
                 type: "boolean"
+            },
+            {
+                key: "enable-nested-queries",
+                display_name: "Enable Nested Queries",
+                type: "boolean"
             }
         ]
     },

@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary."
   (:refer-clojure :exclude [resolve])
-  (:require [clojure
+  (:require [clj-time.coerce :as tcoerce]
+            [clojure
              [set :as set]
              [walk :as walk]]
             [medley.core :as m]
@@ -9,16 +10,19 @@
              [db :as mdb]
              [util :as u]]
             [metabase.models
+             [database :refer [Database]]
              [field :as field]
-             [table :refer [Table]]
-             [database :refer [Database]]]
+             [setting :as setting]
+             [table :refer [Table]]]
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
             [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]])
+  (:import java.util.TimeZone
+           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
 
@@ -137,22 +141,43 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
+(defn- resolve-binned-field [{:keys [binning-strategy binning-param] :as field-ph} field]
+  (let [binned-field (i/map->BinnedField {:field    field
+                                          :strategy binning-strategy})]
+    (case binning-strategy
+      :num-bins
+      (assoc binned-field :num-bins binning-param)
+
+      :bin-width
+      (assoc binned-field :bin-width binning-param)
+
+      :default
+      binned-field
+
+      :else
+      (throw (Exception. (format "Unregonized binning strategy '%s'" binning-strategy))))))
+
 (defn- merge-non-nils
   "Like `clojure.core/merge` but only merges non-nil values"
   [& maps]
   (apply merge-with #(or %2 %1) maps))
 
-(defn- field-ph-resolve-field [{:keys [field-id datetime-unit], :as this} field-id->field]
+(defn- field-ph-resolve-field [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
     ;; try to resolve the Field with the ones available in field-id->field
-    (let [datetime-field? (or (isa? base-type :type/DateTime)
-                              (isa? special-type :type/DateTime))]
-      (if-not datetime-field?
-        field
-        (i/map->DateTimeField {:field field
-                               :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
+    (cond
+      (and (or (isa? base-type :type/DateTime)
+               (isa? special-type :type/DateTime))
+           (not (isa? base-type :type/Time)))
+      (i/map->DateTimeField {:field field
+                             :unit  (or datetime-unit :day)}) ; default to `:day` if a unit wasn't specified
+
+      binning-strategy
+      (resolve-binned-field this field)
+
+      :else field)
     ;; If that fails just return ourselves as-is
     this))
 
@@ -167,7 +192,7 @@
 
 (defprotocol ^:private IParseValueForField
   (^:private parse-value [this value]
-    "Parse a value for a given type of `Field`."))
+   "Parse a value for a given type of `Field`."))
 
 (extend-protocol IParseValueForField
   Field
@@ -180,19 +205,24 @@
 
   DateTimeField
   (parse-value [this value]
-    (cond
-      (u/date-string? value)
-      (s/validate DateTimeValue (i/map->DateTimeValue {:field this, :value (u/->Timestamp value)}))
+    (let [tz                 (when-let [tz-id ^String (setting/get :report-timezone)]
+                               (TimeZone/getTimeZone tz-id))
+          parsed-string-date (some-> value
+                                     (u/str->date-time tz)
+                                     u/->Timestamp)]
+      (cond
+        parsed-string-date
+        (s/validate DateTimeValue (i/map->DateTimeValue {:field this, :value parsed-string-date}))
 
-      (instance? RelativeDatetime value)
-      (do (s/validate RelativeDatetime value)
-          (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+        (instance? RelativeDatetime value)
+        (do (s/validate RelativeDatetime value)
+            (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
 
-      (nil? value)
-      nil
+        (nil? value)
+        nil
 
-      :else
-      (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
+        :else
+        (throw (Exception. (format "Invalid value '%s': expected a DateTime." value)))))))
 
 (defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->field]
   (let [resolved-field (resolve-field field-placeholder field-id->field)]
@@ -236,7 +266,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id :fingerprint]
                                               :visibility_type [:not= "sensitive"]
                                               :id              [:in field-ids])
                                             (hydrate :values)
@@ -322,7 +352,7 @@
   "Wraps the `resolve` function in a query-processor middleware"
   [qp]
   (fn [{database-id :database, :as query}]
-    (let [resolved-db (db/select-one [Database :name :id :engine :details], :id database-id)
+    (let [resolved-db (db/select-one [Database :name :id :engine :details :timezone], :id database-id)
           query       (if (qputil/mbql-query? query)
                         (resolve query)
                         query)]

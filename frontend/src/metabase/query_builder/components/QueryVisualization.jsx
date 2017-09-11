@@ -123,7 +123,8 @@ export default class QueryVisualization extends Component {
             messages.push({
                 icon: "table2",
                 message: (
-                    <div>
+                    // class name is included for the sake of making targeting the element in tests easier
+                    <div className="ShownRowCount">
                         { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
                         <strong>{formatNumber(result.row_count)}</strong>
                         { " " + inflect("row", result.data.rows.length) }

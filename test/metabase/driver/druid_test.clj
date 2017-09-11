@@ -8,11 +8,30 @@
              [query-processor-test :refer [rows rows+column-names]]
              [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
-            [metabase.models.metric :refer [Metric]]
+            metabase.driver.druid
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]
+             [metric :refer [Metric]]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import metabase.driver.druid.DruidDriver))
+
+;;; table-rows-sample
+(datasets/expect-with-engine :druid
+  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
+  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T07:00:00.000Z"]
+   ["10"   "Dal Rae Restaurant"          "2015-08-22T07:00:00.000Z"]
+   ["100"  "PizzaHacker"                 "2014-07-26T07:00:00.000Z"]
+   ["1000" "Tito's Tacos"                "2014-06-03T07:00:00.000Z"]
+   ["101"  "Golden Road Brewing"         "2015-09-04T07:00:00.000Z"]]
+  (->> (driver/table-rows-sample (Table (data/id :checkins))
+         [(Field (data/id :checkins :id))
+          (Field (data/id :checkins :venue_name))])
+       (sort-by first)
+       (take 5)))
 
 (def ^:const ^:private ^String native-query-1
   (json/generate-string
