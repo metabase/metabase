@@ -5,11 +5,11 @@
 
   --primary-button-border-color: #509EE3;
   --primary-button-bg-color: #509EE3;
-  --warning-button-border-color: #E35050;
-  --warning-button-bg-color: #E35050;
+  --warning-button-border-color: #EF8C8C;
+  --warning-button-bg-color: #EF8C8C;
+  --danger-button-bg-color: #EF8C8C;
   --selected-button-bg-color: #F4F6F8;
 
-  --danger-button-bg-color: #EF8C8C;
   --success-button-color: var(--success-color);
 }
 
@@ -26,6 +26,9 @@
   font-weight: bold;
   font-family: "Lato", sans-serif;
   border-radius: var(--default-button-border-radius);
+}
+.Button:hover {
+  color: var(--brand-color);
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -104,6 +107,7 @@
 }
 
 .Button--purple:hover {
+    color: white;
     background-color: #885AB1;
     border-color: #885AB1;
 }
@@ -197,6 +201,7 @@
 }
 
 .Button--danger:hover {
+    color: white;
     background-color: color(var(--danger-button-bg-color) shade(10%));
     border-color: color(var(--danger-button-bg-color) shade(10%));
 }
@@ -204,6 +209,10 @@
 .Button--success {
     background-color: var(--success-button-color);
     border-color: var(--success-button-color);
+    color: #fff;
+}
+.Button--success:hover
+{
     color: #fff;
 }
 

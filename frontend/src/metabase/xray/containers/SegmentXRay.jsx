@@ -119,15 +119,15 @@ class SegmentXRay extends Component {
                                     className="Button bg-white text-brand-hover no-decoration"
                                 >
                                     <Icon name="compare" className="mr1" />
-                                    {`Compare with all ${xray.table.display_name}s`}
+                                    {`Compare with all ${xray.table.display_name}`}
                                 </Link>
                             </div>
                             <div className="mt2">
                                 <Heading heading="Fields in this segment" />
                                 <ol>
-                                    { constituents.map(c => {
+                                    { constituents.map((c, i) => {
                                         return (
-                                            <li>
+                                            <li key={i}>
                                                 <Constituent
                                                     constituent={c}
                                                 />

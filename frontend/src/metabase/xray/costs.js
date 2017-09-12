@@ -36,7 +36,7 @@ const extended = {
         This is the slowest but highest fidelity method.
     `,
     method: {
-        max_query_cost: 'full-scan',
+        max_query_cost: 'joins',
         max_computation_cost: 'unbounded'
     },
     icon: 'costextended'

@@ -42,7 +42,7 @@ import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
 // new question
-import { NewQuestionStart } from "metabase/new_query/router_wrappers";
+import { NewQuestionStart, NewQuestionMetricSearch, NewQuestionSegmentSearch } from "metabase/new_query/router_wrappers";
 
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
@@ -54,6 +54,7 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx"
+import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
@@ -94,6 +95,7 @@ import TableComparison from "metabase/xray/containers/TableComparison.jsx";
 import SegmentComparison from "metabase/xray/containers/SegmentComparison.jsx";
 import SegmentTableComparison from "metabase/xray/containers/SegmentTableComparison.jsx";
 import CardComparison from "metabase/xray/containers/CardComparison.jsx";
+import SegmentFieldComparison from "metabase/xray/containers/SegmentFieldComparison.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
@@ -200,10 +202,10 @@ export const getRoutes = (store) =>
                 <Route path="/question">
                     <IndexRoute component={QueryBuilder} />
                     { /* NEW QUESTION FLOW */ }
-                    <Route path="new">
+                    <Route path="new" title="New Question">
                         <IndexRoute component={NewQuestionStart} />
-                        {/*<Route path="metrics" component={NewQuestionMetrics} />*/}
-                        {/*<Route path="segments" component={NewQuestionSegments} />*/}
+                        <Route path="metric" title="Metrics" component={NewQuestionMetricSearch} />
+                        <Route path="segment" title="Segments" component={NewQuestionSegmentSearch} />
                     </Route>
                 </Route>
                 <Route path="/question/:cardId" component={QueryBuilder} />
@@ -254,17 +256,27 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetailContainer} />
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
                 </Route>
-                {/* REFERENCE */}
+
+                {/* XRAY */}
                 <Route path="/xray" title="XRay">
                     <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
                     <Route path="table/:tableId/:cost" component={TableXRay} />
                     <Route path="field/:fieldId/:cost" component={FieldXRay} />
-                    <Route path="card/:cardId" component={CardXRay} />
-                    <Route path="compare/fields/:fieldId1/:fieldId2" component={FieldComparison} />
-                    <Route path="compare/tables/:tableId1/:tableId2" component={TableComparison} />
-                    <Route path="compare/segments/:segmentId1/:segmentId2/:cost" component={SegmentComparison} />
-                    <Route path="compare/segment/:segmentId/table/:tableId/:cost" component={SegmentTableComparison} />
-                    <Route path="compare/cards/:cardId1/:cardId2" component={CardComparison} />
+                    <Route path="card/:cardId/:cost" component={CardXRay} />
+                    <Route path="compare" title="Compare">
+                        <Route path="segments/:segmentId1/:segmentId2">
+                            <Route path=":cost" component={SegmentComparison} />
+                            <Route path="field/:fieldName/:cost" component={SegmentFieldComparison} />
+                        </Route>
+                        <Route path="segment/:segmentId/table/:tableId">
+                            <Route path=":cost" component={SegmentTableComparison} />
+                            <Route path="field/:fieldName/:cost" component={SegmentFieldComparison} />
+                        </Route>
+                        { /* NYI */ }
+                        <Route path="fields/:fieldId1/:fieldId2" component={FieldComparison} />
+                        <Route path="tables/:tableId1/:tableId2" component={TableComparison} />
+                        <Route path="cards/:cardId1/:cardId2" component={CardComparison} />
+                    </Route>
                 </Route>
 
                 {/* PULSE */}
@@ -294,6 +306,7 @@ export const getRoutes = (store) =>
                     <Route path="database/:databaseId" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode/:tableId" component={MetadataEditorApp} />
+                    <Route path="database/:databaseId/:mode/:tableId/settings" component={TableSettingsApp} />
                     <Route path="database/:databaseId/:mode/:tableId/:fieldId" component={FieldApp} />
                     <Route path="metric/create" component={MetricApp} />
                     <Route path="metric/:id" component={MetricApp} />

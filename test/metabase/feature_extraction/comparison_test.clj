@@ -29,15 +29,15 @@
    1
    0
    0.25]
-  [(difference 1 2.0)
-   (difference 2.0 2.0)
-   (difference 2.0 nil)
-   (difference nil 2.0)
-   (difference true true)
-   (difference true false)
-   (difference false true)
-   (difference false false)
-   (difference [1 0 1] [0 1 1])])
+  (mapv :difference [(difference 1 2.0)
+                     (difference 2.0 2.0)
+                     (difference 2.0 nil)
+                     (difference nil 2.0)
+                     (difference true true)
+                     (difference true false)
+                     (difference false true)
+                     (difference false false)
+                     (difference [1 0 1] [0 1 1])]))
 
 (expect
   true
@@ -47,7 +47,7 @@
                                              {:x 0.9 :y 0.1}))))
 
 (expect
-  (approximately 0.78 0.1)
+  (approximately 0.39 0.1)
   (chi-squared-distance [0.1 0.2 0.7] [0.5 0.4 0.1]))
 (expect
   0

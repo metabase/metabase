@@ -3,6 +3,8 @@ import {
     updateData 
 } from 'metabase/lib/redux';
 
+import { delay } from "metabase/lib/promise"
+
 describe("Metadata", () => {
     const getDefaultArgs = ({
         existingData = 'data',
@@ -17,7 +19,7 @@ describe("Metadata", () => {
         requestStatePath = statePath,
         existingStatePath = statePath,
         getState = () => ({
-            requests: { test: { path: { fetch: requestState, update: requestState } } },
+            requests: { states: { test: { path: { fetch: requestState, update: requestState } } } },
             test: { path: existingData }
         }),
         dispatch = jasmine.createSpy('dispatch'),
@@ -39,15 +41,15 @@ describe("Metadata", () => {
     const args = getDefaultArgs({});
 
     describe("fetchData()", () => {
-        it("should return new data if request hasn't been made", async (done) => {
+        it("should return new data if request hasn't been made", async () => {
             const argsDefault = getDefaultArgs({});
             const data = await fetchData(argsDefault);
+            await delay(10);
             expect(argsDefault.dispatch.calls.count()).toEqual(2);
             expect(data).toEqual(args.newData);
-            done();
         });
 
-        it("should return existing data if request has been made", async (done) => {
+        it("should return existing data if request has been made", async () => {
             const argsLoading = getDefaultArgs({requestState: args.requestStateLoading});
             const dataLoading = await fetchData(argsLoading);
             expect(argsLoading.dispatch.calls.count()).toEqual(0);
@@ -57,21 +59,20 @@ describe("Metadata", () => {
             const dataLoaded = await fetchData(argsLoaded);
             expect(argsLoaded.dispatch.calls.count()).toEqual(0);
             expect(dataLoaded).toEqual(args.existingData);
-            done();
         });
 
-        it("should return new data if previous request ended in error", async (done) => {
+        it("should return new data if previous request ended in error", async () => {
             const argsError = getDefaultArgs({requestState: args.requestStateError});
             const dataError = await fetchData(argsError);
+            await delay(10);
             expect(argsError.dispatch.calls.count()).toEqual(2);
             expect(dataError).toEqual(args.newData);
-            done();
         });
 
         // FIXME: this seems to make jasmine ignore the rest of the tests
         // is an exception bubbling up from fetchData? why?
         // how else to test return value in the catch case?
-        xit("should return existing data if request fails", async (done) => {
+        it("should return existing data if request fails", async () => {
             const argsFail = getDefaultArgs({getData: () => Promise.reject('error')});
 
             try{
@@ -82,12 +83,11 @@ describe("Metadata", () => {
             catch(error) {
                 return;
             }
-            done();
         });
     });
 
     describe("updateData()", () => {
-        it("should return new data regardless of previous request state", async (done) => {
+        it("should return new data regardless of previous request state", async () => {
             const argsDefault = getDefaultArgs({});
             const data = await updateData(argsDefault);
             expect(argsDefault.dispatch.calls.count()).toEqual(2);
@@ -107,16 +107,14 @@ describe("Metadata", () => {
             const dataError = await updateData(argsError);
             expect(argsError.dispatch.calls.count()).toEqual(2);
             expect(dataError).toEqual(args.newData);
-            done();
         });
 
-        // FIXME: same problem as fetchData() case
-        xit("should return existing data if request fails", async (done) => {
+        it("should return existing data if request fails", async () => {
             const argsFail = getDefaultArgs({putData: () => {throw new Error('test')}});
-            const data = await fetchData(argsFail);
+            const data = await updateData(argsFail);
+            await delay(10)
             expect(argsFail.dispatch.calls.count()).toEqual(2);
             expect(data).toEqual(args.existingData);
-            done();
         });
     });
 });

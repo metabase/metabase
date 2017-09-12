@@ -111,6 +111,9 @@
   clojure.lang.Named
   (getName [_] "Vertica"))
 
+(def ^:private vertica-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss z"))
+(def ^:private vertica-db-time-query "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
+
 (u/strict-extend VerticaDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -135,7 +138,8 @@
                                             {:name         "password"
                                              :display-name "Database password"
                                              :type         :password
-                                             :placeholder  "*******"}]))})
+                                             :placeholder  "*******"}]))
+          :current-db-time   (driver/make-current-db-time-fn vertica-date-formatter vertica-db-time-query)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)

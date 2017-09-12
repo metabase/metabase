@@ -1,6 +1,7 @@
 # Metabase OS X App
 
-NOTE: These instructions are only for packaging a built Metabase uberjar into `Metabase.app`. They are not useful if your goal is to work on Metabase itself; for development, please see our [developers' guide](developers-guide.md).
+NOTE: These instructions are only for packaging a built Metabase uberjar into `Metabase.app`. They are not useful if your goal is to work on Metabase itself; for development, please see
+our [developers' guide](developers-guide.md).
 
 ## Prereqs
 
@@ -23,10 +24,8 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
       ./bin/osx-setup
     ```
 
-`./bin/osx-setup` will build run commands to build the uberjar for you if needed.
-Run `./bin/osx-setup` again at any time in the future to copy the latest version of the uberjar into the project.
-
-(If the script fails near the end, you can just copy the JARs in question to `OSX/Resources/metabase.jar` and `OSX/Resources/reset-password.jar`.)
+`./bin/osx-setup` will copy over things like the JRE into the Mac App directory for you. You only need to do this once the first time you plan on building the Mac App.
+This also runs `./bin/build` to get the latest uberjar and copies it for you; if the script fails near the end, you can just copy the uberjar to `OSX/Resources/metabase.jar`.)
 
 ## Releasing
 
@@ -55,6 +54,10 @@ Run `open OSX/Metabase.xcodeproj` to open the project, which will automatically 
 
 After that, you are good to go:
 ```bash
+# Build the latest version of the uberjar and copy it to the Mac App build directory
+# (You can skip this step if you just ran ./bin/osx-setup, because it does this step for you)
+./bin/build && cp target/uberjar/metabase.jar OSX/Resources/metabase.jar
+
 # Bundle entire app, and upload to s3
 ./bin/osx-release
 ```

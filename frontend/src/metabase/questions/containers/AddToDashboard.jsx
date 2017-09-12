@@ -23,7 +23,7 @@ export default class AddToDashboard extends Component {
         const { query, collection } = this.state;
         return (
             <ModalContent
-                title="Add question to dashboard?"
+                title="Pick a question to add"
                 className="px4 mb4 scroll-y"
                 onClose={() => this.props.onClose()}
             >

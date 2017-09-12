@@ -18,4 +18,8 @@ export default class Metric extends Base {
     aggregationClause(): Aggregation {
         return ["METRIC", this.id];
     }
+
+    isActive(): boolean {
+        return !!this.is_active;
+    }
 }

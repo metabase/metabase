@@ -30,9 +30,9 @@
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
   [:as {{:keys [token]
-         {:keys [name engine details is_full_sync schedules]} :database
-         {:keys [first_name last_name email password]}        :user
-         {:keys [allow_tracking site_name]}                   :prefs} :body}]
+         {:keys [name engine details is_full_sync is_on_demand schedules]} :database
+         {:keys [first_name last_name email password]}                     :user
+         {:keys [allow_tracking site_name]}                                :prefs} :body}]
   {token          SetupToken
    site_name      su/NonBlankString
    first_name     su/NonBlankString
@@ -63,6 +63,7 @@
                   {:name         name
                    :engine       engine
                    :details      details
+                   :is_on_demand (boolean is_on_demand)
                    :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
                                      is_full_sync)}
                   (when schedules

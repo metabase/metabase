@@ -21,6 +21,11 @@ declare module "underscore" {
 
   declare function map<T, U>(a: T[], iteratee: (val: T, n?: number)=>U): U[];
   declare function map<K, T, U>(a: {[key:K]: T}, iteratee: (val: T, k?: K)=>U): U[];
+  declare function mapObject(
+        object: Object,
+        iteratee: (val: any, key: string) => Object,
+        context?: mixed
+  ): Object;
 
   declare function object<T>(a: Array<[string, T]>): {[key:string]: T};
 

@@ -12,6 +12,8 @@
 @import './components/select.css';
 @import './components/table.css';
 
+@import './containers/entity_search.css';
+
 @import './admin.css';
 @import './card.css';
 @import './dashboard.css';
@@ -21,3 +23,4 @@
 @import './query_builder.css';
 @import './setup.css';
 @import './tutorial.css';
+@import './xray.css';

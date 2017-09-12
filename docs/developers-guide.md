@@ -106,33 +106,110 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn run build-watch
 ```
 
-#### Unit Tests / Linting
+### Frontend testing
 
-Run unit tests with
+All frontend tests are located in `frontend/test` directory. Run all frontend tests with
 
-    yarn run jest             # Jest
-    yarn run test             # Karma
+```
+./bin/build version uberjar && yarn run test
+```
 
-Run the linters and type checker with
+which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence. 
 
-    yarn run lint
-    yarn run flow
+### Jest integration tests
+Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
 
-#### End-to-end tests
+Integration tests use an enforced file naming convention `<test-suite-name>.integ.js` to separate them from unit tests.
 
-End-to-end tests are written with [webschauffeur](https://github.com/metabase/webchauffeur) which is a wrapper around [`selenium-webdriver`](https://www.npmjs.com/package/selenium-webdriver). 
+Useful commands:
+```bash
+./bin/build version uberjar # Builds the JAR without frontend assets; run this every time you need to update the backend
+yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
+yarn run test-integrated-watch -- TestFileName # Watches the files in paths that match the given (regex) string
+```
 
-Generate the Metabase jar file which is used in E2E tests:
+The way integration tests are written is a little unconventional so here is an example that hopefully helps in getting up to speed:
 
-    ./bin/build
+```
+import {
+    login,
+    createTestStore,
+} from "__support__/integrated_tests";
+import {
+    click
+} from "__support__/enzyme_utils"
 
-Run E2E tests once with
+import { mount } from "enzyme"
 
-    yarn run test-e2e
+import { FETCH_DATABASES } from "metabase/redux/metadata";
+import { INITIALIZE_QB } from "metabase/query_builder/actions";
+import RunButton from "metabase/query_builder/components/RunButton";
 
-or use a persistent browser session with
+describe("Query builder", () => {
+    beforeAll(async () => {
+        // Usually you want to test stuff where user is already logged in
+        // so it is convenient to login before any test case.
+        // Remember `await` here!
+        await login()
+    })
 
-    yarn run test-e2e-dev
+    it("should let you run a new query", async () => {
+        // Create a superpowered Redux store. 
+        // Remember `await` here!
+        const store = await createTestStore()
+
+        // Go to a desired path in the app. This is safest to do before mounting the app.
+        store.pushPath('/question')
+
+        // Get React container for the whole app and mount it using Enzyme
+        const app = mount(store.getAppContainer())
+
+        // Usually you want to wait until the page has completely loaded, and our way to do that is to
+        // wait until the completion of specified Redux actions. `waitForActions` is also useful for verifying that
+        // specific operations are properly executed after user interactions.
+        // Remember `await` here!
+        await store.waitForActions([FETCH_DATABASES, INITIALIZE_QB])
+
+        // You can use `enzymeWrapper.debug()` to see what is the state of DOM tree at the moment
+        console.log(app.debug())
+
+        // You can use `testStore.debug()` method to see which Redux actions have been dispatched so far.
+        // Note that as opposed to Enzyme's debugging method, you don't need to wrap the call to `console.log()`.
+        store.debug();
+
+        // For simulating user interactions like clicks and input events you should use methods defined
+        // in `enzyme_utils.js` as they abstract away some React/Redux complexities.
+        click(app.find(RunButton))
+
+        // Note: In pretty rare cases where rendering the whole app is problematic or slow, you can just render a single
+        // React container instead with `testStore.connectContainer(container)`. In that case you are not able
+        // to click links that lead to other router paths.
+    });
+})
+
+```
+
+You can also skim through [`__support__/integrated_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/integrated_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
+
+
+### Jest unit tests
+
+Unit tests are focused around isolated parts of business logic. 
+
+Integration tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
+
+```
+yarn run jest-test # Run all tests at once
+yarn run jest-test-watch # Watch for file changes
+```
+
+### Karma browser tests
+If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory. 
+
+```
+yarn run test-karma # Run all tests once
+yarn run test-karma-watch # Watch for file changes
+```
 
 ## Backend development
 Leiningen and your REPL are the main development tools for the backend.  There are some directions below on how to setup your REPL for easier development.

@@ -17,6 +17,7 @@ const CostSelect = ({ currentCost, location }) => {
                     <Link
                         to={`${urlWithoutCost}/${cost}`}
                         className="no-decoration"
+                        key={cost}
                     >
                         <li
                             key={cost}
@@ -29,7 +30,7 @@ const CostSelect = ({ currentCost, location }) => {
                                 tooltip={c.description}
                             >
                                 <Icon
-                                    size={32}
+                                    size={22}
                                     name={c.icon}
                                     className="p1 border-right"
                                 />

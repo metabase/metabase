@@ -1,10 +1,12 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
-  (:require [metabase.models
+  (:require [clj-time.core :as time]
+            [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             metabase.types
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -44,6 +46,12 @@
 (def FKMetadata
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
+
+(def TimeZoneId
+  "Schema predicate ensuring a valid time zone string"
+  (s/pred (fn [tz-str]
+            (u/ignore-exceptions (time/time-zone-for-id tz-str)))
+          'time/time-zone-for-id))
 
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip

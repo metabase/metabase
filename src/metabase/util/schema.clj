@@ -9,13 +9,35 @@
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
-  validation."
+   validation.
+
+   Has to be a schema (or similar) record type because a simple map would just end up adding a new required key.
+   One easy way to get around this is to just wrap your schema in `s/named`."
   {:style/indent 1}
   [schema api-error-message]
-  ;; Has to be a schema (or similar) record type because a simple map would just end up adding a new required key.
-  ;; One easy way to get around this is to just wrap your schema in `s/named`
   {:pre [(record? schema)]}
   (assoc schema :api-error-message api-error-message))
+
+(defn api-param
+  "Return SCHEMA with an additional API-PARAM-NAME key that will be used in the auto-generate documentation and in
+   error messages. This is important for situations where you want to bind a parameter coming in to the API to
+   something other than the `snake_case` key it normally comes in as:
+
+     ;; BAD -- Documentation/errors will tell you `dimension-type` is wrong
+     [:is {{dimension-type :type} :body}]
+     {dimension-type DimensionType}
+
+     ;; GOOD - Documentation/errors will mention correct param name, `type`
+     [:is {{dimension-type :type} :body}]
+     {dimension-type (su/api-param \"type\" DimensionType)}
+
+   Note that as with `with-api-error-message`, this only works on schemas that are record types. This works by adding
+   an extra property to the record, which wouldn't work for plain maps, because the extra key would just be considered
+   another requrired param. An easy way to get around this is to wrap a non-record type schema in `s/named`."
+  {:style/indent 1}
+  [api-param-name schema]
+  {:pre [(record? schema)]}
+  (assoc schema :api-param-name (name api-param-name)))
 
 (defn- existing-schema->api-error-message
   "Error messages for various schemas already defined in `schema.core`.

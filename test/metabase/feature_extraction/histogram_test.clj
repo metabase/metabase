@@ -30,8 +30,8 @@
    (var-get #'h/pdf-sample-points)]
   (let [pdf (h/pdf hist-numbers)]
     [(every? (fn [[x p]]
-               (< 0.007 p 0.013))
-             (butlast pdf))
+               (< 0.008 p 0.012))
+             pdf)
      (count pdf)]))
 
 (expect

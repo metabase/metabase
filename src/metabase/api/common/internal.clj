@@ -38,7 +38,8 @@
 
 (defn- args-form-symbols
   "Return a map of arg -> nil for args taken from the arguments vector.
-   This map is merged with the ones found in the schema validation map to build a complete map of args used by the endpoint."
+   This map is merged with the ones found in the schema validation map to build a complete map of args used by the
+   endpoint."
   [form]
   (into {} (for [arg   (args-form-flatten form)
                  :when (and (symbol? arg)
@@ -56,11 +57,22 @@
                   schema
                   "Consider wrapping it in `su/with-api-error-message`."))))
 
-(defn- format-route-schema-dox [param->schema]
-  (when (seq param->schema)
+(defn- param-name
+  "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the
+   PARAM-SYMB, but if the schema used a call to `su/api-param` we;ll use that name instead."
+  [param-symb schema]
+  (or (when (record? schema)
+        (:api-param-name schema))
+      (name param-symb)))
+
+(defn- format-route-schema-dox
+  "Generate the `PARAMS` section of the documentation for a `defendpoint`-defined function by using the
+   PARAM-SYMB->SCHEMA map passed in after the argslist."
+  [param-symb->schema]
+  (when (seq param-symb->schema)
     (str "\n\n##### PARAMS:\n\n"
-         (str/join "\n\n" (for [[param schema] param->schema]
-                            (format "*  **`%s`** %s" (name param) (dox-for-schema schema)))))))
+         (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
+                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -70,12 +82,18 @@
          (str "\n\n" docstr))
        (format-route-schema-dox param->schema)))
 
+(defn- contains-superuser-check?
+  "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
+  [body]
+  (let [body (set body)]
+    (or (contains? body '(check-superuser))
+        (contains? body '(api/check-superuser)))))
+
 (defn route-dox
   "Generate a documentation string for a `defendpoint` route."
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
-                    (str docstr (when (or (contains? (set body) '(check-superuser))
-                                          (contains? (set body) '(api/check-superuser)))
+                    (str docstr (when (contains-superuser-check? body)
                                   "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))

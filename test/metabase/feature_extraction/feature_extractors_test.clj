@@ -89,24 +89,36 @@
 
 (expect
   [["TEST" "SHARE"]
-   3]
+   3
+   true
+   [[17.0 1.0]]]
   (let [dataset (#'fe/histogram->dataset {:name "TEST"} hist)]
     [(:columns dataset)
-     (count (:rows dataset))]))
+     (count (:rows dataset))
+     (->> (transduce identity h/histogram [])
+          (#'fe/histogram->dataset {:name "TEST"})
+          :rows
+          empty?)
+     (->> (transduce identity h/histogram [17])
+          (#'fe/histogram->dataset {:name "TEST"})
+          :rows
+          vec)]))
 
 (expect
-  [(t/date-time 2017 8)
-   (t/date-time 2017 9)]
-  [(#'fe/round-to-month (t/date-time 2017 8 15))
-   (#'fe/round-to-month (t/date-time 2017 8 16))])
+  [{1 3 2 3 3 3 4 2}
+   {1 3 2 3 3 3 4 3}
+   {1 1 2 1 3 1 4 1}]
+  [(#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 9 12))
+   (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 10))
+   (#'fe/quarter-frequencies (t/date-time 2015 5) (t/date-time 2016 2))])
 
 (expect
-  {1 3 2 3 3 3 4 2}
-  (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 8 12)))
-
-(expect
-  {1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}
-  (#'fe/month-frequencies (t/date-time 2015) (t/date-time 2017 8 12)))
+  [{1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}
+   {1 1 2 1 5 1 6 1 7 1 8 1 9 1 10 1 11 1 12 1}
+   {5 1 6 1}]
+  [(#'fe/month-frequencies (t/date-time 2015) (t/date-time 2017 8 12))
+   (#'fe/month-frequencies (t/date-time 2015 5) (t/date-time 2016 2))
+   (#'fe/month-frequencies (t/date-time 2015 5 31) (t/date-time 2015 6 28))])
 
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
 (def ^:private datetimes ["2015-06-01" nil "2015-06-11" "2015-01-01"

@@ -140,6 +140,8 @@ export const MetabaseApi = {
                                     return table;
                                  }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
+    table_rescan_values:       POST("/api/table/:tableId/rescan_values"),
+    table_discard_values:      POST("/api/table/:tableId/discard_values"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
     field_values:                GET("/api/field/:fieldId/values"),
@@ -147,22 +149,26 @@ export const MetabaseApi = {
     field_update:                PUT("/api/field/:id"),
     field_dimension_update:     POST("/api/field/:fieldId/dimension"),
     field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
+    field_rescan_values:        POST("/api/field/:fieldId/rescan_values"),
+    field_discard_values:       POST("/api/field/:fieldId/discard_values"),
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration")
 };
 
 export const XRayApi = {
     // X-Rays
-    field_xray:            GET("api/x-ray/field/:fieldId"),
-    table_xray:            GET("api/x-ray/table/:tableId"),
-    segment_xray:          GET("api/x-ray/segment/:segmentId"),
-    card_xray:             GET("api/x-ray/card/:cardId"),
+    field_xray:                  GET("/api/x-ray/field/:fieldId"),
+    table_xray:                  GET("/api/x-ray/table/:tableId"),
+    segment_xray:                GET("/api/x-ray/segment/:segmentId"),
+    card_xray:                   GET("/api/x-ray/card/:cardId"),
 
-    field_compare:         GET("api/x-ray/compare/fields/:fieldId1/:fieldId2"),
-    table_compare:         GET("api/x-ray/compare/tables/:tableId1/:tableId2"),
-    segment_compare:       GET("api/x-ray/compare/segments/:segmentId1/:segmentId2"),
-    segment_table_compare: GET("api/x-ray/compare/segment/:segmentId/table/:tableId"),
-    card_compare:          GET("api/x-ray/compare/cards/:cardId1/:cardId2")
+    field_compare:               GET("/api/x-ray/compare/fields/:fieldId1/:fieldId2"),
+    table_compare:               GET("/api/x-ray/compare/tables/:tableId1/:tableId2"),
+    segment_compare:             GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2"),
+    segment_table_compare:       GET("/api/x-ray/compare/segment/:segmentId/table/:tableId"),
+    segment_field_compare:       GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2/field/:fieldName"),
+    segment_table_field_compare: GET("/api/x-ray/compare/segment/:segmentId/table/:tableId/field/:fieldName"),
+    card_compare:                GET("/api/x-ray/compare/cards/:cardId1/:cardId2")
 };
 
 export const PulseApi = {

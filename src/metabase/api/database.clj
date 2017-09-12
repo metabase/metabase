@@ -64,8 +64,8 @@
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
     (when-let [driver (driver/database-id->driver database-id)]
-      (driver/driver-supports? driver :nested-queries)
-      (mi/can-read? card))))
+      (and (driver/driver-supports? driver :nested-queries)
+           (mi/can-read? card)))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -360,11 +360,12 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync schedules]} :body}]
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules]} :body}]
   {name         su/NonBlankString
    engine       DBEngineString
    details      su/Map
    is_full_sync (s/maybe s/Bool)
+   is_on_demand (s/maybe s/Bool)
    schedules    (s/maybe ExpandedSchedulesMap)}
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
@@ -378,7 +379,8 @@
                                  {:name         name
                                   :engine       engine
                                   :details      details-or-error
-                                  :is_full_sync is-full-sync?}
+                                  :is_full_sync is-full-sync?
+                                  :is_on_demand (boolean is_on_demand)}
                                  (when schedules
                                    (schedule-map->cron-strings schedules)))))
         (events/publish-event! :database-create <>))
@@ -410,7 +412,7 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest schedules]} :body}]
+  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    details            (s/maybe su/Map)
@@ -441,6 +443,7 @@
                              :engine             engine
                              :details            details
                              :is_full_sync       full-sync?
+                             :is_on_demand       (boolean is_on_demand)
                              :description        description
                              :caveats            caveats
                              :points_of_interest points_of_interest}

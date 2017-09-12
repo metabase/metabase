@@ -12,7 +12,6 @@ import { getFieldXray } from 'metabase/xray/selectors'
 import COSTS from 'metabase/xray/costs'
 
 import {
-    PERIODICITY,
     ROBOTS,
     STATS_OVERVIEW,
     VALUES_OVERVIEW
@@ -24,6 +23,8 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
+
+import Periodicity from 'metabase/xray/components/Periodicity'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
@@ -42,31 +43,6 @@ type Props = {
         fieldId: number
     },
 }
-
-const Periodicity = ({xray}) =>
-    <div>
-        <Heading heading="Time breakdown" />,
-        <div className="bg-white bordered rounded shadowed">
-            <div className="Grid Grid--gutters Grid--1of4">
-                { PERIODICITY.map(period =>
-                    xray[`histogram-${period}`] && (
-                        <div className="Grid-cell">
-                            <div className="p4 border-right border-bottom">
-                                <div style={{ height: 120}}>
-                                    <h4>
-                                        {xray[`histogram-${period}`].label}
-                                    </h4>
-                                    <Histogram
-                                        histogram={xray[`histogram-${period}`].value}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )
-                )}
-            </div>
-        </div>
-    </div>
 
 const mapStateToProps = state => ({
     xray: getFieldXray(state)
@@ -119,29 +95,31 @@ class FieldXRay extends Component {
                     <XRayPageWrapper>
                         <div className="full">
                             <div className="my3 flex align-center">
-                                <div>
+                                <div className="full">
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
                                         to={`/xray/table/${xray.table.id}/approximate`}
                                     >
                                         {xray.table.display_name}
                                     </Link>
-                                    <h1 className="mt2 flex align-center">
-                                        {xray.field.display_name}
-                                        <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">XRay</span>
-                                    </h1>
+                                    <div className="mt2 flex align-center">
+                                        <h1 className="flex align-center">
+                                            {xray.field.display_name}
+                                            <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
+                                            <span className="text-grey-3">XRay</span>
+                                        </h1>
+                                        <div className="ml-auto flex align-center">
+                                            <h3 className="mr2 text-grey-3">Fidelity</h3>
+                                            <CostSelect
+                                                xrayType='field'
+                                                id={xray.field.id}
+                                                currentCost={params.cost}
+                                            />
+                                        </div>
+                                    </div>
                                     <p className="mt1 text-paragraph text-measure">
                                         {xray.field.description}
                                     </p>
-                                </div>
-                                <div className="ml-auto flex align-center">
-                                    <h3 className="mr2 text-grey-3">Fidelity</h3>
-                                    <CostSelect
-                                        xrayType='field'
-                                        id={xray.field.id}
-                                        currentCost={params.cost}
-                                    />
                                 </div>
                             </div>
                             <div className="mt4">

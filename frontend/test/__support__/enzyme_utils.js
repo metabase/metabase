@@ -1,4 +1,19 @@
+// This must be before all other imports
+import { eventListeners } from "./mocks";
+
 import Button from "metabase/components/Button";
+
+// Triggers events that are being listened to with `window.addEventListener` or `document.addEventListener`
+export const dispatchBrowserEvent = (eventName, ...args) => {
+    if (eventListeners[eventName]) {
+        eventListeners[eventName].forEach(listener => listener(...args))
+    } else {
+        throw new Error(
+            `No event listeners are currently attached to event '${eventName}'. List of event listeners:\n` +
+            Object.entries(eventListeners).map(([name, funcs]) => `${name} (${funcs.length} listeners)`).join('\n')
+        )
+    }
+}
 
 export const click = (enzymeWrapper) => {
     if (enzymeWrapper.length === 0) {

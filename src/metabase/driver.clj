@@ -1,6 +1,8 @@
 (ns metabase.driver
-  (:require [clojure.tools.logging :as log]
+  (:require [clj-time.format :as tformat]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.config :as config]
             [metabase.models
              [database :refer [Database]]
              [setting :refer [defsetting]]]
@@ -11,7 +13,9 @@
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
            metabase.models.field.FieldInstance
-           metabase.models.table.TableInstance))
+           metabase.models.table.TableInstance
+           org.joda.time.DateTime
+           org.joda.time.format.DateTimeFormatter))
 
 ;;; ## INTERFACE + CONSTANTS
 
@@ -186,9 +190,30 @@
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name`
      and `:schema` keys. (It is guaranteed too satisfy the `DatabaseMetadataTable` schema in
      `metabase.sync.interface`.) Currently, this is only used for iterating over the values in a `_metabase_metadata`
-     table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
-     returned in any given order."))
 
+     table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
+     returned in any given order.")
+
+  (current-db-time ^DateTime [this ^DatabaseInstance database]
+    "Returns the current time and timezone from the perspective of `DATABASE`."))
+
+(defn create-db-time-formatter
+  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
+  the offset/timezone information. Results of this are threadsafe and
+  can safely be def'd"
+  [date-format-str]
+  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
+
+(defn make-current-db-time-fn
+  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
+  for the current time. Returns a function that executes the query and
+  parses the date returned preserving it's timezone"
+  [date-formatter native-query]
+  (fn [driver database]
+    (some->> (execute-query driver {:database database, :native {:query native-query}})
+             :rows
+             ffirst
+             (tformat/parse date-formatter))))
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
@@ -203,7 +228,8 @@
    :table-rows-seq                    (fn [driver & _]
                                         (throw
                                          (NoSuchMethodException.
-                                          (str (name driver) " does not implement table-rows-seq."))))})
+                                          (str (name driver) " does not implement table-rows-seq."))))
+   :current-db-time                   (constantly nil)})
 
 
 ;;; ## CONFIG
@@ -335,10 +361,11 @@
 
 
 ;; ## Implementation-Agnostic Driver API
-
-(def ^:private ^:const can-connect-timeout-ms
-  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds."
-  5000)
+(def ^:private can-connect-timeout-ms
+  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
+   By default, this is 5 seconds. You can configure this value by setting the env var `MB_DB_CONNECTION_TIMEOUT_MS`."
+  (or (config/config-int :mb-db-connection-timeout-ms)
+      5000))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query

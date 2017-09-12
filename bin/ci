@@ -48,8 +48,9 @@ node-4() {
 node-5() {
     run_step lein eastwood
     run_step yarn run lint
-    run_step yarn run test
     run_step yarn run flow
+    run_step yarn run test-unit
+    run_step yarn run test-karma
 }
 node-6() {
     run_step ./bin/build version sample-dataset uberjar
