@@ -214,12 +214,12 @@
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [pulse results]
+  [timezone pulse results]
   (let [images       (atom {})
         body         (binding [render/*include-title* true
                                render/*render-img-fn* (partial render-image images)]
                        (vec (cons :div (for [result results]
-                                         (render/render-pulse-section result)))))
+                                         (render/render-pulse-section timezone result)))))
         message-body (stencil/render-file "metabase/email/pulse"
                        (pulse-context body pulse))]
     (vec (cons {:type "text/html; charset=utf-8" :content message-body}

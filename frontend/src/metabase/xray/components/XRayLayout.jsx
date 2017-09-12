@@ -1,10 +1,12 @@
 import React from 'react'
+import { withBackground } from 'metabase/hoc/Background'
 
 // A small wrapper to get consistent page structure
-export const XRayPageWrapper = ({ children }) =>
-    <div className="XRayPageWrapper wrapper bg-slate-extra-light pb4 full-height">
+export const XRayPageWrapper = withBackground('bg-slate-extra-light')(({ children }) =>
+    <div className="XRayPageWrapper wrapper pb4 full-height">
         { children }
     </div>
+)
 
 
 // A unified heading for XRay pages

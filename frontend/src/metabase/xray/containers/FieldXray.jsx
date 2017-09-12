@@ -106,7 +106,7 @@ class FieldXRay extends Component {
                                         <h1 className="flex align-center">
                                             {xray.field.display_name}
                                             <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                            <span className="text-grey-3">XRay</span>
+                                            <span className="text-grey-3">X-ray</span>
                                         </h1>
                                         <div className="ml-auto flex align-center">
                                             <h3 className="mr2 text-grey-3">Fidelity</h3>
@@ -163,5 +163,3 @@ class FieldXRay extends Component {
 }
 
 export default FieldXRay
-
-

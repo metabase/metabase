@@ -24,7 +24,6 @@ import {
     setDatasetQuery,
     NAVIGATE_TO_NEW_CARD,
     UPDATE_URL,
-    REDIRECT_TO_NEW_QUESTION_FLOW, LOAD_METADATA_FOR_CARD
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
@@ -35,10 +34,8 @@ import {
     updateFieldDimension,
     updateFieldValues,
     FETCH_TABLE_METADATA,
-    FETCH_METRICS,
-    FETCH_SEGMENTS,
-    FETCH_DATABASES
 } from "metabase/redux/metadata";
+
 import FieldList, { DimensionPicker } from "metabase/query_builder/components/FieldList";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
@@ -58,25 +55,12 @@ import {
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 import BreakoutWidget from "metabase/query_builder/components/BreakoutWidget";
-import { getCard, getQuery, getQueryResults } from "metabase/query_builder/selectors";
+import { getCard, getQueryResults } from "metabase/query_builder/selectors";
 import { TestTable } from "metabase/visualizations/visualizations/Table";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 
 import { delay } from "metabase/lib/promise";
 import * as Urls from "metabase/lib/urls";
-import NewQueryOption from "metabase/new_query/components/NewQueryOption";
-import { RESET_QUERY } from "metabase/new_query/new_query";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import EntitySearch, {
-    SearchGroupingOption, SearchResultListItem,
-    SearchResultsGroup
-} from "metabase/containers/EntitySearch";
-import { MetricApi, SegmentApi } from "metabase/services";
-import AggregationWidget from "metabase/query_builder/components/AggregationWidget";
-import { SET_REQUEST_STATE } from "metabase/redux/requests";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import DataSelector from "metabase/query_builder/components/DataSelector";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
