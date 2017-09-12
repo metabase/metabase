@@ -6,7 +6,12 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
-    if (question.card().id && question.canXray()) {
+    // currently time series xrays require the maximum fidelity
+    if (
+        question.card().id &&
+        question.canXray() &&
+        question.xrayCost() === "extended"
+    ) {
         return [
             {
                 name: "xray-card",

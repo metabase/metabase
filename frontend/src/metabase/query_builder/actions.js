@@ -22,7 +22,7 @@ import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent } from "metabase/meta/Card";
 
-import { getXrayEnabled } from "metabase/xray/selectors";
+import { getXrayEnabled, getMaxCost } from "metabase/xray/selectors";
 
 import {
     getTableMetadata,
@@ -297,6 +297,7 @@ export const initializeQB = (location, params) => {
         // see if xrays are enabled
         if(card) {
             card.canXray = getXrayEnabled(getState())
+            card.xrayCost = getMaxCost(getState())
         }
 
         const question = card && new Question(getMetadata(getState()), card);

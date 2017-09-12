@@ -27,6 +27,8 @@ import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/set
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
 import { END_LOADING } from "metabase/reference/reference";
 
+import { getXrayEnabled, getMaxCost } from "metabase/xray/selectors";
+
 import Icon from "metabase/components/Icon"
 import Toggle from "metabase/components/Toggle"
 import SettingsXrayForm from "metabase/admin/settings/components/SettingsXrayForm";
@@ -92,6 +94,7 @@ describe("xray integration tests", () => {
     describe("query builder actions", async () => {
         it("let you see card xray for a timeseries question", async () => {
             const store = await createTestStore()
+            await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
 
@@ -180,7 +183,8 @@ describe("xray integration tests", () => {
             expect(xrayOptionIcon.length).toEqual(0)
         })
 
-        xit("should let an admin set the max cost of xrays", async () => {
+        it("should properly reflect the  an admin set the max cost of xrays", async () => {
+            await SettingsApi.put({ key: 'enable-xrays', value: true })
             const store = await createTestStore()
 
             store.pushPath('/admin/settings/x_rays')
@@ -193,12 +197,24 @@ describe("xray integration tests", () => {
 
             expect(xraySettings.find(Icon).length).toEqual(3)
 
-            const approximate = xraySettings.find('li').first()
+            const approximate = xraySettings.find('.text-measure li').first()
 
+            click(approximate)
             await store.waitForActions([UPDATE_SETTING])
 
             expect(approximate.hasClass('text-brand')).toEqual(true)
+            expect(getMaxCost(store.getState())).toEqual('approximate')
 
+            store.pushPath(`/xray/table/1/approximate`);
+
+            await store.waitForActions(FETCH_TABLE_XRAY, { timeout: 20000 })
+            await delay(200)
+
+            const tableXRay = app.find(TableXRay)
+            expect(tableXRay.length).toBe(1)
+            expect(tableXRay.find(CostSelect).length).toBe(1)
+            // there should be two disabled states
+            expect(tableXRay.find('a.disabled').length).toEqual(2)
         })
 
     })

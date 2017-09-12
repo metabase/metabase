@@ -295,6 +295,10 @@ export default class Question {
         return this._card.canXray;
     }
 
+    xrayCost() {
+        return this._card.xrayCost;
+    }
+
     /**
      * A user-defined name for the question
      */

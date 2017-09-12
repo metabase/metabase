@@ -19,6 +19,7 @@ const getDisabled = (maxCost) => {
     } else if (maxCost === 'exact') {
         return ['extended']
     }
+    return []
 }
 
 const CostSelect = ({ currentCost, location, maxCost }) => {
@@ -32,7 +33,7 @@ const CostSelect = ({ currentCost, location, maxCost }) => {
                         to={`${urlWithoutCost}/${cost}`}
                         className={cx(
                             'no-decoration',
-                            { 'disabled': getDisabled(maxCost).indexOf(cost) !== -1}
+                            { 'disabled': getDisabled(maxCost).indexOf(cost) >= 0}
                         )}
                         key={cost}
                     >

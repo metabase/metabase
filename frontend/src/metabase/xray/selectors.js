@@ -116,8 +116,8 @@ export const getComparisonForField = createSelector
 
 // see if xrays are enabled. unfortunately enabled can equal null so its enabled if its not false
 export const getXrayEnabled = state => {
-    const enabled = state.settings.values['enable_xrays']
-    if(enabled == null || enabled === true) {
+    const enabled = state.settings.values && state.settings.values['enable_xrays']
+    if(enabled == null || enabled == true) {
         return  true
     }
     return false
