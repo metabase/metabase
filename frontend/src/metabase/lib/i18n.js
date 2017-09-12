@@ -10,9 +10,16 @@ export async function loadLocalization(locale) {
 }
 
 export function setLocalization(translationsObject) {
-    const locale = window.MetabaseLocalization.headers.language;
+    const locale = translationsObject.headers.language;
+
+    // inject the application name
+    translationsObject.translations[""]["Metabase"].msgstr = [
+        MetabaseSettings.applicationName()
+    ];
+
+    console.log("translationsObject", translationsObject)
 
     // add and set locale with C-3PO
-    addLocale(locale, window.MetabaseLocalization);
+    addLocale(locale, translationsObject);
     useLocale(locale);
 }

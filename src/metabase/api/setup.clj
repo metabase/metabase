@@ -149,9 +149,9 @@
       :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
-     {:title       "Organize questions"
-      :group       "Curate your data"
-      :description "Have a lot of saved questions in Metabase? Create collections to help manage them and add context."
+     {:title       (tru "Organize questions")
+      :group       (tru "Curate your data")
+      :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
       :link        "/questions/"
       :completed   has-collections?
       :triggered   (>= num-cards 30)}

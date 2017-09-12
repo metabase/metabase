@@ -24,7 +24,7 @@
             [metabase.models
              [user :refer [User]]
              [setting :as setting]]
-            [puppetlabs.i18n.core :as i18n :refer [trs trsn tru trun]]
+            [puppetlabs.i18n.core :refer [trs locale-negotiator]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
@@ -61,6 +61,7 @@
       mb-middleware/wrap-api-key         ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
       mb-middleware/wrap-session-id      ; looks for a Metabase Session ID and assoc as :metabase-session-id
       mb-middleware/maybe-set-site-url   ; set the value of `site-url` if it hasn't been set yet
+      locale-negotiator                  ; Binds *locale* for i18n
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
       wrap-gzip))                        ; GZIP response if client can handle it

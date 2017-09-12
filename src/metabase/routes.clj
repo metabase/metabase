@@ -14,7 +14,7 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
-            [puppetlabs.i18n.core :refer [trs locale-negotiator *locale*]]
+            [puppetlabs.i18n.core :refer [trs *locale*]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 
@@ -33,14 +33,19 @@
 (defn- load-template [path variables]
   (stencil/render-string (load-file-at-path path) variables))
 
+(defn- fallback-localization
+  [locale]
+  (json/generate-string {"headers" {"language" locale}
+                         "translations" {"" {"Metabase" {"msgid" "Metabase"}}}}))
+
 (defn- load-localization []
   (if (and *locale* (not= (str *locale*) "en"))
     (try
       (load-file-at-path (str "frontend_client/app/locales/" *locale* ".json"))
     (catch Throwable e
       (log/warn (str "Locale " *locale* " not found."))
-      "null"))
-    "null"))
+      (fallback-localization *locale*)))
+    (fallback-localization *locale*)))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
@@ -54,9 +59,9 @@
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 
-(def ^:private index  (locale-negotiator (partial entrypoint "index"  (not :embeddable))))
-(def ^:private public (locale-negotiator (partial entrypoint "public" :embeddable)))
-(def ^:private embed  (locale-negotiator (partial entrypoint "embed"  :embeddable)))
+(def ^:private index  (partial entrypoint "index"  (not :embeddable)))
+(def ^:private public (partial entrypoint "public" :embeddable))
+(def ^:private embed  (partial entrypoint "embed"  :embeddable))
 
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
