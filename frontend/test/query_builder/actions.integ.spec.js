@@ -86,7 +86,7 @@ describe("QueryBuilder", () => {
                 });
 
                 it("results in the correct card object in redux state", async () => {
-                    expect(dirtyQuestion.card()).toMatchObject(getCard(store.getState()))
+                    expect(dirtyQuestion.card()).toMatchObject(_.omit(getCard(store.getState()), "canXray", "xrayCost"))
                 })
 
                 it("results in the correct original_card object in redux state", async () => {
