@@ -114,11 +114,10 @@ export const getTableItem = (state, index = 1) => createSelector(
 
 export const getComparisonForField = createSelector
 
-// see if xrays are enabled. unfortunately enabled equals null so its enabled if its not false
+// see if xrays are enabled. unfortunately enabled can equal null so its enabled if its not false
 export const getXrayEnabled = state => {
-    console.log('state!!!', state)
     const enabled = state.settings.values['enable_xrays']
-    if(enabled == null || enabled == true) {
+    if(enabled == null || enabled === true) {
         return  true
     }
     return false
