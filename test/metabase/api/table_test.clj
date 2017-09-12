@@ -22,11 +22,15 @@
              [util :as tu :refer [match-$]]]
             [metabase.test.data
              [dataset-definitions :as defs]
+             [datasets :as datasets]
              [users :refer [user->client]]]
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.query-processor-test :as qpt]
+            [metabase.timeseries-query-processor-test :as timeseries-qp-test]
+            [metabase.test.data.datasets :as datasets :refer [*driver* *engine*]]))
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -602,3 +606,15 @@
   (data/dataset sad-toucan-incidents
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :incidents)))]
       (dimension-options-for-field response "TIMESTAMP"))))
+
+;; Datetime binning options should showup whether the backend supports binning of numeric values or not
+(datasets/expect-with-engines #{:druid}
+  (var-get #'table-api/datetime-dimension-indexes)
+  (timeseries-qp-test/with-flattened-dbdef
+    (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
+      (dimension-options-for-field response "timestamp"))))
+
+(qpt/expect-with-non-timeseries-dbs
+ (var-get #'table-api/datetime-dimension-indexes)
+ (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
+   (dimension-options-for-field response "DATE")))
