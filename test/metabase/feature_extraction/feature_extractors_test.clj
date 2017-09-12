@@ -113,6 +113,30 @@
    (#'fe/quarter-frequencies (t/date-time 2015 5) (t/date-time 2016 2))])
 
 (expect
+  [true false]
+  [(roughly= 30 30.5 0.05)
+   (roughly= 130 30.5 0.05)])
+
+(expect
+  [:day
+   :day
+   :month
+   nil]
+  [(#'fe/infer-resolution {:breakout [["datetime-field" [:field-id 1] :as :day]]}
+                          [[(#'fe/to-double (t/date-time 2015 1 1)) 3]
+                           [(#'fe/to-double (t/date-time 2015 2 24)) 34]
+                           [(#'fe/to-double (t/date-time 2015 3 3)) 4]])
+   (#'fe/infer-resolution nil [[(#'fe/to-double (t/date-time 2015 1 1)) 3]
+                               [(#'fe/to-double (t/date-time 2015 1 2)) 34]
+                               [(#'fe/to-double (t/date-time 2015 1 3)) 4]])
+   (#'fe/infer-resolution nil [[(#'fe/to-double (t/date-time 2015 1)) 3]
+                               [(#'fe/to-double (t/date-time 2015 2)) 34]
+                               [(#'fe/to-double (t/date-time 2015 3)) 4]])
+   (#'fe/infer-resolution nil [[(#'fe/to-double (t/date-time 2015 1)) 1]
+                               [(#'fe/to-double (t/date-time 2015 12)) 2]
+                               [(#'fe/to-double (t/date-time 2016 1)) 0]])])
+
+(expect
   [{1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}
    {1 1 2 1 5 1 6 1 7 1 8 1 9 1 10 1 11 1 12 1}
    {5 1 6 1}]
@@ -121,6 +145,7 @@
    (#'fe/month-frequencies (t/date-time 2015 5 31) (t/date-time 2015 6 28))])
 
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
+(def ^:private ints [0 nil Long/MAX_VALUE Long/MIN_VALUE 5 -100])
 (def ^:private datetimes ["2015-06-01" nil "2015-06-11" "2015-01-01"
                           "2016-06-31" "2017-09-01" "2016-04-15" "2017-11-02"])
 (def ^:private categories [:foo :baz :bar :bar nil :foo])
@@ -131,11 +156,13 @@
 
 (expect
   [(var-get #'fe/Num)
+   (var-get #'fe/Num)
    (var-get #'fe/DateTime)
    [:type/Text :type/Category]
    (var-get #'fe/Text)
    [nil [:type/NeverBeforeSeen :type/*]]]
   [(-> (->features {:base_type :type/Number} numbers) :type)
+   (-> (->features {:base_type :type/Number} ints) :type)
    (-> (->features {:base_type :type/DateTime} datetimes) :type)
    (-> (->features {:base_type :type/Text
                     :special_type :type/Category}

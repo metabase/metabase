@@ -1,9 +1,7 @@
 (ns metabase.api.x-ray
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction
-             [core :as fe]
-             [costs :as costs]]
+            [metabase.feature-extraction.core :as fe]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]

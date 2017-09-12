@@ -342,7 +342,7 @@
   ([x y precision]
    (<= (* (- 1 precision) x) y (* (+ 1 precision) x))))
 
-(defn infer-resolution
+(defn- infer-resolution
   [query series]
   (or (let [[head resolution] (-> query :breakout first ((juxt first last)))]
         (when (= head "datetime-field")
@@ -352,7 +352,7 @@
                                     h/histogram
                                     (partition 2 1 series))
             median-delta (h.impl/median deltas)]
-        (when (roughly= median-delta (h.impl/minimum deltas))
+        (when (roughly= median-delta (h.impl/minimum deltas) 0.1)
           (cond
             (roughly= median-delta (* 60 1000))                    :minute
             (roughly= median-delta (* 60 60 1000))                 :hour
