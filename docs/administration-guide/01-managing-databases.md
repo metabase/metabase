@@ -91,6 +91,16 @@ By default, Metabase also performs a more intensive daily sampling of each field
 
 If for some reason you need to flush out the cached field values for your database, click the button that says "Discard saved field values" in the top-right of the database's page.
 
+##### Re-scanning a single table or field
+
+To re-scan a specific table, go to the Data Model section of the Admin Panel, select the table from the list, and click the gear icon in the top right of the page. Similarly, to do this for just a specific field, on the same Data Model page, find the field you want and click the gear icon on the far right of the field's name and options:
+
+![Field options][images/field-options.png]
+
+On either the table settings or field settings page, you'll see these options:
+
+![Re-scan options](images/re-scan-options.png)
+
 ### Deleting Databases
 
 To delete a database from Metabase, click on **Remove this database** from the database detail screen.
