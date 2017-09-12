@@ -115,6 +115,14 @@ export const getTableItem = (state, index = 1) => createSelector(
 export const getComparisonForField = createSelector
 
 // see if xrays are enabled. unfortunately enabled equals null so its enabled if its not false
-export const getXrayEnabled = state => state.settings.values['enable-xrays'] !== false
-export const getMaxCost = state => state.settings.values['xray-max-cost']
+export const getXrayEnabled = state => {
+    console.log('state!!!', state)
+    const enabled = state.settings.values['enable_xrays']
+    if(enabled == null || enabled == true) {
+        return  true
+    }
+    return false
+}
+
+export const getMaxCost = state => state.settings.values['xray_max_cost']
 
