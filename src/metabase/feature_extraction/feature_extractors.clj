@@ -221,28 +221,27 @@
             mean   (h.impl/mean histogram)
             median (h.impl/median histogram)
             range  (some-> max (- min))]
-        (merge
-         {:positive-definite? (some-> min (>= 0))
-          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-          :var>sd?            (some->> sd (> var))
-          :0<=x<=1?           (when min (<= 0 min max 1))
-          :-1<=x<=1?          (when min (<= -1 min max 1))
-          :cv                 (some-> sd (safe-divide mean))
-          :range-vs-sd        (some->> sd (safe-divide range))
-          :mean-median-spread (some->> range (safe-divide (- mean median)))
-          :min-vs-max         (some->> max (safe-divide min))
-          :range              range
-          :min                min
-          :max                max
-          :mean               mean
-          :median             median
-          :var                var
-          :sd                 sd
-          :kurtosis           kurtosis
-          :skewness           skewness
-          :histogram          (or histogram-categorical histogram)
-          :sum                sum
-          :sum-of-squares     sum-of-squares}))))))
+        {:positive-definite? (some-> min (>= 0))
+         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+         :var>sd?            (some->> sd (> var))
+         :0<=x<=1?           (when min (<= 0 min max 1))
+         :-1<=x<=1?          (when min (<= -1 min max 1))
+         :cv                 (some-> sd (safe-divide mean))
+         :range-vs-sd        (some->> sd (safe-divide range))
+         :mean-median-spread (some->> range (safe-divide (- mean median)))
+         :min-vs-max         (some->> max (safe-divide min))
+         :range              range
+         :min                min
+         :max                max
+         :mean               mean
+         :median             median
+         :var                var
+         :sd                 sd
+         :kurtosis           kurtosis
+         :skewness           skewness
+         :histogram          (or histogram-categorical histogram)
+         :sum                sum
+         :sum-of-squares     sum-of-squares})))))
 
 (defmethod comparison-vector Num
   [features]
