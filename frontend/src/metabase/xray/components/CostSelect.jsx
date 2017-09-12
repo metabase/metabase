@@ -30,7 +30,10 @@ const CostSelect = ({ currentCost, location, maxCost }) => {
                 return (
                     <Link
                         to={`${urlWithoutCost}/${cost}`}
-                        className="no-decoration"
+                        className={cx(
+                            'no-decoration',
+                            { 'disabled': getDisabled(maxCost).indexOf(cost) !== -1}
+                        )}
                         key={cost}
                     >
                         <li
