@@ -23,7 +23,7 @@ import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
 
 // settings related actions for testing xray administration
-import { INITIALIZE_SETTINGS, UPDATE_SETTING, REFRESH_SETTINGS_LIST } from "metabase/admin/settings/settings";
+import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
 import { END_LOADING } from "metabase/reference/reference";
 
@@ -204,6 +204,8 @@ describe("xray integration tests", () => {
     })
     describe("data reference entry", async () => {
         it("should be possible to access an Xray from the data reference", async () => {
+            // ensure xrays are on
+            await SettingsApi.put({ key: 'enable-xrays', value: true })
             const store = await createTestStore()
 
             store.pushPath('/reference/databases/1/tables/1')
@@ -222,32 +224,25 @@ describe("xray integration tests", () => {
             expect(xrayFieldSideBarItem.length).toEqual(1)
         })
 
-        describe("xrays disabled", async () => {
-            beforeEach(async () => {
-                // turn off xrays
-                await SettingsApi.put({ key: 'enable-xrays' }, true)
-            })
-            it("should not be possible to access an Xray from the data reference if xrays are disabled", async () => {
+        it("should not be possible to access an Xray from the data reference if xrays are disabled", async () => {
+            // turn off xrays
+            await SettingsApi.put({ key: 'enable-xrays', value: false })
+            const store = await createTestStore()
 
-                const store = await createTestStore()
+            const app = mount(store.getAppContainer())
 
-                const app = mount(store.getAppContainer())
+            store.pushPath('/reference/databases/1/tables/1')
 
-                store.pushPath('/reference/databases/1/tables/1')
+            await store.waitForActions([END_LOADING])
 
-                await store.waitForActions([END_LOADING])
+            const xrayTableSideBarItem = app.find('.Icon.Icon-beaker')
+            expect(xrayTableSideBarItem.length).toEqual(0)
 
-                console.log(store.getState().settings.values)
+            store.pushPath('/reference/databases/1/tables/1/fields/1')
 
-                const xrayTableSideBarItem = app.find('.Icon.Icon-beaker')
-                expect(xrayTableSideBarItem.length).toEqual(0)
-
-                store.pushPath('/reference/databases/1/tables/1/fields/1')
-
-                await store.waitForActions([END_LOADING])
-                const xrayFieldSideBarItem = app.find('.Icon.Icon-beaker')
-                expect(xrayFieldSideBarItem.length).toEqual(0)
-            })
+            await store.waitForActions([END_LOADING])
+            const xrayFieldSideBarItem = app.find('.Icon.Icon-beaker')
+            expect(xrayFieldSideBarItem.length).toEqual(0)
         })
     })
 

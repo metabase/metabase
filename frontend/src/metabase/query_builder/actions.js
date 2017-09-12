@@ -294,8 +294,10 @@ export const initializeQB = (location, params) => {
         // Fetch the question metadata
         card && dispatch(loadMetadataForCard(card));
 
-        const canXray = getXrayEnabled(getState())
-        card.canXray = canXray
+        // see if xrays are enabled
+        if(card) {
+            card.canXray = getXrayEnabled(getState())
+        }
 
         const question = card && new Question(getMetadata(getState()), card);
 

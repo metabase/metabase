@@ -31,7 +31,9 @@ export type Card = {
     public_uuid: string,
 
     // Not part of the card API contract, a field used by query builder for showing lineage
-    original_card_id?: CardId
+    original_card_id?: CardId,
+    // pulled in from settings to let the QB know whether to expose xray features
+    canXray: ?boolean
 };
 
 export type StructuredDatasetQuery = {
