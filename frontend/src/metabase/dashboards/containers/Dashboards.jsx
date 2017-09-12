@@ -145,7 +145,7 @@ export class Dashboards extends Component {
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading}
-                className={cx("relative px4 full-height bg-slate-extra-light", {"flex flex-full flex-column": noDashboardsCreated})}
+                className={cx("relative px4 full-height", {"flex flex-full flex-column": noDashboardsCreated})}
                 noBackground
             >
                 { modalOpen ? this.renderCreateDashboardModal() : null }

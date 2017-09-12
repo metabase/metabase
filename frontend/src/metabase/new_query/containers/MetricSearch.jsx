@@ -81,7 +81,7 @@ export default class MetricSearch extends Component {
                         )
                     } else {
                         return (
-                            <div className="mt2 flex-full flex align-center justify-center bg-slate-extra-light">
+                            <div className="mt2 flex-full flex align-center justify-center">
                                 <EmptyState
                                     message={<span>Defining common metrics for your team makes it even easier to ask questions</span>}
                                     image="/app/img/metrics_illustration"
