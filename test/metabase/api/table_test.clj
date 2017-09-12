@@ -563,10 +563,11 @@
         (db/update! Field lat-field-id :fingerprint fingerprint)))))
 
 (defn- dimension-options-for-field [response field-name]
-  (->> response
-       :fields
-       (m/find-first #(= field-name (:name %)))
-       :dimension_options))
+  (let [formatted-field-name (data/format-name field-name)]
+    (->> response
+         :fields
+         (m/find-first #(= formatted-field-name (:name %)))
+         :dimension_options)))
 
 (defn- extract-dimension-options
   "For the given `FIELD-NAME` find it's dimension_options following
@@ -583,7 +584,7 @@
     #{nil "bin-width" "default"}
     #{})
   (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
-    (extract-dimension-options response "LATITUDE")))
+    (extract-dimension-options response "latitude")))
 
 ;; Number columns without a special type should use "num-bins"
 (expect
@@ -595,7 +596,7 @@
       (db/update! Field (data/id :venues :price) :special_type nil)
 
       (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
-        (extract-dimension-options response "PRICE"))
+        (extract-dimension-options response "price"))
 
       (finally
         (db/update! Field (data/id :venues :price) :special_type special_type)))))
@@ -605,7 +606,7 @@
   (var-get #'table-api/datetime-dimension-indexes)
   (data/dataset sad-toucan-incidents
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :incidents)))]
-      (dimension-options-for-field response "TIMESTAMP"))))
+      (dimension-options-for-field response "timestamp"))))
 
 ;; Datetime binning options should showup whether the backend supports binning of numeric values or not
 (datasets/expect-with-engines #{:druid}
@@ -617,4 +618,4 @@
 (qpt/expect-with-non-timeseries-dbs
  (var-get #'table-api/datetime-dimension-indexes)
  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
-   (dimension-options-for-field response "DATE")))
+   (dimension-options-for-field response "date")))
