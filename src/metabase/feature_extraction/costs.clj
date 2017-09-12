@@ -44,37 +44,3 @@
 (def ^{:arglists '([max-cost])} alow-joins?
   "Alow bringing in data from other tables if needed."
   (comp #{:joins} :query))
-
-(defmulti
-  ^{:doc "Estimate cost of feature extraction for given model.
-          Cost is equal to the number of values in the corresponding dataset
-          (ie. rows * fields). If cost cannot be estimated (eg. for Cards
-          employing aggregation or defined in SQL), returns -1."
-    :arglists '([model])}
-  estimate-cost type)
-
-(defmethod estimate-cost (type Field)
-  [field]
-  (or (:rows (Table (:table_id field))) -1))
-
-(defmethod estimate-cost (type Card)
-  [card]
-  (if (or (-> card :dataset_query :native)
-          (-> card :dataset_query :query :aggregation)
-          (nil? (:rows (Table (:table_id card)))))
-    -1
-    (* 2 (:rows (Table (:table_id card))))))cc
-
-(defmethod estimate-cost (type Segment)
-  [segment]
-  (estimate-cost (Table (:table_id segment))))
-
-(defmethod estimate-cost (type Table)
-  [table]
-  (if (:rows table)
-    (->> table
-         (fetch-metadata/table-metadata (Database (:db_id table)))
-         :fields
-         count
-         (* (:rows table)))
-    -1))
