@@ -93,8 +93,10 @@ describe("xray integration tests", () => {
 
     describe("query builder actions", async () => {
         it("let you see card xray for a timeseries question", async () => {
-            const store = await createTestStore()
+            await SettingsApi.put({ key: 'enable-xrays', value: 'true' })
             await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
+            const store = await createTestStore()
+            // make sure xrays are on and at the proper cost
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
 
@@ -156,8 +158,8 @@ describe("xray integration tests", () => {
             // there should be a toggle
             expect(xrayToggle.length).toEqual(1)
 
-            expect(store.getState().settings.values['enable-xrays']).toEqual(null)
-
+            // things should be on
+            expect(getXrayEnabled(store.getState())).toEqual(true)
             // the toggle should be on by default
             expect(xrayToggle.props().value).toEqual(true)
 
@@ -165,7 +167,8 @@ describe("xray integration tests", () => {
             // toggle the... toggle
             click(xrayToggle)
             await store.waitForActions([UPDATE_SETTING])
-            expect(store.getState().settings.values['enable-xrays']).toEqual(false)
+
+            expect(getXrayEnabled(store.getState())).toEqual(false)
 
 
             // navigate to a previosuly x-ray-able entity
