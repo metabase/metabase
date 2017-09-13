@@ -6,7 +6,7 @@ import {
     login
 } from "metabase/__support__/integrated_tests";
 
-import { getMergedParameterFieldValues } from "metabase/selectors/metadata";
+import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 import { ADD_PARAM_VALUES } from "metabase/redux/metadata";
 
 // TODO Atte Keinänen 7/17/17: When we have a nice way to create dashboards in tests, this could use a real saved dashboard
@@ -65,7 +65,7 @@ describe("Dashboard redux actions", () => {
             // using hash as dashboard id should invoke the public API
             await store.dispatch(fetchDashboard('6e59cc97-3b6a-4bb6-9e7a-5efeee27e40f'));
             await store.waitForActions(ADD_PARAM_VALUES)
-
+            const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
             const fieldValues = await getMergedParameterFieldValues(store.getState(), { parameter: { field_ids: [ 21 ] }});
             expect(fieldValues).toEqual(["Doohickey", "Gadget", "Gizmo", "Widget"]);
         })
