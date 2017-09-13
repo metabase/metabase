@@ -40,7 +40,9 @@ export default class NewQueryOption extends Component {
                </div>
                <div className="text-normal mt2 mb2 text-paragraph" style={{lineHeight: "1.25em"}}>
                    <h2 className={cx("transition-all", {"text-brand": hover})}>{title}</h2>
-                   <p className={"text-grey-4 text-small"}>{description}</p>
+                   <div className="flex layout-centered">
+                     <p style={{maxWidth: 300}} className={"text-grey-4 text-small"}>{description}</p>
+                   </div>
                </div>
            </Link>
        );

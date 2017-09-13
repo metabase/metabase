@@ -132,7 +132,7 @@ export class NewQueryOptions extends Component {
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/list_illustration"
-                                        title="Segments"
+                                        title="Tables"
                                         description="Explore tables and see what’s going on underneath your charts."
                                         width={180}
                                         to={segmentSearchUrl}
@@ -144,7 +144,7 @@ export class NewQueryOptions extends Component {
                                 <NewQueryOption
                                     image="/app/img/query_builder_illustration"
                                     title={ showCustomInsteadOfNewQuestionText ? "Custom" : "New question"}
-                                    description="Use the simple query builder to see trends, lists of things, or to create your own metrics."
+                                    description="Use the simple question builder to see trends, lists of things, or to create your own metrics."
                                     width={180}
                                     to={this.getGuiQueryUrl}
                                 />
@@ -153,8 +153,8 @@ export class NewQueryOptions extends Component {
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/sql_illustration"
-                                        title="SQL"
-                                        description="For more complicated questions, you can write your own SQL."
+                                        title="Native query"
+                                        description="For more complicated questions, you can write your own SQL or native query."
                                         to={this.getNativeQueryUrl}
                                     />
                                 </li>
