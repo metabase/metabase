@@ -5,12 +5,12 @@ import type {
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default ({ question }: ClickActionProps): ClickAction[] => {
+export default ({ question, settings }: ClickActionProps): ClickAction[] => {
     // currently time series xrays require the maximum fidelity
     if (
         question.card().id &&
-        question.canXray() &&
-        question.xrayCost() === "extended"
+        settings["enable_xrays"] &&
+        settings["xray_max_cost"] === "extended"
     ) {
         return [
             {

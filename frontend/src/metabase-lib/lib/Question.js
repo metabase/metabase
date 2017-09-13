@@ -290,15 +290,6 @@ export default class Question {
         return Mode.forQuestion(this);
     }
 
-    // see if the card can be xrayed
-    canXray() {
-        return this._card.canXray;
-    }
-
-    xrayCost() {
-        return this._card.xrayCost;
-    }
-
     /**
      * A user-defined name for the question
      */

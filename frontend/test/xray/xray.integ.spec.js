@@ -119,6 +119,7 @@ describe("xray integration tests", () => {
         })
 
         it("let you see segment xray for a question containing a segment", async () => {
+            await SettingsApi.put({ key: 'enable-xrays', value: true })
             const store = await createTestStore()
             store.pushPath(Urls.question(segmentQuestion.id()))
             const app = mount(store.getAppContainer());
@@ -163,13 +164,11 @@ describe("xray integration tests", () => {
             // the toggle should be on by default
             expect(xrayToggle.props().value).toEqual(true)
 
-
             // toggle the... toggle
             click(xrayToggle)
             await store.waitForActions([UPDATE_SETTING])
 
             expect(getXrayEnabled(store.getState())).toEqual(false)
-
 
             // navigate to a previosuly x-ray-able entity
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
@@ -186,7 +185,25 @@ describe("xray integration tests", () => {
             expect(xrayOptionIcon.length).toEqual(0)
         })
 
-        it("should properly reflect the  an admin set the max cost of xrays", async () => {
+        it("should not show xray options for segments when xrays are disabled", async () => {
+            // turn off xrays
+            await SettingsApi.put({ key: 'enable-xrays', value: false })
+
+            const store = await createTestStore()
+
+            store.pushPath(Urls.question(segmentQuestion.id()))
+            const app = mount(store.getAppContainer())
+
+            await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
+            await delay(500);
+
+            const actionsWidget = app.find(ActionsWidget)
+            click(actionsWidget.childAt(0))
+            const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
+            expect(xrayOptionIcon.length).toEqual(0)
+        })
+
+        it("should properly reflect the an admin set the max cost of xrays", async () => {
             await SettingsApi.put({ key: 'enable-xrays', value: true })
             const store = await createTestStore()
 
