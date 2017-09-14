@@ -23,11 +23,6 @@
                    "unbounded"
                    "yolo")))
 
-;; (def ^:private Scale
-;;   (s/maybe (s/enum "month"
-;;                    "week"
-;;                    "day")))
-
 (defn- max-cost
   [query computation]
   {:query       (keyword query)

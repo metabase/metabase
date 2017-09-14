@@ -28,7 +28,7 @@
               (fn [{:keys [magnitude-a magnitude-b product]}]
                 (some->> (fe/safe-divide product magnitude-a magnitude-b)
                          (- 1))))
-             (map vector a b)))
+             (map (comp (partial map double) vector) a b)))
 
 (defn head-tails-breaks
   "Pick out the cluster of N largest elements.
@@ -52,10 +52,12 @@
 (defmethod difference [Number Number]
   [a b]
   {:difference (cond
-                 (== a b 0)        0
+                 (== a b)          0
                  (zero? (max a b)) 1
-                 :else             (/ (- (max a b) (min a b))
-                                      (max (math/abs a) (math/abs b))))})
+                 :else             (let [a (double a)
+                                         b (double b)]
+                                     (/ (math/abs (- a b))
+                                        2 (max (math/abs a) (math/abs b)))))})
 
 (defmethod difference [Boolean Boolean]
   [a b]

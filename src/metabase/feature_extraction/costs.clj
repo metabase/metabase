@@ -1,6 +1,14 @@
 (ns metabase.feature-extraction.costs
   "Predicates for limiting resource expanditure during feature extraction."
-  (:require [schema.core :as s]))
+  (:require [metabase.models
+             [card :refer [Card]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [schema.core :as s]))
 
 (def MaxCost
   "Schema for max-cost parameter."
