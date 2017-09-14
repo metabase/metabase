@@ -85,7 +85,7 @@
   [card]
   (let [{:keys [rows cols] :as dataset} (-> card
                                             :dataset_query
-                                            qp/process-query
+                                            qp/process-query-no-format-rows
                                             :data)]
     (if (and (:visualization_settings card)
              (not-every? :source cols))
