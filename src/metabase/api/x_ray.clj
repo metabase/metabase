@@ -203,15 +203,4 @@
     "table" "table"
     "segment" "table"]])
 
-(def ^:private Settings
-  {:xray-max-cost costs/MaxCostBundles
-   :enable-xrays  s/Bool})
-
-(api/defendpoint PUT "/settings"
-  "Update x-ray related settings. You must be a superuser to do this."
-  [:as {settings :body}]
-  {settings Settings}
-  (api/check-superuser)
-  (setting/set-many! settings))
-
 (api/define-routes)
