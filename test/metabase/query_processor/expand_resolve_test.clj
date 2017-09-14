@@ -1,15 +1,18 @@
 (ns metabase.query-processor.expand-resolve-test
   "Tests query expansion/resolution"
-  (:require [expectations :refer :all]
+  (:require [clojure.string :as str]
+            [expectations :refer :all]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.query-processor.middleware
              [expand :as ql]
              [resolve :as resolve]
              [source-table :as source-table]]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu]]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.util :as u]))
+            [metabase.test.data.dataset-definitions :as defs]))
 
 ;; this is here because expectations has issues comparing and object w/ a map and most of the output
 ;; below has objects for the various place holders in the expanded/resolved query
@@ -321,3 +324,16 @@
     (tu/boolean-ids-and-timestamps
      (mapv obj->map [expanded-form
                      (resolve' expanded-form)]))))
+
+;; check that a schema invalidation error produces a reasonably-sized exception, < 50 lines.
+;; previously the entire schema was being dumped which resulted in a ~5200 line exception (#5978)
+(expect
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-table (data/id :venues)
+                    :filter       [:and nil]}})
+      u/pprint-to-str
+      str/split-lines
+      count
+      (< 50)))
