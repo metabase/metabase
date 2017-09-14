@@ -19,6 +19,7 @@ const getDisabled = (maxCost) => {
     } else if (maxCost === 'exact') {
         return ['extended']
     }
+    return []
 }
 
 const CostSelect = ({ currentCost, location, maxCost }) => {
@@ -30,7 +31,10 @@ const CostSelect = ({ currentCost, location, maxCost }) => {
                 return (
                     <Link
                         to={`${urlWithoutCost}/${cost}`}
-                        className="no-decoration"
+                        className={cx(
+                            'no-decoration',
+                            { 'disabled': getDisabled(maxCost).indexOf(cost) >= 0}
+                        )}
                         key={cost}
                     >
                         <li
@@ -38,7 +42,6 @@ const CostSelect = ({ currentCost, location, maxCost }) => {
                             className={cx(
                                 "flex align-center justify-center cursor-pointer bg-brand-hover text-white-hover transition-background transition-text text-grey-2",
                                 { 'bg-brand text-white': currentCost === cost },
-                                { 'disabled': getDisabled(maxCost).indexOf(cost) > 0 }
                             )}
                         >
                             <Tooltip

@@ -19,9 +19,9 @@ const SegmentMode: QueryMode = {
     name: "segment",
     actions: [
         ...DEFAULT_ACTIONS,
-        XRaySegment,
         CommonMetricsAction,
         CountByTimeAction,
+        XRaySegment,
         SummarizeBySegmentMetricAction
         // commenting this out until we sort out viz settings in QB2
         // PlotSegmentField

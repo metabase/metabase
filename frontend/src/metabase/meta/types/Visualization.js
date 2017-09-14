@@ -50,7 +50,8 @@ export type ClickAction = {
 
 export type ClickActionProps = {
     question: Question,
-    clicked?: ClickObject
+    clicked?: ClickObject,
+    settings: {}
 }
 
 export type OnChangeCardAndRun = ({ nextCard: Card, previousCard?: ?Card }) => void

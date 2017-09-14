@@ -7,8 +7,14 @@ import Icon from 'metabase/components/Icon'
 import COSTS from 'metabase/xray/costs'
 
 const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
-    const maxCost = Object.assign({}, ...elements.filter(e => e.key === 'xray-max-cost',))
+    let maxCost = Object.assign({}, ...elements.filter(e => e.key === 'xray-max-cost',))
     const enabled = Object.assign({}, ...elements.filter(e => e.key === 'enable-xrays',))
+
+    // handle the current behavior of the default
+    if(maxCost.value == null) {
+        maxCost.value = 'extended'
+    }
+
     return (
         <div>
             <div className="mx2">
