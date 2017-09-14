@@ -367,7 +367,7 @@
     (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                  :series            conj})
     (fn [[^java.sql.Timestamp x y]]
-      [(some-> x .getTime) y]))
+      [(some-> x .getTime double) y]))
    (merge-juxt
     (field-metadata-extractor field)
     (fn [{:keys [series linear-regression]}]
