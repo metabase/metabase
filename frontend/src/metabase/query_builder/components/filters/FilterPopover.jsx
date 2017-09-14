@@ -101,8 +101,10 @@ export default class FilterPopover extends Component {
 
     setValue(index: number, value: any) {
         let { filter } = this.state;
-        filter[index + 2] = value;
-        this.setState({ filter: filter });
+        // $FlowFixMe Flow doesn't like spread operator
+        let newFilter: FieldFilter = [...filter]
+        newFilter[index + 2] = value;
+        this.setState({ filter: newFilter });
     }
 
     setValues = (values: any[]) => {

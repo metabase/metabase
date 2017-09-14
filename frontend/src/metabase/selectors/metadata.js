@@ -28,6 +28,7 @@ export const getNormalizedFields = state => state.metadata.fields;
 export const getNormalizedMetrics = state => state.metadata.metrics;
 export const getNormalizedSegments = state => state.metadata.segments;
 
+export const getMetadataFetched = state => state.requests.fetched.metadata || {}
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -69,6 +70,7 @@ export const getMetadata = createSelector(
         meta.fields    = copyObjects(meta, fields, Field)
         meta.segments  = copyObjects(meta, segments, Segment)
         meta.metrics   = copyObjects(meta, metrics, Metric)
+        // meta.loaded    = getLoadedStatuses(requestStates)
 
         hydrateList(meta.databases, "tables", meta.tables);
 
@@ -122,19 +124,36 @@ export const getSegments = createSelector(
     ({ segments }) => segments
 );
 
-// MISC
+// FIELD VALUES FOR DASHBOARD FILTERS / SQL QUESTION PARAMETERS
 
 // Returns a dictionary of field id:s mapped to matching field values
+// Currently this assumes that you are passing the props of <ParameterValueWidget> which contain the
+// `field_ids` array inside `parameter` prop.
 const getParameterFieldValuesByFieldId = (state, props) => _.chain(getFields(state))
     .pick(getFields(state), ...props.parameter.field_ids)
     .mapObject(getFieldValues)
     .value()
 
-// Check if the lengths of field value arrays equal for each field
-// TODO: Why can't we use plain shallowEqual, i.e. why the field value arrays change very often?
+// Custom equality selector for checking if two field value dictionaries contain same fields and field values
+// Currently we simply check if fields match and the lengths of field value arrays are equal which makes the comparison fast
+// See https://github.com/reactjs/reselect#customize-equalitycheck-for-defaultmemoize
 const createFieldValuesEqualSelector = createSelectorCreator(defaultMemoize, (a, b) => {
+// TODO: Why can't we use plain shallowEqual, i.e. why the field value arrays change very often?
     return shallowEqual(_.mapObject(a, (values) => values.length), _.mapObject(b, (values) => values.length));
 })
+
+// HACK Atte Keinänen 7/27/17: Currently the field value analysis code only returns a single value for booleans,
+// this will be addressed in analysis sync refactor
+const patchBooleanFieldValues_HACK = (valueArray) => {
+    const isBooleanFieldValues =
+        valueArray && valueArray.length === 1 && valueArray[0] && typeof(valueArray[0][0]) === "boolean"
+
+    if (isBooleanFieldValues) {
+        return [[true], [false]];
+    } else {
+        return valueArray;
+    }
+}
 
 // Merges the field values of fields linked to a parameter and removes duplicates
 // TODO Atte Keinänen 7/20/17: How should this work for remapped values?
@@ -144,9 +163,11 @@ export const makeGetMergedParameterFieldValues = () => {
         const fieldIds = Object.keys(fieldValues)
 
         if (fieldIds.length === 0) {
+            // If we have no mapped fields, then don't return any values
             return [];
         } else if (fieldIds.length === 1) {
-            return fieldValues[fieldIds[0]];
+            const singleFieldValues = fieldValues[fieldIds[0]]
+            return patchBooleanFieldValues_HACK(singleFieldValues);
         } else {
             const sortedMergedValues = _.flatten(Object.values(fieldValues), true).sort()
             // run the uniqueness comparision always against a non-remapped value

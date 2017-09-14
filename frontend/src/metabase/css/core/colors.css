@@ -21,12 +21,13 @@
   --gold-color: #F9D45C;
   --orange-color: #F9A354;
   --purple-color: #A989C5;
-  --purple-light-color: #C5ABDB;
   --green-color: #9CC177;
+  --green-saturated-color: #84BB4C;
   --dark-color: #4C545B;
   --error-color: #EF8C8C;
   --slate-color: #9BA5B1;
   --slate-light-color: #DFE8EA;
+  --slate-almost-extra-light-color: #EDF2F5;
   --slate-extra-light-color: #F9FBFC;
 }
 
@@ -44,11 +45,6 @@
 .text-brand, :local(.text-brand),
 .text-brand-hover:hover, :local(.text-brand-hover):hover {
     color: var(--brand-color);
-}
-
-.text-brand-saturated,
-.text-brand-saturated-hover:hover {
-    color: var(--brand-saturated-color);
 }
 
 .text-brand-darken,
@@ -86,16 +82,6 @@
   background-color: #FCE8E8
 }
 
-/* heads up */
-
-.text-headsup {
-  color: var(--headsup-color);
-}
-
-.bg-headsup {
-  background-color: var(--headsup-color);
-}
-
 /* warning */
 
 .text-warning {
@@ -117,17 +103,18 @@
     color: var(--purple-color);
 }
 
-.text-purple-light,
-.text-purple-light-hover:hover {
-    color: var(--purple-light-color);
-}
-
 .text-green,
 .text-green-hover:hover {
     color: var(--green-color);
 }
 
-.text-orange {
+.text-green-saturated,
+.text-green-saturated-hover:hover {
+    color: var(--green-saturated-color);
+}
+
+.text-orange,
+.text-orange-hover:hover {
     color: var(--orange-color);
 }
 
@@ -137,7 +124,6 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
-.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */
@@ -169,7 +155,9 @@
 
 .bg-slate { background-color: var(--slate-color); }
 .bg-slate-light { background-color: var(--slate-light-color); }
+.bg-slate-almost-extra-light { background-color: var(--slate-almost-extra-light-color);}
 .bg-slate-extra-light { background-color: var(--slate-extra-light-color); }
+.bg-slate-extra-light-hover:hover { background-color: var(--slate-extra-light-color); }
 
 .text-dark, :local(.text-dark) {
     color: var(--dark-color);

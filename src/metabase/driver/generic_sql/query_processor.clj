@@ -17,8 +17,9 @@
              [util :as qputil]]
             [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
-           java.sql.SQLException
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
+           [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
+           [java.util Calendar TimeZone]
+           [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
@@ -41,11 +42,18 @@
 
 ;;; ## Formatting
 
+(defn- qualified-alias
+  "Convert the given `FIELD` to a stringified alias"
+  [field]
+  (some->> field
+           (sql/field->alias (driver))
+           hx/qualify-and-escape-dots))
+
 (defn as
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
   [form field]
-  (if-let [alias (sql/field->alias (driver) field)]
-    [form (hx/qualify-and-escape-dots alias)]
+  (if-let [alias (qualified-alias field)]
+    [form alias]
     form))
 
 ;; TODO - Consider moving this into query processor interface and making it a method on `ExpressionRef` instead ?
@@ -104,6 +112,21 @@
   (formatted [{unit :unit, field :field}]
     (sql/date (driver) unit (formatted field)))
 
+  BinnedField
+  (formatted [{:keys [bin-width min-value max-value field]}]
+    (let [formatted-field (formatted field)]
+      ;;
+      ;; Equation is | (value - min) |
+      ;;             | ------------- | * bin-width + min-value
+      ;;             |_  bin-width  _|
+      ;;
+      (-> formatted-field
+          (hx/- min-value)
+          (hx// bin-width)
+          hx/floor
+          (hx/* bin-width)
+          (hx/+ min-value))))
+
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
   (formatted [{index :index}]
@@ -138,7 +161,8 @@
   {:pre [(keyword? aggregation-type)]}
   (if-not field
     ;; aggregation clauses w/o a field
-    (do (assert (= aggregation-type :count)
+    (do (assert (or (= aggregation-type :count)
+                    (= aggregation-type :cumulative-count))
           (format "Aggregations of type '%s' must specify a field." aggregation-type))
         :%count.*)
     ;; aggregation clauses w/ a Field
@@ -181,17 +205,14 @@
         form
         (recur form more)))))
 
-
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
-  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields}]
-  (-> honeysql-form
-      ;; Group by all the breakout fields
-      ((partial apply h/group) (map formatted breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field breakout-fields
-                                            :when (not (contains? (set fields-fields) field))]
-                                        (as (formatted field) field)))))
+  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  (as-> honeysql-form new-hsql
+    (apply h/merge-select new-hsql (for [field breakout-fields
+                                         :when (not (contains? (set fields-fields) field))]
+                                     (as (formatted field) field)))
+    (apply h/group new-hsql (map formatted breakout-fields))))
 
 (defn apply-fields
   "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
@@ -250,14 +271,15 @@
 
 (defn apply-order-by
   "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
-  [_ honeysql-form {subclauses :order-by}]
-  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
-                                                                             :ascending  :asc
-                                                                             :descending :desc)])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [_ honeysql-form {subclauses :order-by breakout-fields :breakout}]
+  (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
+    (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
+      (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
+                                                                               :ascending  :asc
+                                                                               :descending :desc)])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn apply-page
   "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers."
@@ -327,12 +349,85 @@
       {:query  sql
        :params args})))
 
+(defn- parse-date-as-string
+  "Most databases will never invoke this code. It's possible with
+  SQLite to get here if the timestamp was stored without
+  milliseconds. Currently the SQLite JDBC driver will throw an
+  exception even though the SQLite datetime functions will return
+  datetimes that don't include milliseconds. This attempts to parse
+  that datetime in Clojure land"
+  [^TimeZone tz ^ResultSet rs ^Integer i]
+  (let [date-string (.getString rs i)]
+    (if-let [parsed-date (u/str->date-time tz date-string)]
+      parsed-date
+      (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
+
+(defn- get-date [^TimeZone tz]
+  (fn [^ResultSet rs _ ^Integer i]
+    (try
+      (.getDate rs i (Calendar/getInstance tz))
+      (catch SQLException e
+        (parse-date-as-string tz rs i)))))
+
+(defn- get-timestamp [^TimeZone tz]
+  (fn [^ResultSet rs _ ^Integer i]
+    (try
+      (.getTimestamp rs i (Calendar/getInstance tz))
+      (catch SQLException e
+        (parse-date-as-string tz rs i)))))
+
+(defn- get-object [^ResultSet rs _ ^Integer i]
+  (.getObject rs i))
+
+(defn- make-column-reader
+  "Given `COLUMN-TYPE` and `TZ`, return a function for reading
+  that type of column from a ResultSet"
+  [column-type tz]
+  (cond
+    (and tz (= column-type java.sql.Types/DATE))
+    (get-date tz)
+
+    (and tz (= column-type java.sql.Types/TIMESTAMP))
+    (get-timestamp tz)
+
+    :else
+    get-object))
+
+(defn- read-columns-with-date-handling
+  "Returns a function that will read a row from `RS`, suitable for
+  being passed into the clojure.java.jdbc/query function"
+  [timezone]
+  (fn [^ResultSet rs ^ResultSetMetaData rsmeta idxs]
+    (let [data-read-functions (map (fn [^Integer i] (make-column-reader (.getColumnType rsmeta i) timezone)) idxs)]
+      (mapv (fn [^Integer i data-read-fn]
+              (jdbc/result-set-read-column (data-read-fn rs rsmeta i) rsmeta i)) idxs data-read-functions))))
+
+(defn- set-parameters-with-timezone
+  "Returns a function that will set date/timestamp PreparedStatement
+  parameters with the correct timezone"
+  [^TimeZone tz]
+  (fn [^PreparedStatement stmt params]
+    (mapv (fn [^Integer i value]
+            (cond
+
+              (and tz (instance? java.sql.Timestamp value))
+              (.setTimestamp stmt i value (Calendar/getInstance tz))
+
+              (and tz (instance? java.util.Date value))
+              (.setDate stmt i value (Calendar/getInstance tz))
+
+              :else
+              (jdbc/set-parameter value stmt i)))
+          (rest (range)) params)))
+
 (defn- run-query
   "Run the query itself."
-  [{sql :query, params :params, remark :remark} connection]
+  [{sql :query, params :params, remark :remark} timezone connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
+        [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
+                                                           :read-columns   (read-columns-with-date-handling timezone)
+                                                           :set-parameters (set-parameters-with-timezone timezone)})]
     {:rows    (or rows [])
      :columns columns}))
 
@@ -374,13 +469,13 @@
     (jdbc/db-do-prepared connection [sql])))
 
 (defn- run-query-without-timezone [driver settings connection query]
-  (do-in-transaction connection (partial run-query query)))
+  (do-in-transaction connection (partial run-query query nil)))
 
-(defn- run-query-with-timezone [driver settings connection query]
+(defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query transaction-connection)))
+                                    (run-query query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))
     (catch SQLException e
       (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))

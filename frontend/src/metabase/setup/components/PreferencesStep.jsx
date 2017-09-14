@@ -48,11 +48,11 @@ export default class PreferencesStep extends Component {
         }
 
         if (activeStep !== stepNumber || setupComplete) {
-            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={setupComplete} setActiveStep={setActiveStep}></CollapsedStep>)
+            return (<CollapsedStep stepNumber={stepNumber} stepCircleText="3" stepText={stepText} isCompleted={setupComplete} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
             return (
                 <section className="SetupStep rounded full relative SetupStep--active">
-                    <StepTitle title={stepText} number={stepNumber} />
+                    <StepTitle title={stepText} circleText={"3"} />
                     <form onSubmit={this.formSubmitted.bind(this)} noValidate>
                         <div className="Form-field Form-offset">
                             In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.  <a className="link" href={"http://www.metabase.com/docs/"+tag+"/information-collection.html"} target="_blank">Here's a full list of everything we track and why.</a>

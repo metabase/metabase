@@ -6,7 +6,7 @@ import { isDefaultGroup, isAdminGroup, canEditMembership, getGroupColor } from "
 import cx from "classnames";
 import _ from "underscore";
 
-const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
+export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
     const disabled = !canEditMembership(group);
     const selected = isDefaultGroup(group) || selectedGroups[group.id];
     return (
@@ -22,7 +22,7 @@ const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
     )
 }
 
-const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
+export const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
     const other = groups.filter(g => !isAdminGroup(g) && !isDefaultGroup(g));
     return (
         <div className="GroupSelect py1">

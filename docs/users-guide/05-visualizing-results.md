@@ -51,6 +51,18 @@ Area charts are useful when comparing the the proportions between two metrics ov
 
 ![Stacked area chart](images/visualizations/area.png)
 
+##### Histograms
+
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **histogram**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+
+![Histogram](images/histogram.png)
+
+By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the number field you're grouping by in the Question Builder, then clicking on the area to the right of the field name:
+
+![Binning options](images/binning.png)
+
+##### Options for line, bar, and area charts
+
 These three charting types have very similar options, which are broken up into the following:
 
 * **Data** — choose the fields you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metric fields by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).

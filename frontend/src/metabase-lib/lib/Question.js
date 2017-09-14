@@ -224,11 +224,11 @@ export default class Question {
     breakout(b) {
         return this.setCard(breakout(this.card(), b));
     }
-    pivot(breakout, dimensions = []) {
+    pivot(breakouts = [], dimensions = []) {
         const tableMetadata = this.tableMetadata();
         return this.setCard(
             // $FlowFixMe: tableMetadata could be null
-            pivot(this.card(), breakout, tableMetadata, dimensions)
+            pivot(this.card(), tableMetadata, breakouts, dimensions)
         );
     }
     filter(operator, column, value) {
@@ -246,6 +246,25 @@ export default class Question {
     toUnderlyingData(): Question {
         return this.setDisplay("table");
     }
+
+    composeThisQuery(): ?Question {
+        const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
+
+        if (this.id()) {
+            const card = {
+                display: "table",
+                dataset_query: {
+                    type: "query",
+                    database: SAVED_QUESTIONS_FAUX_DATABASE,
+                    query: {
+                        source_table: "card__" + this.id()
+                    }
+                }
+            };
+            return this.setCard(card);
+        }
+    }
+
     drillPK(field: Field, value: Value): ?Question {
         const query = this.query();
         if (query instanceof StructuredQuery) {

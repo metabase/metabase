@@ -48,27 +48,13 @@ node-4() {
 node-5() {
     run_step lein eastwood
     run_step yarn run lint
-    run_step yarn run test
     run_step yarn run flow
+    run_step yarn run test-unit
+    run_step yarn run test-karma
 }
 node-6() {
-    if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
-        run_step ./bin/build version frontend-fast sample-dataset uberjar
-    fi
-
-    # NOTE Atte Keinänen 6/23/17: Reuse the existing E2E infra for running integrated tests (they require the prebuild jar too)
-    if is_enabled "e2e"; then
-        run_step yarn run test-integrated
-    fi
-
-    # TODO Atte Keinänen 6/22/17: Disabled due to Sauce problems, all tests will be converted to use Jest and Enzyme
-    # if is_enabled "e2e" || is_enabled "compare_screenshots"; then
-    #     USE_SAUCE=true \
-    #         run_step yarn run test-e2e
-    # fi
-    # if is_enabled "screenshots"; then
-    #     run_step node_modules/.bin/babel-node ./bin/compare-screenshots
-    # fi
+    run_step ./bin/build version sample-dataset uberjar
+    run_step yarn run test-integrated
 }
 
 
@@ -155,6 +141,9 @@ trap summary EXIT
 fail_fast() {
   echo -e "========================================"
   echo -e "Failing fast! Stopping other nodes..."
+  # Touch a file to differentiate between a local failure and a
+  # failure triggered by another node
+  touch '/tmp/local-fail'
   # ssh to the other CircleCI nodes and send SIGUSR1 to tell them to exit early
   for (( i = 0; i < $CIRCLE_NODE_TOTAL; i++ )); do
     if [ $i != $CIRCLE_NODE_INDEX ]; then
@@ -182,7 +171,12 @@ fi
 
 export CIRCLE_COMMIT_MESSAGE="$(git log --format=oneline -n 1 $CIRCLE_SHA1)"
 
-if [ -f "/tmp/fail" ]; then
+# This local-fail check is to guard against two nodes failing at the
+# same time. Both nodes ssh to each node and drop /tmp/fail. Those
+# failing nodes then get here and see and the other node has told it
+# to exit early. This results in both nodes exiting early, and thus
+# not failing, causing the build to succeed
+if [[ -f "/tmp/fail" && ! -f "/tmp/local-fail" ]]; then
   exit_early
 fi
 

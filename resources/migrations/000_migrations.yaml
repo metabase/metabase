@@ -3649,6 +3649,7 @@ databaseChangeLog:
   - changeSet:
       id: 56
       author: wwwiiilll
+      comment: 'Added 0.25.0'
       changes:
         - addColumn:
             tableName: core_user
@@ -3662,6 +3663,7 @@ databaseChangeLog:
   - changeSet:
       id: 57
       author: camsaul
+      comment: 'Added 0.25.0'
       changes:
         - addColumn:
             tableName: report_card
@@ -3673,6 +3675,7 @@ databaseChangeLog:
   - changeSet:
       id: 58
       author: senior
+      comment: 'Added 0.25.0'
       changes:
         - createTable:
             tableName: dimension
@@ -3741,3 +3744,88 @@ databaseChangeLog:
             columns:
               - column:
                   name: field_id
+  - changeSet:
+      id: 59
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint
+                  type: text
+                  remarks: 'Serialized JSON containing non-identifying information about this Field, such as min, max, and percent JSON. Used for classification.'
+  - changeSet:
+      id: 60
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: metadata_sync_schedule
+                  type: varchar(254)
+                  remarks: 'The cron schedule string for when this database should undergo the metadata sync process (and analysis for new fields).'
+                  defaultValue: '0 50 * * * ? *' # run at the end of every hour
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cache_field_values_schedule
+                  type: varchar(254)
+                  remarks: 'The cron schedule string for when FieldValues for eligible Fields should be updated.'
+                  defaultValue: '0 50 0 * * ? *' # run at 12:50 AM
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 61
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint_version
+                  type: int
+                  remarks: 'The version of the fingerprint for this Field. Used so we can keep track of which Fields need to be analyzed again when new things are added to fingerprints.'
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 62
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: timezone
+                  type: VARCHAR(254)
+                  remarks: 'Timezone identifier for the database, set by the sync process'
+  - changeSet:
+      id: 63
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_on_demand
+                  type: boolean
+                  remarks: 'Whether we should do On-Demand caching of FieldValues for this DB. This means FieldValues are updated when their Field is used in a Dashboard or Card param.'
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 64
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: raw_table
+          constraintName: fk_rawtable_ref_database
+          remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'

@@ -81,7 +81,6 @@ export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPOR
     };
 });
 
-
 export const FETCH_SEGMENTS = "metabase/metadata/FETCH_SEGMENTS";
 export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) => {
     return async (dispatch, getState) => {
@@ -132,6 +131,27 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
         const existingStatePath = requestStatePath;
         const getData = async () => {
             const databases = await MetabaseApi.db_list_with_tables();
+            return normalize(databases, [DatabaseSchema]);
+        };
+
+        return await fetchData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
+            reload
+        });
+    };
+});
+
+export const FETCH_REAL_DATABASES = "metabase/metadata/FETCH_REAL_DATABASES";
+export const fetchRealDatabases = createThunkAction(FETCH_REAL_DATABASES, (reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "databases"];
+        const existingStatePath = requestStatePath;
+        const getData = async () => {
+            const databases = await MetabaseApi.db_real_list_with_tables();
             return normalize(databases, [DatabaseSchema]);
         };
 
@@ -257,7 +277,7 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
     };
 });
 
-const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
+export const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
 export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(fieldId, reload) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", fieldId];

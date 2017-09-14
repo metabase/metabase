@@ -13,10 +13,12 @@ import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 
 import {
     getDatabasesSorted,
-    hasSampleDataset
+    hasSampleDataset,
+    getDeletes,
+    getDeletionError
 } from "../selectors";
 import * as databaseActions from "../database";
-
+import FormMessage from "metabase/components/form/FormMessage";
 
 const mapStateToProps = (state, props) => {
     return {
@@ -24,7 +26,8 @@ const mapStateToProps = (state, props) => {
         databases:            getDatabasesSorted(state),
         hasSampleDataset:     hasSampleDataset(state),
         engines:              MetabaseSettings.get('engines'),
-        deletes:              state.admin.databases.deletes
+        deletes:              getDeletes(state),
+        deletionError:        getDeletionError(state)
     }
 }
 
@@ -37,15 +40,23 @@ export default class DatabaseList extends Component {
     static propTypes = {
         databases: PropTypes.array,
         hasSampleDataset: PropTypes.bool,
-        engines: PropTypes.object
+        engines: PropTypes.object,
+        deletes: PropTypes.array,
+        deletionError: PropTypes.object
     };
 
     componentWillMount() {
         this.props.fetchDatabases();
     }
 
+    componentWillReceiveProps(newProps) {
+        if (!this.props.created && newProps.created) {
+            this.refs.createdDatabaseModal.open()
+        }
+    }
+
     render() {
-        let { databases, hasSampleDataset, created, engines } = this.props;
+        let { databases, hasSampleDataset, created, engines, deletionError } = this.props;
 
         return (
             <div className="wrapper">
@@ -53,6 +64,11 @@ export default class DatabaseList extends Component {
                     <Link to="/admin/databases/create" className="Button Button--primary float-right">Add database</Link>
                     <h2 className="PageTitle">Databases</h2>
                 </section>
+                { deletionError &&
+                    <section>
+                        <FormMessage formError={deletionError} />
+                    </section>
+                }
                 <section>
                     <table className="ContentTable">
                         <thead>
@@ -64,7 +80,7 @@ export default class DatabaseList extends Component {
                         </thead>
                         <tbody>
                             { databases ?
-                                databases.map(database => {
+                                [ databases.map(database => {
                                     const isDeleting = this.props.deletes.indexOf(database.id) !== -1
                                     return (
                                         <tr
@@ -98,7 +114,8 @@ export default class DatabaseList extends Component {
                                                 )
                                             }
                                         </tr>
-                                    )})
+                                    )}),
+                                ]
                             :
                                 <tr>
                                     <td colSpan={4}>

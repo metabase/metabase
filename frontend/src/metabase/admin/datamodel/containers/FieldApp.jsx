@@ -16,11 +16,13 @@ import Select from 'metabase/components/Select'
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as datamodelActions from "../datamodel"
 
+import ActionButton from "metabase/components/ActionButton.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import SelectButton from "metabase/components/SelectButton";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -33,6 +35,11 @@ import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+
+import {
+    rescanFieldValues,
+    discardFieldValues
+} from "../field";
 
 const SelectClasses = 'h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold'
 
@@ -53,7 +60,9 @@ const mapDispatchToProps = {
     updateFieldValues: metadataActions.updateFieldValues,
     updateFieldDimension: metadataActions.updateFieldDimension,
     deleteFieldDimension: metadataActions.deleteFieldDimension,
-    fetchDatabaseIdfields: datamodelActions.fetchDatabaseIdfields
+    fetchDatabaseIdfields: datamodelActions.fetchDatabaseIdfields,
+    rescanFieldValues,
+    discardFieldValues
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -193,6 +202,13 @@ export default class FieldApp extends Component {
                                     fetchTableMetadata={fetchTableMetadata}
                                 />
                             </Section>
+
+                            <Section>
+                                <UpdateCachedFieldValues
+                                    rescanFieldValues={() => this.props.rescanFieldValues(field.id)}
+                                    discardFieldValues={() => this.props.discardFieldValues(field.id)}
+                                />
+                            </Section>
                         </div>
                     </div>
                 }
@@ -268,7 +284,7 @@ export class FieldHeader extends Component {
                 />
             </div>
         )
-}
+    }
 }
 
 // consider renaming this component to something more descriptive
@@ -313,6 +329,7 @@ export class ValueRemappings extends Component {
     }
 
     onSaveClick = () => {
+        MetabaseAnalytics.trackEvent("Data Model", "Update Custom Remappings");
         // Returns the promise so that ButtonWithStatus can show the saving status
         return this.props.updateRemappings(this.state.editingRemappings);
     }
@@ -377,9 +394,9 @@ export class FieldValueMapping extends Component {
     }
 }
 
-const Section = ({ children }) => <section className="my3">{children}</section>
+export const Section = ({ children }) => <section className="my3">{children}</section>
 
-const SectionHeader = ({ title, description }) =>
+export const SectionHeader = ({ title, description }) =>
     <div className="border-bottom py2 mb2">
         <h2 className="text-italic">{title}</h2>
         { description && <p className="mb0 text-grey-4 mt1 text-paragraph text-measure">{description}</p> }
@@ -451,7 +468,9 @@ export class FieldRemapping extends Component {
 
         this.clearEditingStates();
 
+
         if (mappingType.type === "original") {
+            MetabaseAnalytics.trackEvent("Data Model", "Change Remapping Type", "No Remapping");
             await deleteFieldDimension(field.id)
             this.setState({ hasChanged: false })
         } else if (mappingType.type === "foreign") {
@@ -459,6 +478,7 @@ export class FieldRemapping extends Component {
             const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
 
             if (entityNameFieldId) {
+                MetabaseAnalytics.trackEvent("Data Model", "Change Remapping Type", "Foreign Key");
                 await updateFieldDimension(field.id, {
                     type: "external",
                     name: field.display_name,
@@ -473,6 +493,7 @@ export class FieldRemapping extends Component {
             }
 
         } else if (mappingType.type === "custom") {
+            MetabaseAnalytics.trackEvent("Data Model", "Change Remapping Type", "Custom Remappings");
             await updateFieldDimension(field.id, {
                 type: "internal",
                 name: field.display_name,
@@ -495,6 +516,7 @@ export class FieldRemapping extends Component {
 
         // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
         if (foreignKeyClause.length === 3 && foreignKeyClause[0] === "fk->") {
+            MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
             await updateFieldDimension(field.id, {
                 type: "external",
                 name: field.display_name,
@@ -611,7 +633,38 @@ export class FieldRemapping extends Component {
     }
 }
 
-const RemappingNamingTip = () =>
+export const RemappingNamingTip = () =>
     <div className="bordered rounded p1 mt1 mb2 border-brand">
-        <span className="text-brand text-bold">Tip:</span> You might want to update the field name to make sure it still makes sense based on your remapping choices.
+        <span className="text-brand text-bold">Tip:</span>
+        You might want to update the field name to make sure it still makes sense based on your remapping choices.
     </div>
+
+
+export class UpdateCachedFieldValues extends Component {
+    render () {
+        return (
+            <div>
+                <SectionHeader
+                    title="Cached field values"
+                    description="Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+                />
+                <ActionButton
+                    className="Button mr2"
+                    actionFn={this.props.rescanFieldValues}
+                    normalText="Re-scan this field"
+                    activeText="Starting…"
+                    failedText="Failed to start scan"
+                    successText="Scan triggered!"
+                />
+                <ActionButton
+                    className="Button Button--danger"
+                    actionFn={this.props.discardFieldValues}
+                    normalText="Discard cached field values"
+                    activeText="Starting…"
+                    failedText="Failed to discard values"
+                    successText="Discard triggered!"
+                />
+            </div>
+        );
+    }
+}

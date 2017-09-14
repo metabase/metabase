@@ -62,7 +62,7 @@ export default class SegmentList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader 
+                <ReferenceHeader
                     name="Segments"
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
@@ -88,8 +88,7 @@ export default class SegmentList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        <AdminAwareEmptyState {...emptyStateData}/>
-                        }
+                        <AdminAwareEmptyState {...emptyStateData} />
                     </div>
                 }
                 </LoadingAndErrorWrapper>

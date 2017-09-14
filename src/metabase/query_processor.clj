@@ -13,6 +13,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
@@ -89,12 +90,13 @@
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
       format-rows/format-rows
+      binning/update-binning-strategy
       results-metadata/record-and-return-metadata!
       resolve/resolve-middleware
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       source-table/resolve-source-table-middleware
-      expand/expand-middleware                      ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
       expand-macros/expand-macros

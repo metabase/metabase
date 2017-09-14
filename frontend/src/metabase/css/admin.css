@@ -69,13 +69,8 @@
     margin-bottom: 0;
 }
 
-.Actions-group.Actions--dangerZone {
-    color: var(--error-color);
-}
-
-
 .Actions-groupLabel {
-    font-size: 0.85em;
+    font-size: 1em;
     margin-bottom: 1em;
 }
 

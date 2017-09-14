@@ -107,7 +107,7 @@
       (instance? DateTimeField arg)))
 
 (defn- expression->field-names [{:keys [args]}]
-  {:post [(every? u/string-or-keyword? %)]}
+  {:post [(every? (some-fn keyword? string?) %)]}
   (flatten (for [arg   args
                  :when (or (field? arg)
                            (instance? Expression arg))]

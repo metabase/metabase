@@ -57,7 +57,7 @@
 ;;; ### source-table
 
 (defn- handle-source-table [{{source-table-name :name} :source-table}]
-  {:pre [(u/string-or-keyword? source-table-name)]}
+  {:pre [((some-fn keyword? string?) source-table-name)]}
   {:ids (str "ga:" source-table-name)})
 
 
@@ -265,7 +265,7 @@
 
 (defn- filter-type ^clojure.lang.Keyword [filter-clause]
   (when (and (sequential? filter-clause)
-             (u/string-or-keyword? (first filter-clause)))
+             ((some-fn keyword? string?) (first filter-clause)))
     (qputil/normalize-token (first filter-clause))))
 
 (defn- compound-filter? [filter-clause]

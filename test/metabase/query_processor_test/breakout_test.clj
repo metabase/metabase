@@ -1,10 +1,13 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
   (:require [cheshire.core :as json]
+            [metabase
+             [query-processor-test :refer :all]
+             [util :as u]]
             [metabase.models
              [dimension :refer [Dimension]]
+             [field :refer [Field]]
              [field-values :refer [FieldValues]]]
-            [metabase.query-processor-test :refer :all]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
@@ -131,3 +134,120 @@
              (ql/limit 10))
            rows
            (map last))]))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :num-bins 20))))))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+ [[0.0 1] [20.0 90] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :num-bins 3))))))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+   [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :num-bins 20)
+                         (ql/binning-strategy $longitude :num-bins 20))))))
+
+;; Currently defaults to 8 bins when the number of bins isn't
+;; specified
+(datasets/expect-with-engines (engines-that-support :binning)
+  [[10.0 1] [30.0 90] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default))))))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+  [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
+  (tu/with-temporary-setting-values [breakout-bin-width 5.0]
+    (format-rows-by [(partial u/round-to-decimals 1) int]
+      (rows (data/run-query venues
+              (ql/aggregation (ql/count))
+              (ql/breakout (ql/binning-strategy $latitude :default)))))))
+
+;; Testing bin-width
+(datasets/expect-with-engines (engines-that-support :binning)
+  [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :bin-width 1))))))
+
+;; Testing bin-width using a float
+(datasets/expect-with-engines (engines-that-support :binning)
+  [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :bin-width 2.5))))))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+  [[33.0 4] [34.0 57]]
+  (tu/with-temporary-setting-values [breakout-bin-width 1.0]
+    (format-rows-by [(partial u/round-to-decimals 1) int]
+      (rows (data/run-query venues
+              (ql/aggregation (ql/count))
+              (ql/filter (ql/and (ql/< $latitude 35)
+                                 (ql/> $latitude 20)))
+              (ql/breakout (ql/binning-strategy $latitude :default)))))))
+
+(defn- round-binning-decimals [result]
+  (let [round-to-decimal #(u/round-to-decimals 4 %)]
+    (-> result
+        (update :min_value round-to-decimal)
+        (update :max_value round-to-decimal)
+        (update-in [:binning_info :min_value] round-to-decimal)
+        (update-in [:binning_info :max_value] round-to-decimal))))
+
+;;Validate binning info is returned with the binning-strategy
+(datasets/expect-with-engines (engines-that-support :binning)
+  (assoc (breakout-col (venues-col :latitude))
+         :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
+                        :num_bins         4,          :min_value 10.0
+                        :max_value        50.0})
+  (-> (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/breakout (ql/binning-strategy $latitude :default)))
+      tu/round-fingerprint-cols
+      (get-in [:data :cols])
+      first))
+
+(datasets/expect-with-engines (engines-that-support :binning)
+  (assoc (breakout-col (venues-col :latitude))
+         :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
+                        :num_bins         5,         :min_value 7.5,
+                        :max_value        45.0})
+  (-> (data/run-query venues
+                      (ql/aggregation (ql/count))
+                      (ql/breakout (ql/binning-strategy $latitude :num-bins 5)))
+      tu/round-fingerprint-cols
+      (get-in [:data :cols])
+      first))
+
+;;Validate binning info is returned with the binning-strategy
+(datasets/expect-with-engines (engines-that-support :binning)
+  {:status :failed
+   :class Exception
+   :error (format "Unable to bin field '%s' with id '%s' without a min/max value"
+                  (:name (Field (data/id :venues :latitude)))
+                  (data/id :venues :latitude))}
+  (let [fingerprint (-> (data/id :venues :latitude)
+                        Field
+                        :fingerprint)]
+    (try
+      (db/update! Field (data/id :venues :latitude) :fingerprint {:type {:type/Number {:min nil :max nil}}})
+      (-> (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default)))
+          (select-keys [:status :class :error]))
+      (finally
+        (db/update! Field (data/id :venues :latitude) :fingerprint fingerprint)))))

@@ -145,7 +145,7 @@ export default class SelectPicker extends Component {
                                        style={{ height: "95px" }}
                                        className={cx("full rounded bordered border-purple text-centered text-bold", {
                                                "text-purple bg-white": values[0] !== option.key,
-                                               "text-white bg-purple-light": values[0] === option.key
+                                               "text-white bg-purple": values[0] === option.key
                                            })}
                                        onClick={() => this.selectValue(option.key, true)}
                                    >

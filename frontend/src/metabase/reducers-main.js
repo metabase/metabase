@@ -21,6 +21,7 @@ import dashboard from "metabase/dashboard/dashboard";
 import * as home from "metabase/home/reducers";
 
 /* questions / query builder */
+import new_query from "metabase/new_query/new_query";
 import questions from "metabase/questions/questions";
 import labels from "metabase/questions/labels";
 import collections from "metabase/questions/collections";
@@ -32,6 +33,10 @@ import reference from "metabase/reference/reference";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
+/* xrays */
+import xray from "metabase/xray/xray";
+
+
 export default {
     ...commonReducers,
 
@@ -39,13 +44,15 @@ export default {
     dashboards,
     dashboard,
     home: combineReducers(home),
+    new_query,
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
     questions,
     collections,
     labels,
     reference,
+    xray,
     setup: combineReducers(setup),
     user: combineReducers(user),
-    admin
+    admin,
 };

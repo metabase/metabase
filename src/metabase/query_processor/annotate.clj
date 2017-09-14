@@ -50,6 +50,14 @@
           (i/map->DateTimeField {:field field, :unit unit}))
         fields))
 
+    metabase.query_processor.interface.BinnedField
+    (let [{:keys [strategy min-value max-value], nested-field :field} this]
+      [(assoc nested-field :binning_info {:binning_strategy strategy
+                                          :bin_width (:bin-width this)
+                                          :num_bins (:num-bins this)
+                                          :min_value min-value
+                                          :max_value max-value})])
+
     metabase.query_processor.interface.Field
     (if-let [parent (:parent this)]
       [this parent]
@@ -61,7 +69,10 @@
        :field-display-name (humanization/name->human-readable-name (:field-name this)))]
 
     metabase.query_processor.interface.ExpressionRef
-    [(assoc this :field-display-name (:expression-name this))]
+    [(assoc this
+       :field-display-name (:expression-name this)
+       :base-type          :type/Float
+       :special-type       :type/Number)]
 
     ;; for every value in a map in the query we'll descend into the map and find all the fields contained therein and mark the key as each field's source.
     ;; e.g. if we descend into the `:breakout` columns for a query each field returned will get a `:source` of `:breakout`

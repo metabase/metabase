@@ -7,6 +7,7 @@ import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 
+import { shallowEqual } from "recompose";
 
 // TODO - this should be somewhere more centralized
 function isEmpty(str) {
@@ -47,8 +48,10 @@ export default class DatabaseDetailsForm extends Component {
         engines: PropTypes.object.isRequired,
         formError: PropTypes.object,
         hiddenFields: PropTypes.object,
+        isNewDatabase: PropTypes.boolean,
         submitButtonText: PropTypes.string.isRequired,
-        submitFn: PropTypes.func.isRequired
+        submitFn: PropTypes.func.isRequired,
+        submitting: PropTypes.boolean
     };
 
     validateForm() {
@@ -78,6 +81,12 @@ export default class DatabaseDetailsForm extends Component {
         }
     }
 
+    componentWillReceiveProps(nextProps) {
+        if (!shallowEqual(this.props.details, nextProps.details)) {
+            this.setState({ details: nextProps.details })
+        }
+    }
+
     componentDidMount() {
         this.validateForm();
     }
@@ -100,6 +109,7 @@ export default class DatabaseDetailsForm extends Component {
             engine: engine,
             name: details.name,
             details: {},
+            // use the existing is_full_sync setting in case that "let user control scheduling" setting is enabled
             is_full_sync: details.is_full_sync
         };
 
@@ -111,6 +121,10 @@ export default class DatabaseDetailsForm extends Component {
 
             request.details[field.name] = val;
         }
+
+        // NOTE Atte Keinänen 8/15/17: Is it a little hacky approach or not to add to the `details` field property
+        // that are not part of the details schema of current db engine?
+        request.details["let-user-control-scheduling"] = details["let-user-control-scheduling"];
 
         submitFn(request);
     }
@@ -174,19 +188,19 @@ export default class DatabaseDetailsForm extends Component {
         } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
             // don't show tunnel fields if tunnel isn't enabled
             return null;
-        } else if (field.name === "is_full_sync") {
-            let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
+        } else if (field.name === "let-user-control-scheduling") {
+            let on = (this.state.details["let-user-control-scheduling"] == undefined) ? false : this.state.details["let-user-control-scheduling"];
             return (
                 <FormField key={field.name} fieldName={field.name}>
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <Toggle value={on} onChange={(val) => this.onChange("is_full_sync", val)}/>
+                            <Toggle value={on} onChange={(val) => this.onChange("let-user-control-scheduling", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>Enable in-depth database analysis</h3>
+                            <h3>This is a large database, so let me choose when Metabase syncs and scans</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
-                                This allows us to present you with better metadata for your tables and is required for some features of Metabase.
-                                We recommend leaving this on unless your database is large and you're concerned about performance.
+                                By default, Metabase does a lightweight hourly sync, and an intensive daily scan of field values.
+                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
                             </div>
                         </div>
                     </div>
@@ -250,8 +264,10 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     render() {
-        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText } = this.props;
-        let { valid } = this.state;
+        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText, isNewDatabase, submitting } = this.props;
+        let { valid, details } = this.state;
+
+        const willProceedToNextDbCreationStep = isNewDatabase && details["let-user-control-scheduling"];
 
         let fields = [
             {
@@ -262,7 +278,7 @@ export default class DatabaseDetailsForm extends Component {
             },
             ...engines[engine]['details-fields'],
             {
-                name: "is_full_sync",
+                name: "let-user-control-scheduling",
                 required: true
             }
         ];
@@ -278,8 +294,8 @@ export default class DatabaseDetailsForm extends Component {
                 </div>
 
                 <div className="Form-actions">
-                    <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                        {submitButtonText}
+                    <button className={cx("Button", {"Button--primary": valid})} disabled={!valid || submitting}>
+                        {submitting ? "Saving..." : (willProceedToNextDbCreationStep ? "Next" : submitButtonText)}
                     </button>
                     <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
                 </div>

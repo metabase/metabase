@@ -106,7 +106,7 @@ export default class NativeQueryEditor extends Component {
 
     componentDidUpdate() {
         const { query } = this.props;
-        if (!query) {
+        if (!query || !this._editor) {
             return;
         }
 
@@ -195,12 +195,8 @@ export default class NativeQueryEditor extends Component {
 
         aceLanguageTools.addCompleter({
             getCompletions: async (editor, session, pos, prefix, callback) => {
-                if (prefix.length < 2) {
-                    callback(null, []);
-                    return;
-                }
                 try {
-                    // HACK: call this.props.autocompleteResultsFn rathern than caching the prop since it might change
+                    // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
                     let results = await this.props.autocompleteResultsFn(prefix);
                     // transform results of the API call into what ACE expects
                     let js_results = results.map(function(result) {
@@ -275,6 +271,7 @@ export default class NativeQueryEditor extends Component {
                             databases={databases}
                             datasetQuery={query.datasetQuery()}
                             setDatabaseFn={this.setDatabaseId}
+                            isInitiallyOpen={database == null}
                         />
                     </div>
                 )
