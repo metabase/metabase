@@ -159,7 +159,6 @@ const patchBooleanFieldValues_HACK = (valueArray) => {
 // We want that we have a distinct selector for each field id combination, and for that reason
 // we export a method that creates a new selector; see
 // https://github.com/reactjs/reselect#sharing-selectors-with-props-across-multiple-components
-// TODO Atte Keinänen 7/20/17: How should this work for remapped values?
 // TODO Atte Keinänen 7/20/17: Should we have any thresholds if the count of field values is high or we have many (>2?) fields?
 export const makeGetMergedParameterFieldValues = () => {
     return createFieldValuesEqualSelector(getParameterFieldValuesByFieldId, (fieldValues) => {
@@ -172,10 +171,14 @@ export const makeGetMergedParameterFieldValues = () => {
             const singleFieldValues = fieldValues[fieldIds[0]]
             return patchBooleanFieldValues_HACK(singleFieldValues);
         } else {
-            const sortedMergedValues = _.flatten(Object.values(fieldValues), true).sort()
+            const sortedMergedValues = _.chain(Object.values(fieldValues))
+                .flatten(true)
+                // Use remapped value for sorting if it is available
+                .sortBy(fieldValue => fieldValue.length === 2 ? fieldValue[1] : fieldValue[0])
+                .value()
+
             // run the uniqueness comparision always against a non-remapped value
-            // we can use `isSorted = true` flag to speed up _.uniq as we just sorted the values
-            return _.uniq(sortedMergedValues, true, (fieldValue) => fieldValue[0]);
+            return _.uniq(sortedMergedValues, false, (fieldValue) => fieldValue[0]);
         }
     });
 }
