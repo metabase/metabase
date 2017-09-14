@@ -12,6 +12,7 @@
              [card :refer [Card]]
              [database :as database]
              [field :refer [Field]]
+             [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
@@ -444,3 +445,16 @@
                         "2014-05-01T00:00:00-07:00"])
         qp/process-query
         :status)))
+
+;; Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)
+(expect
+  [[22]]
+  (tt/with-temp* [Segment [segment {:table_id   (data/id :venues)
+                                    :definition {:filter [:= (data/id :venues :price) 1]}}]
+                  Card    [card (mbql-card-def
+                                  :source-table (data/id :venues)
+                                  :filter       [:and [:segment (u/get-id segment)]])]]
+    (-> (query-with-source-card card
+          :aggregation [:count])
+        qp/process-query
+        rows)))
