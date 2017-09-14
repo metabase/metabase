@@ -85,7 +85,7 @@ describe("setup wizard", () => {
         setInputValue(userStep.find('input[name="password_confirm"]'), strongPassword)
 
         // Due to the chained setState calls in UserStep we have to add a tiny delay here
-        await delay(50);
+        await delay(500);
 
         expect(nextButton.props().disabled).toBe(false)
         clickButton(nextButton);
@@ -105,6 +105,9 @@ describe("setup wizard", () => {
     })
 
     it("should allow you to set connection settings for a new database", async () => {
+        // Try to address a rare test failure where `chooseSelectOption` fails because it couldn't find its parent option
+        app.update()
+
         const databaseStep = app.find(DatabaseConnectionStep)
         expect(databaseStep.find('.SetupStep--active').length).toBe(1)
 
