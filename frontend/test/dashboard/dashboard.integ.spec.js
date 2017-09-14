@@ -9,7 +9,7 @@ import {
 
 import { DashboardApi, PublicApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
-import { getFields, makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
+import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 import { ADD_PARAM_VALUES } from "metabase/redux/metadata";
 import { mount } from "enzyme";
 import {
