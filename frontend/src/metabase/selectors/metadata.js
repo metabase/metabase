@@ -156,6 +156,9 @@ const patchBooleanFieldValues_HACK = (valueArray) => {
 }
 
 // Merges the field values of fields linked to a parameter and removes duplicates
+// We want that we have a distinct selector for each field id combination, and for that reason
+// we export a method that creates a new selector; see
+// https://github.com/reactjs/reselect#sharing-selectors-with-props-across-multiple-components
 // TODO Atte Keinänen 7/20/17: How should this work for remapped values?
 // TODO Atte Keinänen 7/20/17: Should we have any thresholds if the count of field values is high or we have many (>2?) fields?
 export const makeGetMergedParameterFieldValues = () => {
