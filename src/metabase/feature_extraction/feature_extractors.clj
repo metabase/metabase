@@ -49,13 +49,12 @@
 (defn growth
   "Relative difference between `x1` an `x2`."
   [x2 x1]
-  (when (and x1 x2)
+  (when (and x1 x2 (not (zero? x1)))
     (let [x2 (double x2)
           x1 (double x1)]
       (cond
         (every? neg? [x1 x2])     (growth (- x1) (- x2))
         (and (neg? x1) (pos? x2)) (- (growth x1 x2))
-        (nil? x1)                 nil
         :else                     (/ (* (if (neg? x1) -1 1) (- x2 x1)) x1)))))
 
 (defn- merge-juxt

@@ -20,12 +20,20 @@
    1.0
    -0.5
    -5.0
-   5.0]
+   5.0
+   2.0
+   nil
+   nil
+   nil]
   [(growth 123 100)
    (growth -0.1 -0.2)
    (growth -0.4 -0.2)
    (growth -0.4 0.1)
-   (growth 0.1 -0.4)])
+   (growth 0.1 -0.4)
+   (growth Long/MAX_VALUE Long/MIN_VALUE)
+   (growth 0.1 nil)
+   (growth nil 0.5)
+   (growth 0.5 0.0)])
 
 (expect
   [{:foo 2
