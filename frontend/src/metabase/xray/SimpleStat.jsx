@@ -5,7 +5,7 @@ import Icon from 'metabase/components/Icon'
 const SimpleStat = ({ stat, showDescription }) =>
     <div>
         <div className="flex align-center">
-            <h3 className="mr1 text-grey-4">{stat.label}</h3>
+            <h3 className="mr4 text-grey-4">{stat.label}</h3>
             { showDescription && (
                 <Tooltip tooltip={stat.description}>
                     <Icon name='infooutlined' />
@@ -19,4 +19,3 @@ const SimpleStat = ({ stat, showDescription }) =>
     </div>
 
 export default SimpleStat
-
