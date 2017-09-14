@@ -42,6 +42,7 @@ class SegmentComparison extends Component {
         try {
             await this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
         } catch (error) {
+            console.log('error', error)
             this.setState({ error })
         }
     }
@@ -63,6 +64,11 @@ class SegmentComparison extends Component {
                 loading={!comparison}
                 error={error}
                 noBackground
+                loadingMessages={[
+                    'Generating ypur comparison...',
+                    'Teaching robots to love...',
+                    'Still working...',
+                ]}
             >
                 { () =>
 

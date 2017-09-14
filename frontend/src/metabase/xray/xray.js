@@ -84,6 +84,7 @@ export const fetchTableComparison = createThunkAction(
                 return comparison
             } catch (error) {
                 console.error(error)
+                return error
             }
         }
 )
