@@ -9,7 +9,7 @@ import {
 
 import { DashboardApi, PublicApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
-import { getParameterFieldValues } from "metabase/selectors/metadata";
+import { getFields, makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 import { ADD_PARAM_VALUES } from "metabase/redux/metadata";
 import { mount } from "enzyme";
 import {
@@ -87,14 +87,14 @@ describe("Dashboard", () => {
                 await store.dispatch(fetchDashboard('6e59cc97-3b6a-4bb6-9e7a-5efeee27e40f'));
                 await store.waitForActions(ADD_PARAM_VALUES)
 
-                const fieldValues = await getParameterFieldValues(store.getState(), { parameter: { field_id: 21 }});
+                const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
+                const fieldValues = await getMergedParameterFieldValues(store.getState(), { parameter: { field_ids: [ 21 ] }});
                 expect(fieldValues).toEqual([["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]]);
             })
         })
     })
 
     // Converted from Selenium E2E test
-
     describe("dashboard page", () => {
         let dashboardId = null;
 

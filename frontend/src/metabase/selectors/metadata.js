@@ -18,6 +18,7 @@ import {
     getBreakouts,
     getAggregatorsWithFields
 } from "metabase/lib/schema_metadata";
+import { getIn } from "icepick";
 
 export const getNormalizedMetadata = state => state.metadata;
 
@@ -129,10 +130,14 @@ export const getSegments = createSelector(
 // Returns a dictionary of field id:s mapped to matching field values
 // Currently this assumes that you are passing the props of <ParameterValueWidget> which contain the
 // `field_ids` array inside `parameter` prop.
-const getParameterFieldValuesByFieldId = (state, props) => _.chain(getFields(state))
-    .pick(getFields(state), ...props.parameter.field_ids)
-    .mapObject(getFieldValues)
-    .value()
+const getParameterFieldValuesByFieldId = (state, props) => {
+    // NOTE Atte Keinänen 9/14/17: Reading the state directly instead of using `getFields` selector
+    // because `getMetadata` doesn't currently work with fields of public dashboards
+    return _.chain(getIn(state, ["metadata", "fields"]))
+        .pick(getFields(state), ...props.parameter.field_ids)
+        .mapObject(getFieldValues)
+        .value()
+}
 
 // Custom equality selector for checking if two field value dictionaries contain same fields and field values
 // Currently we simply check if fields match and the lengths of field value arrays are equal which makes the comparison fast
