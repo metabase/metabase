@@ -90,10 +90,6 @@ describe("QueryBuilder", () => {
         await login()
     })
 
-    /**
-     * Simple tests for seeing if the query builder renders without errors
-     */
-
     describe("visualization settings", () => {
         it("lets you hide a field for a raw data table", async () => {
             const { store, qb } = await initQBWithReviewsTable();

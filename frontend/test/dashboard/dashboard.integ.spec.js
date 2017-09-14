@@ -123,7 +123,7 @@ describe("Dashboard", () => {
             clickButton(app.find(EditBar).find(".Button--primary.Button"));
             await store.waitForActions([SAVE_DASHBOARD_AND_CARDS, FETCH_DASHBOARD])
 
-            await delay(200)
+            await delay(500)
 
             expect(app.find(DashboardHeader).text()).toMatch(/Customer Analysis Paralysis/)
         });
