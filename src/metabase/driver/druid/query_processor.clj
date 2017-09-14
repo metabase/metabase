@@ -598,9 +598,11 @@
                                                [false :descending] ag-field))))
 
 (defmethod handle-order-by ::groupBy [_ {:keys [order-by]} query-context]
-  (assoc-in query-context [:query :limitSpec :columns] (vec (for [{:keys [field direction]} order-by]
-                                                              {:dimension (->rvalue field)
-                                                               :direction direction}))))
+  (-> query-context
+    (assoc-in [:query :limitSpec :type]  :default)
+    (assoc-in [:query :limitSpec :columns] (vec (for [{:keys [field direction]} order-by]
+                                                  {:dimension (->rvalue field)
+                                                  :direction direction})))))
 
 ;; Handle order by timstamp field
 (defn- handle-order-by-timestamp [field direction query-context]
