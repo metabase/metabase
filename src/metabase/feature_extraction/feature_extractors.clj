@@ -464,6 +464,7 @@
     histogram-extractor)))
 
 (defprotocol Quarter
+  "Quarter-of-year functionality"
   (quarter [dt] "Return which quarter (1-4) given date-like object falls into."))
 
 (extend-type java.sql.Timestamp
