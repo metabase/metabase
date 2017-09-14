@@ -4,7 +4,6 @@
             [clj-time
              [coerce :as t.coerce]
              [core :as t]
-             [format :as t.format]
              [periodic :as t.periodic]]
             [kixi.stats
              [core :as stats]
@@ -367,8 +366,8 @@
    (redux/pre-step
     (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                  :series            conj})
-    (fn [[x y]]
-      [(-> x t.format/parse to-double) y]))
+    (fn [[^java.sql.Timestamp x y]]
+      [(some-> x .getTime) y]))
    (merge-juxt
     (field-metadata-extractor field)
     (fn [{:keys [series linear-regression]}]
@@ -376,7 +375,7 @@
             series     (if resolution
                          (fill-timeseries (case resolution
                                             :month   (t/months 1)
-                                            :quarter (t/months 4)
+                                            :quarter (t/months 3)
                                             :year    (t/years 1)
                                             :week    (t/weeks 1)
                                             :day     (t/days 1)
@@ -464,24 +463,42 @@
     (field-metadata-extractor field)
     histogram-extractor)))
 
-(defn- quarter
-  [dt]
-  (-> dt t/month (/ 3) Math/ceil long))
+(defprotocol Quarter
+  "Quarter-of-year functionality"
+  (quarter [dt] "Return which quarter (1-4) given date-like object falls into."))
+
+(extend-type java.sql.Timestamp
+  Quarter
+  (quarter [dt]
+    (-> dt .getMonth (* 0.33) Math/ceil long)))
+
+(extend-type org.joda.time.DateTime
+  Quarter
+  (quarter [dt]
+    (-> dt t/month (* 0.33) Math/ceil long)))
 
 (defmethod feature-extractor DateTime
   [_ field]
   (redux/post-complete
-   (redux/pre-step
-    (redux/fuse {:histogram         (redux/pre-step h/histogram t.coerce/to-long)
-                 :histogram-hour    (redux/pre-step h/histogram-categorical
-                                                    (stats/somef t/hour))
-                 :histogram-day     (redux/pre-step h/histogram-categorical
-                                                    (stats/somef t/day-of-week))
-                 :histogram-month   (redux/pre-step h/histogram-categorical
-                                                    (stats/somef t/month))
-                 :histogram-quarter (redux/pre-step h/histogram-categorical
-                                                    (stats/somef quarter))})
-    t.format/parse)
+   (redux/fuse {:histogram         (redux/pre-step
+                                    h/histogram
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getTime)))
+                :histogram-hour    (redux/pre-step
+                                    h/histogram-categorical
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getHours)))
+                :histogram-day     (redux/pre-step
+                                    h/histogram-categorical
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getDay)))
+                :histogram-month   (redux/pre-step
+                                    h/histogram-categorical
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getMonth)))
+                :histogram-quarter (redux/pre-step
+                                    h/histogram-categorical
+                                    (stats/somef quarter))})
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)

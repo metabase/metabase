@@ -78,7 +78,7 @@
 (defn field-values
   "Return all the values of FIELD for QUERY."
   [field query]
-  (->> (qp/process-query
+  (->> (qp/process-query-no-format-rows
          {:type     :query
           :database (db-id field)
           :query    (merge {:fields       [[:field-id (:id field)]]
@@ -91,7 +91,7 @@
 (defn query-values
   "Return all values for QUERY."
   [db-id query]
-  (-> (qp/process-query
+  (-> (qp/process-query-no-format-rows
         {:type     :query
          :database db-id
          :query    query})
