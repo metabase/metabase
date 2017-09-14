@@ -1,5 +1,7 @@
 (ns metabase.feature-extraction.feature-extractors-test
-  (:require [clj-time.core :as t]
+  (:require [clj-time
+             [core :as t]
+             [coerce :as t.coerce]]
             [expectations :refer :all]
             [metabase.feature-extraction.feature-extractors :refer :all :as fe]
             [metabase.feature-extraction.histogram :as h]
@@ -58,8 +60,8 @@
    (#'fe/quarter (t/date-time 2017 12))])
 
 (defn- make-timestamp
-  [y m]
-  (-> (t/date-time y m)
+  [& args]
+  (-> (apply t/date-time args)
       ((var fe/to-double))))
 
 (expect
@@ -131,18 +133,18 @@
    :month
    nil]
   [(#'fe/infer-resolution {:breakout [["datetime-field" [:field-id 1] :as :day]]}
-                          [[(#'fe/to-double (t/date-time 2015 1 1)) 3]
-                           [(#'fe/to-double (t/date-time 2015 2 24)) 34]
-                           [(#'fe/to-double (t/date-time 2015 3 3)) 4]])
-   (#'fe/infer-resolution nil [[(#'fe/to-double (t/date-time 2015 1 1)) 3]
-                               [(#'fe/to-double (t/date-time 2015 1 2)) 34]
-                               [(#'fe/to-double (t/date-time 2015 1 3)) 4]])
-   (#'fe/infer-resolution nil [[(#'fe/to-double (t/date-time 2015 1)) 3]
-                               [(#'fe/to-double (t/date-time 2015 2)) 34]
-                               [(#'fe/to-double (t/date-time 2015 3)) 4]])
-   (#'fe/infer-resolution nil [[(#'fe/to-double (t/date-time 2015 1)) 1]
-                               [(#'fe/to-double (t/date-time 2015 12)) 2]
-                               [(#'fe/to-double (t/date-time 2016 1)) 0]])])
+                          [[(make-timestamp 2015 1 1) 3]
+                           [(make-timestamp 2015 2 24) 34]
+                           [(make-timestamp 2015 3 3) 4]])
+   (#'fe/infer-resolution nil [[(make-timestamp 2015 1 1) 3]
+                               [(make-timestamp 2015 1 2) 34]
+                               [(make-timestamp 2015 1 3) 4]])
+   (#'fe/infer-resolution nil [[(make-timestamp 2015 1) 3]
+                               [(make-timestamp 2015 2) 34]
+                               [(make-timestamp 2015 3) 4]])
+   (#'fe/infer-resolution nil [[(make-timestamp 2015 1) 1]
+                               [(make-timestamp 2015 12) 2]
+                               [(make-timestamp 2016 1) 0]])])
 
 (expect
   [{1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}
@@ -152,10 +154,22 @@
    (#'fe/month-frequencies (t/date-time 2015 5) (t/date-time 2016 2))
    (#'fe/month-frequencies (t/date-time 2015 5 31) (t/date-time 2015 6 28))])
 
+(defn- make-sql-timestamp
+  [& args]
+  (-> (apply t/date-time args)
+      t.coerce/to-sql-time))
+
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
 (def ^:private ints [0 nil Long/MAX_VALUE Long/MIN_VALUE 5 -100])
-(def ^:private datetimes ["2015-06-01" nil "2015-06-11" "2015-01-01"
-                          "2016-06-31" "2017-09-01" "2016-04-15" "2017-11-02"])
+(def ^:private datetimes [(make-sql-timestamp 2015 6 1)
+                          nil
+                          (make-sql-timestamp 2015 6 1)
+                          (make-sql-timestamp 2015 6 11)
+                          (make-sql-timestamp 2015 1 1)
+                          (make-sql-timestamp 2016 6 30)
+                          (make-sql-timestamp 2017 9 1)
+                          (make-sql-timestamp 2016 4 15)
+                          (make-sql-timestamp 2017 11 2)])
 (def ^:private categories [:foo :baz :bar :bar nil :foo])
 
 (defn- ->features

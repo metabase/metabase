@@ -367,7 +367,7 @@
     (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                  :series            conj})
     (fn [[^java.sql.Timestamp x y]]
-      [(.getTime x) y]))
+      [(some-> x .getTime) y]))
    (merge-juxt
     (field-metadata-extractor field)
     (fn [{:keys [series linear-regression]}]
@@ -482,19 +482,23 @@
   (redux/post-complete
    (redux/fuse {:histogram         (redux/pre-step
                                     h/histogram
-                                    (memfn ^java.sql.Timestamp getTime))
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getTime)))
                 :histogram-hour    (redux/pre-step
                                     h/histogram-categorical
-                                    (memfn ^java.sql.Timestamp getHours))
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getHours)))
                 :histogram-day     (redux/pre-step
                                     h/histogram-categorical
-                                    (memfn ^java.sql.Timestamp getDay))
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getDay)))
                 :histogram-month   (redux/pre-step
                                     h/histogram-categorical
-                                    (memfn ^java.sql.Timestamp getMonth))
+                                    (stats/somef
+                                     (memfn ^java.sql.Timestamp getMonth)))
                 :histogram-quarter (redux/pre-step
                                     h/histogram-categorical
-                                    quarter)})
+                                    (stats/somef quarter))})
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
