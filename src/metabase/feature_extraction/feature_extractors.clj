@@ -376,7 +376,7 @@
             series     (if resolution
                          (fill-timeseries (case resolution
                                             :month   (t/months 1)
-                                            :quarter (t/months 4)
+                                            :quarter (t/months 3)
                                             :year    (t/years 1)
                                             :week    (t/weeks 1)
                                             :day     (t/days 1)
