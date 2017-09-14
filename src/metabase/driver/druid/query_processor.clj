@@ -720,14 +720,31 @@
 
 (defmulti ^:private post-process query-type-dispatch-fn)
 
-(defmethod post-process ::select  [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::total   [_ results] (map :result results))
-(defmethod post-process ::topN    [_ results] (-> results first :result))
-(defmethod post-process ::groupBy [_ results] (map :event results))
+(defn- post-process-map [projections results]
+  {:projections projections
+   :results     results})
 
-(defmethod post-process ::timeseries [_ results]
-  (for [event results]
-    (conj {:timestamp (:timestamp event)} (:result event))))
+(defmethod post-process ::select  [_ projections results]
+  (->> results
+       first
+       :result
+       :events
+       (map :event)
+       (post-process-map projections)))
+
+(defmethod post-process ::total   [_ projections results]
+  (post-process-map projections (map :result results)))
+
+(defmethod post-process ::topN    [_ projections results]
+  (post-process-map projections (-> results first :result)))
+
+(defmethod post-process ::groupBy [_ projections results]
+  (post-process-map projections (map :event results)))
+
+(defmethod post-process ::timeseries [_ projections results]
+  (post-process-map (conj projections :timestamp)
+                    (for [event results]
+                      (conj {:timestamp (:timestamp event)} (:result event)))))
 
 (defn post-process-native
   "Post-process the results of a *native* Druid query.
@@ -778,24 +795,25 @@
   "Execute a query for a Druid DB."
   [do-query {database :database, {:keys [query query-type mbql? projections]} :native}]
   {:pre [database query]}
-  (let [details    (:details database)
-        query      (if (string? query)
-                     (json/parse-string query keyword)
-                     query)
-        query-type (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
-        results     (->> query
-                         (do-query details)
-                         (post-process query-type))
-        columns    (if mbql?
-                     (->> projections
-                          remove-bonus-keys
-                          vec)
-                     (keys (first results)))
-        getters    (columns->getter-fns columns)]
+  (let [details       (:details database)
+        query         (if (string? query)
+                        (json/parse-string query keyword)
+                        query)
+        query-type    (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
+        post-proc-map (->> query
+                           (do-query details)
+                           (post-process query-type projections))
+        columns       (if mbql?
+                        (->> post-proc-map
+                             :projections
+                             remove-bonus-keys
+                             vec)
+                        (-> post-proc-map :results first keys))
+        getters       (columns->getter-fns columns)]
     ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our behind-the-scenes conversion
     ;; and apply any other post-processing on the value such as parsing some units to int and rounding up approximate cardinality values.
     {:columns   (vec (replace {:timestamp___int :timestamp :distinct___count :count} columns))
-     :rows      (for [row results]
+     :rows      (for [row (:results post-proc-map)]
                   (for [getter getters]
                     (getter row)))
      :annotate? mbql?}))

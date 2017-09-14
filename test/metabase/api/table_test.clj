@@ -7,7 +7,9 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
+             [query-processor-test :as qpt]
              [sync :as sync]
+             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.models
@@ -27,10 +29,7 @@
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
-            [toucan.util.test :as tt]
-            [metabase.query-processor-test :as qpt]
-            [metabase.timeseries-query-processor-test :as timeseries-qp-test]
-            [metabase.test.data.datasets :as datasets :refer [*driver* *engine*]]))
+            [toucan.util.test :as tt]))
 
 ;; ## /api/org/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
