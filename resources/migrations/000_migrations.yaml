@@ -3519,8 +3519,11 @@ databaseChangeLog:
   - changeSet:
       id: 52
       author: camsaul
+      # this migration has tons of possible valid checksums because ${blob.type} is different for each DB type, and we changed the remarks
       validCheckSum: '7:fbe1b7114f1d4f346543e3c22e28bde3'
       validCheckSum: '7:086f9d98cc44e03f0e9703793dd7b588'
+      validCheckSum: '7:bcf30d329f6398876caa78af39c78830'
+      validCheckSum: '7:7563ffe87525252412c8d082a824127c'
       changes:
         - createTable:
             tableName: query_cache
@@ -3586,6 +3589,7 @@ databaseChangeLog:
       author: tlrobinson
       validCheckSum: '7:695b12a78e897c62c21d41bfb04ab44b'
       validCheckSum: '7:0857800db71a4757e7202aad4eaed48d'
+      validCheckSum: '7:28086112878464cab8a822b7d1cce4c4' # sometimes H2 produces this checksum. No idea why.
       changes:
         - addColumn:
             tableName: pulse
