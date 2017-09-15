@@ -478,7 +478,7 @@
     (-> dt t/month (* 0.33) Math/ceil long)))
 
 (defmethod feature-extractor DateTime
-  [_ field]
+  [_ {:keys [base_type unit] :as field}]
   (redux/post-complete
    (redux/fuse (merge
                 {:histogram         (redux/pre-step
@@ -493,7 +493,8 @@
                  :histogram-quarter (redux/pre-step
                                      h/histogram-categorical
                                      (somef quarter))}
-                (when-not (-> field :base_type (isa? :type/Date))
+                (when-not (or (isa? base_type :type/Date)
+                              (#{:day :month :year :quarter :week} unit))
                   {:histogram-hour (redux/pre-step
                                     h/histogram-categorical
                                     (somef (memfn ^java.util.Date getHours)))})))
