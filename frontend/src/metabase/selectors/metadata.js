@@ -171,16 +171,21 @@ export const makeGetMergedParameterFieldValues = () => {
         const fieldIds = Object.keys(fieldValues)
 
         if (fieldIds.length === 0) {
-            // If we have no mapped fields, then don't return any values
+            // If we have no fields for the parameter, don't return any field values
             return [];
         } else if (fieldIds.length === 1) {
+            // We have just a single field so we can return the field values almost as-is,
+            // only address the boolean bug for now
             const singleFieldValues = fieldValues[fieldIds[0]]
             return patchBooleanFieldValues_HACK(singleFieldValues);
         } else {
+            // We have multiple fields, so let's merge their values to a single array
             const sortedMergedValues = _.chain(Object.values(fieldValues))
                 .flatten(true)
-                // Use remapped value for sorting if it is available
-                .sortBy(fieldValue => fieldValue.length === 2 ? fieldValue[1] : fieldValue[0])
+                .sortBy(fieldValue => {
+                    const valueIsRemapped = fieldValue.length === 2
+                    return valueIsRemapped ? fieldValue[1] : fieldValue[0]
+                })
                 .value()
 
             // run the uniqueness comparision always against a non-remapped value
