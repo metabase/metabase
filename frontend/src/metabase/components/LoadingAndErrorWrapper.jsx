@@ -10,7 +10,7 @@ export default class LoadingAndErrorWrapper extends Component {
 
     state = {
         messageIndex: 0,
-        loadCount: 0
+        sceneIndex: 0,
     }
 
     static propTypes = {
@@ -24,7 +24,7 @@ export default class LoadingAndErrorWrapper extends Component {
         showSpinner:     PropTypes.bool,
         loadingMessages: PropTypes.array,
         messageInterval: PropTypes.number,
-        loadingTimeout:  PropTypes.number
+        loadingScenes:   PropTypes.array
     };
 
     static defaultProps = {
@@ -36,7 +36,6 @@ export default class LoadingAndErrorWrapper extends Component {
         showSpinner:    true,
         loadingMessages: ['Loading...'],
         messageInterval: 6000,
-        loadingTimeout: 20000,
     };
 
     getErrorMessage() {
@@ -54,7 +53,7 @@ export default class LoadingAndErrorWrapper extends Component {
         const { loadingMessages, messageInterval } = this.props;
         // only start cycling if multiple messages are provided
         if(loadingMessages.length > 1) {
-            this.cycle = setInterval(this.cycleLoadingMessage, messageInterval)
+            this.cycle = setInterval(this.loadingInterval, messageInterval)
         }
     }
 
@@ -63,8 +62,14 @@ export default class LoadingAndErrorWrapper extends Component {
     }
 
     loadingInterval = () => {
-        this.setState({ loadCount: this.state.loadCount + 1})
         this.cycleLoadingMessage()
+        if(this.props.loadingScenes) {
+            this.cycleLoadingScenes()
+        }
+    }
+
+    cycleLoadingScenes = () => {
+
     }
 
     getChildren() {
@@ -89,6 +94,14 @@ export default class LoadingAndErrorWrapper extends Component {
         })
     }
 
+    cycleLoadingScenes = () => {
+        this.setState({
+            sceneIndex: this.state.sceneIndex + 1 < this.props.loadingScenes.length -1
+            ? this.state.sceneIndex + 1
+            : 0
+        })
+    }
+
     render() {
         const {
             loading,
@@ -96,14 +109,16 @@ export default class LoadingAndErrorWrapper extends Component {
             noBackground,
             noWrapper,
             showSpinner,
-            loadingMessages
+            loadingMessages,
+            loadingScenes
         } = this.props;
 
-        const { messageIndex } = this.state;
+        const { messageIndex, sceneIndex } = this.state;
 
-        const contentClassName = cx("wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered", {
-            "bg-white": !noBackground
-        });
+        const contentClassName = cx(
+            "wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered",
+            { "bg-white": !noBackground }
+        );
 
         if (noWrapper && !error && !loading) {
             return React.Children.only(this.getChildren());
@@ -116,7 +131,8 @@ export default class LoadingAndErrorWrapper extends Component {
                     </div>
                 : loading ?
                         <div className={contentClassName}>
-                            { showSpinner && <LoadingSpinner /> }
+                            { loadingScenes && loadingScenes[sceneIndex] }
+                            { !loadingScenes && showSpinner && <LoadingSpinner /> }
                             <h2 className="text-normal text-grey-2 mt1">
                                 {loadingMessages[messageIndex]}
                             </h2>

@@ -16,6 +16,7 @@ import {
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 const mapStateToProps = (state) => ({
         comparison: getComparison(state),
@@ -65,9 +66,12 @@ class SegmentComparison extends Component {
                 error={error}
                 noBackground
                 loadingMessages={[
-                    'Generating ypur comparison...',
+                    'Generating your comparison...',
                     'Teaching robots to love...',
                     'Still working...',
+                ]}
+                loadingScenes={[
+                    <LoadingAnimation />
                 ]}
             >
                 { () =>
