@@ -51,7 +51,10 @@ export type ClickAction = {
 export type ClickActionProps = {
     question: Question,
     clicked?: ClickObject,
-    settings: {}
+    settings: {
+        'enable_xrays': boolean,
+        'xray_max_cost': string
+    }
 }
 
 export type OnChangeCardAndRun = ({ nextCard: Card, previousCard?: ?Card }) => void
