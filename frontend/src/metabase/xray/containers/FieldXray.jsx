@@ -24,9 +24,10 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
-import { hasXray } from 'metabase/xray/utils'
+import { hasXray, loadingMessages } from 'metabase/xray/utils'
 
 import Periodicity from 'metabase/xray/components/Periodicity'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
@@ -97,6 +98,8 @@ class FieldXRay extends Component {
                 loading={isLoading || !hasXray(xray)}
                 error={error}
                 noBackground
+                loadingMessages={loadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>
                     <XRayPageWrapper>

@@ -18,7 +18,7 @@ import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
-import { hasComparison } from 'metabase/xray/utils'
+import { hasComparison, loadingMessages } from 'metabase/xray/utils'
 
 const mapStateToProps = (state) => ({
     comparison: getComparison(state),
@@ -69,14 +69,8 @@ class SegmentComparison extends Component {
                 loading={isLoading || !hasComparison(comparison)}
                 error={error}
                 noBackground
-                loadingMessages={[
-                    'Generating your comparison...',
-                    'Teaching robots to love...',
-                    'Still working...',
-                ]}
-                loadingScenes={[
-                    <LoadingAnimation />
-                ]}
+                loadingMessages={loadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>
 

@@ -29,7 +29,7 @@ export const getSegmentConstituents = (state) =>
         )
     )
 
-export const getComparison = (state) => state.xray.comparison && state.xray.comparison
+export const getComparison = (state) => state.xray.comparison
 
 export const getComparisonFields = createSelector(
     [getComparison],

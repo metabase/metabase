@@ -20,10 +20,11 @@ import {
 
 import Icon from 'metabase/components/Icon'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { hasXray } from 'metabase/xray/utils'
+import { hasXray, loadingMessages } from 'metabase/xray/utils'
 
 type Props = {
     constituents: [],
@@ -88,6 +89,8 @@ class TableXRay extends Component {
                     loading={isLoading || !hasXray(xray)}
                     error={error}
                     noBackground
+                    loadingMessages={loadingMessages}
+                    loadingScenes={[<LoadingAnimation />]}
                 >
                     { () =>
                         <div className="full">

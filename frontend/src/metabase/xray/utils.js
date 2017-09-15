@@ -21,3 +21,8 @@ function has (entity) {
 
 export const hasXray = has
 export const hasComparison = has
+
+export const loadingMessages = [
+    'Generating your comparison...',
+    'Still working...',
+]
