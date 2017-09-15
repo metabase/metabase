@@ -529,7 +529,7 @@
   [weights card]
   (let [baseline (apply min (vals weights))]
     (update card :rows (partial map (fn [[k v]]
-                                      [k (* v (/ baseline (weights k 1)))])))))
+                                      [k (/ (* v baseline) (weights k))])))))
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
