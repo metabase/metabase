@@ -14,6 +14,8 @@ import Visualization from 'metabase/visualizations/components/Visualization'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import Periodicity from 'metabase/xray/components/Periodicity'
 
+import { hasXray } from 'metabase/xray/utils'
+
 type Props = {
     fetchCardXray: () => void,
     isLoading: boolean,
@@ -62,7 +64,7 @@ class CardXRay extends Component {
         const { xray, isLoading } = this.props
         const { error } = this.state
         return (
-            <LoadingAndErrorWrapper loading={isLoading} error={error}>
+            <LoadingAndErrorWrapper loading={isLoading || !hasXray(xray)} error={error}>
                 { () =>
                     <XRayPageWrapper>
                         <div className="mt4 mb2">

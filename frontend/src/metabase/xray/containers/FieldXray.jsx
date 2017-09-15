@@ -24,6 +24,8 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
+import { hasXray } from 'metabase/xray/utils'
+
 import Periodicity from 'metabase/xray/components/Periodicity'
 
 import type { Field } from 'metabase/meta/types/Field'
@@ -87,9 +89,12 @@ class FieldXRay extends Component {
     render () {
         const { xray, params, isLoading } = this.props
         const { error } = this.state
+
+        console.log(hasXray(xray))
+
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading}
+                loading={isLoading || !hasXray(xray)}
                 error={error}
                 noBackground
             >

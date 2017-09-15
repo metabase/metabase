@@ -10,19 +10,22 @@ import {
     getComparisonFields,
     getComparisonContributors,
     getSegmentItem,
-    getTitle
+    getTitle,
+    getLoadingStatus
 } from 'metabase/xray/selectors'
-
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 
+import { hasComparison } from 'metabase/xray/utils'
+
 const mapStateToProps = (state) => ({
-        comparison: getComparison(state),
-        fields: getComparisonFields(state),
-        contributors: getComparisonContributors(state),
-        itemA: getSegmentItem(state, 0),
-        itemB: getSegmentItem(state, 1)
+    comparison: getComparison(state),
+    fields: getComparisonFields(state),
+    contributors: getComparisonContributors(state),
+    itemA: getSegmentItem(state, 0),
+    itemB: getSegmentItem(state, 1),
+    isLoading: getLoadingStatus(state)
 })
 
 const mapDispatchToProps = {
@@ -53,14 +56,15 @@ class SegmentComparison extends Component {
             comparison,
             fields,
             itemA,
-            itemB
+            itemB,
+            isLoading
         } = this.props
 
         const { error } = this.state
 
         return (
             <LoadingAndErrorWrapper
-                loading={!comparison}
+                loading={isLoading || !hasComparison(comparison)}
                 error={error}
                 noBackground
             >

@@ -23,6 +23,8 @@ import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
 import type { Table } from 'metabase/meta/types/Table'
 
+import { hasXray } from 'metabase/xray/utils'
+
 type Props = {
     constituents: [],
     fetchTableXray: () => void,
@@ -83,7 +85,7 @@ class TableXRay extends Component {
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
-                    loading={isLoading}
+                    loading={isLoading || !hasXray(xray)}
                     error={error}
                     noBackground
                 >
