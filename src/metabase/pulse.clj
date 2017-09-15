@@ -34,7 +34,7 @@
 
 (defn- database-id [card]
   (or (:database_id card)
-      (get-in card [:database_query :database])))
+      (get-in card [:dataset_query :database])))
 
 (s/defn defaulted-timezone :- TimeZone
   "Returns the timezone for the given `CARD`. Either the report
