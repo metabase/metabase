@@ -204,7 +204,7 @@ export default class Visualization extends Component {
         const card = series[seriesIndex].card;
         const question = new Question(metadata, card);
         const mode = question.mode();
-        return mode ? mode.actionsForClick({}, clicked) : [];
+        return mode ? mode.actionsForClick(clicked, {}) : [];
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
@@ -213,7 +213,7 @@ export default class Visualization extends Component {
             return false;
         }
         try {
-            return this.getClickActions({}, clicked).length > 0;
+            return this.getClickActions(clicked).length > 0;
         } catch (e) {
             console.warn(e);
             return false;
