@@ -7,8 +7,9 @@
             [metabase.feature-extraction
              [comparison :as comparison]
              [costs :as costs]
+             [descriptions :refer [add-descriptions]]
              [feature-extractors :as fe]
-             [descriptions :refer [add-descriptions]]]
+             [values :as values]]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -66,7 +67,7 @@
 
 (defmethod extract-features (type Field)
   [opts field]
-  (let [dataset (metadata/field-values field (extract-query-opts opts))]
+  (let [dataset (values/field-values field (extract-query-opts opts))]
     {:features (->> dataset
                     (field->features opts field)
                     (merge {:table (Table (:table_id field))}))
@@ -74,30 +75,12 @@
 
 (defmethod extract-features (type Table)
   [opts table]
-  (let [dataset (metadata/query-values (metadata/db-id table)
-                                       (merge (extract-query-opts opts)
-                                              {:source-table (:id table)}))]
+  (let [dataset (values/query-values (metadata/db-id table)
+                                     (merge (extract-query-opts opts)
+                                            {:source-table (:id table)}))]
     {:constituents (dataset->features opts dataset)
      :features     {:table table}
      :sample?      (sampled? opts dataset)}))
-
-(defn- card-values
-  [card]
-  (let [{:keys [rows cols] :as dataset} (-> card
-                                            :dataset_query
-                                            qp/process-query-no-format-rows
-                                            :data)]
-    (if (and (:visualization_settings card)
-             (not-every? :source cols))
-      (let [aggregation (-> card :visualization_settings :graph.metrics first)
-            breakout    (-> card :visualization_settings :graph.dimensions first)]
-        {:rows rows
-         :cols (for [c cols]
-                 (cond
-                   (= (:name c) aggregation) (assoc c :source :aggregation)
-                   (= (:name c) breakout)    (assoc c :source :breakout)
-                   :else                     c))})
-      dataset)))
 
 (defn index-of
   "Return index of the first element in `coll` for which `pred` reutrns true."
@@ -117,7 +100,7 @@
 
 (defmethod extract-features (type Card)
   [opts card]
-  (let [{:keys [rows cols] :as dataset} (card-values card)
+  (let [{:keys [rows cols] :as dataset} (values/card-values card)
         {:keys [breakout aggregation]}  (group-by :source cols)
         fields                          [(first breakout)
                                          (or (first aggregation)
@@ -136,9 +119,9 @@
 
 (defmethod extract-features (type Segment)
   [opts segment]
-  (let [dataset (metadata/query-values (metadata/db-id segment)
-                                       (merge (extract-query-opts opts)
-                                              (:definition segment)))]
+  (let [dataset (values/query-values (metadata/db-id segment)
+                                     (merge (extract-query-opts opts)
+                                            (:definition segment)))]
     {:constituents (dataset->features opts dataset)
      :features     {:table   (Table (:table_id segment))
                     :segment segment}

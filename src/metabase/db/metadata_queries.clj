@@ -74,25 +74,3 @@
   (or (:db_id x)
       (:database_id x)
       (db/select-one-field :db_id 'Table :id (:table_id x))))
-
-(defn field-values
-  "Return all the values of FIELD for QUERY."
-  [field query]
-  (->> (qp/process-query-no-format-rows
-         {:type     :query
-          :database (db-id field)
-          :query    (merge {:fields       [[:field-id (:id field)]]
-                            :source-table (:table_id field)}
-                           query)})
-       :data
-       :rows
-       (map first)))
-
-(defn query-values
-  "Return all values for QUERY."
-  [db-id query]
-  (-> (qp/process-query-no-format-rows
-        {:type     :query
-         :database db-id
-         :query    query})
-      :data))

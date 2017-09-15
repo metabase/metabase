@@ -6,14 +6,14 @@
              [core :as t]
              [periodic :as t.periodic]]
             [kixi.stats
-             [core :as stats]
+             [core :as stats :refer [somef]]
              [math :as math]]
             [medley.core :as m]
-            [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
-             [histogram :as h]
              [costs :as costs]
-             [stl :as stl]]
+             [histogram :as h]
+             [stl :as stl]
+             [values :as values]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -198,12 +198,12 @@
      {:histogram   h/histogram
       :cardinality cardinality}
      (when (costs/full-scan? max-cost)
-       {:sum            (redux/with-xform + (keep (stats/somef double)))
+       {:sum            (redux/with-xform + (keep (somef double)))
         :sum-of-squares (redux/with-xform +
-                          (keep (stats/somef (comp math/sq double))))})
+                          (keep (somef (comp math/sq double))))})
      (when (costs/unbounded-computation? max-cost)
-       {:kurtosis (redux/pre-step stats/kurtosis (stats/somef double))
-        :skewness (redux/pre-step stats/skewness (stats/somef double))})
+       {:kurtosis (redux/pre-step stats/kurtosis (somef double))
+        :skewness (redux/pre-step stats/skewness (somef double))})
      (when (isa? (:special_type field) :type/Category)
        {:histogram-categorical h/histogram-categorical})))
    (merge-juxt
@@ -261,7 +261,7 @@
     (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                  :correlation       (stats/correlation first second)
                  :covariance        (stats/covariance first second)})
-    (partial map (stats/somef double)))
+    (partial map (somef double)))
    (merge-juxt
     (field-metadata-extractor field)
     identity)))
@@ -272,7 +272,7 @@
 
 (def ^:private ^{:arglists '([t])} from-double
   "Coerce `Double` into a `DateTime`."
-  (stats/somef (comp t.coerce/from-long long)))
+  (somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
   "Given a coll of `[DateTime, Any]` pairs evenly spaced `step` apart, fill
@@ -319,7 +319,7 @@
                                  [:relative-datetime (- (+ n offset)) :day]]
                                 [:<= datetime-field
                                  [:relative-datetime (- offset) :day]]]]
-    (-> (metadata/query-values
+    (-> (values/query-values
          (db/select-one-field :db_id 'Table :id (:source_table query))
          (-> query
              (dissoc :breakout)
@@ -366,7 +366,7 @@
    (redux/pre-step
     (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
                  :series            conj})
-    (fn [[^java.sql.Timestamp x y]]
+    (fn [[^java.util.Date x y]]
       [(some-> x .getTime double) y]))
    (merge-juxt
     (field-metadata-extractor field)
@@ -458,7 +458,7 @@
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step
                             h/histogram
-                            (stats/somef (comp count u/jdbc-clob->str)))})
+                            (somef (comp count u/jdbc-clob->str)))})
    (merge-juxt
     (field-metadata-extractor field)
     histogram-extractor)))
@@ -467,7 +467,7 @@
   "Quarter-of-year functionality"
   (quarter [dt] "Return which quarter (1-4) given date-like object falls into."))
 
-(extend-type java.sql.Timestamp
+(extend-type java.util.Date
   Quarter
   (quarter [dt]
     (-> dt .getMonth (* 0.33) Math/ceil long)))
@@ -480,25 +480,23 @@
 (defmethod feature-extractor DateTime
   [_ field]
   (redux/post-complete
-   (redux/fuse {:histogram         (redux/pre-step
-                                    h/histogram
-                                    (stats/somef
-                                     (memfn ^java.sql.Timestamp getTime)))
-                :histogram-hour    (redux/pre-step
+   (redux/fuse (merge
+                {:histogram         (redux/pre-step
+                                     h/histogram
+                                     (somef (memfn ^java.util.Date getTime)))
+                 :histogram-day     (redux/pre-step
+                                     h/histogram-categorical
+                                     (somef (memfn ^java.util.Date getDay)))
+                 :histogram-month   (redux/pre-step
+                                     h/histogram-categorical
+                                     (somef (memfn ^java.util.Date getMonth)))
+                 :histogram-quarter (redux/pre-step
+                                     h/histogram-categorical
+                                     (somef quarter))}
+                (when-not (-> field :base_type (isa? :type/Date))
+                  {:histogram-hour (redux/pre-step
                                     h/histogram-categorical
-                                    (stats/somef
-                                     (memfn ^java.sql.Timestamp getHours)))
-                :histogram-day     (redux/pre-step
-                                    h/histogram-categorical
-                                    (stats/somef
-                                     (memfn ^java.sql.Timestamp getDay)))
-                :histogram-month   (redux/pre-step
-                                    h/histogram-categorical
-                                    (stats/somef
-                                     (memfn ^java.sql.Timestamp getMonth)))
-                :histogram-quarter (redux/pre-step
-                                    h/histogram-categorical
-                                    (stats/somef quarter))})
+                                    (somef (memfn ^java.util.Date getHours)))})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
@@ -541,11 +539,12 @@
         (assoc  :latest            latest)
         (update :histogram         (partial histogram->dataset from-double field))
         (update :percentiles       (partial m/map-vals from-double))
-        (update :histogram-hour    (partial histogram->dataset
-                                            {:name         "HOUR"
-                                             :display_name "Hour of day"
-                                             :base_type    :type/Integer
-                                             :special_type :type/Category}))
+        (update :histogram-hour    (somef
+                                    (partial histogram->dataset
+                                             {:name         "HOUR"
+                                              :display_name "Hour of day"
+                                              :base_type    :type/Integer
+                                              :special_type :type/Category})))
         (update :histogram-day     (partial histogram->dataset
                                             {:name         "DAY"
                                              :display_name "Day of week"
