@@ -103,7 +103,7 @@ describe("xray integration tests", () => {
             expect(cardXRay.text()).toMatch(/Time breakout question/);
         })
 
-        xit("let you see segment xray for a question containing a segment", async () => {
+        it("let you see segment xray for a question containing a segment", async () => {
             const store = await createTestStore()
             store.pushPath(Urls.question(segmentQuestion.id()))
             const app = mount(store.getAppContainer());

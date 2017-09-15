@@ -16,6 +16,7 @@ import {
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import { hasComparison } from 'metabase/xray/utils'
 
@@ -45,6 +46,7 @@ class SegmentComparison extends Component {
         try {
             await this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
         } catch (error) {
+            console.log('error', error)
             this.setState({ error })
         }
     }
@@ -67,6 +69,14 @@ class SegmentComparison extends Component {
                 loading={isLoading || !hasComparison(comparison)}
                 error={error}
                 noBackground
+                loadingMessages={[
+                    'Generating your comparison...',
+                    'Teaching robots to love...',
+                    'Still working...',
+                ]}
+                loadingScenes={[
+                    <LoadingAnimation />
+                ]}
             >
                 { () =>
 
