@@ -275,7 +275,6 @@ describe("xray integration tests", () => {
             expect(xrayTableSideBarItem.length).toEqual(0)
 
             store.pushPath('/reference/databases/1/tables/1/fields/1')
-
             await store.waitForActions([END_LOADING])
             const xrayFieldSideBarItem = app.find('.Icon.Icon-beaker')
             expect(xrayFieldSideBarItem.length).toEqual(0)
