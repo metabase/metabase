@@ -365,6 +365,23 @@ const SECTIONS = [
                 allowValueCollection: true
             }
         ]
+    },
+    {
+        name: "X-Rays",
+        settings: [
+            {
+                key: "enable-xrays",
+                display_name: "Enable X-Rays",
+                type: "boolean",
+                allowValueCollection: true
+            },
+            {
+                key: "xray-max-cost",
+                type: "string",
+                allowValueCollection: true
+
+            }
+        ]
     }
 ];
 for (const section of SECTIONS) {
