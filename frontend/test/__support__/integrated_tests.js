@@ -40,6 +40,8 @@ let hasFinishedCreatingStore = false
 let loginSession = null; // Stores the current login session
 let previousLoginSession = null;
 let simulateOfflineMode = false;
+let apiRequestCompletedCallback = null;
+let skippedApiRequests = [];
 
 /**
  * Login to the Metabase test instance with default credentials
@@ -324,6 +326,33 @@ export const createSavedQuestion = async (unsavedQuestion) => {
     return savedQuestion
 }
 
+/**
+ * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.
+ * Useful in those relatively rare situations where React components do API requests inline instead of using Redux actions.
+ */
+export const waitForRequestToComplete = (method, urlRegex, { timeout = 5000 } = {}) => {
+    skippedApiRequests = []
+    return new Promise((resolve, reject) => {
+        const completionTimeoutId = setTimeout(() => {
+            reject(
+                new Error(
+                    `API request ${method} ${urlRegex} wasn't completed within ${timeout}ms.\n` +
+                    `Other requests during that time period:\n${skippedApiRequests.join("\n") || "No requests"}`
+                )
+            )
+        }, timeout)
+
+        apiRequestCompletedCallback = (requestMethod, requestUrl) => {
+            if (requestMethod === method && urlRegex.test(requestUrl)) {
+                clearTimeout(completionTimeoutId)
+                resolve()
+            } else {
+                skippedApiRequests.push(`${requestMethod} ${requestUrl}`)
+            }
+        }
+    })
+}
+
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
 // Needed because we are not in a real web browser environment.
 api._makeRequest = async (method, url, headers, requestBody, data, options) => {
@@ -361,6 +390,7 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         resultBody = JSON.parse(resultBody);
     } catch (e) {}
 
+    apiRequestCompletedCallback && setTimeout(() => apiRequestCompletedCallback(method, url), 0)
 
     if (result.status >= 200 && result.status <= 299) {
         if (options.transformResponse) {
@@ -376,6 +406,7 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
             console.log(`The original request: ${method} ${url}`);
             if (requestBody) console.log(`Original payload: ${requestBody}`);
         }
+
         throw error
     }
 }

@@ -29,16 +29,17 @@ const FieldSidebar =({
                     placeholder="Data Reference"
                 />
             </div>
-                <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
-                             href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
-                             icon="document"
-                             name="Details" />
-                 { showXray && (
-                     <SidebarItem key={`/xray/field/${field.id}/approximate`}
-                         href={`/xray/field/${field.id}/approximate`}
-                         icon="beaker"
-                         name="X-Ray this Field" />
-                 )}
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
+                         href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
+                         icon="document"
+                         name="Details" />
+             { showXray && (
+                 <SidebarItem
+                     key={`/xray/field/${field.id}/approximate`}
+                     href={`/xray/field/${field.id}/approximate`}
+                     icon="beaker"
+                     name="X-ray this Field" />
+             )}
         </ul>
     </div>
 
@@ -52,4 +53,3 @@ FieldSidebar.propTypes = {
 };
 
 export default pure(FieldSidebar);
-

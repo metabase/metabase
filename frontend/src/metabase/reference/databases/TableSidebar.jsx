@@ -44,7 +44,7 @@ const TableSidebar = ({
                 <SidebarItem key={`/xray/table/${table.id}/approximate`}
                              href={`/xray/table/${table.id}/approximate`}
                              icon="beaker"
-                             name="X-Ray this table" />
+                             name="X-ray this table" />
             )}
         </ol>
     </div>
@@ -58,4 +58,3 @@ TableSidebar.propTypes = {
 };
 
 export default pure(TableSidebar);
-

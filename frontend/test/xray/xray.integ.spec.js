@@ -42,7 +42,7 @@ describe("xray integration tests", () => {
         await login()
 
         const segmentDef = {name: "A Segment", description: "For testing xrays", table_id: 1, show_in_getting_started: true,
-            definition: {database: 1, source_table: 1, query: {filter: ["time-interval", ["field-id", 1], -30, "day"]}}}
+            definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"] }}
         segmentId = (await SegmentApi.create(segmentDef)).id;
 
         timeBreakoutQuestion = await createSavedQuestion(
