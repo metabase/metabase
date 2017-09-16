@@ -10,17 +10,21 @@ import {
     getComparisonFields,
     getSegmentItem,
     getTableItem,
-    getTitle
+    getTitle,
+    getLoadingStatus
 } from 'metabase/xray/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
+import { hasComparison, loadingMessages } from 'metabase/xray/utils'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 const mapStateToProps = state => ({
     comparison: getComparison(state),
     fields: getComparisonFields(state),
     itemA: getSegmentItem(state),
-    itemB: getTableItem(state)
+    itemB: getTableItem(state),
+    isLoading: getLoadingStatus(state)
 })
 
 const mapDispatchToProps = {
@@ -45,13 +49,15 @@ class SegmentTableComparison extends Component {
     }
 
     render () {
-        const { params, fields, comparison, itemA, itemB } = this.props
+        const { params, fields, comparison, itemA, itemB, isLoading } = this.props
         const { error } = this.state
         return (
             <LoadingAndErrorWrapper
-                loading={!comparison}
+                loading={isLoading || !hasComparison(comparison)}
                 error={error}
                 noBackground
+                loadingMessages={loadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>
                     <XRayComparison
