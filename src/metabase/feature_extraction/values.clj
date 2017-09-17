@@ -1,17 +1,18 @@
 (ns metabase.feature-extraction.values
   "Helpers to get data behind various models in a consistent shape."
   (:require [metabase.db.metadata-queries :as metadata]
-            [metabase.query-processor :as qp]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.expand :as ql]))
 
 (defn field-values
   "Return all the values of FIELD for QUERY."
-  [field query]
+  [{:keys [id table_id] :as field} query]
   (->> (qp/process-query
          {:type       :query
           :database   (metadata/db-id field)
-          :query      (merge {:fields       [[:field-id (:id field)]]
-                              :source-table (:table_id field)}
-                             query)
+          :query      (-> query
+                          (ql/source-table table_id)
+                          (ql/fields id))
           :middleware {:format-rows? false}})
        :data
        :rows

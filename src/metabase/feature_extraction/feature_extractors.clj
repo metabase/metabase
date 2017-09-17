@@ -123,14 +123,19 @@
   (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
      :week-of-year :month-of-year :quarter-of-year} (:unit field)))
 
+(defn unix-timestamp?
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Integer)
+       (isa? special_type :type/DateTime)))
+
 (defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
     [(cond
-       (periodic-date-time? field)                 :type/Integer
-       (isa? (:special_type field) :type/DateTime) :type/DateTime
-       :else                                       (:base_type field))
+       (periodic-date-time? field) :type/Integer
+       (unix-timestamp? field)     :type/DateTime
+       :else                       (:base_type field))
      (or (:special_type field) :type/*)]))
 
 (defmulti
@@ -470,7 +475,7 @@
 (extend-type java.util.Date
   Quarter
   (quarter [dt]
-    (-> dt .getMonth (* 0.33) Math/ceil long)))
+    (-> dt .getMonth inc (* 0.33) Math/ceil long)))
 
 (extend-type org.joda.time.DateTime
   Quarter
@@ -489,7 +494,8 @@
                                      (somef (memfn ^java.util.Date getDay)))
                  :histogram-month   (redux/pre-step
                                      h/histogram-categorical
-                                     (somef (memfn ^java.util.Date getMonth)))
+                                     #(when %
+                                        (inc (.getMonth ^java.util.Date %))))
                  :histogram-quarter (redux/pre-step
                                      h/histogram-categorical
                                      (somef quarter))}
@@ -497,7 +503,9 @@
                               (#{:day :month :year :quarter :week} unit))
                   {:histogram-hour (redux/pre-step
                                     h/histogram-categorical
-                                    (somef (memfn ^java.util.Date getHours)))})))
+                                    ;; TOFIX: this is an ugly workaround
+                                    #(when (not (instance? java.sql.Date %))
+                                       (.getHours %)))})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
