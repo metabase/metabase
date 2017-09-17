@@ -15,6 +15,7 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.query-processor :as qp]
             [metabase.util :as u]
             [redux.core :as redux]))
 
@@ -44,8 +45,11 @@
           * `:max-cost`   a map with keys `:computation` and `:query` which
                           limits maximal resource expenditure when computing
                           features.
-                          See `metabase.feature-extraction.costs` for details."
-    :arglists '([opts field])}
+                          See `metabase.feature-extraction.costs` for details.
+
+                          Note: `extract-features` for `Card`s does not support
+                          sampling."
+    :arglists '([opts model])}
   extract-features #(type %2))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
@@ -77,22 +81,56 @@
      :features     {:table table}
      :sample?      (sampled? opts dataset)}))
 
+(defn- card-values
+  [card]
+  (let [{:keys [rows cols] :as dataset} (-> card
+                                            :dataset_query
+                                            qp/process-query
+                                            :data)]
+    (if (and (:visualization_settings card)
+             (not-every? :source cols))
+      (let [aggregation (-> card :visualization_settings :graph.metrics first)
+            breakout    (-> card :visualization_settings :graph.dimensions first)]
+        {:rows rows
+         :cols (for [c cols]
+                 (cond
+                   (= (:name c) aggregation) (assoc c :source :aggregation)
+                   (= (:name c) breakout)    (assoc c :source :breakout)
+                   :else                     c))})
+      dataset)))
+
+(defn index-of
+  "Return index of the first element in `coll` for which `pred` reutrns true."
+  [pred coll]
+  (first (keep-indexed (fn [i x]
+                         (when (pred x) i))
+                       coll)))
+
+(defn- ensure-aligment
+  [fields cols rows]
+  (if (not= fields (take 2 cols))
+    (eduction (map (apply juxt (for [field fields]
+                                 (let [idx (index-of #{field} cols)]
+                                   #(nth % idx)))))
+              rows)
+    rows))
+
 (defmethod extract-features (type Card)
   [opts card]
-  (let [query (-> card :dataset_query :query)
-        {:keys [rows cols] :as dataset} (metadata/query-values
-                                         (metadata/db-id card)
-                                         (merge (extract-query-opts opts)
-                                                query))
+  (let [{:keys [rows cols] :as dataset} (card-values card)
         {:keys [breakout aggregation]}  (group-by :source cols)
         fields                          [(first breakout)
                                          (or (first aggregation)
                                              (second breakout))]]
     {:constituents (dataset->features opts dataset)
-     :features     (merge
-                    (field->features (assoc opts :query query) fields rows)
-                    {:card  card
-                     :table (Table (:table_id card))})
+     :features     (merge (field->features (->> card
+                                                :dataset_query
+                                                :query
+                                                (assoc opts :query))
+                                           fields
+                                           (ensure-aligment fields cols rows))
+                          {:card  card
+                           :table (Table (:table_id card))})
      :dataset      dataset
      :sample?      (sampled? opts dataset)}))
 

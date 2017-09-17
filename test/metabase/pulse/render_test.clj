@@ -5,7 +5,7 @@
             [metabase.test.util :as tu])
   (:import java.util.TimeZone))
 
-(tu/resolve-private-vars metabase.pulse.render prep-for-html-rendering render-truncation-warning)
+(tu/resolve-private-vars metabase.pulse.render prep-for-html-rendering render-truncation-warning render:scalar)
 
 (def pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
 
@@ -133,3 +133,34 @@
    {:bar-width nil, :row ["2" "34.04" "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width nil, :row ["3" "34.05" "Aug 1, 2014" "The Gorbals"]}]
   (rest (prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
+
+(expect
+  "10"
+  (last (render:scalar pacific-tz nil {:cols [{:name         "ID",
+                                               :display_name "ID",
+                                               :base_type    :type/BigInteger
+                                               :special_type nil}]
+                                       :rows [[10]]})))
+
+(expect
+  "10.12"
+  (last (render:scalar pacific-tz nil {:cols [{:name         "floatnum",
+                                               :display_name "FLOATNUM",
+                                               :base_type    :type/Float
+                                               :special_type nil}]
+                                       :rows [[10.12345]]})))
+
+(expect
+  "foo"
+  (last (render:scalar pacific-tz nil {:cols [{:name         "stringvalue",
+                                               :display_name "STRINGVALUE",
+                                               :base_type    :type/Text
+                                               :special_type nil}]
+                                       :rows [["foo"]]})))
+(expect
+  "Apr 1, 2014"
+  (last (render:scalar pacific-tz nil {:cols [{:name         "date",
+                                               :display_name "DATE",
+                                               :base_type    :type/DateTime
+                                               :special_type nil}]
+                                       :rows [["2014-04-01T08:30:00.0000"]]})))

@@ -196,7 +196,7 @@ You can also skim through [`__support__/integrated_tests.js`](https://github.com
 
 Unit tests are focused around isolated parts of business logic. 
 
-Integration tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
+Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
 
 ```
 yarn run jest-test # Run all tests at once

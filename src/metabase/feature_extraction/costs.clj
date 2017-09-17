@@ -1,7 +1,6 @@
 (ns metabase.feature-extraction.costs
   "Predicates for limiting resource expanditure during feature extraction."
-  (:require [metabase.models
-             [setting :refer [defsetting] :as setting]]
+  (:require [metabase.models.setting :refer [defsetting] :as setting]
             [schema.core :as s]))
 
 (def ^:private query-costs {:cache     1

@@ -54,8 +54,14 @@
       (segment-parse-filter-subclause form))))
 
 (defn- expand-segments [query-dict]
-  (if (non-empty-clause? (get-in query-dict [:query :filter]))
+  (cond
+    (non-empty-clause? (get-in query-dict [:query :filter]))
     (update-in query-dict [:query :filter] segment-parse-filter)
+
+    (non-empty-clause? (get-in query-dict [:query :source-query :filter]))
+    (update-in query-dict [:query :source-query :filter] segment-parse-filter)
+
+    :else
     query-dict))
 
 
