@@ -123,7 +123,7 @@
   (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
      :week-of-year :month-of-year :quarter-of-year} (:unit field)))
 
-(defn unix-timestamp?
+(defn- unix-timestamp?
   [{:keys [base_type special_type]}]
   (and (isa? base_type :type/Integer)
        (isa? special_type :type/DateTime)))
