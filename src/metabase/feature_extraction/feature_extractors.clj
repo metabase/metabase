@@ -504,7 +504,7 @@
                   {:histogram-hour (redux/pre-step
                                     h/histogram-categorical
                                     ;; TOFIX: this is an ugly workaround
-                                    #(when (not (instance? java.sql.Date %))
+                                    #(when (and % (not (instance? java.sql.Date %)))
                                        (.getHours ^java.util.Date %)))})))
    (merge-juxt
     histogram-extractor
