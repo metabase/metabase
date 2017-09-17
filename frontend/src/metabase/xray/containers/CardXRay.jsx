@@ -134,7 +134,9 @@ class CardXRay extends Component {
                             </div>
                         </div>
 
-                        <Periodicity xray={Object.values(xray.constituents)[0]} />
+                        { xray.constituents[0] && (
+                            <Periodicity xray={Object.values(xray.constituents)[0]} />
+                        )}
 
                         <Heading heading={xray.features['seasonal-decomposition'].label} />
                         <div className="full">
