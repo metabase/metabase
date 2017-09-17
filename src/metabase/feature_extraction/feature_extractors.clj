@@ -505,7 +505,7 @@
                                     h/histogram-categorical
                                     ;; TOFIX: this is an ugly workaround
                                     #(when (not (instance? java.sql.Date %))
-                                       (.getHours %)))})))
+                                       (.getHours ^java.util.Date %)))})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
