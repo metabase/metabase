@@ -503,9 +503,7 @@
                               (#{:day :month :year :quarter :week} unit))
                   {:histogram-hour (redux/pre-step
                                     h/histogram-categorical
-                                    ;; TOFIX: this is an ugly workaround
-                                    #(when (and % (not (instance? java.sql.Date %)))
-                                       (.getHours ^java.util.Date %)))})))
+                                    (somef (memfn ^java.util.Date getHours)))})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)

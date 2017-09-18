@@ -7,16 +7,16 @@
 (defn field-values
   "Return all the values of FIELD for QUERY."
   [{:keys [id table_id] :as field} query]
-  (->> (qp/process-query
-         {:type       :query
-          :database   (metadata/db-id field)
-          :query      (-> query
-                          (ql/source-table table_id)
-                          (ql/fields id))
-          :middleware {:format-rows? false}})
-       :data
-       :rows
-       (map first)))
+  (let [{:keys [rows cols]} (->> (qp/process-query
+                                   {:type       :query
+                                    :database   (metadata/db-id field)
+                                    :query      (-> query
+                                                    (ql/source-table table_id)
+                                                    (ql/fields id))
+                                    :middleware {:format-rows? false}})
+                                 :data)]
+    {:row   (map first rows)
+     :field (first cols)}))
 
 (defn query-values
   "Return all values for QUERY."

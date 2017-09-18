@@ -67,11 +67,11 @@
 
 (defmethod extract-features (type Field)
   [opts field]
-  (let [dataset (values/field-values field (extract-query-opts opts))]
-    {:features (->> dataset
+  (let [{:keys [field row]} (values/field-values field (extract-query-opts opts))]
+    {:features (->> row
                     (field->features opts field)
                     (merge {:table (Table (:table_id field))}))
-     :sample?  (sampled? opts dataset)}))
+     :sample?  (sampled? opts row)}))
 
 (defmethod extract-features (type Table)
   [opts table]
