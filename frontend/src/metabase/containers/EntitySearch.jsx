@@ -17,45 +17,50 @@ import { parseHashOptions, updateQueryString } from "metabase/lib/browser";
 
 const PAGE_SIZE = 10
 
-const SEARCH_GROUPINGS = [
-    {
-        id: "name",
+export const NAME_GROUPING = {
+    id: "name",
         name: "Name",
-        icon: null,
-        // Name grouping is a no-op grouping so always put all results to same group with identifier `0`
-        groupBy: () => 0,
-        // Setting name to null hides the group header in SearchResultsGroup component
-        getGroupName: () => null
-    },
-    {
-        id: "table",
+    icon: null,
+    // Name grouping is a no-op grouping so always put all results to same group with identifier `0`
+    groupBy: () => 0,
+    // Setting name to null hides the group header in SearchResultsGroup component
+    getGroupName: () => null
+}
+export const TABLE_GROUPING = {
+    id: "table",
         name: "Table",
-        icon: "table2",
-        groupBy: (entity) => entity.table.id,
-        getGroupName: (entity) => entity.table.display_name
-    },
-    {
-        id: "database",
+    icon: "table2",
+    groupBy: (entity) => entity.table.id,
+    getGroupName: (entity) => entity.table.display_name
+};
+export const DATABASE_GROUPING = {
+    id: "database",
         name: "Database",
-        icon: "database",
-        groupBy: (entity) => entity.table.db.id,
-        getGroupName: (entity) => entity.table.db.name
-    },
-    {
-        id: "creator",
-        name: "Creator",
-        icon: "mine",
-        groupBy: (entity) => entity.creator.id,
-        getGroupName: (entity) => entity.creator.common_name
-    },
+    icon: "database",
+    groupBy: (entity) => entity.table.db.id,
+    getGroupName: (entity) => entity.table.db.name
+};
+export const CREATOR_GROUPING = {
+    id: "creator",
+    name: "Creator",
+    icon: "mine",
+    groupBy: (entity) => entity.creator.id,
+    getGroupName: (entity) => entity.creator.common_name
+}
+
+const DEFAULT_GROUPINGS = [
+    NAME_GROUPING,
+    TABLE_GROUPING,
+    DATABASE_GROUPING,
+    CREATOR_GROUPING
 ]
-const DEFAULT_SEARCH_GROUPING = SEARCH_GROUPINGS[0]
 
 type Props = {
     title: string,
     entities: any[], // Sorted list of entities like segments or metrics
     getUrlForEntity: (any) => void,
     backButtonUrl: ?string,
+    groupings?: any[],
 
     onReplaceLocation: (LocationDescriptor) => void,
     onChangeLocation: (LocationDescriptor) => void,
@@ -69,11 +74,15 @@ export default class EntitySearch extends Component {
     searchHeaderInput: ?HTMLButtonElement
     props: Props
 
+    static defaultProps = {
+        groupings: DEFAULT_GROUPINGS
+    }
+
     constructor(props) {
         super(props);
         this.state = {
             filteredEntities: props.entities,
-            currentGrouping: DEFAULT_SEARCH_GROUPING,
+            currentGrouping: this.props.groupings[0],
             searchText: ""
         };
     }
@@ -87,13 +96,15 @@ export default class EntitySearch extends Component {
     }
 
     parseQueryString = () => {
+        const { groupings } = this.props
+
         const options = parseHashOptions(this.props.location.search.substring(1))
         if (Object.keys(options).length > 0) {
             if (options.search) {
                 this.setSearchText(String(options.search))
             }
             if (options.grouping) {
-                const grouping = SEARCH_GROUPINGS.find((grouping) => grouping.id === options.grouping)
+                const grouping = groupings.find((grouping) => grouping.id === options.grouping)
                 if (grouping) {
                     this.setGrouping(grouping)
                 }
@@ -138,12 +149,25 @@ export default class EntitySearch extends Component {
     }
 
     setGrouping = (grouping) => {
+        const { groupings } = this.props;
+
         this.setState({ currentGrouping: grouping })
-        this.updateUrl((currentOptions) => grouping !== DEFAULT_SEARCH_GROUPING
+        this.updateUrl((currentOptions) => grouping !== groupings[0]
             ? { ...currentOptions, grouping: grouping.id }
             : _.omit(currentOptions, 'grouping')
         )
         this.searchHeaderInput.focus()
+    }
+    addSubEntitiesAfterParents = (entities) => {
+        return _.flatten(entities.map(entity => {
+            const childEntities = (entity.children || [])
+                .map(childEntity => Object.assign(childEntity, { isChild: true }))
+
+            return [
+                entity,
+                ...childEntities
+            ]
+        }))
     }
 
     // Returns an array of groups based on current grouping. The groups are sorted by their name.
@@ -155,19 +179,19 @@ export default class EntitySearch extends Component {
         return _.chain(filteredEntities)
             .groupBy(currentGrouping.groupBy)
             .pairs()
-            .map(([groupId, entitiesInGroup]) => ({
-                groupName: currentGrouping.getGroupName(entitiesInGroup[0]),
-                entitiesInGroup
+            .map(([groupId, entities]) => ({
+                groupName: currentGrouping.getGroupName(entities[0]),
+                entitiesInGroup: this.addSubEntitiesAfterParents(entities)
             }))
             .sortBy(({ groupName }) => groupName !== null && groupName.toLowerCase())
             .value()
     }
 
     render() {
-        const { title, backButtonUrl, getUrlForEntity, onChangeLocation } = this.props;
+        const { title, groupings, backButtonUrl, getUrlForEntity, onChangeLocation } = this.props;
         const { searchText, currentGrouping, filteredEntities } = this.state;
 
-        const hasUngroupedResults = currentGrouping === DEFAULT_SEARCH_GROUPING && filteredEntities.length > 0
+        const hasUngroupedResults = currentGrouping === groupings[0] && filteredEntities.length > 0
 
         return (
             <div className="bg-slate-extra-light full Entity-search">
@@ -182,6 +206,7 @@ export default class EntitySearch extends Component {
                     </div>
                     <div>
                         <SearchGroupingOptions
+                            groupings={groupings}
                             currentGrouping={currentGrouping}
                             setGrouping={this.setGrouping}
                         />
@@ -228,11 +253,11 @@ export default class EntitySearch extends Component {
     }
 }
 
-export const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
+export const SearchGroupingOptions = ({ groupings, currentGrouping, setGrouping }) =>
     <div className="Entity-search-grouping-options">
         <h3 className="mb3">View by</h3>
         <ul>
-            { SEARCH_GROUPINGS.map((groupingOption) =>
+            { groupings.map((groupingOption) =>
                 <SearchGroupingOption
                     key={groupingOption.name}
                     grouping={groupingOption}
@@ -509,9 +534,10 @@ export class SearchResultListItem extends Component {
         return (
             <li>
                 <Link
-                className={cx("no-decoration flex py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom", { "bg-grey-0": highlight })}
+                className={cx("no-decoration flex align-center py2 px3 cursor-pointer bg-slate-extra-light-hover border-bottom", { "bg-grey-0": highlight })}
                 to={getUrlForEntity(entity)}
                 >
+                    { entity.isChild && <Icon className="mr2" size={14} style={{color: "#DCE1E4"}} name="segment"/> }
                     <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
                 </Link>
             </li>

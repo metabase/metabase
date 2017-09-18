@@ -132,7 +132,7 @@ export class NewQueryOptions extends Component {
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/list_illustration"
-                                        title="Segments"
+                                        title="Tables"
                                         description="Explore tables and see what’s going on underneath your charts."
                                         width={180}
                                         to={segmentSearchUrl}
