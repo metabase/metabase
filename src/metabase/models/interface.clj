@@ -1,6 +1,7 @@
 (ns metabase.models.interface
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [clojure.edn :as edn]
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
@@ -35,6 +36,10 @@
 (models/add-type! :clob
   :in  identity
   :out u/jdbc-clob->str)
+
+(models/add-type! :edn
+  :in  pr-str
+  :out (comp edn/read-string u/jdbc-clob->str))
 
 (def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
 (def ^:private encrypted-json-out (comp json-out encryption/maybe-decrypt))
