@@ -42,7 +42,7 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_id: null
+                field_ids: []
             }]);
         })
         it("should not include field id with one mapping, no field id", () => {
@@ -56,7 +56,7 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_id: null
+                field_ids: []
             }]);
         })
         it("should include field id with one mappings, with field id", () => {
@@ -70,7 +70,7 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_id: 1
+                field_ids: [1]
             }]);
         })
         it("should include field id with two mappings, with same field id", () => {
@@ -89,7 +89,7 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_id: 1
+                field_ids: [1]
             }]);
         })
         it("should include field id with two mappings, one with field id, one without", () => {
@@ -108,10 +108,10 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_id: 1
+                field_ids: [1]
             }]);
         })
-        it("should not include field id with two mappings, with different field ids", () => {
+        it("should include all field ids with two mappings, with different field ids", () => {
             const state = chain(STATE)
                 .assocIn(["dashboard", "dashboards", 0, "parameters", 0], { id: 1 })
                 .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
@@ -127,7 +127,7 @@ describe("dashboard/selectors", () => {
                 .value();
             expect(getParameters(state)).toEqual([{
                 id: 1,
-                field_id: null
+                field_ids: [1, 2]
             }]);
         })
     })

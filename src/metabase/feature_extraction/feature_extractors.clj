@@ -396,7 +396,7 @@
                 (when (and resolution
                            (costs/unbounded-computation? max-cost))
                   (decompose-timeseries resolution series))}
-               (when (and (costs/alow-joins? max-cost)
+               (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
                  {:YoY (rolling-window-growth 365 query)
                   :MoM (rolling-window-growth 30 query)

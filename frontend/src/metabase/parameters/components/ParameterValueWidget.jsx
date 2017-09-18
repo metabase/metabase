@@ -31,17 +31,21 @@ const DATE_WIDGETS = {
 }
 
 import { fetchFieldValues } from "metabase/redux/metadata";
-import { getParameterFieldValues } from "metabase/selectors/metadata";
+import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 
-const mapStateToProps = (state, props) => ({
-    values: getParameterFieldValues(state, props),
-})
+const makeMapStateToProps = () => {
+    const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
+    const mapStateToProps = (state, props) => ({
+        values: getMergedParameterFieldValues(state, props),
+    })
+    return mapStateToProps;
+}
 
 const mapDispatchToProps = {
     fetchFieldValues
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
 
     static propTypes = {

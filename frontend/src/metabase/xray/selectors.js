@@ -1,30 +1,35 @@
 import { createSelector } from 'reselect'
 import { normal } from 'metabase/lib/colors'
 
+export const getLoadingStatus = (state) =>
+    state.xray.loading
+
+/* TODO - these can be collapsed into getXray */
 export const getFieldXray = (state) =>
-    state.xray.fieldXray && state.xray.fieldXray.features
+    state.xray.xray && state.xray.xray.features
 
 export const getTableXray = (state) =>
-    state.xray.tableXray && state.xray.tableXray.features
+    state.xray.xray && state.xray.xray.features
 
 export const getSegmentXray = (state) =>
-    state.xray.segmentXray && state.xray.segmentXray.features
+    state.xray.xray && state.xray.xray.features
 
+/* TODO - these can be collapsed into getConstituents */
 export const getTableConstituents = (state) =>
-    state.xray.tableXray && (
-        Object.keys(state.xray.tableXray.constituents).map(key =>
-            state.xray.tableXray.constituents[key]
+    state.xray.xray && (
+        Object.keys(state.xray.xray.constituents).map(key =>
+            state.xray.xray.constituents[key]
         )
     )
 
 export const getSegmentConstituents = (state) =>
-    state.xray.segmentXray && (
-        Object.keys(state.xray.segmentXray.constituents).map(key =>
-            state.xray.segmentXray.constituents[key]
+    state.xray.xray && (
+        Object.keys(state.xray.xray.constituents).map(key =>
+            state.xray.xray.constituents[key]
         )
     )
 
-export const getComparison = (state) => state.xray.comparison && state.xray.comparison
+export const getComparison = (state) => state.xray.comparison
 
 export const getComparisonFields = createSelector(
     [getComparison],
@@ -113,4 +118,15 @@ export const getTableItem = (state, index = 1) => createSelector(
 )(state)
 
 export const getComparisonForField = createSelector
+
+// see if xrays are enabled. unfortunately enabled can equal null so its enabled if its not false
+export const getXrayEnabled = state => {
+    const enabled = state.settings.values && state.settings.values['enable_xrays']
+    if(enabled == null || enabled == true) {
+        return  true
+    }
+    return false
+}
+
+export const getMaxCost = state => state.settings.values['xray_max_cost']
 

@@ -22,7 +22,8 @@ type Props = {
     navigateToNewCardInsideQB: (any) => void,
     router: {
         push: (string) => void
-    }
+    },
+    instanceSettings: {}
 };
 
 type State = {
@@ -98,10 +99,10 @@ export default class ActionsWidget extends Component {
     }
 
     handleActionClick = (index: number) => {
-        const { question, router } = this.props;
+        const { question, router, instanceSettings } = this.props;
         const mode = question.mode()
         if (mode) {
-            const action = mode.actions()[index];
+            const action = mode.actions(instanceSettings)[index];
             if (action && action.popover) {
                 this.setState({ selectedActionIndex: index });
             } else if (action && action.question) {
@@ -119,14 +120,15 @@ export default class ActionsWidget extends Component {
         }
     };
     render() {
-        const { className, question } = this.props;
+        const { className, question, instanceSettings } = this.props;
         const { popoverIsOpen, iconIsVisible, selectedActionIndex } = this.state;
 
         const mode = question.mode();
-        const actions = mode ? mode.actions() : [];
+        const actions = mode ? mode.actions(instanceSettings) : [];
         if (actions.length === 0) {
             return null;
         }
+
 
         const selectedAction: ?ClickAction = selectedActionIndex == null ? null :
             actions[selectedActionIndex];

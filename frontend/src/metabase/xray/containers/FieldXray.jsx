@@ -7,7 +7,7 @@ import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
 import { fetchFieldXray } from 'metabase/xray/xray'
-import { getFieldXray } from 'metabase/xray/selectors'
+import { getFieldXray, getLoadingStatus } from 'metabase/xray/selectors'
 
 import COSTS from 'metabase/xray/costs'
 
@@ -24,13 +24,17 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
+import { hasXray, loadingMessages } from 'metabase/xray/utils'
+
 import Periodicity from 'metabase/xray/components/Periodicity'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
     fetchFieldXray: () => void,
+    isLoading: boolean,
     xray: {
         table: Table,
         field: Field,
@@ -45,7 +49,8 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    xray: getFieldXray(state)
+    xray: getFieldXray(state),
+    isLoading: getLoadingStatus(state)
 })
 
 const mapDispatchToProps = {
@@ -83,13 +88,18 @@ class FieldXRay extends Component {
     }
 
     render () {
-        const { xray, params } = this.props
+        const { xray, params, isLoading } = this.props
         const { error } = this.state
+
+        console.log(hasXray(xray))
+
         return (
             <LoadingAndErrorWrapper
-                loading={!xray}
+                loading={isLoading || !hasXray(xray)}
                 error={error}
                 noBackground
+                loadingMessages={loadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>
                     <XRayPageWrapper>
