@@ -46,7 +46,6 @@ node-4() {
     run_step ./bin/reflection-linter
 }
 node-5() {
-    run_step ./bin/check_for_long_migration_remarks.pl
     run_step lein eastwood
     run_step yarn run lint
     run_step yarn run flow
