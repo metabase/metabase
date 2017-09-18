@@ -3208,11 +3208,13 @@ databaseChangeLog:
   - changeSet:
       id: 47
       author: camsaul
+      validCheckSum: '7:381e18d5008269e299f12c9726163675'
+      validCheckSum: '7:26f56e9e2f0686c906ef07662766cd2a'
       changes:
         ######################################## collection table ########################################
         - createTable:
             tableName: collection
-            remarks: 'Collections are an optional way to organize Cards and handle permissions for them.'
+            remarks: 'An optional way to organize Cards and handle permissions.'
             columns:
               - column:
                   name: id
@@ -3241,13 +3243,13 @@ databaseChangeLog:
               - column:
                   name: color
                   type: char(7)
-                  remarks: 'Seven-character hex color for this Collection, including the preceding hash sign.'
+                  remarks: 'Seven-char hex color, including preceding hash.'
                   constraints:
                     nullable: false
               - column:
                   name: archived
                   type: boolean
-                  remarks: 'Whether this Collection has been archived and should be hidden from users.'
+                  remarks: 'Whether this has been archived (hidden).'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
@@ -3277,6 +3279,8 @@ databaseChangeLog:
   - changeSet:
       id: 48
       author: camsaul
+      validCheckSum: '7:b8957fda76bab207f99ced39353df1da'
+      validCheckSum: '7:02bb146952c6925227f7d360251dc36c'
       changes:
         - createTable:
             tableName: collection_revision
@@ -3292,7 +3296,7 @@ databaseChangeLog:
               - column:
                   name: before
                   type: text
-                  remarks: 'Serialized JSON of the collections graph before the changes.'
+                  remarks: 'Serialized JSON of the collections graph before changes.'
                   constraints:
                     nullable: false
               - column:
@@ -3322,6 +3326,8 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
+      validCheckSum: '7:bb653dc1919f366bb81f3356a4cbfa6c'
+      validCheckSum: '7:635376d1103d2aca53c25c0397396d74'
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3330,13 +3336,13 @@ databaseChangeLog:
               - column:
                   name: public_uuid
                   type: char(36)
-                  remarks: 'Unique UUID used to in publically-accessible links to this Card.'
+                  remarks: 'Unique UUID used in publicly-accessible links.'
                   constraints:
                     unique: true
               - column:
                   name: made_public_by_id
                   type: int
-                  remarks: 'The ID of the User who first publically shared this Card.'
+                  remarks: 'The ID of the User who first publicly shared this Card.'
                   constraints:
                     references: core_user(id)
                     foreignKeyName: fk_card_made_public_by_id
@@ -3353,13 +3359,13 @@ databaseChangeLog:
               - column:
                   name: public_uuid
                   type: char(36)
-                  remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
+                  remarks: 'Unique UUID used in publicly-accessible links.'
                   constraints:
                     unique: true
               - column:
                   name: made_public_by_id
                   type: int
-                  remarks: 'The ID of the User who first publically shared this Dashboard.'
+                  remarks: 'The ID of the User who first publicly shared this.'
                   constraints:
                     references: core_user(id)
                     foreignKeyName: fk_dashboard_made_public_by_id
@@ -3377,6 +3383,8 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
+      validCheckSum: '7:6a45ed802c2f724731835bfaa97c57c9'
+      validCheckSum: '7:aaa46ff63339cd98acc5a746d089e5bc'
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3385,14 +3393,14 @@ databaseChangeLog:
               - column:
                   name: enable_embedding
                   type: boolean
-                  remarks: 'Is this Card allowed to be embedded in different websites (using a signed JWT)?'
+                  remarks: 'Is embedding allowed in different sites using signed JWT?'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: embedding_params
                   type: text
-                  remarks: 'Serialized JSON containing information about required parameters that must be supplied when embedding this Card.'
+                  remarks: 'JSON of param info that must be supplied when embedding.'
           ######################################## new Card columns ########################################
         - addColumn:
             tableName: report_dashboard
@@ -3400,21 +3408,23 @@ databaseChangeLog:
               - column:
                   name: enable_embedding
                   type: boolean
-                  remarks: 'Is this Dashboard allowed to be embedded in different websites (using a signed JWT)?'
+                  remarks: 'Is embedding allowed in different sites (using signed JWT)?'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: embedding_params
                   type: text
-                  remarks: 'Serialized JSON containing information about required parameters that must be supplied when embedding this Dashboard.'
+                  remarks: 'JSON of param info that must be supplied when embedding.'
   - changeSet:
       id: 51
       author: camsaul
+      validCheckSum: '7:2b28e18d04212a1cbd82eb7888ae4af3'
+      validCheckSum: '7:709e257a9036b78f928650a35d6d87da'
       changes:
         - createTable:
             tableName: query_execution
-            remarks: 'A log of executed queries, used for calculating historic execution times, auditing, and other purposes.'
+            remarks: 'Log of executed queries, for query times, auditing, etc.'
             columns:
               - column:
                   name: id
@@ -3426,7 +3436,7 @@ databaseChangeLog:
               - column:
                   name: hash
                   type: binary(32)
-                  remarks: 'The hash of the query dictionary. This is a 256-bit SHA3 hash of the query.'
+                  remarks: 'The hash of the query dict. 256-bit SHA3.'
                   constraints:
                     nullable: false
               - column:
@@ -3450,13 +3460,13 @@ databaseChangeLog:
               - column:
                   name: native
                   type: boolean
-                  remarks: 'Whether the query was a native query, as opposed to an MBQL one (e.g., created with the GUI).'
+                  remarks: 'Whether the query was native, as opposed to MBQL.'
                   constraints:
                     nullable: false
               - column:
                   name: context
                   type: varchar(32)
-                  remarks: 'Short string specifying how this query was executed, e.g. in a Dashboard or Pulse.'
+                  remarks: 'How this query was executed, e.g. in a Dashboard or Pulse.'
               - column:
                   name: error
                   type: text
@@ -3469,19 +3479,19 @@ databaseChangeLog:
               - column:
                   name: executor_id
                   type: integer
-                  remarks: 'The ID of the User who triggered this query execution, if any.'
+                  remarks: 'ID of User who triggered this query exec, if any.'
               - column:
                   name: card_id
                   type: integer
-                  remarks: 'The ID of the Card (Question) associated with this query execution, if any.'
+                  remarks: 'ID of Card associated with this query exec, if any.'
               - column:
                   name: dashboard_id
                   type: integer
-                  remarks: 'The ID of the Dashboard associated with this query execution, if any.'
+                  remarks: 'ID of Dashboard associated with this query exec, if any.'
               - column:
                   name: pulse_id
                   type: integer
-                  remarks: 'The ID of the Pulse associated with this query execution, if any.'
+                  remarks: 'ID of Pulse associated with this query exec, if any.'
         # For things like auditing recently executed queries
         - createIndex:
             tableName: query_execution
@@ -3509,28 +3519,33 @@ databaseChangeLog:
   - changeSet:
       id: 52
       author: camsaul
+      # this migration has tons of possible valid checksums because ${blob.type} is different for each DB type, and we changed the remarks
+      validCheckSum: '7:fbe1b7114f1d4f346543e3c22e28bde3'
+      validCheckSum: '7:086f9d98cc44e03f0e9703793dd7b588'
+      validCheckSum: '7:bcf30d329f6398876caa78af39c78830'
+      validCheckSum: '7:7563ffe87525252412c8d082a824127c'
       changes:
         - createTable:
             tableName: query_cache
-            remarks: 'Cached results of queries are stored here when using the DB-based query cache.'
+            remarks: 'Cached query results are stored here when using DB cache.'
             columns:
               - column:
                   name: query_hash
                   type: binary(32)
-                  remarks: 'The hash of the query dictionary. (This is a 256-bit SHA3 hash of the query dict).'
+                  remarks: 'The hash of the query dictionary. (256-bit SHA3).'
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: updated_at
                   type: datetime
-                  remarks: 'The timestamp of when these query results were last refreshed.'
+                  remarks: 'Timestamp of when these query results were last refreshed.'
                   constraints:
                     nullable: false
               - column:
                   name: results
                   type: ${blob.type}
-                  remarks: 'Cached, compressed results of running the query with the given hash.'
+                  remarks: 'Cached, compressed results of running the query.'
                   constraints:
                     nullable: false
         - createIndex:
@@ -3545,26 +3560,28 @@ databaseChangeLog:
               - column:
                   name: cache_ttl
                   type: int
-                  remarks: 'The maximum time, in seconds, to return cached results for this Card rather than running a new query.'
+                  remarks: 'Max time in seconds to return cached results for this Card.'
   - changeSet:
       id: 53
       author: camsaul
+      validCheckSum: '7:cc7ef026c3375d31df5f03036bb7e850'
+      validCheckSum: '7:ca1752d3a4dc874cddbda912a6862707'
       changes:
         - createTable:
             tableName: query
-            remarks: 'Information (such as average execution time) for different queries that have been previously ran.'
+            remarks: 'Info (e.g. avg execution time) for previously-run queries.'
             columns:
               - column:
                   name: query_hash
                   type: binary(32)
-                  remarks: 'The hash of the query dictionary. (This is a 256-bit SHA3 hash of the query dict.)'
+                  remarks: 'The hash of the query dictionary. (256-bit SHA3)'
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: average_execution_time
                   type: int
-                  remarks: 'Average execution time for the query, round to nearest number of milliseconds. This is updated as a rolling average.'
+                  remarks: 'Avg execution time in ms. Updated as a rolling avg.'
                   constraints:
                     nullable: false
   - changeSet:
@@ -3572,6 +3589,7 @@ databaseChangeLog:
       author: tlrobinson
       validCheckSum: '7:695b12a78e897c62c21d41bfb04ab44b'
       validCheckSum: '7:0857800db71a4757e7202aad4eaed48d'
+      validCheckSum: '7:28086112878464cab8a822b7d1cce4c4' # sometimes H2 produces this checksum. No idea why.
       changes:
         - addColumn:
             tableName: pulse
@@ -3579,13 +3597,15 @@ databaseChangeLog:
               - column:
                   name: skip_if_empty
                   type: boolean
-                  remarks: 'Skip a scheduled Pulse if none of its questions have any results'
+                  remarks: 'Skip sending if none of its questions have results.'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
   - changeSet:
       id: 55
       author: camsaul
+      validCheckSum: '7:e169c9d0a5220127b97630e95717c033'
+      validCheckSum: '7:ef5ef0947b50b3daba1cdbf86ea65da1'
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3593,17 +3613,17 @@ databaseChangeLog:
               - column:
                   name: archived
                   type: boolean
-                  remarks: 'Is this Dashboard archived (effectively treated as deleted?)'
+                  remarks: 'Is this archived (effectively treated as deleted?)'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: position
                   type: integer
-                  remarks: 'The position this Dashboard should appear in the Dashboards list, lower-numbered positions appearing before higher numbered ones.'
+                  remarks: 'Position in Dashboards list, lower numbers appearing first.'
         - createTable:
             tableName: dashboard_favorite
-            remarks: 'Presence of a row here indicates a given User has favorited a given Dashboard.'
+            remarks: 'Records that a given User has favorited a given Dashboard.'
             columns:
               - column:
                   name: id
@@ -3664,6 +3684,8 @@ databaseChangeLog:
       id: 57
       author: camsaul
       comment: 'Added 0.25.0'
+      validCheckSum: '7:5d51b16e22be3c81a27d3b5b345a8270'
+      validCheckSum: '7:104d4574c196978b21d9cd25cff190d4'
       changes:
         - addColumn:
             tableName: report_card
@@ -3671,15 +3693,17 @@ databaseChangeLog:
               - column:
                   name: result_metadata
                   type: text
-                  remarks: 'Serialized JSON containing metadata about the result columns from running the query.'
+                  remarks: 'JSON containing metadata about the query result columns.'
   - changeSet:
       id: 58
       author: senior
       comment: 'Added 0.25.0'
+      validCheckSum: '7:a12d6057fa571739e5327316558a117f'
+      validCheckSum: '7:9e3085b02374d8f4a2df4ded15555a91'
       changes:
         - createTable:
             tableName: dimension
-            remarks: 'Stores references to alternate views of existing fields, such as remapping an integer to a description, like an enum'
+            remarks: 'References to alternate views of Fields, e.g. enums'
             columns:
               - column:
                   name: id
@@ -3702,19 +3726,19 @@ databaseChangeLog:
               - column:
                   name: name
                   type: VARCHAR(254)
-                  remarks: 'Short description used as the display name of this new column'
+                  remarks: 'Short description used as display name of this new column'
                   constraints:
                     nullable: false
               - column:
                   name: type
                   type: varchar(254)
-                  remarks: 'Either internal for a user defined remapping or external for a foreign key based remapping'
+                  remarks: 'internal for a user-defined; external for foreign key based'
                   constraints:
                     nullable: false
               - column:
                   name: human_readable_field_id
                   type: int
-                  remarks: 'Only used with external type remappings. Indicates which field on the FK related table to use for display'
+                  remarks: 'External only. Which field on FK table to use for display'
                   constraints:
                     deferrable: false
                     foreignKeyName: fk_dimension_displayfk_ref_field_id
@@ -3748,6 +3772,8 @@ databaseChangeLog:
       id: 59
       author: camsaul
       comment: 'Added 0.26.0'
+      validCheckSum: '7:583e67af40cae19cab645bbd703558ef'
+      validCheckSum: '7:9718fb98ee193e21dab57794755d7af9'
       changes:
         - addColumn:
             tableName: metabase_field
@@ -3755,11 +3781,13 @@ databaseChangeLog:
               - column:
                   name: fingerprint
                   type: text
-                  remarks: 'Serialized JSON containing non-identifying information about this Field, such as min, max, and percent JSON. Used for classification.'
+                  remarks: 'Non-identifying info JSON e.g. min/max. For classification.'
   - changeSet:
       id: 60
       author: camsaul
       comment: 'Added 0.26.0'
+      validCheckSum: '7:888069f3cbfb80ac05a734c980ac5885'
+      validCheckSum: '7:87e9a5575b75500b657127345ceb0571'
       changes:
         - addColumn:
             tableName: metabase_database
@@ -3767,14 +3795,14 @@ databaseChangeLog:
               - column:
                   name: metadata_sync_schedule
                   type: varchar(254)
-                  remarks: 'The cron schedule string for when this database should undergo the metadata sync process (and analysis for new fields).'
+                  remarks: 'Cron schedule for metadata sync & analysis for new fields'
                   defaultValue: '0 50 * * * ? *' # run at the end of every hour
                   constraints:
                     nullable: false
               - column:
                   name: cache_field_values_schedule
                   type: varchar(254)
-                  remarks: 'The cron schedule string for when FieldValues for eligible Fields should be updated.'
+                  remarks: 'Cron schedule for updating FieldValues for eligible Fields.'
                   defaultValue: '0 50 0 * * ? *' # run at 12:50 AM
                   constraints:
                     nullable: false
@@ -3782,6 +3810,8 @@ databaseChangeLog:
       id: 61
       author: camsaul
       comment: 'Added 0.26.0'
+      validCheckSum: '7:070febe9fb610d73dc7bf69086f50a1d'
+      validCheckSum: '7:83c2627efe2c3d75ad58065155b11917'
       changes:
         - addColumn:
             tableName: metabase_field
@@ -3789,7 +3819,7 @@ databaseChangeLog:
               - column:
                   name: fingerprint_version
                   type: int
-                  remarks: 'The version of the fingerprint for this Field. Used so we can keep track of which Fields need to be analyzed again when new things are added to fingerprints.'
+                  remarks: 'Fingerprinter version used to produce our fingerprint'
                   defaultValue: 0
                   constraints:
                     nullable: false
@@ -3797,6 +3827,8 @@ databaseChangeLog:
       id: 62
       author: senior
       comment: 'Added 0.26.0'
+      validCheckSum: '7:db49b2acae484cf753c67e0858e4b17f'
+      validCheckSum: '7:9c9fad9f1f3d52bd528e03f31f985960'
       changes:
         - addColumn:
             tableName: metabase_database
@@ -3804,11 +3836,13 @@ databaseChangeLog:
               - column:
                   name: timezone
                   type: VARCHAR(254)
-                  remarks: 'Timezone identifier for the database, set by the sync process'
+                  remarks: 'Timezone ID for the database, set by the sync process'
   - changeSet:
       id: 63
       author: camsaul
       comment: 'Added 0.26.0'
+      validCheckSum: '7:fd58f763ac416881865080b693ce9aab'
+      validCheckSum: '7:d75896e9c310375a0ce198d8dd95b574'
       changes:
         - addColumn:
             tableName: metabase_database
@@ -3816,7 +3850,7 @@ databaseChangeLog:
               - column:
                   name: is_on_demand
                   type: boolean
-                  remarks: 'Whether we should do On-Demand caching of FieldValues for this DB. This means FieldValues are updated when their Field is used in a Dashboard or Card param.'
+                  remarks: 'Whether we should do On-Demand caching of FieldValues.'
                   defaultValue: false
                   constraints:
                     nullable: false
@@ -3825,7 +3859,7 @@ databaseChangeLog:
       author: senior
       comment: 'Added 0.26.0'
       changes:
+      # This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.
       - dropForeignKeyConstraint:
           baseTableName: raw_table
           constraintName: fk_rawtable_ref_database
-          remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'
