@@ -105,9 +105,9 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-        const { query, metadataFetched, isAdmin, metricSearchUrl, segmentSearchUrl } = this.props
-        const { showMetricOption, showSegmentOption, showSQLOption } = this.state
-        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
+        const { query, metadataFetched, isAdmin, metricSearchUrl } = this.props
+        const { showMetricOption, showSQLOption } = this.state
+        const showCustomInsteadOfNewQuestionText = showMetricOption
 
         if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
             return <LoadingAndErrorWrapper loading={true}/>
@@ -125,17 +125,6 @@ export class NewQueryOptions extends Component {
                                         title="Metrics"
                                         description="See data over time, as a map, or pivoted to help you understand trends or changes."
                                         to={metricSearchUrl}
-                                    />
-                                </li>
-                            }
-                            { showSegmentOption &&
-                                <li className="Grid-cell">
-                                    <NewQueryOption
-                                        image="/app/img/list_illustration"
-                                        title="Segments"
-                                        description="Explore tables and see what’s going on underneath your charts."
-                                        width={180}
-                                        to={segmentSearchUrl}
                                     />
                                 </li>
                             }
