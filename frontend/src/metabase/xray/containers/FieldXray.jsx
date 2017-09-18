@@ -24,7 +24,7 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
-import { hasXray, loadingMessages } from 'metabase/xray/utils'
+import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
 
 import Periodicity from 'metabase/xray/components/Periodicity'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
@@ -91,14 +91,12 @@ class FieldXRay extends Component {
         const { xray, params, isLoading } = this.props
         const { error } = this.state
 
-        console.log(hasXray(xray))
-
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasXray(xray)}
                 error={error}
                 noBackground
-                loadingMessages={loadingMessages}
+                loadingMessages={xrayLoadingMessages}
                 loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>

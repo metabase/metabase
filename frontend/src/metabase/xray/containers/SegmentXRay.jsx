@@ -20,6 +20,7 @@ import {
 } from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
@@ -84,13 +85,20 @@ class SegmentXRay extends Component {
         const { constituents, xray, params, isLoading } = this.props
         const { error } = this.state
         return (
-            <XRayPageWrapper>
-                <LoadingAndErrorWrapper
-                    loading={isLoading || !hasXray(xray)}
-                    error={error}
-                    noBackground
-                >
-                    { () =>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !hasXray(xray)}
+                error={error}
+                loadingMessages={[
+                    'Generating x-ray',
+                    'Still working...'
+                ]}
+                loadingScenes={[
+                    <LoadingAnimation />
+                ]}
+                noBackground
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="mt4 mb2 flex align-center py2">
                                 <div>
@@ -142,9 +150,9 @@ class SegmentXRay extends Component {
                                 </ol>
                             </div>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }

@@ -24,7 +24,7 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { hasXray, loadingMessages } from 'metabase/xray/utils'
+import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
 
 type Props = {
     constituents: [],
@@ -84,15 +84,15 @@ class TableXRay extends Component {
         const { error } = this.state
 
         return (
-            <XRayPageWrapper>
-                <LoadingAndErrorWrapper
-                    loading={isLoading || !hasXray(xray)}
-                    error={error}
-                    noBackground
-                    loadingMessages={loadingMessages}
-                    loadingScenes={[<LoadingAnimation />]}
-                >
-                    { () =>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !hasXray(xray)}
+                error={error}
+                noBackground
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="my4 flex align-center py2">
                                 <div>
@@ -122,9 +122,9 @@ class TableXRay extends Component {
                                 )}
                             </ol>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }
