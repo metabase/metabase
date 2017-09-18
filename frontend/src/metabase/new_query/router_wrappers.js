@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 import { withBackground } from 'metabase/hoc/Background'
 
 import NewQueryOptions from "./containers/NewQueryOptions";
-import SegmentSearch from "./containers/SegmentSearch";
 import MetricSearch from "./containers/MetricSearch";
 
 @connect(null, { onChangeLocation: push })
@@ -36,23 +35,6 @@ export class NewQuestionMetricSearch extends Component {
     render() {
         return (
             <MetricSearch
-                getUrlForQuery={this.getUrlForQuery}
-                backButtonUrl="/question/new"
-            />
-        )
-    }
-}
-
-@connect(null, { onChangeLocation: push })
-@withBackground('bg-slate-extra-light')
-export class NewQuestionSegmentSearch extends Component {
-    getUrlForQuery = (query) => {
-        return query.question().getUrl()
-    }
-
-    render() {
-        return (
-            <SegmentSearch
                 getUrlForQuery={this.getUrlForQuery}
                 backButtonUrl="/question/new"
             />
