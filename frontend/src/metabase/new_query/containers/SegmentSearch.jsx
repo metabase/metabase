@@ -81,14 +81,14 @@ export default class SegmentSearch extends Component {
 
         const isLoading = !metadataFetched.segments || !metadataFetched.databases
 
-        const segmentList = metadata.segmentsList()
+        // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
+        // all segments (also retired ones) and they are missing both `is_active` and `creator` props. Currently this
+        // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
+        const segmentList = metadata.segmentsList().filter(segment => segment.isActive() && segment.table)
 
         return (
             <LoadingAndErrorWrapper loading={isLoading}>
                 {() => {
-                    // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
-                    // all segments (also retired ones) and they are missing both `is_active` and `creator` props. Currently this
-                    // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
                     const sortedTables = _.chain(metadata.tables)
                         // Segment shouldn't be retired and it should refer to an existing table
                         // .filter((segment) => segment.isActive() && segment.table)
