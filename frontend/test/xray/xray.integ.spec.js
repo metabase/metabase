@@ -8,16 +8,24 @@ import {
 } from "__support__/enzyme_utils"
 
 import { mount } from "enzyme";
-import { CardApi, SegmentApi, SettingsApi } from "metabase/services";
+import {
+    CardApi,
+    SegmentApi,
+    SettingsApi
+} from "metabase/services";
 
 import { delay } from "metabase/lib/promise";
 import { FETCH_XRAY, LOAD_XRAY } from "metabase/xray/xray";
+
+import FieldXray from "metabase/xray/containers/FieldXray";
 import TableXRay from "metabase/xray/containers/TableXRay";
+import SegmentXRay from "metabase/xray/containers/SegmentXRay";
+import CardXRay from "metabase/xray/containers/CardXRay";
+
 import CostSelect from "metabase/xray/components/CostSelect";
 import Constituent from "metabase/xray/components/Constituent";
-import SegmentXRay from "metabase/xray/containers/SegmentXRay";
+
 import Question from "metabase-lib/lib/Question";
-import CardXRay from "metabase/xray/containers/CardXRay";
 import * as Urls from "metabase/lib/urls";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
@@ -72,8 +80,8 @@ describe("xray integration tests", () => {
         await SettingsApi.put({ key: 'enable-xrays' }, true)
     })
 
-    describe("for table xray", async () => {
-        it("should render the table xray page without errors", async () => {
+    describe("table x-rays", async () => {
+        it("should render the table x-ray page without errors", async () => {
             const store = await createTestStore()
             store.pushPath(`/xray/table/1/approximate`);
 
@@ -85,6 +93,21 @@ describe("xray integration tests", () => {
             expect(tableXRay.find(CostSelect).length).toBe(1)
             expect(tableXRay.find(Constituent).length).toBeGreaterThan(0)
             expect(tableXRay.text()).toMatch(/Orders/);
+        })
+    })
+
+    describe("field x-rays", async () => {
+        it("should render the field x-ray page without errors", async () => {
+            const store = await createTestStore()
+            store.pushPath(`/xray/field/1/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions(FETCH_XRAY, LOAD_XRAY, { timeout: 20000 })
+
+            const fieldXRay = app.find(FieldXray)
+            expect(fieldXRay.length).toBe(1)
+            expect(fieldXRay.find(CostSelect).length).toBe(1)
+
         })
     })
 
