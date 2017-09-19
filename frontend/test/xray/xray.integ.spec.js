@@ -39,6 +39,7 @@ import { getXrayEnabled, getMaxCost } from "metabase/xray/selectors";
 
 import Icon from "metabase/components/Icon"
 import Toggle from "metabase/components/Toggle"
+import { Link } from 'react-router'
 import SettingsXrayForm from "metabase/admin/settings/components/SettingsXrayForm";
 
 describe("xray integration tests", () => {
@@ -86,7 +87,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/table/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions(FETCH_XRAY, LOAD_XRAY, { timeout: 20000 })
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
 
             const tableXRay = app.find(TableXRay)
             expect(tableXRay.length).toBe(1)
@@ -102,7 +103,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/field/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions(FETCH_XRAY, LOAD_XRAY, { timeout: 20000 })
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
 
             const fieldXRay = app.find(FieldXray)
             expect(fieldXRay.length).toBe(1)
@@ -111,19 +112,44 @@ describe("xray integration tests", () => {
         })
     })
 
+    describe("navigation", async () => {
+        it("should be possible to navigate between tables and their child fields", async () => {
+            const store = await createTestStore()
+            store.pushPath(`/xray/table/1/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+
+            const tableXray = app.find(TableXRay)
+            expect(tableXray.length).toBe(1)
+
+            const fieldLink = app.find(Constituent).first().find(Link)
+
+            click(fieldLink)
+
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            const fieldXray = app.find(FieldXray)
+            expect(fieldXray.length).toBe(1)
+
+        })
+    })
+
     // NOTE Atte Keinänen 8/24/17: I wanted to test both QB action widget xray action and the card/segment xray pages
     // in the same tests so that we see that end-to-end user experience matches our expectations
 
     describe("query builder actions", async () => {
-        it("let you see card xray for a timeseries question", async () => {
+        beforeEach(async () => {
             await SettingsApi.put({ key: 'enable-xrays', value: 'true' })
+        })
+
+        it("let you see card xray for a timeseries question", async () => {
             await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
             const store = await createTestStore()
             // make sure xrays are on and at the proper cost
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
 
-            await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
             // NOTE Atte Keinänen: Not sure why we need this delay to get most of action widget actions to appear :/
             await delay(500);
 
@@ -133,7 +159,7 @@ describe("xray integration tests", () => {
             click(xrayOptionIcon);
 
 
-            await store.waitForActions(FETCH_XRAY, LOAD_XRAY, {timeout: 5000})
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], {timeout: 5000})
             expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
@@ -142,19 +168,18 @@ describe("xray integration tests", () => {
         })
 
         it("let you see segment xray for a question containing a segment", async () => {
-            await SettingsApi.put({ key: 'enable-xrays', value: true })
             const store = await createTestStore()
             store.pushPath(Urls.question(segmentQuestion.id()))
             const app = mount(store.getAppContainer());
 
-            await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
 
             const actionsWidget = app.find(ActionsWidget)
             click(actionsWidget.childAt(0))
             const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
             click(xrayOptionIcon);
 
-            await store.waitForActions(FETCH_XRAY, LOAD_XRAY, { timeout: 5000 })
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 5000 })
             expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`)
 
             const segmentXRay = app.find(SegmentXRay)
@@ -195,7 +220,7 @@ describe("xray integration tests", () => {
 
             // navigate to a previosuly x-ray-able entity
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
-            await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
 
             // for some reason a delay is needed to get the full action suite
             await delay(500);
@@ -217,7 +242,7 @@ describe("xray integration tests", () => {
             store.pushPath(Urls.question(segmentQuestion.id()))
             const app = mount(store.getAppContainer())
 
-            await store.waitForActions(INITIALIZE_QB, QUERY_COMPLETED)
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
             await delay(500);
 
             const actionsWidget = app.find(ActionsWidget)
