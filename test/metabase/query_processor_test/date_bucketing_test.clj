@@ -58,35 +58,6 @@
   [engine]
   (contains? #{:oracle} engine))
 
-(defn- call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the
-  various timezone settings back the way it found it when it exits."
-  [^DateTimeZone dtz f]
-  (let [orig-tz (TimeZone/getDefault)
-        orig-dtz (time/default-time-zone)
-        orig-tz-prop (System/getProperty "user.timezone")]
-    (try
-      ;; It looks like some DB drivers cache the timezone information
-      ;; when instantiated, this clears those to force them to reread
-      ;; that timezone value
-      (reset! @#'metabase.driver.generic-sql/database-id->connection-pool {})
-      ;; Used by JDBC, and most JVM things
-      (TimeZone/setDefault (.toTimeZone dtz))
-      ;; Needed as Joda time has a different default TZ
-      (DateTimeZone/setDefault dtz)
-      ;; We read the system property directly when formatting results, so this needs to be changed
-      (System/setProperty "user.timezone" (.getID dtz))
-      (f)
-      (finally
-        ;; We need to ensure we always put the timezones back the way
-        ;; we found them as it will cause test failures
-        (TimeZone/setDefault orig-tz)
-        (DateTimeZone/setDefault orig-dtz)
-        (System/setProperty "user.timezone" orig-tz-prop)))))
-
-(defmacro ^:private with-jvm-tz [dtz & body]
-  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
-
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
@@ -233,7 +204,7 @@
     :else
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz)))
 
-  (with-jvm-tz pacific-tz
+  (tu/with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :default eastern-tz)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -528,7 +499,7 @@
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9]))
 
-  (with-jvm-tz pacific-tz
+  (tu/with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :day pacific-tz)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -724,7 +695,7 @@
     (results-by-week date-formatter-without-time
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7]))
-  (with-jvm-tz pacific-tz
+  (tu/with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :week pacific-tz)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
