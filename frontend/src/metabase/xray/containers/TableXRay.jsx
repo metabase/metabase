@@ -4,18 +4,17 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchTableXray } from 'metabase/xray/xray'
+import { fetchXray } from 'metabase/xray/xray'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-
-import COSTS from 'metabase/xray/costs'
 
 import CostSelect from 'metabase/xray/components/CostSelect'
 import Constituent from 'metabase/xray/components/Constituent'
 
 import {
     getTableConstituents,
-    getTableXray,
-    getLoadingStatus
+    getFeatures,
+    getLoadingStatus,
+    getError
 } from 'metabase/xray/selectors'
 
 import Icon from 'metabase/components/Icon'
@@ -27,8 +26,8 @@ import type { Table } from 'metabase/meta/types/Table'
 import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
 
 type Props = {
+    fetchXray: () => void,
     constituents: [],
-    fetchTableXray: () => void,
     isLoading: boolean,
     xray: {
         table: Table
@@ -36,52 +35,45 @@ type Props = {
     params: {
         tableId: number,
         cost: string
-    }
+    },
+    error: {}
 }
 
 const mapStateToProps = state => ({
-    xray: getTableXray(state),
+    xray: getFeatures(state),
     constituents: getTableConstituents(state),
-    isLoading: getLoadingStatus(state)
+    isLoading: getLoadingStatus(state),
+    error: getError(state)
 })
 
 const mapDispatchToProps = {
-    fetchTableXray
+    fetchXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ xray }) => xray && xray.table.display_name || "Table")
 class TableXRay extends Component {
+
     props: Props
 
-    state = {
-        error: null
+    componentWillMount () {
+        this.fetch()
     }
 
-    componentDidMount () {
-        this.fetchTableXray()
-    }
-
-    async fetchTableXray () {
-        const { params } = this.props
+    fetch () {
+        const { params, fetchXray } = this.props
         // TODO this should happen at the action level
-        const cost = COSTS[params.cost]
-        try {
-            await this.props.fetchTableXray(params.tableId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+        fetchXray('table', params.tableId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchTableXray()
+            this.fetch()
         }
     }
 
     render () {
-        const { constituents, xray, params, isLoading } = this.props
-        const { error } = this.state
+        const { constituents, xray, params, isLoading, error } = this.props
 
         return (
             <LoadingAndErrorWrapper

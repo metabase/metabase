@@ -11,7 +11,8 @@ import {
     getComparisonContributors,
     getSegmentItem,
     getTitle,
-    getLoadingStatus
+    getLoadingStatus,
+    getError
 } from 'metabase/xray/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
@@ -21,12 +22,13 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 import { hasComparison, comparisonLoadingMessages } from 'metabase/xray/utils'
 
 const mapStateToProps = (state) => ({
-    comparison: getComparison(state),
-    fields: getComparisonFields(state),
-    contributors: getComparisonContributors(state),
-    itemA: getSegmentItem(state, 0),
-    itemB: getSegmentItem(state, 1),
-    isLoading: getLoadingStatus(state)
+    comparison:     getComparison(state),
+    fields:         getComparisonFields(state),
+    contributors:   getComparisonContributors(state),
+    itemA:          getSegmentItem(state, 0),
+    itemB:          getSegmentItem(state, 1),
+    isLoading:      getLoadingStatus(state),
+    error:          getError(state)
 })
 
 const mapDispatchToProps = {
@@ -37,32 +39,22 @@ const mapDispatchToProps = {
 @title(props => getTitle(props))
 class SegmentComparison extends Component {
 
-    state = {
-        error: null
-    }
-
-    async componentWillMount () {
+    componentWillMount () {
         const { cost, segmentId1, segmentId2 } = this.props.params
-        try {
-            await this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
-        } catch (error) {
-            console.log('error', error)
-            this.setState({ error })
-        }
+        this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
     }
 
     render () {
         const {
-            contributors,
-            params,
             comparison,
+            contributors,
+            error,
             fields,
+            isLoading,
             itemA,
             itemB,
-            isLoading
+            params,
         } = this.props
-
-        const { error } = this.state
 
         return (
             <LoadingAndErrorWrapper
