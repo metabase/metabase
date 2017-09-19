@@ -77,12 +77,20 @@ export default class SegmentSearch extends Component {
     }
 
     getTableInEntitySearchFormat = (table, segmentsList) => {
+        const descriptionJsx = <span>
+                <b>{table.db.engine}</b>
+                {table.db.engine && table.schema && ' - '}
+                {table.schema}
+            </span>
         return {
             name: table.display_name,
             isTable: true,
             table,
-            children: segmentsList.filter(segment => segment.table_id === table.id),
-            description: <span><b>{table.db.engine}</b> - {table.schema}</span>
+            children:
+                segmentsList
+                    .filter(segment => segment.table_id === table.id)
+                    .map(segment => Object.assign(segment, { descriptionJsx })),
+            descriptionJsx
         }
     }
 

@@ -14,6 +14,7 @@ import { Link, withRouter } from "react-router";
 import { KEYCODE_DOWN, KEYCODE_ENTER, KEYCODE_UP } from "metabase/lib/keyboard";
 import { LocationDescriptor } from "metabase/meta/types/index";
 import { parseHashOptions, updateQueryString } from "metabase/lib/browser";
+import Ellipsified from "metabase/components/Ellipsified";
 
 const PAGE_SIZE = 10
 
@@ -539,6 +540,12 @@ export class SearchResultListItem extends Component {
                 >
                     { entity.isChild && <Icon className="mr2" size={14} style={{color: "#DCE1E4"}} name="segment"/> }
                     <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
+
+                    { entity.descriptionJsx &&
+                        <div className="text-grey-4 text-capitalize" style={{maxWidth: "450px"}}>
+                            <Ellipsified>{entity.descriptionJsx}</Ellipsified>
+                        </div>
+                    }
                 </Link>
             </li>
         )
