@@ -116,7 +116,6 @@ export default class EntitySearch extends Component {
     updateUrl = (queryOptionsUpdater) => {
         const { onReplaceLocation, location } = this.props;
         onReplaceLocation(updateQueryString(location, queryOptionsUpdater))
-
     }
 
     setSearchText = (searchText) => {
@@ -138,9 +137,15 @@ export default class EntitySearch extends Component {
         const { searchText } = this.state;
 
         if (searchText !== "") {
-            const filteredEntities = entities.filter(({ name, description }) =>
-                caseInsensitiveSearch(name, searchText)
-            )
+            const filteredEntities = entities.filter(
+                ({name, children = []}) =>
+                    caseInsensitiveSearch(name, searchText) ||
+                    children.some((child) => caseInsensitiveSearch(child.name, searchText))
+            ).map((entity) => Object.assign(entity, {
+                children: caseInsensitiveSearch(entity.name, searchText) ? entity.children : entity.children.filter((child) =>
+                    caseInsensitiveSearch(child.name, searchText)
+                )
+            }))
 
             this.setState({ filteredEntities })
         }
