@@ -15,13 +15,16 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 
 import {
     getSegmentConstituents,
-    getSegmentXray
+    getSegmentXray,
+    getLoadingStatus
 } from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
 
 import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
+
+import { hasXray } from 'metabase/xray/utils'
 
 type Props = {
     fetchSegmentXray: () => void,
@@ -33,12 +36,14 @@ type Props = {
     params: {
         segmentId: number,
         cost: string,
-    }
+    },
+    isLoading: boolean
 }
 
 const mapStateToProps = state => ({
     xray: getSegmentXray(state),
-    constituents: getSegmentConstituents(state)
+    constituents: getSegmentConstituents(state),
+    isLoading: getLoadingStatus(state)
 })
 
 const mapDispatchToProps = {
@@ -76,12 +81,12 @@ class SegmentXRay extends Component {
     }
 
     render () {
-        const { constituents, xray, params } = this.props
+        const { constituents, xray, params, isLoading } = this.props
         const { error } = this.state
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
-                    loading={!constituents}
+                    loading={isLoading || !hasXray(xray)}
                     error={error}
                     noBackground
                 >

@@ -56,13 +56,13 @@
 
 (defn- sampled?
   [{:keys [max-cost] :as opts} dataset]
-  (and (costs/sample-only? max-cost)
+  (and (not (costs/full-scan? max-cost))
        (= (count (:rows dataset dataset)) max-sample-size)))
 
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (costs/sample-only? max-cost) (assoc :limit max-sample-size)))
+    (not (costs/full-scan? max-cost)) (assoc :limit max-sample-size)))
 
 (defmethod extract-features (type Field)
   [opts field]

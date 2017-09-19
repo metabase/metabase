@@ -1,4 +1,4 @@
-import { assoc } from 'icepick'
+import { chain, assoc } from 'icepick'
 
 import COSTS from 'metabase/xray/costs'
 
@@ -12,10 +12,11 @@ import { XRayApi } from 'metabase/services'
 
 export const FETCH_FIELD_XRAY = 'metabase/xray/FETCH_FIELD_XRAY'
 export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost) =>
-    async () => {
+    async (dispatch) => {
+        dispatch(startLoad())
         try {
             const xray = await XRayApi.field_xray({ fieldId, ...cost.method })
-            return xray
+            return dispatch(loadXray(xray))
         } catch (error) {
             console.error(error)
         }
@@ -24,10 +25,11 @@ export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost
 
 export const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
 export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost) =>
-    async () => {
+    async (dispatch) => {
+        dispatch(startLoad())
         try {
             const xray = await XRayApi.table_xray({ tableId, ...cost.method })
-            return xray
+            return dispatch(loadXray(xray))
         } catch (error) {
             console.error(error)
         }
@@ -37,10 +39,11 @@ export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost
 
 export const FETCH_SEGMENT_XRAY = 'metabase/xray/FETCH_SEGMENT_XRAY'
 export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId, cost) =>
-    async () => {
+    async (dispatch) => {
+        dispatch(startLoad())
         try {
             const xray = await XRayApi.segment_xray({ segmentId, ...cost.method })
-            return xray
+            return dispatch(loadXray(xray))
         } catch (error) {
             console.error(error)
         }
@@ -49,13 +52,73 @@ export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId
 
 export const FETCH_CARD_XRAY = 'metabase/xray/FETCH_CARD_XRAY';
 export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =>
-    async () => {
+    async (dispatch) => {
+        const c = COSTS[cost]
+        dispatch(startLoad())
         try {
-            const c = COSTS[cost]
             const xray = await XRayApi.card_xray({ cardId, ...c.method });
-            return xray;
+            dispatch(loadXray(xray));
+            return false
         } catch (error) {
             console.error(error);
+        }
+    }
+)
+
+export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const fetchSegmentComparison = createThunkAction(
+    FETCH_SEGMENT_COMPARISON,
+    (segmentId1, segmentId2, cost) =>
+        async (dispatch) => {
+            const c = COSTS[cost]
+            dispatch(startLoad())
+            try {
+                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2, ...c.method })
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
+export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const fetchSegmentTableComparison = createThunkAction(
+    FETCH_SEGMENT_TABLE_COMPARISON,
+    (segmentId, tableId, cost) =>
+        async (dispatch) => {
+            const c = COSTS[cost]
+            dispatch(startLoad())
+            try {
+                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId, ...c.method })
+                return dispatch(loadComparison(comparison))
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
+const FETCH_TABLE_COMPARISON = 'metabase/xray/FETCH_TABLE_COMPARISON';
+export const fetchTableComparison = createThunkAction(
+    FETCH_TABLE_COMPARISON,
+    (tableId1, tableId2) =>
+        async () => {
+            try {
+                const comparison = await XRayApi.table_compare({ tableId1, tableId2 })
+                return comparison
+            } catch (error) {
+                console.error(error)
+            }
+        }
+)
+
+export const FETCH_CARD_COMPARISON = 'metabase/xray/FETCH_CARD_COMPARISON';
+export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (cardId1, cardId2) =>
+    async () => {
+        try {
+            const comparison = await XRayApi.card_compare({ cardId1, cardId2 })
+            return comparison
+        } catch (error) {
+            console.error(error)
         }
     }
 )
@@ -74,49 +137,10 @@ export const fetchFieldComparison = createThunkAction(
             }
         }
 )
-const FETCH_TABLE_COMPARISON = 'metabase/xray/FETCH_TABLE_COMPARISON';
-export const fetchTableComparison = createThunkAction(
-    FETCH_TABLE_COMPARISON,
-    (tableId1, tableId2) =>
-        async () => {
-            try {
-                const comparison = await XRayApi.table_compare({ tableId1, tableId2 })
-                return comparison
-            } catch (error) {
-                console.error(error)
-            }
-        }
-)
 
-export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentComparison = createThunkAction(
-    FETCH_SEGMENT_COMPARISON,
-    (segmentId1, segmentId2, cost) =>
-        async (dispatch) => {
-            const c = COSTS[cost]
-            try {
-                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2, ...c.method })
-                return dispatch(loadComparison(comparison))
-            } catch (error) {
-                console.error(error)
-            }
-        }
-)
+/*
+ * NOTE Kyle Doherty 9/8/17 - future comparisons
 
-export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentTableComparison = createThunkAction(
-    FETCH_SEGMENT_TABLE_COMPARISON,
-    (segmentId, tableId, cost) =>
-        async (dispatch) => {
-            const c = COSTS[cost]
-            try {
-                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId, ...c.method })
-                return dispatch(loadComparison(comparison))
-            } catch (error) {
-                console.error(error)
-            }
-        }
-)
 
 export const FETCH_METRIC_COMPARISON = 'metabase/xray/FETCH_METRIC_COMPARISON';
 export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, function(metricId1, metricId2) {
@@ -130,17 +154,9 @@ export const fetchMetricComparison = createThunkAction(FETCH_METRIC_COMPARISON, 
     }
 })
 
-export const FETCH_CARD_COMPARISON = 'metabase/xray/FETCH_CARD_COMPARISON';
-export const fetchCardComparison = createThunkAction(FETCH_CARD_COMPARISON, (cardId1, cardId2) =>
-    async () => {
-        try {
-            const comparison = await XRayApi.card_compare({ cardId1, cardId2 })
-            return comparison
-        } catch (error) {
-            console.error(error)
-        }
-    }
-)
+
+
+*/
 
 export const FETCH_SEGMENT_TABLE_FIELD_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_FIELD_COMPARISON';
 export const fetchSegmentTableFieldComparison = createThunkAction(
@@ -148,6 +164,7 @@ export const fetchSegmentTableFieldComparison = createThunkAction(
     (requestParams) =>
         async (dispatch) => {
             requestParams.cost = COSTS[requestParams.cost].method
+            dispatch(startLoad())
             try {
                 const comparison = await XRayApi.segment_table_field_compare(requestParams)
                 return dispatch(loadComparison(comparison))
@@ -163,6 +180,7 @@ export const fetchSegmentFieldComparison = createThunkAction(
     (requestParams) =>
         async (dispatch) => {
             requestParams.cost = COSTS[requestParams.cost].method
+            dispatch(startLoad())
             try {
                 const comparison = await XRayApi.segment_field_compare(requestParams)
                 return dispatch(loadComparison(comparison))
@@ -172,27 +190,34 @@ export const fetchSegmentFieldComparison = createThunkAction(
         }
 )
 
+export const START_LOAD = 'metabase/xray/START_LOAD'
+export const startLoad = createAction(START_LOAD)
+
+export const LOAD_XRAY = 'metabase/xray/LOAD_XRAY'
+export const loadXray = createAction(LOAD_XRAY)
+
 export const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
 export const loadComparison = createAction(LOAD_COMPARISON)
 
 export default handleActions({
-    [FETCH_FIELD_XRAY]: {
-        next: (state, { payload }) => assoc(state, 'fieldXray', payload)
+    [START_LOAD]: {
+        next: (state, { payload }) => assoc(state, 'loading', true)
     },
-    [FETCH_TABLE_XRAY]: {
-        next: (state, { payload }) => assoc(state, 'tableXray', payload)
-    },
-    [FETCH_CARD_XRAY]: {
-        next: (state, { payload }) => assoc(state, 'cardXray', payload)
-    },
-    [FETCH_SEGMENT_XRAY]: {
-        next: (state, { payload }) => assoc(state, 'segmentXray', payload)
-    },
-    [FETCH_FIELD_COMPARISON]: {
-        next: (state, { payload }) => assoc(state, 'fieldComparison', payload)
+    [LOAD_XRAY]: {
+        next: (state, { payload }) =>
+            chain(state)
+                .assoc('xray', payload)
+                .assoc('loading', false)
+                .value()
     },
     [LOAD_COMPARISON]: {
-        next: (state, { payload }) => assoc(state, 'comparison', payload)
+        next: (state, { payload }) =>
+            chain(state)
+                .assoc('comparison', payload)
+                .assoc('loading', false)
+                .value()
     }
 
-}, {})
+}, {
+    loading: false
+})
