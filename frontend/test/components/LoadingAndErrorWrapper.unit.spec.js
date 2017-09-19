@@ -1,6 +1,5 @@
 import React from 'react'
 import { shallow, mount } from 'enzyme'
-import sinon from 'sinon'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 
@@ -43,16 +42,8 @@ describe('LoadingAndErrorWrapper', () => {
         })
 
         describe('cycling', () => {
-            let clock
-
-            beforeEach(() => {
-                clock = sinon.useFakeTimers()
-            })
-            afterEach(() => {
-                clock.restore()
-            })
-
             it('should cycle through loading messages if provided', () => {
+                jest.useFakeTimers()
 
                 const interval = 6000
 
@@ -72,20 +63,20 @@ describe('LoadingAndErrorWrapper', () => {
                 )
 
                 const instance = wrapper.instance()
-                const spy = sinon.spy(instance, 'cycleLoadingMessage')
+                const spy = jest.spyOn(instance, 'cycleLoadingMessage')
 
                 expect(wrapper.text()).toMatch(/One/)
 
-                clock.tick(interval)
-                expect(spy.called).toEqual(true)
+                jest.runTimersToTime(interval)
+                expect(spy).toHaveBeenCalled()
                 expect(wrapper.text()).toMatch(/Two/)
 
-                clock.tick(interval)
-                expect(spy.called).toEqual(true)
+                jest.runTimersToTime(interval)
+                expect(spy).toHaveBeenCalled()
                 expect(wrapper.text()).toMatch(/Three/)
 
-                clock.tick(interval)
-                expect(spy.called).toEqual(true)
+                jest.runTimersToTime(interval)
+                expect(spy).toHaveBeenCalled()
                 expect(wrapper.text()).toMatch(/One/)
             })
 
