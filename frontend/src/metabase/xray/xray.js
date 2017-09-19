@@ -1,5 +1,3 @@
-import { chain, assoc } from 'icepick'
-
 import COSTS from 'metabase/xray/costs'
 
 import {
@@ -82,28 +80,31 @@ export const xrayError = createAction(XRAY_ERROR)
 
 export default handleActions({
     [START_LOAD]: {
-        next: (state, { payload }) => assoc(state, 'loading', true)
+        next: (state, { payload }) => ({
+            ...state,
+            loading: true,
+        })
     },
     [LOAD_XRAY]: {
-        next: (state, { payload }) =>
-            chain(state)
-                .assoc('xray', payload)
-                .assoc('loading', false)
-                .value()
+        next: (state, { payload }) => ({
+            ...state,
+            xray: payload,
+            loading: false
+        })
     },
     [LOAD_COMPARISON]: {
-        next: (state, { payload }) =>
-            chain(state)
-                .assoc('comparison', payload)
-                .assoc('loading', false)
-                .value()
+        next: (state, { payload }) => ({
+            ...state,
+            comparison: payload,
+            loading: false
+        })
     },
     [XRAY_ERROR]: {
-        next: (state, { payload }) =>
-            chain(state)
-                .assoc('loading', false)
-                .assoc('error', payload)
-                .value()
+        next: (state, { payload }) => ({
+            ...state,
+            loading: false,
+            error: payload
+        })
     }
 
 }, {
