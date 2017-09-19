@@ -128,7 +128,9 @@ class FieldXRay extends Component {
                                 <div className="bg-white bordered shadowed">
                                     <div className="lg-p4">
                                         <div style={{ height: 300 }}>
-                                            <Histogram histogram={xray.histogram.value} />
+                                            { xray.histogram.value &&
+                                                <Histogram histogram={xray.histogram.value} />
+                                            }
                                         </div>
                                     </div>
                                 </div>
