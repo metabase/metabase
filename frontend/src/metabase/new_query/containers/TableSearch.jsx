@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import _ from 'underscore'
 
-import { fetchRealDatabases, fetchSegments } from "metabase/redux/metadata";
+import { fetchDatabases, fetchSegments } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch, { DATABASE_GROUPING, NAME_GROUPING } from "metabase/containers/EntitySearch";
 import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
@@ -23,12 +23,12 @@ const mapStateToProps = state => ({
 })
 const mapDispatchToProps = {
     fetchSegments,
-    fetchRealDatabases,
+    fetchDatabases,
     resetQuery
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentSearch extends Component {
+export default class TableSearch extends Component {
     props: {
         getUrlForQuery: (StructuredQuery) => void,
         backButtonUrl: string,
@@ -37,12 +37,12 @@ export default class SegmentSearch extends Component {
         metadata: Metadata,
         metadataFetched: any,
         fetchSegments: () => void,
-        fetchRealDatabases: () => void,
+        fetchDatabases: () => void,
         resetQuery: () => void
     }
 
     componentDidMount() {
-        this.props.fetchRealDatabases() // load databases if not loaded yet
+        this.props.fetchDatabases() // load databases if not loaded yet
         this.props.fetchSegments(true) // segments may change more often so always reload them
         this.props.resetQuery();
     }

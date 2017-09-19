@@ -10,6 +10,7 @@ import EntitySearch, {
     SearchResultsGroup
 } from "metabase/containers/EntitySearch";
 
+import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
 import AggregationWidget from "metabase/query_builder/components/AggregationWidget";
 
 import {
@@ -85,7 +86,7 @@ describe("new question flow", async () => {
             await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
             await store.waitForActions([SET_REQUEST_STATE]);
 
-            expect(app.find(NewQueryOption).length).toBe(3)
+            expect(app.find(NewQueryOption).length).toBe(4)
         });
         it("lets you start a custom gui question", async () => {
             const store = await createTestStore()
@@ -154,6 +155,36 @@ describe("new question flow", async () => {
             expect(
                 app.find(AggregationWidget).find(".View-section-aggregation").text()
             ).toBe("A Metric")
+        })
+
+        it("lets you start a question from a segment", async () => {
+            const store = await createTestStore()
+
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
+
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
+            await store.waitForActions(FETCH_DATABASES);
+            await store.waitForActions([SET_REQUEST_STATE]);
+            expect(store.getPath()).toBe("/question/new/table")
+
+            const entitySearch = app.find(EntitySearch)
+            const viewByDatabase = entitySearch.find(SearchGroupingOption).at(1)
+            expect(viewByDatabase.text()).toBe("Database");
+            click(viewByDatabase)
+            expect(store.getPath()).toBe("/question/new/table?grouping=database")
+
+            const group = entitySearch.find(SearchResultsGroup)
+                .filterWhere((group) => group.prop('groupName') === "Sample Dataset")
+
+            const metricSearchResult = group.find(SearchResultListItem)
+                .filterWhere((item) => /A Segment/.test(item.text()))
+            click(metricSearchResult.childAt(0))
+
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+            expect(app.find(FilterWidget).find(".Filter-section-value").text()).toBe("A Segment")
         })
     })
 

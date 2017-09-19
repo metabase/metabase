@@ -40,7 +40,7 @@ type Props = {
     // Component parameters
     getUrlForQuery: (StructuredQuery) => void,
     metricSearchUrl: string,
-    segmentSearchUrl: string,
+    tableSearchUrl: string,
 
     // Properties injected with redux connect
     query: StructuredQuery,
@@ -60,14 +60,14 @@ export class NewQueryOptions extends Component {
 
     state = {
         showMetricOption: false,
-        showSegmentOption: false,
+        showTableOption: false,
         showSQLOption: false
     }
 
     determinePaths () {
         const { isAdmin, metadata, push } = this.props
         const showMetricOption = isAdmin || metadata.metricsList().length > 0
-        const showSegmentOption = isAdmin || metadata.segmentsList().length > 0
+        const showTableOption = isAdmin || metadata.segmentsList().length > 0
 
         // util to check if the user has write permission to a db
         const hasSQLPermission = (db) => db.native_permissions === "write"
@@ -76,13 +76,13 @@ export class NewQueryOptions extends Component {
         const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
 
         // if we can only show one option then we should just redirect
-        if(!showMetricOption && !showSQLOption && !showSegmentOption) {
+        if(!showMetricOption && !showSQLOption && !showTableOption) {
             push(this.getGuiQueryUrl())
         }
 
         this.setState({
             showMetricOption,
-            showSegmentOption,
+            showTableOption,
             showSQLOption,
         })
     }
@@ -105,9 +105,9 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-        const { query, metadataFetched, isAdmin, metricSearchUrl, segmentSearchUrl } = this.props
-        const { showMetricOption, showSegmentOption, showSQLOption } = this.state
-        const showCustomInsteadOfNewQuestionText = showMetricOption || showSegmentOption
+        const { query, metadataFetched, isAdmin, metricSearchUrl, tableSearchUrl } = this.props
+        const { showMetricOption, showTableOption, showSQLOption } = this.state
+        const showCustomInsteadOfNewQuestionText = showMetricOption || showTableOption
 
         if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
             return <LoadingAndErrorWrapper loading={true}/>
@@ -128,14 +128,14 @@ export class NewQueryOptions extends Component {
                                     />
                                 </li>
                             }
-                            { showSegmentOption &&
+                            { showTableOption &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/list_illustration"
                                         title="Tables"
                                         description="Explore tables and see what’s going on underneath your charts."
                                         width={180}
-                                        to={segmentSearchUrl}
+                                        to={tableSearchUrl}
                                     />
                                 </li>
                             }

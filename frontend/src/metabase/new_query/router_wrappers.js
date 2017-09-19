@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import { withBackground } from 'metabase/hoc/Background'
 
 import NewQueryOptions from "./containers/NewQueryOptions";
-import SegmentSearch from "./containers/SegmentSearch";
+import TableSearch from "./containers/TableSearch";
 import MetricSearch from "./containers/MetricSearch";
 
 @connect(null, { onChangeLocation: push })
@@ -20,7 +20,7 @@ export class NewQuestionStart extends Component {
             <NewQueryOptions
                 getUrlForQuery={this.getUrlForQuery}
                 metricSearchUrl="/question/new/metric"
-                segmentSearchUrl="/question/new/segment"
+                tableSearchUrl="/question/new/table"
             />
         )
     }
@@ -45,14 +45,14 @@ export class NewQuestionMetricSearch extends Component {
 
 @connect(null, { onChangeLocation: push })
 @withBackground('bg-slate-extra-light')
-export class NewQuestionSegmentSearch extends Component {
+export class NewQuestionTableSearch extends Component {
     getUrlForQuery = (query) => {
         return query.question().getUrl()
     }
 
     render() {
         return (
-            <SegmentSearch
+            <TableSearch
                 getUrlForQuery={this.getUrlForQuery}
                 backButtonUrl="/question/new"
             />
