@@ -27,7 +27,7 @@ describe('LoadingAndErrorWrapper', () => {
             expect(wrapper.find(Child).length).toEqual(1)
         })
 
-        it('should display a given scen during loading', () => {
+        it('should display a given scene during loading', () => {
             const Scene = () => <div>Fun load animation</div>
 
             const wrapper = shallow(
