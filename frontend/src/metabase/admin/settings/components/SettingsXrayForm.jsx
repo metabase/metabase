@@ -34,6 +34,10 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
                 <p className="m0 text-paragraph">
                     If you're having performance issues related to x-ray usage you can cap how expensive x-rays are allowed to be.
                 </p>
+                <p className="text-paragraph">
+                  <em><strong>Note:</strong> "Extended" is required for viewing time series x-rays.</em>
+                </p>
+
                 <ol className="mt4">
                     { Object.keys(COSTS).map(key => {
                         const cost = COSTS[key]
