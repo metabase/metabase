@@ -76,6 +76,16 @@ export default class SegmentSearch extends Component {
         }
     }
 
+    getTableInEntitySearchFormat = (table, segmentsList) => {
+        return {
+            name: table.display_name,
+            isTable: true,
+            table,
+            children: segmentsList.filter(segment => segment.table_id === table.id),
+            description: <span><b>{table.db.engine}</b> - {table.schema}</span>
+        }
+    }
+
     render() {
         const { backButtonUrl, metadataFetched, metadata } = this.props;
 
@@ -84,23 +94,14 @@ export default class SegmentSearch extends Component {
         // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
         // all segments (also retired ones) and they are missing both `is_active` and `creator` props. Currently this
         // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
-        const segmentList = metadata.segmentsList().filter(segment => segment.isActive() && segment.table)
+        const segmentsList = metadata.segmentsList().filter(segment => segment.isActive() && segment.table)
 
         return (
             <LoadingAndErrorWrapper loading={isLoading}>
                 {() => {
                     const sortedTables = _.chain(metadata.tables)
-                        // Segment shouldn't be retired and it should refer to an existing table
-                        // .filter((segment) => segment.isActive() && segment.table)
                         .sortBy(({display_name}) => display_name.toLowerCase())
-                        // Conform with the object structure required by EntitySearch
-                        .map((table) => ({
-                            name: table.display_name,
-                            isTable: true,
-                            table,
-                            children: segmentList.filter(segment => segment.table_id === table.id),
-                            description: <span><b>{table.db.engine}</b> - {table.schema}</span>
-                        }))
+                        .map((table) => this.getTableInEntitySearchFormat(table, segmentsList))
                         .value()
 
                     if (sortedTables.length > 0) {
