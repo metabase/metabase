@@ -1,41 +1,60 @@
 import { createSelector } from 'reselect'
 import { normal } from 'metabase/lib/colors'
 
-export const getLoadingStatus = (state) =>
+export const getLoadingStatus = (state, props) =>
     state.xray.loading
 
-export const getError = (state) =>
+export const getError = (state, props) =>
     state.xray.error
 
-export const getXray = (state) =>
-    state.xray.xray
+export const getXrayId = (state, props) =>
+    {
+        return state.xray.xRayId
+    }
 
-export const getFeatures = (state) =>
-    state.xray.xray && state.xray.xray.features
+export const getXray = createSelector(
+    [getXrayId],
+    (xRayId) => {
+        return state.xray.xrays[xRayId]
+    }
+)
+
+
+
+export const getFeatures = createSelector(
+    [getXray],
+    (xRay) => {
+        return xRay && xray.features
+    }
+)
 
 /* TODO - these can be collapsed into getConstituents */
-export const getTableConstituents = (state) =>
+export const getTableConstituents = createSelector(
+    [getXray],
+    (xRay) => {
+        return xRay && (
+            Object.keys(state.xray.xray.constituents).map(key =>
+                state.xray.xray.constituents[key]
+            )
+        )
+    }
+)
+
+export const getSegmentConstituents = (state, props) =>
     state.xray.xray && (
         Object.keys(state.xray.xray.constituents).map(key =>
             state.xray.xray.constituents[key]
         )
     )
 
-export const getSegmentConstituents = (state) =>
+export const getConstituents = (state, props) =>
     state.xray.xray && (
         Object.keys(state.xray.xray.constituents).map(key =>
             state.xray.xray.constituents[key]
         )
     )
 
-export const getConstituents = (state) =>
-    state.xray.xray && (
-        Object.keys(state.xray.xray.constituents).map(key =>
-            state.xray.xray.constituents[key]
-        )
-    )
-
-export const getComparison = (state) => state.xray.comparison
+export const getComparison = (state, props) => state.xray.comparison
 
 export const getComparisonFields = createSelector(
     [getComparison],
