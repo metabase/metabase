@@ -69,7 +69,7 @@
   "Get x-ray for a `Tield` with ID."
   [id]
   (->> id
-       ComputationJob
+       (api/read-check ComputationJob)
        async/result))
 
 (api/defendpoint GET "/segment/:id"
