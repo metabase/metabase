@@ -14,13 +14,13 @@ export const getFeatures = (state) =>
     state.xray.xray && state.xray.xray.features
 
 /* TODO - these can be collapsed into getConstituents */
-export const getTableConstituents = (state) =>
-    state.xray.xray && (
+export const getTableConstituents = (state) => {
+    return state.xray.xray && (
         Object.keys(state.xray.xray.constituents).map(key =>
             state.xray.xray.constituents[key]
         )
     )
-
+}
 export const getSegmentConstituents = (state) =>
     state.xray.xray && (
         Object.keys(state.xray.xray.constituents).map(key =>

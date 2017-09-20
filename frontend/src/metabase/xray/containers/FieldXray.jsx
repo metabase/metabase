@@ -6,7 +6,7 @@ import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
-import { fetchXray } from 'metabase/xray/xray'
+import { fetchXray, initialize } from 'metabase/xray/xray'
 import {
     getLoadingStatus,
     getError,
@@ -58,6 +58,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
+    initialize,
     fetchXray
 }
 
@@ -67,7 +68,15 @@ class FieldXRay extends Component {
     props: Props
 
     componentWillMount () {
+        this.props.initialize()
         this.fetch()
+    }
+
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
     fetch() {

@@ -7,7 +7,7 @@ import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
-import { fetchXray } from 'metabase/xray/xray'
+import { fetchXray, initialize } from 'metabase/xray/xray'
 
 import Icon from 'metabase/components/Icon'
 import CostSelect from 'metabase/xray/components/CostSelect'
@@ -50,6 +50,7 @@ const mapStateToProps = state => ({
 })
 
 const mapDispatchToProps = {
+    initialize,
     fetchXray
 }
 
@@ -60,7 +61,15 @@ class SegmentXRay extends Component {
     props: Props
 
     componentWillMount () {
+        this.props.initialize()
         this.fetch()
+    }
+
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
     fetch () {

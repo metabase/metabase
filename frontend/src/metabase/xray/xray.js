@@ -8,6 +8,9 @@ import {
 
 import { XRayApi } from 'metabase/services'
 
+export const INITIALIZE = 'metabase/xray/INITIALIZE'
+export const initialize = createAction(INITIALIZE);
+
 export const FETCH_XRAY = 'metabase/xray/FETCH_XRAY'
 export const fetchXray = createThunkAction(
     FETCH_XRAY,
@@ -78,7 +81,13 @@ export const loadComparison = createAction(LOAD_COMPARISON)
 export const XRAY_ERROR = 'metabase/xray/XRAY_ERROR'
 export const xrayError = createAction(XRAY_ERROR)
 
+const CLEAN_STATE = {
+    loading: false,
+    error: null,
+}
+
 export default handleActions({
+    [INITIALIZE]: () => CLEAN_STATE,
     [START_LOAD]: {
         next: (state, { payload }) => ({
             ...state,
@@ -106,8 +115,4 @@ export default handleActions({
             error: payload
         })
     }
-
-}, {
-    loading: false,
-    error: null,
-})
+}, CLEAN_STATE)

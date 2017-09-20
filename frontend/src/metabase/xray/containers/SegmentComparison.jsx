@@ -4,7 +4,7 @@ import _ from 'underscore'
 
 import title from 'metabase/hoc/Title'
 
-import { fetchSegmentComparison } from 'metabase/xray/xray'
+import { fetchSegmentComparison, initialize } from 'metabase/xray/xray'
 import {
     getComparison,
     getComparisonFields,
@@ -32,6 +32,7 @@ const mapStateToProps = (state) => ({
 })
 
 const mapDispatchToProps = {
+    initialize,
     fetchSegmentComparison
 }
 
@@ -41,7 +42,15 @@ class SegmentComparison extends Component {
 
     componentWillMount () {
         const { cost, segmentId1, segmentId2 } = this.props.params
+        this.props.initialize()
         this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
+    }
+
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
     render () {

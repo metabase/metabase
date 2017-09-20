@@ -4,7 +4,7 @@ import { connect } from 'react-redux'
 
 import { saturated } from 'metabase/lib/colors'
 
-import { fetchXray } from 'metabase/xray/xray'
+import { fetchXray, initialize } from 'metabase/xray/xray'
 import {
     getLoadingStatus,
     getError,
@@ -22,8 +22,19 @@ import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import Periodicity from 'metabase/xray/components/Periodicity'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
+const mapStateToProps = state => ({
+    xray: getXray(state),
+    isLoading: getLoadingStatus(state),
+    error: getError(state)
+})
+
+const mapDispatchToProps = {
+    initialize,
+    fetchXray
+}
 
 type Props = {
+    initialize: () => void,
     fetchXray: () => void,
     isLoading: boolean,
     xray: {}
@@ -56,9 +67,16 @@ class CardXRay extends Component {
 
     componentWillMount () {
         const { cardId, cost } = this.props.params
+        this.props.initialize()
         this.props.fetchXray('card', cardId, cost)
     }
 
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
+    }
 
     render () {
         const { xray, isLoading, error } = this.props
@@ -186,16 +204,6 @@ class CardXRay extends Component {
             </LoadingAndErrorWrapper>
         )
     }
-}
-
-const mapStateToProps = state => ({
-    xray: getXray(state),
-    isLoading: getLoadingStatus(state),
-    error: getError(state)
-})
-
-const mapDispatchToProps = {
-    fetchXray
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)
