@@ -47,7 +47,7 @@
        fe/x-ray))
 
 (api/defendpoint GET "/table/:id"
-  "Get x-ray for a `Tield` with ID."
+  "Get x-ray for a `Table` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
@@ -59,7 +59,7 @@
        fe/x-ray))
 
 (api/defendpoint GET "/async/table/:id"
-  "Get x-ray for a `Tield` with ID."
+  "Get x-ray for a `Table` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
@@ -72,7 +72,7 @@
                     fe/x-ray))}))
 
 (api/defendpoint GET "/async/:id"
-  "Get x-ray for a `Tield` with ID."
+  "Get result of async computation job with ID."
   [id]
   (->> id
        (api/read-check ComputationJob)
