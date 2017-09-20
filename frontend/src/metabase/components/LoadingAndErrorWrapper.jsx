@@ -63,9 +63,6 @@ export default class LoadingAndErrorWrapper extends Component {
 
     loadingInterval = () => {
         this.cycleLoadingMessage()
-        if(this.props.loadingScenes) {
-            this.cycleLoadingScenes()
-        }
     }
 
     cycleLoadingScenes = () => {
@@ -87,18 +84,10 @@ export default class LoadingAndErrorWrapper extends Component {
 
     cycleLoadingMessage = () => {
         this.setState({
-            messageIndex: this.state.messageIndex + 1 < this.props.loadingMessages.length -1
+            messageIndex: this.state.messageIndex + 1 < this.props.loadingMessages.length
             ? this.state.messageIndex + 1
             : 0
 
-        })
-    }
-
-    cycleLoadingScenes = () => {
-        this.setState({
-            sceneIndex: this.state.sceneIndex + 1 < this.props.loadingScenes.length -1
-            ? this.state.sceneIndex + 1
-            : 0
         })
     }
 
