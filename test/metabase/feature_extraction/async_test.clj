@@ -10,14 +10,8 @@
     (done? (ComputationJob job-id))))
 
 (expect
-  true
-  (let [job-id (compute #(do (Thread/sleep 10000) nil))]
-    (Thread/sleep 100)
-    (running? (ComputationJob job-id))))
-
-(expect
   [true false false]
-  (let [job-id (compute #(do (Thread/sleep 100000) nil))]
+  (let [job-id (compute #(loop [] (Thread/sleep 100) (recur)))]
     (Thread/sleep 100)
     (let [r? (running? (ComputationJob job-id))]
       (cancel (ComputationJob job-id))
