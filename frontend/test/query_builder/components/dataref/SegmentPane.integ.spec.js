@@ -19,7 +19,6 @@ import { orders_past_30_days_segment } from "__support__/sample_dataset_fixture"
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
-import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table";
 import UseForButton from "metabase/query_builder/components/dataref/UseForButton";
 import { SegmentApi } from "metabase/services";
