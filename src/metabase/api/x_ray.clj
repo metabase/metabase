@@ -3,8 +3,8 @@
             [metabase.api.common :as api]
             [metabase.feature-extraction
              [async :as async]
-             [core :as fe]]
-             [costs :as costs]
+             [core :as fe]
+             [costs :as costs]]
             [metabase.models
              [card :refer [Card]]
              [computation-job :refer [ComputationJob]]
