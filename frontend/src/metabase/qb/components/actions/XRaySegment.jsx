@@ -7,8 +7,8 @@ import type {
 
 import { isSegmentFilter } from "metabase/lib/query/filter";
 
-export default ({ question }: ClickActionProps): ClickAction[] => {
-    if (question.card().id) {
+export default ({ question, settings }: ClickActionProps): ClickAction[] => {
+    if (question.card().id && settings["enable_xrays"]) {
         return question
             .query()
             .filters()

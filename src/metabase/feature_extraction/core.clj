@@ -57,21 +57,21 @@
 
 (defn- sampled?
   [{:keys [max-cost] :as opts} dataset]
-  (and (costs/sample-only? max-cost)
+  (and (not (costs/full-scan? max-cost))
        (= (count (:rows dataset dataset)) max-sample-size)))
 
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (costs/sample-only? max-cost) (assoc :limit max-sample-size)))
+    (not (costs/full-scan? max-cost)) (assoc :limit max-sample-size)))
 
 (defmethod extract-features (type Field)
   [opts field]
-  (let [dataset (values/field-values field (extract-query-opts opts))]
-    {:features (->> dataset
+  (let [{:keys [field row]} (values/field-values field (extract-query-opts opts))]
+    {:features (->> row
                     (field->features opts field)
                     (merge {:table (Table (:table_id field))}))
-     :sample?  (sampled? opts dataset)}))
+     :sample?  (sampled? opts row)}))
 
 (defmethod extract-features (type Table)
   [opts table]

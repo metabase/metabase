@@ -5,6 +5,7 @@ import { connect } from 'react-redux'
 import { saturated } from 'metabase/lib/colors'
 
 import { fetchCardXray } from 'metabase/xray/xray'
+import { getLoadingStatus } from 'metabase/xray/selectors'
 import Icon from 'metabase/components/Icon'
 import Tooltip from 'metabase/components/Tooltip'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
@@ -13,8 +14,12 @@ import Visualization from 'metabase/visualizations/components/Visualization'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import Periodicity from 'metabase/xray/components/Periodicity'
 
+import { hasXray, loadingMessages } from 'metabase/xray/utils'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
+
 type Props = {
     fetchCardXray: () => void,
+    isLoading: boolean,
     xray: {}
 }
 
@@ -57,10 +62,16 @@ class CardXRay extends Component {
 
 
     render () {
-        const { xray } = this.props
+        const { xray, isLoading } = this.props
         const { error } = this.state
         return (
-            <LoadingAndErrorWrapper loading={!xray} error={error}>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !hasXray(xray)}
+                error={error}
+                noBackground
+                loadingMessages={loadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
+            >
                 { () =>
                     <XRayPageWrapper>
                         <div className="mt4 mb2">
@@ -180,7 +191,8 @@ class CardXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    xray: state.xray.cardXray,
+    xray: state.xray.xray,
+    isLoading: getLoadingStatus(state)
 })
 
 const mapDispatchToProps = {

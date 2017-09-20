@@ -209,7 +209,7 @@ const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:
 export function formatUrl(value: Value, { jsx }: FormattingOptions = {}) {
     const url = String(value);
     if (jsx && URL_WHITELIST_REGEX.test(url)) {
-        return <ExternalLink href={url}>{url}</ExternalLink>;
+        return <ExternalLink className="link link--wrappable" href={url}>{url}</ExternalLink>;
     } else {
         return url;
     }

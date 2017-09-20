@@ -48,7 +48,8 @@
     :as   details}]
   (merge {:classname   "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
-          :subname     (str "//" hosts "/")}
+          :subname     (str "//" hosts)
+          :user        "crate"}
          (dissoc details :hosts)))
 
 (defn- can-connect? [details]
@@ -107,7 +108,7 @@
           :describe-table  describe-table
           :details-fields  (constantly [{:name         "hosts"
                                          :display-name "Hosts"
-                                         :default      "localhost:5432"}])
+                                         :default      "localhost:5432/"}])
           :features        (comp (u/rpartial disj :foreign-keys) sql/features)
           :current-db-time (driver/make-current-db-time-fn crate-date-formatter crate-db-time-query)})
   sql/ISQLDriver

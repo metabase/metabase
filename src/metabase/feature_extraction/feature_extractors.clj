@@ -400,7 +400,7 @@
                 (when (and resolution
                            (costs/unbounded-computation? max-cost))
                   (decompose-timeseries resolution series))}
-               (when (and (costs/alow-joins? max-cost)
+               (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
                  {:YoY (rolling-window-growth 365 query)
                   :MoM (rolling-window-growth 30 query)
@@ -503,9 +503,7 @@
                               (#{:day :month :year :quarter :week} unit))
                   {:histogram-hour (redux/pre-step
                                     h/histogram-categorical
-                                    ;; TOFIX: this is an ugly workaround
-                                    #(when (and % (not (instance? java.sql.Date %)))
-                                       (.getHours ^java.util.Date %)))})))
+                                    (somef (memfn ^java.util.Date getHours)))})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)

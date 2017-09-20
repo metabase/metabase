@@ -352,7 +352,7 @@
 (defn- render:scalar
   [timezone card {:keys [cols rows]}]
   [:div {:style (style scalar-style)}
-   (-> rows first first (format-cell timezone (first cols)) h)])
+   (h (format-cell timezone (ffirst rows) (first cols)))])
 
 (defn- render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
