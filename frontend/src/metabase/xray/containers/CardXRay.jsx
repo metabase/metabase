@@ -29,6 +29,17 @@ type Props = {
     xray: {}
 }
 
+const mapStateToProps = state => ({
+    xray: getXray(state),
+    isLoading: getLoadingStatus(state),
+    error: getError(state)
+})
+
+const mapDispatchToProps = {
+    fetchXray
+}
+
+
 const GrowthRateDisplay = ({ period }) =>
     <div className="Grid-cell">
         <div className="p4 border-right">
@@ -50,6 +61,7 @@ const GrowthRateDisplay = ({ period }) =>
         </div>
     </div>
 
+@connect(mapStateToProps, mapDispatchToProps)
 class CardXRay extends Component {
 
     props: Props
@@ -187,15 +199,3 @@ class CardXRay extends Component {
         )
     }
 }
-
-const mapStateToProps = state => ({
-    xray: getXray(state),
-    isLoading: getLoadingStatus(state),
-    error: getError(state)
-})
-
-const mapDispatchToProps = {
-    fetchXray
-}
-
-export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)
