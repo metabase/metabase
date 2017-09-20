@@ -8,6 +8,7 @@ import { fetchSegmentTableComparison } from 'metabase/xray/xray'
 import {
     getComparison,
     getComparisonFields,
+    getError,
     getSegmentItem,
     getTableItem,
     getTitle,
@@ -16,7 +17,7 @@ import {
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
-import { hasComparison, loadingMessages } from 'metabase/xray/utils'
+import { hasComparison, comparisonLoadingMessages } from 'metabase/xray/utils'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 const mapStateToProps = state => ({
@@ -24,7 +25,8 @@ const mapStateToProps = state => ({
     fields: getComparisonFields(state),
     itemA: getSegmentItem(state),
     itemB: getTableItem(state),
-    isLoading: getLoadingStatus(state)
+    isLoading: getLoadingStatus(state),
+    error: getError(state)
 })
 
 const mapDispatchToProps = {
@@ -39,24 +41,19 @@ class SegmentTableComparison extends Component {
         error: null
     }
 
-    async componentWillMount () {
+    componentWillMount () {
         const { cost, segmentId, tableId } = this.props.params
-        try {
-            await this.props.fetchSegmentTableComparison(segmentId, tableId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+        this.props.fetchSegmentTableComparison(segmentId, tableId, cost)
     }
 
     render () {
-        const { params, fields, comparison, itemA, itemB, isLoading } = this.props
-        const { error } = this.state
+        const { params, fields, comparison, itemA, itemB, isLoading, error } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasComparison(comparison)}
                 error={error}
                 noBackground
-                loadingMessages={loadingMessages}
+                loadingMessages={comparisonLoadingMessages}
                 loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>

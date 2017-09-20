@@ -4,14 +4,13 @@ import { normal } from 'metabase/lib/colors'
 export const getLoadingStatus = (state) =>
     state.xray.loading
 
-/* TODO - these can be collapsed into getXray */
-export const getFieldXray = (state) =>
-    state.xray.xray && state.xray.xray.features
+export const getError = (state) =>
+    state.xray.error
 
-export const getTableXray = (state) =>
-    state.xray.xray && state.xray.xray.features
+export const getXray = (state) =>
+    state.xray.xray
 
-export const getSegmentXray = (state) =>
+export const getFeatures = (state) =>
     state.xray.xray && state.xray.xray.features
 
 /* TODO - these can be collapsed into getConstituents */
@@ -23,6 +22,13 @@ export const getTableConstituents = (state) =>
     )
 
 export const getSegmentConstituents = (state) =>
+    state.xray.xray && (
+        Object.keys(state.xray.xray.constituents).map(key =>
+            state.xray.xray.constituents[key]
+        )
+    )
+
+export const getConstituents = (state) =>
     state.xray.xray && (
         Object.keys(state.xray.xray.constituents).map(key =>
             state.xray.xray.constituents[key]

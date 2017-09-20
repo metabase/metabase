@@ -4,8 +4,15 @@ import { connect } from 'react-redux'
 
 import { saturated } from 'metabase/lib/colors'
 
-import { fetchCardXray } from 'metabase/xray/xray'
-import { getLoadingStatus } from 'metabase/xray/selectors'
+import { fetchXray } from 'metabase/xray/xray'
+import {
+    getLoadingStatus,
+    getError,
+    getXray
+} from 'metabase/xray/selectors'
+
+import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+
 import Icon from 'metabase/components/Icon'
 import Tooltip from 'metabase/components/Tooltip'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
@@ -13,12 +20,11 @@ import Visualization from 'metabase/visualizations/components/Visualization'
 
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import Periodicity from 'metabase/xray/components/Periodicity'
-
-import { hasXray, loadingMessages } from 'metabase/xray/utils'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
+
 type Props = {
-    fetchCardXray: () => void,
+    fetchXray: () => void,
     isLoading: boolean,
     xray: {}
 }
@@ -45,31 +51,23 @@ const GrowthRateDisplay = ({ period }) =>
     </div>
 
 class CardXRay extends Component {
+
     props: Props
 
-    state = {
-        error: null
-    }
-
-    async componentWillMount () {
+    componentWillMount () {
         const { cardId, cost } = this.props.params
-        try {
-            await this.props.fetchCardXray(cardId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+        this.props.fetchXray('card', cardId, cost)
     }
 
 
     render () {
-        const { xray, isLoading } = this.props
-        const { error } = this.state
+        const { xray, isLoading, error } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasXray(xray)}
                 error={error}
                 noBackground
-                loadingMessages={loadingMessages}
+                loadingMessages={xrayLoadingMessages}
                 loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>
@@ -191,12 +189,13 @@ class CardXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    xray: state.xray.xray,
-    isLoading: getLoadingStatus(state)
+    xray: getXray(state),
+    isLoading: getLoadingStatus(state),
+    error: getError(state)
 })
 
 const mapDispatchToProps = {
-    fetchCardXray
+    fetchXray
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)

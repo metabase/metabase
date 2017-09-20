@@ -7,27 +7,28 @@ import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
-import { fetchSegmentXray } from 'metabase/xray/xray'
+import { fetchXray } from 'metabase/xray/xray'
 
 import Icon from 'metabase/components/Icon'
-import COSTS from 'metabase/xray/costs'
 import CostSelect from 'metabase/xray/components/CostSelect'
 
 import {
-    getSegmentConstituents,
-    getSegmentXray,
-    getLoadingStatus
+    getConstituents,
+    getLoadingStatus,
+    getError,
+    getFeatures
 } from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
 
-import { hasXray } from 'metabase/xray/utils'
+import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
 
 type Props = {
-    fetchSegmentXray: () => void,
+    fetchXray: () => void,
     constituents: [],
     xray: {
         table: Table,
@@ -37,60 +38,56 @@ type Props = {
         segmentId: number,
         cost: string,
     },
-    isLoading: boolean
+    isLoading: boolean,
+    error: {}
 }
 
 const mapStateToProps = state => ({
-    xray: getSegmentXray(state),
-    constituents: getSegmentConstituents(state),
-    isLoading: getLoadingStatus(state)
+    xray:           getFeatures(state),
+    constituents:   getConstituents(state),
+    isLoading:      getLoadingStatus(state),
+    error:          getError(state)
 })
 
 const mapDispatchToProps = {
-    fetchSegmentXray
+    fetchXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ xray }) => xray && xray.segment.name || "Segment" )
 class SegmentXRay extends Component {
+
     props: Props
 
-    state = {
-        error: null
+    componentWillMount () {
+        this.fetch()
     }
 
-    componentDidMount () {
-        this.fetchSegmentXray()
-    }
-
-    async fetchSegmentXray () {
-        const { params } = this.props
-        // TODO - this should happen in the action
-        const cost = COSTS[params.cost]
-        try {
-            await this.props.fetchSegmentXray(params.segmentId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+    fetch () {
+        const { params, fetchXray } = this.props
+        fetchXray('segment', params.segmentId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchSegmentXray()
+            this.fetch()
         }
     }
 
     render () {
-        const { constituents, xray, params, isLoading } = this.props
-        const { error } = this.state
+        const { constituents, xray, params, isLoading, error } = this.props
         return (
-            <XRayPageWrapper>
-                <LoadingAndErrorWrapper
-                    loading={isLoading || !hasXray(xray)}
-                    error={error}
-                    noBackground
-                >
-                    { () =>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !hasXray(xray)}
+                error={error}
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[
+                    <LoadingAnimation />
+                ]}
+                noBackground
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="mt4 mb2 flex align-center py2">
                                 <div>
@@ -142,9 +139,9 @@ class SegmentXRay extends Component {
                                 </ol>
                             </div>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }

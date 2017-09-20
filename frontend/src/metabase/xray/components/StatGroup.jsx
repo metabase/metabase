@@ -12,7 +12,7 @@ const StatGroup = ({ heading, xray, stats, showDescriptions }) =>
             <div className="bordered rounded shadowed bg-white">
                 <ol className="Grid Grid--1of4">
                     { stats.map(stat =>
-                        !!xray[stat] && (
+                        !!xray[stat] && xray[stat].value && (
                             <li className="Grid-cell p1 px2 md-p2 md-px3 lg-p3 lg-px4 border-right border-bottom" key={stat}>
                                 <SimpleStat
                                     stat={xray[stat]}
