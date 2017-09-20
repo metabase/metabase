@@ -102,7 +102,6 @@ describe("SegmentPane", () => {
 
         // The value changes daily which wasn't originally taken into account
         // expect(queryBuilder.find(Scalar).text()).toBe("1,236")
-        expect(queryBuilder.find(Scalar).text().length).toBe(5)
     });
 
     it("lets you see raw data for past 30 days", async () => {
