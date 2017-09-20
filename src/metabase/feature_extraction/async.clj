@@ -5,12 +5,12 @@
              [computation-job-result :refer [ComputationJobResult]]]
             [toucan.db :as db]))
 
-(def ^:private running-jobs (atom {}))
+(defonce ^:private running-jobs (atom {}))
 
 (defn done?
   "Is the computation job done?"
   [{:keys [status]}]
-  (= :done status))
+  (#{:done :error} status))
 
 (defn running?
   "Is the computation job still running?"
@@ -25,6 +25,16 @@
       :permanence :temporary
       :payload    payload)
     (db/update! ComputationJob id :status :done))
+  (swap! running-jobs dissoc id))
+
+(defn- save-error
+  [{:keys [id]} error]
+  (db/transaction
+    (db/insert! ComputationJobResult
+      :job_id     id
+      :permanence :temporary
+      :payload    (Throwable->map error))
+    (db/update! ComputationJob id :status :error))
   (swap! running-jobs dissoc id))
 
 (defn cancel
@@ -44,7 +54,11 @@
                         :status     :running
                         :type       :simple-job)
         id  (:id job)]
-    (swap! running-jobs assoc id (future (save-result job (f))))
+    (swap! running-jobs assoc id (future
+                                   (try
+                                     (save-result job (f))
+                                     (catch Exception e
+                                       (save-error job e)))))
     id))
 
 (defn result
@@ -52,7 +66,7 @@
   [job]
   (if (done? job)
     (if-let [result (db/select-one ComputationJobResult :job_id (:id job))]
-      {:status :done
+      {:status (:status job)
        :result (:payload result)}
       {:status :result-not-available})
     {:status (:status job)}))

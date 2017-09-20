@@ -9,5 +9,5 @@
   models/IModel
   (merge models/IModelDefaults
          {:types          (constantly {:permanence :keyword
-                                       :payload    :edn})
+                                       :payload    :json})
           :properties     (constantly {:timestamped? true})}))

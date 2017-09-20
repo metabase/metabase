@@ -1,9 +1,12 @@
 (ns metabase.api.x-ray
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction.core :as fe]
+            [metabase.feature-extraction
+             [async :as async]
+             [core :as fe]]
             [metabase.models
              [card :refer [Card]]
+             [computation-job :refer [ComputationJob]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
@@ -49,6 +52,25 @@
        (fe/extract-features {:max-cost (max-cost max_query_cost
                                                  max_computation_cost)})
        fe/x-ray))
+
+(api/defendpoint GET "/async/table/:id"
+  "Get x-ray for a `Tield` with ID."
+  [id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (let [table (api/read-check Table id)]
+    {:job-id (async/compute
+              #(->> table
+                    (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                              max_computation_cost)})
+                    fe/x-ray))}))
+
+(api/defendpoint GET "/async/:id"
+  "Get x-ray for a `Tield` with ID."
+  [id]
+  (->> id
+       ComputationJob
+       async/result))
 
 (api/defendpoint GET "/segment/:id"
   "Get x-ray for a `Segment` with ID."
@@ -179,8 +201,8 @@
   "Get a list of model pairs that can be compared."
   []
   [["field" "field"]
-   ["segment" "segment"
-    "table" "table"
-    "segment" "table"]])
+   ["segment" "segment"]
+   ["table" "table"]
+   ["segment" "table"]])
 
 (api/define-routes)

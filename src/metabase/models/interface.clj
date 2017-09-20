@@ -37,10 +37,6 @@
   :in  identity
   :out u/jdbc-clob->str)
 
-(models/add-type! :edn
-  :in  pr-str
-  :out (comp edn/read-string u/jdbc-clob->str))
-
 (def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
 (def ^:private encrypted-json-out (comp json-out encryption/maybe-decrypt))
 
