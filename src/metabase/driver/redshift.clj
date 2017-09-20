@@ -16,7 +16,7 @@
              [ssh :as ssh]]))
 
 (defn- connection-details->spec [details]
-  (dbspec/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
+  (dbspec/redshift details))
 
 (defn- date-interval [unit amount]
   (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
