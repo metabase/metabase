@@ -7,15 +7,13 @@
 
 (defonce ^:private running-jobs (atom {}))
 
-(defn done?
+(def ^{:arglists '([job])} done?
   "Is the computation job done?"
-  [{:keys [status]}]
-  (#{:done :error} status))
+  (comp some? #{:done :error} :status))
 
-(defn running?
+(def ^{:arglists '([job])} running?
   "Is the computation job still running?"
-  [{:keys [status]}]
-  (= :running status))
+  (comp some? #{:running} :status))
 
 (defn- save-result
   [{:keys [id]} payload]
