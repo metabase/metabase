@@ -35,6 +35,7 @@ const mapDispatchToProps = {
 
 type Props = {
     initialize: () => void,
+    initialize: () => {},
     fetchXray: () => void,
     isLoading: boolean,
     xray: {}
