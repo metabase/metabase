@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
-            [clojure.edn :as edn]
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
