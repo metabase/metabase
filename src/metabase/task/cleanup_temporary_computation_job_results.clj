@@ -1,5 +1,5 @@
 (ns metabase.task.cleanup-temporary-computation-job-results
-  "Tasks "
+  "Cleanup of old async computation results."
   (:require [clj-time.core :as t]
             [clojurewerkz.quartzite
              [jobs :as jobs]
@@ -8,7 +8,7 @@
             [metabase.task :as task]
             [toucan.db :as db]))
 
-(def ^:private temporary-result-lifetime (t/minutes 1))
+(def ^:private temporary-result-lifetime (t/days 3))
 
 (defn- cleanup-temporary-results!
   []
