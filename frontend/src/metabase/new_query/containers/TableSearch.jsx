@@ -108,6 +108,7 @@ export default class TableSearch extends Component {
             <LoadingAndErrorWrapper loading={isLoading}>
                 {() => {
                     const sortedTables = _.chain(metadata.tables)
+                        .filter(({visibility_type}) => !visibility_type)
                         .sortBy(({display_name}) => display_name.toLowerCase())
                         .map((table) => this.getTableInEntitySearchFormat(table, segmentsList))
                         .value()

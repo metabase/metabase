@@ -544,7 +544,9 @@ export class SearchResultListItem extends Component {
                 to={getUrlForEntity(entity)}
                 >
                     { entity.isChild && <Icon className="mr2" size={14} style={{color: "#DCE1E4"}} name="segment"/> }
-                    <h4 className="text-brand flex-full mr1"> { entity.name } </h4>
+                    <h4 className={cx("flex-full mr1", { "text-brand-darken": !entity.isChild }, { "text-brand text-normal": entity.isChild })}>
+                        {entity.name}
+                    </h4>
 
                     { entity.descriptionJsx &&
                         <div className="text-grey-4 text-capitalize" style={{maxWidth: "450px"}}>
