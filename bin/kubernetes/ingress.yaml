@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: metabase
+  namespace: metabase
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "gce"
+spec:
+  tls:
+  - hosts:
+    - metabase.vikramtiwari.com
+    secretName: metabase-tls
+  rules:
+  - host: metabase.vikramtiwari.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: metabase
+          servicePort: 80
