@@ -82,7 +82,7 @@ To run Metabase in a cloud environment of any kind we highly recommend using an 
 
 NOTE: it's possible to skip this step if you wish, however this will force Metabase to use a local H2 database file on your application server and there will be no way to backup and maintain that database, so when your instance is restarted for any reason you'll lose all your Metabase data.  If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against this.
 
-To set the database password from the Beanstalk template, hit "Review and Launch", and then look for the Database configuration pane as below
+To set the database password from the Beanstalk template, hit "Review and Launch", and then look for the Database configuration pane as below. It should have a red outline when you first see this page.
 
 ![Elastic Beanstalk Database Configuration Options](images/EBDatabaseConfigurationOptions.png)
 
@@ -100,6 +100,8 @@ Regarding individual settings, we recommend:
 * Pick a `Username` and `Password` for your database.  This is just for reference if you need to connect to your db directly for some reason, but generally this should not be necessary.  These settings will be automatically made available to your Metabase instance, so you will not need to put them in anywhere manually.
 * You can safely leave the `Retention setting` as `Create snapshot`
 * Under `Availability` we recommend the default value of `Single Availability Zone` for most circumstances.
+
+Once you've entered a password and clicked `Save`, the red outline should have gone away, indicating that the application is valid and ready to be launched.
 
 ### Additional Options
 
