@@ -30,7 +30,7 @@ You should now see a screen that looks like
 
 ![Elastic Beanstalk First Screen](images/EBFirstScreen.png)
 
-NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. Look at our older documenatation at [here](running-metabase-on-elastic-beanstalk-old.md)
+NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documenatation [here](running-metabase-on-elastic-beanstalk-old.md)
 
 Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  Enter the application name `Metabase` and continue by clicking `Next`.
 
@@ -52,7 +52,7 @@ And of course if you don't care about the URL you can simply leave it to whateve
 
 ### New Environment
 
-Elastic Beanstalk provides 2 choices for environments within an Application, you should leave the setting to `Web Server` On that landing page. 
+Elastic Beanstalk provides two choices for environments within an Application, but you should leave the setting to `Web Server` on that landing page. 
 
 ![ebnewenv](images/EBWebTier.png)
 
@@ -127,8 +127,8 @@ There are many ways to customize your Beanstalk deployment, but commonly modifie
 * `Instance type` is for picking the size of AWS instance you want to run.  Any size is fine but we recommend `t2.small` for most uses.
     * Remember that you cannot choose a t2.* instance type if you did not check the box to run in a VPC.
 * `EC2 key pair` is only needed if you want to ssh into your instance directly.  We recommend leaving this out.
-* Enter an `Email address` to get notifications about your deployments and changes to your application.  This is a very simple way to keep some tabs on your Metabase environment, so we recommend putting a valid email in here.
-* The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run, you must set this to `/api/health`
+* Enter an `Email address` to get notifications about your deployments and changes to your application.  This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
+* The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run. You must set this to `/api/health`
 * The remainder of the options can all be safely left to their default values
 
 
