@@ -80,7 +80,7 @@ You will need to enable enhanced health checks for your Beanstalk Monitoring.
 Click on the `modify` link under the Monitoring section as below.
 ![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
 
-Then make sure enhanced health checks are enabled.
+Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch. 
 
 ![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
 
