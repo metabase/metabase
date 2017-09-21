@@ -73,7 +73,16 @@ If you reached this screen from the Metabase start page at [www.metabase.com/sta
 When your environment type settings look like the above then go ahead and click `Review and launch`.
 
 
+##### Enabling enhanced health checks
 
+You will need to enable enhanced health checks for your Beanstalk Monitoring.
+
+Click on the `modify` link under the Monitoring section as below.
+![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
+
+Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch. 
+
+![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
 
 ##### Configuring RDS for Metabase
 
@@ -102,6 +111,8 @@ Regarding individual settings, we recommend:
 * Under `Availability` we recommend the default value of `Single Availability Zone` for most circumstances.
 
 Once you've entered a password and clicked `Save`, the red outline should have gone away, indicating that the application is valid and ready to be launched.
+
+
 
 ### Additional Options
 
