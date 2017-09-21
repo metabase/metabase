@@ -72,7 +72,7 @@ export class NewQueryOptions extends Component {
         // util to check if the user has write permission to a db
         const hasSQLPermission = (db) => db.native_permissions === "write"
 
-        // to be able to use SQL the user must have write permsissions on at least one db
+        // to be able to use SQL the user must have write permissions on at least one db
         const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
 
         // if we can only show one option then we should just redirect
@@ -107,7 +107,7 @@ export class NewQueryOptions extends Component {
     render() {
         const { query, metadataFetched, isAdmin, metricSearchUrl } = this.props
         const { showMetricOption, showSQLOption } = this.state
-        const showCustomInsteadOfNewQuestionText = showMetricOption
+        const showCustomInsteadOfNewQuestionText = showMetricOption || isAdmin
 
         if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
             return <LoadingAndErrorWrapper loading={true}/>
@@ -118,7 +118,7 @@ export class NewQueryOptions extends Component {
                 <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
                      <div className="flex align-center justify-center" style={{minHeight: "100%"}}>
                         <ol className="flex-full Grid Grid--guttersXl Grid--full sm-Grid--normal">
-                            { showMetricOption &&
+                            { (showMetricOption || isAdmin) &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/questions_illustration"
@@ -138,7 +138,7 @@ export class NewQueryOptions extends Component {
                                     to={this.getGuiQueryUrl}
                                 />
                             </li>
-                            { showSQLOption &&
+                            { (showSQLOption || isAdmin) &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/sql_illustration"
