@@ -102,13 +102,15 @@ export default class TableSearch extends Component {
         // TODO Atte Keinänen 8/22/17: If you call `/api/table/:id/table_metadata` it returns
         // all segments (also retired ones) and they are missing both `is_active` and `creator` props. Currently this
         // filters them out but we should definitely update the endpoints in the upcoming metadata API refactoring.
-        const segmentsList = metadata.segmentsList().filter(segment => segment.isActive() && segment.table)
+        const segmentsList = metadata.segmentsList()
+            .filter(segment => segment.isActive() && segment.table)
 
         return (
             <LoadingAndErrorWrapper loading={isLoading}>
                 {() => {
                     const sortedTables = _.chain(metadata.tables)
-                        .filter(({visibility_type}) => !visibility_type)
+                        // Don't include tables that are hidden or are part of Saved Questions virtual db
+                        .filter(({visibility_type, db}) => !visibility_type && !db.is_saved_questions)
                         .sortBy(({display_name}) => display_name.toLowerCase())
                         .map((table) => this.getTableInEntitySearchFormat(table, segmentsList))
                         .value()
