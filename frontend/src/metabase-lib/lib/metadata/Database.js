@@ -6,6 +6,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 
+import { memoize } from "metabase-lib/lib/utils";
 import _ from "underscore";
 
 import type { SchemaName } from "metabase/meta/types/Table";
@@ -28,7 +29,7 @@ export default class Database extends Base {
         return this.tables.filter(table => table.schema === schemaName);
     }
 
-    schemaNames(): Array<SchemaName> {
+    @memoize schemaNames(): Array<SchemaName> {
         return _.uniq(
             this.tables
                 .map(table => table.schema)

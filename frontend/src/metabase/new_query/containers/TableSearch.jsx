@@ -77,10 +77,10 @@ export default class TableSearch extends Component {
     }
 
     getTableInEntitySearchFormat = (table, segmentsList) => {
+        const dbHasMultipleSchemas = table.db.schemaNames().length > 1
         const descriptionJsx = <span>
-                <b>{table.db.engine}</b>
-                {table.db.engine && table.schema && ' - '}
-                {table.schema}
+                <b>{table.db.name}</b>
+                {dbHasMultipleSchemas && table.schema && ` - ${table.schema}`}
             </span>
         return {
             name: table.display_name,
