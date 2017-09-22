@@ -1,5 +1,5 @@
 (ns metabase.api.x-ray
-  (:require [compojure.core :refer [GET PUT]]
+  (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.feature-extraction
              [async :as async]
@@ -8,6 +8,7 @@
             [metabase.models
              [card :refer [Card]]
              [computation-job :refer [ComputationJob]]
+             [database :refer [Database] :as database]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
@@ -98,6 +99,21 @@
   (api/check-403 (costs/enable-xrays))
   (->> id
        (api/read-check Card)
+       (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                 max_computation_cost)})
+       fe/x-ray))
+
+(api/defendpoint POST "/query"
+  "Get x-ray of a query with no associated model."
+  [max_query_cost max_computation_cost :as {{:keys [database], :as query} :body}]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
+  (when-not (= database database/virtual-id)
+    (api/read-check Database database))
+  (->> {:dataset_query query}
+       (merge (card/query->database-and-table-ids query))
+       card/map->CardInstance
        (fe/extract-features {:max-cost (max-cost max_query_cost
                                                  max_computation_cost)})
        fe/x-ray))

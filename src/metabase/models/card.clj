@@ -143,7 +143,7 @@
 
 
 
-(defn- query->database-and-table-ids
+(defn query->database-and-table-ids
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
    other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
    normal queries."
