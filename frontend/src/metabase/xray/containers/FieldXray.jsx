@@ -36,6 +36,7 @@ import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
     fetchXray: () => void,
+    initialize: () => {},
     isLoading: boolean,
     xray: {
         table: Table,

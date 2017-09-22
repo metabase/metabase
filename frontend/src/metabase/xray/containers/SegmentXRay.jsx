@@ -29,6 +29,7 @@ import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
 
 type Props = {
     fetchXray: () => void,
+    initialize: () => {},
     constituents: [],
     xray: {
         table: Table,
