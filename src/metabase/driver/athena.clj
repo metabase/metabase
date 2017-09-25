@@ -1,5 +1,6 @@
 (ns metabase.driver.athena
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.string :as string]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [clojure
              [string :as str]
@@ -65,7 +66,10 @@
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query {:keys [read-fn] :as options}]
-  (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs {:identifiers identity}))))]
+  (let [current-read-fn (if read-fn
+                          read-fn
+                          (fn [rs]
+                            (into [] (jdbc/result-set-seq rs {:identifiers identity}))))]
     (log/info (format "Running Athena query : '%s'..." query))
     (with-open [con (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
                (let [athena-stmt (.createStatement con)]
@@ -115,7 +119,7 @@
 (defn- describe-database
   [driver {:keys [details] :as database}]
   (let [databases (->> (run-query database "SHOW DATABASES" {})
-                       (remove #(= (:database_name %) "default")) ; this table have permission issue if you use a role with limited permission
+                       ;(remove #(= (:database_name %) "default")) ; this table have permission issue if you use a role with limited permission
                        (map (fn [{:keys [database_name]}]
                               {:name database_name :schema nil}))
                        set)
@@ -128,9 +132,9 @@
                     set)]
     {:tables tables}))
 
-(defn- describe-table-fields
-  [database {:keys [name schema]}]
-  (set (for [{:keys [name type]} (run-query database (str "DESCRIBE " schema "." name ";") {:read-fn describe-all-database->clj})]
+(defn- describe-table-fields [database {:keys [name schema]}]
+  (set (for [{:keys [name type]} (run-query database (str "DESCRIBE " schema "." name ";")
+                                            {:read-fn describe-all-database->clj})]
          {:name name :base-type (or (column->base-type (keyword type))
                                     :type/*)})))
 
@@ -249,6 +253,17 @@
         v (:_col0 (first result))]
     (or v 0)))
 
+(defn- field-percent-urls [{field-name :name, :as field}]
+  (let [table             (field/table field)
+        {:keys [details]} (table/database table)
+        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
+                            (quote-name field-name)
+                            (quote+combine-names (:schema table) (:name table))
+                            (quote-name field-name))
+        result            (run-query {:details details :engine :athena} sql {})
+        v (:_col0 (first result))]
+    (if (= v "NaN") 0.0 v)))
+
 (defrecord AthenaDriver []
   clojure.lang.Named
   (getName [_] "Athena"))
@@ -292,8 +307,7 @@
           :active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly :%now);(constantly :%current_timestamp)
-          ;:date                      (u/drop-first-arg date)
+          :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg metabase.driver.presto/date)
           :excluded-schemas          (constantly #{"default"})
           :prepare-value             (u/drop-first-arg presto/prepare-value)

@@ -54,6 +54,7 @@
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.microsoft.sqlserver/mssql-jdbc "6.2.1.jre7"]    ; SQLServer JDBC driver. TODO - Switch this to `.jre8` once we officially switch to Java 8
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
+                 [com.amazonaws/aws-java-sdk "1.11.201"]
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
