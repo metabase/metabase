@@ -5,16 +5,25 @@ import {
     createThunkAction,
     handleActions
 } from 'metabase/lib/redux'
-import { RestfulRequest } from "metabase/lib/request";
+import { BackgroundJobRequest/*, RestfulRequest*/ } from "metabase/lib/request";
 
 import { XRayApi } from 'metabase/services'
 
+// What follows is usage of RestfulRequest and BackgroundJobRequest which
+// are interchangeable in terms of the method interface of the resulting object
+
 // RestfulRequest for conventional REST API endpoints
-const tableXrayRequest = new RestfulRequest({
-    endpoint: XRayApi.table_xray,
-    // Name of the entity in redux tree
-    entityName: 'xray',
-    // Prefix for REQUEST_STARTED, REQUEST_FAILED and REQUEST_SUCCESSFUL
+// const tableXrayRequest = new RestfulRequest({
+//     endpoint: XRayApi.table_xray,
+//     resultPropName: 'xray',
+//     actionPrefix: 'metabase/xray/table'
+// })
+
+// BackgroundJobRequest for
+const tableXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.async_table_xray,
+    statusEndpoint: XRayApi.async_status,
+    resultPropName: 'xray',
     actionPrefix: 'metabase/xray/table'
 })
 
@@ -120,7 +129,6 @@ export const XRAY_ERROR = 'metabase/xray/XRAY_ERROR'
 export const xrayError = createAction(XRAY_ERROR)
 
 export default handleActions({
-    // an example of using the async computation API
     ...tableXrayRequest.getReducers(),
 
     [INITIALIZE]: () => tableXrayRequest.getDefaultState(),

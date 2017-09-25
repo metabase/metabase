@@ -162,6 +162,9 @@ export const XRayApi = {
     segment_xray:                GET("/api/x-ray/segment/:segmentId"),
     card_xray:                   GET("/api/x-ray/card/:cardId"),
 
+    async_status:                GET("/api/x-ray/async/:jobId"),
+    async_table_xray:            GET("/api/x-ray/async/table/:tableId"),
+
     field_compare:               GET("/api/x-ray/compare/fields/:fieldId1/:fieldId2"),
     table_compare:               GET("/api/x-ray/compare/tables/:tableId1/:tableId2"),
     segment_compare:             GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2"),
