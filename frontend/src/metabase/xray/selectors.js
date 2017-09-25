@@ -4,6 +4,9 @@ import { normal } from 'metabase/lib/colors'
 export const getLoadingStatus = (state) =>
     state.xray.loading
 
+export const getIsAlreadyFetched = (state) =>
+    state.xray.fetched
+
 /* TODO - these can be collapsed into getXray */
 export const getFieldXray = (state) =>
     state.xray.xray && state.xray.xray.features

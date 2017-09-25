@@ -7,8 +7,18 @@ import {
     createThunkAction,
     handleActions
 } from 'metabase/lib/redux'
+import { RestfulRequest } from "metabase/lib/request";
 
 import { XRayApi } from 'metabase/services'
+
+// RestfulRequest for conventional REST API endpoints
+const tableXrayRequest = new RestfulRequest({
+    endpoint: XRayApi.table_xray,
+    // Name of the entity in redux tree
+    entityName: 'xray',
+    // Prefix for REQUEST_STARTED, REQUEST_FAILED and REQUEST_SUCCESSFUL
+    actionPrefix: 'metabase/xray/table'
+})
 
 export const FETCH_FIELD_XRAY = 'metabase/xray/FETCH_FIELD_XRAY'
 export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost) =>
@@ -26,10 +36,8 @@ export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost
 export const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
 export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost) =>
     async (dispatch) => {
-        dispatch(startLoad())
         try {
-            const xray = await XRayApi.table_xray({ tableId, ...cost.method })
-            return dispatch(loadXray(xray))
+            await dispatch(tableXrayRequest.trigger({ tableId, ...cost.method }))
         } catch (error) {
             console.error(error)
         }
@@ -200,6 +208,9 @@ export const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
 export const loadComparison = createAction(LOAD_COMPARISON)
 
 export default handleActions({
+    // an example of using the async computation API
+    ...tableXrayRequest.getReducers(),
+
     [START_LOAD]: {
         next: (state, { payload }) => assoc(state, 'loading', true)
     },
@@ -218,6 +229,4 @@ export default handleActions({
                 .value()
     }
 
-}, {
-    loading: false
-})
+}, tableXrayRequest.getDefaultState())

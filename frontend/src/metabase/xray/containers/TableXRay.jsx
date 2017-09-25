@@ -15,7 +15,8 @@ import Constituent from 'metabase/xray/components/Constituent'
 import {
     getTableConstituents,
     getTableXray,
-    getLoadingStatus
+    getLoadingStatus,
+    getIsAlreadyFetched
 } from 'metabase/xray/selectors'
 
 import Icon from 'metabase/components/Icon'
@@ -24,7 +25,7 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { hasXray, loadingMessages } from 'metabase/xray/utils'
+import { loadingMessages } from 'metabase/xray/utils'
 
 type Props = {
     constituents: [],
@@ -42,7 +43,8 @@ type Props = {
 const mapStateToProps = state => ({
     xray: getTableXray(state),
     constituents: getTableConstituents(state),
-    isLoading: getLoadingStatus(state)
+    isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state)
 })
 
 const mapDispatchToProps = {
@@ -80,13 +82,13 @@ class TableXRay extends Component {
     }
 
     render () {
-        const { constituents, xray, params, isLoading } = this.props
+        const { constituents, xray, params, isLoading, isAlreadyFetched } = this.props
         const { error } = this.state
 
         return (
             <XRayPageWrapper>
                 <LoadingAndErrorWrapper
-                    loading={isLoading || !hasXray(xray)}
+                    loading={isLoading || !isAlreadyFetched}
                     error={error}
                     noBackground
                     loadingMessages={loadingMessages}
