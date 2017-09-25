@@ -75,6 +75,10 @@
   [a b]
   {:difference 1})
 
+(defmethod difference [nil nil]
+  [a b]
+  {:difference 0})
+
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
    http://www.aip.de/groups/soe/local/numres/bookcpdf/c14-3.pdf"

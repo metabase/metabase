@@ -4,19 +4,18 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchTableXray } from 'metabase/xray/xray'
+import { fetchTableXray, initialize } from 'metabase/xray/xray'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-
-import COSTS from 'metabase/xray/costs'
 
 import CostSelect from 'metabase/xray/components/CostSelect'
 import Constituent from 'metabase/xray/components/Constituent'
 
 import {
     getTableConstituents,
-    getTableXray,
     getLoadingStatus,
-    getIsAlreadyFetched
+    getIsAlreadyFetched,
+    getFeatures,
+    getError
 } from 'metabase/xray/selectors'
 
 import Icon from 'metabase/components/Icon'
@@ -25,11 +24,12 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { loadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 
 type Props = {
-    constituents: [],
     fetchTableXray: () => void,
+    initialize: () => {},
+    constituents: [],
     isLoading: boolean,
     xray: {
         table: Table
@@ -37,64 +37,65 @@ type Props = {
     params: {
         tableId: number,
         cost: string
-    }
+    },
+    error: {}
 }
 
 const mapStateToProps = state => ({
-    xray: getTableXray(state),
+    xray: getFeatures(state),
     constituents: getTableConstituents(state),
     isLoading: getLoadingStatus(state),
-    isAlreadyFetched: getIsAlreadyFetched(state)
+    isAlreadyFetched: getIsAlreadyFetched(state),
+    error: getError(state)
 })
 
 const mapDispatchToProps = {
+    initialize,
     fetchTableXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ xray }) => xray && xray.table.display_name || "Table")
 class TableXRay extends Component {
+
     props: Props
 
-    state = {
-        error: null
+    componentWillMount () {
+        this.props.initialize()
+        this.fetch()
     }
 
-    componentDidMount () {
-        this.fetchTableXray()
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
-    async fetchTableXray () {
-        const { params } = this.props
-        // TODO this should happen at the action level
-        const cost = COSTS[params.cost]
-        try {
-            await this.props.fetchTableXray(params.tableId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+    fetch () {
+        const { params, fetchTableXray } = this.props
+        fetchTableXray(params.tableId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchTableXray()
+            this.fetch()
         }
     }
 
     render () {
-        const { constituents, xray, params, isLoading, isAlreadyFetched } = this.props
-        const { error } = this.state
+        const { constituents, xray, params, isLoading, isAlreadyFetched, error } = this.props
 
         return (
-            <XRayPageWrapper>
-                <LoadingAndErrorWrapper
-                    loading={isLoading || !isAlreadyFetched}
-                    error={error}
-                    noBackground
-                    loadingMessages={loadingMessages}
-                    loadingScenes={[<LoadingAnimation />]}
-                >
-                    { () =>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !isAlreadyFetched}
+                error={error}
+                noBackground
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="my4 flex align-center py2">
                                 <div>
@@ -124,9 +125,9 @@ class TableXRay extends Component {
                                 )}
                             </ol>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }
