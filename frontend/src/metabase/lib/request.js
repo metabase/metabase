@@ -99,48 +99,84 @@ export class BackgroundJobRequest {
     }
 
     // Triggers the request; modelled as a Redux thunk action so wrap this to `dispatch()` call
-    trigger = (params) =>
-        async (dispatch) => {
-            if (this.pollingTimeoutId) {
-                clearTimeout(this.pollingTimeoutId);
-            }
-
+    trigger = (params) => {
+        return async (dispatch) => {
             dispatch.action(this.actions.requestStarted)
 
-            let jobId = null
-            try {
-                jobId = (await this.creationEndpoint(params))["job-id"]
-                // NOTE: Should successful triggering dispatch an action (for helping debugging)?
-            } catch(error) {
-                // NOTE: Should this have a separate action like `CREATE_BACKGROUND_JOB_FAILED`?
-                dispatch.action(this.actions.requestFailed, { error })
-                throw error;
-            }
+            const restoredJobId = this._restoreSavedJobId()
 
-            return new Promise((resolve, reject) => {
-                const poll = async () => {
-                    try {
-                        const response = await this.statusEndpoint({ jobId })
-
-                        if (response.status === 'done') {
-                            dispatch.action(this.actions.requestSuccessful, { result: response.result })
-                        } else if (response.status === 'result-not-available') {
-                            // The job result has been deleted; this is an unexpected state as we just
-                            // created the job so simply throw a descriptive error
-                            reject(new Error("Background job result isn't available for an unknown reason"))
-                        } else {
-                            this.pollingTimeoutId = setTimeout(poll, POLLING_INTERVAL)
-                        }
-                    } catch (error) {
-                        this.pollingTimeoutId = null
-                        dispatch.action(this.actions.requestFailed, {error})
-                        reject(error)
+            if (restoredJobId) {
+                try {
+                    const result = await this._pollForResult(restoredJobId)
+                    dispatch.action(this.actions.requestSuccessful, { result })
+                } catch(error) {
+                    if (error instanceof ResultNoAvailableError) {
+                        // If the result is not available anymore, retrigger the job
+                        this._removeSavedJobId()
+                        this.trigger(params)(dispatch)
+                    } else {
+                        dispatch.action(this.actions.requestFailed, { error })
                     }
                 }
-
-                poll()
-            })
+            } else {
+                try {
+                    const newJobId = await this._createNewJob(params)
+                    this._saveJobId(newJobId)
+                    const result = await this._pollForResult(newJobId)
+                    dispatch.action(this.actions.requestSuccessful, { result })
+                } catch(error) {
+                    dispatch.action(this.actions.requestFailed, { error })
+                }
+            }
         }
+    }
+
+    // TODO: Take parameters into account in local saving
+
+    _restoreSavedJobId = () => {
+        return localStorage.getItem(this.actionPrefix)
+    }
+
+    _saveJobId = (jobId) => {
+        localStorage.setItem(this.actionPrefix, jobId)
+    }
+
+    _removeSavedJobId = () => {
+        localStorage.removeItem(this.actionPrefix)
+    }
+
+    _createNewJob = async (requestParams) => {
+        return (await this.creationEndpoint(requestParams))["job-id"]
+    }
+
+    _pollForResult = (jobId) => {
+        if (this.pollingTimeoutId) {
+            clearTimeout(this.pollingTimeoutId);
+        }
+
+        return new Promise((resolve, reject) => {
+            const poll = async () => {
+                try {
+                    const response = await this.statusEndpoint({ jobId })
+
+                    if (response.status === 'done') {
+                        resolve(response.result)
+                    } else if (response.status === 'result-not-available') {
+                        // The job result has been deleted; this is an unexpected state as we just
+                        // created the job so simply throw a descriptive error
+                        reject(new ResultNoAvailableError())
+                    } else {
+                        this.pollingTimeoutId = setTimeout(poll, POLLING_INTERVAL)
+                    }
+                } catch (error) {
+                    this.pollingTimeoutId = null
+                    reject(error)
+                }
+            }
+
+            poll()
+        })
+    }
 
     reset = () => (dispatch) => dispatch(this.actions.reset)
 
@@ -166,4 +202,11 @@ export class BackgroundJobRequest {
         fetched: false,
         error: null
     })
+}
+
+class ResultNoAvailableError extends Error {
+    constructor() {
+        super()
+        this.message = "Background job result isn't available for an unknown reason"
+    }
 }
