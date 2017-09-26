@@ -68,3 +68,11 @@
        :result (:payload result)}
       {:status :result-not-available})
     {:status (:status job)}))
+
+(defn running-jobs-user
+  "Get all running jobs for a given user."
+  ([] (running-jobs-user api/*current-user-id*))
+  ([uid]
+   (db/select ComputationJob
+     :creator_id uid
+     :status     "running")))

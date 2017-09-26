@@ -1,13 +1,13 @@
 (ns metabase.api.x-ray
-  (:require [compojure.core :refer [GET PUT]]
+  (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.feature-extraction
              [async :as async]
              [core :as fe]
              [costs :as costs]]
             [metabase.models
-             [card :refer [Card]]
-             [computation-job :refer [ComputationJob]]
+             [card :refer [Card] :as card]
+             [database :refer [Database] :as database]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
@@ -34,183 +34,113 @@
    {:query       (keyword query)
     :computation (keyword computation)}))
 
-(api/defendpoint GET "/field/:id"
-  "Get x-ray for a `Field` with ID."
-  [id max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (->> id
-       (api/read-check Field)
-       (fe/extract-features {:max-cost (max-cost max_query_cost
-                                                 max_computation_cost)})
-       fe/x-ray))
+(def ^:private ->model
+  {"field"    Field
+   "segment"  Segment
+   "table"    Table
+   "card"     Card
+   "segments" Segment
+   "tables"   Table
+   "cards"    Card
+   "fields"   Field})
 
-(api/defendpoint GET "/table/:id"
-  "Get x-ray for a `Table` with ID."
-  [id max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (->> id
-       (api/read-check Table)
-       (fe/extract-features {:max-cost (max-cost max_query_cost
-                                                 max_computation_cost)})
-       fe/x-ray))
+(def ^:private Model
+  (apply s/enum (keys ->model)))
 
-(api/defendpoint GET "/async/table/:id"
-  "Get x-ray for a `Table` with ID."
-  [id max_query_cost max_computation_cost]
+(api/defendpoint GET "/:model/:id"
+  "Get x-ray for model of type `:model` with id `:id`."
+  [id model max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
+   max_computation_cost MaxComputationCost
+   model                Model}
   (api/check-403 (costs/enable-xrays))
-  (let [table (api/read-check Table id)]
+  (let [model (api/read-check (->model model) id)]
     {:job-id (async/compute
-              #(->> table
-                    (fe/extract-features {:max-cost (max-cost max_query_cost
-                                                              max_computation_cost)})
+              #(->> model
+                    (fe/extract-features
+                     {:max-cost (max-cost max_query_cost max_computation_cost)})
                     fe/x-ray))}))
 
-(api/defendpoint GET "/async/:id"
-  "Get result of async computation job with ID."
-  [id]
-  (->> id
-       (api/read-check ComputationJob)
-       async/result))
-
-(api/defendpoint GET "/segment/:id"
-  "Get x-ray for a `Segment` with ID."
-  [id max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/:models/:id1/:id2"
+  "Get comparison x-ray for two models of type `:models` with ids :id1 and id2."
+  [models id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
+   max_computation_cost MaxComputationCost
+   models               Model}
   (api/check-403 (costs/enable-xrays))
-  (->> id
-       (api/read-check Segment)
-       (fe/extract-features {:max-cost (max-cost max_query_cost
-                                                 max_computation_cost)})
-       fe/x-ray))
+  (let [model1 (api/read-check (->model models) (Integer/parseInt id1))
+        model2 (api/read-check (->model models) (Integer/parseInt id2))]
+    {:job-id (async/compute
+              #(fe/x-ray
+                (fe/compare-features
+                 {:max-cost (max-cost max_query_cost max_computation_cost)}
+                 model1
+                 model2)))}))
 
-(api/defendpoint GET "/card/:id"
-  "Get x-ray for a `Card` with ID."
-  [id max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/:model1/:id1/model2/:id2"
+  "Get comparison x-ray for two models of types `:model1` and `:model2` with
+   ids `:id1` and `id2`."
+  [model1 model2 id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
+   max_computation_cost MaxComputationCost
+   model1               Model
+   model2               Model}
   (api/check-403 (costs/enable-xrays))
-  (->> id
-       (api/read-check Card)
-       (fe/extract-features {:max-cost (max-cost max_query_cost
-                                                 max_computation_cost)})
-       fe/x-ray))
+  (let [model1 (api/read-check (->model model1) (Integer/parseInt id1))
+        model2 (api/read-check (->model model2) (Integer/parseInt id2))]
+    {:job-id (async/compute
+              #(fe/x-ray
+               (fe/compare-features
+                {:max-cost (max-cost max_query_cost max_computation_cost)}
+                model1
+                model2)))}))
 
-(api/defendpoint GET "/compare/fields/:id1/:id2"
-  "Get comparison x-ray for `Field`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/:model/:id1/:id2/field/:field"
+  "Get comparison x-ray for `Field` named `field` from models of type `:model`
+   with ids `:id1` and `:id2`."
+  [model id1 id2 field max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
+   max_computation_cost MaxComputationCost
+   model                Model}
   (api/check-403 (costs/enable-xrays))
-  (->> [id1 id2]
-       (map #(api/read-check Field (Integer/parseInt %)))
-       (apply fe/compare-features
-              {:max-cost (max-cost max_query_cost max_computation_cost)})
-       fe/x-ray))
+  (let [model1 (api/read-check (->model model) (Integer/parseInt id1))
+        model2 (api/read-check (->model model) (Integer/parseInt id2))]
+    {:job-id (async/compute
+              #(let [{:keys [comparison constituents]}
+                     (fe/x-ray
+                      (fe/compare-features
+                       {:max-cost (max-cost max_query_cost max_computation_cost)}
+                       model1
+                       model2))]
+                {:constituents     constituents
+                 :comparison       (-> comparison (get field))
+                 :top-contributors (-> comparison
+                                       (get field)
+                                       :top-contributors)}))}))
 
-(api/defendpoint GET "/compare/tables/:id1/:id2"
-  "Get comparison x-ray for `Table`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/:model1/:id1/model2/:id2/field/:field"
+  "Get comparison x-ray for `Field` named `field` from models of types
+   `:model1` and `model2` with ids `:id1` and `:id2`."
+  [model1 model2 id1 id2 field max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
+   max_computation_cost MaxComputationCost
+   model1               Model
+   model2               Model}
   (api/check-403 (costs/enable-xrays))
-  (->> [id1 id2]
-       (map #(api/read-check Table (Integer/parseInt %)))
-       (apply fe/compare-features
-              {:max-cost (max-cost max_query_cost max_computation_cost)})
-       fe/x-ray))
-
-(api/defendpoint GET "/compare/tables/:id1/:id2/field/:field"
-  "Get comparison x-ray for `Field` named `field` from `Table`s with ID1 and
-   ID2."
-  [id1 id2 field max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (let [{:keys [comparison constituents]}
-        (->> [id1 id2]
-             (map #(api/read-check Table (Integer/parseInt %)))
-             (apply fe/compare-features
-                    {:max-cost (max-cost max_query_cost max_computation_cost)})
-             fe/x-ray)]
-    {:constituents     constituents
-     :comparison       (-> comparison (get field))
-     :top-contributors (-> comparison (get field) :top-contributors)}))
-
-;; (api/defendpoint GET "/compare/cards/:id1/:id2"
-;;   "Get comparison x-ray for `Card`s with ID1 and ID2."
-;;   [id1 id2 max_query_cost max_computation_cost]
-;;   {max_query_cost       MaxQueryCost
-;;    max_computation_cost MaxComputationCost}
-;;   (->> [id1 id2]
-;;        (map (partial api/read-check Card))
-;;        (apply fe/compare-features
-;;               {:max-cost (max-cost max_query_cost max_computation_cost)})
-;;        fe/x-ray))
-
-(api/defendpoint GET "/compare/segments/:id1/:id2"
-  "Get comparison x-ray for `Segment`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (->> [id1 id2]
-       (map #(api/read-check Segment (Integer/parseInt %)))
-       (apply fe/compare-features
-              {:max-cost (max-cost max_query_cost max_computation_cost)})
-       fe/x-ray))
-
-(api/defendpoint GET "/compare/segments/:id1/:id2/field/:field"
-  "Get comparison x-ray for `Field` named `field` from `Segment`s with
-   ID1 and ID2."
-  [id1 id2 field max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (let [{:keys [comparison constituents]}
-        (->> [id1 id2]
-             (map #(api/read-check Segment (Integer/parseInt %)))
-             (apply fe/compare-features
-                    {:max-cost (max-cost max_query_cost max_computation_cost)})
-             fe/x-ray)]
-    {:constituents     constituents
-     :comparison       (-> comparison (get field))
-     :top-contributors (-> comparison (get field) :top-contributors)}))
-
-(api/defendpoint GET "/compare/segment/:sid/table/:tid"
-  "Get comparison x-ray for `Segment` and `Table`."
-  [sid tid max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (fe/x-ray
-   (fe/compare-features
-    {:max-cost (max-cost max_query_cost max_computation_cost)}
-    (api/read-check Segment sid)
-    (api/read-check Table tid))))
-
-(api/defendpoint GET "/compare/segment/:sid/table/:tid/field/:field"
-  "Get comparison x-ray for `Field` named `field` from `Segment` `SID` and table
-   `TID`."
-  [sid tid field max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost}
-  (api/check-403 (costs/enable-xrays))
-  (let [{:keys [comparison constituents]}
-        (fe/x-ray
-         (fe/compare-features
-          {:max-cost (max-cost max_query_cost max_computation_cost)}
-          (api/read-check Segment sid)
-          (api/read-check Table tid)))]
-    {:constituents     constituents
-     :comparison       (-> comparison (get field))
-     :top-contributors (-> comparison (get field) :top-contributors)}))
+  (let [model1 (api/read-check (->model model1) (Integer/parseInt id1))
+        model2 (api/read-check (->model model2) (Integer/parseInt id2))]
+    {:job-id (async/compute
+              #(let [{:keys [comparison constituents]}
+                     (fe/x-ray
+                      (fe/compare-features
+                       {:max-cost (max-cost max_query_cost max_computation_cost)}
+                       model1
+                       model2))]
+                {:constituents     constituents
+                 :comparison       (-> comparison (get field))
+                 :top-contributors (-> comparison
+                                       (get field)
+                                       :top-contributors)}))}))
 
 (api/defendpoint GET "/compare/valid-pairs"
   "Get a list of model pairs that can be compared."

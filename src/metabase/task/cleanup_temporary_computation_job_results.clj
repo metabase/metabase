@@ -16,7 +16,7 @@
     :created_at [:< (-> (t/now)
                         (t/minus temporary-result-lifetime)
                         str)]
-    :permanence :temporary))
+    :permanence "temporary"))
 
 (def ^:private ^:const cleanup-job-key     "metabase.task.cleanup-temporary-computation-job-results.job")
 (def ^:private ^:const cleanup-trigger-key "metabase.task.cleanup-temporary-computation-job-results.trigger")
