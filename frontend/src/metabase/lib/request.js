@@ -103,7 +103,7 @@ export class BackgroundJobRequest {
         return async (dispatch) => {
             dispatch.action(this.actions.requestStarted)
 
-            const restoredJobId = this._restoreSavedJobId()
+            const restoredJobId = this._restoreSavedJobId(params)
 
             if (restoredJobId) {
                 try {
@@ -112,7 +112,7 @@ export class BackgroundJobRequest {
                 } catch(error) {
                     if (error instanceof ResultNoAvailableError) {
                         // If the result is not available anymore, retrigger the job
-                        this._removeSavedJobId()
+                        this._removeSavedJobId(params)
                         this.trigger(params)(dispatch)
                     } else {
                         dispatch.action(this.actions.requestFailed, { error })
@@ -121,7 +121,7 @@ export class BackgroundJobRequest {
             } else {
                 try {
                     const newJobId = await this._createNewJob(params)
-                    this._saveJobId(newJobId)
+                    this._saveJobId(params, newJobId)
                     const result = await this._pollForResult(newJobId)
                     dispatch.action(this.actions.requestSuccessful, { result })
                 } catch(error) {
@@ -133,16 +133,20 @@ export class BackgroundJobRequest {
 
     // TODO: Take parameters into account in local saving
 
-    _restoreSavedJobId = () => {
-        return localStorage.getItem(this.actionPrefix)
+    _restoreSavedJobId = (params) => {
+        return localStorage.getItem(this._getLocalStorageKey(params))
     }
 
-    _saveJobId = (jobId) => {
-        localStorage.setItem(this.actionPrefix, jobId)
+    _saveJobId = (params, jobId) => {
+        localStorage.setItem(this._getLocalStorageKey(params), jobId)
     }
 
-    _removeSavedJobId = () => {
-        localStorage.removeItem(this.actionPrefix)
+    _removeSavedJobId = (params) => {
+        localStorage.removeItem(this._getLocalStorageKey(params))
+    }
+
+    _getLocalStorageKey = (params) => {
+        return `${this.actionPrefix}/${JSON.stringify(params)}`
     }
 
     _createNewJob = async (requestParams) => {
