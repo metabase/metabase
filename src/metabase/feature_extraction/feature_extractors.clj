@@ -512,31 +512,6 @@
           (assoc :earliest (h.impl/minimum histogram)
                  :latest   (h.impl/maximum histogram)))))))
 
-(defn- round-to-month
-  [dt]
-  (t/floor dt t/month))
-
-(defn- month-frequencies
-  [earliest latest]
-  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
-       (take-while (complement (partial t/before? latest)))
-       (map t/month)
-       frequencies))
-
-(defn- quarter-frequencies
-  [earliest latest]
-  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
-       (take-while (complement (partial t/before? latest)))
-       (m/distinct-by (juxt t/year quarter))
-       (map quarter)
-       frequencies))
-
-(defn- weigh-periodicity
-  [weights card]
-  (let [baseline (apply min (vals weights))]
-    (update card :rows (partial map (fn [[k v]]
-                                      [k (/ (* v baseline) (weights k))])))))
-
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
   (let [earliest (from-double earliest)
@@ -564,10 +539,7 @@
                                              {:name         "MONTH"
                                               :display_name "Month of year"
                                               :base_type    :type/Integer
-                                              :special_type :type/Category})
-                                            (weigh-periodicity
-                                             (month-frequencies earliest
-                                                                latest))))))
+                                              :special_type :type/Category})))))
         (update :histogram-quarter (fn [histogram]
                                      (when-not (h/empty? histogram)
                                        (->> histogram
@@ -575,10 +547,7 @@
                                              {:name         "QUARTER"
                                               :display_name "Quarter of year"
                                               :base_type    :type/Integer
-                                              :special_type :type/Category})
-                                            (weigh-periodicity
-                                             (quarter-frequencies earliest
-                                                                  latest)))))))))
+                                              :special_type :type/Category}))))))))
 
 (defmethod feature-extractor Category
   [_ field]
