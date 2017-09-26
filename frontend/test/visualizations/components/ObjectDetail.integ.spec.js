@@ -10,6 +10,7 @@ import {
 } from "__support__/enzyme_utils"
 
 import { mount } from 'enzyme'
+import { delay } from 'metabase/lib/promise'
 
 import {
     INITIALIZE_QB,
@@ -42,6 +43,7 @@ describe('ObjectDetail', () => {
             const app = mount(store.getAppContainer());
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+            await delay(100); // Trying to address random CI failures with a small delay
 
             expect(app.find('.ObjectDetail h1').text()).toEqual("2")
 
@@ -49,12 +51,14 @@ describe('ObjectDetail', () => {
             click(previousObjectTrigger)
 
             await store.waitForActions([QUERY_COMPLETED]);
+            await delay(100); // Trying to address random CI failures with a small delay
 
             expect(app.find('.ObjectDetail h1').text()).toEqual("1")
             const nextObjectTrigger = app.find('.Icon.Icon-forwardArrow')
             click(nextObjectTrigger)
 
             await store.waitForActions([QUERY_COMPLETED]);
+            await delay(100); // Trying to address random CI failures with a small delay
 
             expect(app.find('.ObjectDetail h1').text()).toEqual("2")
 
@@ -63,11 +67,13 @@ describe('ObjectDetail', () => {
             // left arrow
             dispatchBrowserEvent('keydown', { key: 'ArrowLeft' })
             await store.waitForActions([QUERY_COMPLETED]);
+            await delay(100); // Trying to address random CI failures with a small delay
             expect(app.find('.ObjectDetail h1').text()).toEqual("1")
 
             // left arrow
             dispatchBrowserEvent('keydown', { key: 'ArrowRight' })
             await store.waitForActions([QUERY_COMPLETED]);
+            await delay(100); // Trying to address random CI failures with a small delay
             expect(app.find('.ObjectDetail h1').text()).toEqual("2")
         })
     })
