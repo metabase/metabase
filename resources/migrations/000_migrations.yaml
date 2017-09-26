@@ -3836,8 +3836,10 @@ databaseChangeLog:
       id: 66
       author: senior
       comment: 'Added 0.26.0'
+      validCheckSum: '7:e494c2c90fe5c377526da7a6e5ad63a2'
+      validCheckSum: '7:76d06b44a544105c2a613603b8bdf25f'
       changes:
         - sql:
-            sql: drop table if exists computation_job cascade
-        - sql:
             sql: drop table if exists computation_job_result cascade
+        - sql:
+            sql: drop table if exists computation_job cascade
