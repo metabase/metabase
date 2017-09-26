@@ -11,7 +11,7 @@ import CostSelect from 'metabase/xray/components/CostSelect'
 import Constituent from 'metabase/xray/components/Constituent'
 
 import {
-    getTableConstituents,
+    getConstituents,
     getLoadingStatus,
     getIsAlreadyFetched,
     getFeatures,
@@ -43,7 +43,7 @@ type Props = {
 
 const mapStateToProps = state => ({
     xray: getFeatures(state),
-    constituents: getTableConstituents(state),
+    constituents: getConstituents(state),
     isLoading: getLoadingStatus(state),
     isAlreadyFetched: getIsAlreadyFetched(state),
     error: getError(state)

@@ -62,11 +62,9 @@ export default class LoadingAndErrorWrapper extends Component {
     }
 
     loadingInterval = () => {
-        this.cycleLoadingMessage()
-    }
-
-    cycleLoadingScenes = () => {
-
+        if (this.props.loading) {
+            this.cycleLoadingMessage()
+        }
     }
 
     getChildren() {
