@@ -32,8 +32,8 @@ export class RestfulRequest {
                 const result = await this.endpoint(params)
                 dispatch.action(this.actions.requestSuccessful, { result })
             } catch(error) {
+                console.error(error)
                 dispatch.action(this.actions.requestFailed, { error })
-                throw error;
             }
 
         }
