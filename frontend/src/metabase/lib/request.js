@@ -115,6 +115,7 @@ export class BackgroundJobRequest {
                         this._removeSavedJobId(params)
                         this.trigger(params)(dispatch)
                     } else {
+                        console.error(error)
                         dispatch.action(this.actions.requestFailed, { error })
                     }
                 }
@@ -125,6 +126,7 @@ export class BackgroundJobRequest {
                     const result = await this._pollForResult(newJobId)
                     dispatch.action(this.actions.requestSuccessful, { result })
                 } catch(error) {
+                    console.error(error)
                     dispatch.action(this.actions.requestFailed, { error })
                 }
             }
@@ -134,15 +136,16 @@ export class BackgroundJobRequest {
     // TODO: Take parameters into account in local saving
 
     _restoreSavedJobId = (params) => {
-        return localStorage.getItem(this._getLocalStorageKey(params))
+        // We don't want to mock localStorage in every test so disable job ID saving if localStorage is missing
+        return window.localStorage && localStorage.getItem(this._getLocalStorageKey(params))
     }
 
     _saveJobId = (params, jobId) => {
-        localStorage.setItem(this._getLocalStorageKey(params), jobId)
+        window.localStorage && localStorage.setItem(this._getLocalStorageKey(params), jobId)
     }
 
     _removeSavedJobId = (params) => {
-        localStorage.removeItem(this._getLocalStorageKey(params))
+        window.localStorage && localStorage.removeItem(this._getLocalStorageKey(params))
     }
 
     _getLocalStorageKey = (params) => {

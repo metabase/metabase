@@ -38,6 +38,7 @@ type Props = {
     fetchFieldXray: () => void,
     initialize: () => {},
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table,
         field: Field,

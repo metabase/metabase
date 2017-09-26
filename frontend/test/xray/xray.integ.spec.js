@@ -15,7 +15,7 @@ import {
 } from "metabase/services";
 
 import { delay } from "metabase/lib/promise";
-import { FETCH_XRAY, LOAD_XRAY } from "metabase/xray/xray";
+import { FETCH_CARD_XRAY, FETCH_FIELD_XRAY, FETCH_SEGMENT_XRAY, FETCH_TABLE_XRAY, LOAD_XRAY } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
 import TableXRay from "metabase/xray/containers/TableXRay";
@@ -87,7 +87,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/table/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_TABLE_XRAY], { timeout: 20000 })
 
             const tableXRay = app.find(TableXRay)
             expect(tableXRay.length).toBe(1)
@@ -103,7 +103,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/field/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_FIELD_XRAY, LOAD_XRAY], { timeout: 20000 })
 
             const fieldXRay = app.find(FieldXray)
             expect(fieldXRay.length).toBe(1)
@@ -118,7 +118,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/table/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_TABLE_XRAY], { timeout: 20000 })
 
             const tableXray = app.find(TableXRay)
             expect(tableXray.length).toBe(1)
@@ -127,7 +127,7 @@ describe("xray integration tests", () => {
 
             click(fieldLink)
 
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_FIELD_XRAY, LOAD_XRAY], { timeout: 20000 })
             const fieldXray = app.find(FieldXray)
             expect(fieldXray.length).toBe(1)
 
@@ -159,7 +159,7 @@ describe("xray integration tests", () => {
             click(xrayOptionIcon);
 
 
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], {timeout: 5000})
+            await store.waitForActions([FETCH_CARD_XRAY, LOAD_XRAY], {timeout: 5000})
             expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
@@ -179,7 +179,7 @@ describe("xray integration tests", () => {
             const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
             click(xrayOptionIcon);
 
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 5000 })
+            await store.waitForActions([FETCH_SEGMENT_XRAY, LOAD_XRAY], { timeout: 5000 })
             expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`)
 
             const segmentXRay = app.find(SegmentXRay)
@@ -275,7 +275,7 @@ describe("xray integration tests", () => {
 
             store.pushPath(`/xray/table/1/approximate`);
 
-            await store.waitForActions(FETCH_XRAY, { timeout: 20000 })
+            await store.waitForActions(FETCH_TABLE_XRAY, { timeout: 20000 })
             await delay(200)
 
             const tableXRay = app.find(TableXRay)

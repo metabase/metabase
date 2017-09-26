@@ -9,24 +9,6 @@ import { BackgroundJobRequest/*, RestfulRequest*/ } from "metabase/lib/request";
 
 import { XRayApi } from 'metabase/services'
 
-// What follows is usage of RestfulRequest and BackgroundJobRequest which
-// are interchangeable in terms of the method interface of the resulting object
-
-// RestfulRequest for conventional REST API endpoints
-// const tableXrayRequest = new RestfulRequest({
-//     endpoint: XRayApi.table_xray,
-//     resultPropName: 'xray',
-//     actionPrefix: 'metabase/xray/table'
-// })
-
-// BackgroundJobRequest for
-const tableXrayRequest = new BackgroundJobRequest({
-    creationEndpoint: XRayApi.async_table_xray,
-    statusEndpoint: XRayApi.async_status,
-    resultPropName: 'xray',
-    actionPrefix: 'metabase/xray/table'
-})
-
 export const INITIALIZE = 'metabase/xray/INITIALIZE'
 export const initialize = createAction(INITIALIZE);
 
@@ -44,14 +26,15 @@ export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost
 )
 
 export const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
+const tableXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.async_table_xray,
+    statusEndpoint: XRayApi.async_status,
+    resultPropName: 'xray',
+    actionPrefix: FETCH_TABLE_XRAY
+})
 export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost) =>
-    async (dispatch) => {
-        try {
-            await dispatch(tableXrayRequest.trigger({ tableId, ...cost.method }))
-        } catch (error) {
-            console.error(error)
-        }
-    }
+    (dispatch) =>
+        dispatch(tableXrayRequest.trigger({ tableId, ...cost.method }))
 )
 
 export const FETCH_SEGMENT_XRAY = 'metabase/xray/FETCH_SEGMENT_XRAY'

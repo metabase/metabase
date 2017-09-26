@@ -40,6 +40,7 @@ type Props = {
         cost: string,
     },
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     error: {}
 }
 

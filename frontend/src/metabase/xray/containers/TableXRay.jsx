@@ -31,6 +31,7 @@ type Props = {
     initialize: () => {},
     constituents: [],
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table
     },
