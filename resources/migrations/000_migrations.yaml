@@ -3829,3 +3829,15 @@ databaseChangeLog:
           baseTableName: raw_table
           constraintName: fk_rawtable_ref_database
           remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'
+# Changeset 65 was accidentally released in 0.26.0.RC2. The changeset has been removed from the migrations list so that
+# users that haven't ran the migration (i.e. they didn't run 0.26.0.RC2) won't waste time running it just to have it
+# reversed. For 0.26.0.RC2 users, the below changeset will remove those tables if they are present
+  - changeSet:
+      id: 66
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - sql:
+            sql: drop table if exists computation_job cascade
+        - sql:
+            sql: drop table if exists computation_job_result cascade
