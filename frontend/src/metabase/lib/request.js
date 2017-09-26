@@ -124,6 +124,10 @@ export class BackgroundJobRequest {
 
                         if (response.status === 'done') {
                             dispatch.action(this.actions.requestSuccessful, { result: response.result })
+                        } else if (response.status === 'result-not-available') {
+                            // The job result has been deleted; this is an unexpected state as we just
+                            // created the job so simply throw a descriptive error
+                            reject(new Error("Background job result isn't available for an unknown reason"))
                         } else {
                             this.pollingTimeoutId = setTimeout(poll, POLLING_INTERVAL)
                         }
