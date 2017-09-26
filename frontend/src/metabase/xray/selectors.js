@@ -13,27 +13,11 @@ export const getXray = (state) =>
 export const getFeatures = (state) =>
     state.xray.xray && state.xray.xray.features
 
-/* TODO - these can be collapsed into getConstituents */
-export const getTableConstituents = (state) => {
-    return state.xray.xray && (
-        Object.keys(state.xray.xray.constituents).map(key =>
-            state.xray.xray.constituents[key]
-        )
-    )
-}
-export const getSegmentConstituents = (state) =>
-    state.xray.xray && (
-        Object.keys(state.xray.xray.constituents).map(key =>
-            state.xray.xray.constituents[key]
-        )
-    )
 
-export const getConstituents = (state) =>
-    state.xray.xray && (
-        Object.keys(state.xray.xray.constituents).map(key =>
-            state.xray.xray.constituents[key]
-        )
-    )
+export const getConstituents = createSelector(
+    [getXray],
+    (xray) => xray && Object.values(xray.constituents)
+)
 
 export const getComparison = (state) => state.xray.comparison
 
@@ -122,8 +106,6 @@ export const getTableItem = (state, index = 1) => createSelector(
         }
     }
 )(state)
-
-export const getComparisonForField = createSelector
 
 // see if xrays are enabled. unfortunately enabled can equal null so its enabled if its not false
 export const getXrayEnabled = state => {
