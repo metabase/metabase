@@ -4,32 +4,35 @@ import _ from 'underscore'
 
 import title from 'metabase/hoc/Title'
 
-import { fetchSegmentComparison } from 'metabase/xray/xray'
+import { fetchSegmentComparison, initialize } from 'metabase/xray/xray'
 import {
     getComparison,
     getComparisonFields,
     getComparisonContributors,
     getSegmentItem,
     getTitle,
-    getLoadingStatus
+    getLoadingStatus,
+    getError
 } from 'metabase/xray/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import XRayComparison from 'metabase/xray/components/XRayComparison'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
-import { hasComparison, loadingMessages } from 'metabase/xray/utils'
+import { hasComparison, comparisonLoadingMessages } from 'metabase/xray/utils'
 
 const mapStateToProps = (state) => ({
-    comparison: getComparison(state),
-    fields: getComparisonFields(state),
-    contributors: getComparisonContributors(state),
-    itemA: getSegmentItem(state, 0),
-    itemB: getSegmentItem(state, 1),
-    isLoading: getLoadingStatus(state)
+    comparison:     getComparison(state),
+    fields:         getComparisonFields(state),
+    contributors:   getComparisonContributors(state),
+    itemA:          getSegmentItem(state, 0),
+    itemB:          getSegmentItem(state, 1),
+    isLoading:      getLoadingStatus(state),
+    error:          getError(state)
 })
 
 const mapDispatchToProps = {
+    initialize,
     fetchSegmentComparison
 }
 
@@ -37,39 +40,37 @@ const mapDispatchToProps = {
 @title(props => getTitle(props))
 class SegmentComparison extends Component {
 
-    state = {
-        error: null
+    componentWillMount () {
+        const { cost, segmentId1, segmentId2 } = this.props.params
+        this.props.initialize()
+        this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
     }
 
-    async componentWillMount () {
-        const { cost, segmentId1, segmentId2 } = this.props.params
-        try {
-            await this.props.fetchSegmentComparison(segmentId1, segmentId2, cost)
-        } catch (error) {
-            console.log('error', error)
-            this.setState({ error })
-        }
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
     render () {
         const {
-            contributors,
-            params,
             comparison,
+            contributors,
+            error,
             fields,
+            isLoading,
             itemA,
             itemB,
-            isLoading
+            params,
         } = this.props
-
-        const { error } = this.state
 
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasComparison(comparison)}
                 error={error}
                 noBackground
-                loadingMessages={loadingMessages}
+                loadingMessages={comparisonLoadingMessages}
                 loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>

@@ -22,7 +22,12 @@ function has (entity) {
 export const hasXray = has
 export const hasComparison = has
 
-export const loadingMessages = [
+export const xrayLoadingMessages = [
+    'Generating your x-ray...',
+    'Still working...',
+]
+
+export const comparisonLoadingMessages = [
     'Generating your comparison...',
     'Still working...',
 ]

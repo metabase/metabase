@@ -11,7 +11,7 @@ const Periodicity = ({ xray }) =>
         <div className="bg-white bordered rounded shadowed">
             <div className="Grid Grid--gutters Grid--1of4">
                 { PERIODICITY.map(period =>
-                    xray[`histogram-${period}`] && (
+                    xray[`histogram-${period}`] && xray[`histogram-${period}`].value && (
                         <div className="Grid-cell">
                             <div className="p4 border-right border-bottom">
                                 <div style={{ height: 120}}>
