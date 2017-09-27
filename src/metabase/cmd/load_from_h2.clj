@@ -29,8 +29,6 @@
              [card-label :refer [CardLabel]]
              [collection :refer [Collection]]
              [collection-revision :refer [CollectionRevision]]
-             [computation-job :refer [ComputationJob]]
-             [computation-job-result :refer [ComputationJobResult]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -100,8 +98,6 @@
    CollectionRevision
    DashboardFavorite
    Dimension
-   ComputationJob
-   ComputationJobResult
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

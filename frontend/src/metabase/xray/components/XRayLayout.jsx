@@ -1,10 +1,14 @@
 import React from 'react'
 import { withBackground } from 'metabase/hoc/Background'
+import PreviewBanner from 'metabase/xray/components/PreviewBanner'
 
 // A small wrapper to get consistent page structure
 export const XRayPageWrapper = withBackground('bg-slate-extra-light')(({ children }) =>
-    <div className="XRayPageWrapper wrapper pb4 full-height">
-        { children }
+    <div className="full-height full">
+        <PreviewBanner />
+        <div className="XRayPageWrapper wrapper pb4 full-height">
+            { children }
+        </div>
     </div>
 )
 
