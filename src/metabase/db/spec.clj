@@ -23,7 +23,7 @@
     :as opts}]
   (merge {:classname "org.postgresql.Driver" ; must be in classpath
           :subprotocol "postgresql"
-          :subname (str "//" host ":" port "/" db)}
+          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true")}
          (dissoc opts :host :port :db)))
 
 (defn mysql
@@ -47,6 +47,6 @@
     :as opts}]
   (merge {:classname "com.amazon.redshift.jdbc.Driver" ; must be in classpath
           :subprotocol "redshift"
-          :subname (str "//" host ":" port "/" db)
+          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=false")
           :ssl true}
          (dissoc opts :host :port :db)))
