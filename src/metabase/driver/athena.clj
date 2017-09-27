@@ -119,7 +119,7 @@
 (defn- describe-database
   [driver {:keys [details] :as database}]
   (let [databases (->> (run-query database "SHOW DATABASES" {})
-                       ;(remove #(= (:database_name %) "default")) ; this table have permission issue if you use a role with limited permission
+                       (remove #(= (:database_name %) "default"))
                        (map (fn [{:keys [database_name]}]
                               {:name database_name :schema nil}))
                        set)
@@ -152,13 +152,6 @@
                   (map #(into [] %)))]
     {:columns columns
      :rows rows}))
-
-(def features
-  #{:basic-aggregations
-    :standard-deviation-aggregations
-    ;:expressions
-    ;:expression-aggregations
-    :native-parameters})
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
@@ -270,12 +263,11 @@
 
 (u/strict-extend AthenaDriver
   driver/IDriver
-  (merge driver/IDriverDefaultsMixin
+  (merge (sql/IDriverSQLDefaultsMixin)
          {:can-connect?              can-connect?
           :date-interval             (u/drop-first-arg presto/date-interval)
           :describe-database         describe-database
           :describe-table            describe-table
-          :describe-table-fks        (constantly nil)
           :details-fields (constantly (ssh/with-tunnel-config
                                        [{:name         "region"
                                          :display-name "Region"
@@ -297,10 +289,9 @@
                                          :placeholder  "*******"
                                          :required     true}]))
           :execute-query             execute-query
-          :features                 (constantly features)
+          :features                  (constantly #{:basic-aggregations :standard-deviation-aggregations :native-parameters})
           :mbql->native mbql->native
           :table-rows-seq (constantly nil)})
-
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-page                (u/drop-first-arg presto/apply-page)
@@ -314,6 +305,8 @@
           :quote-style               (constantly :ansi)
           :string-length-fn          (u/drop-first-arg presto/string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg presto/unix-timestamp->timestamp)}))
+
+
 
 (when (u/ignore-exceptions
        (Class/forName "com.amazonaws.athena.jdbc.AthenaDriver"))
