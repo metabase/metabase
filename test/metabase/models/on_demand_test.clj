@@ -142,7 +142,7 @@
 ;;; |                                                   DASHBOARDS                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private basic-mbql-query
+(defn- basic-mbql-query []
   {:database (data/id)
    :type     :query
    :query    {:source_table (data/id :venues)
@@ -157,7 +157,7 @@
     {:parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
 
 (defn- do-with-updated-fields-for-dashboard {:style/indent 1} [options & [f]]
-  (do-with-updated-fields-for-card (merge {:card {:dataset_query basic-mbql-query}}
+  (do-with-updated-fields-for-card (merge {:card {:dataset_query (basic-mbql-query)}}
                                           options)
     (fn [objects]
       (tt/with-temp Dashboard [dash]

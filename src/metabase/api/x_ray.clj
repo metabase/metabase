@@ -194,8 +194,8 @@
   "Get a list of model pairs that can be compared."
   []
   [["field" "field"]
-   ["segment" "segment"
-    "table" "table"
-    "segment" "table"]])
+   ["segment" "segment"]
+   ["table" "table"]
+   ["segment" "table"]])
 
 (api/define-routes)

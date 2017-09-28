@@ -23,7 +23,7 @@
     :as opts}]
   (merge {:classname "org.postgresql.Driver" ; must be in classpath
           :subprotocol "postgresql"
-          :subname (str "//" host ":" port "/" db)}
+          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true")}
          (dissoc opts :host :port :db)))
 
 (defn mysql
@@ -37,4 +37,16 @@
           :subprotocol "mysql"
           :subname (str "//" host ":" port "/" db)
           :delimiters "`"}
+         (dissoc opts :host :port :db)))
+
+(defn redshift
+  "Create a database specification for a redshift database. Opts should include
+  keys for :db, :user, and :password. You can also optionally set host and
+  port."
+  [{:keys [host port db]
+    :as opts}]
+  (merge {:classname "com.amazon.redshift.jdbc.Driver" ; must be in classpath
+          :subprotocol "redshift"
+          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=false")
+          :ssl true}
          (dissoc opts :host :port :db)))

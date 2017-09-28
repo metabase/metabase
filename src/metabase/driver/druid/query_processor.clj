@@ -1,5 +1,7 @@
 (ns metabase.driver.druid.query-processor
   (:require [cheshire.core :as json]
+            [clj-time.core :as time]
+            [clj-time.format :as tformat]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
@@ -9,7 +11,9 @@
              [annotate :as annotate]
              [interface :as i]]
             [metabase.util :as u])
-  (:import [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field RelativeDateTimeValue Value]))
+  (:import java.util.TimeZone
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field RelativeDateTimeValue Value]
+           org.joda.time.DateTimeZone))
 
 (def ^:private ^:const topN-max-results
   "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
@@ -724,24 +728,34 @@
   {:projections projections
    :results     results})
 
-(defmethod post-process ::select  [_ projections results]
-  (->> results
-       first
-       :result
-       :events
-       (map :event)
-       (post-process-map projections)))
+(def ^:private druid-ts-format (tformat/formatters :date-time))
 
-(defmethod post-process ::total   [_ projections results]
+(defn- reformat-timestamp [timestamp target-formatter]
+  (->> timestamp
+       (tformat/parse druid-ts-format)
+       (tformat/unparse target-formatter)))
+
+(defmethod post-process ::select  [_ projections timezone results]
+  (let [update-ts-fn (if-let [target-formater (and timezone (tformat/with-zone druid-ts-format timezone))]
+                       #(update % :timestamp reformat-timestamp target-formater)
+                       identity)]
+    (->> results
+         first
+         :result
+         :events
+         (map (comp update-ts-fn :event))
+         (post-process-map projections))))
+
+(defmethod post-process ::total   [_ projections timezone results]
   (post-process-map projections (map :result results)))
 
-(defmethod post-process ::topN    [_ projections results]
+(defmethod post-process ::topN    [_ projections timezone results]
   (post-process-map projections (-> results first :result)))
 
-(defmethod post-process ::groupBy [_ projections results]
+(defmethod post-process ::groupBy [_ projections timezone results]
   (post-process-map projections (map :event results)))
 
-(defmethod post-process ::timeseries [_ projections results]
+(defmethod post-process ::timeseries [_ projections timezone results]
   (post-process-map (conj projections :timestamp)
                     (for [event results]
                       (conj {:timestamp (:timestamp event)} (:result event)))))
@@ -791,9 +805,26 @@
                                     k)
             k))))
 
+(defn- utc?
+  "There are several timezone ids that mean UTC. This will create a
+  TimeZone object from `TIMEZONE` and check to see if it's a UTC
+  timezone"
+  [^DateTimeZone timezone]
+  (.hasSameRules (TimeZone/getTimeZone "UTC")
+                 (.toTimeZone timezone)))
+
+(defn- resolve-timezone
+  "Returns the timezone object (either report-timezone or JVM
+  timezone). Returns nil if the timezone is UTC as the timestamps from
+  Druid are already in UTC and don't need to be converted"
+  [{:keys [settings]}]
+  (let [tz (time/time-zone-for-id (:report-timezone settings (System/getProperty "user.timezone")))]
+    (when-not (utc? tz)
+      tz)))
+
 (defn execute-query
   "Execute a query for a Druid DB."
-  [do-query {database :database, {:keys [query query-type mbql? projections]} :native}]
+  [do-query {database :database, {:keys [query query-type mbql? projections]} :native :as query-ctx}]
   {:pre [database query]}
   (let [details       (:details database)
         query         (if (string? query)
@@ -802,7 +833,7 @@
         query-type    (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
         post-proc-map (->> query
                            (do-query details)
-                           (post-process query-type projections))
+                           (post-process query-type projections (resolve-timezone query-ctx)))
         columns       (if mbql?
                         (->> post-proc-map
                              :projections

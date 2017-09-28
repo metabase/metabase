@@ -28,7 +28,8 @@
    1
    1
    0
-   0.25]
+   0.25
+   0]
   (mapv :difference [(difference 1 2.0)
                      (difference 2.0 2.0)
                      (difference 2.0 nil)
@@ -37,7 +38,8 @@
                      (difference true false)
                      (difference false true)
                      (difference false false)
-                     (difference [1 0 1] [0 1 1])]))
+                     (difference [1 0 1] [0 1 1])
+                     (difference nil nil)]))
 
 (expect
   true
