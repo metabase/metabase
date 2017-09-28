@@ -13,16 +13,14 @@ export const INITIALIZE = 'metabase/xray/INITIALIZE'
 export const initialize = createAction(INITIALIZE);
 
 export const FETCH_FIELD_XRAY = 'metabase/xray/FETCH_FIELD_XRAY'
+const fieldXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.field_xray,
+    resultPropName: 'xray',
+    actionPrefix: FETCH_FIELD_XRAY
+})
 export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost) =>
-    async (dispatch) => {
-        dispatch(startLoad())
-        try {
-            const xray = await XRayApi.field_xray({ fieldId, ...cost.method })
-            return dispatch(loadXray(xray))
-        } catch (error) {
-            console.error(error)
-        }
-    }
+    (dispatch) =>
+        dispatch(fieldXrayRequest.trigger({ fieldId, ...COSTS[cost].method }))
 )
 
 export const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
@@ -33,113 +31,60 @@ const tableXrayRequest = new BackgroundJobRequest({
 })
 export const fetchTableXray = createThunkAction(FETCH_TABLE_XRAY, (tableId, cost) =>
     (dispatch) =>
-        dispatch(tableXrayRequest.trigger({ tableId, ...cost.method }))
+        dispatch(tableXrayRequest.trigger({ tableId, ...COSTS[cost].method }))
 )
 
 export const FETCH_SEGMENT_XRAY = 'metabase/xray/FETCH_SEGMENT_XRAY'
+const segmentXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.segment_xray,
+    resultPropName: 'xray',
+    actionPrefix: FETCH_SEGMENT_XRAY
+})
 export const fetchSegmentXray = createThunkAction(FETCH_SEGMENT_XRAY, (segmentId, cost) =>
-    async (dispatch) => {
-        dispatch(startLoad())
-        try {
-            const xray = await XRayApi.segment_xray({ segmentId, ...cost.method })
-            return dispatch(loadXray(xray))
-        } catch (error) {
-            console.error(error)
-        }
-    }
+    (dispatch) =>
+        dispatch(segmentXrayRequest.trigger({ segmentId, ...COSTS[cost].method }))
 )
 
 export const FETCH_CARD_XRAY = 'metabase/xray/FETCH_CARD_XRAY';
+const cardXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.card_xray,
+    resultPropName: 'xray',
+    actionPrefix: FETCH_CARD_XRAY
+})
 export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =>
-    async (dispatch) => {
-        const c = COSTS[cost]
-        dispatch(startLoad())
-        try {
-            const xray = await XRayApi.card_xray({ cardId, ...c.method });
-            dispatch(loadXray(xray));
-            return false
-        } catch (error) {
-            console.error(error);
-        }
-    }
+    (dispatch) =>
+        dispatch(cardXrayRequest.trigger({ cardId, ...COSTS[cost].method }))
 )
 
 export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentComparison = createThunkAction(
-    FETCH_SEGMENT_COMPARISON,
-    (segmentId1, segmentId2, cost) =>
-        async (dispatch) => {
-            const c = COSTS[cost]
-            dispatch(startLoad())
-            try {
-                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2, ...c.method })
-                return dispatch(loadComparison(comparison))
-            } catch (error) {
-                console.error(error)
-                return dispatch(xrayError(error))
-            }
-        }
+const segmentComparisonXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.segment_compare,
+    resultPropName: 'comparison',
+    actionPrefix: FETCH_SEGMENT_COMPARISON
+})
+export const fetchSegmentComparison = createThunkAction(FETCH_SEGMENT_COMPARISON, (segmentId1, segmentId2, cost) =>
+    (dispatch) =>
+        dispatch(segmentComparisonXrayRequest.trigger({ segmentId1, segmentId2, ...COSTS[cost].method }))
 )
+
 
 export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentTableComparison = createThunkAction(
-    FETCH_SEGMENT_TABLE_COMPARISON,
-    (segmentId, tableId, cost) =>
-        async (dispatch) => {
-            const c = COSTS[cost]
-            dispatch(startLoad())
-            try {
-                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId, ...c.method })
-                return dispatch(loadComparison(comparison))
-            } catch (error) {
-                console.error(error)
-                return dispatch(xrayError(error))
-            }
-        }
+const segmentTableComparisonXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.segment_table_compare,
+    resultPropName: 'comparison',
+    actionPrefix: FETCH_SEGMENT_TABLE_COMPARISON
+})
+export const fetchSegmentTableComparison = createThunkAction(FETCH_SEGMENT_TABLE_COMPARISON, (segmentId, tableId, cost) =>
+    (dispatch) =>
+        dispatch(segmentTableComparisonXrayRequest.trigger({ segmentId, tableId, ...COSTS[cost].method }))
 )
 
-export const START_LOAD = 'metabase/xray/START_LOAD'
-export const startLoad = createAction(START_LOAD)
-
-export const LOAD_XRAY = 'metabase/xray/LOAD_XRAY'
-export const loadXray = createAction(LOAD_XRAY)
-
-export const LOAD_COMPARISON = 'metabase/xray/LOAD_COMPARISON'
-export const loadComparison = createAction(LOAD_COMPARISON)
-
-export const XRAY_ERROR = 'metabase/xray/XRAY_ERROR'
-export const xrayError = createAction(XRAY_ERROR)
-
 export default handleActions({
+    ...fieldXrayRequest.getReducers(),
     ...tableXrayRequest.getReducers(),
-
+    ...segmentXrayRequest.getReducers(),
+    ...cardXrayRequest.getReducers(),
+    ...segmentComparisonXrayRequest.getReducers(),
+    ...segmentTableComparisonXrayRequest.getReducers(),
     [INITIALIZE]: () => tableXrayRequest.getDefaultState(),
-    [START_LOAD]: {
-        next: (state, { payload }) => ({
-            ...state,
-            loading: true,
-        })
-    },
-    [LOAD_XRAY]: {
-        next: (state, { payload }) => ({
-            ...state,
-            xray: payload,
-            loading: false,
-            fetched: true
-        })
-    },
-    [LOAD_COMPARISON]: {
-        next: (state, { payload }) => ({
-            ...state,
-            comparison: payload,
-            loading: false
-        })
-    },
-    [XRAY_ERROR]: {
-        next: (state, { payload }) => ({
-            ...state,
-            loading: false,
-            error: payload
-        })
-    }
 }, tableXrayRequest.getDefaultState())
