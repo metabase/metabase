@@ -128,7 +128,7 @@ export class NewQueryOptions extends Component {
                                     />
                                 </li>
                             }
-                            { showTableOption &&
+                            { (showTableOption || isAdmin) &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/list_illustration"
