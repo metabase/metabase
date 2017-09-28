@@ -325,3 +325,12 @@
     (when (and stored-site-url
                (not= stored-site-url defaulted-site-url))
       (setting/set! "site-url" stored-site-url))))
+
+;; There was a bug (#5998) preventing database_id from being persisted with
+;; native query type cards. This migration populates all of the Cards
+;; missing those database ids
+(defmigration ^{:author "senior", :added "0.26.1"} populate-card-database-id
+  (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
+                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))]
+    (db/update-where! Card {:id [:in (map :id cards)]}
+      :database_id db-id)))

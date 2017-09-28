@@ -12,9 +12,9 @@ import Constituent from 'metabase/xray/components/Constituent'
 
 import {
     getConstituents,
+    getFeatures,
     getLoadingStatus,
     getIsAlreadyFetched,
-    getFeatures,
     getError
 } from 'metabase/xray/selectors'
 
