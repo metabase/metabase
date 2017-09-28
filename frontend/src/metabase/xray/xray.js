@@ -27,8 +27,7 @@ export const fetchFieldXray = createThunkAction(FETCH_FIELD_XRAY, (fieldId, cost
 
 export const FETCH_TABLE_XRAY = 'metabase/xray/FETCH_TABLE_XRAY'
 const tableXrayRequest = new BackgroundJobRequest({
-    creationEndpoint: XRayApi.async_table_xray,
-    statusEndpoint: XRayApi.async_status,
+    creationEndpoint: XRayApi.table_xray,
     resultPropName: 'xray',
     actionPrefix: FETCH_TABLE_XRAY
 })

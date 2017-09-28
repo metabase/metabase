@@ -1,3 +1,5 @@
+import { AsyncApi } from "metabase/services";
+
 export class RestfulRequest {
     // API endpoint that is used for the request
     endpoint = null
@@ -70,9 +72,6 @@ export class BackgroundJobRequest {
     // API endpoint that creates a new background job
     creationEndpoint = null
 
-    // API endpoint that tells the status for a given background job
-    statusEndpoint = null
-
     // Prefix for request Redux actions
     actionPrefix = null
 
@@ -84,9 +83,8 @@ export class BackgroundJobRequest {
 
     pollingTimeoutId = null
 
-    constructor({ creationEndpoint, statusEndpoint, actionPrefix, resultPropName } = {}) {
+    constructor({ creationEndpoint, actionPrefix, resultPropName } = {}) {
         this.creationEndpoint = creationEndpoint
-        this.statusEndpoint = statusEndpoint
         this.actionPrefix = actionPrefix
         this.resultPropName = resultPropName || this.resultPropName
 
@@ -164,7 +162,7 @@ export class BackgroundJobRequest {
         return new Promise((resolve, reject) => {
             const poll = async () => {
                 try {
-                    const response = await this.statusEndpoint({ jobId })
+                    const response = await AsyncApi.status({ jobId })
 
                     if (response.status === 'done') {
                         resolve(response.result)
