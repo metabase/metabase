@@ -731,8 +731,10 @@
 
 (def ^:private druid-ts-format (tformat/formatters :date-time))
 
-(def ^:private ^{:argslist '([timestamp])} parse-timestamp
-  (comp tcoerce/to-date (partial tformat/parse druid-ts-format)))
+(defn- parse-timestamp
+  [timestamp]
+  (-> (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      (.parse timestamp)))
 
 (defn- reformat-timestamp [timestamp target-formatter]
   (->> timestamp
