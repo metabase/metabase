@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
             [clj-time.format :as tformat]
-            [clj-time.coerce :as tcoerce]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
