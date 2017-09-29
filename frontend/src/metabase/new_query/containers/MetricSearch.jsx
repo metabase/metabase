@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { fetchMetrics, fetchDatabasesWithMetadata } from "metabase/redux/metadata";
+import { fetchMetrics, fetchDatabases } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
 import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
@@ -21,7 +21,7 @@ const mapStateToProps = state => ({
 })
 const mapDispatchToProps = {
     fetchMetrics,
-    fetchDatabasesWithMetadata,
+    fetchDatabases,
     resetQuery
 }
 
@@ -40,32 +40,18 @@ export default class MetricSearch extends Component {
     }
 
     componentDidMount() {
-        // load metadata for all tables for the automatic application of a filter;
-        // THIS IS EXPERIMENTAL AND PROBABLY TOO HEAVY APPROACH FOR PRODUCTION!
-        this.props.fetchDatabasesWithMetadata()
+        this.props.fetchDatabases() // load databases if not loaded yet
         this.props.fetchMetrics(true) // metrics may change more often so always reload them
         this.props.resetQuery();
-
     }
 
-    getQueryForMetric = (metric: Metric) => {
-        const queryWithoutFilter = this.props.query
+    getUrlForMetric = (metric: Metric) => {
+        const updatedQuery = this.props.query
             .setDatabase(metric.table.db)
             .setTable(metric.table)
             .addAggregation(metric.aggregationClause())
 
-        const dateField = metric.table.fields.find((field) => field.isDate())
-
-        if (dateField) {
-            const dateFilter = ["time-interval", dateField.dimension().mbql(), -365, "day"]
-            return queryWithoutFilter.addFilter(dateFilter).addBreakout(dateField.getDefaultBreakout())
-        } else {
-            return queryWithoutFilter;
-        }
-    }
-
-    getUrlForMetric = (metric: Metric) => {
-        return this.props.getUrlForQuery(this.getQueryForMetric(metric))
+        return this.props.getUrlForQuery(updatedQuery);
     }
 
     render() {

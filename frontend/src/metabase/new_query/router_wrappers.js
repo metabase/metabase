@@ -30,9 +30,7 @@ export class NewQuestionStart extends Component {
 @withBackground('bg-slate-extra-light')
 export class NewQuestionMetricSearch extends Component {
     getUrlForQuery = (query) => {
-        return query.question()
-            .setDisplay(query.breakouts().length > 0 ? "line" : "scalar")
-            .getUrl()
+        return query.question().getUrl()
     }
 
     render() {
