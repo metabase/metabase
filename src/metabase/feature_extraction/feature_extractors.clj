@@ -126,7 +126,7 @@
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
-;(def ^:private Any      [:type/* :type/*])
+(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
 (defn- periodic-date-time?
@@ -272,18 +272,6 @@
       (update :histogram (partial histogram->dataset field))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
               :positive-definite? :var>sd? :uniqueness :min-vs-max)))
-
-(defmethod feature-extractor [Num Num]
-  [_ field]
-  (redux/post-complete
-   (redux/pre-step
-    (redux/fuse {:linear-regression linear-regression
-                 :correlation       (stats/correlation first second)
-                 :covariance        (stats/covariance first second)})
-    (partial map (somef double)))
-   (merge-juxt
-    (field-metadata-extractor field)
-    identity)))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."
@@ -468,7 +456,7 @@
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
 
-(defmethod feature-extractor [Category Number]
+(defmethod feature-extractor [Any Num]
   [{:keys [max-cost]} field]
   (redux/post-complete
    (redux/fuse
@@ -483,14 +471,14 @@
     histogram-extractor
     number-extractor)))
 
-(defmethod x-ray [Category Number]
+(defmethod x-ray [Any Number]
   [{:keys [field histogram] :as features}]
   (-> features
       (update :histogram (partial histogram-aggregated->dataset field))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :positive-definite?
               :var>sd? :min-vs-max)))
 
-(defmethod comparison-vector [Category Number]
+(defmethod comparison-vector [Any Number]
   [features]
   (select-keys features
                [:histogram :mean :median :min :max :sd :count :kurtosis
@@ -612,7 +600,10 @@
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
+(prefer-method feature-extractor [DateTime Num] [Any Num])
 (prefer-method x-ray Category Text)
 (prefer-method x-ray Num Category)
+(prefer-method x-ray [DateTime Num] [Any Num])
 (prefer-method comparison-vector Category Text)
 (prefer-method comparison-vector Num Category)
+(prefer-method comparison-vector [DateTime Num] [Any Num])
