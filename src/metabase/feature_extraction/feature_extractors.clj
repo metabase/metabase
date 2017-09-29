@@ -226,7 +226,6 @@
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
-    number-extractor
     (fn [{:keys [histogram histogram-categorical kurtosis skewness sum
                  sum-of-squares]}]
       (let [var    (h.impl/variance histogram)
