@@ -87,14 +87,18 @@
 
 (defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
   [a b]
-  (let [[t a b] (comparable-segment a b)]
-    {:correlation (or (transduce identity (stats/correlation first second)
-                                 (map vector a b))
-                      0)
-     :difference (cosine-distance a b)
-     :deltas     (map (fn [t a b]
-                        [t (- a b)])
-                      t a b)}))
+  (let [[t a b]    (comparable-segment a b)
+        [corr cov] (transduce identity (redux/juxt
+                                        (stats/correlation first second)
+                                        (stats/covariance first second))
+                              (map vector a b))]
+    {:correlation  corr
+     :covariance   cov
+     :significant? (some-> corr math/abs (> 0.3))
+     :difference   (or (cosine-distance a b) 0.5)
+     :deltas       (map (fn [t a b]
+                          [t (- a b)])
+                        t a b)}))
 
 (defmethod difference [nil Object]
   [a b]
