@@ -206,36 +206,6 @@
     {:field field
      :type  (field-type field)}))
 
-(defn- number-extractor
-  [{:keys [histogram kurtosis skewness sum sum-of-squares]}]
-  (let [var    (h.impl/variance histogram)
-        sd     (some-> var math/sqrt)
-        min    (h.impl/minimum histogram)
-        max    (h.impl/maximum histogram)
-        mean   (h.impl/mean histogram)
-        median (h.impl/median histogram)
-        range  (some-> max (- min))]
-    {:positive-definite? (some-> min (>= 0))
-     :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-     :var>sd?            (some->> sd (> var))
-     :0<=x<=1?           (when min (<= 0 min max 1))
-     :-1<=x<=1?          (when min (<= -1 min max 1))
-     :cv                 (some-> sd (safe-divide mean))
-     :range-vs-sd        (some->> sd (safe-divide range))
-     :mean-median-spread (some->> range (safe-divide (- mean median)))
-     :min-vs-max         (some->> max (safe-divide min))
-     :range              range
-     :min                min
-     :max                max
-     :mean               mean
-     :median             median
-     :var                var
-     :sd                 sd
-     :kurtosis           kurtosis
-     :skewness           skewness
-     :sum                sum
-     :sum-of-squares     sum-of-squares}))
-
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
   (redux/post-complete
@@ -257,8 +227,36 @@
     cardinality-extractor
     (field-metadata-extractor field)
     number-extractor
-    (fn [{:keys [histogram histogram-categorical]}]
-      {:histogram (or histogram-categorical histogram)}))))
+    (fn [{:keys [histogram histogram-categorical kurtosis skewness sum
+                 sum-of-squares]}]
+      (let [var    (h.impl/variance histogram)
+        sd     (some-> var math/sqrt)
+        min    (h.impl/minimum histogram)
+        max    (h.impl/maximum histogram)
+        mean   (h.impl/mean histogram)
+        median (h.impl/median histogram)
+        range  (some-> max (- min))]
+        {:positive-definite? (some-> min (>= 0))
+         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+         :var>sd?            (some->> sd (> var))
+         :0<=x<=1?           (when min (<= 0 min max 1))
+         :-1<=x<=1?          (when min (<= -1 min max 1))
+         :cv                 (some-> sd (safe-divide mean))
+         :range-vs-sd        (some->> sd (safe-divide range))
+         :mean-median-spread (some->> range (safe-divide (- mean median)))
+         :min-vs-max         (some->> max (safe-divide min))
+         :range              range
+         :min                min
+         :max                max
+         :mean               mean
+         :median             median
+         :var                var
+         :sd                 sd
+         :kurtosis           kurtosis
+         :skewness           skewness
+         :sum                sum
+         :sum-of-squares     sum-of-squares
+         :histogram (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num
   [features]
@@ -459,30 +457,15 @@
 (defmethod feature-extractor [Any Num]
   [{:keys [max-cost]} field]
   (redux/post-complete
-   (redux/fuse
-    (merge
-     {:histogram (h/histogram-aggregated first second)
-      :kurtosis (redux/pre-step stats/kurtosis (comp (somef double) second))
-      :skewness (redux/pre-step stats/skewness (comp (somef double) second))}
-     (when (costs/full-scan? max-cost)
-       {:sum (redux/with-xform + (keep (comp (somef double) second)))})))
+   (redux/fuse {:histogram (h/histogram-aggregated first second)})
    (merge-juxt
     (field-metadata-extractor field)
-    histogram-extractor
-    number-extractor)))
+    histogram-extractor)))
 
-(defmethod x-ray [Any Number]
+(defmethod x-ray [Any Num]
   [{:keys [field histogram] :as features}]
   (-> features
-      (update :histogram (partial histogram-aggregated->dataset field))
-      (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :positive-definite?
-              :var>sd? :min-vs-max)))
-
-(defmethod comparison-vector [Any Number]
-  [features]
-  (select-keys features
-               [:histogram :mean :median :min :max :sd :count :kurtosis
-                :skewness :entropy :nil% :range :min-vs-max]))
+      (update :histogram (partial histogram-aggregated->dataset field))))
 
 (defmethod feature-extractor Text
   [_ field]
