@@ -15,6 +15,7 @@ import AggregationWidget from "metabase/query_builder/components/AggregationWidg
 
 import {
     click,
+    setInputValue
 } from "__support__/enzyme_utils"
 
 import { RESET_QUERY } from "metabase/new_query/new_query";
@@ -45,12 +46,15 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
+import SearchHeader from "metabase/components/SearchHeader";
+import EmptyState from "metabase/components/EmptyState";
 
 describe("new question flow", async () => {
     // test an instance with segments, metrics, etc as an admin
     describe("a rich instance", async () => {
         let metricId = null;
         let segmentId = null;
+        let segmentId2 = null;
 
         beforeAll(async () => {
             await login()
@@ -59,16 +63,19 @@ describe("new question flow", async () => {
                 definition: {database: 1, query: {aggregation: ["count"]}}}
             const segmentDef = {name: "A Segment", description: "For testing new question flow", table_id: 1, show_in_getting_started: true,
                 definition: {database: 1, query: {filter: ["abc"]}}}
+            const segmentDef2 = {name: "Another Segment", description: "For testing NQF table search", table_id: 1, show_in_getting_started: true,
+                definition: {database: 1, query: {filter: ["abc"]}}}
 
             // Needed for question creation flow
             metricId = (await MetricApi.create(metricDef)).id;
             segmentId = (await SegmentApi.create(segmentDef)).id;
-
+            segmentId2 = (await SegmentApi.create(segmentDef2)).id;
         })
 
         afterAll(async () => {
             await MetricApi.delete({ metricId, revision_message: "The lifetime of this metric was just a few seconds" })
             await SegmentApi.delete({ segmentId, revision_message: "Sadly this segment didn't enjoy a long life either" })
+            await SegmentApi.delete({ segmentId: segmentId2, revision_message: "Sadly this segment didn't enjoy a long life either" })
         })
 
         it("redirects /question to /question/new", async () => {
@@ -157,7 +164,50 @@ describe("new question flow", async () => {
             ).toBe("A Metric")
         })
 
-        it("lets you start a question from a segment", async () => {
+        it("lets you start a question from a table", async () => {
+            const store = await createTestStore()
+
+            store.pushPath(Urls.newQuestion());
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+            await store.waitForActions([SET_REQUEST_STATE]);
+
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
+            await store.waitForActions(FETCH_DATABASES);
+            await store.waitForActions([SET_REQUEST_STATE]);
+            expect(store.getPath()).toBe("/question/new/table")
+
+            const entitySearch = app.find(EntitySearch)
+
+            // test comprehensively the table/segment search text filtering
+            const searchInput = entitySearch.find(SearchHeader).find("input")
+
+            // should find no entities and show no results found state
+            setInputValue(searchInput, "Oders")
+            expect(store.getPath()).toBe("/question/new/table?search=Oders")
+            expect(entitySearch.find(EmptyState).length).toBe(1)
+
+            // when searching with table name, should show the table and all segments it contains
+            setInputValue(searchInput, "Orders")
+            expect(store.getPath()).toBe("/question/new/table?search=Orders")
+            expect(entitySearch.find(EmptyState).length).toBe(0)
+            expect(entitySearch.find(SearchResultListItem).length).toBe(3)
+
+            // when searching with segment name, should show the segment and its parent table
+            setInputValue(searchInput, "Another Segment")
+            expect(store.getPath()).toBe("/question/new/table?search=Another%20Segment")
+            expect(entitySearch.find(EmptyState).length).toBe(0)
+            expect(entitySearch.find(SearchResultListItem).length).toBe(2)
+
+            // should let you start a question from a table (which is parent of the filtered segment)
+            const tableSearchResult = entitySearch.find(SearchResultListItem).first()
+            click(tableSearchResult.childAt(0))
+
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+            expect(app.find(DataSelector).text()).toEqual("Orders")
+        })
+
+        it("lets you start a question from a segment in Tables view", async () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
