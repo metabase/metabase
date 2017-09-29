@@ -6,8 +6,8 @@ import {
 } from "__support__/integrated_tests";
 
 import EntitySearch, {
-    GroupedSearchResultsList,
-    SearchGroupingOption, SearchResultListItem,
+    SearchGroupingOption,
+    SearchResultListItem,
     SearchResultsGroup
 } from "metabase/containers/EntitySearch";
 
