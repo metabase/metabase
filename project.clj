@@ -82,7 +82,7 @@
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
-                 [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
+                 [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
@@ -91,8 +91,10 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
-                  :exclusions [honeysql]]]
-  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
+                  :exclusions [honeysql]]
+                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]]  ; Redshift JDBC driver
+  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]
+                 ["redshift" "http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release"]] ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?

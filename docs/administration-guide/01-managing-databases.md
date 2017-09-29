@@ -133,7 +133,7 @@ When connecting though a bastion host:
 * Answer yes to the "Use an SSH-tunnel for database connections" parameter
 * Enter the hostname for the data warehouse as it is seen from inside the network in the `Host` parameter.
 * Enter the data warehouse port as seen from inside the network into the `Port` parameter.
-* Enter the extenal name of the bastion host as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
+* Enter the external name of the bastion host as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
 * Enter the ssh port as seen from outside the network into the `SSH tunnel port` parameter. This is usually 22, regardless of which data warehouse you are connecting to.
 * Enter the username and password you use to login to the bastion host into the `SSH tunnel username` and `SSH tunnel password` parameters.
 
@@ -151,7 +151,7 @@ Another common case where direct connections are not possible is when connecting
 * Enter the ssh port as seen from outside the network into the `SSH tunnel port` parameter. This is usually 22, regardless of which data warehouse you are connecting to.
 * Enter the username and password you use to login to the bastion host into the `SSH tunnel username` and `SSH tunnel password` parameters.
 
-If you have problems connecting verify the ssh host port and password by connecing manually using ssh or PuTTY on older windows systems.
+If you have problems connecting verify the ssh host port and password by connecting manually using ssh or PuTTY on older windows systems.
 
 #### Disadvantages to Indirect Connections
 
