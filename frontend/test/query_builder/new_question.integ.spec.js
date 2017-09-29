@@ -240,7 +240,7 @@ describe("new question flow", async () => {
         })
 
         // This performance test is expected not to cause a timeout
-        fit("should be performant with a high number of dbs, tables and segments", async () => {
+        it("should be performant with a high number of dbs, tables and segments", async () => {
             // Mock the metadata API endpoints so that they return a high number of results
             const realSegmentListEndpoint = SegmentApi.list
             const realDatabaseListEndpoint = MetabaseApi.db_list_with_tables
