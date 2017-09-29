@@ -6,6 +6,7 @@ import {
 } from "__support__/integrated_tests";
 
 import EntitySearch, {
+    GroupedSearchResultsList,
     SearchGroupingOption, SearchResultListItem,
     SearchResultsGroup
 } from "metabase/containers/EntitySearch";
@@ -39,7 +40,7 @@ import {
     QUERY_COMPLETED,
 } from "metabase/query_builder/actions";
 
-import { MetricApi, SegmentApi } from "metabase/services";
+import { MetabaseApi, MetricApi, SegmentApi } from "metabase/services";
 import { SET_REQUEST_STATE } from "metabase/redux/requests";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -48,6 +49,7 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
+import _ from "underscore"
 
 describe("new question flow", async () => {
     // test an instance with segments, metrics, etc as an admin
@@ -235,6 +237,60 @@ describe("new question flow", async () => {
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             expect(app.find(FilterWidget).find(".Filter-section-value").text()).toBe("A Segment")
+        })
+
+        // This performance test is expected not to cause a timeout
+        fit("should be performant with a high number of dbs, tables and segments", async () => {
+            // Mock the metadata API endpoints so that they return a high number of results
+            const realSegmentListEndpoint = SegmentApi.list
+            const realDatabaseListEndpoint = MetabaseApi.db_list_with_tables
+
+            const realSegment = (await realSegmentListEndpoint())[0]
+            const realDatabase = (await realDatabaseListEndpoint())[0]
+            const realTable = realDatabase.tables[0]
+
+            const SEGMENT_COUNT = 200
+            const TABLE_COUNT = 10000
+            const DATABASE_COUNT = 30
+            const TABLES_PER_DATABASE = TABLE_COUNT / DATABASE_COUNT
+
+            const generateDatabaseWithTablesWithId = (id) => ({
+                ...realDatabase,
+                "id": id,
+                "name": `Auto-generated database ${id}`,
+                "tables": _.range(id * TABLES_PER_DATABASE, (id + 1) * TABLES_PER_DATABASE).map(generateTableWithId)
+            })
+            const generateTableWithId = (id) => ({
+                ...realTable,
+                "id": id,
+                "name": `Auto-generated table ${id}`
+            })
+            const generateSegmentWithId = (id) => ({
+                ...realSegment,
+                "table_id": Math.floor(Math.random() * TABLE_COUNT),
+                "name": `Auto-generated segment ${id}`,
+                "id": id,
+            })
+
+            try {
+                MetabaseApi.db_list_with_tables = () => _.range(DATABASE_COUNT).map(generateDatabaseWithTablesWithId)
+                SegmentApi.list = () => _.range(SEGMENT_COUNT).map(generateSegmentWithId)
+
+                const store = await createTestStore()
+
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
+                await store.waitForActions([SET_REQUEST_STATE]);
+
+                click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
+                await store.waitForActions(FETCH_DATABASES);
+                await store.waitForActions([SET_REQUEST_STATE]);
+                expect(store.getPath()).toBe("/question/new/table")
+            } finally {
+                SegmentApi.list = realSegmentListEndpoint
+                MetabaseApi.db_list_with_tables = realDatabaseListEndpoint
+            }
         })
     })
 
