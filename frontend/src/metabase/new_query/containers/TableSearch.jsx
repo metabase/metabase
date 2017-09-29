@@ -78,19 +78,28 @@ export default class TableSearch extends Component {
 
     getTableInEntitySearchFormat = (table, segmentsList) => {
         const dbHasMultipleSchemas = table.db.schemaNames().length > 1
-        const descriptionJsx = <span>
-                <b>{table.db.name}</b>
-                {dbHasMultipleSchemas && table.schema && ` - ${table.schema}`}
+        const getEntitySearchDescription = ({currentGrouping}) => {
+            const showDbName = currentGrouping.id !== "database"
+            const showSchemaName = dbHasMultipleSchemas && table.schema
+            return (
+                <span>
+                <b>{showDbName && table.db.name}</b>
+                {showDbName && showSchemaName && ' - '}
+                {showSchemaName && table.schema}
             </span>
+            )
+        }
+
         return {
             name: table.display_name,
             isTable: true,
             table,
             children:
+                // TODO Atte Keinänen 9/29/17: Should this be optimized, i.e. can the count of segments be high?
                 segmentsList
                     .filter(segment => segment.table_id === table.id)
-                    .map(segment => Object.assign(segment, { descriptionJsx })),
-            descriptionJsx
+                    .map(segment => Object.assign(segment, { getEntitySearchDescription })),
+            getEntitySearchDescription
         }
     }
 

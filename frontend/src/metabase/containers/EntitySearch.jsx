@@ -176,6 +176,17 @@ export default class EntitySearch extends Component {
         }))
     }
 
+    applyEntityDescription = (entity) => {
+        const { currentGrouping } = this.state;
+
+        if (entity.getEntitySearchDescription) {
+            entity.entitySearchDescription = entity.getEntitySearchDescription({ currentGrouping })
+            return entity;
+        } else {
+            return entity
+        }
+    }
+
     // Returns an array of groups based on current grouping. The groups are sorted by their name.
     // Entities inside each group aren't separately sorted as EntitySearch expects that the `entities`
     // is already in the desired order.
@@ -187,7 +198,8 @@ export default class EntitySearch extends Component {
             .pairs()
             .map(([groupId, entities]) => ({
                 groupName: currentGrouping.getGroupName(entities[0]),
-                entitiesInGroup: this.addSubEntitiesAfterParents(entities)
+                entitiesInGroup:
+                    this.addSubEntitiesAfterParents(entities).map(this.applyEntityDescription)
             }))
             .sortBy(({ groupName }) => groupName !== null && groupName.toLowerCase())
             .value()
@@ -548,9 +560,9 @@ export class SearchResultListItem extends Component {
                         {entity.name}
                     </h4>
 
-                    { entity.descriptionJsx &&
+                    { entity.entitySearchDescription &&
                         <div className="text-grey-3 text-capitalize" style={{maxWidth: "450px"}}>
-                            <Ellipsified>{entity.descriptionJsx}</Ellipsified>
+                            <Ellipsified>{entity.entitySearchDescription}</Ellipsified>
                         </div>
                     }
                 </Link>
