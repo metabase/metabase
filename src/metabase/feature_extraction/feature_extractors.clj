@@ -24,7 +24,7 @@
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
-   Note the contructor airity of `f` needs to be free of side effects."
+   Note the constructor airity of `f` needs to be free of side effects."
   [f groupfn]
   (let [init (f)]
     (fn
@@ -73,7 +73,7 @@
    acc))
 
 (def linear-regression
-  "Transducer that calculats (simple linear regression)."
+  "Transducer that calculats (simple) linear regression."
   (redux/post-complete (stats/simple-linear-regression first second)
                        (partial zipmap [:offset :slope])))
 
@@ -116,6 +116,12 @@
                :display_name "Share"
                :description  "Share of corresponding bin in the overall population."
                :base_type    :type/Float}]}))
+
+(defn- histogram-aggregated->dataset
+  [field histogram]
+  {:rows    (nice-bins histogram)
+   :columns (map :name field)
+   :cols    (map #(dissoc % :remapped_from) field)})
 
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
@@ -200,6 +206,36 @@
     {:field field
      :type  (field-type field)}))
 
+(defn- number-extractor
+  [{:keys [histogram kurtosis skewness sum sum-of-squares]}]
+  (let [var    (h.impl/variance histogram)
+        sd     (some-> var math/sqrt)
+        min    (h.impl/minimum histogram)
+        max    (h.impl/maximum histogram)
+        mean   (h.impl/mean histogram)
+        median (h.impl/median histogram)
+        range  (some-> max (- min))]
+    {:positive-definite? (some-> min (>= 0))
+     :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+     :var>sd?            (some->> sd (> var))
+     :0<=x<=1?           (when min (<= 0 min max 1))
+     :-1<=x<=1?          (when min (<= -1 min max 1))
+     :cv                 (some-> sd (safe-divide mean))
+     :range-vs-sd        (some->> sd (safe-divide range))
+     :mean-median-spread (some->> range (safe-divide (- mean median)))
+     :min-vs-max         (some->> max (safe-divide min))
+     :range              range
+     :min                min
+     :max                max
+     :mean               mean
+     :median             median
+     :var                var
+     :sd                 sd
+     :kurtosis           kurtosis
+     :skewness           skewness
+     :sum                sum
+     :sum-of-squares     sum-of-squares}))
+
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
   (redux/post-complete
@@ -220,36 +256,9 @@
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
-    (fn [{:keys [histogram kurtosis skewness sum sum-of-squares
-                 histogram-categorical]}]
-      (let [var    (h.impl/variance histogram)
-            sd     (some-> var math/sqrt)
-            min    (h.impl/minimum histogram)
-            max    (h.impl/maximum histogram)
-            mean   (h.impl/mean histogram)
-            median (h.impl/median histogram)
-            range  (some-> max (- min))]
-        {:positive-definite? (some-> min (>= 0))
-         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-         :var>sd?            (some->> sd (> var))
-         :0<=x<=1?           (when min (<= 0 min max 1))
-         :-1<=x<=1?          (when min (<= -1 min max 1))
-         :cv                 (some-> sd (safe-divide mean))
-         :range-vs-sd        (some->> sd (safe-divide range))
-         :mean-median-spread (some->> range (safe-divide (- mean median)))
-         :min-vs-max         (some->> max (safe-divide min))
-         :range              range
-         :min                min
-         :max                max
-         :mean               mean
-         :median             median
-         :var                var
-         :sd                 sd
-         :kurtosis           kurtosis
-         :skewness           skewness
-         :histogram          (or histogram-categorical histogram)
-         :sum                sum
-         :sum-of-squares     sum-of-squares})))))
+    number-extractor
+    (fn [{:keys [histogram histogram-categorical]}]
+      {:histogram (or histogram-categorical histogram)}))))
 
 (defmethod comparison-vector Num
   [features]
@@ -459,9 +468,33 @@
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
 
-;; (defmethod feature-extractor [Category Any]
-;;   [opts [x y]]
-;;   (rollup (redux/pre-step (feature-extractor opts y) second) first))
+(defmethod feature-extractor [Category Number]
+  [{:keys [max-cost]} field]
+  (redux/post-complete
+   (redux/fuse
+    (merge
+     {:histogram (h/histogram-aggregated first second)
+      :kurtosis (redux/pre-step stats/kurtosis (comp (somef double) second))
+      :skewness (redux/pre-step stats/skewness (comp (somef double) second))}
+     (when (costs/full-scan? max-cost)
+       {:sum (redux/with-xform + (keep (comp (somef double) second)))})))
+   (merge-juxt
+    (field-metadata-extractor field)
+    histogram-extractor
+    number-extractor)))
+
+(defmethod x-ray [Category Number]
+  [{:keys [field histogram] :as features}]
+  (-> features
+      (update :histogram (partial histogram-aggregated->dataset field))
+      (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :positive-definite?
+              :var>sd? :min-vs-max)))
+
+(defmethod comparison-vector [Category Number]
+  [features]
+  (select-keys features
+               [:histogram :mean :median :min :max :sd :count :kurtosis
+                :skewness :entropy :nil% :range :min-vs-max]))
 
 (defmethod feature-extractor Text
   [_ field]
@@ -517,31 +550,6 @@
           (assoc :earliest (h.impl/minimum histogram)
                  :latest   (h.impl/maximum histogram)))))))
 
-(defn- round-to-month
-  [dt]
-  (t/floor dt t/month))
-
-(defn- month-frequencies
-  [earliest latest]
-  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
-       (take-while (complement (partial t/before? latest)))
-       (map t/month)
-       frequencies))
-
-(defn- quarter-frequencies
-  [earliest latest]
-  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
-       (take-while (complement (partial t/before? latest)))
-       (m/distinct-by (juxt t/year quarter))
-       (map quarter)
-       frequencies))
-
-(defn- weigh-periodicity
-  [weights card]
-  (let [baseline (apply min (vals weights))]
-    (update card :rows (partial map (fn [[k v]]
-                                      [k (/ (* v baseline) (weights k))])))))
-
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
   (let [earliest (from-double earliest)
@@ -569,10 +577,7 @@
                                              {:name         "MONTH"
                                               :display_name "Month of year"
                                               :base_type    :type/Integer
-                                              :special_type :type/Category})
-                                            (weigh-periodicity
-                                             (month-frequencies earliest
-                                                                latest))))))
+                                              :special_type :type/Category})))))
         (update :histogram-quarter (fn [histogram]
                                      (when-not (h/empty? histogram)
                                        (->> histogram
@@ -580,10 +585,7 @@
                                              {:name         "QUARTER"
                                               :display_name "Quarter of year"
                                               :base_type    :type/Integer
-                                              :special_type :type/Category})
-                                            (weigh-periodicity
-                                             (quarter-frequencies earliest
-                                                                  latest)))))))))
+                                              :special_type :type/Category}))))))))
 
 (defmethod feature-extractor Category
   [_ field]
