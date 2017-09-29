@@ -38,11 +38,7 @@
   {"field"    Field
    "segment"  Segment
    "table"    Table
-   "card"     Card
-   "segments" Segment
-   "tables"   Table
-   "cards"    Card
-   "fields"   Field})
+   "card"     Card})
 
 (def ^:private Model
   (apply s/enum (keys ->model)))
@@ -61,23 +57,7 @@
                      {:max-cost (max-cost max_query_cost max_computation_cost)})
                     fe/x-ray))}))
 
-(api/defendpoint GET "/compare/:models/:id1/:id2"
-  "Get comparison x-ray for two models of type `:models` with ids :id1 and id2."
-  [models id1 id2 max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost
-   models               Model}
-  (api/check-403 (costs/enable-xrays))
-  (let [model1 (api/read-check (->model models) (Integer/parseInt id1))
-        model2 (api/read-check (->model models) (Integer/parseInt id2))]
-    {:job-id (async/compute
-              #(fe/x-ray
-                (fe/compare-features
-                 {:max-cost (max-cost max_query_cost max_computation_cost)}
-                 model1
-                 model2)))}))
-
-(api/defendpoint GET "/compare/:model1/:id1/model2/:id2"
+(api/defendpoint GET "/compare/:model1/:id1/:model2/:id2"
   "Get comparison x-ray for two models of types `:model1` and `:model2` with
    ids `:id1` and `id2`."
   [model1 model2 id1 id2 max_query_cost max_computation_cost]
@@ -95,30 +75,7 @@
                 model1
                 model2)))}))
 
-(api/defendpoint GET "/compare/:model/:id1/:id2/field/:field"
-  "Get comparison x-ray for `Field` named `field` from models of type `:model`
-   with ids `:id1` and `:id2`."
-  [model id1 id2 field max_query_cost max_computation_cost]
-  {max_query_cost       MaxQueryCost
-   max_computation_cost MaxComputationCost
-   model                Model}
-  (api/check-403 (costs/enable-xrays))
-  (let [model1 (api/read-check (->model model) (Integer/parseInt id1))
-        model2 (api/read-check (->model model) (Integer/parseInt id2))]
-    {:job-id (async/compute
-              #(let [{:keys [comparison constituents]}
-                     (fe/x-ray
-                      (fe/compare-features
-                       {:max-cost (max-cost max_query_cost max_computation_cost)}
-                       model1
-                       model2))]
-                {:constituents     constituents
-                 :comparison       (-> comparison (get field))
-                 :top-contributors (-> comparison
-                                       (get field)
-                                       :top-contributors)}))}))
-
-(api/defendpoint GET "/compare/:model1/:id1/model2/:id2/field/:field"
+(api/defendpoint GET "/compare/:model1/:id1/:model2/:id2/field/:field"
   "Get comparison x-ray for `Field` named `field` from models of types
    `:model1` and `model2` with ids `:id1` and `:id2`."
   [model1 model2 id1 id2 field max_query_cost max_computation_cost]
