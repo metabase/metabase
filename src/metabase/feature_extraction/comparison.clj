@@ -63,9 +63,28 @@
   [a b]
   {:difference (if (= a b) 0 1)})
 
+(defn- comparable-segment
+  [a b]
+  (loop [[[ax _] & a-rest :as a] a
+         [[bx _] & b-rest :as b] b]
+    (cond
+      (not (and ax bx)) nil
+      (= ax bx)         (loop [[[ax ay] & as] a
+                               [[bx by] & bs] b
+                               ab             []]
+                          (cond
+                            (not (and ax bx)) ab
+                            (= ax bx)         (recur as bs (conj ab [ay by]))
+                            :else             nil))
+      (> ax bx)         (recur a b-rest)
+      (< ax bx)         (recur a-rest b))))
+
 (defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
   [a b]
-  {:difference (* 0.5 (cosine-distance a b))})
+  (let [ab    (comparable-segment a b)
+        corr  (or (transduce identity (stats/correlation first second) ab) 0)]
+    {:difference  (- 1 (/ (inc corr) 2))
+     :correlation corr}))
 
 (defmethod difference [nil Object]
   [a b]

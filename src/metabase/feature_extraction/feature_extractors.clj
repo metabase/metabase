@@ -72,6 +72,11 @@
    (.offer acc x)
    acc))
 
+(def linear-regression
+  "Transducer that calculats (simple linear regression)."
+  (redux/post-complete (stats/simple-linear-regression first second)
+                       (partial zipmap [:offset :slope])))
+
 (defn- nice-bins
   [histogram]
   (cond
@@ -263,7 +268,7 @@
   [_ field]
   (redux/post-complete
    (redux/pre-step
-    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+    (redux/fuse {:linear-regression linear-regression
                  :correlation       (stats/correlation first second)
                  :covariance        (stats/covariance first second)})
     (partial map (somef double)))
@@ -355,21 +360,21 @@
                                     (partition 2 1 series))
             median-delta (h.impl/median deltas)]
         (when (roughly= median-delta (h.impl/minimum deltas) 0.1)
-          (cond
-            (roughly= median-delta (* 60 1000))                    :minute
-            (roughly= median-delta (* 60 60 1000))                 :hour
-            (roughly= median-delta (* 24 60 60 1000))              :day
-            (roughly= median-delta (* 7 24 60 60 1000))            :week
-            (roughly= median-delta (* (/ 365 12) 24 60 60 1000))   :month
-            (roughly= median-delta (* 3 (/ 365 12) 24 60 60 1000)) :quarter
-            (roughly= median-delta (* 365 24 60 60 1000))          :year
-            :else                                                  nil)))))
+          (condp roughly= median-delta
+            (* 60 1000)                    :minute
+            (* 60 60 1000)                 :hour
+            (* 24 60 60 1000)              :day
+            (* 7 24 60 60 1000)            :week
+            (* (/ 365 12) 24 60 60 1000)   :month
+            (* 3 (/ 365 12) 24 60 60 1000) :quarter
+            (* 365 24 60 60 1000)          :year
+            nil)))))
 
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
   (redux/post-complete
    (redux/pre-step
-    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+    (redux/fuse {:linear-regression linear-regression
                  :series            conj})
     (fn [[^java.util.Date x y]]
       [(some-> x .getTime double) y]))
@@ -414,14 +419,14 @@
       ((get-method comparison-vector :default))))
 
 (defn- unpack-linear-regression
-  [keyfn x-field series [c k]]
+  [keyfn x-field series {:keys [offset slope]}]
   (series->dataset keyfn
                    [x-field
                     {:name         "TREND"
                      :display_name "Linear regression trend"
                      :base_type    :type/Float}]
                    (for [[x y] series]
-                     [x (+ (* k x) c)])))
+                     [x (+ (* slope x) offset)])))
 
 (defmethod x-ray [DateTime Num]
   [{:keys [field series] :as features}]
