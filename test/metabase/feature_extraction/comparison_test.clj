@@ -65,3 +65,19 @@
   (approximately 0.3 0.1)
   (:distance (features-distance {:foo 2.0 :bar [1 2 3] :baz false}
                                 {:foo 12 :bar [10.7 0.2 3] :baz false})))
+
+(expect
+  [nil
+   nil
+   nil
+   [[1] [10] [12]]
+   [[1 2] [10 11] [12 15]]
+   nil
+   [[1] [10 11] [12 15]]]
+  [(#'c/comparable-segment [[1 1]] [])
+   (#'c/comparable-segment [] [[1 1]])
+   (#'c/comparable-segment nil nil)
+   (#'c/comparable-segment [[1 10]] [[1 12]])
+   (#'c/comparable-segment [[1 10] [2 11]] [[1 12] [2 15]])
+   (#'c/comparable-segment [[1 10] [2 11]] [[1 12] [3 15]])
+   (#'c/comparable-segment [[1 10] [2 11] [3 14]] [[1 12] [2 15]])])

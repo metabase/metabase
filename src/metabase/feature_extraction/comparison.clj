@@ -69,22 +69,32 @@
          [[bx _] & b-rest :as b] b]
     (cond
       (not (and ax bx)) nil
-      (= ax bx)         (loop [[[ax ay] & as] a
-                               [[bx by] & bs] b
-                               ab             []]
+      (= ax bx)         (loop [[[ax ay] & a] a
+                               [[bx by] & b] b
+                               ays           []
+                               bys           []
+                               xs            []]
                           (cond
-                            (not (and ax bx)) ab
-                            (= ax bx)         (recur as bs (conj ab [ay by]))
-                            :else             nil))
+                            (not (and ax bx))
+                            [xs ays bys]
+
+                            (= ax bx)
+                            (recur a b (conj ays ay) (conj bys by) (conj xs ax))
+
+                            :else nil))
       (> ax bx)         (recur a b-rest)
       (< ax bx)         (recur a-rest b))))
 
 (defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
   [a b]
-  (let [ab    (comparable-segment a b)
-        corr  (or (transduce identity (stats/correlation first second) ab) 0)]
-    {:difference  (- 1 (/ (inc corr) 2))
-     :correlation corr}))
+  (let [[t a b] (comparable-segment a b)]
+    {:correlation (or (transduce identity (stats/correlation first second)
+                                 (map vector a b))
+                      0)
+     :difference (cosine-distance a b)
+     :deltas     (map (fn [t a b]
+                        [t (- a b)])
+                      t a b)}))
 
 (defmethod difference [nil Object]
   [a b]
@@ -144,8 +154,6 @@
 (defn- chi-squared-critical-value
   [n]
   (+ (* -0.037 (Math/log n)) 0.365))
-
-(chi-squared-critical-value 100)
 
 (defmethod difference [Histogram Histogram]
   [a b]
