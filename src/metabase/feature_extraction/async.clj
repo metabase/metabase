@@ -64,8 +64,9 @@
   [job]
   (if (done? job)
     (if-let [result (db/select-one ComputationJobResult :job_id (:id job))]
-      {:status (:status job)
-       :result (:payload result)}
+      {:status     (:status job)
+       :result     (:payload result)
+       :created-at (:created_at result)}
       {:status :result-not-available})
     {:status (:status job)}))
 
