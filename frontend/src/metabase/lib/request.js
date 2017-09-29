@@ -101,53 +101,15 @@ export class BackgroundJobRequest {
         return async (dispatch) => {
             dispatch.action(this.actions.requestStarted)
 
-            const restoredJobId = this._restoreSavedJobId(params)
-
-            if (restoredJobId) {
-                try {
-                    const result = await this._pollForResult(restoredJobId)
-                    dispatch.action(this.actions.requestSuccessful, { result })
-                } catch(error) {
-                    if (error instanceof ResultNoAvailableError) {
-                        // If the result is not available anymore, retrigger the job
-                        this._removeSavedJobId(params)
-                        this.trigger(params)(dispatch)
-                    } else {
-                        console.error(error)
-                        dispatch.action(this.actions.requestFailed, { error })
-                    }
-                }
-            } else {
-                try {
-                    const newJobId = await this._createNewJob(params)
-                    this._saveJobId(params, newJobId)
-                    const result = await this._pollForResult(newJobId)
-                    dispatch.action(this.actions.requestSuccessful, { result })
-                } catch(error) {
-                    console.error(error)
-                    dispatch.action(this.actions.requestFailed, { error })
-                }
+            try {
+                const newJobId = await this._createNewJob(params)
+                const result = await this._pollForResult(newJobId)
+                dispatch.action(this.actions.requestSuccessful, { result })
+            } catch(error) {
+                console.error(error)
+                dispatch.action(this.actions.requestFailed, { error })
             }
         }
-    }
-
-    // TODO: Take parameters into account in local saving
-
-    _restoreSavedJobId = (params) => {
-        // We don't want to mock localStorage in every test so disable job ID saving if localStorage is missing
-        return window.localStorage && localStorage.getItem(this._getLocalStorageKey(params))
-    }
-
-    _saveJobId = (params, jobId) => {
-        window.localStorage && localStorage.setItem(this._getLocalStorageKey(params), jobId)
-    }
-
-    _removeSavedJobId = (params) => {
-        window.localStorage && localStorage.removeItem(this._getLocalStorageKey(params))
-    }
-
-    _getLocalStorageKey = (params) => {
-        return `${this.actionPrefix}/${JSON.stringify(params)}`
     }
 
     _createNewJob = async (requestParams) => {
