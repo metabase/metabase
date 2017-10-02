@@ -84,7 +84,6 @@ export class NewQueryOptions extends Component {
         const { isAdmin, metadata, push } = this.props
         const hasDatabases = metadata.databasesList().length > 0
 
-        console.log(metadata.databasesList())
         if (!hasDatabases) {
             this.setState({ loaded: true, hasDatabases: false })
         } else if (isAdmin) {
