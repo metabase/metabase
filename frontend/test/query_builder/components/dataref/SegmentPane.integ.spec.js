@@ -31,7 +31,7 @@ describe("SegmentPane", () => {
     let segment = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
         segment = await SegmentApi.create(orders_past_30_days_segment);
         store = await createTestStore()
 

@@ -44,7 +44,7 @@ let apiRequestCompletedCallback = null;
 let skippedApiRequests = [];
 
 const warnAboutCreatingStoreBeforeLogin = () => {
-    if (hasStartedCreatingStore) {
+    if (!loginSession && hasStartedCreatingStore) {
         console.warn(
             "Warning: You have created a test store before calling logging in which means that up-to-date site settings " +
             "won't be in the store unless you call `refreshSiteSettings` action manually. Please prefer " +

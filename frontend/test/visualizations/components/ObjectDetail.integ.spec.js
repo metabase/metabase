@@ -24,7 +24,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 describe('ObjectDetail', () => {
 
     beforeAll(async () => {
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     })
 
     describe('Increment and Decrement', () => {

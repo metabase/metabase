@@ -31,7 +31,7 @@ const getFieldList = (query, fieldOptions, segmentOptions) =>
 
 describe('FieldList', () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     })
 
     it("should allow using expression as aggregation dimension", async () => {

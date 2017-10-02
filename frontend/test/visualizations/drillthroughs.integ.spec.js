@@ -36,7 +36,7 @@ const question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE
 
 describe('Visualization drill-through', () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     });
 
     // NOTE: Should this be here or somewhere in QB directory?

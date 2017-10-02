@@ -48,7 +48,7 @@ describe("xray integration tests", () => {
     let segmentQuestion = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
 
         const segmentDef = {name: "A Segment", description: "For testing xrays", table_id: 1, show_in_getting_started: true,
             definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"] }}

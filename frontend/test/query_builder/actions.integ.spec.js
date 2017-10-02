@@ -23,7 +23,7 @@ describe("QueryBuilder", () => {
     let store = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
         store = await createTestStore()
     })
 

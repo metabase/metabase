@@ -12,7 +12,7 @@ import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 
 describe("Question", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     });
 
     describe("with SQL questions", () => {

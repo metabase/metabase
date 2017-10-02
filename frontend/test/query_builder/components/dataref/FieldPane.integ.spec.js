@@ -27,7 +27,7 @@ describe("FieldPane", () => {
     let queryBuilder = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
         store = await createTestStore()
 
         store.pushPath(Urls.plainQuestion());

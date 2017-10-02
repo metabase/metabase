@@ -14,7 +14,7 @@ const PRODUCT_CATEGORY_ID = 21;
 
 describe('makeGetMergedParameterFieldValues', () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
 
         // add remapping
         const store = await createTestStore()

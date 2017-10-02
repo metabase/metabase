@@ -76,7 +76,7 @@ PublicApi.dashboard = async () => {
 
 describe("Dashboard", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     })
 
     describe("redux actions", () => {

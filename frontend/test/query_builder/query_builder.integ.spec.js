@@ -87,7 +87,7 @@ const initQBWithReviewsTable = initQbWithDbAndTable(1, 4)
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     })
 
     describe("visualization settings", () => {

@@ -26,7 +26,7 @@ describe("MetricPane", () => {
     let metricId = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
         metricId = (await MetricApi.create(vendor_count_metric)).id;
         store = await createTestStore()
 
