@@ -19,6 +19,7 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { push } from "react-router-redux";
+import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 const mapStateToProps = state => ({
     query: getCurrentQuery(state),
@@ -55,45 +56,72 @@ type Props = {
     fetchSegments: () => void,
 }
 
+const allOptionsVisibleState = {
+    loaded: true,
+    hasDatabases: true,
+    showMetricOption: true,
+    showTableOption: true,
+    showSQLOption: true
+}
+
 export class NewQueryOptions extends Component {
     props: Props
 
-    state = {
-        showMetricOption: false,
-        showTableOption: false,
-        showSQLOption: false
+    constructor(props) {
+        super(props)
+
+        // By default, show all options instantly to admins
+        this.state = props.isAdmin ? allOptionsVisibleState : {
+            loaded: false,
+            hasDatabases: false,
+            showMetricOption: false,
+            showTableOption: false,
+            showSQLOption: false
+        }
     }
 
-    determinePaths () {
+    determineWhichOptionsToShow() {
         const { isAdmin, metadata, push } = this.props
-        const showMetricOption = isAdmin || metadata.metricsList().length > 0
-        const showTableOption = isAdmin || metadata.segmentsList().length > 0
+        const hasDatabases = metadata.databasesList().length > 0
 
-        // util to check if the user has write permission to a db
-        const hasSQLPermission = (db) => db.native_permissions === "write"
+        console.log(metadata.databasesList())
+        if (!hasDatabases) {
+            this.setState({ loaded: true, hasDatabases: false })
+        } else if (isAdmin) {
+            this.setState(allOptionsVisibleState)
+        } else {
+            const showMetricOption = metadata.metricsList().length > 0
+            const showTableOption = metadata.segmentsList().length > 0
 
-        // to be able to use SQL the user must have write permissions on at least one db
-        const showSQLOption = isAdmin || metadata.databasesList().filter(hasSQLPermission).length > 0
+            // to be able to use SQL the user must have write permissions on at least one db
+            const hasSQLPermission = (db) => db.native_permissions === "write"
+            const showSQLOption = metadata.databasesList().filter(hasSQLPermission).length > 0
 
-        // if we can only show one option then we should just redirect
-        if(!showMetricOption && !showSQLOption && !showTableOption) {
-            push(this.getGuiQueryUrl())
+            // if we can only show one option then we should just redirect
+            const redirectToQueryBuilder =
+                !showMetricOption && !showSQLOption && !showTableOption
+
+            if (redirectToQueryBuilder) {
+                push(this.getGuiQueryUrl())
+            } else {
+                this.setState({
+                    loaded: true,
+                    showMetricOption,
+                    showTableOption,
+                    showSQLOption,
+                })
+            }
         }
-
-        this.setState({
-            showMetricOption,
-            showTableOption,
-            showSQLOption,
-        })
     }
 
     async componentWillMount() {
-        await this.props.fetchDatabases()
-        await this.props.fetchMetrics()
-        await this.props.fetchSegments()
-        await this.props.resetQuery();
+        this.props.resetQuery();
 
-        this.determinePaths()
+        Promise.all([
+            this.props.fetchDatabases(),
+            this.props.fetchMetrics(),
+            this.props.fetchSegments()
+        ]).then(() => this.determineWhichOptionsToShow())
     }
 
     getGuiQueryUrl = () => {
@@ -105,12 +133,20 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-        const { query, metadataFetched, isAdmin, metricSearchUrl, tableSearchUrl } = this.props
-        const { showMetricOption, showTableOption, showSQLOption } = this.state
+        const { isAdmin, metricSearchUrl, tableSearchUrl } = this.props
+        const { loaded, hasDatabases, showMetricOption, showTableOption, showSQLOption } = this.state
         const showCustomInsteadOfNewQuestionText = showMetricOption || showTableOption || isAdmin
 
-        if (!query || (!isAdmin && (!metadataFetched.metrics || !metadataFetched.segments))) {
+        if (!loaded) {
             return <LoadingAndErrorWrapper loading={true}/>
+        }
+
+        if (!hasDatabases) {
+            return (
+                <div className="full-height flex align-center justify-center">
+                    <NoDatabasesEmptyState/>
+                </div>
+            )
         }
 
         return (
@@ -118,7 +154,7 @@ export class NewQueryOptions extends Component {
                 <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim flex-full px1 mt4 mb2 align-center">
                      <div className="flex align-center justify-center" style={{minHeight: "100%"}}>
                         <ol className="flex-full Grid Grid--guttersXl Grid--full sm-Grid--normal">
-                            { (showMetricOption || isAdmin) &&
+                            { showMetricOption &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/questions_illustration"
@@ -128,7 +164,7 @@ export class NewQueryOptions extends Component {
                                     />
                                 </li>
                             }
-                            { (showTableOption || isAdmin) &&
+                            { showTableOption &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/list_illustration"
@@ -149,7 +185,7 @@ export class NewQueryOptions extends Component {
                                     to={this.getGuiQueryUrl}
                                 />
                             </li>
-                            { (showSQLOption || isAdmin) &&
+                            { showSQLOption &&
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/sql_illustration"
