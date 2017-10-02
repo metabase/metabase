@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [clojure
-             [string :as str]
+             [string :as string]
              [walk :as walk]]
             [honeysql
              [core :as hsql]
@@ -32,45 +32,37 @@
  (require '[metabase.plugins :as plugins])
  (plugins/load-plugins!))
 
-(defn- get-properties
-  [{:keys [user password s3_staging_dir log_path] :as conf}]
-  (assert (or user password s3_staging_dir log_path))
-  (doto (Properties.)
-        (.putAll (walk/stringify-keys conf))))
-
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver"
-  ;[^com.amazonaws.athena.jdbc.AthenaResultSet rs]
   [rs]
-  (let [m (.getMetaData rs)
-        cnt (.getColumnCount m)
-        name-and-type (.getString rs 1)
-        [name type] (map str/trim (str/split name-and-type #"\t"))]
-    {:name name :type type}))
+  (-> rs
+      (.getString 1)
+      (string/split #"\t")
+      (#(map string/trim %))
+      ((fn [[name type]] {:name name :type type}))))
 
 (defn- describe-all-database->clj
   [rs]
-  (loop [result []
-         more (.next rs)]
+  (loop [result [] more (.next rs)]
     (if-not more
-            (->> result
-                 (remove #(= (:name %) ""))
-                 (remove #(str/starts-with? (:name %) "#")) ; remove comment
-                 distinct) ; driver can return twice the partitioning fields
-            (recur
-             (conj result (describe-database->clj rs))
-             (.next rs)))))
+      (->> result
+        (remove #(= (:name %) ""))
+        (remove #(string/starts-with? (:name %) "#")) ; remove comment
+        (distinct)) ; driver can return twice the partitioning fields
+      (recur
+       (conj result (describe-database->clj rs))
+       (.next rs)))))
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
-  [database query {:keys [read-fn] :as options}]
-  (let [current-read-fn (if read-fn read-fn (fn [rs] (into [] (jdbc/result-set-seq rs {:identifiers identity}))))]
-    (log/info (format "Running Athena query : '%s'..." query))
-    (with-open [con (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-               (let [athena-stmt (.createStatement con)]
-                 (->> (.executeQuery athena-stmt query)
-                      current-read-fn)))))
+  [database query {:keys [read-fn]}]
+  (let [current-read-fn (or read-fn #(into [] (jdbc/result-set-seq % {:identifiers identity})))]
+    (log/infof "Running Athena query : '%s'..." query)
+    (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
+      (-> (.createStatement conn)
+          (.executeQuery query)
+          (current-read-fn)))))
 
 (defn- column->base-type [column-type]
   ({:array      :type/*
@@ -94,7 +86,7 @@
 (defn- connection-details->spec
   "Create a database specification for an Athena database. DETAILS should include keys for `:user`,
    `:password`, `:s3_staging_dir` `:log_path` and `region`"
-  [{:keys [log_path  password s3_staging_dir region user] :as details}]
+  [{:keys [user password s3_staging_dir log_path region] :as details}]
   (assert (or user password s3_staging_dir log_path region))
   {:classname "com.amazonaws.athena.jdbc.AthenaDriver"
    :log_path log_path
@@ -105,37 +97,62 @@
    :s3_staging_dir s3_staging_dir})
 
 (defn- can-connect? [driver details]
-  (let [details-with-tunnel (ssh/include-ssh-tunnel details)]
-    (with-open [connection (jdbc/get-connection (connection-details->spec details-with-tunnel))]
-               (let [athena-stmt (.createStatement connection)
-                     result (->> (.executeQuery athena-stmt "SELECT 1")
-                                 jdbc/result-set-seq)]
-                 (= 1 (first (vals (first result))))))))
+  (let [conn-details (-> details
+                         (ssh/include-ssh-tunnel)
+                         (connection-details->spec))]
+    (with-open [connection (jdbc/get-connection conn-details)]
+      (-> (.createStatement connection)
+          (.executeQuery "SELECT 1")
+          (jdbc/result-set-seq)
+          (#(= 1 (first (vals (first %)))))))))
+
+(defn- get-databases [driver database]
+  (->> (run-query database "SHOW DATABASES" {})
+       (remove #(= (:database_name %) "default"))
+       (map (fn [{:keys [database_name]}]
+              {:name database_name :schema nil}))
+       (set)))
+
+(defn- get-tables-from-db [driver db database]
+  (->> (run-query db (str "SHOW TABLES IN " (:name database)))
+       (map (fn [{:keys [tab_name]}]
+              {:name tab_name
+               :schema (:name database)}))))
+
+(defn- get-tables-from-dbs [driver db databases]
+  (->> databases
+       (map #(get-tables-from-db driver db %))
+       (flatten)
+       (set)))
+
+(defn- get-tables [driver database databases]
+  (->> databases
+       (map (fn [{:keys [name] :as table}]
+              (let [tables (run-query database (str "SHOW TABLES IN " name) {})]
+                (map (fn [{:keys [tab_name]}] (assoc table :schema name :name tab_name))
+                     tables))))
+       (flatten)
+       (set)))
 
 (defn- describe-database
-  [driver {:keys [details] :as database}]
-  (let [databases (->> (run-query database "SHOW DATABASES" {})
-                       (remove #(= (:database_name %) "default")) ; this table have permission issue if you use a role with limited permission
-                       (map (fn [{:keys [database_name]}]
-                              {:name database_name :schema nil}))
-                       set)
-        tables (->> databases
-                    (map (fn [{:keys [name] :as table}]
-                           (let [tables (run-query database (str "SHOW TABLES IN " name) {})]
-                             (map (fn [{:keys [tab_name]}] (assoc table :schema name :name tab_name))
-                                  tables))))
-                    flatten
-                    set)]
+  [driver db]
+  (let [databases (get-databases driver db)
+        tables (get-tables driver db databases)]
     {:tables tables}))
 
-(defn- describe-table-fields
-  [database {:keys [name schema]}]
-  (set (for [{:keys [name type]} (run-query database (str "DESCRIBE " schema "." name ";") {:read-fn describe-all-database->clj})]
-         {:name name :base-type (or (column->base-type (keyword type))
-                                    :type/*)})))
+(defn- describe-table-fields [db {:keys [name schema]}]
+  (->> (run-query db (str "DESCRIBE " schema "." name ";")
+                     {:read-fn describe-all-database->clj})
+       (map (fn [{:keys [name type]}]
+              {:name name
+               :base-type (or (column->base-type (keyword type))
+                              :type/*)}))
+       (set)))
 
-(defn- describe-table [driver database table]
-  (assoc (select-keys table [:name :schema]) :fields (describe-table-fields database table)))
+(defn- describe-table [driver db {:keys [name schema] :as table}]
+  {:name name
+   :schema schema
+   :fields (describe-table-fields db table)})
 
 (defn- execute-query
   [driver {:keys [database settings], query :native, :as outer-query}]
@@ -149,19 +166,12 @@
     {:columns columns
      :rows rows}))
 
-(def features
-  #{:basic-aggregations
-    :standard-deviation-aggregations
-    ;:expressions
-    ;:expression-aggregations
-    :native-parameters})
-
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
 
 (defn- unqualify-honey-fields [form-str form-length fields]
   (mapv (fn [[f v]]
-          (if (str/starts-with? (str f) form-str)
+          (if (string/starts-with? (str f) form-str)
             [(keyword (subs (str f) form-length)) v]
             [f v]))
         fields))
@@ -178,7 +188,7 @@
                               (mapv (fn [s]
                                       (if (sequential? s)
                                         (let [[f v] s]
-                                          (if (str/starts-with? (str f) from-str)
+                                          (if (string/starts-with? (str f) from-str)
                                             [(keyword (subs (str f) from-length)) v]
                                             [f v]))
                                         s))
@@ -190,7 +200,7 @@
                               (fn [acc e]
                                 (if (sequential? e)
                                   (let [[op field & other] e
-                                        new-field (if (str/starts-with? (str field) from-str)
+                                        new-field (if (string/starts-with? (str field) from-str)
                                                     (keyword (subs (str field) from-length))
                                                     field)]
                                     (conj acc (concat [op field] other)))
@@ -201,7 +211,7 @@
             (not-empty (:group-by honey-query))
             (update :group-by (fn [fields]
                                 (mapv (fn [f]
-                                        (if (str/starts-with? (str f) from-str)
+                                        (if (string/starts-with? (str f) from-str)
                                           (keyword (subs (str f) from-length))
                                           f))
                                       fields)))
@@ -209,7 +219,7 @@
             (not-empty (:order-by honey-query))
             (update :order-by (fn [fields]
                                 (mapv (fn [[f v]]
-                                        (if (str/starts-with? (str f) from-str)
+                                        (if (string/starts-with? (str f) from-str)
                                           [(keyword (subs (str f) from-length)) v]
                                           [f v]))
                                       fields))))))
@@ -217,9 +227,7 @@
 (defn- unquote-table-name
   "Workaround for unquoting table name as the JDBC api does not support this feature"
   [sql-string table-name]
-  (let [sp (str/split table-name #"\.")
-        table-name-quote (str/join "." (map (fn [s] (str "\"" s "\"")) sp))]
-    (str/replace sql-string (str "\"" table-name "\"") table-name)))
+  (string/replace sql-string (str "\"" table-name "\"") table-name))
 
 (defn- mbql->native
   "Transpile MBQL query into a native SQL statement."
@@ -233,10 +241,10 @@
        :params args})))
 
 (defn- quote-name [nm]
-  (str \" (str/replace nm "\"" "\"\"") \"))
+  (str \" (string/replace nm "\"" "\"\"") \"))
 
 (defn- quote+combine-names [& names]
-  (str/join \. (map quote-name names)))
+  (string/join \. (map quote-name names)))
 
 (defn- field-avg-length [{field-name :name, :as field}]
   (let [table             (field/table field)
@@ -249,18 +257,28 @@
         v (:_col0 (first result))]
     (or v 0)))
 
+(defn- field-percent-urls [{field-name :name, :as field}]
+  (let [table             (field/table field)
+        {:keys [details]} (table/database table)
+        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
+                            (quote-name field-name)
+                            (quote+combine-names (:schema table) (:name table))
+                            (quote-name field-name))
+        result            (run-query {:details details :engine :athena} sql {})
+        v (:_col0 (first result))]
+    (if (= v "NaN") 0.0 v)))
+
 (defrecord AthenaDriver []
   clojure.lang.Named
   (getName [_] "Athena"))
 
 (u/strict-extend AthenaDriver
   driver/IDriver
-  (merge driver/IDriverDefaultsMixin
+  (merge (sql/IDriverSQLDefaultsMixin)
          {:can-connect?              can-connect?
           :date-interval             (u/drop-first-arg presto/date-interval)
           :describe-database         describe-database
           :describe-table            describe-table
-          :describe-table-fks        (constantly nil)
           :details-fields (constantly (ssh/with-tunnel-config
                                        [{:name         "region"
                                          :display-name "Region"
@@ -282,24 +300,24 @@
                                          :placeholder  "*******"
                                          :required     true}]))
           :execute-query             execute-query
-          :features                 (constantly features)
+          :features                  (constantly #{:basic-aggregations :standard-deviation-aggregations :native-parameters})
           :mbql->native mbql->native
           :table-rows-seq (constantly nil)})
-
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-page                (u/drop-first-arg presto/apply-page)
           :active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly :%now);(constantly :%current_timestamp)
-          ;:date                      (u/drop-first-arg date)
+          :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg metabase.driver.presto/date)
           :excluded-schemas          (constantly #{"default"})
           :prepare-value             (u/drop-first-arg presto/prepare-value)
           :quote-style               (constantly :ansi)
           :string-length-fn          (u/drop-first-arg presto/string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg presto/unix-timestamp->timestamp)}))
+
+
 
 (when (u/ignore-exceptions
        (Class/forName "com.amazonaws.athena.jdbc.AthenaDriver"))
