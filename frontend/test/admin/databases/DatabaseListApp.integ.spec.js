@@ -38,7 +38,7 @@ import DatabaseSchedulingForm, { SyncOption } from "metabase/admin/databases/com
 describe('dashboard list', () => {
 
     beforeAll(async () => {
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     })
 
     it('should render', async () => {

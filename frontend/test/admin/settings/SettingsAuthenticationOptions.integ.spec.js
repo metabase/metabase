@@ -15,7 +15,7 @@ import { INITIALIZE_SETTINGS } from "metabase/admin/settings/settings"
 
 describe('Admin Auth Options', () => {
     beforeAll(async () => {
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     })
 
     it('it should render the proper configuration form', async () => {

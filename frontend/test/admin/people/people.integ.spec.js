@@ -27,7 +27,7 @@ describe("admin/people", () => {
     let createdUserId = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     })
 
     describe("user management", () => {

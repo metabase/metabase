@@ -31,7 +31,7 @@ import _ from "underscore";
 // Currently a lot of duplication with SegmentPane tests
 describe("DatabaseEditApp", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     })
 
     describe("Connection tab", () => {

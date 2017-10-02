@@ -8,7 +8,7 @@ import {
 } from 'metabase/redux/metadata'
 
 import { withBackground } from 'metabase/hoc/Background'
-import { resetQuery } from '../new_query'
+import { determineWhichOptionsToShow, resetQuery } from '../new_query'
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
@@ -16,7 +16,7 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getCurrentQuery, getPlainNativeQuery } from "metabase/new_query/selectors";
+import { getCurrentQuery, getNewQueryOptions, getPlainNativeQuery } from "metabase/new_query/selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { push } from "react-router-redux";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
@@ -26,10 +26,12 @@ const mapStateToProps = state => ({
     plainNativeQuery: getPlainNativeQuery(state),
     metadata: getMetadata(state),
     metadataFetched: getMetadataFetched(state),
-    isAdmin: getUserIsAdmin(state)
+    isAdmin: getUserIsAdmin(state),
+    newQueryOptions: getNewQueryOptions(state)
 })
 
 const mapDispatchToProps = {
+    determineWhichOptionsToShow,
     fetchDatabases,
     fetchMetrics,
     fetchSegments,
@@ -50,6 +52,7 @@ type Props = {
     isAdmin: boolean,
 
     resetQuery: () => void,
+    determineWhichOptionsToShow: () => void,
 
     fetchDatabases: () => void,
     fetchMetrics: () => void,
@@ -80,47 +83,9 @@ export class NewQueryOptions extends Component {
         }
     }
 
-    determineWhichOptionsToShow() {
-        const { isAdmin, metadata, push } = this.props
-        const hasDatabases = metadata.databasesList().length > 0
-
-        if (!hasDatabases) {
-            this.setState({ loaded: true, hasDatabases: false })
-        } else if (isAdmin) {
-            this.setState(allOptionsVisibleState)
-        } else {
-            const showMetricOption = metadata.metricsList().length > 0
-            const showTableOption = metadata.segmentsList().length > 0
-
-            // to be able to use SQL the user must have write permissions on at least one db
-            const hasSQLPermission = (db) => db.native_permissions === "write"
-            const showSQLOption = metadata.databasesList().filter(hasSQLPermission).length > 0
-
-            // if we can only show one option then we should just redirect
-            const redirectToQueryBuilder =
-                !showMetricOption && !showSQLOption && !showTableOption
-
-            if (redirectToQueryBuilder) {
-                push(this.getGuiQueryUrl())
-            } else {
-                this.setState({
-                    loaded: true,
-                    showMetricOption,
-                    showTableOption,
-                    showSQLOption,
-                })
-            }
-        }
-    }
-
     async componentWillMount() {
         this.props.resetQuery();
-
-        Promise.all([
-            this.props.fetchDatabases(),
-            this.props.fetchMetrics(),
-            this.props.fetchSegments()
-        ]).then(() => this.determineWhichOptionsToShow())
+        this.props.determineWhichOptionsToShow();
     }
 
     getGuiQueryUrl = () => {
@@ -132,8 +97,8 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-        const { isAdmin, metricSearchUrl, tableSearchUrl } = this.props
-        const { loaded, hasDatabases, showMetricOption, showTableOption, showSQLOption } = this.state
+        const { isAdmin, metricSearchUrl, tableSearchUrl, newQueryOptions } = this.props
+        const { loaded, hasDatabases, showMetricOption, showTableOption, showSQLOption } = newQueryOptions
         const showCustomInsteadOfNewQuestionText = showMetricOption || showTableOption || isAdmin
 
         if (!loaded) {

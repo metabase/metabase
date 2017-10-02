@@ -35,7 +35,7 @@ import { MetabaseApi } from "metabase/services";
 
 describe("admin/datamodel", () => {
     beforeAll(async () =>
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     );
 
     describe("data model editor", () => {

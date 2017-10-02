@@ -36,7 +36,7 @@ describe("The Reference Section", () => {
 
     // Scaffolding
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
 
     })
 

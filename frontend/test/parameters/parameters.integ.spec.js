@@ -65,7 +65,7 @@ const COUNT_GADGET = "43";
 
 describe("parameters", () => {
     beforeAll(async () =>
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     );
 
     describe("questions", () => {

@@ -19,7 +19,7 @@ const metadata = (store) => getMetadata(store.getState())
 
 describe("metadata/redux", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     });
 
     describe("METRIC ACTIONS", () => {

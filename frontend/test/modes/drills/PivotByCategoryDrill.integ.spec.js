@@ -10,7 +10,7 @@ import { useSharedAdminLogin } from "__support__/integrated_tests";
 
 describe("PivotByCategoryDrill", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     });
 
     it("should return a result for Order count pivoted by Subtotal", async () => {

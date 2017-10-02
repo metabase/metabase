@@ -19,7 +19,7 @@ describe("Dimension classes", () => {
     let metadata = null;
 
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
         const store = await createTestStore();
         await store.dispatch(fetchDatabaseMetadata(1));
         await store.dispatch(fetchTableMetadata(1));

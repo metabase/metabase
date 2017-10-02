@@ -22,7 +22,7 @@ import ArchivedItem from "metabase/components/ArchivedItem";
 
 describe("dashboards list", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin();
+        useSharedAdminLogin();
     })
 
     afterAll(async () => {

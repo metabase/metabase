@@ -2,7 +2,7 @@ import { mount } from "enzyme"
 
 import {
     useSharedAdminLogin,
-    createTestStore,
+    createTestStore, useSharedNormalLogin,
 } from "__support__/integrated_tests";
 
 import EntitySearch, {
@@ -19,7 +19,7 @@ import {
     setInputValue
 } from "__support__/enzyme_utils"
 
-import { RESET_QUERY } from "metabase/new_query/new_query";
+import { DETERMINE_OPTIONS, RESET_QUERY } from "metabase/new_query/new_query";
 
 import { getQuery } from "metabase/query_builder/selectors";
 import DataSelector from "metabase/query_builder/components/DataSelector";
@@ -60,7 +60,6 @@ describe("new question flow", async () => {
         let segmentId2 = null;
 
         beforeAll(async () => {
-            await useSharedAdminLogin()
             // TODO: Move these test metric/segment definitions to a central place
             const metricDef = {name: "A Metric", description: "For testing new question flow", table_id: 1,show_in_getting_started: true,
                 definition: {database: 1, query: {aggregation: ["count"]}}}
@@ -70,41 +69,46 @@ describe("new question flow", async () => {
                 definition: {database: 1, query: {filter: ["abc"]}}}
 
             // Needed for question creation flow
+            useSharedAdminLogin()
             metricId = (await MetricApi.create(metricDef)).id;
             segmentId = (await SegmentApi.create(segmentDef)).id;
             segmentId2 = (await SegmentApi.create(segmentDef2)).id;
         })
 
         afterAll(async () => {
+            useSharedAdminLogin()
             await MetricApi.delete({ metricId, revision_message: "The lifetime of this metric was just a few seconds" })
             await SegmentApi.delete({ segmentId, revision_message: "Sadly this segment didn't enjoy a long life either" })
             await SegmentApi.delete({ segmentId: segmentId2, revision_message: "Sadly this segment didn't enjoy a long life either" })
         })
 
         it("redirects /question to /question/new", async () => {
+            useSharedNormalLogin()
             const store = await createTestStore()
             store.pushPath("/question");
             mount(store.getAppContainer());
             await store.waitForActions([REDIRECT_TO_NEW_QUESTION_FLOW])
             expect(store.getPath()).toBe("/question/new")
         })
+
         it("renders normally on page load", async () => {
+            useSharedNormalLogin()
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
-            await store.waitForActions([SET_REQUEST_STATE]);
+            await store.waitForActions([DETERMINE_OPTIONS]);
 
             expect(app.find(NewQueryOption).length).toBe(4)
         });
+
         it("lets you start a custom gui question", async () => {
+            useSharedNormalLogin()
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
-            await store.waitForActions([SET_REQUEST_STATE]);
+            await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Custom"))
             await store.waitForActions(INITIALIZE_QB, UPDATE_URL, LOAD_METADATA_FOR_CARD);
@@ -112,6 +116,7 @@ describe("new question flow", async () => {
         })
 
         it("lets you start a custom native question", async () => {
+            useSharedNormalLogin()
             // Don't render Ace editor in tests because it uses many DOM methods that aren't supported by jsdom
             // see also parameters.integ.js for more notes about Ace editor testing
             NativeQueryEditor.prototype.loadAceEditor = () => {}
@@ -120,8 +125,7 @@ describe("new question flow", async () => {
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS, FETCH_DATABASES]);
-            await store.waitForActions([SET_REQUEST_STATE]);
+            await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "SQL"))
             await store.waitForActions(INITIALIZE_QB);
@@ -136,12 +140,12 @@ describe("new question flow", async () => {
         })
 
         it("lets you start a question from a metric", async () => {
+            useSharedNormalLogin()
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
-            await store.waitForActions([SET_REQUEST_STATE]);
+            await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics"))
             await store.waitForActions(FETCH_DATABASES);
@@ -170,12 +174,12 @@ describe("new question flow", async () => {
         })
 
         it("lets you start a question from a table", async () => {
+            useSharedNormalLogin()
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
-            await store.waitForActions([SET_REQUEST_STATE]);
+            await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
             await store.waitForActions(FETCH_DATABASES);
@@ -213,12 +217,12 @@ describe("new question flow", async () => {
         })
 
         it("lets you start a question from a segment in Tables view", async () => {
+            useSharedNormalLogin()
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
             const app = mount(store.getAppContainer());
-            await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
-            await store.waitForActions([SET_REQUEST_STATE]);
+            await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
             await store.waitForActions(FETCH_DATABASES);
@@ -244,6 +248,7 @@ describe("new question flow", async () => {
 
         // This performance test is expected not to cause a timeout
         it("should be performant with a high number of dbs, tables and segments", async () => {
+            useSharedNormalLogin()
             // Mock the metadata API endpoints so that they return a high number of results
             const realSegmentListEndpoint = SegmentApi.list
             const realDatabaseListEndpoint = MetabaseApi.db_list_with_tables
@@ -283,8 +288,7 @@ describe("new question flow", async () => {
 
                 store.pushPath(Urls.newQuestion());
                 const app = mount(store.getAppContainer());
-                await store.waitForActions([RESET_QUERY, FETCH_METRICS, FETCH_SEGMENTS]);
-                await store.waitForActions([SET_REQUEST_STATE]);
+                await store.waitForActions([DETERMINE_OPTIONS]);
 
                 click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
                 await store.waitForActions(FETCH_DATABASES);

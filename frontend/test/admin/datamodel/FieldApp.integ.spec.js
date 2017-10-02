@@ -70,7 +70,7 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
 
 describe("FieldApp", () => {
     beforeAll(async () => {
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     })
 
     describe("name settings", () => {
