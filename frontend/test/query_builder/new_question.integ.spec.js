@@ -1,7 +1,7 @@
 import { mount } from "enzyme"
 
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
 
@@ -60,7 +60,7 @@ describe("new question flow", async () => {
         let segmentId2 = null;
 
         beforeAll(async () => {
-            await login()
+            await useSharedAdminLogin()
             // TODO: Move these test metric/segment definitions to a central place
             const metricDef = {name: "A Metric", description: "For testing new question flow", table_id: 1,show_in_getting_started: true,
                 definition: {database: 1, query: {aggregation: ["count"]}}}

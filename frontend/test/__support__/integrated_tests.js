@@ -43,23 +43,30 @@ let simulateOfflineMode = false;
 let apiRequestCompletedCallback = null;
 let skippedApiRequests = [];
 
-/**
- * Login to the Metabase test instance with default credentials
- */
-export async function login({ username = "bob@metabase.com", password = "12341234" } = {}) {
+const warnAboutCreatingStoreBeforeLogin = () => {
     if (hasStartedCreatingStore) {
         console.warn(
-            "Warning: You have created a test store before calling login() which means that up-to-date site settings " +
+            "Warning: You have created a test store before calling logging in which means that up-to-date site settings " +
             "won't be in the store unless you call `refreshSiteSettings` action manually. Please prefer " +
             "logging in before all tests and creating the store inside an individual test or describe block."
         )
     }
+}
+/**
+ * Login to the Metabase test instance with default credentials
+ */
+export async function login({ username = "bob@metabase.com", password = "12341234" } = {}) {
+    warnAboutCreatingStoreBeforeLogin()
+    loginSession = await SessionApi.create({ username, password });
+}
 
-    if (isTestFixtureDatabase() && process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID) {
-        loginSession = { id: process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID }
-    } else {
-        loginSession = await SessionApi.create({ username, password });
-    }
+export function useSharedAdminLogin() {
+    warnAboutCreatingStoreBeforeLogin()
+    loginSession = { id: process.env.TEST_FIXTURE_SHARED_ADMIN_LOGIN_SESSION_ID }
+}
+export function useSharedNormalLogin() {
+    warnAboutCreatingStoreBeforeLogin()
+    loginSession = { id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID }
 }
 
 export function logout() {

@@ -10,7 +10,6 @@ import chalk from "chalk";
 const BackendResource = require("./backend.js").BackendResource
 
 // Backend that uses a test fixture database
-// If you need to update the fixture, you can run Metabase with `MB_DB_TYPE=h2 MB_DB_FILE=frontend/test/legacy-selenium/support/fixtures/metabase.db`
 const serverWithTestDbFixture = BackendResource.get({});
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
@@ -29,14 +28,14 @@ function readFile(fileName) {
     });
 }
 
-const login = async (apiHost) => {
+const login = async (apiHost, user) => {
     const loginFetchOptions = {
         method: "POST",
         headers: new Headers({
             "Accept": "application/json",
             "Content-Type": "application/json"
         }),
-        body: JSON.stringify({ username: "bob@metabase.com", password: "12341234"})
+        body: JSON.stringify(user)
     };
     const result = await fetch(apiHost + "/api/session", loginFetchOptions);
 
@@ -79,14 +78,22 @@ const init = async() => {
     await BackendResource.start(serverWithPlainDb)
 
     console.log(chalk.bold('3/4 Creating a shared login session for backend 1'));
-    const sharedLoginSession = await login(testFixtureBackendHost)
+    const sharedAdminLoginSession = await login(
+        testFixtureBackendHost,
+        { username: "bob@metabase.com", password: "12341234" }
+    )
+    const sharedNormalLoginSession = await login(
+        testFixtureBackendHost,
+        { username: "robert@metabase.com", password: "12341234" }
+    )
 
     console.log(chalk.bold('4/4 Starting Jest'));
     const env = {
         ...process.env,
         "TEST_FIXTURE_BACKEND_HOST": testFixtureBackendHost,
         "PLAIN_BACKEND_HOST": plainBackendHost,
-        "TEST_FIXTURE_SHARED_LOGIN_SESSION_ID": sharedLoginSession.id
+        "TEST_FIXTURE_SHARED_ADMIN_LOGIN_SESSION_ID": sharedAdminLoginSession.id,
+        "TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID": sharedNormalLoginSession.id,
     }
 
     const jestProcess = spawn(
