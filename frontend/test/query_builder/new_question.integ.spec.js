@@ -31,6 +31,7 @@ import {
 } from "metabase/redux/metadata"
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
+import { delay } from 'metabase/lib/promise'
 import * as Urls from "metabase/lib/urls";
 
 import {
@@ -161,6 +162,8 @@ describe("new question flow", async () => {
             click(metricSearchResult.childAt(0))
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+            await delay(100); // Trying to address random CI failures with a small delay
+
             expect(
                 app.find(AggregationWidget).find(".View-section-aggregation").text()
             ).toBe("A Metric")
