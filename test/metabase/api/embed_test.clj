@@ -6,11 +6,14 @@
             [metabase
              [http-client :as http]
              [util :as u]]
-            [metabase.api.public-test :as public-test]
+            [metabase.api
+             [embed :as embed-api]
+             [public-test :as public-test]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -57,7 +60,8 @@
   ([]
    {:data       {:columns ["count"]
                  :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count", :source "aggregation",
-                            :extra_info {}, :id nil, :target nil, :display_name "count", :base_type "type/Integer"}]
+                            :extra_info {}, :id nil, :target nil, :display_name "count", :base_type "type/Integer"
+                            :remapped_from nil, :remapped_to nil}]
                  :rows    [[100]]}
     :json_query {:parameters []}
     :status     "completed"})
@@ -412,10 +416,20 @@
 
 ;;; ------------------------------------------------------------ Other Tests ------------------------------------------------------------
 
-(tu/resolve-private-vars metabase.api.embed
-  remove-locked-and-disabled-params)
-
 ;; parameters that are not in the `embedding-params` map at all should get removed by `remove-locked-and-disabled-params`
 (expect
   {:parameters []}
-  (remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))
+  (#'embed-api/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))
+
+;; make sure that multiline series word as expected (#4768)
+(expect
+  "completed"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [series-card {:dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}}}]
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (tt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/get-id dashcard)
+                                                   :card_id          (u/get-id series-card)
+                                                   :position         0}]
+          (:status (http/client :get 200 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card)))))))))))

@@ -1,11 +1,12 @@
 (ns metabase.test.mock.schema-per-customer
   "A relational database that replicates a set of tables multiple times such that schema1.* and schema2.* have the
    same set of tables.  This is common in apps that provide an 'instance' per customer."
-  (:require [metabase.driver :as driver]))
+  (:require [metabase.driver :as driver]
+            [metabase.test.mock.util :refer [table-defaults field-defaults]]))
 
 
 ;; NOTE: we throw in a "common" schema which shares an FK across all other schemas just to get tricky
-(def ^:private ^:const schema-per-customer-tables
+(def ^:private schema-per-customer-tables
   {nil      {"city"   {:name   "city"
                        :fields #{{:name         "id"
                                   :base-type    :type/Integer
@@ -47,8 +48,7 @@
 (extend SchemaPerCustomerDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table       (constantly nil)
-          :describe-database   (fn [_ _]
+         {:describe-database   (fn [_ _]
                                  {:tables (conj (->> (for [schema ["s1" "s2" "s3"]]
                                                        (for [table (keys (get schema-per-customer-tables nil))]
                                                          {:schema schema, :name table}))
@@ -79,212 +79,7 @@
 
 (driver/register-driver! :schema-per-customer (SchemaPerCustomerDriver.))
 
-(def ^:private ^:const raw-table-defaults
-  {:schema      nil
-   :database_id true
-   :columns     []
-   :updated_at  true
-   :details     {}
-   :active      true
-   :id          true
-   :created_at  true})
-
-(def ^:private ^:const raw-field-defaults
-  {:column_type         nil
-   :raw_table_id        true
-   :fk_target_column_id false
-   :updated_at          true
-   :details             {}
-   :active              true
-   :id                  true
-   :is_pk               false
-   :created_at          true})
-
-(def ^:const schema-per-customer-raw-tables
-  [(merge raw-table-defaults
-          {:schema  "s3"
-           :columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})]
-           :name    "city"})
-   (merge raw-table-defaults
-          {:schema  "s2"
-           :columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name                "reviewer_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "text"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})
-                     (merge raw-field-defaults
-                            {:name                "venue_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "s2", :name "venue", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})]
-           :name    "review"})
-   (merge raw-table-defaults
-          {:schema  "s3"
-           :columns [(merge raw-field-defaults
-                            {:name                "city_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "s3", :name "city", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})]
-           :name    "venue"})
-   (merge raw-table-defaults
-          {:schema  "s2"
-           :columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})]
-           :name    "city"})
-   (merge raw-table-defaults
-          {:schema  "s1"
-           :columns [(merge raw-field-defaults
-                            {:name                "city_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "s1", :name "city", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})]
-           :name    "venue"})
-   (merge raw-table-defaults
-          {:schema  "common"
-           :columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text"}})]
-           :name    "user"})
-   (merge raw-table-defaults
-          {:schema  "s3"
-           :columns [(merge raw-field-defaults
-                            {:name                "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk               true})
-                     (merge raw-field-defaults
-                            {:name                "reviewer_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "text"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})
-                     (merge raw-field-defaults
-                            {:name                "venue_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "s3", :name "venue", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})]
-           :name    "review"})
-   (merge raw-table-defaults
-          {:schema  "s2"
-           :columns [(merge raw-field-defaults
-                            {:name                "city_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "s2", :name "city", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})]
-           :name    "venue"})
-   (merge raw-table-defaults
-          {:schema  "s1"
-           :columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name                "reviewer_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})
-                     (merge raw-field-defaults
-                            {:name    "text"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})
-                     (merge raw-field-defaults
-                            {:name                "venue_id"
-                             :fk_target_column_id true
-                             :fk_target_column    {:schema "s1", :name "venue", :col-name "id"}
-                             :details             {:base-type "type/Integer"}})]
-           :name    "review"})
-   (merge raw-table-defaults
-          {:schema  "s1"
-           :columns [(merge raw-field-defaults
-                            {:name    "id"
-                             :details {:base-type "type/Integer"}
-                             :is_pk   true})
-                     (merge raw-field-defaults
-                            {:name    "name"
-                             :details {:base-type "type/Text", :special-type "type/Name"}})]
-           :name    "city"})])
-
-
-(def ^:private ^:const table-defaults
-  {:description             nil
-   :entity_type             nil
-   :caveats                 nil
-   :points_of_interest      nil
-   :show_in_getting_started false
-   :schema                  nil
-   :raw_table_id            true
-   :fields                  []
-   :rows                    nil
-   :updated_at              true
-   :entity_name             nil
-   :active                  true
-   :id                      true
-   :db_id                   true
-   :visibility_type         nil
-   :created_at              true})
-
-
-(def ^:private ^:const field-defaults
-  {:description        nil
-   :table_id           true
-   :caveats            nil
-   :points_of_interest nil
-   :fk_target_field_id false
-   :updated_at         true
-   :active             true
-   :parent_id          false
-   :id                 true
-   :raw_column_id      true
-   :last_analyzed      false
-   :position           0
-   :visibility_type    :normal
-   :preview_display    true
-   :created_at         true})
-
-(def ^:const schema-per-customer-tables-and-fields
+(def schema-per-customer-tables-and-fields
   [(merge table-defaults
           {:schema       "common"
            :name         "user"

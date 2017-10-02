@@ -186,6 +186,9 @@
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
 
+(def ^:private pg-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+(def ^:private pg-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
+
 (def PostgresISQLDriverMixin
   "Implementations of `ISQLDriver` methods for `PostgresDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -229,8 +232,12 @@
                                                             {:name         "additional-options"
                                                              :display-name "Additional JDBC connection string options"
                                                              :placeholder  "prepareThreshold=0"}]))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :current-db-time                   (driver/make-current-db-time-fn pg-date-formatter pg-db-time-query)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 
-(driver/register-driver! :postgres (PostgresDriver.))
+(defn -init-driver
+  "Register the PostgreSQL driver"
+  []
+  (driver/register-driver! :postgres (PostgresDriver.)))

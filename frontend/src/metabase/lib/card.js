@@ -35,6 +35,7 @@ export async function loadCard(cardId) {
     }
 }
 
+// TODO Atte Keinänen 5/31/17 Deprecated, we should migrate existing references to this method to `question.isCardDirty`
 // predicate function that dermines if a given card is "dirty" compared to the last known version of the card
 export function isCardDirty(card, originalCard) {
     // The rules:
@@ -73,6 +74,7 @@ export function isCardRunnable(card, tableMetadata) {
     }
 }
 
+// TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
     var dataset_query = Utils.copy(card.dataset_query);
     if (dataset_query.query) {

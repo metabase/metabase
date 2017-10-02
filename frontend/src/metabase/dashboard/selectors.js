@@ -5,7 +5,7 @@ import { setIn } from "icepick";
 
 import { createSelector } from 'reselect';
 
-import { getMeta } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import * as Dashboard from "metabase/meta/Dashboard";
 
@@ -93,7 +93,7 @@ export const getParameterTarget = createSelector(
 );
 
 export const getMappingsByParameter = createSelector(
-    [getMeta, getDashboardComplete],
+    [getMetadata, getDashboardComplete],
     (metadata, dashboard) => {
         if (!dashboard) {
             return {};
@@ -107,8 +107,8 @@ export const getMappingsByParameter = createSelector(
             for (let mapping: ParameterMapping of (dashcard.parameter_mappings || [])) {
                 const card = _.findWhere(cards, { id: mapping.card_id });
                 const fieldId = card && getParameterTargetFieldId(mapping.target, card.dataset_query);
-                const field = metadata.field(fieldId);
-                const values = field && field.values() || [];
+                const field = metadata.fields[fieldId];
+                const values = field && field.fieldValues() || [];
                 if (values.length) {
                     countsByParameter[mapping.parameter_id] = countsByParameter[mapping.parameter_id] || {};
                 }
@@ -161,14 +161,14 @@ export const getParameters = createSelector(
                 .value();
             return {
                 ...parameter,
-                field_id: fieldIds.length === 1 ? fieldIds[0] : null
+                field_ids: fieldIds
             }
         })
 )
 
 export const makeGetParameterMappingOptions = () => {
     const getParameterMappingOptions = createSelector(
-        [getMeta, getEditingParameter, getCard],
+        [getMetadata, getEditingParameter, getCard],
         (metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> => {
             return Dashboard.getParameterMappingOptions(metadata, parameter, card);
         }

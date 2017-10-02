@@ -5,7 +5,7 @@
             [metabase
              [driver :as driver]
              [query-processor-test :refer [rows]]
-             [sync-database :as sync-db]
+             [sync :as sync]
              [util :as u]]
             [metabase.driver
              [generic-sql :as sql]
@@ -14,7 +14,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -33,7 +33,7 @@
   {:user        "camsaul"
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
-   :subname     "//localhost:5432/bird_sightings"
+   :subname     "//localhost:5432/bird_sightings?OpenSourceSubProtocolOverride=true"
    :sslmode     "disable"}
   (sql/connection-details->spec pg-driver {:ssl    false
                                            :host   "localhost"
@@ -49,7 +49,7 @@
    :subprotocol "postgresql"
    :user        "camsaul"
    :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
-   :subname     "//localhost:5432/bird_sightings"}
+   :subname     "//localhost:5432/bird_sightings?OpenSourceSubProtocolOverride=true"}
   (sql/connection-details->spec pg-driver {:ssl    true
                                            :host   "localhost"
                                            :port   5432
@@ -221,7 +221,7 @@
     (drop-if-exists-and-create-db! "dropped_views_test")
     ;; create the DB object
     (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
-      (let [sync! #(sync-db/sync-database! database, :full-sync? true)]
+      (let [sync! #(sync/sync-database! database)]
         ;; populate the DB and create a view
         (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                 "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
@@ -238,7 +238,6 @@
         (sync!)
         ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
         (map (partial into {}) (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds"))))))
-
 
 ;;; timezone tests
 
@@ -269,8 +268,37 @@
 
 ;; make sure connection details w/ extra params work as expected
 (expect
-  "//localhost:5432/cool?prepareThreshold=0"
+  "//localhost:5432/cool?OpenSourceSubProtocolOverride=true&prepareThreshold=0"
   (:subname (sql/connection-details->spec pg-driver {:host               "localhost"
                                                      :port               "5432"
                                                      :dbname             "cool"
                                                      :additional-options "prepareThreshold=0"})))
+
+(expect-with-engine :postgres
+  "UTC"
+  (tu/db-timezone-id))
+
+
+;; Make sure we're able to fingerprint TIME fields (#5911)
+(expect-with-engine :postgres
+  [#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}}}
+   #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}}}
+   #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1}
+                                                                          :type   {:type/Text {:percent-json    0.0
+                                                                                               :percent-url     0.0
+                                                                                               :percent-email   0.0
+                                                                                               :average-length 12.0}}}}]
+  (do
+    (drop-if-exists-and-create-db! "time_field_test")
+    (let [details (i/database->connection-details pg-driver :db {:database-name "time_field_test"})]
+      (jdbc/execute! (sql/connection-details->spec pg-driver details)
+                     [(str "CREATE TABLE toucan_sleep_schedule ("
+                           "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
+                           "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
+                           "  reason VARCHAR(256) NOT NULL"
+                           ");"
+                           "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
+                           "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+        (sync/sync-database! database)
+        (db/select [Field :name :fingerprint] :table_id (db/select-one-id Table :db_id (u/get-id database)))))))

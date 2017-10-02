@@ -8,17 +8,19 @@
              [query :as query]
              [query-execution :as query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware
+             [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
              [dev :as dev]
              [driver-specific :as driver-specific]
+             [expand :as expand]
              [expand-macros :as expand-macros]
-             [expand-resolve :as expand-resolve]
              [fetch-source-query :as fetch-source-query]
              [format-rows :as format-rows]
              [limit :as limit]
@@ -27,7 +29,9 @@
              [parameters :as parameters]
              [permissions :as perms]
              [results-metadata :as results-metadata]
-             [resolve-driver :as resolve-driver]]
+             [resolve-driver :as resolve-driver]
+             [resolve :as resolve]
+             [source-table :as source-table]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -85,10 +89,14 @@
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
-      implicit-clauses/add-implicit-clauses
       format-rows/format-rows
+      binning/update-binning-strategy
       results-metadata/record-and-return-metadata!
-      expand-resolve/expand-resolve                    ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      resolve/resolve-middleware
+      add-dim/add-remapping
+      implicit-clauses/add-implicit-clauses
+      source-table/resolve-source-table-middleware
+      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
       expand-macros/expand-macros
@@ -121,7 +129,9 @@
   "Expand a QUERY the same way it would normally be done as part of query processing.
    This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
   (->> identity
-       expand-resolve/expand-resolve
+       resolve/resolve-middleware
+       source-table/resolve-source-table-middleware
+       expand/expand-middleware
        parameters/substitute-parameters
        expand-macros/expand-macros
        fetch-source-query/fetch-source-query))

@@ -4,6 +4,26 @@ import inflection from "inflection";
 import { mbqlEq } from "metabase/lib/query/util";
 import { formatTimeWithUnit } from "metabase/lib/formatting";
 
+export const DATETIME_UNITS = [
+    // "default",
+    "minute",
+    "hour",
+    "day",
+    "week",
+    "month",
+    "quarter",
+    "year",
+    // "minute-of-hour",
+    "hour-of-day",
+    "day-of-week",
+    "day-of-month",
+    // "day-of-year",
+    "week-of-year",
+    "month-of-year",
+    "quarter-of-year",
+]
+
+
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
     if (mbqlEq(filter[0], "time-interval")) {
@@ -143,7 +163,7 @@ export function generateTimeValueDescription(value, bucketing) {
     }
 }
 
-export function formatBucketing(bucketing) {
+export function formatBucketing(bucketing = "") {
     let words = bucketing.split("-");
     words[0] = inflection.capitalize(words[0]);
     return words.join(" ");
@@ -162,7 +182,13 @@ export function absolute(date) {
 export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
         if (mbqlEq(field[0], "datetime-field")) {
-            return field[field.length - 1]; // return last item because datetime-field is either [datetime-field field unit] or [datetime-field field "as" unit]
+            if (field.length === 4) {
+                // Deprecated legacy format [datetime-field field "as" unit], see DatetimeFieldDimension for more info
+                return field[3];
+            } else {
+                // Current format [datetime-field field unit]
+                return field[2]
+            }
         } if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
             return defaultUnit;
         } if (mbqlEq(field[0], "field-literal")) {

@@ -2,23 +2,33 @@
 
 import React from "react";
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
-
-import * as Card from "metabase/meta/Card";
-import Query from "metabase/lib/query";
-import { summarize } from "metabase/qb/lib/actions";
 
 import type {
     ClickAction,
     ClickActionProps,
     ClickActionPopoverProps
 } from "metabase/meta/types/Visualization";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
 
-export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
-    const query = Card.getQuery(card);
-    if (!query) {
+const omittedAggregations = ["rows", "cum_sum", "cum_count", "stddev"];
+const getAggregationOptionsForSummarize = query => {
+    return query
+        .table()
+        .aggregations()
+        .filter(
+            aggregation => !omittedAggregations.includes(aggregation.short)
+        );
+};
+
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery)) {
         return [];
     }
+
+    const tableMetadata: TableMetadata = query.table();
 
     return [
         {
@@ -30,19 +40,20 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
                 { onChangeCardAndRun, onClose }: ClickActionPopoverProps
             ) => (
                 <AggregationPopover
+                    query={query}
                     tableMetadata={tableMetadata}
-                    customFields={Query.getExpressions(query)}
-                    availableAggregations={tableMetadata.aggregation_options}
+                    customFields={query.expressions()}
+                    availableAggregations={getAggregationOptionsForSummarize(
+                        query
+                    )}
                     onCommitAggregation={aggregation => {
                         onChangeCardAndRun({
-                            nextCard: summarize(
-                                card,
-                                aggregation,
-                                tableMetadata
-                            )
+                            nextCard: question.summarize(aggregation).card()
                         });
                         onClose && onClose();
                     }}
+                    onClose={onClose}
+                    showOnlyProvidedAggregations
                 />
             )
         }

@@ -6,7 +6,11 @@ import PropTypes from "prop-types";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
+import { getHumanReadableValue } from "metabase/lib/query/field";
+
 import ListSearchField from "metabase/components/ListSearchField.jsx";
+
+import cx from "classnames";
 
 type Props = {
     value: any,
@@ -52,19 +56,19 @@ export default class CategoryWidget extends Component {
         });
     }
 
-    static format(value) {
-        return value;
+    static format(value, fieldValues) {
+        return getHumanReadableValue(value, fieldValues);
     }
 
     render() {
-        let { values, setValue, onClose } = this.props;
+        let { value, values, setValue, onClose } = this.props;
 
         let filteredValues = [];
         let regex = this.state.searchRegex;
 
         if (regex) {
             for (const value of values) {
-                if (regex.test(value)) {
+                if (regex.test(value[0]) || regex.test(value[1])) {
                     filteredValues.push(value);
                 }
             }
@@ -85,13 +89,15 @@ export default class CategoryWidget extends Component {
                   </div>
                 }
                 <ul className="scroll-y scroll-show" style={{ maxHeight: 300 }}>
-                    {filteredValues.map(value =>
+                    {filteredValues.map(([rawValue, humanReadableValue]) =>
                         <li
-                            key={value}
-                            className="px2 py1 bg-brand-hover text-white-hover cursor-pointer"
-                            onClick={() => { setValue(value); onClose(); }}
+                            key={rawValue}
+                            className={cx("px2 py1 bg-brand-hover text-white-hover cursor-pointer", {
+                                "text-white bg-brand": rawValue === value
+                            })}
+                            onClick={() => { setValue(rawValue); onClose(); }}
                         >
-                            {value}
+                            {humanReadableValue || String(rawValue)}
                         </li>
                      )}
                 </ul>

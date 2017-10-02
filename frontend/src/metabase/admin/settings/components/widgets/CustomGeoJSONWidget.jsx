@@ -234,6 +234,7 @@ const SettingContainer = ({ name, description, className="py1", children }) =>
     </div>
 
 const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJsonError, onLoadGeoJson, onCancel, onSave }) =>
+    <div>
     <div className="flex">
         <div className="flex-no-shrink">
             <h2>{ !originalMap ? "Add a new map" : "Edit map" }</h2>
@@ -276,12 +277,6 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                     />
                 </SettingContainer>
             </div>
-            <div className="py1">
-                <button className={cx("Button Button--borderless")} onClick={onCancel}>Cancel</button>
-                <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
-                    {originalMap ? "Save map" : "Add map"}
-                </button>
-            </div>
         </div>
         <div className="flex-full ml4 relative bordered rounded flex my4">
         { geoJson ||  geoJsonLoading || geoJsonError ?
@@ -298,6 +293,15 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
             </div>
         }
         </div>
+      </div>
+      <div className="py1 flex">
+        <div className="ml-auto">
+          <button className={cx("Button Button")} onClick={onCancel}>Cancel</button>
+          <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
+              {originalMap ? "Save map" : "Add map"}
+          </button>
+        </div>
+      </div>
     </div>
 
 const ChoroplethPreview = pure(({ geoJson }) =>

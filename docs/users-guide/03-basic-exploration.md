@@ -1,5 +1,5 @@
 ### Exploring in Metabase
-As long as you're not the very first user in your team's Metabase, the easiest way to get started is by exploring charts and dashboards that your teammates have already created.
+As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created.
 
 #### Exploring dashboards
 Click on the `Dashboards` nav item to see all the dashboards your teammates have created. Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. (You can learn more about dashboards [here](07-dashboards.md))
@@ -22,7 +22,7 @@ Lastly, clicking on the ID of an item in table gives you the option to go to a d
 **Note that charts created with SQL don't currently have these action options.**
 
 #### Exploring saved questions
-In Metabase parlance, every chart on number on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above. You can also browse all the questions your teammates have saved by clicking the `Questions` link in the main navigation.
+In Metabase parlance, every chart or number on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above. You can also browse all the questions your teammates have saved by clicking the `Questions` link in the main navigation.
 
 When you're viewing the detail view of a question, you can use all the same actions mentioned above. You can also click on the headings of tables to see more options, like viewing the sum of the values in a column, or finding the minimum or maximum value in it.
 

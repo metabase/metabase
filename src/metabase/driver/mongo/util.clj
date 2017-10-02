@@ -64,7 +64,7 @@
                           :or   {ssl? false}}]
   (-> (client-options-for-url-params additional-options)
       client-options->builder
-      (.description (str "Metabase " (config/mb-version-info :tag)))
+      (.description config/mb-app-id-string)
       (.connectTimeout connection-timeout-ms)
       (.serverSelectionTimeout connection-timeout-ms)
       (.sslEnabled ssl?)

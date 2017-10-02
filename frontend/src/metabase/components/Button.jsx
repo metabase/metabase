@@ -16,27 +16,30 @@ const BUTTON_VARIANTS = [
     "cancel",
     "success",
     "purple",
-    "borderless"
+    "borderless",
+    "onlyIcon"
 ];
 
-const Button = ({ className, icon, children, ...props }) => {
+const Button = ({ className, icon, iconSize, children, ...props }) => {
     let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(variant => "Button--" + variant);
+
     return (
         <button
             {..._.omit(props, ...BUTTON_VARIANTS)}
             className={cx("Button", className, variantClasses)}
         >
             <div className="flex layout-centered">
-                { icon && <Icon name={icon} size={14} className="mr1" />}
+                { icon && <Icon name={icon} size={iconSize ? iconSize : 14} className={cx({ "mr1": !props.onlyIcon })} />}
                 <div>{children}</div>
             </div>
         </button>
     );
-}
+};
 
 Button.propTypes = {
     className: PropTypes.string,
     icon: PropTypes.string,
+    iconSize: PropTypes.number,
     children: PropTypes.any,
 
     small: PropTypes.bool,
@@ -48,7 +51,8 @@ Button.propTypes = {
     cancel: PropTypes.bool,
     purple: PropTypes.bool,
 
-    borderless: PropTypes.bool
+    borderless: PropTypes.bool,
+    onlyIcon: PropTypes.bool,
 };
 
 export default Button;

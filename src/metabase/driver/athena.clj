@@ -20,7 +20,6 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
@@ -250,35 +249,6 @@
         v (:_col0 (first result))]
     (or v 0)))
 
-(defn- field-percent-urls [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT cast(count_if(url_extract_host(%s) <> '') AS double) / cast(count(*) AS double) FROM %s WHERE %s IS NOT NULL"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            (quote-name field-name))
-        result            (run-query {:details details :engine :athena} sql {})
-        v (:_col0 (first result))]
-    (if (= v "NaN") 0.0 v)))
-
-;; It take a really long time. I'm not sure that feature is worth it for thris driver
-(defn- analyze-table
-  [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
-     :field-avg-length-fn   field-avg-length
-     :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
-
-(defn- field-values-lazy-seq [{field-name :name, :as field}]
-  (let [table             (field/table field)
-        {:keys [details]} (table/database table)
-        sql               (format "SELECT %s FROM %s LIMIT %d"
-                            (quote-name field-name)
-                            (quote+combine-names (:schema table) (:name table))
-                            driver/max-sync-lazy-seq-results)
-        {:keys [rows]}    (run-query {:details details :engine :athena} sql {})]
-    (for [row rows]
-      (first row))))
-
 (defrecord AthenaDriver []
   clojure.lang.Named
   (getName [_] "Athena"))
@@ -286,8 +256,7 @@
 (u/strict-extend AthenaDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table             (constantly nil) ;analyze-table)
-          :can-connect?              can-connect?
+         {:can-connect?              can-connect?
           :date-interval             (u/drop-first-arg presto/date-interval)
           :describe-database         describe-database
           :describe-table            describe-table
@@ -314,7 +283,6 @@
                                          :required     true}]))
           :execute-query             execute-query
           :features                 (constantly features)
-          :field-values-lazy-seq    (u/drop-first-arg field-values-lazy-seq)
           :mbql->native mbql->native
           :table-rows-seq (constantly nil)})
 
@@ -328,7 +296,6 @@
           ;:date                      (u/drop-first-arg date)
           :date                      (u/drop-first-arg metabase.driver.presto/date)
           :excluded-schemas          (constantly #{"default"})
-          :field-percent-urls        (u/drop-first-arg field-percent-urls)
           :prepare-value             (u/drop-first-arg presto/prepare-value)
           :quote-style               (constantly :ansi)
           :string-length-fn          (u/drop-first-arg presto/string-length-fn)

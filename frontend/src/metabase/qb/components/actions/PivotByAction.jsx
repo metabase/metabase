@@ -3,10 +3,7 @@
 import React from "react";
 
 import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
-
-import * as Card from "metabase/meta/Card";
-import Query from "metabase/lib/query";
-import { pivot } from "metabase/qb/lib/actions";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type { Field } from "metabase/meta/types/Field";
 import type {
@@ -20,48 +17,29 @@ type FieldFilter = (field: Field) => boolean;
 // PivotByAction displays a breakout picker, and optionally filters by the
 // clicked dimesion values (and removes corresponding breakouts)
 export default (name: string, icon: string, fieldFilter: FieldFilter) =>
-    ({ card, tableMetadata, clicked }: ClickActionProps): ClickAction[] => {
-        const query = Card.getQuery(card);
+    ({ question, clicked }: ClickActionProps): ClickAction[] => {
+        const query = question.query();
+        if (!(query instanceof StructuredQuery)) {
+            return [];
+        }
+
+        // $FlowFixMe
+        const tableMetadata: TableMetadata = query.table();
 
         // Click target types: metric value
         if (
-            !query ||
-            !tableMetadata ||
-            (clicked &&
-                (clicked.value === undefined ||
-                    // $FlowFixMe
-                    clicked.column.source !== "aggregation"))
+            clicked &&
+            (clicked.value === undefined ||
+                // $FlowFixMe
+                clicked.column.source !== "aggregation")
         ) {
             return [];
         }
 
         let dimensions = (clicked && clicked.dimensions) || [];
 
-        const breakouts = Query.getBreakouts(query);
-
-        const usedFields = {};
-        for (const breakout of breakouts) {
-            usedFields[Query.getFieldTargetId(breakout)] = true;
-        }
-
-        const fieldOptions = Query.getFieldOptions(
-            tableMetadata.fields,
-            true,
-            (fields: Field[]): Field[] => {
-                fields = tableMetadata.breakout_options.validFieldsFilter(
-                    fields
-                );
-                if (fieldFilter) {
-                    fields = fields.filter(fieldFilter);
-                }
-                return fields;
-            },
-            usedFields
-        );
-
-        const customFieldOptions = Query.getExpressions(query);
-
-        if (fieldOptions.count === 0) {
+        const breakoutOptions = query.breakoutOptions(null, fieldFilter);
+        if (breakoutOptions.count === 0) {
             return [];
         }
 
@@ -85,15 +63,12 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                 ) => (
                     <BreakoutPopover
                         tableMetadata={tableMetadata}
-                        fieldOptions={fieldOptions}
-                        customFieldOptions={customFieldOptions}
+                        fieldOptions={breakoutOptions}
                         onCommitBreakout={breakout => {
-                            const nextCard = pivot(
-                                card,
-                                breakout,
-                                tableMetadata,
-                                dimensions
-                            );
+                            const nextCard = question
+                                .pivot([breakout], dimensions)
+                                .card();
+
                             if (nextCard) {
                                 onChangeCardAndRun({ nextCard });
                             }

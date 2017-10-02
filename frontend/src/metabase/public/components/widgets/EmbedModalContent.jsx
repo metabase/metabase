@@ -213,7 +213,7 @@ export default class EmbedModalContent extends Component {
     }
 }
 
-const EmbedTitle = ({ type, onClick }) =>
+export const EmbedTitle = ({ type, onClick }: { type: ?string, onClick: () => any}) =>
     <a className="flex align-center" onClick={onClick}>
         <span className="text-brand-hover">Sharing</span>
         { type && <Icon name="chevronright" className="mx1 text-grey-3" /> }

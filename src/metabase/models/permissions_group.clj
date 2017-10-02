@@ -41,7 +41,7 @@
 (defn exists-with-name?
   "Does a `PermissionsGroup` with GROUP-NAME exist in the DB? (case-insensitive)"
   ^Boolean [group-name]
-  {:pre [(u/string-or-keyword? group-name)]}
+  {:pre [((some-fn keyword? string?) group-name)]}
   (db/exists? PermissionsGroup
     :%lower.name (s/lower-case (name group-name))))
 

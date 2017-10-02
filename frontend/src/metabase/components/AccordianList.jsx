@@ -9,7 +9,6 @@ import { elementIsInView } from "metabase/lib/dom";
 import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
 
-
 export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
@@ -66,7 +65,7 @@ export default class AccordianList extends Component {
     componentDidMount() {
         // when the component is mounted and an item is selected then scroll to it
         const element = this.refs.selected && ReactDOM.findDOMNode(this.refs.selected);
-        if (element && !elementIsInView(element)) {
+        if (element && element.scrollIntoView && !elementIsInView(element)) {
             element.scrollIntoView();
         }
     }
@@ -176,9 +175,9 @@ export default class AccordianList extends Component {
             searchable && (typeof searchable !== "function" || searchable(sections[sectionIndex]));
 
         return (
-            <div id={id} className={this.props.className} style={{ width: '300px', ...style }}>
+            <div id={id} className={this.props.className} style={{ minWidth: '300px', ...style }}>
                 {sections.map((section, sectionIndex) =>
-                    <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
+                    <section key={sectionIndex} className={cx("List-section", section.className, { "List-section--open": sectionIsOpen(sectionIndex) })}>
                         { section.name && alwaysExpanded ?
                             (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable) &&
                                 <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
@@ -231,12 +230,11 @@ export default class AccordianList extends Component {
                                         className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex), 'List-item--disabled': !this.itemIsClickable(item) }, this.getItemClasses(item, itemIndex))}
                                     >
                                         <a
-                                            className={cx("flex-full flex align-center px1", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
-                                            style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
+                                            className={cx("p1 flex-full flex align-center", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
                                             onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
                                         >
-                                            { this.renderItemIcon(item, itemIndex) }
-                                            <h4 className="List-item-title ml2">{item.name}</h4>
+                                            <span className="flex align-center">{ this.renderItemIcon(item, itemIndex) }</span>
+                                            <h4 className="List-item-title ml1">{item.name}</h4>
                                         </a>
                                         { this.renderItemExtra(item, itemIndex) }
                                         { showItemArrows &&

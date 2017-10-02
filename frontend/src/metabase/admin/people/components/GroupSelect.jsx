@@ -6,20 +6,23 @@ import { isDefaultGroup, isAdminGroup, canEditMembership, getGroupColor } from "
 import cx from "classnames";
 import _ from "underscore";
 
-const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
+export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
     const disabled = !canEditMembership(group);
     const selected = isDefaultGroup(group) || selectedGroups[group.id];
     return (
         <div className={cx("GroupOption flex align-center p1 px2", { "cursor-pointer": !disabled })} onClick={() => !disabled && onGroupChange(group, !selected) }>
             <span className={cx("pr1", getGroupColor(group), { disabled })}>
-                <CheckBox checked={selected} borderColor="currentColor" size={18} />
+                <CheckBox
+                    checked={selected}
+                    size={18}
+                />
             </span>
             {group.name}
         </div>
     )
 }
 
-const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
+export const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
     const other = groups.filter(g => !isAdminGroup(g) && !isDefaultGroup(g));
     return (
         <div className="GroupSelect py1">

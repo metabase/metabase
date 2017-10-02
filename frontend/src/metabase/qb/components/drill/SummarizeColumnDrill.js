@@ -1,8 +1,10 @@
 /* @flow */
 
-import { summarize, getFieldRefFromColumn } from "metabase/qb/lib/actions";
-import * as Card from "metabase/meta/Card";
-import { isNumeric } from "metabase/lib/schema_metadata";
+import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
+import {
+    getAggregator,
+    isCompatibleAggregatorForField
+} from "metabase/lib/schema_metadata";
 
 import type {
     ClickAction,
@@ -32,35 +34,39 @@ const AGGREGATIONS = {
     }
 };
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
-    const query = Card.getQuery(card);
-
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     if (
-        !query ||
         !clicked ||
         !clicked.column ||
         clicked.value !== undefined ||
-        clicked.column.source !== "fields" ||
-        !isNumeric(clicked.column)
+        clicked.column.source !== "fields"
     ) {
+        // TODO Atte Keinänen 7/21/17: Does it slow down the drill-through option calculations remarkably
+        // that I removed the `isSummable` condition from here and use `isCompatibleAggregator` method below instead?
         return [];
     }
     const { column } = clicked;
 
-    // $FlowFixMe
-    return Object.entries(AGGREGATIONS).map(([aggregation, action]: [string, {
-        section: string,
-        title: string
-    }]) => ({
-        name: action.title.toLowerCase(),
-        ...action,
-        card: () =>
-            summarize(
-                card,
-                [aggregation, getFieldRefFromColumn(column)],
-                tableMetadata
-            )
-    }));
+    return (
+        Object.entries(AGGREGATIONS)
+            .map(([aggregationShort, action]) => [
+                getAggregator(aggregationShort),
+                action
+            ])
+            .filter(([aggregator]) =>
+                isCompatibleAggregatorForField(aggregator, column))
+            // $FlowFixMe
+            .map(([aggregator, action]: [any, {
+                section: string,
+                title: string
+            }]) => ({
+                name: action.title.toLowerCase(),
+                ...action,
+                question: () =>
+                    question.summarize([
+                        aggregator.short,
+                        getFieldRefFromColumn(column)
+                    ])
+            }))
+    );
 };

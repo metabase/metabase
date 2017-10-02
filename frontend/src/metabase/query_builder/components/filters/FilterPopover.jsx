@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
@@ -15,19 +14,19 @@ import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
 import { isDate } from "metabase/lib/schema_metadata";
-import { singularize } from "metabase/lib/formatting";
+import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
-import type { Filter, FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta/types/Query";
-import type { TableMetadata, FieldMetadata, Operator } from "metabase/meta/types/Metadata";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";
+import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
+    query: StructuredQuery,
     filter?: Filter,
     onCommitFilter: (filter: Filter) => void,
-    onClose: () => void,
-    tableMetadata: TableMetadata,
-    customFields?: ExpressionClause
+    onClose: () => void
 }
 
 type State = {
@@ -46,13 +45,6 @@ export default class FilterPopover extends Component {
             filter: props.filter || []
         };
     }
-
-    static propTypes = {
-        filter: PropTypes.array,
-        onCommitFilter: PropTypes.func.isRequired,
-        onClose: PropTypes.func.isRequired,
-        tableMetadata: PropTypes.object.isRequired
-    };
 
     componentWillMount() {
         window.addEventListener('keydown', this.commitOnEnter);
@@ -74,6 +66,7 @@ export default class FilterPopover extends Component {
     }
 
     setField = (fieldId: ConcreteField) => {
+        const { query } = this.props;
         let { filter } = this.state;
         if (filter[1] !== fieldId) {
             // different field, reset the filter
@@ -83,7 +76,7 @@ export default class FilterPopover extends Component {
             filter[1] = fieldId;
 
             // default to the first operator
-            let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
+            let { field } = Query.getFieldTarget(filter[1], query.table());
 
             // let the DatePicker choose the default operator, otherwise use the first one
             let operator = isDate(field) ? null : field.operators[0].name;
@@ -108,8 +101,10 @@ export default class FilterPopover extends Component {
 
     setValue(index: number, value: any) {
         let { filter } = this.state;
-        filter[index + 2] = value;
-        this.setState({ filter: filter });
+        // $FlowFixMe Flow doesn't like spread operator
+        let newFilter: FieldFilter = [...filter]
+        newFilter[index + 2] = value;
+        this.setState({ filter: newFilter });
     }
 
     setValues = (values: any[]) => {
@@ -119,7 +114,8 @@ export default class FilterPopover extends Component {
     }
 
     _updateOperator(oldFilter: FieldFilter, operatorName: ?string): FieldFilter {
-        let { field } = Query.getFieldTarget(oldFilter[1], this.props.tableMetadata);
+        const { query } = this.props;
+        let { field } = Query.getFieldTarget(oldFilter[1], query.table());
         let operator = field.operators_lookup[operatorName];
         let oldOperator = field.operators_lookup[oldFilter[0]];
 
@@ -150,13 +146,14 @@ export default class FilterPopover extends Component {
     }
 
     isValid() {
+        const { query } = this.props;
         let { filter } = this.state;
         // has an operator name and field id
         if (filter[0] == null || !Query.isValidField(filter[1])) {
             return false;
         }
         // field/operator combo is valid
-        let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
+        let { field } = Query.getFieldTarget(filter[1], query.table());
         let operator = field.operators_lookup[filter[0]];
         if (operator) {
             // has the mininum number of arguments
@@ -241,37 +238,37 @@ export default class FilterPopover extends Component {
     }
 
     render() {
-        let { filter } = this.state;
-        if (filter[0] === "SEGMENT" || filter[1] == undefined) {
+        const { query } = this.props;
+        const { filter } = this.state;
+        const [operator, field] = filter;
+        if (operator === "SEGMENT" || field == undefined) {
             return (
                 <div className="FilterPopover">
                     <FieldList
                         className="text-purple"
-                        field={this.state.filter[1]}
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
-                        customFieldOptions={this.props.customFields}
-                        segmentOptions={this.props.tableMetadata.segments && this.props.tableMetadata.segments.filter((sgmt) => sgmt.is_active === true)}
-                        tableMetadata={this.props.tableMetadata}
+                        field={field}
+                        fieldOptions={query.filterFieldOptions(filter)}
+                        segmentOptions={query.filterSegmentOptions(filter)}
+                        tableMetadata={query.table()}
                         onFieldChange={this.setField}
                         onFilterChange={this.commitFilter}
                     />
                 </div>
             );
         } else {
-            let { filter } = this.state;
-            let { table, field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
+            let { table, field } = Query.getFieldTarget(filter[1], query.table());
 
             return (
                 <div style={{
                     minWidth: 300
                 }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
-                        <a className="cursor-pointer flex align-center" onClick={this.clearField}>
+                        <a className="cursor-pointer text-purple-hover transition-color flex align-center" onClick={this.clearField}>
                             <Icon name="chevronleft" size={18}/>
                             <h3 className="inline-block">{singularize(table.display_name)}</h3>
                         </a>
                         <h3 className="mx1">-</h3>
-                        <h3 className="text-default">{field.display_name}</h3>
+                        <h3 className="text-default">{formatField(field)}</h3>
                     </div>
                     { isDate(field) ?
                         <DatePicker

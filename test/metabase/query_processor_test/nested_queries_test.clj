@@ -7,10 +7,12 @@
              [query-processor :as qp]
              [query-processor-test :refer :all]
              [util :as u]]
+            [metabase.driver.generic-sql :as generic-sql]
             [metabase.models
              [card :refer [Card]]
              [database :as database]
              [field :refer [Field]]
+             [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
@@ -37,29 +39,39 @@
           [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
    :cols [{:name "id",          :base_type (data/id-field-type)}
           {:name "name",        :base_type :type/Text}
-          {:name "category_id", :base_type :type/Integer}
+          {:name "category_id", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "latitude",    :base_type :type/Float}
           {:name "longitude",   :base_type :type/Float}
-          {:name "price",       :base_type :type/Integer}]}
-  (rows+cols
-    (qp/process-query
-      {:database (data/id)
-       :type     :query
-       :query    {:source-query {:source-table (data/id :venues)
-                                 :order-by     [:asc (data/id :venues :id)]
-                                 :limit        10}
-                  :limit        5}})))
+          {:name "price",       :base_type (data/expected-base-type->actual :type/Integer)}]}
+  (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+    (rows+cols
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:source-table (data/id :venues)
+                                   :order-by     [:asc (data/id :venues :id)]
+                                   :limit        10}
+                    :limit        5}}))))
 
+;; TODO - `identifier`, `quoted-identifier` might belong in some sort of shared util namespace
 (defn- identifier
-  "Return a properly formatted identifier for a Table or Field.
+  "Return a properly formatted *UNQUOTED* identifier for a Table or Field.
   (This handles DBs like H2 who require uppercase identifiers, or databases like Redshift do clever hacks
    like prefixing table names with a unique schema for each test run because we're not
    allowed to create new databases.)"
-  ([table-kw]
+  (^String [table-kw]
    (let [{schema :schema, table-name :name} (db/select-one [Table :name :schema] :id (data/id table-kw))]
      (name (hsql/qualify schema table-name))))
-  ([table-kw field-kw]
+  (^String [table-kw field-kw]
    (db/select-one-field :name Field :id (data/id table-kw field-kw))))
+
+(defn- quote-identifier [identifier]
+  (first (hsql/format (keyword identifier)
+           :quoting (generic-sql/quote-style datasets/*driver*))))
+
+(def ^:private ^{:arglists '([table-kw] [table-kw field-kw])} ^String quoted-identifier
+  "Return a *QUOTED* identifier for a Table or Field. (This behaves just like `identifier`, but quotes the result)."
+  (comp quote-identifier identifier))
 
 ;; make sure we can do a basic query with a SQL source-query
 (datasets/expect-with-engines (engines-that-support :nested-queries)
@@ -70,24 +82,26 @@
           [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
    :cols [{:name "id",          :base_type :type/Integer}
           {:name "longitude",   :base_type :type/Float}
-          {:name "category_id", :base_type :type/Integer}
-          {:name "price",       :base_type :type/Integer}
+          {:name "category_id", :base_type (data/expected-base-type->actual :type/Integer)}
+          {:name "price",       :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "name",        :base_type :type/Text}
           {:name "latitude",    :base_type :type/Float}]}
-  (rows+cols
-    (qp/process-query
-      {:database (data/id)
-       :type     :query
-       :query    {:source-query {:native (format "SELECT %s, %s, %s, %s, %s, %s FROM %s"
-                                                 (identifier :venues :id)
-                                                 (identifier :venues :longitude)
-                                                 (identifier :venues :category_id)
-                                                 (identifier :venues :price)
-                                                 (identifier :venues :name)
-                                                 (identifier :venues :latitude)
-                                                 (identifier :venues))}
-                  :order-by     [:asc [:field-literal (keyword (data/format-name :id)) :type/Integer]]
-                  :limit        5}})))
+  (format-rows-by [int (partial u/round-to-decimals 4) int int str (partial u/round-to-decimals 4)]
+    (rows+cols
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:native (format "SELECT %s, %s, %s, %s, %s, %s FROM %s"
+                                                   (quoted-identifier :venues :id)
+                                                   (quoted-identifier :venues :longitude)
+                                                   (quoted-identifier :venues :category_id)
+                                                   (quoted-identifier :venues :price)
+                                                   (quoted-identifier :venues :name)
+                                                   (quoted-identifier :venues :latitude)
+                                                   (quoted-identifier :venues))}
+                    :order-by     [:asc [:field-literal (keyword (data/format-name :id)) :type/Integer]]
+                    :limit        5}}))))
+
 
 (def ^:private ^:const breakout-results
   {:rows [[1 22]
@@ -117,7 +131,7 @@
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:native (format "SELECT * FROM %s" (identifier :venues))}
+         :query    {:source-query {:native (format "SELECT * FROM %s" (quoted-identifier :venues))}
                     :aggregation  [:count]
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
 
@@ -431,3 +445,16 @@
                         "2014-05-01T00:00:00-07:00"])
         qp/process-query
         :status)))
+
+;; Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)
+(expect
+  [[22]]
+  (tt/with-temp* [Segment [segment {:table_id   (data/id :venues)
+                                    :definition {:filter [:= (data/id :venues :price) 1]}}]
+                  Card    [card (mbql-card-def
+                                  :source-table (data/id :venues)
+                                  :filter       [:and [:segment (u/get-id segment)]])]]
+    (-> (query-with-source-card card
+          :aggregation [:count])
+        qp/process-query
+        rows)))

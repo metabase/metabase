@@ -31,10 +31,14 @@ import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Utils from "metabase/lib/utils";
 
 const mapDispatchToProps = {
     clearRequestState
 };
+
+const ICON_SIZE = 16
 
 @connect(null, mapDispatchToProps)
 export default class QueryHeader extends Component {
@@ -83,6 +87,21 @@ export default class QueryHeader extends Component {
         , 5000);
     }
 
+    _getCleanedCard(card) {
+        if (card.dataset_query.query) {
+            const query = Utils.copy(card.dataset_query.query);
+            return {
+                ...card,
+                dataset_query: {
+                    ...card.dataset_query,
+                    query: Query.cleanQuery(query)
+                }
+            }
+        } else {
+            return card
+        }
+    }
+
     /// Add result_metadata and metadata_checksum columns to card as expected by the endpoints used for saving
     /// and updating Cards. These values are returned as part of Query Processor results and fetched from there
     addResultMetadata(card) {
@@ -110,14 +129,11 @@ export default class QueryHeader extends Component {
         //     delete card.dataset_query.native;
         // }
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
-        }
-
-        this.addResultMetadata(card);
+        const cleanedCard = this._getCleanedCard(card);
+        this.addResultMetadata(cleanedCard);
 
         // TODO: reduxify
-        this.requestPromise = cancelable(CardApi.create(card));
+        this.requestPromise = cancelable(CardApi.create(cleanedCard));
         return this.requestPromise.then(newCard => {
             this.clearQBDatabases();
 
@@ -139,14 +155,11 @@ export default class QueryHeader extends Component {
         //     delete card.dataset_query.native;
         // }
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
-        }
-
-        this.addResultMetadata(card);
+        const cleanedCard = this._getCleanedCard(card);
+        this.addResultMetadata(cleanedCard);
 
         // TODO: reduxify
-        this.requestPromise = cancelable(CardApi.update(card));
+        this.requestPromise = cancelable(CardApi.update(cleanedCard));
         return this.requestPromise.then(updatedCard => {
             this.clearQBDatabases();
 
@@ -212,7 +225,7 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { question, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
         var buttonSections = [];
@@ -318,7 +331,7 @@ export default class QueryHeader extends Component {
         }
 
         // parameters
-        if (Query.isNative(card && card.dataset_query) && database && _.contains(database.features, "native-parameters")) {
+        if (question.query() instanceof NativeQuery && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
@@ -338,7 +351,7 @@ export default class QueryHeader extends Component {
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
                     <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
-                        <Icon name="addtodash" size={16} />
+                        <Icon name="addtodash" size={ICON_SIZE} />
                     </span>
                 </Tooltip>
             ]);
@@ -349,7 +362,7 @@ export default class QueryHeader extends Component {
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
                         triggerClasses="h4 text-brand-hover text-uppercase"
-                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={16} /></span>}
+                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={ICON_SIZE} /></span>}
                     >
                         <SaveQuestionModal
                             card={this.props.card}
@@ -413,7 +426,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
             <Tooltip key="dataReference" tooltip="Learn about your data">
                 <a className={dataReferenceButtonClasses}>
-                    <Icon name='reference' size={16} onClick={this.onToggleDataReference}></Icon>
+                    <Icon name='reference' size={ICON_SIZE} onClick={this.onToggleDataReference}></Icon>
                 </a>
             </Tooltip>
         ]);

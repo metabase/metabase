@@ -1,7 +1,6 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
-  (:require [environ.core :refer [env]]
-            [metabase.test.data
+  (:require [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
             [metabase.util :as u])
@@ -19,11 +18,12 @@
    :type/Time       "TIME"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host         "localhost"
-          :port         3306
-          :timezone     :America/Los_Angeles
-          :user         (if (env :circleci) "ubuntu"
-                            "root")}
+  (merge {:host         (i/db-test-env-var-or-throw :mysql :host "localhost")
+          :port         (i/db-test-env-var-or-throw :mysql :port 3306)
+          :user         (i/db-test-env-var :mysql :user "root")
+          :timezone     :America/Los_Angeles}
+         (when-let [password (i/db-test-env-var :mysql :password)]
+           {:password password})
          (when (= context :db)
            {:db database-name})))
 
