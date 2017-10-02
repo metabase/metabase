@@ -19,14 +19,12 @@ import {
     setInputValue
 } from "__support__/enzyme_utils"
 
-import { DETERMINE_OPTIONS, RESET_QUERY } from "metabase/new_query/new_query";
+import { DETERMINE_OPTIONS } from "metabase/new_query/new_query";
 
 import { getQuery } from "metabase/query_builder/selectors";
 import DataSelector from "metabase/query_builder/components/DataSelector";
 
 import {
-    FETCH_METRICS,
-    FETCH_SEGMENTS,
     FETCH_DATABASES
 } from "metabase/redux/metadata"
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";

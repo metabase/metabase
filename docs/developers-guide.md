@@ -149,8 +149,7 @@ describe("Query builder", () => {
     beforeAll(async () => {
         // Usually you want to test stuff where user is already logged in
         // so it is convenient to login before any test case.
-        // Remember `await` here!
-        await useSharedAdminLogin()
+        useSharedAdminLogin()
     })
 
     it("should let you run a new query", async () => {
