@@ -50,12 +50,11 @@
    max_computation_cost MaxComputationCost
    model                Model}
   (api/check-403 (costs/enable-xrays))
-  (let [model (api/read-check (->model model) id)]
-    {:job-id (async/compute
-              #(->> model
-                    (fe/extract-features
-                     {:max-cost (max-cost max_query_cost max_computation_cost)})
-                    fe/x-ray))}))
+  {:job-id (async/compute ::model
+            (fn [model max-cost]
+              (->> model (fe/extract-features {:max-cost max-cost}) fe/x-ray))
+            (api/read-check (->model model) id)
+            (max-cost max_query_cost max_computation_cost))})
 
 (api/defendpoint GET "/compare/:model1/:id1/:model2/:id2"
   "Get comparison x-ray for two models of types `:model1` and `:model2` with
@@ -66,14 +65,12 @@
    model1               Model
    model2               Model}
   (api/check-403 (costs/enable-xrays))
-  (let [model1 (api/read-check (->model model1) (Integer/parseInt id1))
-        model2 (api/read-check (->model model2) (Integer/parseInt id2))]
-    {:job-id (async/compute
-              #(fe/x-ray
-               (fe/compare-features
-                {:max-cost (max-cost max_query_cost max_computation_cost)}
-                model1
-                model2)))}))
+  {:job-id (async/compute ::compare-models
+            (fn [model1 model2 max-cost]
+              (fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))
+            (api/read-check (->model model1) (Integer/parseInt id1))
+            (api/read-check (->model model2) (Integer/parseInt id2))
+            (max-cost max_query_cost max_computation_cost))})
 
 (api/defendpoint GET "/compare/:model1/:id1/:model2/:id2/field/:field"
   "Get comparison x-ray for `Field` named `field` from models of types
@@ -84,20 +81,19 @@
    model1               Model
    model2               Model}
   (api/check-403 (costs/enable-xrays))
-  (let [model1 (api/read-check (->model model1) (Integer/parseInt id1))
-        model2 (api/read-check (->model model2) (Integer/parseInt id2))]
-    {:job-id (async/compute
-              #(let [{:keys [comparison constituents]}
-                     (fe/x-ray
-                      (fe/compare-features
-                       {:max-cost (max-cost max_query_cost max_computation_cost)}
-                       model1
-                       model2))]
+  {:job-id (async/compute ::compare-models-field
+            (fn [model1 model2 max-cost]
+              (let [{:keys [comparison constituents]} (fe/x-ray
+                                                       (fe/compare-features
+                                                        {:max-cost max-cost}
+                                                        model1
+                                                        model2))]
                 {:constituents     constituents
                  :comparison       (-> comparison (get field))
-                 :top-contributors (-> comparison
-                                       (get field)
-                                       :top-contributors)}))}))
+                 :top-contributors (-> comparison (get field) :top-contributors)}))
+            (api/read-check (->model model1) (Integer/parseInt id1))
+            (api/read-check (->model model2) (Integer/parseInt id2))
+            (max-cost max_query_cost max_computation_cost))})
 
 (api/defendpoint GET "/compare/valid-pairs"
   "Get a list of model pairs that can be compared."

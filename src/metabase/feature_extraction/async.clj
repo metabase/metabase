@@ -16,17 +16,17 @@
   (comp some? #{:running} :status))
 
 (defn- save-result
-  [{:keys [id]} payload]
+  [id payload]
   (db/transaction
     (db/insert! ComputationJobResult
       :job_id     id
-      :permanence :temporary
+      :permanence :cache
       :payload    payload)
     (db/update! ComputationJob id :status :done))
   (swap! running-jobs dissoc id))
 
 (defn- save-error
-  [{:keys [id]} error]
+  [id error]
   (db/transaction
     (db/insert! ComputationJobResult
       :job_id     id
@@ -46,17 +46,19 @@
 (defn compute
   "Compute closure `f` asynchronously. Returns id of the associated computation
    job."
-  [f]
-  (let [job (db/insert! ComputationJob
-                        :creator_id api/*current-user-id*
-                        :status     :running
-                        :type       :simple-job)
-        id  (:id job)]
-    (swap! running-jobs assoc id (future
-                                   (try
-                                     (save-result job (f))
-                                     (catch Exception e
-                                       (save-error job e)))))
+  [ctx f & args]
+  (let [id (hash (concat [ctx] args))]
+    (when-not (ComputationJob id)
+      (db/insert! ComputationJob
+        :id         id
+        :creator_id api/*current-user-id*
+        :status     :running
+        :type       :simple-job)
+      (swap! running-jobs assoc id (future
+                                     (try
+                                       (save-result id (apply f args))
+                                       (catch Exception e
+                                         (save-error id e))))))
     id))
 
 (defn result
