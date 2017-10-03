@@ -81,6 +81,10 @@ Once you have added this connection, you will be taken into the app and you'll b
 
 For a more detailed walkthrough, check out our [Getting Started](docs/getting-started.md) guide.
 
+# Metabase Discussion
+
+Use this for general question/support or discuss about Metabase: [Metabase Discussion](http://discourse.metabase.com)
+
 # Frequently Asked Questions
 
 Some questions come up over and over again. Check here first:
