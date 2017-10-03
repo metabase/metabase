@@ -85,7 +85,7 @@ export class NewQueryOptions extends Component {
 
     async componentWillMount() {
         this.props.resetQuery();
-        this.props.determineWhichOptionsToShow();
+        this.props.determineWhichOptionsToShow(this.getGuiQueryUrl);
     }
 
     getGuiQueryUrl = () => {
@@ -97,14 +97,9 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-<<<<<<< HEAD
-        const { isAdmin, metricSearchUrl } = this.props
-        const { loaded, hasDatabases, showMetricOption, showTableOption, showSQLOption } = this.state
-=======
-        const { isAdmin, metricSearchUrl, tableSearchUrl, newQueryOptions } = this.props
-        const { loaded, hasDatabases, showMetricOption, showTableOption, showSQLOption } = newQueryOptions
->>>>>>> 5dd4b14fe... Extract option showing logic to actions, refactor tests
-        const showCustomInsteadOfNewQuestionText = showMetricOption || showTableOption || isAdmin
+        const { isAdmin, metricSearchUrl, newQueryOptions } = this.props
+        const { loaded, hasDatabases, showMetricOption, showSQLOption } = newQueryOptions
+        const showCustomInsteadOfNewQuestionText = showMetricOption || isAdmin
 
         if (!loaded) {
             return <LoadingAndErrorWrapper loading={true}/>

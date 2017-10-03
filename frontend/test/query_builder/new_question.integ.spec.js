@@ -2,7 +2,7 @@ import { mount } from "enzyme"
 
 import {
     useSharedAdminLogin,
-    createTestStore, useSharedNormalLogin,
+    createTestStore, useSharedNormalLogin, forBothAdminsAndNormalUsers, withApiMocks, BROWSER_HISTORY_REPLACE,
 } from "__support__/integrated_tests";
 
 import EntitySearch, {
@@ -36,13 +36,14 @@ import {
     QUERY_COMPLETED,
 } from "metabase/query_builder/actions";
 
-import { MetricApi, SegmentApi } from "metabase/services";
+import { MetabaseApi, MetricApi, SegmentApi } from "metabase/services";
 import { SET_REQUEST_STATE } from "metabase/redux/requests";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
+import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 describe("new question flow", async () => {
     // test an instance with segments, metrics, etc as an admin
@@ -79,16 +80,91 @@ describe("new question flow", async () => {
             expect(store.getPath()).toBe("/question/new")
         })
 
-        it("renders normally on page load", async () => {
-            useSharedNormalLogin()
-            const store = await createTestStore()
+        it("renders all options for both admins and normal users if metrics & segments exist", async () => {
+            await forBothAdminsAndNormalUsers(async () => {
+                const store = await createTestStore()
 
-            store.pushPath(Urls.newQuestion());
-            const app = mount(store.getAppContainer());
-            await store.waitForActions([DETERMINE_OPTIONS]);
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
 
-            expect(app.find(NewQueryOption).length).toBe(3)
+                expect(app.find(NewQueryOption).length).toBe(3)
+            })
         });
+
+        it("does not show Metrics option for normal users if there are no metrics", async () => {
+            useSharedNormalLogin()
+
+            await withApiMocks([
+                [MetricApi, "list", () => []],
+            ], async () => {
+                const store = await createTestStore()
+
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
+
+                expect(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics").length).toBe(0)
+                expect(app.find(NewQueryOption).length).toBe(2)
+            })
+        });
+
+        it("does not show SQL option for normal user if SQL write permissions are missing", async () => {
+            useSharedNormalLogin()
+
+            const disableWritePermissionsForDb = (db) => ({ ...db, native_permissions: "read" })
+            const realDbListWithTables = MetabaseApi.db_list_with_tables
+
+            await withApiMocks([
+                [MetabaseApi, "db_list_with_tables", async () =>
+                    (await realDbListWithTables()).map(disableWritePermissionsForDb)
+                ],
+            ], async () => {
+                const store = await createTestStore()
+
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
+
+                expect(app.find(NewQueryOption).length).toBe(2)
+            })
+        })
+
+        it("redirects to query builder if there are no segments/metrics and no write sql permissions", async () => {
+            useSharedNormalLogin()
+
+            const disableWritePermissionsForDb = (db) => ({ ...db, native_permissions: "read" })
+            const realDbListWithTables = MetabaseApi.db_list_with_tables
+
+            await withApiMocks([
+                [MetricApi, "list", () => []],
+                [MetabaseApi, "db_list_with_tables", async () =>
+                    (await realDbListWithTables()).map(disableWritePermissionsForDb)
+                ],
+            ], async () => {
+                const store = await createTestStore()
+                store.pushPath(Urls.newQuestion());
+                mount(store.getAppContainer());
+                await store.waitForActions(BROWSER_HISTORY_REPLACE, INITIALIZE_QB);
+            })
+        })
+
+        it("shows an empty state if there are no databases", async () => {
+            await forBothAdminsAndNormalUsers(async () => {
+                await withApiMocks([
+                    [MetabaseApi, "db_list_with_tables", () => []]
+                ], async () => {
+                    const store = await createTestStore()
+
+                    store.pushPath(Urls.newQuestion());
+                    const app = mount(store.getAppContainer());
+                    await store.waitForActions([DETERMINE_OPTIONS]);
+
+                    expect(app.find(NewQueryOption).length).toBe(0)
+                    expect(app.find(NoDatabasesEmptyState).length).toBe(1)
+                })
+            })
+        })
 
         it("lets you start a custom gui question", async () => {
             useSharedNormalLogin()
