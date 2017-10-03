@@ -68,6 +68,12 @@ export function useSharedNormalLogin() {
     warnAboutCreatingStoreBeforeLogin()
     loginSession = { id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID }
 }
+export const forBothAdminsAndNormalUsers = async (tests) => {
+    useSharedAdminLogin()
+    await tests()
+    useSharedNormalLogin()
+    await tests()
+}
 
 export function logout() {
     previousLoginSession = loginSession
@@ -358,6 +364,37 @@ export const waitForRequestToComplete = (method, urlRegex, { timeout = 5000 } = 
             }
         }
     })
+}
+
+/**
+ * Lets you replace given API endpoints with mocked implementations for the lifetime of a test
+ */
+export async function withApiMocks(mocks, test) {
+    if (!mocks.every(([apiService, endpointName, mockMethod]) =>
+            _.isObject(apiService) && _.isString(endpointName) && _.isFunction(mockMethod)
+        )
+    ) {
+        throw new Error(
+            "Seems that you are calling \`withApiMocks\` with invalid parameters. " +
+            "The calls should be in format \`withApiMocks([[ApiService, endpointName, mockMethod], ...], tests)\`."
+        )
+    }
+
+    const originals = mocks.map(([apiService, endpointName]) => apiService[endpointName])
+
+    // Replace real API endpoints with mocks
+    mocks.forEach(([apiService, endpointName, mockMethod]) => {
+        apiService[endpointName] = mockMethod
+    })
+
+    try {
+        await test();
+    } finally {
+        // Restore original endpoints after tests, even in case of an exception
+        mocks.forEach(([apiService, endpointName], index) => {
+            apiService[endpointName] = originals[index]
+        })
+    }
 }
 
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.

@@ -44,7 +44,7 @@ const newQueryOptionsAllVisible = {
 
 export const DETERMINE_OPTIONS_STARTED = "metabase/new_query/DETERMINE_OPTIONS_STARTED"
 export const DETERMINE_OPTIONS = "metabase/new_query/DETERMINE_OPTIONS"
-export function determineWhichOptionsToShow() {
+export function determineWhichOptionsToShow(getGuiQueryUrl) {
     return async (dispatch, getState) => {
         // By default, show all options instantly to admins
         const isAdmin = getUserIsAdmin(getState())
@@ -82,7 +82,7 @@ export function determineWhichOptionsToShow() {
                 !showMetricOption && !showSQLOption && !showTableOption
 
             if (redirectToQueryBuilder) {
-                dispatch(push(this.getGuiQueryUrl()))
+                dispatch(push(getGuiQueryUrl()))
             } else {
                 return dispatch.action(DETERMINE_OPTIONS, {
                     loaded: true,

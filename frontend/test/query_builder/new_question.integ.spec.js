@@ -2,7 +2,7 @@ import { mount } from "enzyme"
 
 import {
     useSharedAdminLogin,
-    createTestStore, useSharedNormalLogin,
+    createTestStore, useSharedNormalLogin, forBothAdminsAndNormalUsers, withApiMocks, BROWSER_HISTORY_REPLACE,
 } from "__support__/integrated_tests";
 
 import EntitySearch, {
@@ -49,6 +49,7 @@ import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
 import _ from "underscore"
+import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 describe("new question flow", async () => {
     // test an instance with segments, metrics, etc as an admin
@@ -89,16 +90,109 @@ describe("new question flow", async () => {
             expect(store.getPath()).toBe("/question/new")
         })
 
-        it("renders normally on page load", async () => {
-            useSharedNormalLogin()
-            const store = await createTestStore()
+        it("renders all options for both admins and normal users if metrics & segments exist", async () => {
+            await forBothAdminsAndNormalUsers(async () => {
+                const store = await createTestStore()
 
-            store.pushPath(Urls.newQuestion());
-            const app = mount(store.getAppContainer());
-            await store.waitForActions([DETERMINE_OPTIONS]);
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
 
-            expect(app.find(NewQueryOption).length).toBe(4)
+                expect(app.find(NewQueryOption).length).toBe(4)
+            })
         });
+
+        it("does not show Segments for normal users if there are no segments", async () => {
+            useSharedNormalLogin()
+
+            await withApiMocks([
+                [SegmentApi, "list", () => []],
+            ], async () => {
+                const store = await createTestStore()
+
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
+
+                expect(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Segments").length).toBe(0)
+                expect(app.find(NewQueryOption).length).toBe(3)
+            })
+        });
+
+        it("does not show Metrics option for normal users if there are no metrics", async () => {
+            useSharedNormalLogin()
+
+            await withApiMocks([
+                [MetricApi, "list", () => []],
+            ], async () => {
+                const store = await createTestStore()
+
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
+
+                expect(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics").length).toBe(0)
+                expect(app.find(NewQueryOption).length).toBe(3)
+            })
+        });
+
+        it("does not show SQL option for normal user if SQL write permissions are missing", async () => {
+            useSharedNormalLogin()
+
+            const disableWritePermissionsForDb = (db) => ({ ...db, native_permissions: "read" })
+            const realDbListWithTables = MetabaseApi.db_list_with_tables
+
+            await withApiMocks([
+                [MetabaseApi, "db_list_with_tables", async () =>
+                    (await realDbListWithTables()).map(disableWritePermissionsForDb)
+                ],
+            ], async () => {
+                const store = await createTestStore()
+
+                store.pushPath(Urls.newQuestion());
+                const app = mount(store.getAppContainer());
+                await store.waitForActions([DETERMINE_OPTIONS]);
+
+                expect(app.find(NewQueryOption).length).toBe(3)
+            })
+        })
+
+        it("redirects to query builder if there are no segments/metrics and no write sql permissions", async () => {
+            useSharedNormalLogin()
+
+            const disableWritePermissionsForDb = (db) => ({ ...db, native_permissions: "read" })
+            const realDbListWithTables = MetabaseApi.db_list_with_tables
+
+            await withApiMocks([
+                [MetricApi, "list", () => []],
+                [SegmentApi, "list", () => []],
+                [MetabaseApi, "db_list_with_tables", async () =>
+                    (await realDbListWithTables()).map(disableWritePermissionsForDb)
+                ],
+            ], async () => {
+                const store = await createTestStore()
+                store.pushPath(Urls.newQuestion());
+                mount(store.getAppContainer());
+                await store.waitForActions(BROWSER_HISTORY_REPLACE, INITIALIZE_QB);
+            })
+        })
+
+        it("shows an empty state if there are no databases", async () => {
+            await forBothAdminsAndNormalUsers(async () => {
+                await withApiMocks([
+                    [MetabaseApi, "db_list_with_tables", () => []]
+                ], async () => {
+                    const store = await createTestStore()
+
+                    store.pushPath(Urls.newQuestion());
+                    const app = mount(store.getAppContainer());
+                    await store.waitForActions([DETERMINE_OPTIONS]);
+
+                    expect(app.find(NewQueryOption).length).toBe(0)
+                    expect(app.find(NoDatabasesEmptyState).length).toBe(1)
+                })
+            })
+        })
 
         it("lets you start a custom gui question", async () => {
             useSharedNormalLogin()
@@ -247,12 +341,9 @@ describe("new question flow", async () => {
         // This performance test is expected not to cause a timeout
         it("should be performant with a high number of dbs, tables and segments", async () => {
             useSharedNormalLogin()
-            // Mock the metadata API endpoints so that they return a high number of results
-            const realSegmentListEndpoint = SegmentApi.list
-            const realDatabaseListEndpoint = MetabaseApi.db_list_with_tables
 
-            const realSegment = (await realSegmentListEndpoint())[0]
-            const realDatabase = (await realDatabaseListEndpoint())[0]
+            const realSegment = (await SegmentApi.list())[0]
+            const realDatabase = (await MetabaseApi.db_list_with_tables())[0]
             const realTable = realDatabase.tables[0]
 
             const SEGMENT_COUNT = 200
@@ -278,24 +369,26 @@ describe("new question flow", async () => {
                 "id": id,
             })
 
-            try {
-                MetabaseApi.db_list_with_tables = () => _.range(DATABASE_COUNT).map(generateDatabaseWithTablesWithId)
-                SegmentApi.list = () => _.range(SEGMENT_COUNT).map(generateSegmentWithId)
+            const getMockDbListResponse = () => _.range(DATABASE_COUNT).map(generateDatabaseWithTablesWithId)
+            const getMockSegmentListResponse = () => _.range(SEGMENT_COUNT).map(generateSegmentWithId)
 
-                const store = await createTestStore()
+            await withApiMocks([
+                [MetabaseApi, "db_list_with_tables", getMockDbListResponse],
+                [SegmentApi, "list", getMockSegmentListResponse],
+            ], async () => {
+                    const store = await createTestStore()
 
-                store.pushPath(Urls.newQuestion());
-                const app = mount(store.getAppContainer());
-                await store.waitForActions([DETERMINE_OPTIONS]);
+                    store.pushPath(Urls.newQuestion());
+                    const app = mount(store.getAppContainer());
+                    await store.waitForActions([DETERMINE_OPTIONS]);
 
-                click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
-                await store.waitForActions(FETCH_DATABASES);
-                await store.waitForActions([SET_REQUEST_STATE]);
-                expect(store.getPath()).toBe("/question/new/table")
-            } finally {
-                SegmentApi.list = realSegmentListEndpoint
-                MetabaseApi.db_list_with_tables = realDatabaseListEndpoint
-            }
+                    click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Tables"))
+                    await store.waitForActions(FETCH_DATABASES);
+                    await store.waitForActions([SET_REQUEST_STATE]);
+                    expect(store.getPath()).toBe("/question/new/table")
+                }
+            )
+
         })
     })
 

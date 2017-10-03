@@ -85,7 +85,7 @@ export class NewQueryOptions extends Component {
 
     async componentWillMount() {
         this.props.resetQuery();
-        this.props.determineWhichOptionsToShow();
+        this.props.determineWhichOptionsToShow(this.getGuiQueryUrl);
     }
 
     getGuiQueryUrl = () => {
