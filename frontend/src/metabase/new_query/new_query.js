@@ -71,7 +71,6 @@ export function determineWhichOptionsToShow(getGuiQueryUrl) {
             return dispatch.action(DETERMINE_OPTIONS, newQueryOptionsAllVisible)
         } else {
             const showMetricOption = metadata.metricsList().length > 0
-            const showTableOption = metadata.segmentsList().length > 0
 
             // to be able to use SQL the user must have write permissions on at least one db
             const hasSQLPermission = (db) => db.native_permissions === "write"
@@ -79,7 +78,7 @@ export function determineWhichOptionsToShow(getGuiQueryUrl) {
 
             // if we can only show one option then we should just redirect
             const redirectToQueryBuilder =
-                !showMetricOption && !showSQLOption && !showTableOption
+                !showMetricOption && !showSQLOption
 
             if (redirectToQueryBuilder) {
                 dispatch(push(getGuiQueryUrl()))
@@ -88,7 +87,6 @@ export function determineWhichOptionsToShow(getGuiQueryUrl) {
                     loaded: true,
                     hasDatabases: true,
                     showMetricOption,
-                    showTableOption,
                     showSQLOption,
                 })
             }
