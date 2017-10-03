@@ -87,14 +87,14 @@
    models               Model}
   (api/check-403 (costs/enable-xrays))
   (->> [id1 id2]
-       (map #(api/read-check (->model models) (Integer/parseInt %)))
+       (map #(api/read-check (->model models) (Long/parseLong %)))
        (apply fe/compare-features
               {:max-cost (max-cost max_query_cost max_computation_cost)})
        fe/x-ray))
 
 (api/defendpoint GET "/compare/:model1/:id1/model2/:id2"
   "Get comparison x-ray for two models of types `:model1` and `:model2` with
-   ids `:id1` and `id2`."
+   ids `:id1` and `:id2`."
   [model1 model2 id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost
@@ -104,8 +104,8 @@
   (fe/x-ray
    (fe/compare-features
     {:max-cost (max-cost max_query_cost max_computation_cost)}
-    (api/read-check (->model model1) (Integer/parseInt id1))
-    (api/read-check (->model model2) (Integer/parseInt id2)))))
+    (api/read-check (->model model1) (Long/parseLong id1))
+    (api/read-check (->model model2) (Long/parseLong id2)))))
 
 (api/defendpoint GET "/compare/:model/:id1/:id2/field/:field"
   "Get comparison x-ray for `Field` named `field` from models of type `:model`
@@ -117,7 +117,7 @@
   (api/check-403 (costs/enable-xrays))
   (let [{:keys [comparison constituents]}
         (->> [id1 id2]
-             (map #(api/read-check (->model model) (Integer/parseInt %)))
+             (map #(api/read-check (->model model) (Long/parseLong %)))
              (apply fe/compare-features
                     {:max-cost (max-cost max_query_cost max_computation_cost)})
              fe/x-ray)]
@@ -138,8 +138,8 @@
         (fe/x-ray
          (fe/compare-features
           {:max-cost (max-cost max_query_cost max_computation_cost)}
-          (api/read-check (->model model2) (Integer/parseInt id1))
-          (api/read-check (->model model2) (Integer/parseInt id2))))]
+          (api/read-check (->model model2) (Long/parseLong id1))
+          (api/read-check (->model model2) (Long/parseLong id2))))]
     {:constituents     constituents
      :comparison       (-> comparison (get field))
      :top-contributors (-> comparison (get field) :top-contributors)}))
