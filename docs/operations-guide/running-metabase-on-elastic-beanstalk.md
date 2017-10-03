@@ -127,7 +127,7 @@ If you prefer not to use a VPC that is fine, however one thing to note is that s
 
 If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets.
 
-Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets.
+Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets. Note that the Load Balancer cannot be in more than one subnet per availability zone, and the database requires subnets in at least two availability zones.
 
 ![Elastic Beanstalk VPC Settings](images/EBVPCSettings.png)
 
