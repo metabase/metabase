@@ -22,4 +22,13 @@
    :result 1}
   (let [job-id (compute (constantly 1))]
     (Thread/sleep 100)
-    (result (ComputationJob job-id))))
+    (select-keys (result (ComputationJob job-id)) [:status :result])))
+
+(expect
+  [:error
+   "foo"]
+  (let [job-id (compute #(throw (Throwable. "foo")))]
+    (Thread/sleep 100)
+    (let [job (ComputationJob job-id)]
+      [(:status job)
+       (-> job result :result :cause)])))

@@ -55,7 +55,7 @@
     (swap! running-jobs assoc id (future
                                    (try
                                      (save-result job (f))
-                                     (catch Exception e
+                                     (catch Throwable e
                                        (save-error job e)))))
     id))
 
