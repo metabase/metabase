@@ -115,6 +115,14 @@
           vec)]))
 
 (expect
+  [{1 3 2 3 3 3 4 2}
+   {1 3 2 3 3 3 4 3}
+   {1 1 2 1 3 1 4 1}]
+  [(#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 9 12))
+   (#'fe/quarter-frequencies (t/date-time 2015) (t/date-time 2017 10))
+   (#'fe/quarter-frequencies (t/date-time 2015 5) (t/date-time 2016 2))])
+
+(expect
   [true false]
   [(roughly= 30 30.5 0.05)
    (roughly= 130 30.5 0.05)])
@@ -137,6 +145,14 @@
    (#'fe/infer-resolution nil [[(make-timestamp 2015 1) 1]
                                [(make-timestamp 2015 12) 2]
                                [(make-timestamp 2016 1) 0]])])
+
+(expect
+  [{1 3 2 3 3 3 4 3 5 3 6 3 7 3 8 3 9 2 10 2 11 2 12 2}
+   {1 1 2 1 5 1 6 1 7 1 8 1 9 1 10 1 11 1 12 1}
+   {5 1 6 1}]
+  [(#'fe/month-frequencies (t/date-time 2015) (t/date-time 2017 8 12))
+   (#'fe/month-frequencies (t/date-time 2015 5) (t/date-time 2016 2))
+   (#'fe/month-frequencies (t/date-time 2015 5 31) (t/date-time 2015 6 28))])
 
 (defn- make-sql-timestamp
   [& args]
