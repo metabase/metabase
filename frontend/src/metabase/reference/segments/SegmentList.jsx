@@ -29,7 +29,7 @@ const emptyStateData = {
             message: "Segments will appear here once your admins have created some",
             image: "app/assets/img/segments-list",
             adminAction: "Learn how to create segments",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
         }
 
 const mapStateToProps = (state, props) => ({
