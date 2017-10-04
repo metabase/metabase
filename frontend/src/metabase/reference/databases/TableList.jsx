@@ -70,6 +70,7 @@ export const separateTablesBySchema = (
     .sort((table1, table2) => table1.schema > table2.schema ? 1 :
         table1.schema === table2.schema ? 0 : -1
     )
+    .filter(isQueryable)
     .map((table, index, sortedTables) => {
         if (!table || !table.id || !table.name) {
             return;
