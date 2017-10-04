@@ -5,7 +5,7 @@
             [metabase.models
              [computation-job :refer [ComputationJob]]]))
 
-(api/defendpoint GET ["/:id" :id #"-?[0-9]+"]
+(api/defendpoint GET "/:id"
   "Get result of async computation job with ID."
   [id]
   (->> id
