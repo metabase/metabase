@@ -5,7 +5,6 @@
             [metabase.models
              [computation-job :refer [ComputationJob]]
              [computation-job-result :refer [ComputationJobResult]]]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 (defonce ^:private running-jobs (atom {}))
@@ -57,11 +56,6 @@
         age     (time-delta-seconds updated_at (java.util.Date.))]
     (<= age ttl)))
 
-(def ComputationJobContext
-  {:source   [[s/Any]]
-   :bindings [s/Any]
-   :closure  {s/Symbol s/Any}})
-
 (defn- cached-job
   [ctx]
   (when (public-settings/enable-query-caching)
@@ -72,12 +66,13 @@
       (when (some-> job fresh?)
         job))))
 
-(s/defn compute :- long
+(defn compute
   "Compute closure `f` in context `ctx` asynchronously. Returns id of the
    associated computation job.
+
    Will return cached result if query caching is enabled and a job with identical
    context has successfully run within TTL."
-  [ctx :- ComputationJobContext, f :- (s/pred fn?)]
+  [ctx f]
   (or (-> ctx cached-job :id)
       (let [{:keys [id] :as job} (db/insert! ComputationJob
                                    :creator_id api/*current-user-id*
