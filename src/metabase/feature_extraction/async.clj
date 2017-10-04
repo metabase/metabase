@@ -1,8 +1,11 @@
 (ns metabase.feature-extraction.async
-  (:require [metabase.api.common :as api]
+  (:require [cheshire.core :as json]
+            [metabase.api.common :as api]
+            [metabase.public-settings :as public-settings]
             [metabase.models
              [computation-job :refer [ComputationJob]]
              [computation-job-result :refer [ComputationJobResult]]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defonce ^:private running-jobs (atom {}))
@@ -16,17 +19,17 @@
   (comp some? #{:running} :status))
 
 (defn- save-result
-  [id payload]
+  [{:keys [id]} payload]
   (db/transaction
     (db/insert! ComputationJobResult
       :job_id     id
-      :permanence :cache
+      :permanence :temporary
       :payload    payload)
     (db/update! ComputationJob id :status :done))
   (swap! running-jobs dissoc id))
 
 (defn- save-error
-  [id error]
+  [{:keys [id]} error]
   (db/transaction
     (db/insert! ComputationJobResult
       :job_id     id
@@ -43,23 +46,64 @@
     (swap! running-jobs dissoc id)
     (db/update! ComputationJob id :status :canceled)))
 
-(defn compute
-  "Compute closure `f` asynchronously. Returns id of the associated computation
-   job."
-  [ctx f & args]
-  (let [id (hash (concat [ctx] args))]
-    (when-not (ComputationJob id)
-      (db/insert! ComputationJob
-        :id         id
-        :creator_id api/*current-user-id*
-        :status     :running
-        :type       :simple-job)
-      (swap! running-jobs assoc id (future
-                                     (try
-                                       (save-result id (apply f args))
-                                       (catch Exception e
-                                         (save-error id e))))))
-    id))
+(defn- time-delta-seconds
+  [a b]
+  (Math/round (/ (- (.getTime b) (.getTime a)) 1000.0)))
+
+(defn- fresh?
+  [{:keys [created_at updated_at]}]
+  (let [duration (time-delta-seconds created_at updated_at)
+        ttl     (* duration (public-settings/query-caching-ttl-ratio))
+        age     (time-delta-seconds updated_at (java.util.Date.))]
+    (<= age ttl)))
+
+(def ComputationJobContext
+  {:source   [[s/Any]]
+   :bindings [s/Any]
+   :closure  {s/Symbol s/Any}})
+
+(defn- cached-job
+  [ctx]
+  (when (public-settings/enable-query-caching)
+    (let [job (db/select-one ComputationJob
+                :context (json/encode ctx)
+                :status  [:not= "error"]
+                {:order-by [[:updated_at :desc]]})]
+      (when (some-> job fresh?)
+        job))))
+
+(s/defn compute :- long
+  "Compute closure `f` in context `ctx` asynchronously. Returns id of the
+   associated computation job.
+   Will return cached result if query caching is enabled and a job with identical
+   context has successfully run within TTL."
+  [ctx :- ComputationJobContext, f :- (s/pred fn?)]
+  (or (-> ctx cached-job :id)
+      (let [{:keys [id] :as job} (db/insert! ComputationJob
+                                   :creator_id api/*current-user-id*
+                                   :status     :running
+                                   :type       :simple-job
+                                   :context    ctx)]
+        (swap! running-jobs assoc id (future
+                                       (try
+                                         (save-result job (f))
+                                         (catch Throwable e
+                                           (save-error job e)))))
+        id)))
+
+(defmacro with-async
+  "Asynchronously evaluate expressions in lexial contexet of `bindings`.
+
+   Note: when caching is enabled `bindings` (both their shape and values) are
+   used to determine cache hits and should be used for all parameters that
+   disambiguate the call."
+  [bindings & body]
+  (let [binding-vars (vec (take-nth 2 bindings))]
+    `(let ~bindings
+       (compute {:source   (quote ~body)
+                 :bindings (quote ~bindings)
+                 :closure  (zipmap (quote ~binding-vars) ~binding-vars)}
+                (fn [] ~@body)))))
 
 (defn result
   "Get result of an asynchronous computation job."
