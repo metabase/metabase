@@ -50,6 +50,9 @@
   (Math/round (/ (- (.getTime b) (.getTime a)) 1000.0)))
 
 (defn- fresh?
+  "Is the cached job still fresh?
+
+   Uses the same logic as `metabase.api.card`."
   [{:keys [created_at updated_at]}]
   (let [duration (time-delta-seconds created_at updated_at)
         ttl     (* duration (public-settings/query-caching-ttl-ratio))
