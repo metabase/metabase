@@ -1,5 +1,6 @@
 (ns metabase.feature-extraction.async
   (:require [cheshire.core :as json]
+            [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             [metabase.public-settings :as public-settings]
             [metabase.models
@@ -25,16 +26,19 @@
       :permanence :temporary
       :payload    payload)
     (db/update! ComputationJob id :status :done))
-  (swap! running-jobs dissoc id))
+  (swap! running-jobs dissoc id)
+  (log/info (format "Async job %s done." id)))
 
 (defn- save-error
   [{:keys [id]} error]
-  (db/transaction
-    (db/insert! ComputationJobResult
-      :job_id     id
-      :permanence :temporary
-      :payload    (Throwable->map error))
-    (db/update! ComputationJob id :status :error))
+  (let [error (Throwable->map error)]
+    (log/warn (format "Async job %s encountered an error:\n%s." id error))
+    (db/transaction
+      (db/insert! ComputationJobResult
+        :job_id     id
+        :permanence :temporary
+        :payload    error)
+      (db/update! ComputationJob id :status :error)))
   (swap! running-jobs dissoc id))
 
 (defn cancel
@@ -43,7 +47,8 @@
   (when (running? job)
     (future-cancel (@running-jobs id))
     (swap! running-jobs dissoc id)
-    (db/update! ComputationJob id :status :canceled)))
+    (db/update! ComputationJob id :status :canceled)
+    (log/info (format "Async job %s canceled." id))))
 
 (defn- time-delta-seconds
   [a b]
@@ -82,6 +87,7 @@
                                    :status     :running
                                    :type       :simple-job
                                    :context    ctx)]
+        (log/info (format "Async job %s started." id))
         (swap! running-jobs assoc id (future
                                        (try
                                          (save-result job (f))
