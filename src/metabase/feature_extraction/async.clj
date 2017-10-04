@@ -51,7 +51,7 @@
     (log/info (format "Async job %s canceled." id))))
 
 (defn- time-delta-seconds
-  [a b]
+  [^java.util.Date a ^java.util.Date b]
   (Math/round (/ (- (.getTime b) (.getTime a)) 1000.0)))
 
 (defn- fresh?
