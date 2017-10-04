@@ -1,7 +1,9 @@
 (ns metabase.driver.druid.query-processor
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
-            [clj-time.format :as tformat]
+            [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
@@ -732,8 +734,7 @@
 
 (defn- parse-timestamp
   [timestamp]
-  (-> (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-      (.parse timestamp)))
+  (-> timestamp tformat/parse tcoerce/to-date))
 
 (defn- reformat-timestamp [timestamp target-formatter]
   (->> timestamp
@@ -743,7 +744,7 @@
 (defmethod post-process ::select  [_ projections {:keys [timezone middleware]} results]
   (let [target-formater (and timezone (tformat/with-zone druid-ts-format timezone))
         update-ts-fn (cond
-                       (false? (:format-rows? middleware))
+                       (not (:format-rows? middleware true))
                        #(update % :timestamp parse-timestamp)
 
                        target-formater
@@ -764,22 +765,23 @@
 (defmethod post-process ::topN    [_ projections {:keys [middleware]} results]
   (post-process-map projections
                     (let [results (-> results first :result)]
-                      (if (false? (:format-rows? middleware))
-                        (map #(u/update-when % :timestamp parse-timestamp) results)
-                        results))))
+                      (if (:format-rows? middleware true)
+                        results
+                        (map #(u/update-when % :timestamp parse-timestamp) results)))))
 
 (defmethod post-process ::groupBy [_ projections {:keys [middleware]} results]
   (post-process-map projections
-                    (if (false? (:format-rows? middleware))
+                    (if (:format-rows? middleware true)
+                      (map :event results)
                       (map (comp #(u/update-when % :timestamp parse-timestamp)
-                                 :event))
-                      (map :event results))))
+                                 :event)
+                           results))))
 
 (defmethod post-process ::timeseries [_ projections {:keys [middleware]} results]
   (post-process-map (conj projections :timestamp)
-                    (let [ts-getter (if (false? (:format-rows? middleware))
-                                      (comp parse-timestamp :timestamp)
-                                      :timestamp)]
+                    (let [ts-getter (if (:format-rows? middleware true)
+                                      :timestamp
+                                      (comp parse-timestamp :timestamp))]
                       (for [event results]
                         (conj {:timestamp (ts-getter event)} (:result event))))))
 
