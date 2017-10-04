@@ -734,7 +734,7 @@
 
 (defn- parse-timestamp
   [timestamp]
-  (-> timestamp tformat/parse tcoerce/to-date))
+  (->> timestamp (tformat/parse druid-ts-format) tcoerce/to-date))
 
 (defn- reformat-timestamp [timestamp target-formatter]
   (->> timestamp
