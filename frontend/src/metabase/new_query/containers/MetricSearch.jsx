@@ -28,7 +28,7 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class MetricSearch extends Component {
     props: {
-        getUrlForQuery: (StructuredQuery) => void,
+        getUrlForMetric: (StructuredQuery) => void,
         backButtonUrl: string,
 
         query: StructuredQuery,
@@ -48,24 +48,8 @@ export default class MetricSearch extends Component {
 
     }
 
-    getQueryForMetric = (metric: Metric) => {
-        const queryWithoutFilter = this.props.query
-            .setDatabase(metric.table.db)
-            .setTable(metric.table)
-            .addAggregation(metric.aggregationClause())
-
-        const dateField = metric.table.fields.find((field) => field.isDate())
-
-        if (dateField) {
-            const dateFilter = ["time-interval", dateField.dimension().mbql(), -365, "day"]
-            return queryWithoutFilter.addFilter(dateFilter).addBreakout(dateField.getDefaultBreakout())
-        } else {
-            return queryWithoutFilter;
-        }
-    }
-
     getUrlForMetric = (metric: Metric) => {
-        return this.props.getUrlForQuery(this.getQueryForMetric(metric))
+        return this.props.getUrlForMetric(metric)
     }
 
     render() {

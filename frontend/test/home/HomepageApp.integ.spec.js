@@ -73,8 +73,6 @@ describe("HomepageApp", () => {
             // eslint-disable-next-line no-irregular-whitespace
             expect(activityItems.at(2).text()).toMatch(/You saved a question about Orders/);
             expect(activityStories.at(2).text()).toMatch(new RegExp(unsavedOrderCountQuestion.displayName()));
-
-
         });
         it("shows successfully open QB for a metric when clicking the metric name", async () => {
             const store = await createTestStore()

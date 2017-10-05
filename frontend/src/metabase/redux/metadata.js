@@ -38,6 +38,27 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
     };
 });
 
+export const FETCH_METRIC = "metabase/metadata/FETCH_METRIC";
+export const fetchMetric = createThunkAction(FETCH_METRIC, (metricId, reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "metrics", metricId];
+        const existingStatePath = ["metadata", "metrics"]
+        const getData = async () => {
+            const metric = await MetricApi.get({ metricId });
+            return normalize([metric], [MetricSchema]);
+        };
+
+        return await fetchData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
+            reload
+        });
+    };
+});
+
 const UPDATE_METRIC = "metabase/metadata/UPDATE_METRIC";
 export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
     return async (dispatch, getState) => {

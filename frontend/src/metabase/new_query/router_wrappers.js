@@ -1,13 +1,16 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { replace } from "react-router-redux";
 
 import { withBackground } from 'metabase/hoc/Background'
 
 import NewQueryOptions from "./containers/NewQueryOptions";
 import MetricSearch from "./containers/MetricSearch";
+import { fetchMetric, fetchTableMetadata } from "metabase/redux/metadata";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/lib/Question";
 
-@connect(null, { onChangeLocation: push })
 @withBackground('bg-slate-extra-light')
 export class NewQuestionStart extends Component {
     getUrlForQuery = (query) => {
@@ -25,21 +28,62 @@ export class NewQuestionStart extends Component {
     }
 }
 
-@connect(null, { onChangeLocation: push })
 @withBackground('bg-slate-extra-light')
 export class NewQuestionMetricSearch extends Component {
-    getUrlForQuery = (query) => {
-        return query.question()
-            .setDisplay(query.breakouts().length > 0 ? "line" : "scalar")
-            .getUrl()
-    }
-
     render() {
         return (
             <MetricSearch
-                getUrlForQuery={this.getUrlForQuery}
+                getUrlForMetric={(metric) =>  `/question/new/metric/${metric.id}`}
                 backButtonUrl="/question/new"
             />
         )
+    }
+}
+
+@connect((state) => ({ metadata: getMetadata(state) }), { replace, fetchMetric, fetchTableMetadata })
+@withBackground('bg-slate-extra-light')
+export class NewQuestionFromMetric extends Component {
+    componentWillMount = async () => {
+        const metadataBeforeInit = this.props.metadata
+
+        const metricId = this.props.params.metricId
+        if (!metadataBeforeInit.metrics[metricId]) {
+            await this.props.fetchMetric(metricId)
+        }
+
+        const tableId = this.props.metadata.metrics[metricId].table_id
+        if (!metadataBeforeInit.tables[tableId]) {
+            await this.props.fetchTableMetadata(tableId)
+        }
+
+        const metric = this.props.metadata.metrics[metricId]
+        const query = this.getQueryForMetric(metric)
+        const question = query.question().setDisplay(query.breakouts().length > 0 ? "line" : "scalar")
+
+        setTimeout(() => this.props.replace(question.getUrl()), 0)
+    }
+
+    getQueryForMetric(metric) {
+        const question = Question.create({ metadata: this.props.metadata })
+
+        const queryWithoutFilter = question.query()
+            .setDatabase(metric.table.db)
+            .setTable(metric.table)
+            .addAggregation(metric.aggregationClause())
+
+        const dateField = metric.table.fields.find((field) => field.isDate())
+
+        if (dateField) {
+            const dateFilter = ["time-interval", dateField.dimension().mbql(), -365, "day"]
+            return queryWithoutFilter
+                .addFilter(dateFilter)
+                .addBreakout(dateField.getDefaultBreakout())
+        } else {
+            return queryWithoutFilter
+        }
+    }
+
+    render() {
+        return <LoadingAndErrorWrapper loading={true}/>
     }
 }
