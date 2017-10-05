@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { fetchMetrics, fetchDatabasesWithMetadata } from "metabase/redux/metadata";
+import { fetchMetrics, fetchDatabases } from "metabase/redux/metadata";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
 import { getMetadata, getMetadataFetched } from "metabase/selectors/metadata";
@@ -21,7 +21,7 @@ const mapStateToProps = state => ({
 })
 const mapDispatchToProps = {
     fetchMetrics,
-    fetchDatabasesWithMetadata,
+    fetchDatabases,
     resetQuery
 }
 
@@ -40,9 +40,7 @@ export default class MetricSearch extends Component {
     }
 
     componentDidMount() {
-        // load metadata for all tables for the automatic application of a filter;
-        // THIS IS EXPERIMENTAL AND PROBABLY TOO HEAVY APPROACH FOR PRODUCTION!
-        this.props.fetchDatabasesWithMetadata()
+        this.props.fetchDatabases() // load databases if not loaded yet
         this.props.fetchMetrics(true) // metrics may change more often so always reload them
         this.props.resetQuery();
 

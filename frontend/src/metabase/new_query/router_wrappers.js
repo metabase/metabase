@@ -52,7 +52,9 @@ export class NewQuestionFromMetric extends Component {
         }
 
         const tableId = this.props.metadata.metrics[metricId].table_id
-        if (!metadataBeforeInit.tables[tableId]) {
+        if (!metadataBeforeInit.tables[tableId] ||
+            !metadataBeforeInit.tables[tableId].fields ||
+            !metadataBeforeInit.tables[tableId].fields.length) {
             await this.props.fetchTableMetadata(tableId)
         }
 
