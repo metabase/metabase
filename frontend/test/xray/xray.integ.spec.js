@@ -189,7 +189,7 @@ describe("xray integration tests", () => {
         })
     })
 
-    describe("admin management of xrays", async () => {
+    fdescribe("admin management of xrays", async () => {
         it("should allow an admin to manage xrays", async () => {
             let app;
 
@@ -215,6 +215,7 @@ describe("xray integration tests", () => {
             // toggle the... toggle
             click(xrayToggle)
             await store.waitForActions([UPDATE_SETTING])
+            await delay(100); // give the store UI some time to update (otherwise we see React errors in logs)
 
             expect(getXrayEnabled(store.getState())).toEqual(false)
 
@@ -269,6 +270,7 @@ describe("xray integration tests", () => {
 
             click(approximate)
             await store.waitForActions([UPDATE_SETTING])
+            await delay(100); // give the store UI some time to update (otherwise we see React errors in logs)
 
             expect(approximate.hasClass('text-brand')).toEqual(true)
             expect(getMaxCost(store.getState())).toEqual('approximate')
