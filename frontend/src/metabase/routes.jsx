@@ -258,14 +258,8 @@ export const getRoutes = (store) =>
                     <Route path="table/:tableId/:cost" component={TableXRay} />
                     <Route path="field/:fieldId/:cost" component={FieldXRay} />
                     <Route path="card/:cardId/:cost" component={CardXRay} />
-                    <Route path="compare" title="Compare">
-                        <Route path="segments/:segmentId1/:segmentId2">
-                            <Route path=":cost" component={SegmentComparison} />
-                        </Route>
-                        <Route path="segment/:segmentId/table/:tableId">
-                            <Route path=":cost" component={SegmentTableComparison} />
-                        </Route>
-                    </Route>
+                    <Route path="compare/segments/:segmentId1/:segmentId2/:cost" component={SegmentComparison} />
+                    <Route path="compare/segment/:segmentId/table/:tableId/:cost" component={SegmentTableComparison} />
                 </Route>
 
                 {/* PULSE */}
