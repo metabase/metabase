@@ -24,7 +24,7 @@
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
-   Note the contructor airity of `f` needs to be free of side effects."
+   Note the constructor airity of `f` needs to be free of side effects."
   [f groupfn]
   (let [init (f)]
     (fn
@@ -516,14 +516,16 @@
   [dt]
   (t/floor dt t/month))
 
-(defn- month-frequencies
+(defn month-frequencies
+  "Month frequencies in the interval `earliest` to `latest`."
   [earliest latest]
   (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
        (take-while (complement (partial t/before? latest)))
        (map t/month)
        frequencies))
 
-(defn- quarter-frequencies
+(defn quarter-frequencies
+  "Quarter frequencies in the interval `earliest` to `latest`."
   [earliest latest]
   (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
        (take-while (complement (partial t/before? latest)))
@@ -531,11 +533,12 @@
        (map quarter)
        frequencies))
 
-(defn- weigh-periodicity
-  [weights card]
-  (let [baseline (apply min (vals weights))]
-    (update card :rows (partial map (fn [[k v]]
-                                      [k (/ (* v baseline) (weights k))])))))
+(defn normalize-overrepresented
+  "Normalize `:rows` in `dataset` as if all keys occured with the same frequency."
+  [freqs dataset]
+  (let [baseline (apply min (vals freqs))]
+    (update dataset :rows (partial map (fn [[k v]]
+                                         [k (/ (* v baseline) (freqs k))])))))
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
@@ -557,22 +560,16 @@
                                              :display_name "Day of week"
                                              :base_type    :type/Integer
                                              :special_type :type/Category}))
-        (update :histogram-month   (fn [histogram]
-                                     (when-not (h/empty? histogram)
-                                       (->> histogram
-                                            (histogram->dataset
-                                             {:name         "MONTH"
-                                              :display_name "Month of year"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category})))))
-        (update :histogram-quarter (fn [histogram]
-                                     (when-not (h/empty? histogram)
-                                       (->> histogram
-                                            (histogram->dataset
-                                             {:name         "QUARTER"
-                                              :display_name "Quarter of year"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category}))))))))
+        (update :histogram-month   (partial histogram->dataset
+                                    {:name         "MONTH"
+                                     :display_name "Month of year"
+                                     :base_type    :type/Integer
+                                     :special_type :type/Category}))
+        (update :histogram-quarter (partial histogram->dataset
+                                            {:name         "QUARTER"
+                                             :display_name "Quarter of year"
+                                             :base_type    :type/Integer
+                                             :special_type :type/Category})))))
 
 (defmethod feature-extractor Category
   [_ field]

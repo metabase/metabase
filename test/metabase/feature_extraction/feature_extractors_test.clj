@@ -196,3 +196,10 @@
         :type)
    (-> (->features {:base_type :type/NeverBeforeSeen} numbers)
        :type)])
+
+(expect
+  {:rows [[1 1.0] [2 0.5] [3 1.0] [4 1.0]]}
+  (normalize-overrepresented {1 1.0
+                              2 2.0
+                              3 3.0
+                              4 1.0} {:rows [[1 1] [2 1] [3 3] [4 1]]}))
