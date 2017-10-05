@@ -15,7 +15,7 @@ import {
 } from "metabase/services";
 
 import { delay } from "metabase/lib/promise";
-import { FETCH_XRAY, LOAD_XRAY } from "metabase/xray/xray";
+import { FETCH_SEGMENT_COMPARISON, FETCH_SEGMENT_TABLE_COMPARISON, FETCH_XRAY, LOAD_XRAY } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
 import TableXRay from "metabase/xray/containers/TableXRay";
@@ -41,9 +41,12 @@ import Icon from "metabase/components/Icon"
 import Toggle from "metabase/components/Toggle"
 import { Link } from 'react-router'
 import SettingsXrayForm from "metabase/admin/settings/components/SettingsXrayForm";
+import SegmentComparison from "metabase/xray/containers/SegmentComparison";
+import SegmentTableComparison from "metabase/xray/containers/SegmentTableComparison";
 
 describe("xray integration tests", () => {
     let segmentId = null;
+    let segmentId2 = null;
     let timeBreakoutQuestion = null;
     let segmentQuestion = null;
 
@@ -53,6 +56,10 @@ describe("xray integration tests", () => {
         const segmentDef = {name: "A Segment", description: "For testing xrays", table_id: 1, show_in_getting_started: true,
             definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"] }}
         segmentId = (await SegmentApi.create(segmentDef)).id;
+
+        const segmentDef2 = {name: "A Segment", description: "For testing segment comparison", table_id: 1, show_in_getting_started: true,
+            definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -15, "day"] }}
+        segmentId2 = (await SegmentApi.create(segmentDef2)).id;
 
         timeBreakoutQuestion = await createSavedQuestion(
             Question.create({databaseId: 1, tableId: 1, metadata: null})
@@ -112,6 +119,49 @@ describe("xray integration tests", () => {
         })
     })
 
+    describe("segment x-rays", async () => {
+        it("should render the segment x-ray page without errors", async () => {
+            const store = await createTestStore()
+            store.pushPath(`/xray/segment/${segmentId}/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+
+            const segmentXRay = app.find(SegmentXRay)
+            expect(segmentXRay.length).toBe(1)
+            expect(segmentXRay.find(CostSelect).length).toBe(1)
+
+            // check that we have the links to expected comparisons
+            expect(segmentXRay.find(`a[href="/xray/compare/segment/${segmentId}/table/1/approximate"]`).length).toBe(1)
+            expect(segmentXRay.find(`a[href="/xray/compare/segment/${segmentId}/${segmentId2}"]`).length).toBe(1)
+        })
+
+        it("should render the segment-by-segment comparison page without errors", async () => {
+            const store = await createTestStore()
+            store.pushPath(`/xray/compare/segments/${segmentId}/${segmentId2}/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_SEGMENT_COMPARISON], { timeout: 20000 })
+
+            const segmentComparisonXray = app.find(SegmentComparison)
+            expect(segmentComparisonXray.length).toBe(1)
+            expect(segmentComparisonXray.find(CostSelect).length).toBe(1)
+
+        })
+
+        it("should render the segment-by-table comparison page without errors", async () => {
+            const store = await createTestStore()
+            store.pushPath(`/xray/compare/segment/${segmentId}/table/1/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_SEGMENT_TABLE_COMPARISON], { timeout: 20000 })
+
+            const segmentTableComparisonXray = app.find(SegmentTableComparison)
+            expect(segmentTableComparisonXray.length).toBe(1)
+            expect(segmentTableComparisonXray.find(CostSelect).length).toBe(1)
+        })
+    })
+
     describe("navigation", async () => {
         it("should be possible to navigate between tables and their child fields", async () => {
             const store = await createTestStore()
@@ -130,7 +180,6 @@ describe("xray integration tests", () => {
             await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
             const fieldXray = app.find(FieldXray)
             expect(fieldXray.length).toBe(1)
-
         })
     })
 
@@ -189,7 +238,7 @@ describe("xray integration tests", () => {
         })
     })
 
-    fdescribe("admin management of xrays", async () => {
+    describe("admin management of xrays", async () => {
         it("should allow an admin to manage xrays", async () => {
             let app;
 
