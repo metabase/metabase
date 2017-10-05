@@ -14,6 +14,7 @@
              [card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
+             [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.query-processor :as qp]
@@ -99,6 +100,10 @@
                            :table (Table (:table_id card))})
      :dataset      dataset
      :sample?      (sampled? opts dataset)}))
+
+(defmethod extract-features (type Query)
+  [opts query]
+  (extract-features opts (with-meta query {:type (type Card)})))
 
 (defmethod extract-features (type Segment)
   [opts segment]
