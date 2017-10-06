@@ -38,7 +38,7 @@
            org.eclipse.jetty.server.Server))
 
 ;; HACK: replace this with setting event listener
-(defn sync-locale []
+(defn- sync-locale []
   (let [new-locale     (or (not-empty (setting/get :site-locale)) "en")
         current-locale (.toLanguageTag (Locale/getDefault))]
     (when-not (= current-locale new-locale)

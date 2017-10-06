@@ -16,7 +16,7 @@
             [clojure.tools.namespace.find :as ns-find]
             colorize.core ; this needs to be loaded for `format-color`
             [metabase.config :as config]
-            [puppetlabs.i18n.core :as i18n :refer [trs trsn tru trun]]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import clojure.lang.Keyword
            [java.net InetAddress InetSocketAddress Socket]

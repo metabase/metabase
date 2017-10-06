@@ -16,7 +16,7 @@
              [session :refer [Session]]
              [user :as user :refer [User]]]
             [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :as i18n :refer [trs trsn tru trun]]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
