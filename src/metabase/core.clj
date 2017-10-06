@@ -39,7 +39,7 @@
 
 ;; HACK: replace this with setting event listener
 (defn- sync-locale []
-  (let [new-locale     (or (not-empty (setting/get :site-locale)) "en")
+  (let [new-locale     (setting/get :site-locale)
         current-locale (.toLanguageTag (Locale/getDefault))]
     (when-not (= current-locale new-locale)
       (Locale/setDefault (Locale/forLanguageTag new-locale)))))
