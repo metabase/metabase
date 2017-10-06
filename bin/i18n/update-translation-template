@@ -7,6 +7,12 @@ if [ -d "/usr/local/opt/gettext/bin" ]; then
   export PATH="/usr/local/opt/gettext/bin:$PATH"
 fi
 
+# check xgettext is installed
+if ! command -v xgettext > /dev/null; then
+  echo 'Please install the "xgettext" command (e.x. `brew install gettext`)'
+  exit 1
+fi
+
 POT_NAME="locales/metabase.pot"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
 POT_FRONTEND_NAME="locales/metabase-frontend.pot"
