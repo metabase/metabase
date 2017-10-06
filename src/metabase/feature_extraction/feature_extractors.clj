@@ -4,17 +4,16 @@
             [clj-time
              [coerce :as t.coerce]
              [core :as t]
-             [format :as t.format]
              [periodic :as t.periodic]]
             [kixi.stats
-             [core :as stats]
+             [core :as stats :refer [somef]]
              [math :as math]]
             [medley.core :as m]
-            [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
-             [histogram :as h]
              [costs :as costs]
-             [stl :as stl]]
+             [histogram :as h]
+             [stl :as stl]
+             [values :as values]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -49,8 +48,13 @@
 (defn growth
   "Relative difference between `x1` an `x2`."
   [x2 x1]
-  (when (every? some? [x2 x1])
-    (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
+  (when (and x1 x2 (not (zero? x1)))
+    (let [x2 (double x2)
+          x1 (double x1)]
+      (cond
+        (every? neg? [x1 x2])     (growth (- x1) (- x2))
+        (and (neg? x1) (pos? x2)) (- (growth x1 x2))
+        :else                     (/ (* (if (neg? x1) -1 1) (- x2 x1)) x1)))))
 
 (defn- merge-juxt
   [& fns]
@@ -119,14 +123,19 @@
   (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
      :week-of-year :month-of-year :quarter-of-year} (:unit field)))
 
+(defn- unix-timestamp?
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Integer)
+       (isa? special_type :type/DateTime)))
+
 (defn- field-type
   [field]
   (if (sequential? field)
     (mapv field-type field)
     [(cond
-       (periodic-date-time? field)                 :type/Integer
-       (isa? (:special_type field) :type/DateTime) :type/DateTime
-       :else                                       (:base_type field))
+       (periodic-date-time? field) :type/Integer
+       (unix-timestamp? field)     :type/DateTime
+       :else                       (:base_type field))
      (or (:special_type field) :type/*)]))
 
 (defmulti
@@ -165,11 +174,11 @@
   [{:keys [histogram]}]
   (let [nil-count   (h/nil-count histogram)
         total-count (h/total-count histogram)]
-    (merge {:histogram   histogram
-            :nil%        (/ nil-count (max total-count 1))
-            :has-nils?   (pos? nil-count)
-            :count       total-count
-            :entropy     (h/entropy histogram)}
+    (merge {:histogram histogram
+            :nil%      (/ nil-count (max total-count 1))
+            :has-nils? (pos? nil-count)
+            :count     total-count
+            :entropy   (h/entropy histogram)}
            (when-not (h/categorical? histogram)
              {:percentiles (apply h.impl/percentiles histogram percentiles)}))))
 
@@ -189,52 +198,53 @@
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
   (redux/post-complete
-   (redux/fuse (merge
-                {:histogram      h/histogram
-                 :cardinality    cardinality
-                 :kurtosis       stats/kurtosis
-                 :skewness       stats/skewness
-                 :sum            (redux/with-xform + (remove nil?))
-                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
-                                                           (map math/sq)))}
-                (when (isa? (:special_type field) :type/Category)
-                  {:histogram-categorical h/histogram-categorical})))
+   (redux/fuse
+    (merge
+     {:histogram   h/histogram
+      :cardinality cardinality}
+     (when (costs/full-scan? max-cost)
+       {:sum            (redux/with-xform + (keep (somef double)))
+        :sum-of-squares (redux/with-xform +
+                          (keep (somef (comp math/sq double))))})
+     (when (costs/unbounded-computation? max-cost)
+       {:kurtosis (redux/pre-step stats/kurtosis (somef double))
+        :skewness (redux/pre-step stats/skewness (somef double))})
+     (when (isa? (:special_type field) :type/Category)
+       {:histogram-categorical h/histogram-categorical})))
    (merge-juxt
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
     (fn [{:keys [histogram kurtosis skewness sum sum-of-squares
                  histogram-categorical]}]
-      (let [var    (or (h.impl/variance histogram) 0)
-            sd     (math/sqrt var)
+      (let [var    (h.impl/variance histogram)
+            sd     (some-> var math/sqrt)
             min    (h.impl/minimum histogram)
             max    (h.impl/maximum histogram)
             mean   (h.impl/mean histogram)
             median (h.impl/median histogram)
             range  (some-> max (- min))]
-        (merge
-         {:positive-definite? (some-> min (>= 0))
-          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-          :var>sd?            (> var sd)
-          :0<=x<=1?           (when min (<= 0 min max 1))
-          :-1<=x<=1?          (when min (<= -1 min max 1))
-          :cv                 (some->> mean (safe-divide sd))
-          :range-vs-sd        (some->> range (safe-divide sd))
-          :mean-median-spread (some->> range (safe-divide (- mean median)))
-          :min-vs-max         (some->> max (safe-divide min))
-          :range              range
-          :min                min
-          :max                max
-          :mean               mean
-          :median             median
-          :var                var
-          :sd                 sd
-          :kurtosis           kurtosis
-          :skewness           skewness
-          :histogram          (or histogram-categorical histogram)}
-         (when (costs/full-scan? max-cost)
-           {:sum            sum
-            :sum-of-squares sum-of-squares})))))))
+        {:positive-definite? (some-> min (>= 0))
+         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
+         :var>sd?            (some->> sd (> var))
+         :0<=x<=1?           (when min (<= 0 min max 1))
+         :-1<=x<=1?          (when min (<= -1 min max 1))
+         :cv                 (some-> sd (safe-divide mean))
+         :range-vs-sd        (some->> sd (safe-divide range))
+         :mean-median-spread (some->> range (safe-divide (- mean median)))
+         :min-vs-max         (some->> max (safe-divide min))
+         :range              range
+         :min                min
+         :max                max
+         :mean               mean
+         :median             median
+         :var                var
+         :sd                 sd
+         :kurtosis           kurtosis
+         :skewness           skewness
+         :histogram          (or histogram-categorical histogram)
+         :sum                sum
+         :sum-of-squares     sum-of-squares})))))
 
 (defmethod comparison-vector Num
   [features]
@@ -252,10 +262,14 @@
 (defmethod feature-extractor [Num Num]
   [_ field]
   (redux/post-complete
-   (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                :correlation       (stats/correlation first second)
-                :covariance        (stats/covariance first second)})
-   (field-metadata-extractor field)))
+   (redux/pre-step
+    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                 :correlation       (stats/correlation first second)
+                 :covariance        (stats/covariance first second)})
+    (partial map (somef double)))
+   (merge-juxt
+    (field-metadata-extractor field)
+    identity)))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."
@@ -263,7 +277,7 @@
 
 (def ^:private ^{:arglists '([t])} from-double
   "Coerce `Double` into a `DateTime`."
-  (stats/somef (comp t.coerce/from-long long)))
+  (somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
   "Given a coll of `[DateTime, Any]` pairs evenly spaced `step` apart, fill
@@ -310,7 +324,7 @@
                                  [:relative-datetime (- (+ n offset)) :day]]
                                 [:<= datetime-field
                                  [:relative-datetime (- offset) :day]]]]
-    (-> (metadata/query-values
+    (-> (values/query-values
          (db/select-one-field :db_id 'Table :id (:source_table query))
          (-> query
              (dissoc :breakout)
@@ -324,53 +338,74 @@
   [window query]
   (growth (last-n-days window 0 query) (last-n-days window window query)))
 
+(defn roughly=
+  "Is `x` èqual to `y` within precision `precision` (default 0.05)."
+  ([x y] (roughly= x y 0.05))
+  ([x y precision]
+   (<= (* (- 1 precision) x) y (* (+ 1 precision) x))))
+
+(defn- infer-resolution
+  [query series]
+  (or (let [[head resolution] (-> query :breakout first ((juxt first last)))]
+        (when (= head "datetime-field")
+          (keyword resolution)))
+      (let [deltas       (transduce (map (fn [[[a _] [b _]]]
+                                           (- b a)))
+                                    h/histogram
+                                    (partition 2 1 series))
+            median-delta (h.impl/median deltas)]
+        (when (roughly= median-delta (h.impl/minimum deltas) 0.1)
+          (cond
+            (roughly= median-delta (* 60 1000))                    :minute
+            (roughly= median-delta (* 60 60 1000))                 :hour
+            (roughly= median-delta (* 24 60 60 1000))              :day
+            (roughly= median-delta (* 7 24 60 60 1000))            :week
+            (roughly= median-delta (* (/ 365 12) 24 60 60 1000))   :month
+            (roughly= median-delta (* 3 (/ 365 12) 24 60 60 1000)) :quarter
+            (roughly= median-delta (* 365 24 60 60 1000))          :year
+            :else                                                  nil)))))
+
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
-  (let [resolution (let [[head resolution] (-> query
-                                               :breakout
-                                               first
-                                               ((juxt first last)))]
-                     (when (= head "datetime-field")
-                       (keyword resolution)))]
-    (redux/post-complete
-     (redux/pre-step
-      (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                   :series            (if (nil? resolution)
-                                        conj
-                                        (redux/post-complete
-                                         conj
-                                         (partial fill-timeseries
-                                                  (case resolution
-                                                    :month   (t/months 1)
-                                                    :quarter (t/months 4)
-                                                    :year    (t/years 1)
-                                                    :week    (t/weeks 1)
-                                                    :day     (t/days 1)
-                                                    :hour    (t/hours 1)
-                                                    :minute  (t/minutes 1)))))})
-      (fn [[x y]]
-        [(-> x t.format/parse to-double) y]))
-     (merge-juxt
-      (field-metadata-extractor field)
-      (fn [{:keys [series linear-regression]}]
-        (let [ys-r (->> series (map second) reverse not-empty)]
-          (merge {:resolution             resolution
-                  :series                 series
-                  :linear-regression      linear-regression
-                  :growth-series          (->> series
+  (redux/post-complete
+   (redux/pre-step
+    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                 :series            conj})
+    (fn [[^java.util.Date x y]]
+      [(some-> x .getTime double) y]))
+   (merge-juxt
+    (field-metadata-extractor field)
+    (fn [{:keys [series linear-regression]}]
+      (let [resolution (infer-resolution query series)
+            series     (if resolution
+                         (fill-timeseries (case resolution
+                                            :month   (t/months 1)
+                                            :quarter (t/months 3)
+                                            :year    (t/years 1)
+                                            :week    (t/weeks 1)
+                                            :day     (t/days 1)
+                                            :hour    (t/hours 1)
+                                            :minute  (t/minutes 1))
+                                          series)
+                         series)]
+        (merge {:resolution             resolution
+                :series                 series
+                :linear-regression      linear-regression
+                :growth-series          (when resolution
+                                          (->> series
                                                (partition 2 1)
                                                (map (fn [[[_ y1] [x y2]]]
-                                                      [x (growth y2 y1)])))
-                  :seasonal-decomposition
-                  (when (and resolution
-                             (costs/unbounded-computation? max-cost))
-                    (decompose-timeseries resolution series))}
-                 (when (and (costs/alow-joins? max-cost)
-                            (:aggregation query))
-                   {:YoY (rolling-window-growth 365 query)
-                    :MoM (rolling-window-growth 30 query)
-                    :WoW (rolling-window-growth 7 query)
-                    :DoD (rolling-window-growth 1 query)}))))))))
+                                                      [x (growth y2 y1)]))))
+                :seasonal-decomposition
+                (when (and resolution
+                           (costs/unbounded-computation? max-cost))
+                  (decompose-timeseries resolution series))}
+               (when (and (costs/allow-joins? max-cost)
+                          (:aggregation query))
+                 {:YoY (rolling-window-growth 365 query)
+                  :MoM (rolling-window-growth 30 query)
+                  :WoW (rolling-window-growth 7 query)
+                  :DoD (rolling-window-growth 1 query)})))))))
 
 (defmethod comparison-vector [DateTime Num]
   [features]
@@ -428,29 +463,47 @@
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step
                             h/histogram
-                            (stats/somef (comp count u/jdbc-clob->str)))})
+                            (somef (comp count u/jdbc-clob->str)))})
    (merge-juxt
     (field-metadata-extractor field)
     histogram-extractor)))
 
-(defn- quarter
-  [dt]
-  (-> dt t/month (/ 3) Math/ceil long))
+(defprotocol Quarter
+  "Quarter-of-year functionality"
+  (quarter [dt] "Return which quarter (1-4) given date-like object falls into."))
+
+(extend-type java.util.Date
+  Quarter
+  (quarter [dt]
+    (-> dt .getMonth inc (* 0.33) Math/ceil long)))
+
+(extend-type org.joda.time.DateTime
+  Quarter
+  (quarter [dt]
+    (-> dt t/month (* 0.33) Math/ceil long)))
 
 (defmethod feature-extractor DateTime
-  [_ field]
+  [_ {:keys [base_type unit] :as field}]
   (redux/post-complete
-   (redux/pre-step
-    (redux/fuse {:histogram         (redux/pre-step h/histogram t.coerce/to-long)
-                 :histogram-hour    (redux/pre-step h/histogram-categorical
-                                                    (stats/somef t/hour))
-                 :histogram-day     (redux/pre-step h/histogram-categorical
-                                                    (stats/somef t/day-of-week))
-                 :histogram-month   (redux/pre-step h/histogram-categorical
-                                                    (stats/somef t/month))
-                 :histogram-quarter (redux/pre-step h/histogram-categorical
-                                                    (stats/somef quarter))})
-    t.format/parse)
+   (redux/fuse (merge
+                {:histogram         (redux/pre-step
+                                     h/histogram
+                                     (somef (memfn ^java.util.Date getTime)))
+                 :histogram-day     (redux/pre-step
+                                     h/histogram-categorical
+                                     (somef (memfn ^java.util.Date getDay)))
+                 :histogram-month   (redux/pre-step
+                                     h/histogram-categorical
+                                     #(when %
+                                        (inc (.getMonth ^java.util.Date %))))
+                 :histogram-quarter (redux/pre-step
+                                     h/histogram-categorical
+                                     (somef quarter))}
+                (when-not (or (isa? base_type :type/Date)
+                              (#{:day :month :year :quarter :week} unit))
+                  {:histogram-hour (redux/pre-step
+                                    h/histogram-categorical
+                                    (somef (memfn ^java.util.Date getHours)))})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
@@ -482,7 +535,7 @@
   [weights card]
   (let [baseline (apply min (vals weights))]
     (update card :rows (partial map (fn [[k v]]
-                                      [k (* v (/ baseline (weights k 1)))])))))
+                                      [k (/ (* v baseline) (weights k))])))))
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
@@ -493,11 +546,12 @@
         (assoc  :latest            latest)
         (update :histogram         (partial histogram->dataset from-double field))
         (update :percentiles       (partial m/map-vals from-double))
-        (update :histogram-hour    (partial histogram->dataset
-                                            {:name         "HOUR"
-                                             :display_name "Hour of day"
-                                             :base_type    :type/Integer
-                                             :special_type :type/Category}))
+        (update :histogram-hour    (somef
+                                    (partial histogram->dataset
+                                             {:name         "HOUR"
+                                              :display_name "Hour of day"
+                                              :base_type    :type/Integer
+                                              :special_type :type/Category})))
         (update :histogram-day     (partial histogram->dataset
                                             {:name         "DAY"
                                              :display_name "Day of week"

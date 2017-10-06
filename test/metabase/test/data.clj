@@ -155,9 +155,13 @@
    (:id (db)))
 
   ([table-name]
+   ;; Ensure the database has been created
+   (db)
    (get-table-id-or-explode (id) table-name))
 
   ([table-name field-name & nested-field-names]
+   ;; Ensure the database has been created
+   (db)
    (let [table-id (id table-name)]
      (loop [parent-id (get-field-id-or-explode table-id field-name), [nested-field-name & more] nested-field-names]
        (if-not nested-field-name

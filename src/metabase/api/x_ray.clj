@@ -1,13 +1,16 @@
 (ns metabase.api.x-ray
-  (:require [compojure.core :refer [GET]]
+  (:require [compojure.core :refer [GET PUT]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction.core :as fe]
+            [metabase.feature-extraction
+             [core :as fe]
+             [costs :as costs]]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [setting :as setting]]
             [schema.core :as s]))
 
 ;; See metabase.feature-extraction.core/extract-features for description of
@@ -23,21 +26,18 @@
                    "unbounded"
                    "yolo")))
 
-;; (def ^:private Scale
-;;   (s/maybe (s/enum "month"
-;;                    "week"
-;;                    "day")))
-
 (defn- max-cost
   [query computation]
-  {:query       (keyword query)
-   :computation (keyword computation)})
+  (costs/apply-global-cost-cap
+   {:query       (keyword query)
+    :computation (keyword computation)}))
 
 (api/defendpoint GET "/field/:id"
   "Get x-ray for a `Field` with ID."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> id
        (api/read-check Field)
        (fe/extract-features {:max-cost (max-cost max_query_cost
@@ -49,6 +49,7 @@
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> id
        (api/read-check Table)
        (fe/extract-features {:max-cost (max-cost max_query_cost
@@ -60,6 +61,7 @@
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> id
        (api/read-check Segment)
        (fe/extract-features {:max-cost (max-cost max_query_cost
@@ -71,6 +73,7 @@
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> id
        (api/read-check Card)
        (fe/extract-features {:max-cost (max-cost max_query_cost
@@ -82,6 +85,7 @@
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> [id1 id2]
        (map #(api/read-check Field (Integer/parseInt %)))
        (apply fe/compare-features
@@ -93,6 +97,7 @@
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> [id1 id2]
        (map #(api/read-check Table (Integer/parseInt %)))
        (apply fe/compare-features
@@ -105,6 +110,7 @@
   [id1 id2 field max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (let [{:keys [comparison constituents]}
         (->> [id1 id2]
              (map #(api/read-check Table (Integer/parseInt %)))
@@ -131,6 +137,7 @@
   [id1 id2 max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (->> [id1 id2]
        (map #(api/read-check Segment (Integer/parseInt %)))
        (apply fe/compare-features
@@ -143,6 +150,7 @@
   [id1 id2 field max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (let [{:keys [comparison constituents]}
         (->> [id1 id2]
              (map #(api/read-check Segment (Integer/parseInt %)))
@@ -158,6 +166,7 @@
   [sid tid max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (fe/x-ray
    (fe/compare-features
     {:max-cost (max-cost max_query_cost max_computation_cost)}
@@ -170,6 +179,7 @@
   [sid tid field max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
   (let [{:keys [comparison constituents]}
         (fe/x-ray
          (fe/compare-features
@@ -184,8 +194,8 @@
   "Get a list of model pairs that can be compared."
   []
   [["field" "field"]
-   ["segment" "segment"
-    "table" "table"
-    "segment" "table"]])
+   ["segment" "segment"]
+   ["table" "table"]
+   ["segment" "table"]])
 
 (api/define-routes)

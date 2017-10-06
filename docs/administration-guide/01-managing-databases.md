@@ -91,6 +91,16 @@ By default, Metabase also performs a more intensive daily sampling of each field
 
 If for some reason you need to flush out the cached field values for your database, click the button that says "Discard saved field values" in the top-right of the database's page.
 
+##### Re-scanning a single table or field
+
+To re-scan a specific table, go to the Data Model section of the Admin Panel, select the table from the list, and click the gear icon in the top right of the page. Similarly, to do this for just a specific field, on the same Data Model page, find the field you want and click the gear icon on the far right of the field's name and options:
+
+![Field options][images/field-options.png]
+
+On either the table settings or field settings page, you'll see these options:
+
+![Re-scan options](images/re-scan-options.png)
+
 ### Deleting Databases
 
 To delete a database from Metabase, click on **Remove this database** from the database detail screen.
@@ -123,7 +133,7 @@ When connecting though a bastion host:
 * Answer yes to the "Use an SSH-tunnel for database connections" parameter
 * Enter the hostname for the data warehouse as it is seen from inside the network in the `Host` parameter.
 * Enter the data warehouse port as seen from inside the network into the `Port` parameter.
-* Enter the extenal name of the bastion host as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
+* Enter the external name of the bastion host as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
 * Enter the ssh port as seen from outside the network into the `SSH tunnel port` parameter. This is usually 22, regardless of which data warehouse you are connecting to.
 * Enter the username and password you use to login to the bastion host into the `SSH tunnel username` and `SSH tunnel password` parameters.
 
@@ -141,7 +151,7 @@ Another common case where direct connections are not possible is when connecting
 * Enter the ssh port as seen from outside the network into the `SSH tunnel port` parameter. This is usually 22, regardless of which data warehouse you are connecting to.
 * Enter the username and password you use to login to the bastion host into the `SSH tunnel username` and `SSH tunnel password` parameters.
 
-If you have problems connecting verify the ssh host port and password by connecing manually using ssh or PuTTY on older windows systems.
+If you have problems connecting verify the ssh host port and password by connecting manually using ssh or PuTTY on older windows systems.
 
 #### Disadvantages to Indirect Connections
 

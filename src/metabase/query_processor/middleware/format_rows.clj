@@ -17,8 +17,9 @@
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
   [qp]
-  (fn [{:keys [settings] :as query}]
+  (fn [{:keys [settings middleware] :as query}]
     (let [results (qp query)]
-      (if-not (:rows results)
+      (if-not (and (:rows results)
+                   (:format-rows? middleware true))
         results
         (update results :rows (partial format-rows* settings))))))

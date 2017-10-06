@@ -6,10 +6,12 @@ import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
-import { fetchFieldXray } from 'metabase/xray/xray'
-import { getFieldXray } from 'metabase/xray/selectors'
-
-import COSTS from 'metabase/xray/costs'
+import { fetchXray, initialize } from 'metabase/xray/xray'
+import {
+    getLoadingStatus,
+    getError,
+    getFeatures
+} from 'metabase/xray/selectors'
 
 import {
     ROBOTS,
@@ -24,13 +26,18 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
+import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+
 import Periodicity from 'metabase/xray/components/Periodicity'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
-    fetchFieldXray: () => void,
+    fetchXray: () => void,
+    initialize: () => {},
+    isLoading: boolean,
     xray: {
         table: Table,
         field: Field,
@@ -42,14 +49,18 @@ type Props = {
         cost: string,
         fieldId: number
     },
+    error: {}
 }
 
 const mapStateToProps = state => ({
-    xray: getFieldXray(state)
+    xray: getFeatures(state),
+    isLoading: getLoadingStatus(state),
+    error: getError(state)
 })
 
 const mapDispatchToProps = {
-    fetchFieldXray
+    initialize,
+    fetchXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -57,39 +68,39 @@ const mapDispatchToProps = {
 class FieldXRay extends Component {
     props: Props
 
-    state = {
-       error: null
+    componentWillMount () {
+        this.props.initialize()
+        this.fetch()
     }
 
-    componentDidMount () {
-        this.fetchFieldXray()
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
-    async fetchFieldXray() {
-        const { params } = this.props
-        const cost = COSTS[params.cost]
-        try {
-            await this.props.fetchFieldXray(params.fieldId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
-
+    fetch() {
+        const { params, fetchXray } = this.props
+        fetchXray('field', params.fieldId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchFieldXray()
+            this.fetch()
         }
     }
 
     render () {
-        const { xray, params } = this.props
-        const { error } = this.state
+        const { xray, params, isLoading, error } = this.props
+
         return (
             <LoadingAndErrorWrapper
-                loading={!xray}
+                loading={isLoading || !hasXray(xray)}
                 error={error}
                 noBackground
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
             >
                 { () =>
                     <XRayPageWrapper>
@@ -106,7 +117,7 @@ class FieldXRay extends Component {
                                         <h1 className="flex align-center">
                                             {xray.field.display_name}
                                             <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                            <span className="text-grey-3">XRay</span>
+                                            <span className="text-grey-3">X-ray</span>
                                         </h1>
                                         <div className="ml-auto flex align-center">
                                             <h3 className="mr2 text-grey-3">Fidelity</h3>
@@ -127,7 +138,9 @@ class FieldXRay extends Component {
                                 <div className="bg-white bordered shadowed">
                                     <div className="lg-p4">
                                         <div style={{ height: 300 }}>
-                                            <Histogram histogram={xray.histogram.value} />
+                                            { xray.histogram.value &&
+                                                <Histogram histogram={xray.histogram.value} />
+                                            }
                                         </div>
                                     </div>
                                 </div>
@@ -163,5 +176,3 @@ class FieldXRay extends Component {
 }
 
 export default FieldXRay
-
-

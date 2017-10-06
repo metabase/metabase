@@ -7,14 +7,16 @@
             [metabase.feature-extraction
              [comparison :as comparison]
              [costs :as costs]
+             [descriptions :refer [add-descriptions]]
              [feature-extractors :as fe]
-             [descriptions :refer [add-descriptions]]]
+             [values :as values]]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.query-processor :as qp]
             [metabase.util :as u]
             [redux.core :as redux]))
 
@@ -44,63 +46,82 @@
           * `:max-cost`   a map with keys `:computation` and `:query` which
                           limits maximal resource expenditure when computing
                           features.
-                          See `metabase.feature-extraction.costs` for details."
-    :arglists '([opts field])}
+                          See `metabase.feature-extraction.costs` for details.
+
+                          Note: `extract-features` for `Card`s does not support
+                          sampling."
+    :arglists '([opts model])}
   extract-features #(type %2))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
 
 (defn- sampled?
   [{:keys [max-cost] :as opts} dataset]
-  (and (costs/sample-only? max-cost)
+  (and (not (costs/full-scan? max-cost))
        (= (count (:rows dataset dataset)) max-sample-size)))
 
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (costs/sample-only? max-cost) (assoc :limit max-sample-size)))
+    (not (costs/full-scan? max-cost)) (assoc :limit max-sample-size)))
 
 (defmethod extract-features (type Field)
   [opts field]
-  (let [dataset (metadata/field-values field (extract-query-opts opts))]
-    {:features (->> dataset
+  (let [{:keys [field row]} (values/field-values field (extract-query-opts opts))]
+    {:features (->> row
                     (field->features opts field)
                     (merge {:table (Table (:table_id field))}))
-     :sample?  (sampled? opts dataset)}))
+     :sample?  (sampled? opts row)}))
 
 (defmethod extract-features (type Table)
   [opts table]
-  (let [dataset (metadata/query-values (metadata/db-id table)
-                                       (merge (extract-query-opts opts)
-                                              {:source-table (:id table)}))]
+  (let [dataset (values/query-values (metadata/db-id table)
+                                     (merge (extract-query-opts opts)
+                                            {:source-table (:id table)}))]
     {:constituents (dataset->features opts dataset)
      :features     {:table table}
      :sample?      (sampled? opts dataset)}))
 
+(defn index-of
+  "Return index of the first element in `coll` for which `pred` reutrns true."
+  [pred coll]
+  (first (keep-indexed (fn [i x]
+                         (when (pred x) i))
+                       coll)))
+
+(defn- ensure-aligment
+  [fields cols rows]
+  (if (not= fields (take 2 cols))
+    (eduction (map (apply juxt (for [field fields]
+                                 (let [idx (index-of #{field} cols)]
+                                   #(nth % idx)))))
+              rows)
+    rows))
+
 (defmethod extract-features (type Card)
   [opts card]
-  (let [query (-> card :dataset_query :query)
-        {:keys [rows cols] :as dataset} (metadata/query-values
-                                         (metadata/db-id card)
-                                         (merge (extract-query-opts opts)
-                                                query))
+  (let [{:keys [rows cols] :as dataset} (values/card-values card)
         {:keys [breakout aggregation]}  (group-by :source cols)
         fields                          [(first breakout)
                                          (or (first aggregation)
                                              (second breakout))]]
     {:constituents (dataset->features opts dataset)
-     :features     (merge
-                    (field->features (assoc opts :query query) fields rows)
-                    {:card  card
-                     :table (Table (:table_id card))})
+     :features     (merge (field->features (->> card
+                                                :dataset_query
+                                                :query
+                                                (assoc opts :query))
+                                           fields
+                                           (ensure-aligment fields cols rows))
+                          {:card  card
+                           :table (Table (:table_id card))})
      :dataset      dataset
      :sample?      (sampled? opts dataset)}))
 
 (defmethod extract-features (type Segment)
   [opts segment]
-  (let [dataset (metadata/query-values (metadata/db-id segment)
-                                       (merge (extract-query-opts opts)
-                                              (:definition segment)))]
+  (let [dataset (values/query-values (metadata/db-id segment)
+                                     (merge (extract-query-opts opts)
+                                            (:definition segment)))]
     {:constituents (dataset->features opts dataset)
      :features     {:table   (Table (:table_id segment))
                     :segment segment}

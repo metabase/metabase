@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import {Link} from "react-router";
 import cx from "classnames";
 import moment from "moment";
+import { withBackground } from "metabase/hoc/Background";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -19,7 +20,7 @@ type DashboardListItemProps = {
     setArchived: (dashId: number, archived: boolean) => void
 }
 
-class DashboardListItem extends Component {
+export class DashboardListItem extends Component {
     props: DashboardListItemProps
 
     state = {
@@ -146,7 +147,7 @@ class DashboardListItem extends Component {
 
 }
 
-export default class DashboardList extends Component {
+class DashboardList extends Component {
     static propTypes = {
         dashboards: PropTypes.array.isRequired
     };
@@ -166,3 +167,5 @@ export default class DashboardList extends Component {
         );
     }
 }
+
+export default withBackground('bg-slate-extra-light')(DashboardList)

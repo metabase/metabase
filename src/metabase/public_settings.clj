@@ -144,6 +144,7 @@
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
+   :enable_xrays          (setting/get :enable-xrays)
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
@@ -160,4 +161,5 @@
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents)
-   :version               config/mb-version-info})
+   :version               config/mb-version-info
+   :xray_max_cost         (setting/get :xray-max-cost)})

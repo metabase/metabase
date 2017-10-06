@@ -13,7 +13,8 @@ const TableSidebar = ({
     database,
     table,
     style,
-    className
+    className,
+    showXray
 }) =>
     <div className={cx(S.sidebar, className)} style={style}>
         <div className={S.breadcrumbs}>
@@ -27,31 +28,33 @@ const TableSidebar = ({
             />
         </div>
         <ol>
-            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}`} 
-                         href={`/reference/databases/${database.id}/tables/${table.id}`} 
-                         icon="document" 
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}`}
+                         href={`/reference/databases/${database.id}/tables/${table.id}`}
+                         icon="document"
                          name="Details" />
-            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields`} 
-                         href={`/reference/databases/${database.id}/tables/${table.id}/fields`} 
-                         icon="fields" 
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields`}
+                         href={`/reference/databases/${database.id}/tables/${table.id}/fields`}
+                         icon="fields"
                          name="Fields in this table" />
-            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
-                         href={`/reference/databases/${database.id}/tables/${table.id}/questions`} 
-                         icon="all" 
-                         name="Questions about this table" />
-            <SidebarItem key={`/xray/table/${table.id}/approximate`}
-                         href={`/xray/table/${table.id}/approximate`}
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/questions`}
+                         href={`/reference/databases/${database.id}/tables/${table.id}/questions`}
                          icon="all"
-                         name="X-Ray this table" />
+                         name="Questions about this table" />
+            { showXray && (
+                <SidebarItem key={`/xray/table/${table.id}/approximate`}
+                             href={`/xray/table/${table.id}/approximate`}
+                             icon="beaker"
+                             name="X-ray this table" />
+            )}
         </ol>
     </div>
 
 TableSidebar.propTypes = {
-    database:          PropTypes.object,
+    database:       PropTypes.object,
     table:          PropTypes.object,
     className:      PropTypes.string,
     style:          PropTypes.object,
+    showXray:       PropTypes.bool
 };
 
 export default pure(TableSidebar);
-

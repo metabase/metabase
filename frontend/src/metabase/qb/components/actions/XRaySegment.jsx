@@ -7,8 +7,8 @@ import type {
 
 import { isSegmentFilter } from "metabase/lib/query/filter";
 
-export default ({ question }: ClickActionProps): ClickAction[] => {
-    if (question.card().id) {
+export default ({ question, settings }: ClickActionProps): ClickAction[] => {
+    if (question.card().id && settings["enable_xrays"]) {
         return question
             .query()
             .filters()
@@ -18,7 +18,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                 const segment = question.metadata().segments[id];
                 return {
                     name: "xray-segment",
-                    title: `XRay ${segment && segment.name}`,
+                    title: `X-ray ${segment && segment.name}`,
                     icon: "beaker",
                     url: () => `/xray/segment/${id}/approximate`
                 };

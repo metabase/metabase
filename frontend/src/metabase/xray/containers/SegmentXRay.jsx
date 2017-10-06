@@ -7,24 +7,29 @@ import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
-import { fetchSegmentXray } from 'metabase/xray/xray'
+import { fetchXray, initialize } from 'metabase/xray/xray'
 
 import Icon from 'metabase/components/Icon'
-import COSTS from 'metabase/xray/costs'
 import CostSelect from 'metabase/xray/components/CostSelect'
 
 import {
-    getSegmentConstituents,
-    getSegmentXray
+    getConstituents,
+    getLoadingStatus,
+    getError,
+    getFeatures
 } from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
 
+import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+
 type Props = {
-    fetchSegmentXray: () => void,
+    fetchXray: () => void,
+    initialize: () => {},
     constituents: [],
     xray: {
         table: Table,
@@ -33,59 +38,66 @@ type Props = {
     params: {
         segmentId: number,
         cost: string,
-    }
+    },
+    isLoading: boolean,
+    error: {}
 }
 
 const mapStateToProps = state => ({
-    xray: getSegmentXray(state),
-    constituents: getSegmentConstituents(state)
+    xray:           getFeatures(state),
+    constituents:   getConstituents(state),
+    isLoading:      getLoadingStatus(state),
+    error:          getError(state)
 })
 
 const mapDispatchToProps = {
-    fetchSegmentXray
+    initialize,
+    fetchXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ xray }) => xray && xray.segment.name || "Segment" )
 class SegmentXRay extends Component {
+
     props: Props
 
-    state = {
-        error: null
+    componentWillMount () {
+        this.props.initialize()
+        this.fetch()
     }
 
-    componentDidMount () {
-        this.fetchSegmentXray()
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
-    async fetchSegmentXray () {
-        const { params } = this.props
-        // TODO - this should happen in the action
-        const cost = COSTS[params.cost]
-        try {
-            await this.props.fetchSegmentXray(params.segmentId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+    fetch () {
+        const { params, fetchXray } = this.props
+        fetchXray('segment', params.segmentId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchSegmentXray()
+            this.fetch()
         }
     }
 
     render () {
-        const { constituents, xray, params } = this.props
-        const { error } = this.state
+        const { constituents, xray, params, isLoading, error } = this.props
         return (
-            <XRayPageWrapper>
-                <LoadingAndErrorWrapper
-                    loading={!constituents}
-                    error={error}
-                    noBackground
-                >
-                    { () =>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !hasXray(xray)}
+                error={error}
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[
+                    <LoadingAnimation />
+                ]}
+                noBackground
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="mt4 mb2 flex align-center py2">
                                 <div>
@@ -98,7 +110,7 @@ class SegmentXRay extends Component {
                                     <h1 className="mt2 flex align-center">
                                         {xray.segment.name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">XRay</span>
+                                        <span className="text-grey-3">X-ray</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
                                         {xray.segment.description}
@@ -137,9 +149,9 @@ class SegmentXRay extends Component {
                                 </ol>
                             </div>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }

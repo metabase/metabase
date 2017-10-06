@@ -1,5 +1,6 @@
 (ns metabase.sync.sync-metadata.sync-timezone
-  (:require [metabase.driver :as driver]
+  (:require [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.sync.interface :as i]
             [schema.core :as s]
@@ -13,9 +14,12 @@
   "Query `DATABASE` for it's current time to determine it's
   timezone. Update that timezone if it's different."
   [database :- i/DatabaseInstance]
-  (let [tz-id (some-> database
-                      driver/->driver
-                      (driver/current-db-time database)
-                      extract-time-zone)]
-    (when-not (= tz-id (:timezone database))
-      (db/update! Database (:id database) {:timezone tz-id}))))
+  (try
+    (let [tz-id (some-> database
+                        driver/->driver
+                        (driver/current-db-time database)
+                        extract-time-zone)]
+      (when-not (= tz-id (:timezone database))
+        (db/update! Database (:id database) {:timezone tz-id})))
+    (catch Exception e
+      (log/warn e "Error syncing database timezone"))))

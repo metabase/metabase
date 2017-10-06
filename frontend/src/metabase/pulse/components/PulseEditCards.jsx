@@ -100,7 +100,7 @@ export default class PulseEditCards extends Component {
         return (
             <div className="py1">
                 <h2>Pick your data</h2>
-                <p className="mt1 h4 text-bold text-grey-3">Pick up to five questions you'd like to send in this pulse</p>
+                <p className="mt1 h4 text-bold text-grey-3">Choose questions you'd like to send in this pulse.</p>
                 <ol className="my3">
                     {cards && pulseCards.map((card, index) =>
                         <li key={index} className="my1">

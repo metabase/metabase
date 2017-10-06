@@ -2,6 +2,7 @@
   "Public API for sending Pulses."
   (:require [clojure.tools.logging :as log]
             [metabase
+             [driver :as driver]
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
@@ -9,7 +10,9 @@
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
             [metabase.pulse.render :as render]
-            [metabase.util.urls :as urls]))
+            [metabase.util.urls :as urls]
+            [schema.core :as s])
+  (:import java.util.TimeZone))
 
 ;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
 
@@ -29,24 +32,37 @@
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 
+(defn- database-id [card]
+  (or (:database_id card)
+      (get-in card [:dataset_query :database])))
+
+(s/defn defaulted-timezone :- TimeZone
+  "Returns the timezone for the given `CARD`. Either the report
+  timezone (if applicable) or the JVM timezone."
+  [card :- Card]
+  (let [^String timezone-str (or (some-> card database-id driver/database-id->driver driver/report-timezone-if-supported)
+                                 (System/getProperty "user.timezone"))]
+    (TimeZone/getTimeZone timezone-str)))
+
 (defn- send-email-pulse!
   "Send a `Pulse` email given a list of card results to render and a list of recipients to send to."
   [{:keys [id name] :as pulse} results recipients]
   (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
   (let [email-subject    (str "Pulse: " name)
-        email-recipients (filterv u/is-email? (map :email recipients))]
+        email-recipients (filterv u/is-email? (map :email recipients))
+        timezone         (-> results first :card defaulted-timezone)]
     (email/send-message!
       :subject      email-subject
       :recipients   email-recipients
       :message-type :attachments
-      :message      (messages/render-pulse-email pulse results))))
+      :message      (messages/render-pulse-email timezone pulse results))))
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
     (doall (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
-             (let [image-byte-array (render/render-pulse-card-to-png card result)
+             (let [image-byte-array (render/render-pulse-card-to-png (defaulted-timezone card) card result)
                    slack-file-url   (slack/upload-file! image-byte-array "image.png" channel-id)]
                {:title      card-name
                 :title_link (urls/card-url card-id)

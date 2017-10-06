@@ -7,7 +7,9 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
+             [query-processor-test :as qpt]
              [sync :as sync]
+             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.models
@@ -22,6 +24,7 @@
              [util :as tu :refer [match-$]]]
             [metabase.test.data
              [dataset-definitions :as defs]
+             [datasets :as datasets]
              [users :refer [user->client]]]
             [toucan
              [db :as db]
@@ -558,15 +561,19 @@
       (finally
         (db/update! Field lat-field-id :fingerprint fingerprint)))))
 
+(defn- dimension-options-for-field [response field-name]
+  (let [formatted-field-name (data/format-name field-name)]
+    (->> response
+         :fields
+         (m/find-first #(= formatted-field-name (:name %)))
+         :dimension_options)))
+
 (defn- extract-dimension-options
   "For the given `FIELD-NAME` find it's dimension_options following
   the indexes given in the field"
   [response field-name]
   (set
-   (for [dim-index (->> response
-                        :fields
-                        (m/find-first #(= field-name (:name %)))
-                        :dimension_options)
+   (for [dim-index (dimension-options-for-field response field-name)
          :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
      strategy)))
 
@@ -576,7 +583,7 @@
     #{nil "bin-width" "default"}
     #{})
   (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
-    (extract-dimension-options response "LATITUDE")))
+    (extract-dimension-options response "latitude")))
 
 ;; Number columns without a special type should use "num-bins"
 (expect
@@ -588,7 +595,26 @@
       (db/update! Field (data/id :venues :price) :special_type nil)
 
       (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
-        (extract-dimension-options response "PRICE"))
+        (extract-dimension-options response "price"))
 
       (finally
         (db/update! Field (data/id :venues :price) :special_type special_type)))))
+
+;; Ensure unix timestamps show date binning options, not numeric binning options
+(expect
+  (var-get #'table-api/datetime-dimension-indexes)
+  (data/dataset sad-toucan-incidents
+    (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :incidents)))]
+      (dimension-options-for-field response "timestamp"))))
+
+;; Datetime binning options should showup whether the backend supports binning of numeric values or not
+(datasets/expect-with-engines #{:druid}
+  (var-get #'table-api/datetime-dimension-indexes)
+  (timeseries-qp-test/with-flattened-dbdef
+    (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
+      (dimension-options-for-field response "timestamp"))))
+
+(qpt/expect-with-non-timeseries-dbs
+ (var-get #'table-api/datetime-dimension-indexes)
+ (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
+   (dimension-options-for-field response "date")))

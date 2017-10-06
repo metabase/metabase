@@ -15,7 +15,8 @@ describe('xray', () => {
                 const expected = {
                     comparison: {
                         features: {}
-                    }
+                    },
+                    loading: false
                 }
 
                 expect(reducer({}, action)).toEqual(expected)

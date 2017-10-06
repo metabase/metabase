@@ -14,7 +14,8 @@ const FieldSidebar =({
     table,
     field,
     style,
-    className
+    className,
+    showXray
 }) =>
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
@@ -28,24 +29,27 @@ const FieldSidebar =({
                     placeholder="Data Reference"
                 />
             </div>
-                <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`} 
-                             href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`} 
-                             icon="document" 
-                             name="Details" />
-                <SidebarItem key={`/xray/field/${field.id}/approximate`}
-                             href={`/xray/field/${field.id}/approximate`}
-                             icon="document"
-                             name="X-Ray this Field" />
+            <SidebarItem key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
+                         href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
+                         icon="document"
+                         name="Details" />
+             { showXray && (
+                 <SidebarItem
+                     key={`/xray/field/${field.id}/approximate`}
+                     href={`/xray/field/${field.id}/approximate`}
+                     icon="beaker"
+                     name="X-ray this Field" />
+             )}
         </ul>
     </div>
 
 FieldSidebar.propTypes = {
-    database:          PropTypes.object,
+    database:       PropTypes.object,
     table:          PropTypes.object,
     field:          PropTypes.object,
     className:      PropTypes.string,
     style:          PropTypes.object,
+    showXray:       PropTypes.bool
 };
 
 export default pure(FieldSidebar);
-

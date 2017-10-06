@@ -161,20 +161,26 @@
 (def ^:private coordinate-default-index
   (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) "Auto bin")))
 
-(defn- assoc-field-dimension-options [{:keys [base_type special_type fingerprint] :as field}]
+(defn- supports-numeric-binning? [driver]
+  (and driver (contains? (driver/features driver) :binning)))
+
+(defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
 
-                                       (isa? base_type :type/DateTime)
+                                       (or (isa? base_type :type/DateTime)
+                                           (isa? special_type :type/DateTime))
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
-                                            (isa? special_type :type/Coordinate))
+                                            (isa? special_type :type/Coordinate)
+                                            (supports-numeric-binning? driver))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
-                                            (or (nil? special_type) (isa? special_type :type/Number)))
+                                            (or (nil? special_type) (isa? special_type :type/Number))
+                                            (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 
                                        :else
@@ -184,16 +190,10 @@
       :dimension_options all-options)))
 
 (defn- assoc-dimension-options [resp driver]
-  (if (and driver (contains? (driver/features driver) :binning))
-    (-> resp
-        (assoc :dimension_options dimension-options-for-response)
-        (update :fields #(mapv assoc-field-dimension-options %)))
-    (-> resp
-        (assoc :dimension_options [])
-        (update :fields (fn [fields]
-                          (mapv #(assoc %
-                                   :dimension_options []
-                                   :default_dimension_option nil) fields))))))
+  (-> resp
+      (assoc :dimension_options dimension-options-for-response)
+      (update :fields (fn [fields]
+                        (mapv #(assoc-field-dimension-options driver %) fields)))))
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
