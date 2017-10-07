@@ -103,9 +103,10 @@
    https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test"
   ([m p n q] (ks-test 0.95 m p n q))
   ([significance-level m p n q]
-   (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
-         c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
-     (> D (* c (math/sqrt (/ (+ m n) (* m n))))))))
+   (when-not (zero? (* m n))
+     (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
+           c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
+       (> D (* c (math/sqrt (/ (+ m n) (* m n)))))))))
 
 (defn- unify-categories
   "Given two PMFs add missing categories and align them so they both cover the
@@ -125,8 +126,6 @@
 (defn- chi-squared-critical-value
   [n]
   (+ (* -0.037 (Math/log n)) 0.365))
-
-(chi-squared-critical-value 100)
 
 (defmethod difference [Histogram Histogram]
   [a b]

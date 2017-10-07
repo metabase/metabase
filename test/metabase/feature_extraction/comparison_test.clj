@@ -1,6 +1,8 @@
 (ns metabase.feature-extraction.comparison-test
   (:require [expectations :refer :all]
-            [metabase.feature-extraction.comparison :refer :all :as c]))
+            [metabase.feature-extraction
+             [comparison :refer :all :as c]
+             [histogram :as h]]))
 
 (expect
   (approximately 5.5 0.1)
@@ -65,3 +67,14 @@
   (approximately 0.3 0.1)
   (:distance (features-distance {:foo 2.0 :bar [1 2 3] :baz false}
                                 {:foo 12 :bar [10.7 0.2 3] :baz false})))
+
+(expect
+  [true
+   false
+   nil]
+  (let [h1      (transduce identity h/histogram (range 10))
+        h2      (transduce identity h/histogram (repeat 10 10))
+        h-empty (transduce identity h/histogram nil)]
+    (map :significant? [(difference h1 h2)
+                        (difference h1 h1)
+                        (difference h1 h-empty)])))
