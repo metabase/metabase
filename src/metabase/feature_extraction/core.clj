@@ -139,7 +139,12 @@
 
 (defn- top-contributors
   [comparisons]
-  (if (map? comparisons)
+  (if (:top-contributors comparisons)
+    (->> comparisons
+         :top-contributors
+         (map (fn [[feature difference]]
+                {:feature    feature
+                 :difference difference})))
     (->> comparisons
          (comparison/head-tails-breaks (comp :distance val))
          (mapcat (fn [[field {:keys [top-contributors distance]}]]
@@ -147,12 +152,7 @@
                      {:feature      feature
                       :field        field
                       :contribution (* (math/sqrt distance) difference)})))
-         (comparison/head-tails-breaks :contribution))
-    (->> comparisons
-         :top-contributors
-         (map (fn [[feature difference]]
-                {:feature    feature
-                 :difference difference})))))
+         (comparison/head-tails-breaks :contribution))))
 
 (defn compare-features
   "Compare feature vectors of two models."

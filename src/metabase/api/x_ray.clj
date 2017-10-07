@@ -1,11 +1,12 @@
 (ns metabase.api.x-ray
+  (:refer-clojure :exclude [compare])
   (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.feature-extraction
              [core :as fe]
              [costs :as costs]]
             [metabase.models
-             [card :refer [Card]]
+             [card :refer [Card] :as card]
              [database :refer [Database] :as database]
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -155,6 +156,17 @@
                           field))
 
 (api/defendpoint GET "/compare/table/:table-id/segment/:segment-id/field/:field"
+  "Get comparison x-ray for field named `field` in table with ID
+   `table-id` and segment with ID `segment-id`."
+  [table-id segment-id field max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (compare-filtered-field (max-cost max_query_cost max_computation_cost)
+                          (api/read-check Table table-id)
+                          (api/read-check Segment segment-id)
+                          field))
+
+(api/defendpoint POST "/compare/table/:table-id/segment/:segment-id/field/:field"
   "Get comparison x-ray for field named `field` in table with ID
    `table-id` and segment with ID `segment-id`."
   [table-id segment-id field max_query_cost max_computation_cost]
