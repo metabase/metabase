@@ -166,8 +166,6 @@ export const XRayApi = {
     table_compare:               GET("/api/x-ray/compare/tables/:tableId1/:tableId2"),
     segment_compare:             GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2"),
     segment_table_compare:       GET("/api/x-ray/compare/segment/:segmentId/table/:tableId"),
-    segment_field_compare:       GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2/field/:fieldName"),
-    segment_table_field_compare: GET("/api/x-ray/compare/segment/:segmentId/table/:tableId/field/:fieldName"),
     card_compare:                GET("/api/x-ray/compare/cards/:cardId1/:cardId2")
 };
 
