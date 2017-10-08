@@ -506,7 +506,7 @@
                   Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
                   Card      [card              {:dataset_query {:database database-id
                                                                 :type     :native
-                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES"}}}]]
     ;; delete all permissions for this DB
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     (f database-id card)))

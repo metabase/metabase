@@ -29,6 +29,17 @@
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
+                 [org.apache.hadoop/hadoop-common "2.7.3"]
+                 [org.apache.drill.exec/drill-jdbc-all "1.10.0"
+                  :exclusions [org.slf4j/log4j-over-slf4j
+                               org.slf4j/jcl-over-slf4j
+                               org.slf4j/slf4j-api
+                               log4j]]
+                 [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
+                  :exclusions [org.codehaus.jackson/jackson-xc
+                               org.eclipse.jetty.aggregate/jetty-all
+                               org.mortbay.jetty/jetty]
+                  :classifier "standalone"]
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -38,9 +49,10 @@
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.3"                         ; auth library
-                  :exclusions [commons-codec
-                               org.apache.httpcomponents/httpclient
+                  :exclusions [com.google.inject/guice
+                               commons-codec
                                net.sourceforge.nekohtml/nekohtml
+                               org.apache.httpcomponents/httpclient
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
@@ -87,7 +99,8 @@
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
-                 [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [ring/ring-jetty-adapter "1.6.0"                     ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                  :exclusions [commons-io]]
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
@@ -139,7 +152,11 @@
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"]                            ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
-                   :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
+                   ;; Log appender class needs to be compiled for log4j to use it,
+                   ;; classes for fixed Hive driver in must be compiled for tests
+                   :aot [metabase.logger
+                         metabase.driver.FixedHiveConnection
+                         metabase.driver.FixedHiveDriver]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
