@@ -32,6 +32,8 @@
   Each nested query increments this counter by 1."
   0)
 
+(def source-table-alias "t1")
+
 (defn- driver [] {:pre [(map? *query*)]} (:driver *query*))
 
 ;; register the function "distinct-count" with HoneySQL
@@ -79,6 +81,21 @@
   (formatted [this]
     "Return an appropriate HoneySQL form for an object."))
 
+(defn resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
+  (let [source-table (or (get-in *query* [:query :source-table])
+                         (get-in *query* [:query :source-query :source-table]) )]
+    (if (and (= schema-name (:schema source-table))
+             (= table-name (:name source-table)))
+      (-> (assoc field :schema-name nil)
+          (assoc :table-name source-table-alias))
+      (if-let [matching-join-table (->> (get-in *query* [:query :join-tables])
+                                          (filter #(and (= schema-name (:schema %))
+                                                        (= table-name (:table-name %))))
+                                          first)]
+        (-> (assoc field :schema-name nil)
+            (assoc :table-name (:join-alias matching-join-table)))
+        field))))
+
 (extend-protocol IGenericSQLFormattable
   nil                    (formatted [_] nil)
   Number                 (formatted [this] this)
@@ -97,8 +114,9 @@
     (formatted (expression-with-name expression-name)))
 
   Field
-  (formatted [{:keys [schema-name table-name special-type field-name]}]
-    (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+  (formatted [unresolved-field]
+    (let [{:keys [schema-name table-name special-type field-name] :as alias} (resolve-table-alias unresolved-field)
+          field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
       (cond
         (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)
         (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)
@@ -258,8 +276,8 @@
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
+                          [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
+                              (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -290,7 +308,7 @@
 
 (defn- apply-source-table [honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
-  (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
+  (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias]))
 
 (declare apply-clauses)
 
