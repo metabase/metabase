@@ -4,6 +4,7 @@
   (:import java.util.Locale))
 
 (defn available-locales-with-names
+  "Returns all locale abbreviations and their full names"
   []
   (map (fn [locale] [locale (.getDisplayName (Locale/forLanguageTag locale))]) (available-locales)))
 
