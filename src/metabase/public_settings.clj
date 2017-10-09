@@ -6,8 +6,8 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
+            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
             [metabase.util.password :as password]
-            [puppetlabs.i18n.core :refer [available-locales]]
             [toucan.db :as db])
   (:import java.util.Locale
            java.util.TimeZone))
@@ -37,7 +37,10 @@
 
 (defsetting site-locale
   "The default language for this Metabase instance. This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface."
-  :type :string
+  :type    :string
+  :setter  (fn [new-value]
+             (setting/set-string! :site-locale new-value)
+             (set-locale new-value))
   :default "en")
 
 (defsetting admin-email
@@ -150,7 +153,7 @@
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
-   :available_locales     (vec (map (fn [locale] [locale (.getDisplayName (Locale/forLanguageTag locale))]) (available-locales)))
+   :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
    :password_complexity   password/active-password-complexity
    :public_sharing        (enable-public-sharing)
