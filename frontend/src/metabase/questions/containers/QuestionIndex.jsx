@@ -62,7 +62,7 @@ export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch})
     return (
         <div className="flex align-center pt4 pb2">
 
-          { showSearch &&
+          { showSearch && hasCollections &&
           <ExpandingSearchField onSearch={onSearch}/>
           }
 
@@ -132,7 +132,7 @@ export class QuestionIndex extends Component {
 
                 { showNoSavedQuestionsState && <NoSavedQuestionsState /> }
 
-                <div className={cx({ "hide": !showEntityList })}>
+                <div className={cx("pt4", { "hide": !showEntityList })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"
