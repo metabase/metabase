@@ -149,13 +149,13 @@
 
 (defmethod extract-features (type Metric)
   [opts {:keys [definition table_id name] :as metric}]
-  (let [query        (card/map->CardInstance
+  (let [definition   (-> definition
+                         (update-in [:aggregation 0] #(vector :named % name)))
+        query        (card/map->CardInstance
                       {:dataset_query {:type     :query
                                        :database (metadata/db-id metric)
                                        :query    definition}
                        :table_id      table_id})
-        aggregation  (-> definition :aggregation ffirst)
-        fix-name     #(update % :constituents rename-keys {aggregation name})
         constituents (into {}
                        (for [field (dimensions metric)]
                          [(:name field)
@@ -163,8 +163,7 @@
                                field->breakout
                                vector
                                (assoc-in query [:dataset_query :query :breakout])
-                               (extract-features opts)
-                               fix-name)]))]
+                               (extract-features opts))]))]
     {:constituents constituents
      :features     {:metric metric
                     :table  (Table table_id)}
