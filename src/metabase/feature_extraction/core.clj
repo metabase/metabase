@@ -53,28 +53,29 @@
        :fields
        (map (juxt :name :basic_type :special_type))))
 
+(defn- shards
+  [{:keys [db_id id] :as table}]
+  (filter (comp #{(field-fingerprint table)} field-fingerprint)
+          (db/select Table :db_id db_id)))
+
 (defn- full-listing?
   [{{:keys [query type]} :dataset_query}]
   (and (= type "query")
        (not-any? #{:breakout :aggregation} (keys query))))
 
 (defmethod comparables (type Table)
-  [{:keys [db_id id] :as table}]
-  (let [shards (->> (db/select Table
-                      :db_id db_id
-                      :id    [:not= id])
-                    (filter (comp #{(field-fingerprint table)}
-                                  field-fingerprint)))]
+  [{table-id :id :as table}]
+  (let [shards (shards table)]
     (concat
-     (for [{:keys [id]} shards]
+     (for [{:keys [id]} shards :when (not= id table-id)]
        {:id    id
         :model :table})
      (for [{:keys [id]} (db/select Segment
-                          :table_id [:in (conj (map :id shards) id)])]
+                          :table_id [:in (map :id shards)])]
        {:id    id
         :model :segment})
      (for [{:keys [id] :as card} (db/select Card
-                                   :table_id [:in (conj (map :id shards) id)])
+                                   :table_id [:in (map :id shards)])
            :when (full-listing? card)]
        {:id    id
         :model :card}))))
@@ -105,9 +106,9 @@
 (defmethod comparables (type Field)
   [{:keys [id base_type special_type table_id]}]
   (for [field-id (db/select-ids  Field
-                   :table_id     table_id
-                   :base_type    base_type
-                   :special_type special_type
+                   :table_id     [:in (->> table_id Table shards (map :id))]
+                   :base_type    (u/keyword->qualified-name base_type)
+                   :special_type (u/keyword->qualified-name special_type)
                    :id           [:not= id])]
     {:model :field
      :id    field-id}))
