@@ -56,7 +56,8 @@ const SECTIONS = [
                 display_name: "Language",
                 type: "select",
                 options:  MetabaseSettings.get("available_locales").map(([value, name]) => ({ name, value })),
-                placeholder: "Select a language"
+                placeholder: "Select a language",
+                getHidden: () => MetabaseSettings.get("available_locales").length < 2
             },
             {
                 key: "anon-tracking-enabled",
