@@ -82,7 +82,7 @@ export default class ExpandingSearchField extends Component {
                     name="search"
                 />
                 <Motion
-                    style={{width: active ? spring(400) : spring(200) }}
+                    style={{width: active ? spring(450) : spring(250) }}
                 >
                     { interpolatingStyle =>
                         <input
