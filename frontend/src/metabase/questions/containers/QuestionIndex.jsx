@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import CollectionActions from "../components/CollectionActions";
