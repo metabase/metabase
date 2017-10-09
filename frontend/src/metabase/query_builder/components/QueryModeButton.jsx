@@ -59,7 +59,7 @@ export default class QueryModeButton extends Component {
                     </span>
                 </Tooltip>
 
-                <Modal medium backdropClassName="Modal-backdrop--dark" isOpen={this.state.isOpen} onClose={() => this.setState({isOpen: false})}>
+                <Modal medium isOpen={this.state.isOpen} onClose={() => this.setState({isOpen: false})}>
                     <div className="p4">
                         <div className="mb3 flex flex-row flex-full align-center justify-between">
                             <h2>{capitalize(nativeQueryName)} for this question</h2>
