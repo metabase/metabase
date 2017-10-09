@@ -65,15 +65,10 @@ const MainNavLink = ({ to, name, eventName }) =>
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
     static propTypes = {
-        className: PropTypes.string,
         context: PropTypes.string.isRequired,
         path: PropTypes.string.isRequired,
         user: PropTypes.object
     };
-
-    constructor(props, context) {
-        super(props, context);
-    }
 
     isActive(path) {
         return this.props.path.startsWith(path);
@@ -81,11 +76,11 @@ export default class Navbar extends Component {
 
     renderAdminNav() {
         return (
-            <nav className={cx("Nav AdminNav", this.props.className)}>
-                <div className="wrapper flex align-center">
+            <nav className={cx("Nav AdminNav sm-py1")}>
+                <div className="sm-pl4 flex align-center pr1">
                     <div className="NavTitle flex align-center">
                         <Icon name={'gear'} className="AdminGear" size={22}></Icon>
-                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin Panel</span>
+                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin</span>
                     </div>
 
                     <ul className="sm-ml4 flex flex-full text-strong">
@@ -104,7 +99,7 @@ export default class Navbar extends Component {
 
     renderEmptyNav() {
         return (
-            <nav className={cx("Nav py2 sm-py1 xl-py3 relative", this.props.className)}>
+            <nav className="Nav sm-py1 relative">
                 <ul className="wrapper flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer flex align-center">
@@ -118,8 +113,8 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className={cx("Nav relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
-                <ul className="ml2 sm-pl4 pr1 flex align-center">
+            <nav className="Nav relative bg-brand sm-py1">
+                <ul className="sm-pl4 pr1 flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background p1">
                             <LogoIcon dark={true}></LogoIcon>
@@ -151,7 +146,7 @@ export default class Navbar extends Component {
     }
 
     render() {
-        let { context, user } = this.props;
+        const { context, user } = this.props;
 
         if (!user) return null;
 
