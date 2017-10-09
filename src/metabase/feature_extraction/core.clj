@@ -42,10 +42,10 @@
                                   #(nth % i))])))
              rows))
 
-(defmulti comparables
+(defmulti
   ^{:doc "Given a model, return a list of models it can be compared to."
     :arglists '([model])}
-  type)
+  comparables type)
 
 (defn- field-fingerprint
   [table]
