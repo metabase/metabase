@@ -8,5 +8,6 @@
   (map (fn [locale] [locale (.getDisplayName (Locale/forLanguageTag locale))]) (available-locales)))
 
 (defn set-locale
+  "This sets the local for the instance"
   [locale]
   (Locale/setDefault (Locale/forLanguageTag locale)))
