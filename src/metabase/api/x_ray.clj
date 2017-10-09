@@ -68,6 +68,18 @@
                                                  max_computation_cost)})
        fe/x-ray))
 
+(api/defendpoint GET "/metric/:id"
+  "Get x-ray for a `Metric` with ID."
+  [id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (api/check-403 (costs/enable-xrays))
+  (->> id
+       (api/read-check Metric)
+       (fe/extract-features {:max-cost (max-cost max_query_cost
+                                                 max_computation_cost)})
+       fe/x-ray))
+
 (api/defendpoint GET "/card/:id"
   "Get x-ray for a `Card` with ID."
   [id max_query_cost max_computation_cost]
