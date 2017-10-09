@@ -15,7 +15,9 @@
   z-index: -1;
 }
 
-.LineAreaBarChart .dc-chart .axis text {
+.LineAreaBarChart .dc-chart .axis text,
+.LineAreaBarChart .dc-chart .x-axis-label,
+.LineAreaBarChart .dc-chart .y-axis-label {
   font-size: 12px;
   font-family: "Lato", sans-serif;
   font-weight: 900;
