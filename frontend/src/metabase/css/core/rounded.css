@@ -6,10 +6,6 @@
   border-radius: var(--default-border-radius);
 }
 
-.rounded-med, :local(.rounded-med) {
-  border-radius: var(--med-border-radius);
-}
-
 .rounded-top {
   border-top-left-radius:  var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
