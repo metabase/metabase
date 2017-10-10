@@ -28,7 +28,7 @@ import {
     fillMissingValues,
     forceSortedGroupsOfGroups,
     hasRemappingAndValuesAreStrings,
-    initChart,
+    initChart, // TODO - probably better named something like `initChartParent`
     makeIndexMap,
     reduceGroup
 } from "./renderer_utils";
@@ -43,7 +43,7 @@ import { updateDateTimeFilter, updateNumericFilter } from "metabase/qb/lib/actio
 import { lineAddons } from "./graph/addons"
 import { initBrush } from "./graph/brush";
 
-import type { VisualizationProps, SingleSeries } from "metabase/meta/types/Visualization"
+import type { VisualizationProps } from "metabase/meta/types/Visualization"
 
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -378,104 +378,95 @@ const MAX_FILL_COUNT = 10000;
 const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 
 
-function getDcjsChart(cardType, parent) {
-    switch (cardType) {
-        case "line":    return lineAddons(dc.lineChart(parent));
-        case "area":    return lineAddons(dc.lineChart(parent));
-        case "bar":     return dc.barChart(parent);
-        case "scatter": return dc.bubbleChart(parent);
-        default:        return dc.barChart(parent);
-    }
+/************************************************************ PROPERTIES ************************************************************/
+
+function isTimeseries(settings) {
+    return settings["graph.x_axis.scale"] === "timeseries";
 }
 
-function applyChartLineBarSettings(chart, settings, chartType) {
-    // LINE/AREA:
-    // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-    if (chart.interpolate) chart.interpolate(settings["line.interpolate"] || DEFAULT_INTERPOLATION);
-
-    // AREA:
-    if (chart.renderArea) chart.renderArea(chartType === "area");
-
-    // BAR:
-    if (chart.barPadding) chart.barPadding(BAR_PADDING_RATIO)
-                               .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
+function isQuantitative(settings) {
+    const xAxisScale = settings["graph.x_axis.scale"];
+    return xAxisScale === "linear" || xAxisScale === "log" || xAxisScale === "pow";
 }
 
-type LineAreaBarProps = VisualizationProps & {
-    chartType: "line" | "area" | "bar" | "scatter",
-    isScalarSeries: boolean,
-    maxSeries: number
+function isHistogram(settings) {
+    return settings["graph.x_axis.scale"] === "histogram";
 }
 
-export default function lineAreaBar(element: Element, {
-    series,
-    onHoverChange,
-    onVisualizationClick,
-    onRender,
-    chartType,
-    isScalarSeries,
-    settings,
-    maxSeries,
-    onChangeCardAndRun
-}: LineAreaBarProps) {
-    const colors = settings["graph.colors"];
+function isOrdinal(settings) {
+    return !isTimeseries(settings) && !isHistogram(settings);
+}
 
-    // force histogram to be ordinal axis with zero-filled missing points
-    const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-    if (isHistogram) {
-        settings["line.missing"] = "zero";
-        settings["graph.x_axis.scale"] = "ordinal"
-    }
+// bar histograms have special tick formatting:
+// * aligned with beginning of bar to show bin boundaries
+// * label only shows beginning value of bin
+// * includes an extra tick at the end for the end of the last bin
+function isHistogramBar(settings, chartType) {
+    return isHistogram(settings) && chartType === "bar";
+}
 
-    // bar histograms have special tick formatting:
-    // * aligned with beginning of bar to show bin boundaries
-    // * label only shows beginning value of bin
-    // * includes an extra tick at the end for the end of the last bin
-    const isHistogramBar = isHistogram && chartType === "bar";
+function isStacked(settings, datas) {
+    return settings["stackable.stack_type"] && datas.length > 1;
+}
 
-    const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
-    const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
-    const isOrdinal = !isTimeseries && !isQuantitative;
+function isNormalized (settings, datas) {
+    return isStacked(settings, datas) && settings["stackable.stack_type"] === "normalized";
+}
 
-    // is this a dashboard multiseries?
-    // TODO: better way to detect this?
-    const isMultiCardSeries = series.length > 1 &&
-        getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
+// find the first nonempty single series
+function getFirstNonEmptySeries(series) {
+    return _.find(series, (s) => !datasetContainsNoResults(s.data));
+}
+
+function isDimensionTimeseries(series) {
+    return dimensionIsTimeseries(getFirstNonEmptySeries(series).data);
+}
+
+function isDimensionNumeric(series) {
+    return dimensionIsNumeric(getFirstNonEmptySeries(series).data);
+}
+
+function isRemappedToString(series) {
+    return hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
+}
+
+// is this a dashboard multiseries?
+// TODO: better way to detect this?
+function isMultiCardSeries(series) {
+    return series.length > 1 && getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
+}
+
+function enableBrush(series, onChangeCardAndRun) {
+    return !!(onChangeCardAndRun &&
+              !isMultiCardSeries(series) &&
+              isStructured(series[0].card) &&
+              !isRemappedToString(series));
+}
 
 
-    // find the first nonempty single series
-    // $FlowFixMe
-    const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
+/************************************************************ SETUP ************************************************************/
 
-    const isDimensionTimeseries = dimensionIsTimeseries(firstSeries.data);
-    const isDimensionNumeric = dimensionIsNumeric(firstSeries.data);
-    const isRemappedToString = hasRemappingAndValuesAreStrings(firstSeries.data);
-
-    const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card) && !isRemappedToString);
-
-    if (firstSeries.data.cols.length < 2) {
+function checkSeriesIsValid(series, maxSeries) {
+    if (getFirstNonEmptySeries(series).data.cols.length < 2) {
         throw new Error("This chart type requires at least 2 columns.");
     }
 
     if (series.length > maxSeries) {
         throw new Error(`This chart type doesn't support more than ${maxSeries} series of data.`);
     }
+}
 
-    const warnings = {};
-    const warn = (id) => {
-        warnings[id] = (warnings[id] || 0) + 1;
-    }
-
-    let datas = series.map((s, index) =>
+function getDatas(settings, series, warn) {
+    return series.map((s, index) =>
         s.data.rows.map(row => {
             let newRow = [
                 // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-                (isDimensionTimeseries && !isQuantitative) ?
-                    HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-                : isDimensionNumeric ?
-                    row[0]
+                (isDimensionTimeseries(series) && !isQuantitative(settings)) ?
+                HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
+                : isDimensionNumeric(series) ?
+                row[0]
                 :
-                    String(row[0])
+                String(row[0])
                 , ...row.slice(1)
             ]
             // $FlowFixMe: _origin not typed
@@ -483,39 +474,36 @@ export default function lineAreaBar(element: Element, {
             return newRow;
         })
     );
+}
 
-    // compute the x-values
-    let xValues = getXValues(datas, chartType);
-
-    // compute the domain
-    let xDomain = d3.extent(xValues);
-
-    let xInterval;
-    if (isTimeseries) {
+function getXInterval(settings, xValues, series,) {
+    if (isTimeseries(settings)) {
         // compute the interval
         let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-        xInterval = computeTimeseriesDataInverval(xValues, unit);
-    } else if (isQuantitative || isHistogram) {
-        if (firstSeries.data.cols[0].binning_info) {
-            // Get the bin width from binning_info, if available
-            // TODO: multiseries?
-            xInterval = firstSeries.data.cols[0].binning_info.bin_width;
-        } else {
-            // Otherwise try to infer from the X values
-            xInterval = computeNumericDataInverval(xValues);
-        }
-    }
+        return computeTimeseriesDataInverval(xValues, unit);
+    } else if (isQuantitative(settings) || isHistogram(settings)) {
+        // Get the bin width from binning_info, if available
+        // TODO: multiseries?
+        const binningInfo = getFirstNonEmptySeries(series).data.cols[0].binning_info;
+        if (binningInfo) return binningInfo.bin_width;
 
+        // Otherwise try to infer from the X values
+        return computeNumericDataInverval(xValues);
+    }
+}
+
+
+function fillMissingValuesInDatas(settings, chartType, xValues, datas, xDomain, xInterval) {
     if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
         const fillValue = settings["line.missing"] === "zero" ? 0 : null;
-        if (isTimeseries) {
+        if (isTimeseries(settings)) {
             // $FlowFixMe
             const { interval, count } = xInterval;
             if (count <= MAX_FILL_COUNT) {
                 // replace xValues with
                 xValues = d3.time[interval]
-                    .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
-                    .map(d => moment(d));
+                            .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
+                            .map(d => moment(d));
                 datas = fillMissingValues(
                     datas,
                     xValues,
@@ -523,12 +511,13 @@ export default function lineAreaBar(element: Element, {
                     (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
                 );
             }
-        } if (isQuantitative || isHistogram) {
+        }
+        if (isQuantitative(settings) || isHistogram(settings)) {
             // $FlowFixMe
             const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
             if (count <= MAX_FILL_COUNT) {
                 let [start, end] = xDomain;
-                if (isHistogramBar) {
+                if (isHistogramBar(settings, chartType)) {
                     // NOTE: intentionally add an end point for bar histograms
                     // $FlowFixMe
                     end += xInterval * 1.5
@@ -554,19 +543,14 @@ export default function lineAreaBar(element: Element, {
             );
         }
     }
+}
 
-    if (isScalarSeries) {
-        xValues = datas.map(data => data[0][0]);
-    }
 
-    let dimension, groups, yAxisSplit;
+function getDimensionAndGroups(settings, chartType, datas, series, warn) {
+    let dimension, groups;
+    let dataset = crossfilter();
 
-    const isScatter = chartType === "scatter";
-    const isStacked = settings["stackable.stack_type"] && datas.length > 1;
-    const isNormalized = isStacked && settings["stackable.stack_type"] === "normalized";
-
-    if (isScatter) {
-        let dataset = crossfilter();
+    if (chartType === "scatter") {
         datas.map(data => dataset.add(data));
 
         dimension = dataset.dimension(row => row);
@@ -577,8 +561,7 @@ export default function lineAreaBar(element: Element, {
             ]
         });
     } else if (isStacked) {
-        let dataset = crossfilter();
-
+        const isNormalized = isNormalized(settings, datas);
         // get the sum of the metric for each dimension value in order to scale
         let scaleFactors = {};
         if (isNormalized) {
@@ -609,7 +592,6 @@ export default function lineAreaBar(element: Element, {
             )
         ];
     } else {
-        let dataset = crossfilter();
         datas.map(data => dataset.add(data));
 
         dimension = dataset.dimension(d => d[0]);
@@ -625,36 +607,35 @@ export default function lineAreaBar(element: Element, {
         });
     }
 
-    let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
-    let yExtent = d3.extent([].concat(...yExtents));
+    return { dataset, groups };
+}
 
+
+function getYAxisSplit(settings, chartType, isScalarSeries, series, datas, yExtents) {
     // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
     const hasDifferentYAxisColumns = _.uniq(series.map(s => s.data.cols[1])).length > 1;
-    if (!isScalarSeries && !isScatter && !isStacked && hasDifferentYAxisColumns && settings["graph.y_axis.auto_split"] !== false) {
-        yAxisSplit = computeSplit(yExtents);
-    } else {
-        yAxisSplit = [series.map((s,i) => i)];
+    if (!isScalarSeries && chartType !== "scatter" && !isStacked(settings, datas) && hasDifferentYAxisColumns && settings["graph.y_axis.auto_split"] !== false) {
+        return computeSplit(yExtents);
+    }
+    return [series.map((s,i) => i)];
+}
+
+function getBrushChangeFunctions(series, onChangeCardAndRun) {
+    let _isBrushing = false;
+
+    const isBrushing = () => _isBrushing;
+
+    function onBrushChange() {
+        _isBrushing = true;
     }
 
-    // Don't apply to linear or timeseries X-axis since the points are always plotted in order
-    if (!isTimeseries && !isQuantitative) {
-        forceSortedGroupsOfGroups(groups, makeIndexMap(xValues));
-    }
-
-    let parent = dc.compositeChart(element);
-    initChart(parent, element);
-
-    let isBrushing = false;
-    const onBrushChange = () => {
-        isBrushing = true;
-    }
-    const onBrushEnd = (range) => {
-        isBrushing = false;
+    function onBrushEnd(range) {
+        _isBrushing = false;
         if (range) {
             const column = series[0].data.cols[0];
             const card = series[0].card;
             const [start, end] = range;
-            if (isDimensionTimeseries) {
+            if (isDimensionTimeseries(series)) {
                 onChangeCardAndRun({ nextCard: updateDateTimeFilter(card, column, start, end), previousCard: card });
             } else {
                 onChangeCardAndRun({ nextCard: updateNumericFilter(card, column, start, end), previousCard: card });
@@ -662,65 +643,107 @@ export default function lineAreaBar(element: Element, {
         }
     }
 
-    let charts = groups.map((group, index) => {
+    return { isBrushing, onBrushChange, onBrushEnd };
+}
+
+
+/************************************************************ INDIVIDUAL CHART SETUP ************************************************************/
+
+function getDcjsChart(cardType, parent) {
+    switch (cardType) {
+        case "line":    return lineAddons(dc.lineChart(parent));
+        case "area":    return lineAddons(dc.lineChart(parent));
+        case "bar":     return dc.barChart(parent);
+        case "scatter": return dc.bubbleChart(parent);
+        default:        return dc.barChart(parent);
+    }
+}
+
+function applyChartLineBarSettings(chart, settings, chartType) {
+    // LINE/AREA:
+    // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
+    if (chart.interpolate) chart.interpolate(settings["line.interpolate"] || DEFAULT_INTERPOLATION);
+
+    // AREA:
+    if (chart.renderArea) chart.renderArea(chartType === "area");
+
+    // BAR:
+    if (chart.barPadding) chart.barPadding(BAR_PADDING_RATIO)
+                               .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
+}
+
+
+
+// TODO - give this a good name when I figure out what it does
+function doScatterChartStuff(chart, datas, index, yExtents) {
+    // TODO - huh?
+    let yExtent = d3.extent([].concat(...yExtents));
+
+    chart
+        .keyAccessor((d) => d.key[0])
+        .valueAccessor((d) => d.key[1])
+
+    if (chart.radiusValueAccessor) {
+        const isBubble = datas[index][0].length > 2;
+        if (isBubble) {
+            const BUBBLE_SCALE_FACTOR_MAX = 64;
+            chart
+                .radiusValueAccessor((d) => d.value)
+                .r(d3.scale.sqrt()
+                     .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+                     .range([0, 1])
+                );
+        } else {
+            chart.radiusValueAccessor((d) => 1)
+            chart.MIN_RADIUS = 3
+        }
+        chart.minRadiusWithLabel(Infinity);
+    }
+}
+
+
+function setColors(settings, chartType, chart, group, groups, index) {
+    const colors = settings["graph.colors"];
+
+    // multiple series
+    if (groups.length > 1 || chartType === "scatter") {
+        // multiple stacks
+        if (group.length > 1) {
+            // compute shades of the assigned color
+            chart.ordinalColors(colorShades(colors[index % colors.length], group.length))
+        } else {
+            chart.colors(colors[index % colors.length])
+        }
+    } else {
+        chart.ordinalColors(colors)
+    }
+}
+
+function getCharts(settings, chartType, parent, datas, yExtents, yAxisSplit, groups, dimension, series, onChangeCardAndRun, onBrushChange, onBrushEnd) {
+    return groups.map((group, index) => {
         let chart = getDcjsChart(chartType, parent);
 
-        if (enableBrush) {
-            initBrush(parent, chart, onBrushChange, onBrushEnd);
-        }
+        if (enableBrush(series, onChangeCardAndRun)) initBrush(parent, chart, onBrushChange, onBrushEnd);
 
         // disable clicks
         chart.onClick = () => {};
 
-        chart
-            .dimension(dimension)
-            .group(group[0])
-            .transitionDuration(0)
-            .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
+        chart.dimension(dimension)
+             .group(group[0])
+             .transitionDuration(0)
+             .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
 
-        if (isScatter) {
-            chart
-                .keyAccessor((d) => d.key[0])
-                .valueAccessor((d) => d.key[1])
-
-            if (chart.radiusValueAccessor) {
-                const isBubble = datas[index][0].length > 2;
-                if (isBubble) {
-                    const BUBBLE_SCALE_FACTOR_MAX = 64;
-                    chart
-                        .radiusValueAccessor((d) => d.value)
-                        .r(d3.scale.sqrt()
-                            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
-                            .range([0, 1])
-                        );
-                } else {
-                    chart.radiusValueAccessor((d) => 1)
-                    chart.MIN_RADIUS = 3
-                }
-                chart.minRadiusWithLabel(Infinity);
-            }
-        }
+        if (chartType === "scatter") doScatterChartStuff(chart, datas, index, yExtents);
 
         if (chart.defined) {
             chart.defined(
                 settings["line.missing"] === "none" ?
-                    (d) => d.y != null :
-                    (d) => true
+                (d) => d.y != null :
+                     (d) => true
             );
         }
 
-        // multiple series
-        if (groups.length > 1 || isScatter) {
-            // multiple stacks
-            if (group.length > 1) {
-                // compute shades of the assigned color
-                chart.ordinalColors(colorShades(colors[index % colors.length], group.length))
-            } else {
-                chart.colors(colors[index % colors.length])
-            }
-        } else {
-            chart.ordinalColors(colors)
-        }
+        setColors(settings, chartType, chart, group, groups, index);
 
         for (var i = 1; i < group.length; i++) {
             chart.stack(group[i])
@@ -730,114 +753,122 @@ export default function lineAreaBar(element: Element, {
 
         return chart;
     });
+}
 
-    let onGoalHover = () => {};
-    if (settings["graph.show_goal"]) {
-        const goalValue = settings["graph.goal_value"];
-        const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
-        const goalDimension = crossfilter(goalData).dimension(d => d[0]);
-        // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
-        // has just a single row / datapoint
-        const goalGroup = goalDimension.group().reduce((p,d) => d[1], (p,d) => p, () => 0);
-        const goalIndex = charts.length;
-        let goalChart = dc.lineChart(parent)
-            .dimension(goalDimension)
-            .group(goalGroup)
-            .on('renderlet', function (chart) {
-                // remove "sub" class so the goal is not used in voronoi computation
-                chart.select(".sub._"+goalIndex)
-                    .classed("sub", false)
-                    .classed("goal", true);
-            });
-        charts.push(goalChart);
 
-        onGoalHover = (element) => {
-            onHoverChange(element && {
-                element,
-                data: [{ key: "Goal", value: goalValue }]
-            });
-        }
+/************************************************************ OTHER SETUP ************************************************************/
+
+/// make an appropriate `onGoalHover` function.
+function getOnGoalHover(settings, xDomain, charts, onHoverChange) {
+    if (!settings["graph.show_goal"]) return () => {};
+
+    const goalValue = settings["graph.goal_value"];
+    const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
+    const goalDimension = crossfilter(goalData).dimension(d => d[0]);
+    // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
+    // has just a single row / datapoint
+    const goalGroup = goalDimension.group().reduce((p,d) => d[1], (p,d) => p, () => 0);
+    const goalIndex = charts.length;
+    let goalChart = dc.lineChart(parent)
+                      .dimension(goalDimension)
+                      .group(goalGroup)
+                      .on('renderlet', function (chart) {
+                          // remove "sub" class so the goal is not used in voronoi computation
+                          chart.select(".sub._"+goalIndex)
+                               .classed("sub", false)
+                               .classed("goal", true);
+                      });
+    charts.push(goalChart);
+
+    return (element) => {
+        onHoverChange(element && {
+            element,
+            data: [{ key: "Goal", value: goalValue }]
+        });
     }
 
-    parent.compose(charts);
+}
 
-    if (groups.length > 1 && !isScalarSeries) {
-        parent.on("renderlet.grouped-bar", function (chart) {
-            // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
-            // https://github.com/dc-js/dc.js/issues/558
-            let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
-            if (barCharts.length > 0) {
-                let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
-                let newBarWidthTotal = oldBarWidth / barCharts.length;
-                let seriesPadding =
-                    newBarWidthTotal < 4 ? 0 :
-                    newBarWidthTotal < 8 ? 1 :
-                                           2;
-                let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
-
-                chart.selectAll("g.sub rect").attr("width", newBarWidth);
-                barCharts.forEach((barChart, index) => {
-                    barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
-                });
-            }
-        })
-    } else if (isHistogramBar) {
-        parent.on("renderlet.histogram-bar", function (chart) {
-            let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
-            if (barCharts.length > 0) {
-                // manually size bars to fill space, minus 1 pixel padding
-                const bars = barCharts[0].querySelectorAll("rect");
-                let barWidth = parseFloat(bars[0].getAttribute("width"));
-                let newBarWidth = parseFloat(bars[1].getAttribute("x")) - parseFloat(bars[0].getAttribute("x")) - 1;
-                if (newBarWidth > barWidth) {
-                    chart.selectAll("g.sub .bar").attr("width", newBarWidth);
-                }
-
-                // shift half of bar width so ticks line up with start of each bar
-                for (const barChart of barCharts) {
-                    barChart.setAttribute("transform", `translate(${barWidth / 2}, 0)`);
-                }
-            }
-        })
-    }
-
-    // HACK: compositeChart + ordinal X axis shenanigans
-    if (chartType === "bar") {
-        parent._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
-    } else {
-        parent._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
-    }
-
-    // x-axis settings
-    if (isTimeseries) {
+function applyXAxisSettings(settings, series, xValues, xDomain, xInterval, parent) {
+    if (isTimeseries(settings)) {
         applyChartTimeseriesXAxis(parent, settings, series, xValues, xDomain, xInterval);
-    } else if (isQuantitative) {
+    } else if (isQuantitative(settings)) {
         applyChartQuantitativeXAxis(parent, settings, series, xValues, xDomain, xInterval);
     } else {
         applyChartOrdinalXAxis(parent, settings, series, xValues);
     }
 
-    // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
-    if (isHistogramBar) {
-        parent.xAxis().tickFormat(d => formatNumber(d));
-    }
+}
 
-    // y-axis settings
-    let [left, right] = yAxisSplit.map(indexes => ({
+function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
+    return yAxisSplit.map(indexes => ({
         series: indexes.map(index => series[index]),
         extent: d3.extent([].concat(...indexes.map(index => yExtents[index])))
     }));
+}
+
+function applyYAxisSettings(settings, parent, left, right) {
     if (left && left.series.length > 0) {
         applyChartYAxis(parent, settings, left.series, left.extent, "left");
     }
     if (right && right.series.length > 0) {
         applyChartYAxis(parent, settings, right.series, right.extent, "right");
     }
-    const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
+}
 
-    applyChartTooltips(parent, series, isStacked, isNormalized, isScalarSeries, (hovered) => {
+function getIsSplitYAxis(left, right) {
+    return (right && right.series.length) && (left && left.series.length > 0);
+}
+
+
+// TODO - better name
+function doGroupedBarStuff(parent) {
+    parent.on("renderlet.grouped-bar", function (chart) {
+        // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
+        // https://github.com/dc-js/dc.js/issues/558
+        let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+        if (barCharts.length > 0) {
+            let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
+            let newBarWidthTotal = oldBarWidth / barCharts.length;
+            let seriesPadding =
+                newBarWidthTotal < 4 ? 0 :
+                newBarWidthTotal < 8 ? 1 :
+                2;
+            let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
+
+            chart.selectAll("g.sub rect").attr("width", newBarWidth);
+            barCharts.forEach((barChart, index) => {
+                barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
+            });
+        }
+    });
+}
+
+// TODO - better name
+function doHistogramBarStuff(parent) {
+    parent.on("renderlet.histogram-bar", function (chart) {
+        let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+        if (barCharts.length > 0) {
+            // manually size bars to fill space, minus 1 pixel padding
+            const bars = barCharts[0].querySelectorAll("rect");
+            let barWidth = parseFloat(bars[0].getAttribute("width"));
+            let newBarWidth = parseFloat(bars[1].getAttribute("x")) - parseFloat(bars[0].getAttribute("x")) - 1;
+            if (newBarWidth > barWidth) {
+                chart.selectAll("g.sub .bar").attr("width", newBarWidth);
+            }
+
+            // shift half of bar width so ticks line up with start of each bar
+            for (const barChart of barCharts) {
+                barChart.setAttribute("transform", `translate(${barWidth / 2}, 0)`);
+            }
+        }
+    });
+}
+
+function setupTooltips(settings, datas, parent, isBrushing, series, isScalarSeries, onHoverChange, onVisualizationClick) {
+    applyChartTooltips(parent, series, isStacked(settings, datas), isNormalized(settings, datas), isScalarSeries, (hovered) => {
         // disable tooltips while brushing
-        if (onHoverChange && !isBrushing) {
+        if (onHoverChange && !isBrushing()) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
                 delete hovered.element;
@@ -845,17 +876,94 @@ export default function lineAreaBar(element: Element, {
             onHoverChange(hovered);
         }
     }, onVisualizationClick);
+}
 
-    // render
+
+/************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
+
+type LineAreaBarProps = VisualizationProps & {
+    chartType: "line" | "area" | "bar" | "scatter",
+    isScalarSeries: boolean,
+    maxSeries: number
+}
+
+export default function lineAreaBar(element: Element, {
+    series,
+    onHoverChange,
+    onVisualizationClick,
+    onRender,
+    chartType,
+    isScalarSeries,
+    settings,
+    maxSeries,
+    onChangeCardAndRun
+}: LineAreaBarProps) {
+    const warnings = {};
+    const warn = (id) => {
+        warnings[id] = (warnings[id] || 0) + 1;
+    }
+
+    checkSeriesIsValid(series, maxSeries);
+
+    // force histogram to be ordinal axis with zero-filled missing points
+    if (isHistogram(settings)) {
+        settings["line.missing"]       = "zero";
+        settings["graph.x_axis.scale"] = "ordinal"
+    }
+
+    let datas     = getDatas(settings, series, warn);
+    let xValues   = getXValues(datas, chartType);
+    let xDomain   = d3.extent(xValues);
+    let xInterval = getXInterval(settings, xValues, series);
+
+    fillMissingValuesInDatas(settings, chartType, xValues, datas, xDomain, xInterval);
+
+    if (isScalarSeries) xValues = datas.map(data => data[0][0]);
+
+    let { dimension, groups } = getDimensionAndGroups(settings, chartType, datas, series, warn);
+
+    let yExtents   = groups.map(group => d3.extent(group[0].all(), d => d.value));
+    let yAxisSplit = getYAxisSplit(settings, chartType, isScalarSeries, series, datas, yExtents)
+
+    // Don't apply to linear or timeseries X-axis since the points are always plotted in order
+    if (!isTimeseries(settings) && !isQuantitative(settings)) {
+        forceSortedGroupsOfGroups(groups, makeIndexMap(xValues));
+    }
+
+    let parent = dc.compositeChart(element);
+    initChart(parent, element);
+
+    const { isBrushing, onBrushChange, onBrushEnd } = getBrushChangeFunctions(series, onChangeCardAndRun);
+
+    let charts      = getCharts(settings, chartType, parent, datas, yExtents, yAxisSplit, groups, dimension, series, onChangeCardAndRun, onBrushChange, onBrushEnd);
+    let onGoalHover = getOnGoalHover(settings, xDomain, charts, onHoverChange);
+
+    parent.compose(charts);
+
+    if      (groups.length > 1 && !isScalarSeries) doGroupedBarStuff(parent);
+    else if (isHistogramBar(settings, chartType))  doHistogramBarStuff(parent);
+
+    // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
+    parent._rangeBandPadding(chartType === "bar" ? BAR_PADDING_RATIO : 1) //
+
+    applyXAxisSettings(settings, series, xValues, xDomain, xInterval, parent);
+
+    // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
+    if (isHistogramBar(settings, chartType)) parent.xAxis().tickFormat(d => formatNumber(d));
+
+    const [yLeft, yRight] = getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents);
+    applyYAxisSettings(settings, parent, yLeft, yRight);
+    const isSplitAxis = getIsSplitYAxis(yLeft, yRight);
+
+    setupTooltips(settings, datas, parent, isBrushing, series, isScalarSeries, onHoverChange, onVisualizationClick);
+
     parent.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(parent, settings, onGoalHover, isSplitAxis, isStacked);
+    lineAndBarOnRender(parent, settings, onGoalHover, isSplitAxis, isStacked(settings, datas));
 
     // only ordinal axis can display "null" values
-    if (isOrdinal) {
-        delete warnings[NULL_DIMENSION_WARNING];
-    }
+    if (isOrdinal(settings)) delete warnings[NULL_DIMENSION_WARNING];
 
     onRender && onRender({
         yAxisSplit,
