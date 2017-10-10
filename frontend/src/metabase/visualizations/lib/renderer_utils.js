@@ -1,6 +1,10 @@
 /// Utility functions used by both the LineAreaBar renderer and the RowRenderer
 
+import { parseTimestamp } from "metabase/lib/time";
+
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
+
+export const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
 export function initChart(chart, element) {
     // set the bounds
@@ -44,5 +48,99 @@ export function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], 
         for (const group of groups) {
             forceSortedGroup(group, indexMap)
         }
+    }
+}
+
+/*
+ * The following functions are actually just used by LineAreaBarRenderer but moved here in interest of making that namespace more concise
+ */
+
+export function reduceGroup(group, key, warnUnaggregated) {
+    return group.reduce(
+        (acc, d) => {
+            if (acc == null && d[key] == null) {
+                return null;
+            } else {
+                if (acc != null) {
+                    warnUnaggregated();
+                    return acc + (d[key] || 0);
+                } else {
+                    return (d[key] || 0);
+                }
+            }
+        },
+        (acc, d) => {
+            if (acc == null && d[key] == null) {
+                return null;
+            } else {
+                if (acc != null) {
+                    warnUnaggregated();
+                    return acc - (d[key] || 0);
+                } else {
+                    return - (d[key] || 0);
+                }
+            }
+        },
+        () => null
+    );
+}
+
+export function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
+    try {
+        return datas.map(rows => {
+            const fillValues = rows[0].slice(1).map(d => fillValue);
+
+            let map = new Map();
+            for (const row of rows) {
+                map.set(getKey(row[0]), row);
+            }
+            let newRows = xValues.map(value => {
+                const key = getKey(value);
+                const row = map.get(key);
+                if (row) {
+                    map.delete(key);
+                    return [value, ...row.slice(1)];
+                } else {
+                    return [value, ...fillValues];
+                }
+            });
+            if (map.size > 0) {
+                console.warn("xValues missing!", map, newRows)
+            }
+            return newRows;
+        });
+    } catch (e) {
+        console.warn(e);
+        return datas;
+    }
+}
+
+// Crossfilter calls toString on each moment object, which calls format(), which is very slow.
+// Replace toString with a function that just returns the unparsed ISO input date, since that works
+// just as well and is much faster
+function moment_fast_toString() {
+    return this._i;
+}
+
+export function HACK_parseTimestamp(value, unit, warn) {
+    if (value == null) {
+        warn(NULL_DIMENSION_WARNING);
+        return null;
+    } else {
+        let m = parseTimestamp(value, unit);
+        m.toString = moment_fast_toString
+        return m;
+    }
+}
+
+export function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
+    const column = cols[i];
+
+    if (column.remapping && column.remapping.size > 0) {
+        // We have remapped values, so check their type for determining whether the dimension is numeric
+        // ES6 Map makes the lookup of first value a little verbose
+        return typeof column.remapping.values().next().value === "string";
+    } else {
+        return false
     }
 }

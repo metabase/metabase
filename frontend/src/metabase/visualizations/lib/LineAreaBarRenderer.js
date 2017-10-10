@@ -22,11 +22,19 @@ import { applyChartTimeseriesXAxis, applyChartQuantitativeXAxis, applyChartOrdin
 
 import { applyChartTooltips } from "./apply_tooltips";
 
-import { forceSortedGroupsOfGroups, initChart, makeIndexMap } from "./renderer_utils";
+import {
+    HACK_parseTimestamp,
+    NULL_DIMENSION_WARNING,
+    fillMissingValues,
+    forceSortedGroupsOfGroups,
+    hasRemappingAndValuesAreStrings,
+    initChart,
+    makeIndexMap,
+    reduceGroup
+} from "./renderer_utils";
 
 import { clipPathReference } from "metabase/lib/dom";
 import { formatNumber } from "metabase/lib/formatting";
-import { parseTimestamp } from "metabase/lib/time";
 import { isStructured } from "metabase/meta/Card";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -60,7 +68,6 @@ const X_AXIS_PADDING = 0;
 const Y_AXIS_PADDING = 8;
 
 const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
-const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
 
 import { lineAddons } from "./graph/addons"
@@ -78,30 +85,18 @@ function getDcjsChart(cardType, parent) {
 function applyChartLineBarSettings(chart, settings, chartType) {
     // LINE/AREA:
     // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-    if (chart.interpolate) {
-        if (settings["line.interpolate"]) {
-            chart.interpolate(settings["line.interpolate"]);
-        } else {
-            chart.interpolate(DEFAULT_INTERPOLATION);
-        }
-    }
+    if (chart.interpolate) chart.interpolate(settings["line.interpolate"] || DEFAULT_INTERPOLATION);
 
     // AREA:
-    if (chart.renderArea) {
-        chart.renderArea(chartType === "area");
-    }
+    if (chart.renderArea) chart.renderArea(chartType === "area");
 
     // BAR:
-    if (chart.barPadding) {
-        chart
-            .barPadding(BAR_PADDING_RATIO)
-            .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
-    }
+    if (chart.barPadding) chart.barPadding(BAR_PADDING_RATIO)
+                               .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
 }
 
+/// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
-    // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
-
     function removeClipPath() {
         for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
             // prevents dots from being clipped:
@@ -363,95 +358,7 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
     chart.render();
 }
 
-function reduceGroup(group, key, warnUnaggregated) {
-    return group.reduce(
-        (acc, d) => {
-            if (acc == null && d[key] == null) {
-                return null;
-            } else {
-                if (acc != null) {
-                    warnUnaggregated();
-                    return acc + (d[key] || 0);
-                } else {
-                    return (d[key] || 0);
-                }
-            }
-        },
-        (acc, d) => {
-            if (acc == null && d[key] == null) {
-                return null;
-            } else {
-                if (acc != null) {
-                    warnUnaggregated();
-                    return acc - (d[key] || 0);
-                } else {
-                    return - (d[key] || 0);
-                }
-            }
-        },
-        () => null
-    );
-}
 
-function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
-    try {
-        return datas.map(rows => {
-            const fillValues = rows[0].slice(1).map(d => fillValue);
-
-            let map = new Map();
-            for (const row of rows) {
-                map.set(getKey(row[0]), row);
-            }
-            let newRows = xValues.map(value => {
-                const key = getKey(value);
-                const row = map.get(key);
-                if (row) {
-                    map.delete(key);
-                    return [value, ...row.slice(1)];
-                } else {
-                    return [value, ...fillValues];
-                }
-            });
-            if (map.size > 0) {
-                console.warn("xValues missing!", map, newRows)
-            }
-            return newRows;
-        });
-    } catch (e) {
-        console.warn(e);
-        return datas;
-    }
-}
-
-// Crossfilter calls toString on each moment object, which calls format(), which is very slow.
-// Replace toString with a function that just returns the unparsed ISO input date, since that works
-// just as well and is much faster
-let HACK_parseTimestamp = (value, unit, warn) => {
-    if (value == null) {
-        warn(NULL_DIMENSION_WARNING);
-        return null;
-    } else {
-        let m = parseTimestamp(value, unit);
-        m.toString = moment_fast_toString
-        return m;
-    }
-}
-
-function moment_fast_toString() {
-    return this._i;
-}
-
-function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
-    const column = cols[i];
-
-    if (column.remapping && column.remapping.size > 0) {
-        // We have remapped values, so check their type for determining whether the dimension is numeric
-        // ES6 Map makes the lookup of first value a little verbose
-        return typeof column.remapping.values().next().value === "string";
-    } else {
-        return false
-    }
-}
 
 type LineAreaBarProps = VisualizationProps & {
     chartType: "line" | "area" | "bar" | "scatter",
