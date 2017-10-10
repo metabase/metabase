@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { t } from 'c-3po'
 
 import Icon from "metabase/components/Icon.jsx";
 import SidebarSection from "./SidebarSection.jsx";

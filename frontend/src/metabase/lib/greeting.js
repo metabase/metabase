@@ -1,3 +1,5 @@
+import { t } from 'c-3po'
+
 const greetingPrefixes = [
     t`Hey there`,
     t`How's it going`,

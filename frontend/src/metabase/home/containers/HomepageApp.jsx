@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { t } from 'c-3po'
 
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal.jsx";

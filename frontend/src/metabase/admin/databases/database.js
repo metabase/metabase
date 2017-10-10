@@ -3,6 +3,7 @@ import _ from "underscore";
 import { createAction } from "redux-actions";
 import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 import { push } from "react-router-redux";
+import { t } from 'c-3po'
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";

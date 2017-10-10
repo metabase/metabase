@@ -3,6 +3,7 @@
 import { assoc, dissoc, assocIn, getIn, chain } from "icepick";
 import _ from "underscore";
 import moment from "moment";
+import { t } from 'c-3po'
 
 import { handleActions, combineReducers, createAction, createThunkAction } from "metabase/lib/redux";
 import { normalize, schema } from "normalizr";

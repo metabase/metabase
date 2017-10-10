@@ -1,5 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
+import { t } from 'c-3po'
+
 import { SetupApi } from "metabase/services";
 
 import SidebarSection from "./SidebarSection.jsx";
