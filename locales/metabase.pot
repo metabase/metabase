@@ -1,0 +1,138 @@
+# #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Metabase <docs@metabase.com>
+# This file is distributed under the same license as the metabase package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
+"Project-Id-Version: metabase\n"
+"Report-Msgid-Bugs-To: docs@metabase.com\n"
+"POT-Creation-Date: 2017-08-21 21:54+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: frontend/src/metabase/home/components/Activity.jsx:131
+msgid "Hello World!"
+msgstr ""
+
+#: frontend/src/metabase/home/components/Activity.jsx:132
+msgid "Metabase is up and running."
+msgstr ""
+
+#: frontend/src/metabase/home/components/Activity.jsx:176
+msgid "removed the filter {item.details.name}"
+msgstr ""
+
+#: frontend/src/metabase/home/components/Activity.jsx:179
+msgid "joined!"
+msgstr ""
+
+#: frontend/src/metabase/home/components/NextStep.jsx:31
+msgid "Setup Tip"
+msgstr ""
+
+#: frontend/src/metabase/home/components/NextStep.jsx:32
+msgid "View all"
+msgstr ""
+
+#: frontend/src/metabase/home/components/RecentViews.jsx:38
+msgid "Recently Viewed"
+msgstr ""
+
+#: frontend/src/metabase/home/components/RecentViews.jsx:60
+msgid "You haven't looked at any dashboards or questions recently"
+msgstr ""
+
+#: frontend/src/metabase/home/containers/HomepageApp.jsx:93
+msgid "Activity"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:2
+msgid "Hey there"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:3
+#: frontend/src/metabase/lib/greeting.js:25
+msgid "How's it going"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:4
+msgid "Howdy"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:5
+msgid "Greetings"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:6
+msgid "Good to see you"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:10
+msgid "What do you want to know?"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:11
+msgid "What's on your mind?"
+msgstr ""
+
+#: frontend/src/metabase/lib/greeting.js:12
+msgid "What do you want to find out?"
+msgstr ""
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:129
+msgid "Dashboards"
+msgstr ""
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:132
+msgid "Questions"
+msgstr ""
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:135
+msgid "Pulses"
+msgstr ""
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:138
+msgid "Data Reference"
+msgstr ""
+
+#: frontend/src/metabase/nav/containers/Navbar.jsx:142
+msgid "New Question"
+msgstr ""
+
+#: src/metabase/api/setup.clj
+msgid "Add a database"
+msgstr ""
+
+#: src/metabase/api/setup.clj
+msgid "Get connected"
+msgstr ""
+
+#: src/metabase/api/setup.clj
+msgid "Connect to your data so your whole team can start to explore."
+msgstr ""
+
+#. This is the very first log message that will get printed.
+#. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#: src/metabase/util.clj
+msgid "Loading {0}..."
+msgstr ""
+
+#. This is the very first log message that will get printed.
+#. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#: src/metabase/util.clj
+msgid "Metabase"
+msgstr ""

@@ -33,50 +33,35 @@ static AppDelegate *sInstance = nil;
 	return sInstance;
 }
 
-- (id)init {
-	if (self = [super init]) {
-		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(taskTimedOut:) name:MetabaseTaskTimedOutNotification object:nil];
-	}
-	return self;
-}
-
-- (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self];
-}
-
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
 	sInstance = self;
 	
 	[[SUUpdater sharedUpdater] checkForUpdatesInBackground];
 	
-	self.task = [MetabaseTask task];
-	self.healthChecker.port = self.task.port;
+    [self startMetabaseTask];
 	[self.healthChecker start];
 }
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
 	// re-start the health checker if it's not checking like it should be : the HEALTH CHECKER HEALTH CHECKER
-	if (self.healthChecker.lastCheckTime) {
-		const CFTimeInterval timeSinceLastHealthCheck = CFAbsoluteTimeGetCurrent() - self.healthChecker.lastCheckTime;
-		if (timeSinceLastHealthCheck > 5.0f) {
-			NSLog(@"Last health check was %.0f ago, restarting health checker!", timeSinceLastHealthCheck);
-			[self.healthChecker start];
-		}
-	}
-	// (re)start the health checker just to be extra double-safe it's still running
+    [self.healthChecker start];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
-	self.task = nil;
+    [self stopMetabaseTask];
 }
 
 
-#pragma mark - Notifications
+#pragma mark - Static Methods
 
-- (void)taskTimedOut:(NSNotification *)notification {
-	NSLog(@"Metabase task timed out. Restarting...");
-	[self.healthChecker resetTimeout];
-	self.task = [MetabaseTask task];
+- (void)startMetabaseTask {
+    self.task = [MetabaseTask task];
+    self.healthChecker.port = self.task.port;
+}
+
+- (void)stopMetabaseTask {
+    [self.task disableTerminationAlert];
+    self.task = nil;
 }
 
 
@@ -92,7 +77,9 @@ static AppDelegate *sInstance = nil;
 - (void)setTask:(MetabaseTask *)task {
 	[_task terminate];
 	_task = task;
-	[task launch];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [task launch];
+    });
 }
 
 - (NSUInteger)port {

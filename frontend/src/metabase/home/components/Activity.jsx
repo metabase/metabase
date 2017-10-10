@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import _ from 'underscore';
+import { t } from 'c-3po'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper.jsx';
 import ActivityItem from './ActivityItem.jsx';
@@ -80,9 +81,7 @@ export default class Activity extends Component {
         // this is a base to start with
         const description = {
             userName: this.userName(item.user, user),
-            subject: "did some super awesome stuff thats hard to describe",
-            subjectRefLink: null,
-            subjectRefName: null,
+            summary: "did some super awesome stuff thats hard to describe",
             timeSince: item.timestamp.fromNow()
         };
 
@@ -130,8 +129,8 @@ export default class Activity extends Component {
                 }
                 break;
             case "install":
-                description.userName = "Hello World!";
-                description.summary = "Metabase is up and running.";
+                description.userName = t`Hello World!`;
+                description.summary = t`Metabase is up and running.`;
                 break;
             case "metric-create":
                 if(item.model_exists) {
@@ -175,10 +174,10 @@ export default class Activity extends Component {
                 }
                 break;
             case "segment-delete":
-                description.summary = "removed the filter "+item.details.name;
+                description.summary = t`removed the filter {item.details.name}`;
                 break;
             case "user-joined":
-                description.summary = "joined!";
+                description.summary = t`joined!`;
                 break;
         }
 
