@@ -141,10 +141,10 @@
 
 (defmethod extract-features (type Field)
   [opts field]
-  (let [{:keys [field row]} (values/field-values field (extract-query-opts opts))]
+  (let [{:keys [col row]} (values/field-values field (extract-query-opts opts))]
     {:features    (->> row
-                       (field->features opts field)
-                       (merge {:table (Table (:table_id field))}))
+                       (field->features opts col)
+                       (merge {:table (Table (:table_id col))}))
      :sample?     (sampled? opts row)
      :comparables (comparables field)}))
 
