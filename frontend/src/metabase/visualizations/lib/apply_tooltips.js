@@ -4,6 +4,7 @@ import _ from "underscore";
 import d3 from "d3";
 
 import { formatValue } from "metabase/lib/formatting";
+import type { ClickObject } from "metabase/meta/types/Visualization"
 
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";

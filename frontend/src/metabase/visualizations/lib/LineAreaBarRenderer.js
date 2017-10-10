@@ -8,27 +8,24 @@ import _ from "underscore";
 import { updateIn, getIn } from "icepick";
 
 import {
-    getAvailableCanvasWidth,
-    getAvailableCanvasHeight,
     computeSplit,
     getFriendlyName,
     getXValues,
     colorShades
 } from "./utils";
 
-import {
-    dimensionIsTimeseries,
-    minTimeseriesUnit,
-    computeTimeseriesDataInverval
-} from "./timeseries";
+import { dimensionIsTimeseries, minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
 
-import {
-    dimensionIsNumeric,
-    computeNumericDataInverval
-} from "./numeric";
+import { dimensionIsNumeric, computeNumericDataInverval } from "./numeric";
+
+import { applyChartTimeseriesXAxis, applyChartQuantitativeXAxis, applyChartOrdinalXAxis, applyChartYAxis } from "./apply_axis";
+
+import { applyChartTooltips } from "./apply_tooltips";
+
+import { forceSortedGroupsOfGroups, initChart, makeIndexMap } from "./renderer_utils";
 
 import { clipPathReference } from "metabase/lib/dom";
-import { formatValue, formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import { isStructured } from "metabase/meta/Card";
 
@@ -37,10 +34,7 @@ import { updateDateTimeFilter, updateNumericFilter } from "metabase/qb/lib/actio
 
 import { initBrush } from "./graph/brush";
 
-import type { VisualizationProps, SingleSeries, ClickObject } from "metabase/meta/types/Visualization"
-
-import { applyChartTimeseriesXAxis, applyChartQuantitativeXAxis, applyChartOrdinalXAxis, applyChartYAxis } from "./apply_axis";
-import { applyChartTooltips } from "./apply_tooltips";
+import type { VisualizationProps, SingleSeries } from "metabase/meta/types/Visualization"
 
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
@@ -68,10 +62,6 @@ const Y_AXIS_PADDING = 8;
 const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
-type CrossfilterGroup = {
-    top: (n: number) => { key: any, value: any },
-    all: () => { key: any, value: any },
-}
 
 import { lineAddons } from "./graph/addons"
 
@@ -82,18 +72,6 @@ function getDcjsChart(cardType, parent) {
         case "bar":     return dc.barChart(parent);
         case "scatter": return dc.bubbleChart(parent);
         default:        return dc.barChart(parent);
-    }
-}
-
-function initChart(chart, element) {
-    // set the bounds
-    chart.width(getAvailableCanvasWidth(element));
-    chart.height(getAvailableCanvasHeight(element));
-    // disable animations
-    chart.transitionDuration(0);
-    // disable brush
-    if (chart.brushOn) {
-        chart.brushOn(false);
     }
 }
 
@@ -461,34 +439,6 @@ let HACK_parseTimestamp = (value, unit, warn) => {
 
 function moment_fast_toString() {
     return this._i;
-}
-
-function makeIndexMap(values: Array<Value>): Map<Value, number> {
-    let indexMap = new Map()
-    for (const [index, key] of values.entries()) {
-        indexMap.set(key, index);
-    }
-    return indexMap;
-}
-
-// HACK: This ensures each group is sorted by the same order as xValues,
-// otherwise we can end up with line charts with x-axis labels in the correct order
-// but the points in the wrong order. There may be a more efficient way to do this.
-function forceSortedGroup(group: CrossfilterGroup, indexMap: Map<Value, number>): void {
-    // $FlowFixMe
-    const sorted = group.top(Infinity).sort((a, b) => indexMap.get(a.key) - indexMap.get(b.key));
-    for (let i = 0; i < sorted.length; i++) {
-        sorted[i].index = i;
-    }
-    group.all = () => sorted;
-}
-
-function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMap: Map<Value, number>): void {
-    for (const groups of groupsOfGroups) {
-        for (const group of groups) {
-            forceSortedGroup(group, indexMap)
-        }
-    }
 }
 
 function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
@@ -971,154 +921,3 @@ export const lineRenderer    = (element, props) => lineAreaBar(element, { ...pro
 export const areaRenderer    = (element, props) => lineAreaBar(element, { ...props, chartType: "area" });
 export const barRenderer     = (element, props) => lineAreaBar(element, { ...props, chartType: "bar" });
 export const scatterRenderer = (element, props) => lineAreaBar(element, { ...props, chartType: "scatter" });
-
-export function rowRenderer(
-  element,
-  { settings, series, onHoverChange, onVisualizationClick, height }
-) {
-  const { cols } = series[0].data;
-
-  if (series.length > 1) {
-    throw new Error("Row chart does not support multiple series");
-  }
-
-  const chart = dc.rowChart(element);
-
-  // disable clicks
-  chart.onClick = () => {};
-
-  const colors = settings["graph.colors"];
-
-  const formatDimension = (row) =>
-      formatValue(row[0], { column: cols[0], type: "axis" })
-
-  // dc.js doesn't give us a way to format the row labels from unformatted data, so we have to
-  // do it here then construct a mapping to get the original dimension for tooltipsd/clicks
-  const rows = series[0].data.rows.map(row => [
-      formatDimension(row),
-      row[1]
-  ]);
-  const formattedDimensionMap = new Map(rows.map(([formattedDimension], index) => [
-      formattedDimension,
-      series[0].data.rows[index][0]
-  ]))
-
-  const dataset = crossfilter(rows);
-  const dimension = dataset.dimension(d => d[0]);
-  const group = dimension.group().reduceSum(d => d[1]);
-  const xDomain = d3.extent(rows, d => d[1]);
-  const yValues = rows.map(d => d[0]);
-
-  forceSortedGroup(group, makeIndexMap(yValues));
-
-  initChart(chart, element);
-
-  chart.on("renderlet.tooltips", chart => {
-      if (onHoverChange) {
-          chart.selectAll(".row rect").on("mousemove", (d, i) => {
-            onHoverChange && onHoverChange({
-                // for single series bar charts, fade the series and highlght the hovered element with CSS
-                index: -1,
-                event: d3.event,
-                data: [
-                  { key: getFriendlyName(cols[0]), value: formattedDimensionMap.get(d.key), col: cols[0] },
-                  { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] }
-                ]
-              });
-          }).on("mouseleave", () => {
-            onHoverChange && onHoverChange(null);
-          });
-      }
-
-      if (onVisualizationClick) {
-          chart.selectAll(".row rect").on("click", function(d) {
-              onVisualizationClick({
-                  value: d.value,
-                  column: cols[1],
-                  dimensions: [{
-                      value: formattedDimensionMap.get(d.key),
-                      column: cols[0]
-                  }],
-                  element: this
-              })
-          });
-      }
-  });
-
-  chart
-    .ordinalColors([ colors[0] ])
-    .x(d3.scale.linear().domain(xDomain))
-    .elasticX(true)
-    .dimension(dimension)
-    .group(group)
-    .ordering(d => d.index);
-
-  let labelPadHorizontal = 5;
-  let labelPadVertical = 1;
-  let labelsOutside = false;
-
-  chart.on("renderlet.bar-labels", chart => {
-    chart
-      .selectAll("g.row text")
-      .attr("text-anchor", labelsOutside ? "end" : "start")
-      .attr("x", labelsOutside ? -labelPadHorizontal : labelPadHorizontal)
-      .classed(labelsOutside ? "outside" : "inside", true);
-  });
-
-  if (settings["graph.y_axis.labels_enabled"]) {
-    chart.on("renderlet.axis-labels", chart => {
-      chart
-        .svg()
-        .append("text")
-        .attr("class", "x-axis-label")
-        .attr("text-anchor", "middle")
-        .attr("x", chart.width() / 2)
-        .attr("y", chart.height() - 10)
-        .text(settings["graph.y_axis.title_text"]);
-    });
-  }
-
-  // inital render
-  chart.render();
-
-  // bottom label height
-  let axisLabelHeight = 0;
-  if (settings["graph.y_axis.labels_enabled"]) {
-    axisLabelHeight = chart
-      .select(".x-axis-label")
-      .node()
-      .getBoundingClientRect().height;
-    chart.margins().bottom += axisLabelHeight;
-  }
-
-  // cap number of rows to fit
-  let rects = chart.selectAll(".row rect")[0];
-  let containerHeight = rects[rects.length - 1].getBoundingClientRect().bottom -
-    rects[0].getBoundingClientRect().top;
-  let maxTextHeight = Math.max(
-    ...chart.selectAll("g.row text")[0].map(
-      e => e.getBoundingClientRect().height
-    )
-  );
-  let rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
-  let cap = Math.max(1, Math.floor(containerHeight / rowHeight));
-  chart.cap(cap);
-
-  chart.render();
-
-  // check if labels overflow after rendering correct number of rows
-  let maxTextWidth = 0;
-  for (const elem of chart.selectAll("g.row")[0]) {
-    let rect = elem.querySelector("rect").getBoundingClientRect();
-    let text = elem.querySelector("text").getBoundingClientRect();
-    maxTextWidth = Math.max(maxTextWidth, text.width);
-    if (rect.width < text.width + labelPadHorizontal * 2) {
-      labelsOutside = true;
-    }
-  }
-
-  if (labelsOutside) {
-    chart.margins().left += maxTextWidth;
-    chart.render();
-  }
-}
