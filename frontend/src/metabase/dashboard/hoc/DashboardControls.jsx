@@ -4,7 +4,6 @@ import React, { Component } from "react";
 
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
-import { t } from 'c-3po'
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";

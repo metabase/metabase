@@ -9,7 +9,6 @@ import { Link } from 'react-router'
 import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from 'c-3po'
 
 import Icon from 'metabase/components/Icon'
 import Input from 'metabase/components/Input'
