@@ -1,8 +1,6 @@
 import React from 'react'
 import { mount } from 'enzyme'
 
-import sinon from 'sinon'
-
 import { NewQueryOptions } from 'metabase/new_query/containers/NewQueryOptions'
 
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
@@ -34,7 +32,7 @@ describe('New Query Options', () => {
         describe('with SQL access on a single DB', () => {
             it('should show the SQL option', (done) => {
 
-                sinon.spy(NewQueryOptions.prototype, 'determinePaths')
+                const spy = jest.spyOn(NewQueryOptions.prototype, 'determinePaths')
 
                 const wrapper = mount(
                     <NewQueryOptions
@@ -55,9 +53,14 @@ describe('New Query Options', () => {
                     />
                 )
 
-                setImmediate(() => {
-                    expect(NewQueryOptions.prototype.determinePaths.calledOnce).toEqual(true)
-                    expect(wrapper.find(NewQueryOption).length).toEqual(2)
+                process.nextTick(() => {
+                    try {
+                        expect(spy).toHaveBeenCalled()
+                        expect(wrapper.find(NewQueryOption).length).toEqual(2)
+
+                    } catch (e) {
+                        return done(e)
+                    }
                     done()
                 })
             })
@@ -65,7 +68,8 @@ describe('New Query Options', () => {
 
         describe('with no SQL access', () => {
             it('should redirect', (done) => {
-                const mockedPush = sinon.spy()
+
+                const mockedPush = jest.fn()
                 const mockQueryUrl = 'query'
 
                 mount(
@@ -91,9 +95,13 @@ describe('New Query Options', () => {
                     />
                 )
 
-                setImmediate(() => {
-                    expect(mockedPush.called).toEqual(true)
-                    expect(mockedPush.calledWith(mockQueryUrl)).toEqual(true)
+                process.nextTick(() => {
+                    try {
+                        expect(mockedPush.mock.calls.length).toEqual(1)
+                        expect(mockedPush).toHaveBeenCalledWith(mockQueryUrl)
+                    } catch (e) {
+                        return (done(e))
+                    }
                     done()
                 })
             })
