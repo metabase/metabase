@@ -199,10 +199,10 @@
   [features]
   (postwalk
    (fn [x]
-     (condp instance? x
-       Float                (trim-decimals 2 x)
-       clojure.lang.IRecord (assoc x :type-tag (type x))
-       x))
+     (cond
+       (float? x)                         (trim-decimals 2 x)
+       (instance? clojure.lang.IRecord x) (assoc x :type-tag (type x))
+       :else                              x))
    features))
 
 (defn x-ray
