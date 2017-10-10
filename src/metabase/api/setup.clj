@@ -16,6 +16,7 @@
              [session :refer [Session]]
              [user :as user :refer [User]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -116,9 +117,9 @@
         num-tables         (db/count 'Table)
         num-cards          (db/count 'Card)
         num-users          (db/count 'User)]
-    [{:title       "Add a database"
-      :group       "Get connected"
-      :description "Connect to your data so your whole team can start to explore."
+    [{:title       (tru "Add a database")
+      :group       (tru "Get connected")
+      :description (tru "Connect to your data so your whole team can start to explore.")
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
@@ -148,9 +149,9 @@
       :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
-     {:title       "Organize questions"
-      :group       "Curate your data"
-      :description "Have a lot of saved questions in Metabase? Create collections to help manage them and add context."
+     {:title       (tru "Organize questions")
+      :group       (tru "Curate your data")
+      :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
       :link        "/questions/"
       :completed   has-collections?
       :triggered   (>= num-cards 30)}

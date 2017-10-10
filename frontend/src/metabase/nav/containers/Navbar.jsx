@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import cx from "classnames";
+import { t } from 'c-3po'
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -121,20 +122,20 @@ export default class Navbar extends Component {
                         </Link>
                     </li>
                     <li className="pl3 hide xs-show">
-                        <MainNavLink to="/dashboards" name="Dashboards" eventName="Dashboards" />
+                        <MainNavLink to="/dashboards" name={t`Dashboards`} eventName="Dashboards" />
                     </li>
                     <li className="pl1 hide xs-show">
-                        <MainNavLink to="/questions" name="Questions" eventName="Questions" />
+                        <MainNavLink to="/questions" name={t`Questions`} eventName="Questions" />
                     </li>
                     <li className="pl1 hide sm-show">
-                        <MainNavLink to="/pulse" name="Pulses" eventName="Pulses" />
+                        <MainNavLink to="/pulse" name={t`Pulses`} eventName="Pulses" />
                     </li>
                     <li className="pl1 hide sm-show">
-                        <MainNavLink to="/reference/guide" name="Data Reference" eventName="DataReference" />
+                        <MainNavLink to="/reference/guide" name={t`Data Reference`} eventName="DataReference" />
                     </li>
                     <li className="pl3 hide sm-show">
                         <Link to={Urls.newQuestion()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
-                            New <span>Question</span>
+                            {t`New Question`}
                         </Link>
                     </li>
                     <li className="flex-align-right transition-background">

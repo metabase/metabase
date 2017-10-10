@@ -61,6 +61,7 @@
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
+                 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [kixi/stats "0.3.9"                                  ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
@@ -79,11 +80,11 @@
                                it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
-                 [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
-                 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
+                 [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
@@ -97,7 +98,8 @@
                  ["redshift" "http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release"]] ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
-             :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
+             :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
+            [puppetlabs/i18n "0.8.0"]]                                ; i18n helpers
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
