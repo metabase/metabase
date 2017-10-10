@@ -26,13 +26,13 @@
       "Metabase is up and running.": {
         "msgid": "Metabase is up and running.",
         "msgstr": [
-          "Metabase ist auf und laufen"
+          "Metabase läuft und ist bereit."
         ]
       },
       "removed the filter {item.details.name}": {
         "msgid": "removed the filter {item.details.name}",
         "msgstr": [
-          "entfernen sie den filter {item.details.name}"
+          "entfernen Sie den Filter {item.details.name}"
         ]
       },
       "joined!": {
@@ -50,25 +50,25 @@
       "View all": {
         "msgid": "View all",
         "msgstr": [
-          "Alle Anzeigen"
+          "Alle anzeigen"
         ]
       },
       "Recently Viewed": {
         "msgid": "Recently Viewed",
         "msgstr": [
-          "Vor Kurzem Anzeige"
+          "Zuletzt angesehen"
         ]
       },
       "You haven't looked at any dashboards or questions recently": {
         "msgid": "You haven't looked at any dashboards or questions recently",
         "msgstr": [
-          "Sie haben nicht schaute zu jeder dashboards oder fragen kürzlich"
+          "Sie haben in letzter Zeit keine Dashboards oder Fragen angesehen"
         ]
       },
       "Activity": {
         "msgid": "Activity",
         "msgstr": [
-          "Aktivitäten"
+          "Aktivität"
         ]
       },
       "Hey there": {
@@ -80,7 +80,7 @@
       "How's it going": {
         "msgid": "How's it going",
         "msgstr": [
-          "Wie ist es gehen"
+          "Wie geht's"
         ]
       },
       "Howdy": {
@@ -98,7 +98,7 @@
       "Good to see you": {
         "msgid": "Good to see you",
         "msgstr": [
-          "Schön, dich zu sehen"
+          "Schön, dass Sie da sind"
         ]
       },
       "What do you want to know?": {
@@ -110,7 +110,7 @@
       "What's on your mind?": {
         "msgid": "What's on your mind?",
         "msgstr": [
-          "Was auf dem herzen?"
+          "Was interessiert Sie?"
         ]
       },
       "What do you want to find out?": {
@@ -122,7 +122,7 @@
       "Dashboards": {
         "msgid": "Dashboards",
         "msgstr": [
-          "Übersicht"
+          "Dashboards"
         ]
       },
       "Questions": {
@@ -140,7 +140,7 @@
       "Data Reference": {
         "msgid": "Data Reference",
         "msgstr": [
-          "Daten Referenz"
+          "Daten-Referenz"
         ]
       },
       "New Question": {
