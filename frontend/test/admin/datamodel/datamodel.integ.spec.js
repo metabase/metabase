@@ -1,6 +1,6 @@
 // Converted from an old Selenium E2E test
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import {
@@ -35,7 +35,7 @@ import { MetabaseApi } from "metabase/services";
 
 describe("admin/datamodel", () => {
     beforeAll(async () =>
-        await login()
+        useSharedAdminLogin()
     );
 
     describe("data model editor", () => {

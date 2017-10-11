@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils";
@@ -31,7 +31,7 @@ describe("SegmentPane", () => {
     let segment = null;
 
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
         segment = await SegmentApi.create(orders_past_300_days_segment);
         store = await createTestStore()
 

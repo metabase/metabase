@@ -1,5 +1,5 @@
 // Important: import of integrated_tests always comes first in tests because of mocked modules
-import { createTestStore, login } from "__support__/integrated_tests";
+import { createTestStore, useSharedAdminLogin } from "__support__/integrated_tests";
 
 import React from 'react'
 import { mount } from 'enzyme'
@@ -31,7 +31,7 @@ const getFieldList = (query, fieldOptions, segmentOptions) =>
 
 describe('FieldList', () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     })
 
     it("should allow using expression as aggregation dimension", async () => {

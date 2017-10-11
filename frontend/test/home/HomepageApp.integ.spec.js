@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
     createSavedQuestion
 } from "__support__/integrated_tests";
@@ -30,7 +30,7 @@ describe("HomepageApp", () => {
     let metricId = null;
 
     beforeAll(async () => {
-        await login()
+        useSharedAdminLogin()
 
         // Create some entities that will show up in the top of activity feed
         // This test doesn't care if there already are existing items in the feed or not

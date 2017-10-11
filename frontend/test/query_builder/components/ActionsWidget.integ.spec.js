@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import {
@@ -29,7 +29,7 @@ const getActionsWidget = (question) =>
 
 describe('ActionsWidget', () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     })
 
     it("is visible for an empty question", () => {
@@ -45,7 +45,7 @@ describe('ActionsWidget', () => {
         let activeMetricId;
 
         beforeAll(async () => {
-            await login()
+            useSharedAdminLogin()
 
             const metricDef = {name: "A Metric", description: "For testing new question flow", table_id: 1,show_in_getting_started: true,
                 definition: {database: 1, query: {aggregation: ["count"]}}}
@@ -66,7 +66,6 @@ describe('ActionsWidget', () => {
                 .question()
                 .getUrl()
 
-            console.log(url)
             const store = await createTestStore()
             store.pushPath(url)
             const app = mount(store.getAppContainer());

@@ -132,7 +132,7 @@ The way integration tests are written is a little unconventional so here is an e
 
 ```
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
 import {
@@ -149,8 +149,7 @@ describe("Query builder", () => {
     beforeAll(async () => {
         // Usually you want to test stuff where user is already logged in
         // so it is convenient to login before any test case.
-        // Remember `await` here!
-        await login()
+        useSharedAdminLogin()
     })
 
     it("should let you run a new query", async () => {
