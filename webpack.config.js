@@ -61,21 +61,26 @@ var config = module.exports = {
     },
 
     module: {
-        loaders: [
+        rules: [
             {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
-                loader: "babel-loader",
-                query: BABEL_CONFIG
+                use: [
+                    { loader: "babel-loader", options: BABEL_CONFIG }
+                ]
             },
             {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules|\.spec\.js/,
-                loader: 'eslint-loader'
+                use: [
+                    { loader: "eslint-loader" }
+                ]
             },
             {
                 test: /\.(eot|woff2?|ttf|svg|png)$/,
-                loader: "file-loader"
+                use: [
+                    { loader: "file-loader" }
+                ]
             },
             {
                 test: /\.css$/,
@@ -89,7 +94,6 @@ var config = module.exports = {
             }
         ]
     },
-
     resolve: {
         extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
@@ -168,7 +172,7 @@ if (NODE_ENV === "hot") {
     // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
     config.output.publicPath = "http://localhost:8080/" + config.output.publicPath;
 
-    config.module.loaders.unshift({
+    config.module.rules.unshift({
         test: /\.jsx$/,
         exclude: /node_modules/,
         use: [
@@ -178,13 +182,11 @@ if (NODE_ENV === "hot") {
     });
 
     // disable ExtractTextPlugin
-    config.module.loaders[config.module.loaders.length - 1].use = {
-        loader: "style-loader",
-        use: [
-            { loader: "css-loader?", options: CSS_CONFIG },
-            { loader: "postcss-loader" }
-        ]
-    }
+    config.module.rules[config.module.rules.length - 1].use = [
+        { loader: "style-loader" },
+        { loader: "css-loader?", options: CSS_CONFIG },
+        { loader: "postcss-loader" }
+    ]
 
     config.devServer = {
         hot: true,
