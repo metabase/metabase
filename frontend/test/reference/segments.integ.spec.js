@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 
@@ -39,7 +39,7 @@ describe("The Reference Section", () => {
 
     // Scaffolding
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
 
     })
 
