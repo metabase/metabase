@@ -14,6 +14,11 @@ For significant feature additions, it is expected that discussion will have take
 
 We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a Contributor License Agreement [here](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform)
 
+# Development on Windows
+
+The development scripts are designed for Linux/Mac environment, so we recommend using the latest Windows 10 version with [WSL (Windows Subsystem for Linux)](https://msdn.microsoft.com/en-us/commandline/wsl/about) and [Ubuntu on Windows](https://www.microsoft.com/store/p/ubuntu/9nblggh4msv6). The Ubuntu Bash shell works well for both backend and frontend development.
+
+If you have problems with your development environment, make sure that you are not using any development commands outside the Bash shell. As an example, Node dependencies installed in normal Windows environment will not work inside Ubuntu Bash environment.
 
 # Install Prerequisites
 
@@ -24,13 +29,7 @@ These are the set of tools which are required in order to complete any build of 
 3. [Yarn package manager for Node.js](https://yarnpkg.com/)
 3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
-# Development on Windows
-
-We recommend using the latest Windows 10 version with [Windows Subsystem for Linux](https://msdn.microsoft.com/en-us/commandline/wsl/about). The default Ubuntu Bash shell should work perfectly for both backend and frontend development. 
-
-After enabling Windows Subsystem for Linux and entering the Bash shell, install all prerequisites using `apt-get` and follow the development instructions normally.
-
-If you have problems with your development environment, make sure that you are not using any development commands outside the Bash shell. As an example, Node dependencies installed in normal Windows environment will not work inside Ubuntu Bash environment.
+If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
 # Build Metabase
 
