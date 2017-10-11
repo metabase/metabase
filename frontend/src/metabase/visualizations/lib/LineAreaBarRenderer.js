@@ -80,7 +80,7 @@ function isOrdinal(settings) {
 // * aligned with beginning of bar to show bin boundaries
 // * label only shows beginning value of bin
 // * includes an extra tick at the end for the end of the last bin
-function isHistogramBar(settings, chartType) {
+function isHistogramBar({ settings, chartType }) {
     return isHistogram(settings) && chartType === "bar";
 }
 
@@ -171,8 +171,19 @@ function getXInterval({ settings, series }, xValues) {
     }
 }
 
+function getXAxisProps(props, datas) {
+    const xValues = getXValues(datas, props.chartType);
 
-function fillMissingValuesInDatas({ settings, chartType }, xValues, datas, xDomain, xInterval) {
+    return {
+        xValues,
+        xDomian: d3.extent(xValues),
+        xInterval: getXInterval(props, xValues)
+    };
+}
+
+
+function fillMissingValuesInDatas(props, { xValues, xDomain, xInterval }, datas) {
+    const { settings } = props;
     if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
         const fillValue = settings["line.missing"] === "zero" ? 0 : null;
         if (isTimeseries(settings)) {
@@ -196,7 +207,7 @@ function fillMissingValuesInDatas({ settings, chartType }, xValues, datas, xDoma
             const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
             if (count <= MAX_FILL_COUNT) {
                 let [start, end] = xDomain;
-                if (isHistogramBar(settings, chartType)) {
+                if (isHistogramBar(props)) {
                     // NOTE: intentionally add an end point for bar histograms
                     // $FlowFixMe
                     end += xInterval * 1.5
@@ -299,6 +310,36 @@ function getYAxisSplit({ settings, chartType, isScalarSeries, series }, datas, y
     return [series.map((s,i) => i)];
 }
 
+function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
+    return yAxisSplit.map(indexes => ({
+        series: indexes.map(index => series[index]),
+        extent: d3.extent([].concat(...indexes.map(index => yExtents[index])))
+    }));
+}
+
+
+function getIsSplitYAxis(left, right) {
+    return (right && right.series.length) && (left && left.series.length > 0);
+}
+
+function getYAxisProps(props, groups, datas) {
+    const yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+    const yAxisSplit = getYAxisSplit(props, datas, yExtents);
+
+    const [ yLeftSplit, yRightSplit ] = getYAxisSplitLeftAndRight(props.series, yAxisSplit, yExtents);
+
+    return {
+        yExtents,
+        yAxisSplit,
+        yExtent: d3.extent([].concat(...yExtents)),
+        yLeftSplit,
+        yRightSplit,
+        isSplit: getIsSplitYAxis(yLeftSplit, yRightSplit)
+    };
+}
+
+/// make the `onBrushChange()` and `onBrushEnd()` functions we'll use later, as well as an `isBrushing()` function to check
+/// current status.
 function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     let _isBrushing = false;
 
@@ -354,10 +395,7 @@ function applyChartLineBarSettings(chart, settings, chartType) {
 
 
 // TODO - give this a good name when I figure out what it does
-function doScatterChartStuff(chart, datas, index, yExtents) {
-    // TODO - huh?
-    let yExtent = d3.extent([].concat(...yExtents));
-
+function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     chart
         .keyAccessor((d) => d.key[0])
         .valueAccessor((d) => d.key[1])
@@ -381,7 +419,7 @@ function doScatterChartStuff(chart, datas, index, yExtents) {
 }
 
 
-function setColors(settings, chartType, chart, group, groups, index) {
+function setColors({ settings, chartType }, chart, group, groups, index) {
     const colors = settings["graph.colors"];
 
     // multiple series
@@ -399,7 +437,10 @@ function setColors(settings, chartType, chart, group, groups, index) {
 }
 
 /// Return a sequence of little charts for each of the groups.
-function getCharts({ settings, chartType, series, onChangeCardAndRun }, parent, datas, yExtents, yAxisSplit, groups, dimension, { onBrushChange, onBrushEnd }) {
+function getCharts(props, yAxisProps, parent, datas, groups, dimension, { onBrushChange, onBrushEnd }) {
+    const { settings, chartType, series, onChangeCardAndRun } = props;
+    const { yAxisSplit } = yAxisProps;
+
     return groups.map((group, index) => {
         let chart = getDcjsChart(chartType, parent);
 
@@ -413,7 +454,7 @@ function getCharts({ settings, chartType, series, onChangeCardAndRun }, parent, 
              .transitionDuration(0)
              .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
 
-        if (chartType === "scatter") doScatterChartStuff(chart, datas, index, yExtents);
+        if (chartType === "scatter") doScatterChartStuff(chart, datas, index, yAxisProps);
 
         if (chart.defined) {
             chart.defined(
@@ -423,7 +464,7 @@ function getCharts({ settings, chartType, series, onChangeCardAndRun }, parent, 
             );
         }
 
-        setColors(settings, chartType, chart, group, groups, index);
+        setColors(props, chart, group, groups, index);
 
         for (var i = 1; i < group.length; i++) {
             chart.stack(group[i])
@@ -469,7 +510,7 @@ function getOnGoalHover({ settings, onHoverChange }, xDomain, charts) {
 
 }
 
-function applyXAxisSettings({ settings, series }, xValues, xDomain, xInterval, parent) {
+function applyXAxisSettings({ settings, series }, { xValues, xDomain, xInterval }, parent) {
     if (isTimeseries(settings)) {
         applyChartTimeseriesXAxis(parent, settings, series, xValues, xDomain, xInterval);
     } else if (isQuantitative(settings)) {
@@ -480,24 +521,13 @@ function applyXAxisSettings({ settings, series }, xValues, xDomain, xInterval, p
 
 }
 
-function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
-    return yAxisSplit.map(indexes => ({
-        series: indexes.map(index => series[index]),
-        extent: d3.extent([].concat(...indexes.map(index => yExtents[index])))
-    }));
-}
-
-function applyYAxisSettings(settings, parent, left, right) {
-    if (left && left.series.length > 0) {
-        applyChartYAxis(parent, settings, left.series, left.extent, "left");
+function applyYAxisSettings({ settings }, { yLeftSplit, yRightSplit }, parent) {
+    if (yLeftSplit && yLeftSplit.series.length > 0) {
+        applyChartYAxis(parent, settings, yLeftSplit.series, yLeftSplit.extent, "left");
     }
-    if (right && right.series.length > 0) {
-        applyChartYAxis(parent, settings, right.series, right.extent, "right");
+    if (yRightSplit && yRightSplit.series.length > 0) {
+        applyChartYAxis(parent, settings, yRightSplit.series, yRightSplit.extent, "right");
     }
-}
-
-function getIsSplitYAxis(left, right) {
-    return (right && right.series.length) && (left && left.series.length > 0);
 }
 
 
@@ -568,13 +598,7 @@ type LineAreaBarProps = VisualizationProps & {
 }
 
 export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
-    const {
-        series,
-        onRender,
-        chartType,
-        isScalarSeries,
-        settings
-    } = props;
+    const { onRender, chartType, isScalarSeries, settings} = props;
 
     const warnings = {};
     const warn = (id) => {
@@ -589,60 +613,55 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
         settings["graph.x_axis.scale"] = "ordinal"
     }
 
-    let datas     = getDatas(props, warn);
-    let xValues   = getXValues(datas, chartType);
-    let xDomain   = d3.extent(xValues);
-    let xInterval = getXInterval(props, xValues);
+    let datas      = getDatas(props, warn);
+    let xAxisProps = getXAxisProps(props, datas);
 
-    fillMissingValuesInDatas(props, xValues, datas, xDomain, xInterval);
+    fillMissingValuesInDatas(props, xAxisProps, datas);
 
-    if (isScalarSeries) xValues = datas.map(data => data[0][0]);
+    if (isScalarSeries) xAxisProps.xValues = datas.map(data => data[0][0]); // TODO - what is this for?
 
     let { dimension, groups } = getDimensionAndGroups(props, datas, warn);
 
-    let yExtents   = groups.map(group => d3.extent(group[0].all(), d => d.value));
-    let yAxisSplit = getYAxisSplit(props, datas, yExtents)
+    const yAxisProps = getYAxisProps(props, groups, datas);
 
     // Don't apply to linear or timeseries X-axis since the points are always plotted in order
-    if (!isTimeseries(settings) && !isQuantitative(settings)) forceSortedGroupsOfGroups(groups, makeIndexMap(xValues));
+    if (!isTimeseries(settings) && !isQuantitative(settings)) forceSortedGroupsOfGroups(groups, makeIndexMap(xAxisProps.xValues));
 
     let parent = dc.compositeChart(element);
     initChart(parent, element);
 
     const brushChangeFunctions = makeBrushChangeFunctions(props);
 
-    let charts      = getCharts(props, parent, datas, yExtents, yAxisSplit, groups, dimension, brushChangeFunctions);
-    let onGoalHover = getOnGoalHover(props, xDomain, charts);
+    let charts      = getCharts(props, yAxisProps, parent, datas, groups, dimension, brushChangeFunctions);
+    let onGoalHover = getOnGoalHover(props, xAxisProps.xDomain, charts);
 
     parent.compose(charts);
 
-    if      (groups.length > 1 && !isScalarSeries) doGroupedBarStuff(parent);
-    else if (isHistogramBar(settings, chartType))  doHistogramBarStuff(parent);
+    if      (groups.length > 1 && !props.isScalarSeries) doGroupedBarStuff(parent);
+    else if (isHistogramBar(props))                      doHistogramBarStuff(parent);
 
     // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
     parent._rangeBandPadding(chartType === "bar" ? BAR_PADDING_RATIO : 1) //
 
-    applyXAxisSettings(props, xValues, xDomain, xInterval, parent);
+    applyXAxisSettings(props, xAxisProps, parent);
 
     // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
-    if (isHistogramBar(settings, chartType)) parent.xAxis().tickFormat(d => formatNumber(d));
+    if (isHistogramBar(props)) parent.xAxis().tickFormat(d => formatNumber(d));
 
-    const [yLeft, yRight] = getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents);
-    applyYAxisSettings(settings, parent, yLeft, yRight);
-    const isSplitAxis = getIsSplitYAxis(yLeft, yRight);
+    applyYAxisSettings(props, yAxisProps, parent);
 
     setupTooltips(props, datas, parent, brushChangeFunctions);
 
     parent.render();
 
     // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
-    lineAndBarOnRender(parent, settings, onGoalHover, isSplitAxis, isStacked(settings, datas));
+    lineAndBarOnRender(parent, settings, onGoalHover, yAxisProps.isSplit, isStacked(settings, datas));
 
     // only ordinal axis can display "null" values
     if (isOrdinal(settings)) delete warnings[NULL_DIMENSION_WARNING];
 
     if (onRender) onRender({
-        yAxisSplit,
+        yAxisProps.yAxisSplit,
         warnings: Object.keys(warnings)
     });
 
