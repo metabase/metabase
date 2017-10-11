@@ -38,6 +38,8 @@ NSString *BaseURL() {
 
 @property (nonatomic) BOOL loading;
 
+@property (nonatomic, strong) NSString *launchRoute; ///< redirect to this URL on launch if set. Used for password reset to take you to reset password page.
+
 @end
 
 @implementation MainViewController
@@ -91,7 +93,14 @@ NSString *BaseURL() {
 
 - (void)taskBecameHealthy:(NSNotification *)notification {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self loadMainPage];
+        
+        if (self.launchRoute) {
+            [self navigateToRoute:self.launchRoute];
+            self.launchRoute = nil;
+        } else {
+            [self loadMainPage];
+        }
+		
 		dispatch_async(dispatch_get_main_queue(), ^{
 			self.loading = NO;
 		});
@@ -107,12 +116,17 @@ NSString *BaseURL() {
 
 #pragma mark - Local Methods
 
+- (void)navigateToRoute:(nonnull NSString *)route {
+    NSString *urlString = [BaseURL() stringByAppendingString:route];
+    NSLog(@"Connecting to Metabase instance, navigating to page: %@", urlString);
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlString]];
+    request.cachePolicy = NSURLCacheStorageAllowedInMemoryOnly;
+    [self.webView.mainFrame loadRequest:request];
+
+}
+
 - (void)loadMainPage {
-	NSLog(@"Connecting to Metabase instance at: %@", BaseURL());
-	
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:BaseURL()]];
-	request.cachePolicy = NSURLCacheStorageAllowedInMemoryOnly;
-	[self.webView.mainFrame loadRequest:request];
+    [self navigateToRoute:@"/"];
 }
 
 - (void)downloadWithMethod:(NSString *)methodString url:(NSString *)urlString params:(NSDictionary *)paramsDict extensions:(NSArray *)extensions {
@@ -251,12 +265,9 @@ NSString *BaseURL() {
 
 - (void)resetPasswordWindowController:(ResetPasswordWindowController *)resetPasswordWindowController didFinishWithResetToken:(NSString *)resetToken {
 	self.resetPasswordWindowController = nil;
-	
-	NSString *passwordResetURLString = [NSString stringWithFormat:@"%@/auth/reset_password/%@", BaseURL(), resetToken];
-	NSLog(@"Navigating to password reset URL '%@'...", passwordResetURLString);
-	
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:passwordResetURLString]];
-	[self.webView.mainFrame loadRequest:request];
+    
+    // now tell the app to reroute to the reset password page once Metabase relauches
+    self.launchRoute = [@"/auth/reset_password/" stringByAppendingString:resetToken];
 }
 
 

@@ -1,7 +1,9 @@
 (ns metabase.driver.druid.query-processor
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
-            [clj-time.format :as tformat]
+            [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
@@ -730,14 +732,25 @@
 
 (def ^:private druid-ts-format (tformat/formatters :date-time))
 
+(defn- parse-timestamp
+  [timestamp]
+  (->> timestamp (tformat/parse druid-ts-format) tcoerce/to-date))
+
 (defn- reformat-timestamp [timestamp target-formatter]
   (->> timestamp
        (tformat/parse druid-ts-format)
        (tformat/unparse target-formatter)))
 
-(defmethod post-process ::select  [_ projections timezone results]
-  (let [update-ts-fn (if-let [target-formater (and timezone (tformat/with-zone druid-ts-format timezone))]
+(defmethod post-process ::select  [_ projections {:keys [timezone middleware]} results]
+  (let [target-formater (and timezone (tformat/with-zone druid-ts-format timezone))
+        update-ts-fn (cond
+                       (not (:format-rows? middleware true))
+                       #(update % :timestamp parse-timestamp)
+
+                       target-formater
                        #(update % :timestamp reformat-timestamp target-formater)
+
+                       :else
                        identity)]
     (->> results
          first
@@ -746,19 +759,31 @@
          (map (comp update-ts-fn :event))
          (post-process-map projections))))
 
-(defmethod post-process ::total   [_ projections timezone results]
+(defmethod post-process ::total   [_ projections _ results]
   (post-process-map projections (map :result results)))
 
-(defmethod post-process ::topN    [_ projections timezone results]
-  (post-process-map projections (-> results first :result)))
+(defmethod post-process ::topN    [_ projections {:keys [middleware]} results]
+  (post-process-map projections
+                    (let [results (-> results first :result)]
+                      (if (:format-rows? middleware true)
+                        results
+                        (map #(u/update-when % :timestamp parse-timestamp) results)))))
 
-(defmethod post-process ::groupBy [_ projections timezone results]
-  (post-process-map projections (map :event results)))
+(defmethod post-process ::groupBy [_ projections {:keys [middleware]} results]
+  (post-process-map projections
+                    (if (:format-rows? middleware true)
+                      (map :event results)
+                      (map (comp #(u/update-when % :timestamp parse-timestamp)
+                                 :event)
+                           results))))
 
-(defmethod post-process ::timeseries [_ projections timezone results]
+(defmethod post-process ::timeseries [_ projections {:keys [middleware]} results]
   (post-process-map (conj projections :timestamp)
-                    (for [event results]
-                      (conj {:timestamp (:timestamp event)} (:result event)))))
+                    (let [ts-getter (if (:format-rows? middleware true)
+                                      :timestamp
+                                      (comp parse-timestamp :timestamp))]
+                      (for [event results]
+                        (conj {:timestamp (ts-getter event)} (:result event))))))
 
 (defn post-process-native
   "Post-process the results of a *native* Druid query.
@@ -824,7 +849,7 @@
 
 (defn execute-query
   "Execute a query for a Druid DB."
-  [do-query {database :database, {:keys [query query-type mbql? projections]} :native :as query-ctx}]
+  [do-query {database :database, {:keys [query query-type mbql? projections]} :native, middleware :middleware :as query-ctx}]
   {:pre [database query]}
   (let [details       (:details database)
         query         (if (string? query)
@@ -833,7 +858,9 @@
         query-type    (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
         post-proc-map (->> query
                            (do-query details)
-                           (post-process query-type projections (resolve-timezone query-ctx)))
+                           (post-process query-type projections
+                                         {:timezone   (resolve-timezone query-ctx)
+                                          :middleware middleware}))
         columns       (if mbql?
                         (->> post-proc-map
                              :projections

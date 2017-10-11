@@ -191,7 +191,7 @@ describe("new question flow", async () => {
             const app = mount(store.getAppContainer());
             await store.waitForActions([DETERMINE_OPTIONS]);
 
-            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "SQL"))
+            click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Native query"))
             await store.waitForActions(INITIALIZE_QB);
             expect(getQuery(store.getState()) instanceof NativeQuery).toBe(true)
 
