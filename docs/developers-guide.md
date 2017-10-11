@@ -24,6 +24,13 @@ These are the set of tools which are required in order to complete any build of 
 3. [Yarn package manager for Node.js](https://yarnpkg.com/)
 3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
+# Development on Windows
+
+We recommend using the latest Windows 10 version with [Windows Subsystem for Linux](https://msdn.microsoft.com/en-us/commandline/wsl/about). The default Ubuntu Bash shell should work perfectly for both backend and frontend development. 
+
+After enabling Windows Subsystem for Linux and entering the Bash shell, install all prerequisites using `apt-get` and follow the development instructions normally.
+
+If you have problems with your development environment, make sure that you are not using any development commands outside the Bash shell. As an example, Node dependencies installed in normal Windows environment will not work inside Ubuntu Bash environment.
 
 # Build Metabase
 
@@ -69,13 +76,6 @@ Run your backend development server with
 Start the frontend build process with
 
     yarn run build-hot
-
-Caveat - Yarn does not properly support `build-hot` on Windows 8/10. You will need to manually build the frontend client with
-    
-    yarn run build
-
-This will get you a full development server running on port :3000 by default.
-
 
 ## Frontend development
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
