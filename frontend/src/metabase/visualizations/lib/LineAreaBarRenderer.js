@@ -125,7 +125,7 @@ function enableBrush(series, onChangeCardAndRun) {
 
 /************************************************************ SETUP ************************************************************/
 
-function checkSeriesIsValid(series, maxSeries) {
+function checkSeriesIsValid({ series, maxSeries }) {
     if (getFirstNonEmptySeries(series).data.cols.length < 2) {
         throw new Error("This chart type requires at least 2 columns.");
     }
@@ -135,7 +135,7 @@ function checkSeriesIsValid(series, maxSeries) {
     }
 }
 
-function getDatas(settings, series, warn) {
+function getDatas({ settings, series }, warn) {
     return series.map((s, index) =>
         s.data.rows.map(row => {
             let newRow = [
@@ -155,7 +155,7 @@ function getDatas(settings, series, warn) {
     );
 }
 
-function getXInterval(settings, xValues, series,) {
+function getXInterval({ settings, series }, xValues) {
     if (isTimeseries(settings)) {
         // compute the interval
         let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
@@ -172,7 +172,7 @@ function getXInterval(settings, xValues, series,) {
 }
 
 
-function fillMissingValuesInDatas(settings, chartType, xValues, datas, xDomain, xInterval) {
+function fillMissingValuesInDatas({ settings, chartType }, xValues, datas, xDomain, xInterval) {
     if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
         const fillValue = settings["line.missing"] === "zero" ? 0 : null;
         if (isTimeseries(settings)) {
@@ -225,7 +225,7 @@ function fillMissingValuesInDatas(settings, chartType, xValues, datas, xDomain, 
 }
 
 
-function getDimensionAndGroups(settings, chartType, datas, series, warn) {
+function getDimensionAndGroups({ settings, chartType, series }, datas, warn) {
     let dimension, groups;
     let dataset = crossfilter();
 
@@ -439,7 +439,7 @@ function getCharts({ settings, chartType, series, onChangeCardAndRun }, parent, 
 /************************************************************ OTHER SETUP ************************************************************/
 
 /// make an appropriate `onGoalHover` function.
-function getOnGoalHover(settings, xDomain, charts, onHoverChange) {
+function getOnGoalHover({ settings, onHoverChange }, xDomain, charts) {
     if (!settings["graph.show_goal"]) return () => {};
 
     const goalValue = settings["graph.goal_value"];
@@ -469,7 +469,7 @@ function getOnGoalHover(settings, xDomain, charts, onHoverChange) {
 
 }
 
-function applyXAxisSettings(settings, series, xValues, xDomain, xInterval, parent) {
+function applyXAxisSettings({ settings, series }, xValues, xDomain, xInterval, parent) {
     if (isTimeseries(settings)) {
         applyChartTimeseriesXAxis(parent, settings, series, xValues, xDomain, xInterval);
     } else if (isQuantitative(settings)) {
@@ -570,13 +570,10 @@ type LineAreaBarProps = VisualizationProps & {
 export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
     const {
         series,
-        onHoverChange,
         onRender,
         chartType,
         isScalarSeries,
-        settings,
-        maxSeries,
-        onChangeCardAndRun
+        settings
     } = props;
 
     const warnings = {};
@@ -584,7 +581,7 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
         warnings[id] = (warnings[id] || 0) + 1;
     }
 
-    checkSeriesIsValid(series, maxSeries);
+    checkSeriesIsValid(props);
 
     // force histogram to be ordinal axis with zero-filled missing points
     if (isHistogram(settings)) {
@@ -592,24 +589,22 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
         settings["graph.x_axis.scale"] = "ordinal"
     }
 
-    let datas     = getDatas(settings, series, warn);
+    let datas     = getDatas(props, warn);
     let xValues   = getXValues(datas, chartType);
     let xDomain   = d3.extent(xValues);
-    let xInterval = getXInterval(settings, xValues, series);
+    let xInterval = getXInterval(props, xValues);
 
-    fillMissingValuesInDatas(settings, chartType, xValues, datas, xDomain, xInterval);
+    fillMissingValuesInDatas(props, xValues, datas, xDomain, xInterval);
 
     if (isScalarSeries) xValues = datas.map(data => data[0][0]);
 
-    let { dimension, groups } = getDimensionAndGroups(settings, chartType, datas, series, warn);
+    let { dimension, groups } = getDimensionAndGroups(props, datas, warn);
 
     let yExtents   = groups.map(group => d3.extent(group[0].all(), d => d.value));
     let yAxisSplit = getYAxisSplit(props, datas, yExtents)
 
     // Don't apply to linear or timeseries X-axis since the points are always plotted in order
-    if (!isTimeseries(settings) && !isQuantitative(settings)) {
-        forceSortedGroupsOfGroups(groups, makeIndexMap(xValues));
-    }
+    if (!isTimeseries(settings) && !isQuantitative(settings)) forceSortedGroupsOfGroups(groups, makeIndexMap(xValues));
 
     let parent = dc.compositeChart(element);
     initChart(parent, element);
@@ -617,7 +612,7 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
     const brushChangeFunctions = makeBrushChangeFunctions(props);
 
     let charts      = getCharts(props, parent, datas, yExtents, yAxisSplit, groups, dimension, brushChangeFunctions);
-    let onGoalHover = getOnGoalHover(settings, xDomain, charts, onHoverChange);
+    let onGoalHover = getOnGoalHover(props, xDomain, charts);
 
     parent.compose(charts);
 
@@ -627,7 +622,7 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
     // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
     parent._rangeBandPadding(chartType === "bar" ? BAR_PADDING_RATIO : 1) //
 
-    applyXAxisSettings(settings, series, xValues, xDomain, xInterval, parent);
+    applyXAxisSettings(props, xValues, xDomain, xInterval, parent);
 
     // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
     if (isHistogramBar(settings, chartType)) parent.xAxis().tickFormat(d => formatNumber(d));
@@ -640,13 +635,13 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
 
     parent.render();
 
-    // apply any on-rendering functions
+    // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
     lineAndBarOnRender(parent, settings, onGoalHover, isSplitAxis, isStacked(settings, datas));
 
     // only ordinal axis can display "null" values
     if (isOrdinal(settings)) delete warnings[NULL_DIMENSION_WARNING];
 
-    onRender && onRender({
+    if (onRender) onRender({
         yAxisSplit,
         warnings: Object.keys(warnings)
     });
