@@ -87,7 +87,7 @@ var config = module.exports = {
                 use: ExtractTextPlugin.extract({
                     fallback: "style-loader",
                     use: [
-                        { loader: "css-loader?", options: CSS_CONFIG },
+                        { loader: "css-loader", options: CSS_CONFIG },
                         { loader: "postcss-loader" }
                     ]
                 })
@@ -184,7 +184,7 @@ if (NODE_ENV === "hot") {
     // disable ExtractTextPlugin
     config.module.rules[config.module.rules.length - 1].use = [
         { loader: "style-loader" },
-        { loader: "css-loader?", options: CSS_CONFIG },
+        { loader: "css-loader", options: CSS_CONFIG },
         { loader: "postcss-loader" }
     ]
 
