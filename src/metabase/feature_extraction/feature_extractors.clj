@@ -24,7 +24,7 @@
 
 (defn rollup
   "Transducer that groups by `groupfn` and reduces each group with `f`.
-   Note the contructor airity of `f` needs to be free of side effects."
+   Note the constructor airity of `f` needs to be free of side effects."
   [f groupfn]
   (let [init (f)]
     (fn
@@ -72,6 +72,11 @@
    (.offer acc x)
    acc))
 
+(def linear-regression
+  "Transducer that calculats (simple) linear regression."
+  (redux/post-complete (stats/simple-linear-regression first second)
+                       (partial zipmap [:offset :slope])))
+
 (defn- nice-bins
   [histogram]
   (cond
@@ -112,10 +117,16 @@
                :description  "Share of corresponding bin in the overall population."
                :base_type    :type/Float}]}))
 
+(defn- histogram-aggregated->dataset
+  [field histogram]
+  {:rows    (nice-bins histogram)
+   :columns (map :name field)
+   :cols    (map #(dissoc % :remapped_from) field)})
+
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
 (def ^:private Category [:type/* :type/Category])
-;(def ^:private Any      [:type/* :type/*])
+(def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
 (defn- periodic-date-time?
@@ -215,15 +226,15 @@
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
-    (fn [{:keys [histogram kurtosis skewness sum sum-of-squares
-                 histogram-categorical]}]
+    (fn [{:keys [histogram histogram-categorical kurtosis skewness sum
+                 sum-of-squares]}]
       (let [var    (h.impl/variance histogram)
-            sd     (some-> var math/sqrt)
-            min    (h.impl/minimum histogram)
-            max    (h.impl/maximum histogram)
-            mean   (h.impl/mean histogram)
-            median (h.impl/median histogram)
-            range  (some-> max (- min))]
+        sd     (some-> var math/sqrt)
+        min    (h.impl/minimum histogram)
+        max    (h.impl/maximum histogram)
+        mean   (h.impl/mean histogram)
+        median (h.impl/median histogram)
+        range  (some-> max (- min))]
         {:positive-definite? (some-> min (>= 0))
          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
          :var>sd?            (some->> sd (> var))
@@ -242,9 +253,9 @@
          :sd                 sd
          :kurtosis           kurtosis
          :skewness           skewness
-         :histogram          (or histogram-categorical histogram)
          :sum                sum
-         :sum-of-squares     sum-of-squares})))))
+         :sum-of-squares     sum-of-squares
+         :histogram (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num
   [features]
@@ -258,18 +269,6 @@
       (update :histogram (partial histogram->dataset field))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
               :positive-definite? :var>sd? :uniqueness :min-vs-max)))
-
-(defmethod feature-extractor [Num Num]
-  [_ field]
-  (redux/post-complete
-   (redux/pre-step
-    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                 :correlation       (stats/correlation first second)
-                 :covariance        (stats/covariance first second)})
-    (partial map (somef double)))
-   (merge-juxt
-    (field-metadata-extractor field)
-    identity)))
 
 (def ^:private ^{:arglists '([t])} to-double
   "Coerce `DateTime` to `Double`."
@@ -355,21 +354,21 @@
                                     (partition 2 1 series))
             median-delta (h.impl/median deltas)]
         (when (roughly= median-delta (h.impl/minimum deltas) 0.1)
-          (cond
-            (roughly= median-delta (* 60 1000))                    :minute
-            (roughly= median-delta (* 60 60 1000))                 :hour
-            (roughly= median-delta (* 24 60 60 1000))              :day
-            (roughly= median-delta (* 7 24 60 60 1000))            :week
-            (roughly= median-delta (* (/ 365 12) 24 60 60 1000))   :month
-            (roughly= median-delta (* 3 (/ 365 12) 24 60 60 1000)) :quarter
-            (roughly= median-delta (* 365 24 60 60 1000))          :year
-            :else                                                  nil)))))
+          (condp roughly= median-delta
+            (* 60 1000)                    :minute
+            (* 60 60 1000)                 :hour
+            (* 24 60 60 1000)              :day
+            (* 7 24 60 60 1000)            :week
+            (* (/ 365 12) 24 60 60 1000)   :month
+            (* 3 (/ 365 12) 24 60 60 1000) :quarter
+            (* 365 24 60 60 1000)          :year
+            nil)))))
 
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
   (redux/post-complete
    (redux/pre-step
-    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+    (redux/fuse {:linear-regression linear-regression
                  :series            conj})
     (fn [[^java.util.Date x y]]
       [(some-> x .getTime double) y]))
@@ -414,14 +413,14 @@
       ((get-method comparison-vector :default))))
 
 (defn- unpack-linear-regression
-  [keyfn x-field series [c k]]
+  [keyfn x-field series {:keys [offset slope]}]
   (series->dataset keyfn
                    [x-field
                     {:name         "TREND"
                      :display_name "Linear regression trend"
                      :base_type    :type/Float}]
                    (for [[x y] series]
-                     [x (+ (* k x) c)])))
+                     [x (+ (* slope x) offset)])))
 
 (defmethod x-ray [DateTime Num]
   [{:keys [field series] :as features}]
@@ -454,9 +453,18 @@
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
 
-;; (defmethod feature-extractor [Category Any]
-;;   [opts [x y]]
-;;   (rollup (redux/pre-step (feature-extractor opts y) second) first))
+(defmethod feature-extractor [Any Num]
+  [{:keys [max-cost]} field]
+  (redux/post-complete
+   (redux/fuse {:histogram (h/histogram-aggregated first second)})
+   (merge-juxt
+    (field-metadata-extractor field)
+    histogram-extractor)))
+
+(defmethod x-ray [Any Num]
+  [{:keys [field histogram] :as features}]
+  (-> features
+      (update :histogram (partial histogram-aggregated->dataset field))))
 
 (defmethod feature-extractor Text
   [_ field]
@@ -512,31 +520,6 @@
           (assoc :earliest (h.impl/minimum histogram)
                  :latest   (h.impl/maximum histogram)))))))
 
-(defn- round-to-month
-  [dt]
-  (t/floor dt t/month))
-
-(defn- month-frequencies
-  [earliest latest]
-  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
-       (take-while (complement (partial t/before? latest)))
-       (map t/month)
-       frequencies))
-
-(defn- quarter-frequencies
-  [earliest latest]
-  (->> (t.periodic/periodic-seq (round-to-month earliest) (t/months 1))
-       (take-while (complement (partial t/before? latest)))
-       (m/distinct-by (juxt t/year quarter))
-       (map quarter)
-       frequencies))
-
-(defn- weigh-periodicity
-  [weights card]
-  (let [baseline (apply min (vals weights))]
-    (update card :rows (partial map (fn [[k v]]
-                                      [k (/ (* v baseline) (weights k))])))))
-
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
   (let [earliest (from-double earliest)
@@ -564,10 +547,7 @@
                                              {:name         "MONTH"
                                               :display_name "Month of year"
                                               :base_type    :type/Integer
-                                              :special_type :type/Category})
-                                            (weigh-periodicity
-                                             (month-frequencies earliest
-                                                                latest))))))
+                                              :special_type :type/Category})))))
         (update :histogram-quarter (fn [histogram]
                                      (when-not (h/empty? histogram)
                                        (->> histogram
@@ -575,10 +555,7 @@
                                              {:name         "QUARTER"
                                               :display_name "Quarter of year"
                                               :base_type    :type/Integer
-                                              :special_type :type/Category})
-                                            (weigh-periodicity
-                                             (quarter-frequencies earliest
-                                                                  latest)))))))))
+                                              :special_type :type/Category}))))))))
 
 (defmethod feature-extractor Category
   [_ field]
@@ -590,8 +567,26 @@
     cardinality-extractor
     (field-metadata-extractor field))))
 
+(defn field->features
+  "Transduce given column with corresponding feature extractor."
+  [opts field data]
+  (transduce identity (feature-extractor opts field) data))
+
+(defn dataset->features
+  "Transuce each column in given dataset with corresponding feature extractor."
+  [opts {:keys [rows cols]}]
+  (transduce identity
+             (redux/fuse
+              (into {}
+                (for [[i field] (m/indexed cols)
+                      :when (not (or (:remapped_to field)
+                                     (= :type/PK (:special_type field))))]
+                  [(:name field) (redux/pre-step (feature-extractor opts field)
+                                                 #(nth % i))])))
+             rows))
+
 (defmethod feature-extractor :default
-  [_ field]
+  [opts field]
   (redux/post-complete
    (redux/fuse {:total-count stats/count
                 :nil-count   (redux/with-xform stats/count (filter nil?))})
@@ -605,7 +600,10 @@
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
+(prefer-method feature-extractor [DateTime Num] [Any Num])
 (prefer-method x-ray Category Text)
 (prefer-method x-ray Num Category)
+(prefer-method x-ray [DateTime Num] [Any Num])
 (prefer-method comparison-vector Category Text)
 (prefer-method comparison-vector Num Category)
+(prefer-method comparison-vector [DateTime Num] [Any Num])
