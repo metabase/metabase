@@ -34,8 +34,6 @@ var CSS_CONFIG = {
     localIdentName: NODE_ENV !== "production" ?
         "[name]__[local]___[hash:base64:5]" :
         "[hash:base64:5]",
-    restructuring: false,
-    compatibility: true,
     url: false, // disabled because we need to use relative url()
     importLoaders: 1
 }
@@ -122,21 +120,24 @@ var config = module.exports = {
         }),
         new HtmlWebpackPlugin({
             filename: '../../index.html',
-            chunks: ["app-main", "styles"],
+            chunksSortMode: 'manual',
+            chunks: ["styles", "app-main"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../public.html',
-            chunks: ["app-public", "styles"],
+            chunksSortMode: 'manual',
+            chunks: ["styles", "app-public"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../embed.html',
-            chunks: ["app-embed", "styles"],
+            chunksSortMode: 'manual',
+            chunks: ["styles", "app-embed"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
