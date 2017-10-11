@@ -59,68 +59,38 @@ const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unag
 
 /************************************************************ PROPERTIES ************************************************************/
 
-function isTimeseries(settings) {
-    return settings["graph.x_axis.scale"] === "timeseries";
-}
-
-function isQuantitative(settings) {
-    const xAxisScale = settings["graph.x_axis.scale"];
-    return xAxisScale === "linear" || xAxisScale === "log" || xAxisScale === "pow";
-}
-
-function isHistogram(settings) {
-    return settings["graph.x_axis.scale"] === "histogram";
-}
-
-function isOrdinal(settings) {
-    return !isTimeseries(settings) && !isHistogram(settings);
-}
+const isTimeseries   = (settings) => settings["graph.x_axis.scale"] === "timeseries";
+const isQuantitative = (settings) => ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
+const isHistogram    = (settings) => settings["graph.x_axis.scale"] === "histogram";
+const isOrdinal      = (settings) => !isTimeseries(settings) && !isHistogram(settings);
 
 // bar histograms have special tick formatting:
 // * aligned with beginning of bar to show bin boundaries
 // * label only shows beginning value of bin
 // * includes an extra tick at the end for the end of the last bin
-function isHistogramBar({ settings, chartType }) {
-    return isHistogram(settings) && chartType === "bar";
-}
+const isHistogramBar = ({ settings, chartType }) => isHistogram(settings) && chartType === "bar";
 
-function isStacked(settings, datas) {
-    return settings["stackable.stack_type"] && datas.length > 1;
-}
-
-function isNormalized (settings, datas) {
-    return isStacked(settings, datas) && settings["stackable.stack_type"] === "normalized";
-}
+const isStacked    = (settings, datas) => settings["stackable.stack_type"] && datas.length > 1;
+const isNormalized = (settings, datas) => isStacked(settings, datas) && settings["stackable.stack_type"] === "normalized";
 
 // find the first nonempty single series
-function getFirstNonEmptySeries(series) {
-    return _.find(series, (s) => !datasetContainsNoResults(s.data));
-}
-
-function isDimensionTimeseries(series) {
-    return dimensionIsTimeseries(getFirstNonEmptySeries(series).data);
-}
-
-function isDimensionNumeric(series) {
-    return dimensionIsNumeric(getFirstNonEmptySeries(series).data);
-}
-
-function isRemappedToString(series) {
-    return hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
-}
+const getFirstNonEmptySeries = (series) => _.find(series, (s) => !datasetContainsNoResults(s.data));
+const isDimensionTimeseries  = (series) => dimensionIsTimeseries(getFirstNonEmptySeries(series).data);
+const isDimensionNumeric     = (series) => dimensionIsNumeric(getFirstNonEmptySeries(series).data);
+const isRemappedToString     = (series) => hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
 
 // is this a dashboard multiseries?
 // TODO: better way to detect this?
-function isMultiCardSeries(series) {
-    return series.length > 1 && getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
-}
+const isMultiCardSeries = (series) => (
+    series.length > 1 && getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"])
+);
 
-function enableBrush(series, onChangeCardAndRun) {
-    return !!(onChangeCardAndRun &&
-              !isMultiCardSeries(series) &&
-              isStructured(series[0].card) &&
-              !isRemappedToString(series));
-}
+const enableBrush = (series, onChangeCardAndRun) => !!(
+    onChangeCardAndRun &&
+    !isMultiCardSeries(series) &&
+    isStructured(series[0].card) &&
+    !isRemappedToString(series)
+);
 
 
 /************************************************************ SETUP ************************************************************/
@@ -393,7 +363,6 @@ function applyChartLineBarSettings(chart, settings, chartType) {
 }
 
 
-
 // TODO - give this a good name when I figure out what it does
 function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     chart
@@ -460,7 +429,7 @@ function getCharts(props, yAxisProps, parent, datas, groups, dimension, { onBrus
             chart.defined(
                 settings["line.missing"] === "none" ?
                 (d) => d.y != null :
-                     (d) => true
+                (d) => true
             );
         }
 
