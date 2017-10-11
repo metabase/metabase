@@ -9,7 +9,7 @@ import Question from "metabase-lib/lib/Question";
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
-    orders_past_30_days_segment
+    orders_past_300_days_segment
 } from "__support__/sample_dataset_fixture";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -55,7 +55,7 @@ describe('FieldList', () => {
 
     it("should show the query definition tooltip correctly for a segment", async () => {
         // TODO Atte Keinänen 6/27/17: Check why the result is wrapped in a promise that needs to be resolved manually
-        const segment = await (await createSegment(orders_past_30_days_segment)).payload;
+        const segment = await (await createSegment(orders_past_300_days_segment)).payload;
 
         const store = await createTestStore()
         await store.dispatch(fetchDatabases());
@@ -80,6 +80,6 @@ describe('FieldList', () => {
         expect(tooltipContent.length).toBe(1)
 
         // eslint-disable-next-line no-irregular-whitespace
-        expect(tooltipContent.find(FilterWidget).last().text()).toMatch(/Created At -30day/);
+        expect(tooltipContent.find(FilterWidget).last().text()).toMatch(/Created At -300day/);
     })
 });
