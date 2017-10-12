@@ -9,7 +9,7 @@ import {
     getComparison,
     getComparisonFields,
     getComparisonContributors,
-    getSegmentItem,
+    getModelItem,
     getTitle,
     getLoadingStatus,
     getError
@@ -25,8 +25,8 @@ const mapStateToProps = (state) => ({
     comparison:     getComparison(state),
     fields:         getComparisonFields(state),
     contributors:   getComparisonContributors(state),
-    itemA:          getSegmentItem(state, 0),
-    itemB:          getSegmentItem(state, 1),
+    itemA:          getModelItem(state, 0),
+    itemB:          getModelItem(state, 1),
     isLoading:      getLoadingStatus(state),
     error:          getError(state)
 })

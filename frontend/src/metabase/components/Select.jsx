@@ -37,7 +37,8 @@ class BrowserSelect extends Component {
         searchProp: PropTypes.string,
         searchCaseInsensitive: PropTypes.bool,
         isInitiallyOpen: PropTypes.bool,
-        placeholder: PropTypes.string
+        placeholder: PropTypes.string,
+        triggerElement: PropTypes.any
     }
     static defaultProps = {
         className: "",
@@ -49,7 +50,17 @@ class BrowserSelect extends Component {
     }
 
     render() {
-        const { className, children, value, onChange, searchProp, searchCaseInsensitive, isInitiallyOpen, placeholder } = this.props;
+        const {
+            className,
+            children,
+            value,
+            onChange,
+            searchProp,
+            searchCaseInsensitive,
+            isInitiallyOpen,
+            placeholder,
+            triggerElement
+        } = this.props;
 
         let selectedName;
         for (const child of children) {
@@ -80,7 +91,7 @@ class BrowserSelect extends Component {
             <PopoverWithTrigger
                 ref="popover"
                 className={className}
-                triggerElement={<SelectButton hasValue={!!value}>{selectedName}</SelectButton>}
+                triggerElement={triggerElement || <SelectButton hasValue={!!value}>{selectedName}</SelectButton>}
                 triggerClasses={className}
                 verticalAttachments={["top"]}
                 isInitiallyOpen={isInitiallyOpen}

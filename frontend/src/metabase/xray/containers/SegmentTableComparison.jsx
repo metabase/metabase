@@ -9,10 +9,9 @@ import {
     getComparison,
     getComparisonFields,
     getError,
-    getSegmentItem,
-    getTableItem,
+    getModelItem,
     getTitle,
-    getLoadingStatus
+    getLoadingStatus, getComparisonContributors
 } from 'metabase/xray/selectors'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
@@ -23,8 +22,9 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 const mapStateToProps = state => ({
     comparison: getComparison(state),
     fields: getComparisonFields(state),
-    itemA: getSegmentItem(state),
-    itemB: getTableItem(state),
+    contributors: getComparisonContributors(state),
+    itemA: getModelItem(state, 0),
+    itemB: getModelItem(state, 1),
     isLoading: getLoadingStatus(state),
     error: getError(state)
 })
