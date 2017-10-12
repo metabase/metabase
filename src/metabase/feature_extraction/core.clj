@@ -1,6 +1,8 @@
 (ns metabase.feature-extraction.core
   "Feature extraction for various models."
-  (:require [clojure.walk :refer [postwalk]]
+  (:require [clojure
+             [walk :refer [postwalk]]
+             [string :as s]]
             [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
@@ -195,13 +197,23 @@
   [decimal-places x]
   (u/round-to-decimals (- decimal-places (min (u/order-of-magnitude x) 0)) x))
 
+(defn- model-type
+  [x]
+  (let [t (-> x type str)]
+    (if (s/starts-with? t "class metabase.models.")
+      (-> t
+          (subs 22)
+          (s/split #"\." 2)
+          first)
+      t)))
+
 (defn- humanize-values
   [features]
   (postwalk
    (fn [x]
      (cond
        (float? x)                         (trim-decimals 2 x)
-       (instance? clojure.lang.IRecord x) (assoc x :type-tag (type x))
+       (instance? clojure.lang.IRecord x) (assoc x :type-tag (model-type x))
        :else                              x))
    features))
 
