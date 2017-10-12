@@ -86,6 +86,11 @@ export default class GuiQueryEditor extends Component {
         supportMultipleAggregations: true
     };
 
+    constructor(props, context) {
+        super(props, context);
+        this.setSortLimitSectionRef = this.setSortLimitSectionRef.bind(this);
+    }
+
     renderAdd(text: ?string, onClick: ?(() => void), targetRefName?: string) {
         let className = "AddButton text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
         if (onClick) {
@@ -339,6 +344,10 @@ export default class GuiQueryEditor extends Component {
         );
     }
 
+    setSortLimitSectionRef(sortLimitSection) {
+        this.refs.sortLimitSection = sortLimitSection;
+    }
+
     componentDidUpdate() {
         const guiBuilder = ReactDOM.findDOMNode(this.refs.guiBuilder);
         if (!guiBuilder) {
@@ -378,6 +387,7 @@ export default class GuiQueryEditor extends Component {
                     <div className="flex-full"></div>
                     {this.props.children}
                     <ExtendedOptions
+                        setSortLimitSectionRef={this.setSortLimitSectionRef}
                         {...this.props}
                     />
                 </div>
