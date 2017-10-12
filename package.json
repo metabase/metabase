@@ -166,6 +166,7 @@
     "build": "webpack --bail",
     "build-watch": "webpack --watch",
     "build-hot": "NODE_ENV=hot webpack-dev-server --progress",
+    "build-stats": "webpack --json > stats.json",
     "start": "yarn run build && lein ring server",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
