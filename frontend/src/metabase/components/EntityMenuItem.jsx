@@ -22,7 +22,8 @@ const itemClasses = cxs({
         color: '#BCC5CA'
     },
     ':hover > .Icon': {
-        color: '#509ee3'
+        color: '#509ee3',
+        transition: 'all 300ms linear',
     }
 })
 
