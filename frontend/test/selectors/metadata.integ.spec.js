@@ -1,4 +1,4 @@
-import { createTestStore, login } from "__support__/integrated_tests";
+import { createTestStore, useSharedAdminLogin } from "__support__/integrated_tests";
 import {
     deleteFieldDimension, fetchTableMetadata,
     updateFieldDimension,
@@ -14,7 +14,7 @@ const PRODUCT_CATEGORY_ID = 21;
 
 describe('makeGetMergedParameterFieldValues', () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
 
         // add remapping
         const store = await createTestStore()

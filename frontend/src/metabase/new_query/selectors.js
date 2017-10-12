@@ -27,5 +27,7 @@ export const getPlainNativeQuery = state => {
     } else {
         return new NativeQuery(question)
     }
-
 }
+
+export const getNewQueryOptions = state =>
+    state.new_query.newQueryOptions

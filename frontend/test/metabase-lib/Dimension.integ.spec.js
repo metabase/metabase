@@ -1,4 +1,4 @@
-import { createTestStore, login } from "__support__/integrated_tests";
+import { createTestStore, useSharedAdminLogin } from "__support__/integrated_tests";
 
 import {
     ORDERS_TOTAL_FIELD_ID,
@@ -19,7 +19,7 @@ describe("Dimension classes", () => {
     let metadata = null;
 
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
         const store = await createTestStore();
         await store.dispatch(fetchDatabaseMetadata(1));
         await store.dispatch(fetchTableMetadata(1));

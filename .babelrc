@@ -11,6 +11,16 @@
   "env": {
     "development": {
       "presets": []
+    },
+    "extract": {
+      "plugins": [
+        ["c-3po", {
+          "extract": {
+            "output": "locales/metabase-frontend.pot"
+          },
+          "discover": ["t", "jt"]
+        }]
+      ]
     }
   }
 }
