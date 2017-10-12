@@ -59,7 +59,7 @@
 ;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
 ;;     number of DB calls that are made. See discussion below for more details.
 
-(def ^:private ^{:arglists '([table-id])} perms-object-set*
+(def ^:private ^{:arglists '([table-id])} perms-objects-set*
   "Cached lookup for the permissions set for a table with TABLE-ID. This is done so a single API call or other unit of
    computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
    permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
@@ -77,7 +77,7 @@
        #{(perms/object-path database-id schema table-id)}))
    :ttl/threshold 5000))
 
-(defn- perms-object-set
+(defn- perms-objects-set
   "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
    same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} _]
@@ -86,7 +86,7 @@
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     #{(perms/object-path db-id schema table-id)}
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
-    (perms-object-set* table-id)))
+    (perms-objects-set* table-id)))
 
 
 (u/strict-extend (class Field)
