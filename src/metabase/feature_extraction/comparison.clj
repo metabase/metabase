@@ -175,6 +175,7 @@
 (defn features-distance
   "Distance metric between feature vectors `a` and `b`."
   [a b]
+  {:pre [(= (:type a) (:type b))]}
   (let [differences (pairwise-differences a b)]
     {:distance         (transduce (keep (comp :difference val))
                                   (redux/post-complete
