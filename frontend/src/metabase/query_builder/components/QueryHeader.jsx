@@ -261,7 +261,7 @@ export default class QueryHeader extends Component {
                     buttonSections.push([
                         <button
                             key="recentlySaved"
-                            className="cursor-pointer bg-white text-success text-strong text-uppercase"
+                            className="cursor-pointer bg-white text-success text-bold text-uppercase"
                         >
                             <span>
                                 <Icon name='check' size={12} />
