@@ -103,7 +103,7 @@ class SegmentXRay extends Component {
     }
 
     render () {
-        const { constituents, features, comparables, params, isLoading, error, push } = this.props
+        const { constituents, features, comparables, params, isLoading, error } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasXray(features)}
@@ -146,9 +146,8 @@ class SegmentXRay extends Component {
                             <div>
                                 { comparables &&
                                     <Select
-                                        // to={`/xray/compare/segment/${features.model.id}/table/${features.table.id}/approximate`}
                                         value={null}
-                                        // TODO: Use links instead of this kind of logic
+                                        // TODO Atte Keinänen: Use links instead of this kind of logic
                                         onChange={e => this.navigateToComparison(e.target.value)}
                                         triggerElement={
                                             <div className="Button bg-white text-brand-hover no-decoration">
@@ -158,17 +157,19 @@ class SegmentXRay extends Component {
                                             </div>
                                         }
                                     >
-                                        {/* TODO: Should include the current entity to comparison list */}
-                                        { comparables.map((comparableModel, index) =>
-                                            <Option
-                                                key={index}
-                                                value={comparableModel}
-                                                // icon={collection.id != null ? "collection" : null}
-                                                // iconColor={collection.color}
-                                                // iconSize={18}
-                                            >
-                                                {comparableModel.name}
-                                            </Option>
+                                        { comparables
+                                            // NOTE: filter out card comparisons because we don't support those yet
+                                            .filter((comparableModel) => !comparableModel["type-tag"].includes("card"))
+                                            .map((comparableModel, index) =>
+                                                <Option
+                                                    key={index}
+                                                    value={comparableModel}
+                                                    // icon={collection.id != null ? "collection" : null}
+                                                    // iconColor={collection.color}
+                                                    // iconSize={18}
+                                                >
+                                                    {comparableModel.name}
+                                                </Option>
                                         )}
                                     </Select>
                                 }

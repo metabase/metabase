@@ -48,21 +48,30 @@ export const getComparisonContributors = createSelector(
                     constituent.constituents[field][feature].value
             }
 
-            const genContributor = ({ field, feature }) => ({
-                field: comparison.constituents[0].constituents[field],
-                feature: {
-                    ...comparison.constituents[0].constituents[field][feature],
-                    value: {
-                        a: getValue(comparison.constituents[0], { field, feature }),
-                        b: getValue(comparison.constituents[1], { field, feature })
-                    },
-                    type: feature
+            const genContributor = ({ field, feature }) => {
+                const featureValue = {
+                    a: getValue(comparison.constituents[0], { field, feature }),
+                    b: getValue(comparison.constituents[1], { field, feature })
+                };
+
+                if (featureValue.a !== null && featureValue.b !== null) {
+                    return {
+                        field: comparison.constituents[0].constituents[field],
+                        feature: {
+                            ...comparison.constituents[0].constituents[field][feature],
+                            value: featureValue,
+                            type: feature
+                        }
+                    }
+                } else {
+                    // NOTE Atte Keinänen: This will become obsolete
+                    return null;
                 }
-            })
+            }
 
             const top = comparison['top-contributors']
 
-            return top && top.map(genContributor)
+            return top && top.map(genContributor).filter((contributor) => contributor !== null)
         }
     }
 )

@@ -70,7 +70,7 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                         </Tooltip>
                     </div>
                     <div className="py1">
-                        { contributor.feature.type === 'histogram' ? (
+                        { contributor.feature.type.startsWith('histogram') ? (
                             <CompareHistograms
                                 itemA={contributor.feature.value.a}
                                 itemB={contributor.feature.value.b}
@@ -164,7 +164,6 @@ const XRayComparison = ({
                     link={itemLinkUrl(itemA)}
                     item={itemA}
                 />
-
                 <Select
                     className="block"
                     value={null}
