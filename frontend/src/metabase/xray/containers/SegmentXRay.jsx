@@ -44,7 +44,7 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    xray:           getFeatures(state),
+    features:           getFeatures(state),
     constituents:   getConstituents(state),
     isLoading:      getLoadingStatus(state),
     error:          getError(state)
@@ -56,7 +56,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.segment.name || "Segment" )
+@title(({ features }) => features && features.model.name || "Segment" )
 class SegmentXRay extends Component {
 
     props: Props
@@ -67,9 +67,9 @@ class SegmentXRay extends Component {
     }
 
     componentWillUnmount() {
-        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.features` isn't same
         // for all xray types and if switching to different kind of xray (= rendering different React container)
-        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        // without resetting the state fails because `state.xray.features` subproperty lookups fail
         this.props.initialize();
     }
 
@@ -85,10 +85,10 @@ class SegmentXRay extends Component {
     }
 
     render () {
-        const { constituents, xray, params, isLoading, error } = this.props
+        const { constituents, features, params, isLoading, error } = this.props
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
+                loading={isLoading || !hasXray(features)}
                 error={error}
                 loadingMessages={xrayLoadingMessages}
                 loadingScenes={[
@@ -103,17 +103,17 @@ class SegmentXRay extends Component {
                                 <div>
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration shadowed rounded"
-                                        to={`/xray/table/${xray.table.id}/approximate`}
+                                        to={`/xray/table/${features.table.id}/approximate`}
                                     >
-                                        {xray.table.display_name}
+                                        {features.table.display_name}
                                     </Link>
                                     <h1 className="mt2 flex align-center">
-                                        {xray.segment.name}
+                                        {features.model.name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                         <span className="text-grey-3">X-ray</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
-                                        {xray.segment.description}
+                                        {features.model.description}
                                     </p>
                                 </div>
                                 <div className="ml-auto flex align-center">
@@ -121,17 +121,17 @@ class SegmentXRay extends Component {
                                     <CostSelect
                                         currentCost={params.cost}
                                         xrayType='segment'
-                                        id={xray.segment.id}
+                                        id={features.model.id}
                                     />
                                 </div>
                             </div>
                             <div>
                                 <Link
-                                    to={`/xray/compare/segment/${xray.segment.id}/table/${xray.table.id}/approximate`}
+                                    to={`/xray/compare/segment/${features.model.id}/table/${features.table.id}/approximate`}
                                     className="Button bg-white text-brand-hover no-decoration"
                                 >
                                     <Icon name="compare" className="mr1" />
-                                    {`Compare with all ${xray.table.display_name}`}
+                                    {`Compare with all ${features.table.display_name}`}
                                 </Link>
                             </div>
                             <div className="mt2">
