@@ -104,6 +104,12 @@ var config = module.exports = {
     },
 
     plugins: [
+        new webpack.optimize.CommonsChunkPlugin({
+            name: 'vendor',
+            minChunks (module) {
+                return module.context && module.context.indexOf('node_modules') >= 0
+            }
+        }),
         new UnusedFilesWebpackPlugin({
             globOptions: {
                 ignore: [
@@ -121,7 +127,7 @@ var config = module.exports = {
         new HtmlWebpackPlugin({
             filename: '../../index.html',
             chunksSortMode: 'manual',
-            chunks: ["styles", "app-main"],
+            chunks: ["vendor", "styles", "app-main"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
@@ -129,7 +135,7 @@ var config = module.exports = {
         new HtmlWebpackPlugin({
             filename: '../../public.html',
             chunksSortMode: 'manual',
-            chunks: ["styles", "app-public"],
+            chunks: ["vendor", "styles", "app-public"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
@@ -137,7 +143,7 @@ var config = module.exports = {
         new HtmlWebpackPlugin({
             filename: '../../embed.html',
             chunksSortMode: 'manual',
-            chunks: ["styles", "app-embed"],
+            chunks: ["vendor", "styles", "app-embed"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
