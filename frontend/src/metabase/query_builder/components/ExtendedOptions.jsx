@@ -43,6 +43,7 @@ export default class ExtendedOptions extends Component {
         features: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object,
+        setSortLimitSectionRef: PropTypes.func,
         setDatasetQuery: PropTypes.func.isRequired
     };
 
@@ -178,13 +179,13 @@ export default class ExtendedOptions extends Component {
     }
 
     render() {
-        const { features } = this.props;
+        const { features, setSortLimitSectionRef } = this.props;
         if (!features.sort && !features.limit) return null;
 
         const onClick = this.props.tableMetadata ? () => this.setState({isOpen: true}) : null;
 
         return (
-            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center" ref={setSortLimitSectionRef}>
                 <span className={cx("EllipsisButton no-decoration text-grey-1 px1", {"cursor-pointer": onClick})} onClick={onClick}>…</span>
                 {this.renderPopover()}
                 {this.renderExpressionWidget()}
