@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
     createSavedQuestion
 } from "__support__/integrated_tests";
@@ -8,7 +8,7 @@ import { click } from "__support__/enzyme_utils"
 import React from 'react';
 import { mount } from "enzyme";
 import {
-    orders_past_30_days_segment,
+    orders_past_300_days_segment,
     unsavedOrderCountQuestion,
     vendor_count_metric
 } from "__support__/sample_dataset_fixture";
@@ -30,14 +30,14 @@ describe("HomepageApp", () => {
     let metricId = null;
 
     beforeAll(async () => {
-        await login()
+        useSharedAdminLogin()
 
         // Create some entities that will show up in the top of activity feed
         // This test doesn't care if there already are existing items in the feed or not
         // Delays are required for having separable creation times for each entity
         questionId = (await createSavedQuestion(unsavedOrderCountQuestion)).id()
         await delay(100);
-        segmentId = (await SegmentApi.create(orders_past_30_days_segment)).id;
+        segmentId = (await SegmentApi.create(orders_past_300_days_segment)).id;
         await delay(100);
         metricId = (await MetricApi.create(vendor_count_metric)).id;
         await delay(100);
@@ -67,8 +67,8 @@ describe("HomepageApp", () => {
             expect(activityItems.at(0).text()).toMatch(/Vendor count/);
             expect(activityStories.at(0).text()).toMatch(/Tells how many vendors we have/);
 
-            expect(activityItems.at(1).text()).toMatch(/Past 30 days/);
-            expect(activityStories.at(1).text()).toMatch(/Past 30 days created at/);
+            expect(activityItems.at(1).text()).toMatch(/Past 300 days/);
+            expect(activityStories.at(1).text()).toMatch(/Past 300 days created at/);
 
             // eslint-disable-next-line no-irregular-whitespace
             expect(activityItems.at(2).text()).toMatch(/You saved a question about Orders/);

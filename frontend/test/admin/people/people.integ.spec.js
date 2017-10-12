@@ -1,7 +1,7 @@
 // Converted from a Selenium E2E test
 import {
     createTestStore,
-    login
+    useSharedAdminLogin
 } from "__support__/integrated_tests";
 import {
     click,
@@ -27,7 +27,7 @@ describe("admin/people", () => {
     let createdUserId = null;
 
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     })
 
     describe("user management", () => {

@@ -19,6 +19,16 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (impl/insert-categorical! histogram (when x 1) x)))
 
+(defn histogram-aggregated
+  "Transducer that summarizes preaggregated data with a histogram."
+  [fx fw]
+  (fn
+    ([] (impl/create))
+    ([^Histogram histogram] histogram)
+    ([^Histogram histogram e]
+     (let [x (fx e)]
+       (impl/insert-categorical! histogram (when x (fw e)) x)))))
+
 (def ^{:arglists '([^Histogram histogram])} categorical?
   "Returns true if given histogram holds categorical values."
   (comp (complement #{:none :unset}) impl/target-type))
