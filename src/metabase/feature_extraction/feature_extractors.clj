@@ -420,7 +420,7 @@
                                                          {:to :now
                                                           :from (t/date-time 2017)
                                                          :shape "linear"}]}
-                               :regime-change2 (format "Your data can be split into 3 periods of growth: a linear peried until 2015, an exponental period from 2015 to 2017, and a linear period from 2017 until now.")}}
+                               :regime-change2 (format "Your data can be split into 3 periods of growth: a linear period until 2015, an exponental period from 2015 to 2017, and a linear period from 2017 until now.")}}
                (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
                  {:YoY (rolling-window-growth 365 query)
