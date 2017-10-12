@@ -154,10 +154,10 @@
   x-ray :type)
 
 (defmethod x-ray :default
-  [{:keys [field] :as features}]
+  [{:keys [model] :as features}]
   (-> features
       (dissoc :has-nils? :all-distinct?)
-      (u/update-when :histogram (partial histogram->dataset field))))
+      (u/update-when :histogram (partial histogram->dataset model))))
 
 (defmulti
   ^{:doc "Feature vector for comparison/difference purposes."
@@ -166,7 +166,7 @@
 
 (defmethod comparison-vector :default
   [features]
-  (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
+  (dissoc features :type :model :has-nils? :all-distinct? :percentiles))
 
 (def ^:private percentiles (range 0 1 0.1))
 
@@ -192,7 +192,7 @@
 (defn- field-metadata-extractor
   [field]
   (fn [_]
-    {:field field
+    {:model field
      :type  (field-type field)}))
 
 (defmethod feature-extractor Num
@@ -253,9 +253,9 @@
                 :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
 
 (defmethod x-ray Num
-  [{:keys [field count] :as features}]
+  [{:keys [model count] :as features}]
   (-> features
-      (update :histogram (partial histogram->dataset field))
+      (update :histogram (partial histogram->dataset model))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
               :positive-definite? :var>sd? :uniqueness :min-vs-max)))
 
@@ -424,8 +424,8 @@
                      [x (+ (* k x) c)])))
 
 (defmethod x-ray [DateTime Num]
-  [{:keys [field series] :as features}]
-  (let [x-field (first field)]
+  [{:keys [model series] :as features}]
+  (let [x-field (first model)]
     (-> features
         (dissoc :series)
         (update :growth-series (partial series->dataset from-double
@@ -443,13 +443,13 @@
                               :base_type    :type/Float}]))
         (update-in [:seasonal-decomposition :seasonal]
                    (partial series->dataset from-double
-                            [(first field)
+                            [x-field
                              {:name         "SEASONAL"
                               :display_name "Seasonal component"
                               :base_type    :type/Float}]))
         (update-in [:seasonal-decomposition :residual]
                    (partial series->dataset from-double
-                            [(first field)
+                            [x-field
                              {:name         "RESIDUAL"
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
@@ -538,13 +538,13 @@
                                       [k (/ (* v baseline) (weights k))])))))
 
 (defmethod x-ray DateTime
-  [{:keys [field earliest latest histogram] :as features}]
+  [{:keys [model earliest latest histogram] :as features}]
   (let [earliest (from-double earliest)
         latest   (from-double latest)]
     (-> features
         (assoc  :earliest          earliest)
         (assoc  :latest            latest)
-        (update :histogram         (partial histogram->dataset from-double field))
+        (update :histogram         (partial histogram->dataset from-double model))
         (update :percentiles       (partial m/map-vals from-double))
         (update :histogram-hour    (somef
                                     (partial histogram->dataset
@@ -601,7 +601,7 @@
       {:count     total-count
        :nil%      (/ nil-count (max total-count 1))
        :has-nils? (pos? nil-count)
-       :type      [nil (field-type field)]}))))
+       :type      nil}))))
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)

@@ -64,27 +64,18 @@
        (not-any? #{:breakout :aggregation} (keys query))))
 
 (defmethod comparables (type Table)
-  [{table-id :id :as table}]
+  [table]
   (let [shards (shards table)]
     (concat
-     (for [{:keys [id]} shards :when (not= id table-id)]
-       {:id    id
-        :model :table})
-     (for [{:keys [id]} (db/select Segment
-                          :table_id [:in (map :id shards)])]
-       {:id    id
-        :model :segment})
-     (for [{:keys [id] :as card} (db/select Card
-                                   :table_id [:in (map :id shards)])
-           :when (full-listing? card)]
-       {:id    id
-        :model :card}))))
+     (remove #{table} shards)
+     (db/select Segment :table_id [:in (map :id shards)])
+     (->> (db/select Card :table_id [:in (map :id shards)])
+          (filter full-listing?)))))
 
 (defmethod comparables (type Segment)
-  [{:keys [table_id id]}]
-  (remove #{{:id id, :model :segment}} (conj (comparables (Table table_id))
-                                             {:id    table_id
-                                              :model :table})))
+  [{:keys [table_id id] :as segment}]
+  (remove #{segment} (let [table (Table table_id)]
+                       (conj (comparables table) table))))
 
 (def ^:private ^{:arglists '([card])} breakout-fingerprint
   (comp :breakout :query :dataset_query))
@@ -92,26 +83,20 @@
 (defmethod comparables (type Card)
   [{:keys [table_id id] :as card}]
   (->> (concat
-        (for [{:keys [id]} (->> (db/select-ids Card :table_id table_id)
-                                (filter (comp #{(breakout-fingerprint card)}
-                                              breakout-fingerprint)))]
-          {:id    id
-           :model :card})
+        (->> (db/select Card :table_id table_id)
+             (filter (comp #{(breakout-fingerprint card)} breakout-fingerprint)))
         (when (full-listing? card)
-          (conj (comparables (Table table_id))
-                {:id    table_id
-                 :model :table})))
-       (remove #{{:id id, :model :card}})))
+          (let [table (Table table_id)]
+            (conj (comparables table) table))))
+       (remove #{card})))
 
 (defmethod comparables (type Field)
   [{:keys [id base_type special_type table_id]}]
-  (for [field-id (db/select-ids  Field
-                   :table_id     [:in (->> table_id Table shards (map :id))]
-                   :base_type    (u/keyword->qualified-name base_type)
-                   :special_type (u/keyword->qualified-name special_type)
-                   :id           [:not= id])]
-    {:model :field
-     :id    field-id}))
+  (db/select Field
+    :table_id     [:in (->> table_id Table shards (map :id))]
+    :base_type    (u/keyword->qualified-name base_type)
+    :special_type (u/keyword->qualified-name special_type)
+    :id           [:not= id]))
 
 (defmulti
   ^{:doc "Given a model, fetch the corresponding dataset and compute its features.
@@ -141,10 +126,10 @@
 
 (defmethod extract-features (type Field)
   [opts field]
-  (let [{:keys [field row]} (values/field-values field (extract-query-opts opts))]
+  (let [{:keys [col row]} (values/field-values field (extract-query-opts opts))]
     {:features    (->> row
-                       (field->features opts field)
-                       (merge {:table (Table (:table_id field))}))
+                       (field->features opts col)
+                       (merge {:table (Table (:table_id col))}))
      :sample?     (sampled? opts row)
      :comparables (comparables field)}))
 
@@ -154,7 +139,7 @@
                                      (merge (extract-query-opts opts)
                                             {:source-table (:id table)}))]
     {:constituents (dataset->features opts dataset)
-     :features     {:table table}
+     :features     {:model table}
      :sample?      (sampled? opts dataset)
      :comparables  (comparables table)}))
 
@@ -189,7 +174,7 @@
                                                   (assoc opts :query))
                                              fields
                                              (ensure-aligment fields cols rows)))
-                          {:card  card
+                          {:model card
                            :table (Table (:table_id card))})
      :dataset      dataset
      :sample?      (sampled? opts dataset)
@@ -201,28 +186,32 @@
                                      (merge (extract-query-opts opts)
                                             (:definition segment)))]
     {:constituents (dataset->features opts dataset)
-     :features     {:table   (Table (:table_id segment))
-                    :segment segment}
+     :features     {:table (Table (:table_id segment))
+                    :model segment}
      :sample?      (sampled? opts dataset)
      :comparables  (comparables segment)}))
 
 (defn- trim-decimals
-  [decimal-places features]
+  [decimal-places x]
+  (u/round-to-decimals (- decimal-places (min (u/order-of-magnitude x) 0)) x))
+
+(defn- humanize-values
+  [features]
   (postwalk
    (fn [x]
-     (if (float? x)
-       (u/round-to-decimals (+ (- (min (u/order-of-magnitude x) 0))
-                               decimal-places)
-                            x)
-       x))
+     (cond
+       (float? x)                         (trim-decimals 2 x)
+       (instance? clojure.lang.IRecord x) (assoc x :type-tag (type x))
+       :else                              x))
    features))
 
 (defn x-ray
   "Turn feature vector into an x-ray."
   [features]
-  (let [prettify (comp add-descriptions (partial trim-decimals 2) fe/x-ray)]
+  (let [prettify (comp add-descriptions humanize-values fe/x-ray)]
     (-> features
-        (u/update-when :features prettify)
+        (update :features prettify)
+        (update :comparables humanize-values)
         (u/update-when :constituents (fn [constituents]
                                        (if (sequential? constituents)
                                          (map x-ray constituents)
