@@ -87,7 +87,7 @@
 }
 
 .Query-filter.selected {
-    border-color: var(--purple-light-color);
+    border-color: var(--purple-color);
 }
 
 .Filter-section {

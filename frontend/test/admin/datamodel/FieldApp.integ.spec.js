@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
 
@@ -70,7 +70,7 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
 
 describe("FieldApp", () => {
     beforeAll(async () => {
-        await login()
+        useSharedAdminLogin()
     })
 
     describe("name settings", () => {

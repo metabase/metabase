@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     whenOffline,
     createSavedQuestion,
     createTestStore
@@ -87,7 +87,7 @@ const initQBWithReviewsTable = initQbWithDbAndTable(1, 4)
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
-        await login()
+        useSharedAdminLogin()
     })
 
     describe("visualization settings", () => {

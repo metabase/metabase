@@ -1,6 +1,6 @@
 import {
     createTestStore,
-    login
+    useSharedAdminLogin
 } from "__support__/integrated_tests";
 import {
     click,
@@ -22,7 +22,7 @@ import ArchivedItem from "metabase/components/ArchivedItem";
 
 describe("dashboards list", () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     })
 
     afterAll(async () => {

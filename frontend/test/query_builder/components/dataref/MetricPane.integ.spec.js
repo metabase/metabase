@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils"
@@ -26,7 +26,7 @@ describe("MetricPane", () => {
     let metricId = null;
 
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
         metricId = (await MetricApi.create(vendor_count_metric)).id;
         store = await createTestStore()
 
