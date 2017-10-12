@@ -4,6 +4,7 @@ import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
 import { Link } from 'react-router'
+import { push } from "react-router-redux";
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
@@ -16,7 +17,8 @@ import {
     getConstituents,
     getLoadingStatus,
     getError,
-    getFeatures
+    getFeatures,
+    getComparables
 } from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
@@ -26,6 +28,7 @@ import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
 
 import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import Select, { Option } from "metabase/components/Select";
 
 type Props = {
     fetchXray: () => void,
@@ -44,15 +47,17 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    features:           getFeatures(state),
+    features:       getFeatures(state),
     constituents:   getConstituents(state),
+    comparables:    getComparables(state),
     isLoading:      getLoadingStatus(state),
     error:          getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray
+    fetchXray,
+    push
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -84,8 +89,21 @@ class SegmentXRay extends Component {
         }
     }
 
+    navigateToComparison(comparable) {
+        const { features, push } = this.props
+
+        const currentModelType = features.model["type-tag"].split(".")[2]
+        const comparableModelType = comparable["type-tag"].split(".")[2]
+
+        if (currentModelType === comparableModelType) {
+            push(`/xray/compare/${currentModelType}s/${features.model.id}/${comparable.id}/approximate`)
+        } else {
+            push(`/xray/compare/${currentModelType}/${features.model.id}/${comparableModelType}/${comparable.id}/approximate`)
+        }
+    }
+
     render () {
-        const { constituents, features, params, isLoading, error } = this.props
+        const { constituents, features, comparables, params, isLoading, error, push } = this.props
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasXray(features)}
@@ -126,13 +144,34 @@ class SegmentXRay extends Component {
                                 </div>
                             </div>
                             <div>
-                                <Link
-                                    to={`/xray/compare/segment/${features.model.id}/table/${features.table.id}/approximate`}
-                                    className="Button bg-white text-brand-hover no-decoration"
-                                >
-                                    <Icon name="compare" className="mr1" />
-                                    {`Compare with all ${features.table.display_name}`}
-                                </Link>
+                                { comparables &&
+                                    <Select
+                                        // to={`/xray/compare/segment/${features.model.id}/table/${features.table.id}/approximate`}
+                                        value={null}
+                                        // TODO: Use links instead of this kind of logic
+                                        onChange={e => this.navigateToComparison(e.target.value)}
+                                        triggerElement={
+                                            <div className="Button bg-white text-brand-hover no-decoration">
+                                                <Icon name="compare" className="mr1" />
+                                                {`Compare with...`}
+                                                <Icon name="chevrondown" size={12} className="ml1" />
+                                            </div>
+                                        }
+                                    >
+                                        {/* TODO: Should include the current entity to comparison list */}
+                                        { comparables.map((comparableModel, index) =>
+                                            <Option
+                                                key={index}
+                                                value={comparableModel}
+                                                // icon={collection.id != null ? "collection" : null}
+                                                // iconColor={collection.color}
+                                                // iconSize={18}
+                                            >
+                                                {comparableModel.name}
+                                            </Option>
+                                        )}
+                                    </Select>
+                                }
                             </div>
                             <div className="mt2">
                                 <Heading heading="Fields in this segment" />

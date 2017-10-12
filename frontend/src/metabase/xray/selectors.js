@@ -13,6 +13,8 @@ export const getXray = (state) =>
 export const getFeatures = (state) =>
     state.xray.xray && state.xray.xray.features
 
+export const getComparables = (state) =>
+    state.xray.xray && state.xray.xray.comparables
 
 export const getConstituents = createSelector(
     [getXray],

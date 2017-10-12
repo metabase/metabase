@@ -65,8 +65,6 @@ class SegmentComparison extends Component {
             params,
         } = this.props
 
-        console.log(fields);
-
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading || !hasComparison(comparison)}
