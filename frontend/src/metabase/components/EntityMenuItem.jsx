@@ -1,16 +1,38 @@
+import cxs from 'cxs'
 import React from 'react'
-import Icon from 'metabase/components/Icon'
 import { Link } from 'react-router'
 
-const ITEM_CLASSES = 'flex align-center p2 text-brand-hover no-decoration cursor-pointer'
+import Icon from 'metabase/components/Icon'
+
+const itemClasses = cxs({
+    display: 'flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+    color: '#616D75',
+    paddingLeft: '1.45em',
+    paddingRight: '1.45em',
+    paddingTop: '0.85em',
+    paddingBottom: '0.85em',
+    textDecoration: 'none',
+    transition: 'all 300ms linear',
+    ':hover': {
+        color: '#509ee3'
+    },
+    '> .Icon': {
+        color: '#BCC5CA'
+    },
+    ':hover > .Icon': {
+        color: '#509ee3'
+    }
+})
 
 const LinkMenuItem = ({ children, link }) =>
-    <Link className={ITEM_CLASSES} to={link}>
+    <Link className={itemClasses} to={link}>
         {children}
     </Link>
 
 const ActionMenuItem = ({ children, action }) =>
-    <div className={ITEM_CLASSES} onClick={action}>
+    <div className={itemClasses} onClick={action}>
         {children}
     </div>
 
