@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 
@@ -31,7 +31,7 @@ import _ from "underscore";
 // Currently a lot of duplication with SegmentPane tests
 describe("DatabaseEditApp", () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     })
 
     describe("Connection tab", () => {

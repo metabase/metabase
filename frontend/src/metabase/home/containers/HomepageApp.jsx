@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { t } from 'c-3po'
 
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal.jsx";
@@ -90,7 +91,7 @@ export default class HomepageApp extends Component {
                 <div className="flex">
                     <div className="wrapper">
                         <div className="Layout-mainColumn pl2">
-                          <div className="pt4 h2 text-normal ml2">Activity</div>
+                          <div className="pt4 h2 text-normal ml2">{t`Activity`}</div>
                           <Activity {...this.props} />
                         </div>
                     </div>

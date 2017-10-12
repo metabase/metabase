@@ -3,7 +3,7 @@ import React from "react";
 import cx from "classnames";
 
 // eslint-disable-next-line import/no-commonjs
-let colorStyles = require("!style!css?modules!postcss!metabase/css/core/colors.css");
+let colorStyles = require("!style-loader!css-loader?modules!postcss-loader!metabase/css/core/colors.css");
 
 const ColorsApp = () =>
     <div className="p2">

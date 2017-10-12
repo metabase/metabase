@@ -63,9 +63,42 @@
   [a b]
   {:difference (if (= a b) 0 1)})
 
+(defn- comparable-segment
+  [a b]
+  (loop [[[ax _] & a-rest :as a] a
+         [[bx _] & b-rest :as b] b]
+    (cond
+      (not (and ax bx)) nil
+      (= ax bx)         (loop [[[ax ay] & a] a
+                               [[bx by] & b] b
+                               ays           []
+                               bys           []
+                               xs            []]
+                          (cond
+                            (not (and ax bx))
+                            [xs ays bys]
+
+                            (= ax bx)
+                            (recur a b (conj ays ay) (conj bys by) (conj xs ax))
+
+                            :else nil))
+      (> ax bx)         (recur a b-rest)
+      (< ax bx)         (recur a-rest b))))
+
 (defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
   [a b]
-  {:difference (* 0.5 (cosine-distance a b))})
+  (let [[t a b]    (comparable-segment a b)
+        [corr cov] (transduce identity (redux/juxt
+                                        (stats/correlation first second)
+                                        (stats/covariance first second))
+                              (map vector a b))]
+    {:correlation  corr
+     :covariance   cov
+     :significant? (some-> corr math/abs (> 0.3))
+     :difference   (or (cosine-distance a b) 0.5)
+     :deltas       (map (fn [t a b]
+                          [t (- a b)])
+                        t a b)}))
 
 (defmethod difference [nil Object]
   [a b]
@@ -165,8 +198,9 @@
   "Pairwise differences of feature vectors `a` and `b`."
   [a b]
   (into {}
-    (map (fn [[k a] [_ b]]
-           [k (difference a b)])
+    (map (fn [[ka va] [kb vb]]
+           (assert (= ka kb) "Incomparable models.")
+           [ka (difference va vb)])
          (flatten-map (fe/comparison-vector a))
          (flatten-map (fe/comparison-vector b)))))
 
@@ -175,7 +209,6 @@
 (defn features-distance
   "Distance metric between feature vectors `a` and `b`."
   [a b]
-  {:pre [(= (:type a) (:type b))]}
   (let [differences (pairwise-differences a b)]
     {:distance         (transduce (keep (comp :difference val))
                                   (redux/post-complete

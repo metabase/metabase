@@ -16,6 +16,7 @@
              [card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
+             [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.query-processor :as qp]
@@ -24,25 +25,6 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
-
-(defn- field->features
-  "Transduce given column with corresponding feature extractor."
-  [opts field data]
-  (transduce identity (fe/feature-extractor opts field) data))
-
-(defn- dataset->features
-  "Transuce each column in given dataset with corresponding feature extractor."
-  [opts {:keys [rows cols]}]
-  (transduce identity
-             (redux/fuse
-              (into {}
-                (for [[i field] (m/indexed cols)
-                      :when (not (or (:remapped_to field)
-                                     (= :type/PK (:special_type field))))]
-                  [(:name field) (redux/pre-step
-                                  (fe/feature-extractor opts field)
-                                  #(nth % i))])))
-             rows))
 
 (defmulti
   ^{:doc "Given a model, return a list of models it can be compared to."
@@ -129,7 +111,8 @@
 (defmethod extract-features (type Field)
   [opts field]
   (let [{:keys [col row]} (values/field-values field (extract-query-opts opts))]
-    {:features    (field->features opts col row)
+    {:features    (merge (fe/field->features opts col row)
+                         {:model col})
      :sample?     (sampled? opts row)
      :comparables (comparables field)}))
 
@@ -138,7 +121,7 @@
   (let [dataset (values/query-values (metadata/db-id table)
                                      (merge (extract-query-opts opts)
                                             {:source-table (:id table)}))]
-    {:constituents (dataset->features opts dataset)
+    {:constituents (fe/dataset->features opts dataset)
      :features     {:model table}
      :sample?      (sampled? opts dataset)
      :comparables  (comparables table)}))
@@ -166,26 +149,31 @@
         fields                          [(first breakout)
                                          (or (first aggregation)
                                              (second breakout))]]
-    {:constituents (dataset->features opts dataset)
+    {:constituents (fe/dataset->features opts dataset)
      :features     (merge (when (every? some? fields)
-                            (field->features (->> card
-                                                  :dataset_query
-                                                  :query
-                                                  (assoc opts :query))
-                                             fields
-                                             (ensure-aligment fields cols rows)))
+                            (fe/field->features
+                             (->> card
+                                  :dataset_query
+                                  :query
+                                  (assoc opts :query))
+                             fields
+                             (ensure-aligment fields cols rows)))
                           {:model card
                            :table (Table (:table_id card))})
      :dataset      dataset
      :sample?      (sampled? opts dataset)
      :comparables  (comparables card)}))
 
+(defmethod extract-features (type Query)
+  [opts query]
+  (extract-features opts (with-meta query {:type (type Card)})))
+
 (defmethod extract-features (type Segment)
   [opts segment]
   (let [dataset (values/query-values (metadata/db-id segment)
                                      (merge (extract-query-opts opts)
                                             (:definition segment)))]
-    {:constituents (dataset->features opts dataset)
+    {:constituents (fe/dataset->features opts dataset)
      :features     {:table (Table (:table_id segment))
                     :model segment}
      :sample?      (sampled? opts dataset)
@@ -229,7 +217,12 @@
 
 (defn- top-contributors
   [comparisons]
-  (if (map? comparisons)
+  (if (:top-contributors comparisons)
+    (->> comparisons
+         :top-contributors
+         (map (fn [[feature difference]]
+                {:feature    feature
+                 :difference difference})))
     (->> comparisons
          (comparison/head-tails-breaks (comp :distance val))
          (mapcat (fn [[field {:keys [top-contributors distance]}]]
@@ -237,12 +230,7 @@
                      {:feature      feature
                       :field        field
                       :contribution (* (math/sqrt distance) difference)})))
-         (comparison/head-tails-breaks :contribution))
-    (->> comparisons
-         :top-contributors
-         (map (fn [[feature difference]]
-                {:feature    feature
-                 :difference difference})))))
+         (comparison/head-tails-breaks :contribution))))
 
 (defn compare-features
   "Compare feature vectors of two models."

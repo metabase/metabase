@@ -14,4 +14,7 @@
 
 @property (readonly) NSUInteger port;
 
+- (void)stopMetabaseTask;
+- (void)startMetabaseTask;
+
 @end
