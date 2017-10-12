@@ -38,9 +38,9 @@ type Props = {
     fetchXray: () => void,
     initialize: () => {},
     isLoading: boolean,
-    xray: {
+    features: {
+        model: Field,
         table: Table,
-        field: Field,
         histogram: {
             value: {}
         }
@@ -53,7 +53,7 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    xray: getFeatures(state),
+    features: getFeatures(state),
     isLoading: getLoadingStatus(state),
     error: getError(state)
 })
@@ -64,7 +64,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.field.display_name || "Field")
+@title(({ features }) => features && features.model.display_name || "Field")
 class FieldXRay extends Component {
     props: Props
 
@@ -92,11 +92,11 @@ class FieldXRay extends Component {
     }
 
     render () {
-        const { xray, params, isLoading, error } = this.props
+        const { features, params, isLoading, error } = this.props
 
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
+                loading={isLoading || !hasXray(features)}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}
@@ -109,13 +109,13 @@ class FieldXRay extends Component {
                                 <div className="full">
                                     <Link
                                         className="my2 px2 text-bold text-brand-hover inline-block bordered bg-white p1 h4 no-decoration rounded shadowed"
-                                        to={`/xray/table/${xray.table.id}/approximate`}
+                                        to={`/xray/table/${features.table.id}/approximate`}
                                     >
-                                        {xray.table.display_name}
+                                        {features.table.display_name}
                                     </Link>
                                     <div className="mt2 flex align-center">
                                         <h1 className="flex align-center">
-                                            {xray.field.display_name}
+                                            {features.model.display_name}
                                             <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                             <span className="text-grey-3">X-ray</span>
                                         </h1>
@@ -123,13 +123,13 @@ class FieldXRay extends Component {
                                             <h3 className="mr2 text-grey-3">Fidelity</h3>
                                             <CostSelect
                                                 xrayType='field'
-                                                id={xray.field.id}
+                                                id={features.model.id}
                                                 currentCost={params.cost}
                                             />
                                         </div>
                                     </div>
                                     <p className="mt1 text-paragraph text-measure">
-                                        {xray.field.description}
+                                        {features.model.description}
                                     </p>
                                 </div>
                             </div>
@@ -138,32 +138,32 @@ class FieldXRay extends Component {
                                 <div className="bg-white bordered shadowed">
                                     <div className="lg-p4">
                                         <div style={{ height: 300 }}>
-                                            { xray.histogram.value &&
-                                                <Histogram histogram={xray.histogram.value} />
+                                            { features.histogram.value &&
+                                                <Histogram histogram={features.histogram.value} />
                                             }
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            { isDate(xray.field) && <Periodicity xray={xray} /> }
+                            { isDate(features.model) && <Periodicity xray={features} /> }
 
                             <StatGroup
                                 heading="Values overview"
-                                xray={xray}
+                                xray={features}
                                 stats={VALUES_OVERVIEW}
                             />
 
                             <StatGroup
                                 heading="Statistical overview"
-                                xray={xray}
+                                xray={features}
                                 showDescriptions
                                 stats={STATS_OVERVIEW}
                             />
 
                             <StatGroup
                                 heading="Robots"
-                                xray={xray}
+                                xray={features}
                                 showDescriptions
                                 stats={ROBOTS}
                             />

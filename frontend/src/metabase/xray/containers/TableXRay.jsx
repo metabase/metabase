@@ -41,7 +41,7 @@ type Props = {
 }
 
 const mapStateToProps = state => ({
-    xray: getFeatures(state),
+    features: getFeatures(state),
     constituents: getConstituents(state),
     isLoading: getLoadingStatus(state),
     error: getError(state)
@@ -53,7 +53,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.table.display_name || "Table")
+@title(({ features }) => features && features.model.display_name || "Table")
 class TableXRay extends Component {
 
     props: Props
@@ -83,11 +83,11 @@ class TableXRay extends Component {
     }
 
     render () {
-        const { constituents, xray, params, isLoading, error } = this.props
+        const { constituents, features, params, isLoading, error } = this.props
 
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
+                loading={isLoading || !hasXray(features)}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}
@@ -99,18 +99,18 @@ class TableXRay extends Component {
                             <div className="my4 flex align-center py2">
                                 <div>
                                     <h1 className="mt2 flex align-center">
-                                        {xray.table.display_name}
+                                        {features.model.display_name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                         <span className="text-grey-3">XRay</span>
                                     </h1>
-                                    <p className="m0 text-paragraph text-measure">{xray.table.description}</p>
+                                    <p className="m0 text-paragraph text-measure">{features.model.description}</p>
                                 </div>
                                 <div className="ml-auto flex align-center">
                                    <h3 className="mr2">Fidelity:</h3>
                                     <CostSelect
                                         xrayType='table'
                                         currentCost={params.cost}
-                                        id={xray.table.id}
+                                        id={features.model.id}
                                     />
                                 </div>
                             </div>
