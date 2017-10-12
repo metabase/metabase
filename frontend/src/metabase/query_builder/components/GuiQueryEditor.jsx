@@ -332,7 +332,7 @@ export default class GuiQueryEditor extends Component {
         }
 
         return (
-            <div className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1" ref="viewSection">
+            <div className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1" ref="groupedBySection">
                 <span className="GuiBuilder-section-label Query-label">Grouped By</span>
                 {this.renderBreakouts()}
             </div>
