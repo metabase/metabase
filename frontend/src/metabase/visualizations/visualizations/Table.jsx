@@ -36,7 +36,7 @@ export default class Table extends Component {
     static identifier = "table";
     static iconName = "table";
 
-    static minSize = { width: 4, height: 4 };
+    static minSize = { width: 4, height: 3 };
 
     static isSensible(cols, rows) {
         return true;

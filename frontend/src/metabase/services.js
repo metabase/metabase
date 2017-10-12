@@ -277,4 +277,8 @@ export const GeoJSONApi = {
     get:                         GET("/api/geojson/:id"),
 };
 
+export const I18NApi = {
+    locale:                      GET("/app/locales/:locale.json"),
+}
+
 global.services = exports;

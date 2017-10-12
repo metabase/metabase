@@ -567,8 +567,26 @@
     cardinality-extractor
     (field-metadata-extractor field))))
 
+(defn field->features
+  "Transduce given column with corresponding feature extractor."
+  [opts field data]
+  (transduce identity (feature-extractor opts field) data))
+
+(defn dataset->features
+  "Transuce each column in given dataset with corresponding feature extractor."
+  [opts {:keys [rows cols]}]
+  (transduce identity
+             (redux/fuse
+              (into {}
+                (for [[i field] (m/indexed cols)
+                      :when (not (or (:remapped_to field)
+                                     (= :type/PK (:special_type field))))]
+                  [(:name field) (redux/pre-step (feature-extractor opts field)
+                                                 #(nth % i))])))
+             rows))
+
 (defmethod feature-extractor :default
-  [_ field]
+  [opts field]
   (redux/post-complete
    (redux/fuse {:total-count stats/count
                 :nil-count   (redux/with-xform stats/count (filter nil?))})

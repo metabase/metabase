@@ -45,3 +45,5 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /build.xml
 /test-report-*
 /crate-*
+*.po~
+/locales/metabase-*.pot
