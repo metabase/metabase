@@ -23,8 +23,8 @@ export const examples = {
                 items={[
                     { title: "Edit this question", icon: "pencil", action: () => alert('Action type') },
                     { title: "View revision history", icon: "history", link: '/derp' },
-                    { title: "Move", icon: "move", action: () => alert('Another action type') },
-                    { title: "Archive", icon: "archive" }
+                    { title: "Move", icon: "move", action: () => alert('Move action') },
+                    { title: "Archive", icon: "archive", action: () => alert('Archive action') }
                 ]}
             />
         </DemoAlignRight>
@@ -36,7 +36,7 @@ export const examples = {
                 items={[
                     { title: "Add to dashboard", icon: "addtodash", action: () => alert('Action type') },
                     { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "embedding", action: () => alert('Another action type') },
+                    { title: "Sharing and embedding", icon: "warning", action: () => alert('Another action type') },
                 ]}
             />
         </DemoAlignRight>
@@ -46,9 +46,8 @@ export const examples = {
             <EntityMenu
                 triggerIcon='grabber'
                 items={[
-                    { title: "Add to dashboard", icon: "add", action: () => alert('Action type') },
-                    { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "embedding", action: () => alert('Another action type') },
+                    { title: "Get alerts about this", icon: "warning", action: () => alert('Get alerts about this') },
+                    { title: "View the SQL", icon: "sql", link: '/download' },
                 ]}
             />
         </DemoAlignRight>
@@ -60,25 +59,23 @@ export const examples = {
                 items={[
                     { title: "Edit this question", icon: "pencil", action: () => alert('Action type') },
                     { title: "View revision history", icon: "history", link: '/derp' },
-                    { title: "Move", icon: "move", action: () => alert('Another action type') },
-                    { title: "Archive", icon: "archive" }
+                    { title: "Move", icon: "move", action: () => alert('Move action') },
+                    { title: "Archive", icon: "archive", action: () => alert('Archive action') }
                 ]}
             />
             <EntityMenu
                 triggerIcon='share'
                 items={[
-                    { title: "Edit this question", icon: "pencil", action: () => alert('Action type') },
-                    { title: "View revision history", icon: "history", link: '/derp' },
-                    { title: "Move", icon: "move", action: () => alert('Another action type') },
-                    { title: "Archive", icon: "archive" }
+                    { title: "Add to dashboard", icon: "addtodash", action: () => alert('Action type') },
+                    { title: "Download results", icon: "download", link: '/download' },
+                    { title: "Sharing and embedding", icon: "warning", action: () => alert('Another action type') },
                 ]}
             />
             <EntityMenu
                 triggerIcon='grabber'
                 items={[
-                    { title: "Add to dashboard", icon: "add", action: () => alert('Action type') },
-                    { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "embedding", action: () => alert('Another action type') },
+                    { title: "Get alerts about this", icon: "warning", action: () => alert('Get alerts about this') },
+                    { title: "View the SQL", icon: "sql", link: '/download' },
                 ]}
             />
         </DemoAlignRight>
