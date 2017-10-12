@@ -44,6 +44,11 @@ class EntityMenu extends Component {
                     open={open}
                 />
                 { open && (
+                    /* Note: @kdoh 10/12/17
+                     * React Motion has a flow type problem with children see
+                     * https://github.com/chenglou/react-motion/issues/375
+                     * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
+                    * $FlowFixMe */
                     <Motion
                         defaultStyle={{
                             opacity: 0,
