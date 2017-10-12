@@ -1,6 +1,7 @@
 (ns metabase.test.async
   "Utilities for testing async API endpoints."
-  (:require [metabase.test.data.users :refer :all]))
+  (:require [clojure.tools.logging :as log]
+            [metabase.test.data.users :refer :all]))
 
 (def ^:private ^:const max-retries 20)
 
@@ -13,5 +14,6 @@
         (= "done" status)     result
         (> tries max-retries) (throw (ex-info "Timeout. Max retries exceeded."))
         :else                 (do
+                                (log/info (format "Waiting for computation to finish. Retry: %" tries))
                                 (Thread/sleep (* 100 tries))
                                 (recur (inc tries)))))))
