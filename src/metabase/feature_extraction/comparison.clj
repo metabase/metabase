@@ -69,15 +69,15 @@
 
 (defmethod difference [nil Object]
   [a b]
-  {:difference 1})
+  {:difference nil})
 
 (defmethod difference [Object nil]
   [a b]
-  {:difference 1})
+  {:difference nil})
 
 (defmethod difference [nil nil]
   [a b]
-  {:difference 0})
+  {:difference nil})
 
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
@@ -176,12 +176,14 @@
   "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
-    {:distance         (transduce (map (comp :difference val))
+    {:distance         (transduce (keep (comp :difference val))
                                   (redux/post-complete
                                    magnitude
                                    #(/ % (math/sqrt (count differences))))
                                   differences)
      :components       differences
-     :top-contributors (head-tails-breaks (comp :difference second) differences)
+     :top-contributors (->> differences
+                            (filter (comp :difference second))
+                            (head-tails-breaks (comp :difference second)))
      :thereshold       interestingness-thershold
      :significant?     (some :significant? (vals differences))}))
