@@ -4,6 +4,7 @@
              [route :as route]]
             [metabase.api
              [activity :as activity]
+             [async :as async]
              [card :as card]
              [collection :as collection]
              [dashboard :as dashboard]
@@ -54,6 +55,7 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"        [] (+auth activity/routes))
+  (context "/async"           [] (+auth async/routes))
   (context "/card"            [] (+auth card/routes))
   (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))

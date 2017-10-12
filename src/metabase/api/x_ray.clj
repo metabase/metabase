@@ -3,6 +3,7 @@
   (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.feature-extraction
+             [async :as async]
              [core :as fe]
              [costs :as costs]]
             [metabase.models
@@ -36,19 +37,22 @@
 (defn- x-ray
   [max-cost model]
   (api/check-403 (costs/enable-xrays))
-  (fe/x-ray (fe/extract-features {:max-cost max-cost} model)))
+  {:job-id (async/compute
+            #(fe/x-ray (fe/extract-features {:max-cost max-cost} model)))})
 
 (defn- compare
   [max-cost model1 model2]
   (api/check-403 (costs/enable-xrays))
-  (fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))
+  {:job-id (async/compute
+            #(fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))})
 
 (defn- compare-filtered-field
   [max-cost model1 model2 field]
-  (let [{:keys [comparison constituents]} (compare max-cost model1 model2)]
-    {:constituents     constituents
-     :comparison       (-> comparison (get field))
-     :top-contributors (-> comparison (get field) :top-contributors)}))
+  {:job-id (async/compute
+            #(let [{:keys [comparison constituents]} (compare max-cost model1 model2)]
+               {:comparison       (-> comparison (get field))
+                :top-contributors (-> comparison (get field) :top-contributors)
+                :constituents     constituents}))})
 
 (api/defendpoint GET "/field/:id"
   "X-ray a field."
