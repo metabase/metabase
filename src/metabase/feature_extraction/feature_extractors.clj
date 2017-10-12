@@ -14,6 +14,7 @@
              [histogram :as h]
              [stl :as stl]
              [values :as values]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -166,7 +167,7 @@
 
 (defmethod comparison-vector :default
   [features]
-  (dissoc features :type :model :has-nils? :all-distinct? :percentiles))
+  (dissoc features :type :model :has-nils? :all-distinct? :percentiles :table))
 
 (def ^:private percentiles (range 0 1 0.1))
 
@@ -193,6 +194,7 @@
   [field]
   (fn [_]
     {:model field
+     :table (Table (:table_id field))
      :type  (field-type field)}))
 
 (defmethod feature-extractor Num
