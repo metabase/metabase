@@ -15,9 +15,7 @@
   z-index: -1;
 }
 
-.LineAreaBarChart .dc-chart .axis text,
-.LineAreaBarChart .dc-chart .x-axis-label,
-.LineAreaBarChart .dc-chart .y-axis-label {
+.LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
   font-family: "Lato", sans-serif;
   font-weight: 900;
@@ -49,7 +47,9 @@
 
 .LineAreaBarChart .dc-chart .x-axis-label,
 .LineAreaBarChart .dc-chart .y-axis-label {
-  fill: #93A1AB;
+  fill: #727479;
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .LineAreaBarChart .dc-chart .tick line {
