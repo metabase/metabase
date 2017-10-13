@@ -630,7 +630,7 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
     if (isOrdinal(settings)) delete warnings[NULL_DIMENSION_WARNING];
 
     if (onRender) onRender({
-        yAxisProps.yAxisSplit,
+        yAxisSplit: yAxisProps.yAxisSplit,
         warnings: Object.keys(warnings)
     });
 
