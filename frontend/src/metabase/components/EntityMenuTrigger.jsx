@@ -18,6 +18,12 @@ const EntityzMenuTrigger = ({ icon, onClick, open }) => {
             backgroundColor: interactionColor,
             color: '#509ee3',
             transition: 'all 300ms linear'
+        },
+        // special cases for certain icons
+        // Icon-share has a taller viewvbox than most so to optically center
+        // the icon we need to translate it upwards
+        '> .Icon.Icon-share': {
+            transform: `translateY(-1px)`
         }
     })
 

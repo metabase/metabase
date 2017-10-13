@@ -24,6 +24,15 @@ const itemClasses = cxs({
     ':hover > .Icon': {
         color: '#509ee3',
         transition: 'all 300ms linear',
+    },
+    // icon specific tweaks
+    // the embed icon should be aligned with the x-height of the text
+    '> .Icon.Icon-embed': {
+        transform: `translateY(1px)`
+    },
+    // the download icon should be optically centered
+    '> .Icon.Icon-download': {
+        transform: `translateY(2px)`
     }
 })
 
