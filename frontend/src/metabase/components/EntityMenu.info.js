@@ -21,7 +21,7 @@ export const examples = {
             <EntityMenu
                 triggerIcon='pencil'
                 items={[
-                    { title: "Edit this question", icon: "pencil", action: () => alert('Action type') },
+                    { title: "Edit this question", icon: "editdocument", action: () => alert('Action type') },
                     { title: "View revision history", icon: "history", link: '/derp' },
                     { title: "Move", icon: "move", action: () => alert('Move action') },
                     { title: "Archive", icon: "archive", action: () => alert('Archive action') }
@@ -36,7 +36,7 @@ export const examples = {
                 items={[
                     { title: "Add to dashboard", icon: "addtodash", action: () => alert('Action type') },
                     { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "warning", action: () => alert('Another action type') },
+                    { title: "Sharing and embedding", icon: "embed", action: () => alert('Another action type') },
                 ]}
             />
         </DemoAlignRight>
@@ -44,9 +44,9 @@ export const examples = {
     'More menu': (
         <DemoAlignRight>
             <EntityMenu
-                triggerIcon='grabber'
+                triggerIcon='burger'
                 items={[
-                    { title: "Get alerts about this", icon: "warning", action: () => alert('Get alerts about this') },
+                    { title: "Get alerts about this", icon: "alert", action: () => alert('Get alerts about this') },
                     { title: "View the SQL", icon: "sql", link: '/download' },
                 ]}
             />
@@ -57,7 +57,7 @@ export const examples = {
             <EntityMenu
                 triggerIcon='pencil'
                 items={[
-                    { title: "Edit this question", icon: "pencil", action: () => alert('Action type') },
+                    { title: "Edit this question", icon: "editdocument", action: () => alert('Action type') },
                     { title: "View revision history", icon: "history", link: '/derp' },
                     { title: "Move", icon: "move", action: () => alert('Move action') },
                     { title: "Archive", icon: "archive", action: () => alert('Archive action') }
@@ -68,13 +68,13 @@ export const examples = {
                 items={[
                     { title: "Add to dashboard", icon: "addtodash", action: () => alert('Action type') },
                     { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "warning", action: () => alert('Another action type') },
+                    { title: "Sharing and embedding", icon: "embed", action: () => alert('Another action type') },
                 ]}
             />
             <EntityMenu
-                triggerIcon='grabber'
+                triggerIcon='burger'
                 items={[
-                    { title: "Get alerts about this", icon: "warning", action: () => alert('Get alerts about this') },
+                    { title: "Get alerts about this", icon: "alert", action: () => alert('Get alerts about this') },
                     { title: "View the SQL", icon: "sql", link: '/download' },
                 ]}
             />
