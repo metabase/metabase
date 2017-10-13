@@ -608,4 +608,5 @@
     (fn [{:keys [total-count nil-count]}]
       {:count     total-count
        :nil%      (/ nil-count (max total-count 1))
-       :has-nils? (pos? nil-count)}))))
+       :has-nils? (pos? nil-count)
+       :type      nil}))))
