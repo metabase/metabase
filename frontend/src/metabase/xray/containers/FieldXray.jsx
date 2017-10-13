@@ -6,11 +6,11 @@ import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
 
 import { isDate } from 'metabase/lib/schema_metadata'
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { fetchFieldXray, initialize } from 'metabase/xray/xray'
 import {
     getLoadingStatus,
     getError,
-    getFeatures
+    getFeatures, getIsAlreadyFetched
 } from 'metabase/xray/selectors'
 
 import {
@@ -26,7 +26,7 @@ import StatGroup from 'metabase/xray/components/StatGroup'
 import Histogram from 'metabase/xray/Histogram'
 import { Heading, XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 
 import Periodicity from 'metabase/xray/components/Periodicity'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
@@ -35,9 +35,10 @@ import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
 
 type Props = {
-    fetchXray: () => void,
+    fetchFieldXray: () => void,
     initialize: () => {},
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table,
         field: Field,
@@ -55,12 +56,13 @@ type Props = {
 const mapStateToProps = state => ({
     xray: getFeatures(state),
     isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
     error: getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray
+    fetchFieldXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -81,8 +83,8 @@ class FieldXRay extends Component {
     }
 
     fetch() {
-        const { params, fetchXray } = this.props
-        fetchXray('field', params.fieldId, params.cost)
+        const { params, fetchFieldXray } = this.props
+        fetchFieldXray(params.fieldId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -92,11 +94,11 @@ class FieldXRay extends Component {
     }
 
     render () {
-        const { xray, params, isLoading, error } = this.props
+        const { xray, params, isLoading, isAlreadyFetched, error } = this.props
 
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
+                loading={isLoading || !isAlreadyFetched}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}

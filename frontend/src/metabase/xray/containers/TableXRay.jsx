@@ -4,7 +4,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { fetchTableXray, initialize } from 'metabase/xray/xray'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
 
 import CostSelect from 'metabase/xray/components/CostSelect'
@@ -14,6 +14,7 @@ import {
     getConstituents,
     getFeatures,
     getLoadingStatus,
+    getIsAlreadyFetched,
     getError
 } from 'metabase/xray/selectors'
 
@@ -23,13 +24,14 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 
 type Props = {
-    fetchXray: () => void,
+    fetchTableXray: () => void,
     initialize: () => {},
     constituents: [],
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table
     },
@@ -44,12 +46,13 @@ const mapStateToProps = state => ({
     xray: getFeatures(state),
     constituents: getConstituents(state),
     isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
     error: getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray
+    fetchTableXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -71,9 +74,8 @@ class TableXRay extends Component {
     }
 
     fetch () {
-        const { params, fetchXray } = this.props
-        // TODO this should happen at the action level
-        fetchXray('table', params.tableId, params.cost)
+        const { params, fetchTableXray } = this.props
+        fetchTableXray(params.tableId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -83,11 +85,11 @@ class TableXRay extends Component {
     }
 
     render () {
-        const { constituents, xray, params, isLoading, error } = this.props
+        const { constituents, xray, params, isLoading, isAlreadyFetched, error } = this.props
 
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
+                loading={isLoading || !isAlreadyFetched}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}
