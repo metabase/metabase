@@ -246,6 +246,7 @@
                                                     (:features b)))]
     {:constituents     [a b]
      :comparison       comparisons
+     :comparables      (map :comparables [a b])
      :top-contributors (top-contributors comparisons)
      :sample?          (some :sample? [a b])
      :significant?     (if (:constituents a)
