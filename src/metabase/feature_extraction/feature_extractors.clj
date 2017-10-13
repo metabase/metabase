@@ -215,6 +215,7 @@
   [field]
   (fn [_]
     {:field field
+     :model field
      :type  (field-type field)
      :table (Table (:table_id field))}))
 
