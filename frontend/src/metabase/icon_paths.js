@@ -77,7 +77,7 @@ export var ICON_PATHS = {
     downarrow: 'M12.2782161,19.3207547 L12.2782161,0 L19.5564322,0 L19.5564322,19.3207547 L26.8346484,19.3207547 L15.9173242,32 L5,19.3207547 L12.2782161,19.3207547 Z',
     download: {
         path: 'M4,8 L4,0 L7,0 L7,8 L10,8 L5.5,13.25 L1,8 L4,8 Z M11,14 L0,14 L0,17 L11,17 L11,14 Z',
-        attrs: { viewBox: '0 0 11 17' }
+        attrs: { viewBox: '0 0 22 34' }
     },
     editdocument: 'M19.27 20.255l-5.642 2.173 1.75-6.085L28.108 3.45 32 7.363 19.27 20.255zM20.442 6.9l-2.044-2.049H4.79v23.29h18.711v-6.577l4.787-4.83V31a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h18.024a1 1 0 0 1 .711.297L23.85 3.45 20.442 6.9z',
     ellipsis: {
@@ -256,6 +256,10 @@ ICON_PATHS["forwardArrow"] = {
 // $FlowFixMe
 ICON_PATHS["scalar"] = ICON_PATHS["number"];
 
+export function parseViewBox(viewBox: string): Array<number> {
+    return viewBox.split(' ').map(v => Number(v)).slice(2, 4)
+}
+
 export function loadIcon(name) {
     var def = ICON_PATHS[name];
     if (!def) {
@@ -270,8 +274,6 @@ export function loadIcon(name) {
     var icon = {
         attrs: {
             className: 'Icon Icon-' + name,
-            width: '16px',
-            height: '16px',
             viewBox: '0 0 32 32',
             fill: 'currentcolor'
         },
@@ -285,6 +287,16 @@ export function loadIcon(name) {
         var { svg, path, attrs } = def;
         for (var attr in attrs) {
             icon.attrs[attr] = attrs[attr];
+        }
+
+        // we need to set the width and height of the icon def based on the view box
+        // since we're scaling all icons down by half currently
+        if(attrs && attrs.viewBox) {
+            const [width, height] = parseViewBox(attrs.viewBox)
+            // $FlowFixMe
+            icon.attrs.width = `${width / 2}px`
+            // $FlowFixMe
+            icon.attrs.height = `${height / 2}px`
         }
         icon.path = path;
         icon.svg = svg;
