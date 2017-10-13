@@ -254,10 +254,15 @@ ICON_PATHS["forwardArrow"] = {
 ICON_PATHS["scalar"] = ICON_PATHS["number"];
 
 export function parseViewBox(viewBox: string): Array<number> {
+    // a viewBox is a string that takes the form 'min-x, min-y, width, height'
+    // grab the values and return just width and height since we currently don't
+    // tend to card about min-x or min-y
+
+    // we cast to numbers so we can do math-y stuff with the width and height
     return viewBox.split(' ').map(v => Number(v)).slice(2, 4)
 }
 
-export function loadIcon(name) {
+export function loadIcon(name:string) {
     var def = ICON_PATHS[name];
     if (!def) {
         console.warn('Icon "' + name + '" does not exist.');
@@ -294,9 +299,7 @@ export function loadIcon(name) {
         // down by half currently
         if(attrs && attrs.viewBox) {
             const [width, height] = parseViewBox(attrs.viewBox)
-            // $FlowFixMe
             icon.attrs.width = `${width / 2}px`
-            // $FlowFixMe
             icon.attrs.height = `${height / 2}px`
         }
         icon.path = path;
