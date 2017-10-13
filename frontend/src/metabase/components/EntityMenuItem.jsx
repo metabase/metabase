@@ -26,6 +26,10 @@ const itemClasses = cxs({
         transition: 'all 300ms linear',
     },
     // icon specific tweaks
+    // the alert icon should be optically aligned  with the x-height of the text
+    '> .Icon.Icon-alert': {
+        transform: `translateY(1px)`
+    },
     // the embed icon should be aligned with the x-height of the text
     '> .Icon.Icon-embed': {
         transform: `translateY(1px)`
