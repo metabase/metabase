@@ -63,21 +63,54 @@
   [a b]
   {:difference (if (= a b) 0 1)})
 
+(defn- comparable-segment
+  [a b]
+  (loop [[[ax _] & a-rest :as a] a
+         [[bx _] & b-rest :as b] b]
+    (cond
+      (not (and ax bx)) nil
+      (= ax bx)         (loop [[[ax ay] & a] a
+                               [[bx by] & b] b
+                               ays           []
+                               bys           []
+                               xs            []]
+                          (cond
+                            (not (and ax bx))
+                            [xs ays bys]
+
+                            (= ax bx)
+                            (recur a b (conj ays ay) (conj bys by) (conj xs ax))
+
+                            :else nil))
+      (> ax bx)         (recur a b-rest)
+      (< ax bx)         (recur a-rest b))))
+
 (defmethod difference [clojure.lang.Sequential clojure.lang.Sequential]
   [a b]
-  {:difference (* 0.5 (cosine-distance a b))})
+  (let [[t a b]    (comparable-segment a b)
+        [corr cov] (transduce identity (redux/juxt
+                                        (stats/correlation first second)
+                                        (stats/covariance first second))
+                              (map vector a b))]
+    {:correlation  corr
+     :covariance   cov
+     :significant? (some-> corr math/abs (> 0.3))
+     :difference   (or (cosine-distance a b) 0.5)
+     :deltas       (map (fn [t a b]
+                          [t (- a b)])
+                        t a b)}))
 
 (defmethod difference [nil Object]
   [a b]
-  {:difference 1})
+  {:difference nil})
 
 (defmethod difference [Object nil]
   [a b]
-  {:difference 1})
+  {:difference nil})
 
 (defmethod difference [nil nil]
   [a b]
-  {:difference 0})
+  {:difference nil})
 
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
@@ -103,9 +136,10 @@
    https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test"
   ([m p n q] (ks-test 0.95 m p n q))
   ([significance-level m p n q]
-   (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
-         c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
-     (> D (* c (math/sqrt (/ (+ m n) (* m n))))))))
+   (when-not (zero? (* m n))
+     (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
+           c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
+       (> D (* c (math/sqrt (/ (+ m n) (* m n)))))))))
 
 (defn- unify-categories
   "Given two PMFs add missing categories and align them so they both cover the
@@ -125,8 +159,6 @@
 (defn- chi-squared-critical-value
   [n]
   (+ (* -0.037 (Math/log n)) 0.365))
-
-(chi-squared-critical-value 100)
 
 (defmethod difference [Histogram Histogram]
   [a b]
@@ -166,8 +198,9 @@
   "Pairwise differences of feature vectors `a` and `b`."
   [a b]
   (into {}
-    (map (fn [[k a] [_ b]]
-           [k (difference a b)])
+    (map (fn [[ka va] [kb vb]]
+           (assert (= ka kb) "Incomparable models.")
+           [ka (difference va vb)])
          (flatten-map (fe/comparison-vector a))
          (flatten-map (fe/comparison-vector b)))))
 
@@ -177,12 +210,14 @@
   "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
-    {:distance         (transduce (map (comp :difference val))
+    {:distance         (transduce (keep (comp :difference val))
                                   (redux/post-complete
                                    magnitude
                                    #(/ % (math/sqrt (count differences))))
                                   differences)
      :components       differences
-     :top-contributors (head-tails-breaks (comp :difference second) differences)
+     :top-contributors (->> differences
+                            (filter (comp :difference second))
+                            (head-tails-breaks (comp :difference second)))
      :thereshold       interestingness-thershold
      :significant?     (some :significant? (vals differences))}))

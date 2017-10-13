@@ -1,7 +1,8 @@
 import React from 'react'
 import { Link } from 'react-router'
+import Icon from "metabase/components/Icon";
 
-const ItemLink = ({ link, item }) =>
+const ItemLink = ({ link, item, dropdown }) =>
     <Link
         to={link}
         className="no-decoration flex align-center bordered shadowed bg-white p1 px2 rounded mr1"
@@ -14,7 +15,10 @@ const ItemLink = ({ link, item }) =>
             display: 'block'
         }}>
         </div>
-        <h2 className="ml1">{item.name}</h2>
+        <h2 className="ml1">
+            { item.name }
+            { dropdown && <Icon name="chevrondown" size={12} className="ml1" /> }
+        </h2>
     </Link>
 
 export default ItemLink

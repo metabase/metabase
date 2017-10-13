@@ -12,6 +12,7 @@ import ComparisonHeader from 'metabase/xray/components/ComparisonHeader'
 
 import { getIconForField } from 'metabase/lib/schema_metadata'
 import { distanceToPhrase } from 'metabase/xray/utils'
+import Select, { Option } from "metabase/components/Select";
 
 // right now we rely on knowing that itemB is the only one that
 // can contain a table
@@ -53,10 +54,10 @@ const CompareInts = ({ itemA, itemAColor, itemB, itemBColor }) =>
 const Contributor = ({ contributor, itemA, itemB }) =>
     <div className="full-height">
         <h3 className="mb2">
-            {contributor.field.display_name}
+            {contributor.field.model.display_name}
         </h3>
 
-        <div className="ComparisonContributor bg-white shadowed rounded bordered full-height">
+        <div className="ComparisonContributor bg-white shadowed rounded bordered">
                 <div>
                     <div className="p2 flex align-center">
                         <h4>{contributor.feature.label}</h4>
@@ -69,7 +70,7 @@ const Contributor = ({ contributor, itemA, itemB }) =>
                         </Tooltip>
                     </div>
                     <div className="py1">
-                        { contributor.feature.type === 'histogram' ? (
+                        { contributor.feature.type.startsWith('histogram') ? (
                             <CompareHistograms
                                 itemA={contributor.feature.value.a}
                                 itemB={contributor.feature.value.b}
@@ -145,6 +146,7 @@ const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = fa
 
 const XRayComparison = ({
     contributors,
+    comparables,
     comparison,
     comparisonFields,
     itemA,
@@ -162,10 +164,32 @@ const XRayComparison = ({
                     link={itemLinkUrl(itemA)}
                     item={itemA}
                 />
-                <ItemLink
-                    link={itemLinkUrl(itemB)}
-                    item={itemB}
-                />
+                <Select
+                    className="block"
+                    value={null}
+                    onChange={e => this.onChange("collection_id", e.target.value)}
+                    triggerElement={
+                        <ItemLink
+                            link={null}
+                            item={itemB}
+                            dropdown
+                        />
+                    }
+                >
+                    {/* TODO: Should include the current entity to comparison list */}
+                    { [...(comparables || []), itemB].map((comparableModel, index) =>
+                        <Option
+                            /* not sure what is the most sensible key in this case */
+                            key={index}
+                            value={comparableModel.id}
+                            // icon={collection.id != null ? "collection" : null}
+                            // iconColor={collection.color}
+                            // iconSize={18}
+                        >
+                            {comparableModel.name}
+                        </Option>
+                    )}
+                </Select>
             </div>
         </div>
 

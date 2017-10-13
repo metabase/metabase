@@ -15,8 +15,8 @@
                                                     (ql/fields id))
                                     :middleware {:format-rows? false}})
                                  :data)]
-    {:row   (map first rows)
-     :field (first cols)}))
+    {:row (map first rows)
+     :col (first cols)}))
 
 (defn query-values
   "Return all values for QUERY."
