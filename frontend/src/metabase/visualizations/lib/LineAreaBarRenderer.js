@@ -142,17 +142,16 @@ function getDimensionAndGroups({ settings, chartType, series }, datas, warn) {
             ]
         });
     } else if (isStacked) {
-        const isNormalized = isNormalized(settings, datas);
+        const normalized = isNormalized(settings, datas);
         // get the sum of the metric for each dimension value in order to scale
         let scaleFactors = {};
-        if (isNormalized) {
+        if (normalized) {
             for (let data of datas) {
                 for (let [d, m] of data) {
                     scaleFactors[d] = (scaleFactors[d] || 0) + m;
                 }
             }
 
-            // $FlowFixMe
             series = series.map(s => updateIn(s, ["data", "cols", 1], (col) => ({
                 ...col,
                 display_name: "% " + getFriendlyName(col)
@@ -162,7 +161,7 @@ function getDimensionAndGroups({ settings, chartType, series }, datas, warn) {
         datas.map((data, i) =>
             dataset.add(data.map(d => ({
                 [0]: d[0],
-                [i + 1]: isNormalized ? (d[1] / scaleFactors[d[0]]) : d[1]
+                [i + 1]: normalized ? (d[1] / scaleFactors[d[0]]) : d[1]
             })))
         );
 
