@@ -89,8 +89,8 @@ class TableXRay extends Component {
     navigateToComparison(comparable) {
         const { features, push } = this.props
 
-        const currentModelType = features.model["type-tag"].split(".")[2]
-        const comparableModelType = comparable["type-tag"].split(".")[2]
+        const currentModelType = features.model["type-tag"]
+        const comparableModelType = comparable["type-tag"]
 
         push(`/xray/compare/${comparableModelType}/${comparable.id}/${currentModelType}/${features.model.id}/approximate`)
     }

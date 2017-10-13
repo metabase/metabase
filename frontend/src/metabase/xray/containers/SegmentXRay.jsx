@@ -92,8 +92,8 @@ class SegmentXRay extends Component {
     navigateToComparison(comparable) {
         const { features, push } = this.props
 
-        const currentModelType = features.model["type-tag"].split(".")[2]
-        const comparableModelType = comparable["type-tag"].split(".")[2]
+        const currentModelType = features.model["type-tag"]
+        const comparableModelType = comparable["type-tag"]
 
         if (currentModelType === comparableModelType) {
             push(`/xray/compare/${currentModelType}s/${features.model.id}/${comparable.id}/approximate`)
