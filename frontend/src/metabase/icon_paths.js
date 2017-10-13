@@ -275,6 +275,8 @@ export function loadIcon(name) {
         attrs: {
             className: 'Icon Icon-' + name,
             viewBox: '0 0 32 32',
+            width: '16px',
+            height: '16px',
             fill: 'currentcolor'
         },
         svg: undefined,
@@ -289,8 +291,10 @@ export function loadIcon(name) {
             icon.attrs[attr] = attrs[attr];
         }
 
-        // we need to set the width and height of the icon def based on the view box
-        // since we're scaling all icons down by half currently
+        // Note - @kdoh 10/13/2017
+        // in the case of a custom viewBox, we need to set the width and height
+        // of the icon def based on the view box since we're scaling all icons
+        // down by half currently
         if(attrs && attrs.viewBox) {
             const [width, height] = parseViewBox(attrs.viewBox)
             // $FlowFixMe
