@@ -73,8 +73,8 @@
   true
   (:significant? ((user->client :rasta) :get 200
                   (format "x-ray/compare/fields/%s/%s"
-                          (id :venues :longitude)
-                          (id :venues :latitude)))))
+                          (id :venues :price)
+                          (id :venues :category_id)))))
 
 (expect
   false
