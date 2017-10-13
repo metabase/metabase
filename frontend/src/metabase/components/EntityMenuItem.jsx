@@ -19,7 +19,8 @@ const itemClasses = cxs({
         color: '#509ee3'
     },
     '> .Icon': {
-        color: '#BCC5CA'
+        color: '#BCC5CA',
+        marginRight: '0.65em'
     },
     ':hover > .Icon': {
         color: '#509ee3',
@@ -62,7 +63,7 @@ const EntityMenuItem = ({
     }
 
     const content = [
-        <Icon name={icon} className="mr1" />,
+        <Icon name={icon} />,
         <span className="text-bold">{title}</span>
     ]
 
