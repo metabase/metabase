@@ -172,7 +172,8 @@
    max_computation_cost MaxComputationCost}
   (compare-filtered-field (max-cost max_query_cost max_computation_cost)
                           (api/read-check Table table-id)
-                          (api/read-check Segment segment-id)))
+                          (api/read-check Segment segment-id)
+                          field))
 
 (api/defendpoint POST "/compare/segment/:segment-id/table/:table-id/field/:field"
   "Get comparison x-ray for field named `field` in table with ID
