@@ -1,4 +1,3 @@
-/* @flow */
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
@@ -34,16 +33,17 @@ type Props = {
     fetchXray: () => void,
     initialize: () => {},
     constituents: [],
-    xray: {
+    features: {
         table: Table,
-        segment: Segment,
+        model: Segment,
     },
     params: {
         segmentId: number,
         cost: string,
     },
     isLoading: boolean,
-    error: {}
+    error: {},
+    push: (string) => void
 }
 
 const mapStateToProps = state => ({
@@ -89,7 +89,7 @@ class SegmentXRay extends Component {
         }
     }
 
-    navigateToComparison(comparable) {
+    navigateToComparison(comparable: any) {
         const { features, push } = this.props
 
         const currentModelType = features.model["type-tag"]

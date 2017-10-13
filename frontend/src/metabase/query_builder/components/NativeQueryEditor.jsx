@@ -6,6 +6,7 @@ import ReactDOM from "react-dom";
 
 import "./NativeQueryEditor.css";
 
+// $FlowFixMe react-resizable causes Flow errors
 import { ResizableBox } from 'react-resizable';
 
 import 'ace/ace';
