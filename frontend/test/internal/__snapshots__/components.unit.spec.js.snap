@@ -275,14 +275,16 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xi xj xk xl x2 xm xn xo xa xp xq"
+        className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-pencil m1"
           fill="currentcolor"
+          height={16}
           name="pencil"
           viewBox="0 0 32 32"
+          width={16}
         >
           <path
             d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
@@ -305,14 +307,16 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xi xj xk xl x2 xm xn xo xa xp xq"
+        className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-burger m1"
           fill="currentcolor"
+          height={16}
           name="burger"
           viewBox="0 0 32 32"
+          width={16}
         >
           <path
             d="M2.5 3.6h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 1 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5z"
@@ -335,14 +339,16 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xi xj xk xl x2 xm xn xo xa xp xq"
+        className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-pencil m1"
           fill="currentcolor"
+          height={16}
           name="pencil"
           viewBox="0 0 32 32"
+          width={16}
         >
           <path
             d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
@@ -354,7 +360,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xi xj xk xl x2 xm xn xo xa xp xq"
+        className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
         onClick={[Function]}
       >
         <svg
@@ -376,14 +382,16 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xi xj xk xl x2 xm xn xo xa xp xq"
+        className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-burger m1"
           fill="currentcolor"
+          height={16}
           name="burger"
           viewBox="0 0 32 32"
+          width={16}
         >
           <path
             d="M2.5 3.6h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 1 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5z"
@@ -406,7 +414,7 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xi xj xk xl x2 xm xn xo xa xp xq"
+        className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
         onClick={[Function]}
       >
         <svg
