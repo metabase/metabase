@@ -1,7 +1,13 @@
 /// Utility functions used by both the LineAreaBar renderer and the RowRenderer
 
+import _ from "underscore";
+import { getIn } from "icepick";
+
+import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
 
+import { dimensionIsNumeric } from "./numeric";
+import { dimensionIsTimeseries } from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 
 export const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
@@ -85,36 +91,6 @@ export function reduceGroup(group, key, warnUnaggregated) {
     );
 }
 
-export function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
-    try {
-        return datas.map(rows => {
-            const fillValues = rows[0].slice(1).map(d => fillValue);
-
-            let map = new Map();
-            for (const row of rows) {
-                map.set(getKey(row[0]), row);
-            }
-            let newRows = xValues.map(value => {
-                const key = getKey(value);
-                const row = map.get(key);
-                if (row) {
-                    map.delete(key);
-                    return [value, ...row.slice(1)];
-                } else {
-                    return [value, ...fillValues];
-                }
-            });
-            if (map.size > 0) {
-                console.warn("xValues missing!", map, newRows)
-            }
-            return newRows;
-        });
-    } catch (e) {
-        console.warn(e);
-        return datas;
-    }
-}
-
 // Crossfilter calls toString on each moment object, which calls format(), which is very slow.
 // Replace toString with a function that just returns the unparsed ISO input date, since that works
 // just as well and is much faster
@@ -133,7 +109,28 @@ export function HACK_parseTimestamp(value, unit, warn) {
     }
 }
 
-export function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
+/************************************************************ PROPERTIES ************************************************************/
+
+export const isTimeseries   = (settings) => settings["graph.x_axis.scale"] === "timeseries";
+export const isQuantitative = (settings) => ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
+export const isHistogram    = (settings) => settings["graph.x_axis.scale"] === "histogram";
+export const isOrdinal      = (settings) => !isTimeseries(settings) && !isHistogram(settings);
+
+// bar histograms have special tick formatting:
+// * aligned with beginning of bar to show bin boundaries
+// * label only shows beginning value of bin
+// * includes an extra tick at the end for the end of the last bin
+export const isHistogramBar = ({ settings, chartType }) => isHistogram(settings) && chartType === "bar";
+
+export const isStacked    = (settings, datas) => settings["stackable.stack_type"] && datas.length > 1;
+export const isNormalized = (settings, datas) => isStacked(settings, datas) && settings["stackable.stack_type"] === "normalized";
+
+// find the first nonempty single series
+export const getFirstNonEmptySeries = (series) => _.find(series, (s) => !datasetContainsNoResults(s.data));
+export const isDimensionTimeseries  = (series) => dimensionIsTimeseries(getFirstNonEmptySeries(series).data);
+export const isDimensionNumeric     = (series) => dimensionIsNumeric(getFirstNonEmptySeries(series).data);
+
+function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
     const column = cols[i];
 
     if (column.remapping && column.remapping.size > 0) {
@@ -144,3 +141,11 @@ export function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
         return false
     }
 }
+
+export const isRemappedToString = (series) => hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
+
+// is this a dashboard multiseries?
+// TODO: better way to detect this?
+export const isMultiCardSeries = (series) => (
+    series.length > 1 && getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"])
+);

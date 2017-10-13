@@ -3,9 +3,8 @@
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
-import moment from "moment";
 import _ from "underscore";
-import { updateIn, getIn } from "icepick";
+import { updateIn } from "icepick";
 
 import {
     computeSplit,
@@ -14,23 +13,35 @@ import {
     colorShades
 } from "./utils";
 
-import { dimensionIsTimeseries, minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
+import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
 
-import { dimensionIsNumeric, computeNumericDataInverval } from "./numeric";
+import { computeNumericDataInverval } from "./numeric";
 
 import { applyChartTimeseriesXAxis, applyChartQuantitativeXAxis, applyChartOrdinalXAxis, applyChartYAxis } from "./apply_axis";
 
 import { applyChartTooltips } from "./apply_tooltips";
 
+import fillMissingValuesInDatas from "./fill_data";
+
 import {
     HACK_parseTimestamp,
     NULL_DIMENSION_WARNING,
-    fillMissingValues,
     forceSortedGroupsOfGroups,
-    hasRemappingAndValuesAreStrings,
     initChart, // TODO - probably better named something like `initChartParent`
     makeIndexMap,
-    reduceGroup
+    reduceGroup,
+    isTimeseries,
+    isQuantitative,
+    isHistogram,
+    isOrdinal,
+    isHistogramBar,
+    isStacked,
+    isNormalized,
+    getFirstNonEmptySeries,
+    isDimensionTimeseries,
+    isDimensionNumeric,
+    isRemappedToString,
+    isMultiCardSeries
 } from "./renderer_utils";
 
 import lineAndBarOnRender from "./LineAreaBarPostRenderer";
@@ -38,7 +49,6 @@ import lineAndBarOnRender from "./LineAreaBarPostRenderer";
 import { formatNumber } from "metabase/lib/formatting";
 import { isStructured } from "metabase/meta/Card";
 
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { updateDateTimeFilter, updateNumericFilter } from "metabase/qb/lib/actions";
 
 import { lineAddons } from "./graph/addons"
@@ -50,40 +60,7 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization"
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
-// max number of points to "fill"
-// TODO: base on pixel width of chart?
-const MAX_FILL_COUNT = 10000;
-
 const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
-
-
-/************************************************************ PROPERTIES ************************************************************/
-
-const isTimeseries   = (settings) => settings["graph.x_axis.scale"] === "timeseries";
-const isQuantitative = (settings) => ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
-const isHistogram    = (settings) => settings["graph.x_axis.scale"] === "histogram";
-const isOrdinal      = (settings) => !isTimeseries(settings) && !isHistogram(settings);
-
-// bar histograms have special tick formatting:
-// * aligned with beginning of bar to show bin boundaries
-// * label only shows beginning value of bin
-// * includes an extra tick at the end for the end of the last bin
-const isHistogramBar = ({ settings, chartType }) => isHistogram(settings) && chartType === "bar";
-
-const isStacked    = (settings, datas) => settings["stackable.stack_type"] && datas.length > 1;
-const isNormalized = (settings, datas) => isStacked(settings, datas) && settings["stackable.stack_type"] === "normalized";
-
-// find the first nonempty single series
-const getFirstNonEmptySeries = (series) => _.find(series, (s) => !datasetContainsNoResults(s.data));
-const isDimensionTimeseries  = (series) => dimensionIsTimeseries(getFirstNonEmptySeries(series).data);
-const isDimensionNumeric     = (series) => dimensionIsNumeric(getFirstNonEmptySeries(series).data);
-const isRemappedToString     = (series) => hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
-
-// is this a dashboard multiseries?
-// TODO: better way to detect this?
-const isMultiCardSeries = (series) => (
-    series.length > 1 && getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"])
-);
 
 const enableBrush = (series, onChangeCardAndRun) => !!(
     onChangeCardAndRun &&
@@ -91,7 +68,6 @@ const enableBrush = (series, onChangeCardAndRun) => !!(
     isStructured(series[0].card) &&
     !isRemappedToString(series)
 );
-
 
 /************************************************************ SETUP ************************************************************/
 
@@ -150,61 +126,6 @@ function getXAxisProps(props, datas) {
         xInterval: getXInterval(props, xValues)
     };
 }
-
-
-function fillMissingValuesInDatas(props, { xValues, xDomain, xInterval }, datas) {
-    const { settings } = props;
-    if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
-        const fillValue = settings["line.missing"] === "zero" ? 0 : null;
-        if (isTimeseries(settings)) {
-            // $FlowFixMe
-            const { interval, count } = xInterval;
-            if (count <= MAX_FILL_COUNT) {
-                // replace xValues with
-                xValues = d3.time[interval]
-                            .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
-                            .map(d => moment(d));
-                datas = fillMissingValues(
-                    datas,
-                    xValues,
-                    fillValue,
-                    (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
-                );
-            }
-        }
-        if (isQuantitative(settings) || isHistogram(settings)) {
-            // $FlowFixMe
-            const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
-            if (count <= MAX_FILL_COUNT) {
-                let [start, end] = xDomain;
-                if (isHistogramBar(props)) {
-                    // NOTE: intentionally add an end point for bar histograms
-                    // $FlowFixMe
-                    end += xInterval * 1.5
-                } else {
-                    // NOTE: avoid including endpoint due to floating point error
-                    // $FlowFixMe
-                    end += xInterval * 0.5
-                }
-                xValues = d3.range(start, end, xInterval);
-                datas = fillMissingValues(
-                    datas,
-                    xValues,
-                    fillValue,
-                    // NOTE: normalize to xInterval to avoid floating point issues
-                    (v) => Math.round(v / xInterval)
-                );
-            }
-        } else {
-            datas = fillMissingValues(
-                datas,
-                xValues,
-                fillValue
-            );
-        }
-    }
-}
-
 
 function getDimensionAndGroups({ settings, chartType, series }, datas, warn) {
     let dimension, groups;
