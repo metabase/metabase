@@ -31,13 +31,18 @@ const itemClasses = cxs({
     '> .Icon.Icon-alert': {
         transform: `translateY(1px)`
     },
-    // the embed icon should be aligned with the x-height of the text
+    // the embed icon should be optically aligned with the x-height of the text
     '> .Icon.Icon-embed': {
         transform: `translateY(1px)`
     },
-    // the download icon should be optically centered
+    // the download icon should be optically aligned with the x-height of the text
     '> .Icon.Icon-download': {
-        transform: `translateY(2px)`
+        transform: `translateY(1px)`
+    },
+    // the history icon is wider so it needs adjustement to center it with other
+    // icons
+    '> .Icon.Icon-history': {
+        transform: `translateX(-2px)`
     }
 })
 

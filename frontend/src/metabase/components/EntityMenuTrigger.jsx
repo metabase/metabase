@@ -23,7 +23,7 @@ const EntityzMenuTrigger = ({ icon, onClick, open }) => {
         // Icon-share has a taller viewvbox than most so to optically center
         // the icon we need to translate it upwards
         '> .Icon.Icon-share': {
-            transform: `translateY(-1px)`
+            transform: `translateY(-2px)`
         }
     })
 
