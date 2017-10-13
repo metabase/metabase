@@ -44,7 +44,7 @@ import {
     isMultiCardSeries
 } from "./renderer_utils";
 
-import lineAndBarOnRender from "./LineAreaBarPostRenderer";
+import lineAndBarOnRender from "./LineAreaBarPostRender";
 
 import { formatNumber } from "metabase/lib/formatting";
 import { isStructured } from "metabase/meta/Card";
