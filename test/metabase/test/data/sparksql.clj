@@ -37,7 +37,6 @@
 (defn database->connection-details [context {:keys [database-name]}]
   (merge {:host "localhost"
           :port 10000
-          :db "default"
           :user "admin"
           :password "admin"}
          (when (= context :db)
@@ -117,5 +116,5 @@
                  i/IDriverTestExtensions
                  (merge generic/IDriverTestExtensionsMixin
                         {:database->connection-details (u/drop-first-arg database->connection-details)
-                         :default-schema               (constantly nil)
+                         :default-schema               (constantly "test_data")
                          :engine                       (constantly :sparksql)}))

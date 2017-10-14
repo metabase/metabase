@@ -14,10 +14,10 @@
 
 (defn sparksql
   "Create a database specification for a Spark SQL database. Opts should include
-  keys for :db, :user, and :password. You can also optionally set host and
-  port."
-  [{:keys [host port db]
-    :or {host "localhost", port 10000, db ""}
+  keys for :db, :user, and :password. You can also optionally set host,
+  port, and additional JDBC connection string options."
+  [{:keys [host port db jdbc-flags]
+    :or {host "localhost", port 10000, db "", jdbc-flags ""}
     :as opts}]
   ;; gen-class doesn't support generating static initializers, so we
   ;; manually register our FixedHiveDriver with java.sql.DriverManager
@@ -38,8 +38,8 @@
         (recur))))
   (merge {:classname "metabase.driver.FixedHiveDriver"
           :subprotocol "hive2"
-          :subname (str "//" host ":" port "/" db)}
-         (dissoc opts :host :port)))
+          :subname (str "//" host ":" port "/" db jdbc-flags)}
+         (dissoc opts :host :port :jdbc-flags)))
 
 (defn- connection-details->spec [details]
   (-> details
@@ -59,20 +59,22 @@
 (defn describe-database [driver {:keys [details] :as database}]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
-                                 [(format "show tables in `%s`"
-                                    (dash-to-underscore (:db details)))])]
+                                 ["show tables"])]
                     {:name (:tablename result)
-                     :schema nil})))})
+                     :schema (when (> (count (:database result)) 0)
+                               (:database result))})))})
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defn describe-table [driver {:keys [details] :as database} table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
     {:name (:name table)
-     :schema nil
+     :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
-                                 [(format "describe `%s`.`%s`"
-                                    (dash-to-underscore (:db details))
-                                    (dash-to-underscore (:name table)))])]
+                                 [(if (:schema table)
+                                    (format "describe `%s`.`%s`"
+                                            (dash-to-underscore (:schema table))
+                                            (dash-to-underscore (:name table)))
+                                    (str "describe " (dash-to-underscore (:name table))))])]
                     {:name (:col_name result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
@@ -111,17 +113,17 @@
                                                        :default 10000}
                                                       {:name "dbname"
                                                        :display-name "Database name"
-                                                       :placeholder "default"
-                                                       :required true}
+                                                       :placeholder "default"}
                                                       {:name "user"
                                                        :display-name "Database username"
-                                                       :placeholder "What username do you use to login to the database?"
-                                                       :required true}
+                                                       :placeholder "What username do you use to login to the database?"}
                                                       {:name "password"
                                                        :display-name "Database password"
                                                        :type :password
                                                        :placeholder "*******"}
-                                                      ])
+                                                      {:name "jdbc-flags"
+                                                       :display-name "Additional JDBC settings, appended to the connection string"
+                                                       :placeholder ";transportMode=http"}])
                          :execute-query execute-query
                          :features (constantly #{:basic-aggregations
                                                  :standard-deviation-aggregations
@@ -135,6 +137,7 @@
                          :column->base-type (u/drop-first-arg hive-like/column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg hive-like/date)
+                         :field->identifier (u/drop-first-arg hive-like/field->identifier)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive-like/now))
                          :string-length-fn (u/drop-first-arg hive-like/string-length-fn)

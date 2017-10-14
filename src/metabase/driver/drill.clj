@@ -11,8 +11,7 @@
             [metabase.driver.bigquery :as bigquery]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.query-processor.util :as qputil]
-            [toucan.db :as db])
+            [metabase.query-processor.util :as qputil])
   (:import
    (java.util Collections Date)
    (metabase.query_processor.interface DateTimeValue Value)))
@@ -127,18 +126,6 @@
       (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (drill-unprepare-arg arg))
              more-args))))
 
-(defn qualified-name-components
-  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
-  [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
-               (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
-                 [table-name])))
-        field-name))
-
-(defn field->identifier [field]
-  (apply hsql/qualify (qualified-name-components field)))
-
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
@@ -199,7 +186,7 @@
                          :column->base-type (u/drop-first-arg column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg date)
-                         :field->identifier (u/drop-first-arg field->identifier)
+                         :field->identifier (u/drop-first-arg hive-like/field->identifier)
                          :prepare-value (u/drop-first-arg prepare-value)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive-like/now))

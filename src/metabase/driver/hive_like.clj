@@ -11,7 +11,8 @@
    [metabase.driver.generic-sql :as sql]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.query-processor.util :as qputil])
+   [metabase.query-processor.util :as qputil]
+   [toucan.db :as db])
   (:import
    (java.util Date)))
 
@@ -93,6 +94,19 @@
 
 (defn string-length-fn [field-key]
   (hsql/call :length field-key))
+
+;; ignore the schema when producing the identifier
+(defn qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
+  [{field-name :name, table-id :table_id, parent-id :parent_id}]
+  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
+               (qualified-name-components parent)
+               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+                 [table-name])))
+        field-name))
+
+(defn field->identifier [field]
+  (apply hsql/qualify (qualified-name-components field)))
 
 ;; copied from the Presto driver, except using mysql quoting style
 (defn apply-page [honeysql-query {{:keys [items page]} :page}]
