@@ -78,10 +78,9 @@
 
 (expect
   true
-  (:significant? ((user->client :rasta) :get 200
-                  (format "x-ray/compare/fields/%s/%s"
-                          (id :venues :price)
-                          (id :venues :category_id)))))
+  (:significant? (async-call :get (format "x-ray/compare/fields/%s/%s"
+                                          (id :venues :price)
+                                          (id :venues :category_id)))))
 
 (expect
   false
