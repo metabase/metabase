@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,900,900i" rel="stylesheet">
 
         {{{embed_code}}}
 
@@ -57,9 +58,10 @@
                     if (onload) script.onload = onload;
                     document.body.appendChild(script);
                 }
-                loadScript('https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js', function () {
+                /* loadScript('https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js', function () {
                     WebFont.load({ google: { families: ["Lato:n3,n4,n7,n9,i9"] } });
                 });
+                */
                 var googleAuthClientID = window.MetabaseBootstrap.google_auth_client_id;
                 if (googleAuthClientID) {
                     loadScript('https://apis.google.com/js/api:client.js');
