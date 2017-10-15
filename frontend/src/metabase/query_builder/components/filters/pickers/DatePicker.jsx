@@ -24,24 +24,32 @@ import type {
 } from "metabase/meta/types/Query";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange, hideTimeSelectors }) =>
-    <SpecificDatePicker
-        value={value}
-        onChange={(value) => onFilterChange([op, field, value])}
-        hideTimeSelectors={hideTimeSelectors}
-        calendar />
+    <div className="mx2">
+        <SpecificDatePicker
+            value={value}
+            onChange={(value) => onFilterChange([op, field, value])}
+            hideTimeSelectors={hideTimeSelectors}
+            calendar
+        />
+    </div>
 
 const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange , hideTimeSelectors}) =>
     <div className="mx2 mb1">
-        <div className="flex">
-            <SpecificDatePicker
-                value={startValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, value, endValue])}  />
-            <span className="mx2 mt2">&ndash;</span>
-            <SpecificDatePicker
-                value={endValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, startValue, value])} />
+        <div className="Grid Grid--1of2 Grid--gutters">
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={startValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, value, endValue])}
+                />
+            </div>
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={endValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, startValue, value])}
+                />
+            </div>
         </div>
         <div className="Calendar--noContext">
             <Calendar

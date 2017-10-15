@@ -82,7 +82,7 @@ export default class SpecificDatePicker extends Component {
         }
 
         return (
-            <div className="px1">
+            <div>
                 <div className="flex align-center mb1">
                     <div className={cx('border-top border-bottom full border-left', { 'border-right': !calendar })}>
                         <Input
