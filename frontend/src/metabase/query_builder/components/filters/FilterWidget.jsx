@@ -127,11 +127,17 @@ export default class FilterWidget extends Component {
     renderPopover() {
         if (this.state.isOpen) {
             const { query, filter } = this.props;
+            const [, field,,] = filter;
+            const dimension = query.parseFieldReference(field);
             return (
                 <Popover
                     id="FilterPopover"
                     ref="filterPopover"
-                    className="FilterPopover"
+                    className={cx(
+                        'FilterPopover',
+                        // $FlowFixMe
+                        { 'DatePopover': dimension.field().isDate()
+                    })}
                     isInitiallyOpen={this.props.filter[1] === null}
                     onClose={this.close}
                     horizontalAttachments={["left"]}

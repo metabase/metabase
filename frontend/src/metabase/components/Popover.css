@@ -1,7 +1,3 @@
-:root {
-
-}
-
 /* afaik popover needs a positioning context to be able to calculate the transform */
 .PopoverContainer {
 	pointer-events: none;
@@ -19,6 +15,16 @@
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+  /* add a max-width so that long strings don't cause the popover to expand
+   * see issue #4930 */
+  max-width: 500px;
+}
+
+/* remove the max-width for date pickers so the dual date picker can fully
+ * expand as necessary - issue #5971
+ */
+.PopoverBody.DatePopover {
+  max-width: none;
 }
 
 .PopoverBody.PopoverBody--tooltip {
