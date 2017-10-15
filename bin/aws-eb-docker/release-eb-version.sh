@@ -16,7 +16,8 @@ fi
 
 if [ -z "$AWS_DEFAULT_PROFILE" ]; then
     echo "In order to publish an Elastic Beanstalk version to S3 you must set the AWS_DEFAULT_PROFILE environment variable"
-    exit 1
+    echo "using the default since there wasn't one specified"
+    AWS_DEFAULT_PROFILE=default
 fi
 
 # TODO: improve this (hard coding)

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -eu
+
+if [ $# -lt 2 ]; then
+    echo "usage: $0 TAG VERSION"
+    exit 1
+fi
+
+docker_tag="$1"
+docker pull "$DOCKERHUB_REPOSITORY:$docker_tag"
+version_info="$(docker run --rm -it --entrypoint java $DOCKERHUB_REPOSITORY:$docker_tag -jar /app/metabase.jar version | grep -oE '{[^}]+}')"
+
+expected_version="$2"
+actual_version="$(echo "$version_info" | grep -oE ':tag [^,}]+' | cut -c 6-)"
+if [ "$expected_version" != "$actual_version" ]; then
+  echo "Docker imaged tagged '$docker_tag' has INCORRECT version '$actual_version', expected '$expected_version'";
+  exit 1
+fi
+
+expected_hash=$(git rev-list -n 1 "$expected_version")
+actual_hash="$(echo "$version_info" | grep -oE ':hash [^,}]+' | cut -c 7-)"
+# expected hash will be longer than actual hash, so just check that they start the same
+if [[ "$expected_hash" != $actual_hash* ]]; then
+  echo "Docker imaged tagged '$docker_tag' has INCORRECT commit hash '$actual_hash', expected '$expected_hash'";
+  exit 1
+fi
+
+echo "Docker imaged tagged '$docker_tag' has correct version '$actual_version' and commit hash '$actual_hash'";
