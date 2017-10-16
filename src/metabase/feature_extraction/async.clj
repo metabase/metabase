@@ -6,6 +6,7 @@
             [metabase.models
              [computation-job :refer [ComputationJob]]
              [computation-job-result :refer [ComputationJobResult]]]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (defonce ^:private running-jobs (atom {}))
@@ -25,7 +26,9 @@
       :job_id     id
       :permanence :temporary
       :payload    payload)
-    (db/update! ComputationJob id :status :done))
+    (db/update! ComputationJob id
+      :status   :done
+      :ended_at (u/new-sql-timestamp)))
   (swap! running-jobs dissoc id)
   (log/info (format "Async job %s done." id)))
 
@@ -38,7 +41,9 @@
         :job_id     id
         :permanence :temporary
         :payload    error)
-      (db/update! ComputationJob id :status :error)))
+      (db/update! ComputationJob id
+        :status :error
+        :ended_at (u/new-sql-timestamp))))
   (swap! running-jobs dissoc id))
 
 (defn cancel
@@ -58,10 +63,10 @@
   "Is the cached job still fresh?
 
    Uses the same logic as `metabase.api.card`."
-  [{:keys [created_at updated_at]}]
-  (let [duration (time-delta-seconds created_at updated_at)
+  [{:keys [created_at ended_at]}]
+  (let [duration (time-delta-seconds created_at ended_at)
         ttl     (* duration (public-settings/query-caching-ttl-ratio))
-        age     (time-delta-seconds updated_at (java.util.Date.))]
+        age     (time-delta-seconds ended_at (java.util.Date.))]
     (<= age ttl)))
 
 (defn- cached-job
@@ -70,7 +75,7 @@
     (let [job (db/select-one ComputationJob
                 :context (json/encode ctx)
                 :status  [:not= "error"]
-                {:order-by [[:updated_at :desc]]})]
+                {:order-by [[:ended_at :desc]]})]
       (when (some-> job fresh?)
         job))))
 

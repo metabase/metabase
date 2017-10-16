@@ -3937,3 +3937,6 @@ databaseChangeLog:
               - column:
                   name: context
                   type: text
+              - column:
+                  name: ended_at
+                  type: DATETIME
