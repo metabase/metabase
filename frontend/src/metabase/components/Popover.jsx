@@ -33,8 +33,14 @@ export default class Popover extends Component {
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
         tetherOptions: PropTypes.object,
+        // used to prevent popovers from being taller than the screen
         sizeToFit: PropTypes.bool,
         pinInitialAttachment: PropTypes.bool,
+        // most popovers have a max-width to prevent them from being overly wide
+        // in the case their content is of an unexpected length
+        // noMaxWidth allows that to be overridden in cases where popovers should
+        // expand  alongside their contents contents
+        autoWidth: PropTypes.bool
     };
 
     static defaultProps = {
@@ -45,6 +51,7 @@ export default class Popover extends Component {
         targetOffsetX: 24,
         targetOffsetY: 5,
         sizeToFit: false,
+        autoWidth: false
     };
 
     _getPopoverElement() {
@@ -96,10 +103,22 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleDismissal={this.handleDismissal} dismissOnEscape={this.props.dismissOnEscape} dismissOnClickOutside={this.props.dismissOnClickOutside}>
+            <OnClickOutsideWrapper
+                handleDismissal={this.handleDismissal}
+                dismissOnEscape={this.props.dismissOnEscape}
+                dismissOnClickOutside={this.props.dismissOnClickOutside}
+            >
                 <div
                     id={this.props.id}
-                    className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}
+                    className={cx(
+                        "PopoverBody",
+                        {
+                            "PopoverBody--withArrow": this.props.hasArrow,
+                            "PopoverBody--autoWidth": this.props.autoWidth
+                        },
+                        // TODO kdoh 10/16/2017 we should eventually remove this
+                        this.props.className
+                    )}
                     style={this.props.style}
                 >
                     { typeof this.props.children === "function" ?

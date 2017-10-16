@@ -20,10 +20,11 @@
   max-width: 500px;
 }
 
-/* remove the max-width for date pickers so the dual date picker can fully
+/* remove the max-width in cases where the popover content needs to expand
+ * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - issue #5971
  */
-.PopoverBody.DatePopover {
+.PopoverBody.PopoverBody--autoWidth {
   max-width: none;
 }
 

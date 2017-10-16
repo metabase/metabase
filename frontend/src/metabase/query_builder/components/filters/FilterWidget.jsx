@@ -133,14 +133,17 @@ export default class FilterWidget extends Component {
                 <Popover
                     id="FilterPopover"
                     ref="filterPopover"
-                    className={cx(
-                        'FilterPopover',
-                        // $FlowFixMe
-                        { 'DatePopover': dimension.field().isDate()
-                    })}
+                    className="FilterPopover"
                     isInitiallyOpen={this.props.filter[1] === null}
                     onClose={this.close}
                     horizontalAttachments={["left"]}
+                    autoWidth={
+                        // If the field is a date field the filter popover
+                        // should be allowed to auto size its width to accomodate
+                        // the calendars
+                        // $FlowFixMe
+                        dimension.field().isdate()
+                    }
                 >
                     <FilterPopover
                         query={query}

@@ -125,7 +125,8 @@ export default class TimeseriesFilterWidget extends Component {
                 triggerClasses={cx(className, "my2")}
                 ref={ref => this._popover = ref}
                 sizeToFit
-                className="DatePopover"
+                // accomodate dual calendar size
+                autoWidth={true}
             >
                 <DatePicker
                     filter={this.state.filter}
