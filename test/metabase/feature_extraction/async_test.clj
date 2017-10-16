@@ -27,7 +27,7 @@
 (expect
   [:error
    "foo"]
-  (let [job-id (compute #(throw (Throwable. "foo")))]
+  (let [job-id (compute (gensym) #(throw (Throwable. "foo")))]
     (Thread/sleep 100)
     (let [job (ComputationJob job-id)]
       [(:status job)
