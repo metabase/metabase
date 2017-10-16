@@ -84,7 +84,7 @@ function checkSeriesIsValid({ series, maxSeries }) {
 function getDatas({ settings, series }, warn) {
     return series.map((s, index) =>
         s.data.rows.map(row => {
-            let newRow = [
+            const newRow = [
                 // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
                 (isDimensionTimeseries(series) && !isQuantitative(settings)) ?
                 HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
@@ -104,7 +104,7 @@ function getDatas({ settings, series }, warn) {
 function getXInterval({ settings, series }, xValues) {
     if (isTimeseries(settings)) {
         // compute the interval
-        let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+        const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
         return computeTimeseriesDataInverval(xValues, unit);
     } else if (isQuantitative(settings) || isHistogram(settings)) {
         // Get the bin width from binning_info, if available
@@ -131,12 +131,12 @@ function getXAxisProps(props, datas) {
 ///------------------------------------------------------------ DIMENSIONS & GROUPS ------------------------------------------------------------///
 
 function getDimensionsAndGroupsForScatterChart(datas) {
-    let dataset = crossfilter();
+    const dataset = crossfilter();
     datas.map(data => dataset.add(data));
 
     const dimension = dataset.dimension(row => row);
     const groups = datas.map(data => {
-        let dim = crossfilter(data).dimension(row => row);
+        const dim = crossfilter(data).dimension(row => row);
         return [
             dim.group().reduceSum((d) => d[2] || 1)
         ]
@@ -155,11 +155,11 @@ function addPercentSignsToDisplayNames(series) {
 }
 
 function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(props, datas, warn) {
-    let dataset = crossfilter();
+    const dataset = crossfilter();
 
     const normalized = isNormalized(props.settings, datas);
     // get the sum of the metric for each dimension value in order to scale
-    let scaleFactors = {};
+    const scaleFactors = {};
     if (normalized) {
         for (const data of datas) {
             for (const [d, m] of data) {
@@ -188,7 +188,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(props,
 }
 
 function getDimensionsAndGroupsForOther({ series }, datas, warn) {
-    let dataset = crossfilter();
+    const dataset = crossfilter();
     datas.map(data => dataset.add(data));
 
     const dimension = dataset.dimension(d => d[0]);
@@ -196,7 +196,7 @@ function getDimensionsAndGroupsForOther({ series }, datas, warn) {
         // If the value is empty, pass a dummy array to crossfilter
         data = data.length > 0 ? data : [[null, null]];
 
-        let dim = crossfilter(data).dimension(d => d[0]);
+        const dim = crossfilter(data).dimension(d => d[0]);
 
         return data[0].slice(1).map((_, metricIndex) =>
             reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
@@ -313,9 +313,8 @@ function applyChartLineBarSettings(chart, settings, chartType) {
 
 // TODO - give this a good name when I figure out what it does
 function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
-    chart
-        .keyAccessor((d) => d.key[0])
-        .valueAccessor((d) => d.key[1])
+    chart.keyAccessor((d) => d.key[0])
+         .valueAccessor((d) => d.key[1])
 
     if (chart.radiusValueAccessor) {
         const isBubble = datas[index][0].length > 2;
@@ -335,7 +334,7 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     }
 }
 
-
+/// set the colors for the charts based on the number of series and type of chart
 function setColors({ settings, chartType }, chart, group, groups, index) {
     const colors = settings["graph.colors"];
 
@@ -359,7 +358,7 @@ function getCharts(props, yAxisProps, parent, datas, groups, dimension, { onBrus
     const { yAxisSplit } = yAxisProps;
 
     return groups.map((group, index) => {
-        let chart = getDcjsChart(chartType, parent);
+        const chart = getDcjsChart(chartType, parent);
 
         if (enableBrush(series, onChangeCardAndRun)) initBrush(parent, chart, onBrushChange, onBrushEnd);
 
@@ -445,15 +444,14 @@ function doGroupedBarStuff(parent) {
     parent.on("renderlet.grouped-bar", function (chart) {
         // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
         // https://github.com/dc-js/dc.js/issues/558
-        let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+        const barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
         if (barCharts.length > 0) {
-            let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
-            let newBarWidthTotal = oldBarWidth / barCharts.length;
-            let seriesPadding =
-                newBarWidthTotal < 4 ? 0 :
-                newBarWidthTotal < 8 ? 1 :
-                2;
-            let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
+            const oldBarWidth      = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
+            const newBarWidthTotal = oldBarWidth / barCharts.length;
+            const seriesPadding    = newBarWidthTotal < 4 ? 0 :
+                                     newBarWidthTotal < 8 ? 1 :
+                                     2;
+            const newBarWidth      = Math.max(1, newBarWidthTotal - seriesPadding);
 
             chart.selectAll("g.sub rect").attr("width", newBarWidth);
             barCharts.forEach((barChart, index) => {
@@ -522,21 +520,21 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
         settings["graph.x_axis.scale"] = "ordinal"
     }
 
-    let datas      = getDatas(props, warn);
-    let xAxisProps = getXAxisProps(props, datas);
+    const datas      = getDatas(props, warn);
+    const xAxisProps = getXAxisProps(props, datas);
 
     fillMissingValuesInDatas(props, xAxisProps, datas);
 
     if (isScalarSeries) xAxisProps.xValues = datas.map(data => data[0][0]); // TODO - what is this for?
 
-    let { dimension, groups } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
+    const { dimension, groups } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
 
     const yAxisProps = getYAxisProps(props, groups, datas);
 
     // Don't apply to linear or timeseries X-axis since the points are always plotted in order
     if (!isTimeseries(settings) && !isQuantitative(settings)) forceSortedGroupsOfGroups(groups, makeIndexMap(xAxisProps.xValues));
 
-    let parent = dc.compositeChart(element);
+    const parent = dc.compositeChart(element);
     initChart(parent, element);
 
     const brushChangeFunctions = makeBrushChangeFunctions(props);
