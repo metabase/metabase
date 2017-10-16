@@ -122,74 +122,102 @@ function getXAxisProps(props, datas) {
 
     return {
         xValues,
-        xDomian: d3.extent(xValues),
+        xDomain: d3.extent(xValues),
         xInterval: getXInterval(props, xValues)
     };
 }
 
-function getDimensionAndGroups({ settings, chartType, series }, datas, warn) {
-    let dimension, groups;
+
+///------------------------------------------------------------ DIMENSIONS & GROUPS ------------------------------------------------------------///
+
+function getDimensionsAndGroupsForScatterChart(datas) {
     let dataset = crossfilter();
+    datas.map(data => dataset.add(data));
 
-    if (chartType === "scatter") {
-        datas.map(data => dataset.add(data));
+    const dimension = dataset.dimension(row => row);
+    const groups = datas.map(data => {
+        let dim = crossfilter(data).dimension(row => row);
+        return [
+            dim.group().reduceSum((d) => d[2] || 1)
+        ]
+    });
 
-        dimension = dataset.dimension(row => row);
-        groups = datas.map(data => {
-            let dim = crossfilter(data).dimension(row => row);
-            return [
-                dim.group().reduceSum((d) => d[2] || 1)
-            ]
-        });
-    } else if (isStacked) {
-        const normalized = isNormalized(settings, datas);
-        // get the sum of the metric for each dimension value in order to scale
-        let scaleFactors = {};
-        if (normalized) {
-            for (let data of datas) {
-                for (let [d, m] of data) {
-                    scaleFactors[d] = (scaleFactors[d] || 0) + m;
-                }
-            }
-
-            series = series.map(s => updateIn(s, ["data", "cols", 1], (col) => ({
-                ...col,
-                display_name: "% " + getFriendlyName(col)
-            })));
-        }
-
-        datas.map((data, i) =>
-            dataset.add(data.map(d => ({
-                [0]: d[0],
-                [i + 1]: normalized ? (d[1] / scaleFactors[d[0]]) : d[1]
-            })))
-        );
-
-        dimension = dataset.dimension(d => d[0]);
-        groups = [
-            datas.map((data, seriesIndex) =>
-                reduceGroup(dimension.group(), seriesIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
-            )
-        ];
-    } else {
-        datas.map(data => dataset.add(data));
-
-        dimension = dataset.dimension(d => d[0]);
-        groups = datas.map((data, seriesIndex) => {
-            // If the value is empty, pass a dummy array to crossfilter
-            data = data.length > 0 ? data : [[null, null]];
-
-            let dim = crossfilter(data).dimension(d => d[0]);
-
-            return data[0].slice(1).map((_, metricIndex) =>
-                reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
-            );
-        });
-    }
-
-    return { dataset, groups };
+    return { dimension, groups };
 }
 
+
+/// Add '% ' in from of the names of the appropriate series. E.g. 'Sum' becomes '% Sum'
+function addPercentSignsToDisplayNames(series) {
+    return series.map(s => updateIn(s, ["data", "cols", 1], (col) => ({
+        ...col,
+        display_name: "% " + getFriendlyName(col)
+    })));
+}
+
+function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(props, datas, warn) {
+    let dataset = crossfilter();
+
+    const normalized = isNormalized(props.settings, datas);
+    // get the sum of the metric for each dimension value in order to scale
+    let scaleFactors = {};
+    if (normalized) {
+        for (const data of datas) {
+            for (const [d, m] of data) {
+                scaleFactors[d] = (scaleFactors[d] || 0) + m;
+            }
+        }
+
+        props.series = addPercentSignsToDisplayNames(props.series);
+    }
+
+    datas.map((data, i) =>
+        dataset.add(data.map(d => ({
+            [0]: d[0],
+            [i + 1]: normalized ? (d[1] / scaleFactors[d[0]]) : d[1]
+        })))
+    );
+
+    const dimension = dataset.dimension(d => d[0]);
+    const groups = [
+        datas.map((data, seriesIndex) =>
+            reduceGroup(dimension.group(), seriesIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(props.series[seriesIndex].data.cols[0])))
+        )
+    ];
+
+    return { dimension, groups };
+}
+
+function getDimensionsAndGroupsForOther({ series }, datas, warn) {
+    let dataset = crossfilter();
+    datas.map(data => dataset.add(data));
+
+    const dimension = dataset.dimension(d => d[0]);
+    const groups = datas.map((data, seriesIndex) => {
+        // If the value is empty, pass a dummy array to crossfilter
+        data = data.length > 0 ? data : [[null, null]];
+
+        let dim = crossfilter(data).dimension(d => d[0]);
+
+        return data[0].slice(1).map((_, metricIndex) =>
+            reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
+        );
+    });
+
+    return { dimension, groups };
+}
+
+/// Return an object containing the `dimension` and `groups` for the chart(s).
+/// For normalized stacked charts, this also updates the dispaly names to add a percent in front of the name (e.g. 'Sum' becomes '% Sum')
+function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn) {
+    const { settings, chartType } = props;
+
+    return chartType === "scatter"    ? getDimensionsAndGroupsForScatterChart(datas) :
+           isStacked(settings, datas) ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(props, datas, warn) :
+           getDimensionsAndGroupsForOther(props, datas, warn);
+}
+
+
+///------------------------------------------------------------ Y AXIS PROPS ------------------------------------------------------------///
 
 function getYAxisSplit({ settings, chartType, isScalarSeries, series }, datas, yExtents) {
     // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
@@ -368,26 +396,28 @@ function getCharts(props, yAxisProps, parent, datas, groups, dimension, { onBrus
 
 /************************************************************ OTHER SETUP ************************************************************/
 
-/// make an appropriate `onGoalHover` function.
-function getOnGoalHover({ settings, onHoverChange }, xDomain, charts) {
+/// Add a `goalChart` to the end of `charts`, and return an appropriate `onGoalHover` function as needed.
+function addGoalChartAndGetOnGoalHover({ settings, onHoverChange }, xDomain, parent, charts) {
     if (!settings["graph.show_goal"]) return () => {};
 
-    const goalValue = settings["graph.goal_value"];
-    const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
+    const goalValue     = settings["graph.goal_value"];
+    const goalData      = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
     const goalDimension = crossfilter(goalData).dimension(d => d[0]);
+
     // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
     // has just a single row / datapoint
     const goalGroup = goalDimension.group().reduce((p,d) => d[1], (p,d) => p, () => 0);
     const goalIndex = charts.length;
-    let goalChart = dc.lineChart(parent)
-                      .dimension(goalDimension)
-                      .group(goalGroup)
-                      .on('renderlet', function (chart) {
-                          // remove "sub" class so the goal is not used in voronoi computation
-                          chart.select(".sub._"+goalIndex)
-                               .classed("sub", false)
-                               .classed("goal", true);
-                      });
+
+    const goalChart = dc.lineChart(parent)
+                        .dimension(goalDimension)
+                        .group(goalGroup)
+                        .on('renderlet', function (chart) {
+                            // remove "sub" class so the goal is not used in voronoi computation
+                            chart.select(".sub._"+goalIndex)
+                                 .classed("sub", false)
+                                 .classed("goal", true);
+                        });
     charts.push(goalChart);
 
     return (element) => {
@@ -395,28 +425,18 @@ function getOnGoalHover({ settings, onHoverChange }, xDomain, charts) {
             element,
             data: [{ key: "Goal", value: goalValue }]
         });
-    }
-
+    };
 }
 
-function applyXAxisSettings({ settings, series }, { xValues, xDomain, xInterval }, parent) {
-    if (isTimeseries(settings)) {
-        applyChartTimeseriesXAxis(parent, settings, series, xValues, xDomain, xInterval);
-    } else if (isQuantitative(settings)) {
-        applyChartQuantitativeXAxis(parent, settings, series, xValues, xDomain, xInterval);
-    } else {
-        applyChartOrdinalXAxis(parent, settings, series, xValues);
-    }
-
+function applyXAxisSettings({ settings, series }, xAxisProps, parent) {
+    if      (isTimeseries(settings))     applyChartTimeseriesXAxis(parent, settings, series, xAxisProps);
+    else if (isQuantitative(settings)) applyChartQuantitativeXAxis(parent, settings, series, xAxisProps);
+    else                                    applyChartOrdinalXAxis(parent, settings, series, xAxisProps);
 }
 
 function applyYAxisSettings({ settings }, { yLeftSplit, yRightSplit }, parent) {
-    if (yLeftSplit && yLeftSplit.series.length > 0) {
-        applyChartYAxis(parent, settings, yLeftSplit.series, yLeftSplit.extent, "left");
-    }
-    if (yRightSplit && yRightSplit.series.length > 0) {
-        applyChartYAxis(parent, settings, yRightSplit.series, yRightSplit.extent, "right");
-    }
+    if (yLeftSplit  &&  yLeftSplit.series.length > 0) applyChartYAxis(parent, settings, yLeftSplit.series,  yLeftSplit.extent,  "left");
+    if (yRightSplit && yRightSplit.series.length > 0) applyChartYAxis(parent, settings, yRightSplit.series, yRightSplit.extent, "right");
 }
 
 
@@ -446,20 +466,20 @@ function doGroupedBarStuff(parent) {
 // TODO - better name
 function doHistogramBarStuff(parent) {
     parent.on("renderlet.histogram-bar", function (chart) {
-        let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
-        if (barCharts.length > 0) {
-            // manually size bars to fill space, minus 1 pixel padding
-            const bars = barCharts[0].querySelectorAll("rect");
-            let barWidth = parseFloat(bars[0].getAttribute("width"));
-            let newBarWidth = parseFloat(bars[1].getAttribute("x")) - parseFloat(bars[0].getAttribute("x")) - 1;
-            if (newBarWidth > barWidth) {
-                chart.selectAll("g.sub .bar").attr("width", newBarWidth);
-            }
+        const barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+        if (!barCharts.length) return;
 
-            // shift half of bar width so ticks line up with start of each bar
-            for (const barChart of barCharts) {
-                barChart.setAttribute("transform", `translate(${barWidth / 2}, 0)`);
-            }
+        // manually size bars to fill space, minus 1 pixel padding
+        const bars        = barCharts[0].querySelectorAll("rect");
+        const barWidth    = parseFloat(bars[0].getAttribute("width"));
+        const newBarWidth = parseFloat(bars[1].getAttribute("x")) - parseFloat(bars[0].getAttribute("x")) - 1;
+        if (newBarWidth > barWidth) {
+            chart.selectAll("g.sub .bar").attr("width", newBarWidth);
+        }
+
+        // shift half of bar width so ticks line up with start of each bar
+        for (const barChart of barCharts) {
+            barChart.setAttribute("transform", `translate(${barWidth / 2}, 0)`);
         }
     });
 }
@@ -509,7 +529,7 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
 
     if (isScalarSeries) xAxisProps.xValues = datas.map(data => data[0][0]); // TODO - what is this for?
 
-    let { dimension, groups } = getDimensionAndGroups(props, datas, warn);
+    let { dimension, groups } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
 
     const yAxisProps = getYAxisProps(props, groups, datas);
 
@@ -521,8 +541,8 @@ export default function lineAreaBar(element: Element, props: LineAreaBarProps) {
 
     const brushChangeFunctions = makeBrushChangeFunctions(props);
 
-    let charts      = getCharts(props, yAxisProps, parent, datas, groups, dimension, brushChangeFunctions);
-    let onGoalHover = getOnGoalHover(props, xAxisProps.xDomain, charts);
+    const charts      = getCharts(props, yAxisProps, parent, datas, groups, dimension, brushChangeFunctions);
+    const onGoalHover = addGoalChartAndGetOnGoalHover(props, xAxisProps.xDomain, parent, charts);
 
     parent.compose(charts);
 

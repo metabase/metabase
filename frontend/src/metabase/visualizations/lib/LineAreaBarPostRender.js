@@ -98,8 +98,7 @@ function onRenderVoronoiHover(chart) {
     // so simply return empty width and height for preventing the need to do bigger hacks in test code
     const { width, height } = parent.node() ? parent.node().getBBox() : { width: 0, height: 0 };
 
-    const voronoi = d3.geom.voronoi()
-                      .clipExtent([[0,0], [width, height]]);
+    const voronoi = d3.geom.voronoi().clipExtent([[0,0], [width, height]]);
 
     // circular clip paths to limit distance from actual point
     parent.append("svg:g")
@@ -291,7 +290,7 @@ function computeMinHorizontalMargins(chart) {
 
 function beforeRenderFixMargins(chart, settings) {
     // run before adjusting margins
-    const mins = computeMinHorizontalMargins()
+    const mins = computeMinHorizontalMargins(chart);
 
     // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
     adjustMargin(chart, "bottom", "height", X_AXIS_PADDING, ".axis.x",  ".x-axis-label",          settings["graph.x_axis.labels_enabled"]);

@@ -29,7 +29,7 @@ function adjustTicksIfNeeded(axis, axisSize: number, minPixelsPerTick: number) {
     }
 }
 
-export function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
+export function applyChartTimeseriesXAxis(chart, settings, series, { xValues, xDomain, xInterval }) {
     // find the first nonempty single series
     // $FlowFixMe
     const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
@@ -90,7 +90,7 @@ export function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDom
     chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count));
 }
 
-export function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval) {
+export function applyChartQuantitativeXAxis(chart, settings, series, { xValues, xDomain, xInterval }) {
     // find the first nonempty single series
     // $FlowFixMe
     const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
@@ -131,7 +131,7 @@ export function applyChartQuantitativeXAxis(chart, settings, series, xValues, xD
          .xUnits(dc.units.fp.precision(xInterval));
 }
 
-export function applyChartOrdinalXAxis(chart, settings, series, xValues) {
+export function applyChartOrdinalXAxis(chart, settings, series, { xValues }) {
     // find the first nonempty single series
     // $FlowFixMe
     const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
