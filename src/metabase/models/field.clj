@@ -1,16 +1,13 @@
 (ns metabase.models.field
-  (:require [clojure
-             [data :as d]
-             [string :as s]]
-            [metabase
-             [config :as config]
-             [util :as u]]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as s]
             [metabase.models
              [dimension :refer [Dimension]]
              [field-values :as fv :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
+            [metabase.util :as u]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -53,12 +50,44 @@
   (db/delete! 'FieldValues :field_id id)
   (db/delete! 'MetricImportantField :field_id id))
 
-;; For the time being permissions to access a field are the same as permissions to access its parent table
-;; TODO - this can be memoized because a Table's `:db_id` and `:schema` are guaranteed to never change, as is a Field's `:table_id`
-(defn- perms-objects-set [{table-id :table_id} _]
-  {:pre [(integer? table-id)]}
-  (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
-    #{(perms/object-path database-id schema table-id)}))
+
+;;; Field permissions
+;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
+;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
+;; Table's. To make API endpoints perform well, we have use two strategies:
+;; 1)  If a Field's Table is already hydrated, there is no need to manually fetch the information a second time
+;; 2)  Failing that, we cache the corresponding permissions sets for each *Table ID* for a few seconds to minimize the
+;;     number of DB calls that are made. See discussion below for more details.
+
+(def ^:private ^{:arglists '([table-id])} perms-objects-set*
+  "Cached lookup for the permissions set for a table with TABLE-ID. This is done so a single API call or other unit of
+   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
+   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
+
+   Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
+   possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
+   so this caching is added as a failsafe in case Table hydration wasn't done.
+
+   Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
+   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
+   seconds."
+  (memoize/ttl
+   (fn [table-id]
+     (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+       #{(perms/object-path database-id schema table-id)}))
+   :ttl/threshold 5000))
+
+(defn- perms-objects-set
+  "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
+   same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
+  [{table-id :table_id, {db-id :db_id, schema :schema} :table} _]
+  {:arglists '([field read-or-write])}
+  (if db-id
+    ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
+    #{(perms/object-path db-id schema table-id)}
+    ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
+    (perms-objects-set* table-id)))
+
 
 (u/strict-extend (class Field)
   models/IModel
