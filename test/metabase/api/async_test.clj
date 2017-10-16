@@ -7,13 +7,14 @@
 
 (expect
   true
-  (-> ((user->client :crowberto) :get 200 (str "x-ray/field/" (id :venues :price)))
+  (-> ((user->client :rasta) :get 200 (str "x-ray/field/" (id :venues :price)))
       :job-id
       number?))
 
 (expect
   true
-  (contains? (->> ((user->client :crowberto) :get 200 (str "x-ray/field/" (id :venues :price)))
+  (contains? (->> ((user->client :rasta) :get 200
+                   (str "x-ray/field/" (id :venues :price)))
                   :job-id
-                  (call-with-retries :crowberto))
+                  (call-with-retries :rasta))
              :features))
