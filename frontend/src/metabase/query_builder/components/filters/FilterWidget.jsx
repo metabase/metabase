@@ -142,7 +142,7 @@ export default class FilterWidget extends Component {
                         // should be allowed to auto size its width to accomodate
                         // the calendars
                         // $FlowFixMe
-                        dimension.field().isdate()
+                        dimension.field().isDate()
                     }
                 >
                     <FilterPopover
