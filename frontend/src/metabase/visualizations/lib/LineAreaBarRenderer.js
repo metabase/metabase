@@ -334,8 +334,10 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     }
 }
 
-/// set the colors for the charts based on the number of series and type of chart
-function setColors({ settings, chartType }, chart, group, groups, index) {
+/// set the colors for a CHART based on the number of series and type of chart
+/// see http://dc-js.github.io/dc.js/docs/html/dc.colorMixin.html
+function setChartColor({ settings, chartType }, chart, groups, index) {
+    const group  = groups[index];
     const colors = settings["graph.colors"];
 
     // multiple series
@@ -343,12 +345,15 @@ function setColors({ settings, chartType }, chart, group, groups, index) {
         // multiple stacks
         if (group.length > 1) {
             // compute shades of the assigned color
-            chart.ordinalColors(colorShades(colors[index % colors.length], group.length))
+            console.log("set ordinal colors:", colorShades(colors[index % colors.length], group.length)); // NOCOMMIT
+            chart.ordinalColors(colorShades(colors[index % colors.length], group.length));
         } else {
-            chart.colors(colors[index % colors.length])
+            console.log("set colors:", colors[index % colors.length]); // NOCOMMIT
+            chart.colors(colors[index % colors.length]);
         }
     } else {
-        chart.ordinalColors(colors)
+        console.log("set colors [2]:", colors); // NOCOMMIT
+        chart.ordinalColors(colors);
     }
 }
 
@@ -380,10 +385,10 @@ function getCharts(props, yAxisProps, parent, datas, groups, dimension, { onBrus
             );
         }
 
-        setColors(props, chart, group, groups, index);
+        setChartColor(props, chart, groups, index);
 
-        for (var i = 1; i < group.length; i++) {
-            chart.stack(group[i])
+        for (let i = 1; i < group.length; i++) {
+            chart.stack(group[i]);
         }
 
         applyChartLineBarSettings(chart, settings, chartType);
