@@ -125,6 +125,7 @@ export default class TimeseriesFilterWidget extends Component {
                 triggerClasses={cx(className, "my2")}
                 ref={ref => this._popover = ref}
                 sizeToFit
+                className="DatePopover"
             >
                 <DatePicker
                     filter={this.state.filter}
