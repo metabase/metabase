@@ -177,7 +177,7 @@ describe("xray integration tests", () => {
 
         })
 
-        fit("should render the segment-by-table comparison page without errors", async () => {
+        it("should render the segment-by-table comparison page without errors", async () => {
             const store = await createTestStore()
             store.pushPath(`/xray/compare/segment/${segmentId}/table/1/approximate`);
 
