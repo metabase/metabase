@@ -90,8 +90,8 @@
 (expect
   true
   (:significant? (async-call :get (format "x-ray/compare/fields/%s/%s"
-                                          (id :venues :longitude)
-                                          (id :venues :latitude)))))
+                                          (id :venues :price)
+                                          (id :venues :category_id)))))
 
 (expect
   false
