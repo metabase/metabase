@@ -8,20 +8,27 @@
              [field :refer [Field]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.test.async :refer :all]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [toucan.util.test :as tt]))
 
+(defn- async-call
+  [method endpoint & args]
+  (->> (apply (user->client :rasta) method 200 endpoint args)
+       :job-id
+       (call-with-retries :rasta)))
+
 (expect
   100.0
-  (-> ((user->client :rasta) :get 200 (str "x-ray/field/" (id :venues :price)))
+  (-> (async-call :get (str "x-ray/field/" (id :venues :price)))
       :features
       :count
       :value))
 
 (expect
   100.0
-  (-> ((user->client :rasta) :get 200 (str "x-ray/table/" (id :venues)))
+  (-> (async-call :get (str "x-ray/table/" (id :venues)))
       :constituents
       :PRICE
       :count
@@ -47,7 +54,7 @@
 
 (expect
   1000.0
-  (-> ((user->client :rasta) :post 200 "x-ray/query" test-query)
+  (-> (async-call :post "x-ray/query" test-query)
       :constituents
       :count
       :sum
@@ -55,7 +62,7 @@
 
 (tt/expect-with-temp [Card [{card-id :id} test-card]]
   1000.0
-  (-> ((user->client :rasta) :get 200 (str "x-ray/card/" card-id))
+  (-> (async-call :get (str "x-ray/card/" card-id))
       :constituents
       :count
       :sum
@@ -63,7 +70,7 @@
 
 (tt/expect-with-temp [Segment [{segment-id :id} test-segment]]
   10.0
-  (-> ((user->client :rasta) :get 200 (str "x-ray/segment/" segment-id))
+  (-> (async-call :get (str "x-ray/segment/" segment-id))
       :constituents
       :PRICE
       :count
@@ -71,50 +78,46 @@
 
 (expect
   true
-  (:significant? ((user->client :rasta) :get 200
-                  (format "x-ray/compare/fields/%s/%s"
-                          (id :venues :price)
-                          (id :venues :category_id)))))
+  (:significant? (async-call :get (format "x-ray/compare/fields/%s/%s"
+                                          (id :venues :price)
+                                          (id :venues :category_id)))))
 
 (expect
   false
-  (boolean (:significant? ((user->client :rasta) :get 200
-                           (format "x-ray/compare/tables/%s/%s"
-                                   (id :venues)
-                                   (id :venues))))))
+  (boolean (:significant? (async-call :get (format "x-ray/compare/tables/%s/%s"
+                                                   (id :venues)
+                                                   (id :venues))))))
 
 (tt/expect-with-temp [Segment [{segment1-id :id} test-segment]
                       Segment [{segment2-id :id}
                                (assoc-in test-segment [:definition :filter 2] 5)]]
   true
-  (:significant? ((user->client :rasta) :get 200
-                  (format "x-ray/compare/segments/%s/%s"
-                          segment1-id
-                          segment2-id))))
+  (:significant? (async-call :get (format "x-ray/compare/segments/%s/%s"
+                                          segment1-id
+                                          segment2-id))))
 
 (tt/expect-with-temp [Segment [{segment-id :id} test-segment]]
   true
-  (:significant? ((user->client :rasta) :get 200
-                  (format "x-ray/compare/table/%s/segment/%s"
-                          (id :venues)
-                          segment-id))))
+  (:significant? (async-call :get (format "x-ray/compare/table/%s/segment/%s"
+                                          (id :venues)
+                                          segment-id))))
 
 (expect
   [true
    false]
-  [(-> ((user->client :rasta) :post 200 "x-ray/query" test-query)
-             :features
-             :seasonal-decomposition
-             :value
-             :trend
-             :rows
-             count
-             pos?)
-         (-> ((user->client :rasta) :post 200 "x-ray/query?max_computation_cost=linear" test-query)
-             :features
-             :seasonal-decomposition
-             :value
-             :trend
-             :rows
-             count
-             pos?)])
+  [(-> (async-call :post "x-ray/query" test-query)
+       :features
+       :seasonal-decomposition
+       :value
+       :trend
+       :rows
+       count
+       pos?)
+   (-> (async-call :post "x-ray/query?max_computation_cost=linear" test-query)
+       :features
+       :seasonal-decomposition
+       :value
+       :trend
+       :rows
+       count
+       pos?)])
