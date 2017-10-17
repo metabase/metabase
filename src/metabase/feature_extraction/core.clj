@@ -156,7 +156,7 @@
     {:constituents constituents
      :features     {:metric metric
                     :table  (Table table_id)}
-     :samlple?     (some (comp :sample? val) constituents)}))
+     :sample?      (some (comp :sample? val) constituents)}))
 
 (defn- trim-decimals
   [decimal-places features]
