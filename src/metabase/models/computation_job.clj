@@ -13,10 +13,11 @@
 (u/strict-extend (class ComputationJob)
   models/IModel
   (merge models/IModelDefaults
-         {:types          (constantly {:status :keyword
-                                       :type   :keyword})
+         {:types          (constantly {:status  :keyword
+                                       :type    :keyword
+                                       :context :json})
           :properties     (constantly {:timestamped? true})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?  creator?
+         {:can-read?  (constantly true)
           :can-write? creator?}))

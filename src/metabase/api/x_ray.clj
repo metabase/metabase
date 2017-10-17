@@ -37,19 +37,28 @@
 (defn- x-ray
   [max-cost model]
   (api/check-403 (costs/enable-xrays))
-  {:job-id (async/compute
-            #(fe/x-ray (fe/extract-features {:max-cost max-cost} model)))})
+  {:job-id (async/with-async
+             [model model
+              opts  {:max-cost max-cost}]
+             (fe/x-ray (fe/extract-features opts model)))})
 
 (defn- compare
   [max-cost model1 model2]
   (api/check-403 (costs/enable-xrays))
-  {:job-id (async/compute
-            #(fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))})
+  {:job-id (async/with-async
+             [model1 model1
+              model2 model2
+              opts   {:max-cost max-cost}]
+             (fe/x-ray (fe/compare-features opts model1 model2)))})
 
 (defn- compare-filtered-field
   [max-cost model1 model2 field]
-  {:job-id (async/compute
-            #(let [{:keys [comparison constituents]} (compare max-cost model1 model2)]
+  {:job-id (async/with-async
+             [model1 model1
+              model2 model2
+              field  field
+              opts   {:max-cost max-cost}]
+             (let [{:keys [comparison constituents]} (compare opts model1 model2)]
                {:comparison       (-> comparison (get field))
                 :top-contributors (-> comparison (get field) :top-contributors)
                 :constituents     constituents}))})
