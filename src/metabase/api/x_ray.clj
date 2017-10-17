@@ -3,6 +3,7 @@
   (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :as api]
             [metabase.feature-extraction
+             [async :as async]
              [core :as fe]
              [costs :as costs]]
             [metabase.models
@@ -36,19 +37,22 @@
 (defn- x-ray
   [max-cost model]
   (api/check-403 (costs/enable-xrays))
-  (fe/x-ray (fe/extract-features {:max-cost max-cost} model)))
+  {:job-id (async/compute
+            #(fe/x-ray (fe/extract-features {:max-cost max-cost} model)))})
 
 (defn- compare
   [max-cost model1 model2]
   (api/check-403 (costs/enable-xrays))
-  (fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))
+  {:job-id (async/compute
+            #(fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))})
 
 (defn- compare-filtered-field
   [max-cost model1 model2 field]
-  (let [{:keys [comparison constituents]} (compare max-cost model1 model2)]
-    {:constituents     constituents
-     :comparison       (-> comparison (get field))
-     :top-contributors (-> comparison (get field) :top-contributors)}))
+  {:job-id (async/compute
+            #(let [{:keys [comparison constituents]} (compare max-cost model1 model2)]
+               {:comparison       (-> comparison (get field))
+                :top-contributors (-> comparison (get field) :top-contributors)
+                :constituents     constituents}))})
 
 (api/defendpoint GET "/field/:id"
   "Get x-ray of field."
@@ -146,12 +150,12 @@
 
 (api/defendpoint GET "/compare/segment/:segment-id/table/:table-id"
   "Get comparison x-ray of a table and a segment."
-  [table-id segment-id max_query_cost max_computation_cost]
+  [segment-id table-id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (compare (max-cost max_query_cost max_computation_cost)
-           (api/read-check Table table-id)
-           (api/read-check Segment segment-id)))
+           (api/read-check Segment segment-id)
+           (api/read-check Table table-id)))
 
 (api/defendpoint GET "/compare/segments/:segment1-id/:segment2-id/field/:field"
   "Get comparison x-ray of field named `field` in segments with IDs
@@ -175,15 +179,15 @@
                           (api/read-check Segment segment-id)
                           field))
 
-(api/defendpoint POST "/compare/segment/:segment-id/table/:table-id/field/:field"
+(api/defendpoint GET "/compare/segment/:segment-id/table/:table-id/field/:field"
   "Get comparison x-ray for field named `field` in table with ID
    `table-id` and segment with ID `segment-id`."
-  [table-id segment-id field max_query_cost max_computation_cost]
+  [segment-id table-id field max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (compare-filtered-field (max-cost max_query_cost max_computation_cost)
-                          (api/read-check Table table-id)
                           (api/read-check Segment segment-id)
+                          (api/read-check Table table-id)
                           field))
 
 (api/defendpoint POST "/compare/card/:id/query"
