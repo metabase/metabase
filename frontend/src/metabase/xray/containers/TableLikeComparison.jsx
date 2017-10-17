@@ -32,6 +32,7 @@ const mapDispatchToProps = {
     initialize
 }
 
+
 @connect(mapStateToProps, mapDispatchToProps)
 class TableLikeComparison extends Component {
 
@@ -79,6 +80,7 @@ class TableLikeComparison extends Component {
                             'Nil%',
                         ]}
                         contributors={contributors}
+                        comparables={comparison.comparables}
                         comparison={comparison.comparison}
                         itemA={itemA}
                         itemB={itemB}

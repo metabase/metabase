@@ -7,13 +7,21 @@ export class ComparisonDropdown extends Component {
     props: {
         // Models of current comparison – you can enter only the left side of comparison with an array of a single model
         models: any[],
-        comparables: any[]
+        comparables: any[],
+        updatingModelAtIndex: number,
+        triggerElement?: any
+    }
+
+    static defaultProps = {
+        updatingModelAtIndex: 1
     }
 
     getComparisonUrl = (comparableModel) => {
-        const { models } = this.props
+        const { models, updatingModelAtIndex } = this.props
 
-        let comparisonModels = Object.assign([...models], { 1: comparableModel })
+        let comparisonModels = Object.assign([...models], {
+            [updatingModelAtIndex]: comparableModel
+        })
 
         if (comparisonModels[0]["type-tag"] === comparisonModels[1]["type-tag"]) {
             return `/xray/compare/${comparisonModels[0]["type-tag"]}s/${comparisonModels[0].id}/${comparisonModels[1].id}/approximate`
@@ -24,18 +32,19 @@ export class ComparisonDropdown extends Component {
     }
 
     render() {
-        const { comparables } = this.props;
+        const { comparables, triggerElement } = this.props;
 
         return (
             <Select
                 value={null}
                 // TODO Atte Keinänen: Use links instead of this kind of logic
                 triggerElement={
-                    <div className="Button bg-white text-brand-hover no-decoration">
-                        <Icon name="compare" className="mr1" />
-                        {`Compare with...`}
-                        <Icon name="chevrondown" size={12} className="ml1" />
-                    </div>
+                    triggerElement ||
+                        <div className="Button bg-white text-brand-hover no-decoration">
+                            <Icon name="compare" className="mr1" />
+                            {`Compare with...`}
+                            <Icon name="chevrondown" size={12} className="ml1" />
+                        </div>
                 }
             >
                 { comparables

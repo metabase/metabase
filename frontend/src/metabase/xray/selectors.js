@@ -87,6 +87,7 @@ const getItemColor = (index) => ({
 const genItem = (item, index) => ({
     name: item.name,
     id: item.id,
+    "type-tag": item["type-tag"],
     color: getItemColor(index),
 })
 
@@ -97,7 +98,7 @@ export const getModelItem = (state, index = 0) => createSelector(
             const item = comparison.constituents[index].features.model
             return {
                 ...genItem(item, index),
-                constituents: comparison.constituents[index].constituents,
+                constituents: comparison.constituents[index].constituents
             }
         }
     }
