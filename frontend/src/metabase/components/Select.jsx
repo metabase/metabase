@@ -168,7 +168,7 @@ export class Option extends Component {
                         }}
                     />
                 }
-                <span className="ml4">{children}</span>
+                <span className="ml4 no-decoration">{children}</span>
             </div>
         );
     }
