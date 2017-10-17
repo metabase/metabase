@@ -162,7 +162,12 @@ const XRayComparison = ({
             <div className="flex">
                 <ComparisonDropdown
                     models={[itemA, itemB]}
-                    comparables={comparables[0]}
+                    comparables={
+                        comparables[0].filter((comparableModel) =>
+                            // filter out itemB
+                            !(comparableModel.id === itemB.id && comparableModel["type-tag"] === itemB["type-tag"])
+                        )
+                    }
                     updatingModelAtIndex={0}
                     triggerElement={
                         <ItemLink
@@ -173,7 +178,12 @@ const XRayComparison = ({
                 />
                 <ComparisonDropdown
                     models={[itemA, itemB]}
-                    comparables={comparables[1]}
+                    comparables={
+                        comparables[1].filter((comparableModel) =>
+                            // filter out itemA
+                            !(comparableModel.id === itemA.id && comparableModel["type-tag"] === itemA["type-tag"])
+                        )
+                    }
                     updatingModelAtIndex={1}
                     triggerElement={
                         <ItemLink

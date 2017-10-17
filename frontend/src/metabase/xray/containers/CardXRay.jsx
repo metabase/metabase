@@ -92,7 +92,7 @@ class CardXRay extends Component {
                 { () =>
                     <XRayPageWrapper>
                         <div className="mt4 mb2">
-                            <h1 className="my3">{xray.features.card.name} X-ray</h1>
+                            <h1 className="my3">{xray.features.model.name} X-ray</h1>
                         </div>
                         <Heading heading="Growth rate" />
                         <div className="bg-white bordered rounded shadowed">
@@ -115,7 +115,7 @@ class CardXRay extends Component {
                                     <Visualization
                                         series={[
                                             {
-                                                card: xray.features.card,
+                                                card: xray.features.model,
                                                 data: xray.dataset
                                             },
                                             {
