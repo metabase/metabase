@@ -336,25 +336,41 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
 
 /// set the colors for a CHART based on the number of series and type of chart
 /// see http://dc-js.github.io/dc.js/docs/html/dc.colorMixin.html
-function setChartColor({ settings, chartType }, chart, groups, index) {
-    const group  = groups[index];
-    const colors = settings["graph.colors"];
+function setChartColor({ settings, chartType, series }, chart, groups, index) {
+    const colors        = settings["graph.colors"];
+    const group         = groups[index];
+    const thisCard      = series[index].card;
+    const colorMap      = settings["graph.colorsMap"];
+    const colorMapColor = colorMap[thisCard.id];
 
-    // multiple series
-    if (groups.length > 1 || chartType === "scatter") {
-        // multiple stacks
-        if (group.length > 1) {
-            // compute shades of the assigned color
-            console.log("set ordinal colors:", colorShades(colors[index % colors.length], group.length)); // NOCOMMIT
-            chart.ordinalColors(colorShades(colors[index % colors.length], group.length));
-        } else {
-            console.log("set colors:", colors[index % colors.length]); // NOCOMMIT
-            chart.colors(colors[index % colors.length]);
-        }
-    } else {
-        console.log("set colors [2]:", colors); // NOCOMMIT
-        chart.ordinalColors(colors);
+    console.log("colorMap:", colorMap); // NOCOMMIT
+    console.log("colorMapColor for card:", thisCard.id, thisCard.name, "->", colorMapColor); // NOCOMMIT
+
+    // multiple stacks
+    if (group.length > 1) {
+        // compute shades of the assigned color
+        chart.ordinalColors(colorShades(colors[index % colors.length], group.length));
+        console.log("set chart color with ordinalColor shades"); // NOCOMMIT
+        return;
     }
+
+    // single or multi-series with color defined in colorsMap
+    if (colorMapColor) {
+        chart.colors(colorMapColor);
+        console.log("set chart color with colorMap"); // NOCOMMIT
+        return;
+    }
+
+    // single-series, non scatter
+    if (groups.length === 1 && chartType !== "scatter") {
+        chart.ordinalColors(colors);
+        console.log("set chart color for single-series"); // NOCOMMIT
+        return;
+    }
+
+    // multiple series fallback: just use color in colors list at index
+    chart.colors(colors[index % colors.length]);
+    console.log("set chart color with color at index"); // NOCOMMIT
 }
 
 /// Return a sequence of little charts for each of the groups.
