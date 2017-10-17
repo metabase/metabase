@@ -102,6 +102,7 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx"
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+import TableComparison from "metabase/xray/containers/TableComparison";
 
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
@@ -259,6 +260,7 @@ export const getRoutes = (store) =>
                     <Route path="field/:fieldId/:cost" component={FieldXRay} />
                     <Route path="card/:cardId/:cost" component={CardXRay} />
                     <Route path="compare/segments/:segmentId1/:segmentId2/:cost" component={SegmentComparison} />
+                    <Route path="compare/tables/:tableId1/:tableId2/:cost" component={TableComparison} />
                     <Route path="compare/segment/:segmentId/table/:tableId/:cost" component={SegmentTableComparison} />
                 </Route>
 

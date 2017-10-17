@@ -162,11 +162,11 @@ export const XRayApi = {
     segment_xray:                GET("/api/x-ray/segment/:segmentId"),
     card_xray:                   GET("/api/x-ray/card/:cardId"),
 
-    field_compare:               GET("/api/x-ray/compare/fields/:fieldId1/:fieldId2"),
-    table_compare:               GET("/api/x-ray/compare/tables/:tableId1/:tableId2"),
-    segment_compare:             GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2"),
-    segment_table_compare:       GET("/api/x-ray/compare/segment/:segmentId/table/:tableId"),
-    card_compare:                GET("/api/x-ray/compare/cards/:cardId1/:cardId2")
+    field_compare:               GET("/api/x-ray/compare/fields/:id1/:id2"),
+    table_compare:               GET("/api/x-ray/compare/tables/:id1/:id2"),
+    segment_compare:             GET("/api/x-ray/compare/segments/:id1/:id2"),
+    segment_table_compare:       GET("/api/x-ray/compare/segment/:id1/table/:id2"),
+    card_compare:                GET("/api/x-ray/compare/cards/:id1/:id2")
 };
 
 export const PulseApi = {

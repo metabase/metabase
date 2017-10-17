@@ -35,15 +35,16 @@ export const fetchXray = createThunkAction(
     }
 )
 
-export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentComparison = createThunkAction(
-    FETCH_SEGMENT_COMPARISON,
-    (segmentId1, segmentId2, cost) =>
+
+export const FETCH_COMPARISON = 'metabase/xray/FETCH_COMPARISON';
+export const fetchComparison = createThunkAction(
+    FETCH_COMPARISON,
+    (endpoint, id1, id2, cost) =>
         async (dispatch) => {
             const c = COSTS[cost]
             dispatch(startLoad())
             try {
-                const comparison = await XRayApi.segment_compare({ segmentId1, segmentId2, ...c.method })
+                const comparison = await endpoint({ id1, id2, ...c.method })
                 return dispatch(loadComparison(comparison))
             } catch (error) {
                 console.error(error)
@@ -52,22 +53,26 @@ export const fetchSegmentComparison = createThunkAction(
         }
 )
 
-export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-export const fetchSegmentTableComparison = createThunkAction(
-    FETCH_SEGMENT_TABLE_COMPARISON,
-    (segmentId, tableId, cost) =>
-        async (dispatch) => {
-            const c = COSTS[cost]
-            dispatch(startLoad())
-            try {
-                const comparison = await XRayApi.segment_table_compare({ segmentId, tableId, ...c.method })
-                return dispatch(loadComparison(comparison))
-            } catch (error) {
-                console.error(error)
-                return dispatch(xrayError(error))
-            }
-        }
-)
+export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const fetchSegmentComparison = (segmentId1, segmentId2, cost) =>
+    async (dispatch) => {
+        await dispatch(fetchComparison(XRayApi.segment_compare, segmentId1, segmentId2, cost))
+        dispatch.action(FETCH_SEGMENT_COMPARISON)
+    }
+
+export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_COMPARISON';
+export const fetchSegmentTableComparison = (segmentId, tableId, cost) =>
+    async (dispatch) => {
+        await dispatch(fetchComparison(XRayApi.segment_table_compare, segmentId, tableId, cost))
+        dispatch.action(FETCH_SEGMENT_TABLE_COMPARISON)
+    }
+
+export const FETCH_TABLE_COMPARISON = 'metabase/xray/FETCH_TABLE_COMPARISON';
+export const fetchTableComparison = (tableId1, tableId2, cost) =>
+    async (dispatch) => {
+        await dispatch(fetchComparison(XRayApi.table_compare, tableId1, tableId2, cost))
+        dispatch.action(FETCH_TABLE_COMPARISON)
+    }
 
 export const START_LOAD = 'metabase/xray/START_LOAD'
 export const startLoad = createAction(START_LOAD)
