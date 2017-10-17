@@ -3,9 +3,8 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { fetchTableXray, initialize } from 'metabase/xray/xray'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-import { push } from "react-router-redux";
 
 import CostSelect from 'metabase/xray/components/CostSelect'
 import Constituent from 'metabase/xray/components/Constituent'
@@ -14,7 +13,9 @@ import {
     getConstituents,
     getFeatures,
     getLoadingStatus,
-    getError, getComparables
+    getError,
+    getComparables,
+    getIsAlreadyFetched,
 } from 'metabase/xray/selectors'
 
 import Icon from 'metabase/components/Icon'
@@ -23,14 +24,15 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
 
 type Props = {
-    fetchXray: () => void,
+    fetchTableXray: () => void,
     initialize: () => {},
     constituents: [],
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table
     },
@@ -46,19 +48,18 @@ const mapStateToProps = state => ({
     constituents: getConstituents(state),
     comparables: getComparables(state),
     isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
     error: getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray,
-    push
+    fetchTableXray
 }
 
-    @connect(mapStateToProps, mapDispatchToProps)
-    @title(({ features }) => features && features.model.display_name || "Table")
-    class TableXRay extends Component {
-
+@connect(mapStateToProps, mapDispatchToProps)
+@title(({ features }) => features && features.model.display_name || "Table")
+class TableXRay extends Component {
     props: Props
 
     componentWillMount () {
@@ -74,9 +75,8 @@ const mapDispatchToProps = {
     }
 
     fetch () {
-        const { params, fetchXray } = this.props
-        // TODO this should happen at the action level
-        fetchXray('table', params.tableId, params.cost)
+        const { params, fetchTableXray } = this.props
+        fetchTableXray(params.tableId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -86,11 +86,11 @@ const mapDispatchToProps = {
     }
 
     render () {
-        const { comparables, constituents, features, params, isLoading, error } = this.props
+        const { comparables, constituents, features, params, isLoading, isAlreadyFetched, error } = this.props
 
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(features)}
+                loading={isLoading || !isAlreadyFetched}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}
