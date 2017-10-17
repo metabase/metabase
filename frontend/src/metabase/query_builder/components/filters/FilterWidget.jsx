@@ -127,8 +127,6 @@ export default class FilterWidget extends Component {
     renderPopover() {
         if (this.state.isOpen) {
             const { query, filter } = this.props;
-            const [, field,,] = filter;
-            const dimension = query.parseFieldReference(field);
             return (
                 <Popover
                     id="FilterPopover"
@@ -137,13 +135,7 @@ export default class FilterWidget extends Component {
                     isInitiallyOpen={this.props.filter[1] === null}
                     onClose={this.close}
                     horizontalAttachments={["left"]}
-                    autoWidth={
-                        // If the field is a date field the filter popover
-                        // should be allowed to auto size its width to accomodate
-                        // the calendars
-                        // $FlowFixMe
-                        dimension.field().isDate()
-                    }
+                    autoWidth
                 >
                     <FilterPopover
                         query={query}

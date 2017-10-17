@@ -158,6 +158,7 @@ export default class GuiQueryEditor extends Component {
                         triggerClasses="flex align-center"
                         getTarget={() => this.refs.addFilterTarget}
                         horizontalAttachments={["left"]}
+                        autoWidth
                     >
                         <FilterPopover
                             isNew
