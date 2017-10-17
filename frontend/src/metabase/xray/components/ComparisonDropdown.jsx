@@ -46,8 +46,10 @@ export class ComparisonDropdown extends Component {
                             <Option
                                 key={index}
                                 value={comparableModel}
+                                icon={comparableModel["type-tag"]}
+                                iconColor={"#DFE8EA"}
                             >
-                                {comparableModel.name}
+                                {comparableModel.display_name || comparableModel.name}
                             </Option>
                         </Link>
                     )}

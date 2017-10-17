@@ -27,7 +27,7 @@ import type { Table } from 'metabase/meta/types/Table'
 import type { Segment } from 'metabase/meta/types/Segment'
 
 import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
-import Select, { Option } from "metabase/components/Select";
+import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
 
 type Props = {
     fetchXray: () => void,
@@ -143,37 +143,10 @@ class SegmentXRay extends Component {
                                     />
                                 </div>
                             </div>
-                            <div>
-                                { comparables &&
-                                    <Select
-                                        value={null}
-                                        // TODO Atte Keinänen: Use links instead of this kind of logic
-                                        onChange={e => this.navigateToComparison(e.target.value)}
-                                        triggerElement={
-                                            <div className="Button bg-white text-brand-hover no-decoration">
-                                                <Icon name="compare" className="mr1" />
-                                                {`Compare with...`}
-                                                <Icon name="chevrondown" size={12} className="ml1" />
-                                            </div>
-                                        }
-                                    >
-                                        { comparables
-                                            // NOTE: filter out card comparisons because we don't support those yet
-                                            .filter((comparableModel) => !comparableModel["type-tag"].includes("card"))
-                                            .map((comparableModel, index) =>
-                                                <Option
-                                                    key={index}
-                                                    value={comparableModel}
-                                                    // icon={collection.id != null ? "collection" : null}
-                                                    // iconColor={collection.color}
-                                                    // iconSize={18}
-                                                >
-                                                    {comparableModel.name}
-                                                </Option>
-                                        )}
-                                    </Select>
-                                }
-                            </div>
+                            <ComparisonDropdown
+                                models={[features.model]}
+                                comparables={comparables}
+                            />
                             <div className="mt2">
                                 <Heading heading="Fields in this segment" />
                                 <ol>

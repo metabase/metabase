@@ -117,12 +117,10 @@ const mapDispatchToProps = {
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <ComparisonDropdown
-                                    models={[features.model]}
-                                    comparables={comparables}
-                                />
-                            </div>
+                            <ComparisonDropdown
+                                models={[features.model]}
+                                comparables={comparables}
+                            />
                             <ol>
                                 { constituents.map((constituent, index) =>
                                     <li key={index}>
