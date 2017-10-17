@@ -24,7 +24,7 @@ import {
 import Constituent from 'metabase/xray/components/Constituent'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
 
 type Props = {

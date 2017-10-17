@@ -196,20 +196,20 @@ describe("xray integration tests", () => {
             const leftSideDropdown = comparisonDropdowns.at(0)
             const rightSideDropdown = comparisonDropdowns.at(1)
 
-            // left side should be be table and show only segments options as comparision options atm
             click(leftSideDropdown.find(ItemLink))
             const leftSidePopover = leftSideDropdown.find(TestPopover)
             console.log(leftSidePopover.debug())
-            expect(leftSidePopover.find(`a[href="/xray/compare/segments/${segmentId2}/${segmentId}/approximate"]`).length).toBe(1)
-            // should filter out the current segment
-            expect(leftSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId}/approximate"]`).length).toBe(0)
+            expect(leftSidePopover.find(`a[href="/xray/compare/segment/${segmentId}/table/1/approximate"]`).length).toBe(0)
+            // should filter out the current table
+            expect(leftSidePopover.find(`a[href="/xray/compare/tables/1/1/approximate"]`).length).toBe(0)
 
+            // right side should be be table and show only segments options as comparision options atm
             click(rightSideDropdown.find(ItemLink))
             const rightSidePopover = rightSideDropdown.find(TestPopover)
             console.log(rightSidePopover.debug())
-            expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId2}/${segmentId}/approximate"]`).length).toBe(0)
-            // should filter out the current table
-            expect(rightSidePopover.find(`a[href="/xray/compare/tables/1/1/approximate"]`).length).toBe(0)
+            expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId2}/approximate"]`).length).toBe(1)
+            // should filter out the current segment
+            expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId}/approximate"]`).length).toBe(0)
         })
     })
 

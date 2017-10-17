@@ -68,7 +68,7 @@ export const fetchSegmentComparison = createThunkAction(FETCH_SEGMENT_COMPARISON
 )
 
 
-export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
+export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_TABLE_COMPARISON';
 const segmentTableComparisonXrayRequest = new BackgroundJobRequest({
     creationEndpoint: XRayApi.segment_table_compare,
     resultPropName: 'comparison',
@@ -97,5 +97,6 @@ export default handleActions({
     ...cardXrayRequest.getReducers(),
     ...segmentComparisonXrayRequest.getReducers(),
     ...segmentTableComparisonXrayRequest.getReducers(),
+    ...tableComparisonXrayRequest.getReducers(),
     [INITIALIZE]: () => tableXrayRequest.getDefaultState(),
 }, tableXrayRequest.getDefaultState())
