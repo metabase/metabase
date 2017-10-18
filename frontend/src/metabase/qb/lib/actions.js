@@ -377,7 +377,7 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
     if (!query) {
         return;
     }
-    const aggregations   = Query.getAggregations(query);
+    const aggregations = Query.getAggregations(query);
     // TODO - why can't we just use Query.getBreakoutFields() ???? We do it above
     const breakoutFields = Query.getBreakouts(query).map(
         breakout => (Q.getFieldTarget(breakout, tableMetadata) || {}).field
