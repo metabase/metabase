@@ -1,6 +1,8 @@
 (ns metabase.task.cleanup-temporary-computation-job-results
   "Cleanup of old async computation results."
-  (:require [clj-time.core :as t]
+  (:require [clj-time
+             [coerce :as t.coerce]
+             [core :as t]]
             [clojurewerkz.quartzite
              [jobs :as jobs]
              [triggers :as triggers]]
@@ -15,7 +17,7 @@
   (db/delete! 'ComputationJobResult
     :created_at [:< (-> (t/now)
                         (t/minus temporary-result-lifetime)
-                        str)]
+                        t.coerce/to-sql-time)]
     :permanence "temporary"))
 
 (def ^:private ^:const cleanup-job-key     "metabase.task.cleanup-temporary-computation-job-results.job")
