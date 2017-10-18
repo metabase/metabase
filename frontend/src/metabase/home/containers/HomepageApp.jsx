@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from 'c-3po'
 
+import cxs from 'cxs'
+
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal.jsx";
 
@@ -78,12 +80,12 @@ export default class HomepageApp extends Component {
                     </Modal>
                 : null }
 
-                <div className="bg-brand text-white md-pl4">
-                    <div style={{marginRight: 346}}>
+                <div className="bg-white md-bg-brand text-brand md-text-white md-pl4">
+                    <div className="HomepageGreeting">
                         <div className="Layout-mainColumn">
-                            <header style={this.styles.headerGreeting} className="flex align-center pb4 pt1">
+                            <header style={this.styles.headerGreeting} className="flex align-center py1 md-pb4">
                                 <Smile />
-                                <div id="Greeting" className="ml2">{this.state.greeting}</div>
+                                <div id="Greeting">{this.state.greeting}</div>
                             </header>
                         </div>
                     </div>

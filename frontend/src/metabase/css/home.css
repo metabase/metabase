@@ -2,12 +2,29 @@
     z-index: 4;
 }
 
-.NavItem {
-    border-radius: 8px;
+
+.NavItem.NavItem--selected {
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
-.NavItem:hover, .NavItem.NavItem--selected {
-    background-color: rgba(255, 255, 255, 0.08);
+.NavItem {
+  flex: 0 20%;
+}
+.NavItem > .Icon {
+  padding-left: 1em;
+  padding-right: 1em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .NavItem {
+      border-radius: 8px;
+  }
+  .NavItem:hover,
+  .NavItem.NavItem--selected {
+      background-color: rgba(255, 255, 255, 0.08);
+  }
 }
 
 .NavNewQuestion {
@@ -189,4 +206,10 @@
     letter-spacing: 0.5px;
     line-height: 1;
     text-transform: uppercase;
+}
+
+@media screen and (--breakpoint-min-md) {
+  .HomepageGreeting {
+    margin-right: 346px;
+  }
 }
