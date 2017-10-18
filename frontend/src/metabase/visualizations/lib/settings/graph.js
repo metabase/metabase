@@ -184,6 +184,7 @@ export const GRAPH_COLORS_SETTINGS = {
     // TODO - does this need to have anything else set? It's not supposed to be manually editable. Or is it?
     "graph.colorsMap": {
         getDefault: (series, vizSettings) => {
+            console.log("getting colors map for vizSettings:", vizSettings, "->", vizSettings["graph.colorsMap"] || {}); // NOCOMMIT
             return vizSettings["graph.colorsMap"] || {};
         }
     }

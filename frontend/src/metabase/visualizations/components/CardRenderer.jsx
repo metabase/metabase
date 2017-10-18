@@ -19,6 +19,7 @@ export default class CardRenderer extends Component {
         renderer: PropTypes.func.isRequired,
         onRenderError: PropTypes.func.isRequired,
         className: PropTypes.string
+        // TODO - settings?
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -69,6 +70,7 @@ export default class CardRenderer extends Component {
         parent.appendChild(element);
 
         try {
+            console.log("CardRenderer props colorMap:", this.props.settings["graph.colorsMap"]); // NOCOMMIT
             this._chart = this.props.renderer(element, this.props);
         } catch (err) {
             console.error(err);

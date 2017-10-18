@@ -213,8 +213,8 @@ function getSettingDefintionsForSeries(series) {
 }
 
 export function getSettings(series) {
-    let vizSettings = {};
-    let settingsDefs = getSettingDefintionsForSeries(series);
+    const vizSettings  = {};
+    const settingsDefs = getSettingDefintionsForSeries(series);
     for (let id in settingsDefs) {
         getSetting(settingsDefs, id, vizSettings, series);
     }
