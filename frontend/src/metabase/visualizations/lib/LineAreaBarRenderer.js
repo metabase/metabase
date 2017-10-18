@@ -345,14 +345,11 @@ function setChartColor({ settings, chartType }, chart, groups, index) {
         // multiple stacks
         if (group.length > 1) {
             // compute shades of the assigned color
-            console.log("set ordinal colors:", colorShades(colors[index % colors.length], group.length)); // NOCOMMIT
             chart.ordinalColors(colorShades(colors[index % colors.length], group.length));
         } else {
-            console.log("set colors:", colors[index % colors.length]); // NOCOMMIT
             chart.colors(colors[index % colors.length]);
         }
     } else {
-        console.log("set colors [2]:", colors); // NOCOMMIT
         chart.ordinalColors(colors);
     }
 }

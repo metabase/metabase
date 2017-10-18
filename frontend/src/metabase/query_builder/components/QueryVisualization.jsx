@@ -62,7 +62,7 @@ type State = {
     lastRunDatasetQuery: DatasetQuery,
     lastRunParameterValues: ParameterValues,
     warnings: string[]
-}
+};
 
 export default class QueryVisualization extends Component {
     props: Props;
