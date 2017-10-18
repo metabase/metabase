@@ -16,7 +16,7 @@
   ComputationJobResult [{result-id :id} {:job_id     job-id
                                          :permanence :temporary
                                          :payload    1}]]
-  [1 0]
+  true
   (let [c1 (count (ComputationJobResult))]
     (db/update! ComputationJobResult result-id
                 :created_at (->> #'task/temporary-result-lifetime
@@ -24,4 +24,4 @@
                                  (t/minus (t/now) (t/days 1))
                                  t.coerce/to-sql-time))
     (#'task/cleanup-temporary-results!)
-    [c1 (count (ComputationJobResult))]))
+    (> c1 (count (ComputationJobResult)))))
