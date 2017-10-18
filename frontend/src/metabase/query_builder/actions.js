@@ -1000,7 +1000,9 @@ export const runQuestionQuery = ({
 // This method seems to has been a candidate for a rewrite anyway
 const getDisplayTypeForCard = (card, queryResults, getState) => {
     const queryResult    = queryResults[0];
-    const tableMetadata  = getTableMetadata(getState());
+    const state          = getState();
+    const isFirstRun     = state.qb.lastRunCard == null; // is this the very first run of a brand-new Question?
+    const tableMetadata  = getTableMetadata(state);
     const innerQuery     = card.dataset_query.query;
     const numAgs         = (Query2.getAggregations(innerQuery) || []).length;
     const breakoutFields = Query2.getBreakoutFields(innerQuery, tableMetadata);
@@ -1009,13 +1011,12 @@ const getDisplayTypeForCard = (card, queryResults, getState) => {
     const numRows        = (queryResult.data.rows || []).length;
     const numCols        = (queryResult.data.cols || []).length;
 
-    console.log("card.display:", card.display); // NOCOMMIT
-
     // if we have a 1x1 data result then this should always be viewed as a scalar
     if (!isScalarViz && numRows === 1 && numCols === 1) return "scalar";
 
-    // timeseries
-    if (!isScalarViz && numAgs === 1 && numBreakouts === 1 && isDate(breakoutFields[0])) return "line";
+    // timeseries. If this is the very first run and it's something that's a timeseries then switch it to line display.
+    // Otherwise if the user hits 'refresh' (isFirstRun == false) we don't want to override any changes they make to display
+    if (isFirstRun && !isScalarViz && numAgs === 1 && numBreakouts === 1 && isDate(breakoutFields[0])) return "line";
 
     // any time we were a scalar and now have more than 1x1 data switch to table view
     if (isScalarViz && (numRows > 1 || numCols > 1)) return "table";
@@ -1026,7 +1027,6 @@ const getDisplayTypeForCard = (card, queryResults, getState) => {
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResults) => {
-    console.log("card:", card); // NOCOMMIT
     return async (dispatch, getState) => {
         return {
             card,
