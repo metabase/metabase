@@ -78,6 +78,7 @@
                   :exclusions [org.slf4j/slf4j-api
                                it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
+                 [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
@@ -101,7 +102,8 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
-  :jvm-opts ["-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
+  :jvm-opts ["-XX:+IgnoreUnrecognizedVMOptions"                       ; ignore things not recognized for our Java version instead of refusing to start
+             "-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
              "-Xverify:none"                                          ; disable bytecode verification when running in dev so it starts slightly faster
              "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
              "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
