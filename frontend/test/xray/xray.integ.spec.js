@@ -187,8 +187,8 @@ describe("xray integration tests", () => {
          *     expect(segmentXRay.length).toBe(1)
          *     expect(segmentXRay.find(CostSelect).length).toBe(1)
          *     expect(segmentXRay.text()).toMatch(/A Segment/);
-         * })
-           })*/
+         * })*/
+    })
 
     describe("admin management of xrays", async () => {
         it("should allow an admin to manage xrays", async () => {
