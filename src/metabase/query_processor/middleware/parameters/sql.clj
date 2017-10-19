@@ -53,6 +53,9 @@
 ;; List of numbers to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->number` for more details.
 (s/defrecord ^:private CommaSeparatedNumbers [numbers :- [s/Num]])
 
+;; List of texts to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->text` for more details.
+(s/defrecord ^:private CommaSeparatedTexts [texts :- [s/Str]])
+
 ;; convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param values.
 (defrecord ^:private NoValue [])
 
@@ -79,6 +82,7 @@
 (def ^:private ParamValue
   (s/named (s/maybe (s/cond-pre NoValue
                                 CommaSeparatedNumbers
+                                CommaSeparatedTexts
                                 Dimension
                                 Date
                                 s/Num
@@ -148,6 +152,11 @@
   [s :- s/Str]
   (.parse (NumberFormat/getInstance) ^String s))
 
+(s/defn ^:private ^:always-validate value->text :- (s/cond-pre s/Str CommaSeparatedTexts)
+  "see value->number"
+  [value]
+  (strict-map->CommaSeparatedTexts {:texts (str/split value #",")}))
+
 (s/defn ^:private ^:always-validate value->number :- (s/cond-pre s/Num CommaSeparatedNumbers)
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number,
    but as a somewhat undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the
@@ -177,6 +186,7 @@
   (cond
     (instance? NoValue value)                        value
     (= param-type "number")                          (value->number value)
+    (= param-type "text")                            (value->text value)
     (= param-type "date")                            (map->Date {:s value})
     (and (= param-type "dimension")
          (= (get-in value [:param :type]) "number")) (update-in value [:param :value] value->number)
@@ -282,6 +292,10 @@
   CommaSeparatedNumbers
   (->replacement-snippet-info [{:keys [numbers]}]
     {:replacement-snippet (str/join ", " numbers)})
+
+  CommaSeparatedTexts
+  (->replacement-snippet-info [{:keys [texts]}]
+    {:replacement-snippet (str "'" (str/join "', '" texts) "'") })
 
   Date
   (->replacement-snippet-info [{:keys [s]}]
