@@ -1214,6 +1214,19 @@ export const viewPreviousObjectDetail = () => {
     }
 }
 
+export const CREATE_ALERT = 'metabase/qb/CREATE_ALERT'
+export const createAlert = (schedule) => {
+    return (dispatch, getState) => {
+        const question = getQuestion(getState());
+
+        dispatch(updateQuestion(
+            question.addAlarm(schedule)
+        ))
+
+        dispatch.action(CREATE_ALERT)
+    }
+}
+
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;
 export const onBeginEditing = beginEditing;

@@ -442,7 +442,7 @@ export default class QueryHeader extends Component {
                             {
                                 title: "Get alerts about this",
                                 icon: "alert",
-                                content: (toggleMenu) => <AlertsModalContent onCancel={toggleMenu} />
+                                content: (toggleMenu) => <AlertsModalContent onClose={toggleMenu} />
                             }
                         ]}
                     />

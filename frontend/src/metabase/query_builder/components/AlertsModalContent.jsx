@@ -1,10 +1,18 @@
 import React, { Component } from "react";
 import Button from "metabase/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
+import { connect } from "react-redux";
+import { createAlert } from "metabase/query_builder/actions";
 
 const SPLASH_SCREEN_STEP = "splash"
 const SET_SCHEDULE_STEP = "set-schedule"
 const ALERT_CREATED_STEP = "alert-created"
+
+const mapDispatchToProps = {
+    createAlert
+}
+
+@connect(null, mapDispatchToProps)
 export class AlertsModalContent extends Component {
     state = {
         step: SPLASH_SCREEN_STEP,
@@ -24,12 +32,14 @@ export class AlertsModalContent extends Component {
         this.setState({ schedule })
     }
 
-    createAlert = () => {
-        this.setState({ step: ALERT_CREATED_STEP })
+    onCreateAlert = async () => {
+        const { createAlert, onClose } = this.props
+        await createAlert()
+        onClose()
     }
 
     render() {
-        const { onCancel } = this.props
+        const { onClose } = this.props
         const { step, schedule } = this.state;
 
         if (step === SPLASH_SCREEN_STEP) {
@@ -53,8 +63,8 @@ export class AlertsModalContent extends Component {
                         onScheduleChange={this.setSchedule}
                         textBeforeInterval="Scan"
                     />
-                    <Button onClick={onCancel}>Cancel</Button>
-                    <Button primary onClick={this.createAlert}>Done</Button>
+                    <Button onClick={onClose}>Cancel</Button>
+                    <Button primary onClick={this.onCreateAlert}>Done</Button>
                 </div>
             )
         }

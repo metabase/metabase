@@ -168,3 +168,4 @@ export const parameterValues = handleActions({
 export const currentState = handleActions({
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload }
 }, null);
+
