@@ -115,7 +115,9 @@ var config = module.exports = {
                 ignore: [
                     "**/types/*.js",
                     "**/*.spec.*",
-                    "**/__support__/*.js"
+                    "**/__support__/*.js",
+                    "public/lib/types.js",
+                    "internal/lib/components-node.js"
                 ]
             }
         }),
@@ -183,7 +185,6 @@ if (NODE_ENV === "hot") {
         test: /\.jsx$/,
         exclude: /node_modules/,
         use: [
-            { loader: 'react-hot-loader' },
             { loader: 'babel-loader', options: BABEL_CONFIG }
         ]
     });
@@ -198,7 +199,10 @@ if (NODE_ENV === "hot") {
     config.devServer = {
         hot: true,
         inline: true,
-        contentBase: "frontend"
+        contentBase: "frontend",
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        }
         // if webpack doesn't reload UI after code change in development
         // watchOptions: {
         //     aggregateTimeout: 300,
@@ -209,7 +213,8 @@ if (NODE_ENV === "hot") {
     };
 
     config.plugins.unshift(
-        new webpack.NoErrorsPlugin(),
+        new webpack.NoEmitOnErrorsPlugin(),
+        new webpack.NamedModulesPlugin(),
         new webpack.HotModuleReplacementPlugin()
     );
 }
