@@ -185,6 +185,10 @@ if (NODE_ENV === "hot") {
         test: /\.jsx$/,
         exclude: /node_modules/,
         use: [
+            // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
+            // because newer versions would require us to upgrade to react-router v4 and possibly deal with
+            // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
+            { loader: 'react-hot-loader' },
             { loader: 'babel-loader', options: BABEL_CONFIG }
         ]
     });
