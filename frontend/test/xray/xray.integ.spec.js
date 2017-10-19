@@ -19,7 +19,7 @@ import { FETCH_XRAY, LOAD_XRAY } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
 import TableXRay from "metabase/xray/containers/TableXRay";
-import SegmentXRay from "metabase/xray/containers/SegmentXRay";
+// import SegmentXRay from "metabase/xray/containers/SegmentXRay";
 import CardXRay from "metabase/xray/containers/CardXRay";
 
 import CostSelect from "metabase/xray/components/CostSelect";
