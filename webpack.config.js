@@ -198,7 +198,10 @@ if (NODE_ENV === "hot") {
     config.devServer = {
         hot: true,
         inline: true,
-        contentBase: "frontend"
+        contentBase: "frontend",
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        }
         // if webpack doesn't reload UI after code change in development
         // watchOptions: {
         //     aggregateTimeout: 300,

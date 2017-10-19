@@ -33,6 +33,8 @@ import cx from "classnames";
 import _ from "underscore";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Utils from "metabase/lib/utils";
+import EntityMenu from "metabase/components/EntityMenu";
+import { AlertsModalContent } from "metabase/query_builder/components/AlertsModalContent";
 
 const mapDispatchToProps = {
     clearRequestState
@@ -419,7 +421,7 @@ export default class QueryHeader extends Component {
         ]);
 
         // data reference button
-        var dataReferenceButtonClasses = cx('mr1 transition-color', {
+        var dataReferenceButtonClasses = cx('transition-color', {
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
@@ -430,6 +432,23 @@ export default class QueryHeader extends Component {
                 </a>
             </Tooltip>
         ]);
+
+        if (!isNew && card.can_write) {
+            buttonSections.push([
+                <div className="mr1" style={{ marginLeft: "-15px" }}>
+                    <EntityMenu
+                        triggerIcon='burger'
+                        items={[
+                            {
+                                title: "Get alerts about this",
+                                icon: "alert",
+                                content: (toggleMenu) => <AlertsModalContent onCancel={toggleMenu} />
+                            }
+                        ]}
+                    />
+                </div>
+            ]);
+        }
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection borderless" />
