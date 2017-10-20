@@ -16,8 +16,7 @@
              [table :refer [Table]]]
             [schema.core :as s]))
 
-;; See metabase.feature-extraction.core/extract-features for description of
-;; these settings.
+;; See metabase.feature-extraction.core/costs for description of these settings.
 (def ^:private MaxQueryCost
   (s/maybe (s/enum "cache"
                    "sample"
@@ -148,6 +147,42 @@
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Segment segment-id)
            (api/read-check Table table-id)))
+
+(api/defendpoint GET "/compare/card/:card-id/table/:table-id"
+  "Get comparison x-ray of a table and a card."
+  [card-id table-id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Card card-id)
+           (api/read-check Table table-id)))
+
+(api/defendpoint GET "/compare/card/:card-id/segment/:segment-id"
+  "Get comparison x-ray of a card and a segment."
+  [card-id segment-id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Card card-id)
+           (api/read-check Segment segment-id)))
+
+(api/defendpoint GET "/compare/segment/:segment-id/card/:card-id"
+  "Get comparison x-ray of a card and a segment."
+  [segment-id card-id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Segment segment-id)
+           (api/read-check Card card-id)))
+
+(api/defendpoint GET "/compare/table/:table-id/card/:card-id"
+  "Get comparison x-ray of a table and a card."
+  [table-id card-id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Table table-id)
+           (api/read-check Card card-id)))
 
 (api/defendpoint POST "/compare/card/:id/query"
   "Get comparison x-ray of card and ad-hoc query."
