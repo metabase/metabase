@@ -44,7 +44,7 @@ If you are running the Docker image or you want to use another directory for plu
 Java 9 disables dynamically adding JARs to the Java classpath by default for security reasons. When using Java 9, you'll need to pass an extra JVM option:
 
 ```bash
-java --add-opens java.base/java.net=ALL-UNNAMED -jar metabase.jar
+java --add-opens=java.base/java.net=ALL-UNNAMED -jar metabase.jar
 ```
 
 The default Docker images already include this option.
