@@ -273,7 +273,16 @@
                               :normal-range2 (format "Normal value for %s is between %s and %s." (:name field) 12 25)
                               :gaps1 {:nil% 0.3
                                       :quality "some"}
-                              :gaps2 (format "You have some gaps in your data: %s%% of datapoints are blank." 0.3) }
+                              :gaps2 (format "You have some gaps in your data: %s%% of datapoints are blank." 0.3)
+                              :gaps {:quality "some"
+                                     :mode "missing"
+                                     :filter [:= [:field-id 5] nil]}
+                              :noisy {:noise {:value 0.3
+                                                 :description "Noisy data is highly variable jumping all over the place with changes carrying relatively little information."
+                                                 :link "https://en.wikipedia.org/wiki/Noisy_data"}
+                                             :quality "very"
+                                             :recommended-resolution "month"
+                                             :direction "up"}      }
          :histogram (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num
@@ -423,15 +432,18 @@
                                              :recommended-resolution "month"
                                              :direction "up"}
                                :smoothness2 (format "Your data is not very smooth. Perhaps try smoothing it or choose a month resolution.")
-                               :regime-change1 {:breaks [{:from :beginning
+                               :regime-change1 {:breaks [{:from "beginning"
                                                           :to (t/date-time 2015)
-                                                          :shape "linear"}
+                                                         :shape "linear"
+                                                         :mode "increasing"}
                                                          {:from (t/date-time 2015)
                                                           :to (t/date-time 2017)
-                                                          :shape "exponental"}
-                                                         {:to :now
+                                                         :shape "exponential"
+                                                          :mode "increasing"}
+                                                         {:to "now"
                                                           :from (t/date-time 2017)
-                                                          :shape "linear"}]}
+                                                         :shape "linear"
+                                                         :mode "decreasing"}]}
                                :regime-change2 (format "Your data can be split into 3 periods of growth: a linear period until 2015, an exponental period from 2015 to 2017, and a linear period from 2017 until now.")}}
                (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
