@@ -3,6 +3,12 @@ import { Link } from "react-router";
 import Select, { Option } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 
+const MODEL_ICONS = {
+    "segment": "segment",
+    "table": "table",
+    "card": "table2"
+}
+
 export class ComparisonDropdown extends Component {
     props: {
         // Models of current comparison – you can enter only the left side of comparison with an array of a single model
@@ -23,10 +29,10 @@ export class ComparisonDropdown extends Component {
             [updatingModelAtIndex]: comparableModel
         })
 
-        if (comparisonModels[0]["type-tag"] === comparisonModels[1]["type-tag"]) {
+        const isSharedModelType = comparisonModels[0]["type-tag"] === comparisonModels[1]["type-tag"]
+        if (isSharedModelType) {
             return `/xray/compare/${comparisonModels[0]["type-tag"]}s/${comparisonModels[0].id}/${comparisonModels[1].id}/approximate`
         } else {
-            if (comparisonModels[0]["type-tag"] === "table") comparisonModels = comparisonModels.reverse()
             return `/xray/compare/${comparisonModels[0]["type-tag"]}/${comparisonModels[0].id}/${comparisonModels[1]["type-tag"]}/${comparisonModels[1].id}/approximate`
         }
     }
@@ -48,14 +54,12 @@ export class ComparisonDropdown extends Component {
                 }
             >
                 { comparables
-                // NOTE: filter out card comparisons because we don't support those yet
-                    .filter((comparableModel) => !comparableModel["type-tag"].includes("card"))
                     .map((comparableModel, index) =>
                         <Link to={this.getComparisonUrl(comparableModel)} className="no-decoration">
                             <Option
                                 key={index}
                                 value={comparableModel}
-                                icon={comparableModel["type-tag"]}
+                                icon={MODEL_ICONS[comparableModel["type-tag"]]}
                                 iconColor={"#DFE8EA"}
                             >
                                 {comparableModel.display_name || comparableModel.name}

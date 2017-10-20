@@ -143,10 +143,12 @@ class SegmentXRay extends Component {
                                     />
                                 </div>
                             </div>
+                            { comparables.length > 0 &&
                             <ComparisonDropdown
                                 models={[features.model]}
                                 comparables={comparables}
                             />
+                            }
                             <div className="mt2">
                                 <Heading heading="Fields in this segment" />
                                 <ol>

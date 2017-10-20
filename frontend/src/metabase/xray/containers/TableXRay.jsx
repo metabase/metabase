@@ -117,10 +117,12 @@ class TableXRay extends Component {
                                     />
                                 </div>
                             </div>
-                            <ComparisonDropdown
-                                models={[features.model]}
-                                comparables={comparables}
-                            />
+                            { comparables.length > 0 &&
+                                <ComparisonDropdown
+                                    models={[features.model]}
+                                    comparables={comparables}
+                                />
+                            }
                             <ol>
                                 { constituents.map((constituent, index) =>
                                     <li key={index}>

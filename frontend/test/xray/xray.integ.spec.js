@@ -18,11 +18,8 @@ import { delay } from "metabase/lib/promise";
 import {
     FETCH_CARD_XRAY,
     FETCH_FIELD_XRAY,
-    FETCH_SEGMENT_XRAY,
-    FETCH_TABLE_XRAY,
-    FETCH_SEGMENT_COMPARISON,
-    FETCH_SEGMENT_TABLE_COMPARISON,
-    FETCH_TABLE_COMPARISON,
+    FETCH_SEGMENT_XRAY, FETCH_SHARED_TYPE_COMPARISON_XRAY,
+    FETCH_TABLE_XRAY, FETCH_TWO_TYPES_COMPARISON_XRAY
 } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
@@ -49,18 +46,17 @@ import Icon from "metabase/components/Icon"
 import Toggle from "metabase/components/Toggle"
 import { Link } from 'react-router'
 import SettingsXrayForm from "metabase/admin/settings/components/SettingsXrayForm";
-import SegmentComparison from "metabase/xray/containers/SegmentComparison";
-import SegmentTableComparison from "metabase/xray/containers/SegmentTableComparison";
-import TableComparison from "metabase/xray/containers/TableComparison";
 import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
 import { TestPopover } from "metabase/components/Popover";
 import ItemLink from "metabase/xray/components/ItemLink";
+import { TableLikeComparisonXRay } from "metabase/xray/containers/TableLikeComparison";
 
 describe("xray integration tests", () => {
     let segmentId = null;
     let segmentId2 = null;
     let timeBreakoutQuestion = null;
     let segmentQuestion = null;
+    let segmentQuestion2 = null;
 
     beforeAll(async () => {
         useSharedAdminLogin()
@@ -88,7 +84,14 @@ describe("xray integration tests", () => {
                 .query()
                 .addFilter(["SEGMENT", segmentId])
                 .question()
-                .setDisplay("line")
+                .setDisplayName("Segment question")
+        )
+
+        segmentQuestion2 = await createSavedQuestion(
+            Question.create({databaseId: 1, tableId: 1, metadata: null})
+                .query()
+                .addFilter(["SEGMENT", segmentId2])
+                .question()
                 .setDisplayName("Segment question")
         )
     })
@@ -98,6 +101,7 @@ describe("xray integration tests", () => {
         await SegmentApi.delete({ segmentId: segmentId2, revision_message: "Sadly this segment didn't enjoy a long life either" })
         await CardApi.delete({cardId: timeBreakoutQuestion.id()})
         await CardApi.delete({cardId: segmentQuestion.id()})
+        await CardApi.delete({cardId: segmentQuestion2.id()})
         await SettingsApi.put({ key: 'enable-xrays' }, true)
     })
 
@@ -123,9 +127,9 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/compare/tables/1/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_TABLE_COMPARISON], { timeout: 20000 })
+            await store.waitForActions([FETCH_SHARED_TYPE_COMPARISON_XRAY], { timeout: 20000 })
 
-            const tableComparisonXray = app.find(TableComparison)
+            const tableComparisonXray = app.find(TableLikeComparisonXRay)
             expect(tableComparisonXray.length).toBe(1)
             expect(tableComparisonXray.find(CostSelect).length).toBe(1)
 
@@ -143,6 +147,23 @@ describe("xray integration tests", () => {
             const fieldXRay = app.find(FieldXray)
             expect(fieldXRay.length).toBe(1)
             expect(fieldXRay.find(CostSelect).length).toBe(1)
+
+        })
+    })
+
+    describe("question x-rays", async () => {
+        it("should render the comparison of two raw data questions without errors", async () => {
+            // NOTE: In the UI currently the only way to get here is to already be a comparison
+            // and then witch the compared items
+            const store = await createTestStore()
+            store.pushPath(`/xray/compare/cards/${segmentQuestion.id()}/${segmentQuestion2.id()}/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_SHARED_TYPE_COMPARISON_XRAY], { timeout: 20000 })
+
+            const segmentTableComparisonXray = app.find(TableLikeComparisonXRay)
+            expect(segmentTableComparisonXray.length).toBe(1)
+            expect(segmentTableComparisonXray.find(CostSelect).length).toBe(1)
 
         })
     })
@@ -171,9 +192,9 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/compare/segments/${segmentId}/${segmentId2}/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_SEGMENT_COMPARISON], { timeout: 20000 })
+            await store.waitForActions([FETCH_SHARED_TYPE_COMPARISON_XRAY], { timeout: 20000 })
 
-            const segmentComparisonXray = app.find(SegmentComparison)
+            const segmentComparisonXray = app.find(TableLikeComparisonXRay)
             expect(segmentComparisonXray.length).toBe(1)
             expect(segmentComparisonXray.find(CostSelect).length).toBe(1)
 
@@ -184,9 +205,9 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/compare/segment/${segmentId}/table/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_SEGMENT_TABLE_COMPARISON], { timeout: 20000 })
+            await store.waitForActions([FETCH_TWO_TYPES_COMPARISON_XRAY], { timeout: 20000 })
 
-            const segmentTableComparisonXray = app.find(SegmentTableComparison)
+            const segmentTableComparisonXray = app.find(TableLikeComparisonXRay)
             expect(segmentTableComparisonXray.length).toBe(1)
             expect(segmentTableComparisonXray.find(CostSelect).length).toBe(1)
 
@@ -210,6 +231,18 @@ describe("xray integration tests", () => {
             expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId2}/approximate"]`).length).toBe(1)
             // should filter out the current segment
             expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId}/approximate"]`).length).toBe(0)
+        })
+
+        it("should render the segment - by - raw query question comparison page without errors", async () => {
+            const store = await createTestStore()
+            store.pushPath(`/xray/compare/segment/${segmentId}/card/${segmentQuestion.id()}/approximate`);
+
+            const app = mount(store.getAppContainer());
+            await store.waitForActions([FETCH_TWO_TYPES_COMPARISON_XRAY], { timeout: 20000 })
+
+            const segmentTableComparisonXray = app.find(TableLikeComparisonXRay)
+            expect(segmentTableComparisonXray.length).toBe(1)
+            expect(segmentTableComparisonXray.find(CostSelect).length).toBe(1)
         })
     })
 
