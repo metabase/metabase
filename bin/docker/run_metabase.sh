@@ -116,7 +116,7 @@ JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
 JAVA_OPTS="${JAVA_OPTS} -XX:+CMSClassUnloadingEnabled"              # These two needed for Java 7 to GC dynamically generated classes
 JAVA_OPTS="${JAVA_OPTS} -XX:+UseConcMarkSweepGC"
 JAVA_OPTS="${JAVA_OPTS} -server"
-JAVA_OPTS="${JAVA_OPTS} --add-opens java.base/java.net=ALL-UNNAMED" # needed for Java 9 to allow dynamic classpath additions -- see https://github.com/tobias/dynapath
+JAVA_OPTS="${JAVA_OPTS} --add-opens=java.base/java.net=ALL-UNNAMED" # needed for Java 9 to allow dynamic classpath additions -- see https://github.com/tobias/dynapath
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
