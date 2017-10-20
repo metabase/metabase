@@ -36,17 +36,22 @@
 (defn- x-ray
   [max-cost model]
   (api/check-403 (costs/enable-xrays))
-  {:job-id (async/compute
-            #(fe/x-ray (fe/extract-features {:max-cost max-cost} model)))})
+  {:job-id (async/with-async
+             [model model
+              opts  {:max-cost max-cost}]
+             (fe/x-ray (fe/extract-features opts model)))})
 
 (defn- compare
   [max-cost model1 model2]
   (api/check-403 (costs/enable-xrays))
-  {:job-id (async/compute
-            #(fe/x-ray (fe/compare-features {:max-cost max-cost} model1 model2)))})
+  {:job-id (async/with-async
+             [model1 model1
+              model2 model2
+              opts   {:max-cost max-cost}]
+             (fe/x-ray (fe/compare-features opts model1 model2)))})
 
 (api/defendpoint GET "/field/:id"
-  "Get x-ray of field."
+  "X-ray a field."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
@@ -54,7 +59,7 @@
          (api/read-check Field id)))
 
 (api/defendpoint GET "/table/:id"
-  "Get x-ray of table."
+  "X-ray a table."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
@@ -62,15 +67,23 @@
          (api/read-check Table id)))
 
 (api/defendpoint GET "/card/:id"
-  "Get x-ray pf card."
+  "X-ray a card."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
   (x-ray (max-cost max_query_cost max_computation_cost)
          (api/read-check Card id)))
 
+(api/defendpoint GET "/metric/:id"
+  "X-ray a metric."
+  [id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (x-ray (max-cost max_query_cost max_computation_cost)
+         (api/read-check Metric id)))
+
 (api/defendpoint GET "/segment/:id"
-  "Get x-ray of segment."
+  "X-ray a segment."
   [id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
@@ -86,7 +99,7 @@
        query/map->QueryInstance))
 
 (api/defendpoint POST "/query"
-  "Get x-ray for query."
+  "X-ray a query."
   [max_query_cost max_computation_cost :as {query :body}]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}

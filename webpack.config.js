@@ -115,7 +115,9 @@ var config = module.exports = {
                 ignore: [
                     "**/types/*.js",
                     "**/*.spec.*",
-                    "**/__support__/*.js"
+                    "**/__support__/*.js",
+                    "public/lib/types.js",
+                    "internal/lib/components-node.js"
                 ]
             }
         }),
@@ -183,6 +185,9 @@ if (NODE_ENV === "hot") {
         test: /\.jsx$/,
         exclude: /node_modules/,
         use: [
+            // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
+            // because newer versions would require us to upgrade to react-router v4 and possibly deal with
+            // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
             { loader: 'react-hot-loader' },
             { loader: 'babel-loader', options: BABEL_CONFIG }
         ]
@@ -198,7 +203,10 @@ if (NODE_ENV === "hot") {
     config.devServer = {
         hot: true,
         inline: true,
-        contentBase: "frontend"
+        contentBase: "frontend",
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        }
         // if webpack doesn't reload UI after code change in development
         // watchOptions: {
         //     aggregateTimeout: 300,
@@ -209,7 +217,8 @@ if (NODE_ENV === "hot") {
     };
 
     config.plugins.unshift(
-        new webpack.NoErrorsPlugin(),
+        new webpack.NoEmitOnErrorsPlugin(),
+        new webpack.NamedModulesPlugin(),
         new webpack.HotModuleReplacementPlugin()
     );
 }

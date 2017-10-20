@@ -3927,3 +3927,16 @@ databaseChangeLog:
                   type: text
                   constraints:
                     nullable: false
+  - changeSet:
+    - id: 68
+    - author: sbelak
+    - changes:
+      - addColumn:
+            tableName: computation_job
+            columns:
+              - column:
+                  name: context
+                  type: text
+              - column:
+                  name: ended_at
+                  type: DATETIME

@@ -16,7 +16,7 @@
              [card :refer [Card]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [query :refer [Query]]
+             [query :refer [Query] :as query]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.query-processor :as qp]
@@ -99,7 +99,7 @@
 (def ^:private ^:const ^Long max-sample-size 10000)
 
 (defn- sampled?
-  [{:keys [max-cost] :as opts} dataset]
+  [{:keys [max-cost]} dataset]
   (and (not (costs/full-scan? max-cost))
        (= (count (:rows dataset dataset)) max-sample-size)))
 
@@ -178,6 +178,46 @@
                     :model segment}
      :sample?      (sampled? opts dataset)
      :comparables  (comparables segment)}))
+
+(defn- dimension?
+  [{:keys [base_type special_type name]}]
+  (and (or (isa? base_type :type/Number)
+           (isa? base_type :type/DateTime)
+           (isa? special_type :type/Category))
+       (not= name "ID")))
+
+(defn- dimensions
+  [{:keys [table_id]}]
+  (->> (db/select Field :table_id table_id)
+       (filter dimension?)))
+
+(defn- field->breakout
+  [{:keys [id base_type]}]
+  (if (isa? base_type :type/DateTime)
+    [:datetime-field [:field-id id] :day]
+    [:binning-strategy [:field-id id] :default]))
+
+(defmethod extract-features (type Metric)
+  [opts {:keys [definition table_id name] :as metric}]
+  (let [definition   (-> definition
+                         (update-in [:aggregation 0] #(vector :named % name)))
+        query        (query/map->QueryInstance
+                      {:dataset_query {:type     :query
+                                       :database (metadata/db-id metric)
+                                       :query    definition}
+                       :table_id      table_id})
+        constituents (into {}
+                       (for [field (dimensions metric)]
+                         [(:name field)
+                          (->> field
+                               field->breakout
+                               vector
+                               (assoc-in query [:dataset_query :query :breakout])
+                               (extract-features opts))]))]
+    {:constituents constituents
+     :features     {:metric metric
+                    :table  (Table table_id)}
+     :sample?      (some (comp :sample? val) constituents)}))
 
 (defn- trim-decimals
   [decimal-places x]

@@ -6,6 +6,7 @@
              [card :refer [Card]]
              [database :refer [Database] :as database]
              [field :refer [Field]]
+             [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.test.async :refer :all]
@@ -75,6 +76,16 @@
       :PRICE
       :count
       :value))
+
+(def ^:private test-metric
+  {:definition {:aggregation [[:sum [:field-id (id :venues :price)]]]}
+   :table_id   (id :venues)})
+
+(tt/expect-with-temp [Metric [{metric-id :id} test-metric]]
+  5
+  (-> (async-call :get (str "x-ray/metric/" metric-id))
+      :constituents
+      count))
 
 (expect
   true
