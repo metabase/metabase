@@ -110,7 +110,13 @@ export MB_DB_FILE=$new_db_dir/$(basename $db_file)
 chown metabase:metabase $new_db_dir $new_db_dir/* 2>/dev/null  # all that fussing makes this safe
 
 # Setup Java Options
-JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -server"
+JAVA_OPTS="${JAVA_OPTS} -XX:+IgnoreUnrecognizedVMOptions"
+JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
+JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
+JAVA_OPTS="${JAVA_OPTS} -XX:+CMSClassUnloadingEnabled"              # These two needed for Java 7 to GC dynamically generated classes
+JAVA_OPTS="${JAVA_OPTS} -XX:+UseConcMarkSweepGC"
+JAVA_OPTS="${JAVA_OPTS} -server"
+JAVA_OPTS="${JAVA_OPTS} --add-opens=java.base/java.net=ALL-UNNAMED" # needed for Java 9 to allow dynamic classpath additions -- see https://github.com/tobias/dynapath
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
