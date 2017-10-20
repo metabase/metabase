@@ -16,11 +16,13 @@ import {
 
 import { delay } from "metabase/lib/promise";
 import {
+    FETCH_CARD_XRAY,
+    FETCH_FIELD_XRAY,
+    FETCH_SEGMENT_XRAY,
+    FETCH_TABLE_XRAY,
     FETCH_SEGMENT_COMPARISON,
     FETCH_SEGMENT_TABLE_COMPARISON,
     FETCH_TABLE_COMPARISON,
-    FETCH_XRAY,
-    LOAD_XRAY
 } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
@@ -105,7 +107,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/table/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_TABLE_XRAY], { timeout: 20000 })
 
             const tableXRay = app.find(TableXRay)
             expect(tableXRay.length).toBe(1)
@@ -136,7 +138,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/field/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_FIELD_XRAY], { timeout: 20000 })
 
             const fieldXRay = app.find(FieldXray)
             expect(fieldXRay.length).toBe(1)
@@ -151,7 +153,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/segment/${segmentId}/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 })
 
             const segmentXRay = app.find(SegmentXRay)
             expect(segmentXRay.length).toBe(1)
@@ -194,20 +196,20 @@ describe("xray integration tests", () => {
             const leftSideDropdown = comparisonDropdowns.at(0)
             const rightSideDropdown = comparisonDropdowns.at(1)
 
-            // left side should be be table and show only segments options as comparision options atm
             click(leftSideDropdown.find(ItemLink))
             const leftSidePopover = leftSideDropdown.find(TestPopover)
             console.log(leftSidePopover.debug())
-            expect(leftSidePopover.find(`a[href="/xray/compare/segments/${segmentId2}/${segmentId}/approximate"]`).length).toBe(1)
-            // should filter out the current segment
-            expect(leftSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId}/approximate"]`).length).toBe(0)
+            expect(leftSidePopover.find(`a[href="/xray/compare/segment/${segmentId}/table/1/approximate"]`).length).toBe(0)
+            // should filter out the current table
+            expect(leftSidePopover.find(`a[href="/xray/compare/tables/1/1/approximate"]`).length).toBe(0)
 
+            // right side should be be table and show only segments options as comparision options atm
             click(rightSideDropdown.find(ItemLink))
             const rightSidePopover = rightSideDropdown.find(TestPopover)
             console.log(rightSidePopover.debug())
-            expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId2}/${segmentId}/approximate"]`).length).toBe(0)
-            // should filter out the current table
-            expect(rightSidePopover.find(`a[href="/xray/compare/tables/1/1/approximate"]`).length).toBe(0)
+            expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId2}/approximate"]`).length).toBe(1)
+            // should filter out the current segment
+            expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId}/approximate"]`).length).toBe(0)
         })
     })
 
@@ -217,7 +219,7 @@ describe("xray integration tests", () => {
             store.pushPath(`/xray/table/1/approximate`);
 
             const app = mount(store.getAppContainer());
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_TABLE_XRAY], { timeout: 20000 })
 
             const tableXray = app.find(TableXRay)
             expect(tableXray.length).toBe(1)
@@ -226,7 +228,7 @@ describe("xray integration tests", () => {
 
             click(fieldLink)
 
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 20000 })
+            await store.waitForActions([FETCH_FIELD_XRAY], { timeout: 20000 })
             const fieldXray = app.find(FieldXray)
             expect(fieldXray.length).toBe(1)
         })
@@ -257,7 +259,7 @@ describe("xray integration tests", () => {
             click(xrayOptionIcon);
 
 
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], {timeout: 5000})
+            await store.waitForActions([FETCH_CARD_XRAY], {timeout: 5000})
             expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
@@ -277,7 +279,7 @@ describe("xray integration tests", () => {
             const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
             click(xrayOptionIcon);
 
-            await store.waitForActions([FETCH_XRAY, LOAD_XRAY], { timeout: 5000 })
+            await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 5000 })
             expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`)
 
             const segmentXRay = app.find(SegmentXRay)
@@ -375,7 +377,7 @@ describe("xray integration tests", () => {
 
             store.pushPath(`/xray/table/1/approximate`);
 
-            await store.waitForActions(FETCH_XRAY, { timeout: 20000 })
+            await store.waitForActions(FETCH_TABLE_XRAY, { timeout: 20000 })
             await delay(200)
 
             const tableXRay = app.find(TableXRay)

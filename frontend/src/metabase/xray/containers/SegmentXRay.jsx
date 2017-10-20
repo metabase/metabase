@@ -7,7 +7,7 @@ import { push } from "react-router-redux";
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { fetchSegmentXray, initialize } from 'metabase/xray/xray'
 
 import Icon from 'metabase/components/Icon'
 import CostSelect from 'metabase/xray/components/CostSelect'
@@ -17,20 +17,18 @@ import {
     getLoadingStatus,
     getError,
     getFeatures,
-    getComparables
+    getComparables,
+    getIsAlreadyFetched
 } from 'metabase/xray/selectors'
 
 import Constituent from 'metabase/xray/components/Constituent'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
-import type { Table } from 'metabase/meta/types/Table'
-import type { Segment } from 'metabase/meta/types/Segment'
-
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
 
 type Props = {
-    fetchXray: () => void,
+    fetchSegmentXray: () => void,
     initialize: () => {},
     constituents: [],
     features: {
@@ -42,8 +40,9 @@ type Props = {
         cost: string,
     },
     isLoading: boolean,
-    error: {},
-    push: (string) => void
+    push: (string) => void,
+    isAlreadyFetched: boolean,
+    error: {}
 }
 
 const mapStateToProps = state => ({
@@ -51,13 +50,14 @@ const mapStateToProps = state => ({
     constituents:   getConstituents(state),
     comparables:    getComparables(state),
     isLoading:      getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
     error:          getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray,
-    push
+    push,
+    fetchSegmentXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -79,8 +79,8 @@ class SegmentXRay extends Component {
     }
 
     fetch () {
-        const { params, fetchXray } = this.props
-        fetchXray('segment', params.segmentId, params.cost)
+        const { params, fetchSegmentXray } = this.props
+        fetchSegmentXray(params.segmentId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -103,10 +103,10 @@ class SegmentXRay extends Component {
     }
 
     render () {
-        const { constituents, features, comparables, params, isLoading, error } = this.props
+        const { comparables, constituents, features, params, isLoading, isAlreadyFetched, error } = this.props
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(features)}
+                loading={isLoading || !isAlreadyFetched}
                 error={error}
                 loadingMessages={xrayLoadingMessages}
                 loadingScenes={[

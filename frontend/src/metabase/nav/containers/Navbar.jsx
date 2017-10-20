@@ -84,7 +84,7 @@ export default class Navbar extends Component {
                         <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin</span>
                     </div>
 
-                    <ul className="sm-ml4 flex flex-full text-strong">
+                    <ul className="sm-ml4 flex flex-full">
                         <AdminNavItem name="Settings"    path="/admin/settings"     currentPath={this.props.path} />
                         <AdminNavItem name="People"      path="/admin/people"       currentPath={this.props.path} />
                         <AdminNavItem name="Data Model"  path="/admin/datamodel"    currentPath={this.props.path} />
