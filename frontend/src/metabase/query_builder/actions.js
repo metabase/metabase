@@ -1031,12 +1031,9 @@ const getDisplayTypeForCard = (card, queryResults, getState) => {
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResults) => {
     return async (dispatch, getState) => {
-        // determine appropriate chart type, and then set it for the Card
-        const chartType =  getDisplayTypeForCard(card, queryResults, getState);
-        card.display = chartType;
         return {
             card,
-            cardDisplay: chartType,
+            cardDisplay: getDisplayTypeForCard(card, queryResults, getState),
             queryResults
         };
     };
