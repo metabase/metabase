@@ -20,21 +20,25 @@
 
 ;; The Basics:
 ;;
-;; *  Things like `{{x}}` (required params) get subsituted with the value of `:x`, which can be a literal used in a clause (e.g. in a clause like `value = {{x}}`) or a
-;;    "field filter" that handles adding the clause itself  (e.g. `{{timestamp}}` might become `timestamp BETWEEN ? AND ?`).
-;; *  Things like `[[AND {{x}]]` are optional param. If the param (`:x`) isn't specified, the *entire* clause inside `[[...]]` is replaced with an empty string;
-;;    If it is specified, the value inside the curly brackets `{{x}}` is replaced as usual and the rest of the clause (`AND ...`) is included in the query as-is
+;; *  Things like `{{x}}` (required params) get subsituted with the value of `:x`, which can be a literal used in a
+;;    clause (e.g. in a clause like `value = {{x}}`) or a "field filter" that handles adding the clause itself
+;;    (e.g. `{{timestamp}}` might become `timestamp BETWEEN ? AND ?`).
+;;
+;; *  Things like `[[AND {{x}]]` are optional param. If the param (`:x`) isn't specified, the *entire* clause inside
+;;    `[[...]]` is replaced with an empty string; If it is specified, the value inside the curly brackets `{{x}}` is
+;;    replaced as usual and the rest of the clause (`AND ...`) is included in the query as-is
 ;;
 ;; See the various parts of this namespace below to see how it's done.
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                              ETC                                                                               |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                      ETC                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Dynamic variables and record types used by the other parts of this namespace.
 
-;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we can share one used somewhere else instead
+;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we
+;; can share one used somewhere else instead
 (def ^:private ^:dynamic *driver* nil)
 
 (def ^:private ^:dynamic *timezone* nil)
@@ -42,24 +46,27 @@
 
 ;; various record types below are used as a convenience for differentiating the different param types.
 
-;; "Dimension" here means a "FIELD FILTER", e.g. something that expands to a clause like "some_field BETWEEN 1 AND 100"
-(s/defrecord ^:private Dimension [field :- FieldInstance, param]) ;; param is either a single param or a vector of params
+;; "Dimension" here means a "FIELD FILTER", e.g. something that expands to a clause like "some_field BETWEEN 1 AND 10"
+(s/defrecord ^:private Dimension [field :- FieldInstance, param]) ; param is either single param or a vector of params
 
 ;; as in a literal date, defined by date-string S
 (s/defrecord ^:private Date [s :- s/Str])
 
 (defrecord ^:private DateRange [start end])
 
-;; List of numbers to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->number` for more details.
+;; List of numbers to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->number`
+;; for more details.
 (s/defrecord ^:private CommaSeparatedNumbers [numbers :- [s/Num]])
 
-;; convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param values.
+;; convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+;; values.
 (defrecord ^:private NoValue [])
 
 
 ;; various schemas are used to check that various functions return things in expected formats
 
-;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a "FieldFilter" clause like Dimensions
+;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a
+;; "FieldFilter" clause like Dimensions
 (def ^:private TagParam
   "Schema for values passed in as part of the `:template_tags` list."
   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
@@ -97,13 +104,13 @@
    (s/optional-key :replacement-snippet)     s/Str                       ; allowed to be blank if this is an optional param
    (s/optional-key :prepared-statement-args) [s/Any]})
 
-
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                     PARAM INFO RESOLUTION                                                                      |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             PARAM INFO RESOULTION                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; These functions build a map of information about the types and values of the params used in a query.
-;; (These functions don't pare the query itself, but instead look atthe values of `:template_tags` and `:parameters` passed along with the query.)
+;; (These functions don't pare the query itself, but instead look atthe values of `:template_tags` and `:parameters`
+;; passed along with the query.)
 ;;
 ;;     (query->params-map some-query)
 ;;     ;; -> {:checkin_date {:field {:name "\date"\, :parent_id nil, :table_id 1375}
@@ -150,11 +157,11 @@
 
 (s/defn ^:private ^:always-validate value->number :- (s/cond-pre s/Num CommaSeparatedNumbers)
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number,
-   but as a somewhat undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the
-   old parameter code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has
-   long been changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated
-   numeric values to work we'll allow that (with validation) and return an instance of `CommaSeperatedNumbers`. (That
-   is converted to SQL as a simple comma-separated list.)"
+   but as a somewhat undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of
+   the old parameter code that unquestioningly substituted any parameter passed in as a number directly into the SQL.
+   This has long been changed for security purposes (avoiding SQL injection), but since users have come to expect
+   comma-separated numeric values to work we'll allow that (with validation) and return an instance of
+   `CommaSeperatedNumbers`. (That is converted to SQL as a simple comma-separated list.)"
   [value]
   (cond
     ;; if not a string it's already been parsed
@@ -183,8 +190,8 @@
     :else                                            value))
 
 (s/defn ^:private ^:always-validate value-for-tag :- ParamValue
-  "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS sequence.
-   The VALUE is something that can be compiled to SQL via `->replacement-snippet-info`."
+  "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS
+   sequence. The VALUE is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (dimension-value-for-tag tag params)
@@ -205,16 +212,17 @@
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]
                  :when   v]
-             ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That kind of query shouldn't be possible from the frontend anyway
+             ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
+             ;; kind of query shouldn't be possible from the frontend anyway
              {k v})))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                    PARAM->SQL SUBSTITUTION                                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PARAM->SQL SUBSTITUTION                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; These functions take the info for a param fetched by the functions above and add additional info about how that param should be represented as SQL.
-;; (Specifically, they return information in this format:
+;; These functions take the info for a param fetched by the functions above and add additional info about how that
+;; param should be represented as SQL. (Specifically, they return information in this format:
 ;;
 ;;    {:replacement-snippet     "= ?"                  ; appropriate SQL that should be used to replace the param snippet, e.g. {{x}}
 ;;     :prepared-statement-args [#inst "2017-01-01"]}  ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
@@ -256,7 +264,8 @@
 
 (s/defn ^:private ^:always-validate field->identifier :- su/NonBlankString
   "Return an approprate snippet to represent this FIELD in SQL given its param type.
-   For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on the PARAM-TYPE."
+   For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
+   the PARAM-TYPE."
   [field param-type]
   (-> (honeysql->replacement-snippet-info (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* field)]
                                             (if (date-param-type? param-type)
@@ -311,9 +320,9 @@
       (update (dimension->replacement-snippet-info param) :replacement-snippet (partial str (field->identifier field (:type param)) " ")))))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                 QUERY PARSING / PARAM SNIPPETS                                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         QUERY PARSING / PARAM SNIPPETS                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; These functions parse a query and look for param snippets, which look like:
 ;;
@@ -346,12 +355,14 @@
      :optional-snippet optional-replacement-snippet}))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                     PARAMS DETAILS LIST                                                                        |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              PARAMS DETAILS LIST                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; These functions combine the info from the other 3 stages (Param Info Resolution, Param->SQL Substitution, and Query Parsing) and create a sequence of maps
-;; containing param details that has all the information needed to do SQL substituion. This sequence is returned in the same order as params encountered in the
+;; These functions combine the info from the other 3 stages (Param Info Resolution, Param->SQL Substitution, and Query
+;; Parsing) and create a sequence of maps containing param details that has all the information needed to do SQL
+;; substituion. This sequence is returned in the same order as params encountered in the
+;;
 ;; original query, making passing prepared statement args simple
 ;;
 ;; The details maps returned have the format:
@@ -390,21 +401,21 @@
                                prepared-statement-args)))
 
 (s/defn ^:private ^:always-validate add-replacement-snippet-info :- [ParamSnippetInfo]
-  "Add `:replacement-snippet` and `:prepared-statement-args` info to the maps in PARAMS-SNIPPETS-INFO by looking at PARAM-KEY->VALUE
-   and using the Param->SQL substituion functions."
+  "Add `:replacement-snippet` and `:prepared-statement-args` info to the maps in PARAMS-SNIPPETS-INFO by looking at
+   PARAM-KEY->VALUE and using the Param->SQL substituion functions."
   [params-snippets-info :- [ParamSnippetInfo], param-key->value :- ParamValues]
   (for [snippet-info params-snippets-info]
-    (handle-optional-snippet (merge snippet-info
-                                    (s/validate ParamSnippetInfo (->replacement-snippet-info (snippet-value snippet-info param-key->value)))))))
+    (handle-optional-snippet
+     (merge snippet-info
+            (s/validate ParamSnippetInfo (->replacement-snippet-info (snippet-value snippet-info param-key->value)))))))
 
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 SUBSTITUITION                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                          SUBSTITUION                                                                           |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-;; These functions take the information about parameters from the Params Details List functions and then convert the original SQL Query into a SQL query with
-;; appropriate subtitutions and a sequence of prepared statement args
+;; These functions take the information about parameters from the Params Details List functions and then convert the
+;; original SQL Query into a SQL query with appropriate subtitutions and a sequence of prepared statement args
 
 (s/defn ^:private ^:always-validate substitute-one
   [sql :- su/NonBlankString, {:keys [original-snippet replacement-snippet]} :- ParamSnippetInfo]
@@ -412,7 +423,8 @@
 
 
 (s/defn ^:private ^:always-validate substitute :- {:query su/NonBlankString, :params [s/Any]}
-  "Using the PARAM-SNIPPET-INFO built from the stages above, replace the snippets in SQL and return a vector of `[sql & prepared-statement-params]`."
+  "Using the PARAM-SNIPPET-INFO built from the stages above, replace the snippets in SQL and return a vector of
+   `[sql & prepared-statement-params]`."
   {:style/indent 1}
   [sql :- su/NonBlankString, param-snippets-info :- [ParamSnippetInfo]]
   (log/debug (format "PARAM INFO: %s\n%s" (u/emoji "🔥") (u/pprint-to-str 'yellow param-snippets-info)))
@@ -425,9 +437,9 @@
              more))))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                    PUTTING IT ALL TOGETHER                                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUTTING IT ALL TOGETHER                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private ^:always-validate expand-query-params
   [{sql :query, :as native}, param-key->value :- ParamValues]
