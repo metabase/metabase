@@ -16,8 +16,7 @@
              [table :refer [Table]]]
             [schema.core :as s]))
 
-;; See metabase.feature-extraction.core/extract-features for description of
-;; these settings.
+;; See metabase.feature-extraction.core/costs for description of these settings.
 (def ^:private MaxQueryCost
   (s/maybe (s/enum "cache"
                    "sample"
@@ -50,18 +49,6 @@
               model2 model2
               opts   {:max-cost max-cost}]
              (fe/x-ray (fe/compare-features opts model1 model2)))})
-
-(defn- compare-filtered-field
-  [max-cost model1 model2 field]
-  {:job-id (async/with-async
-             [model1 model1
-              model2 model2
-              field  field
-              opts   {:max-cost max-cost}]
-             (let [{:keys [comparison constituents]} (compare opts model1 model2)]
-               {:comparison       (-> comparison (get field))
-                :top-contributors (-> comparison (get field) :top-contributors)
-                :constituents     constituents}))})
 
 (api/defendpoint GET "/field/:id"
   "X-ray a field."
@@ -174,38 +161,41 @@
            (api/read-check Segment segment-id)
            (api/read-check Table table-id)))
 
-(api/defendpoint GET "/compare/segments/:segment1-id/:segment2-id/field/:field"
-  "Get comparison x-ray of field named `field` in segments with IDs
-   `segment1-id` and `segment2-id`."
-  [segment1-id segment2-id field max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/card/:card-id/table/:table-id"
+  "Get comparison x-ray of a table and a card."
+  [card-id table-id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
-  (compare-filtered-field (max-cost max_query_cost max_computation_cost)
-                          (api/read-check Segment segment1-id)
-                          (api/read-check Segment segment2-id)
-                          field))
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Card card-id)
+           (api/read-check Table table-id)))
 
-(api/defendpoint GET "/compare/table/:table-id/segment/:segment-id/field/:field"
-  "Get comparison x-ray for field named `field` in table with ID
-   `table-id` and segment with ID `segment-id`."
-  [table-id segment-id field max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/card/:card-id/segment/:segment-id"
+  "Get comparison x-ray of a card and a segment."
+  [card-id segment-id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
-  (compare-filtered-field (max-cost max_query_cost max_computation_cost)
-                          (api/read-check Table table-id)
-                          (api/read-check Segment segment-id)
-                          field))
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Card card-id)
+           (api/read-check Segment segment-id)))
 
-(api/defendpoint GET "/compare/segment/:segment-id/table/:table-id/field/:field"
-  "Get comparison x-ray for field named `field` in table with ID
-   `table-id` and segment with ID `segment-id`."
-  [segment-id table-id field max_query_cost max_computation_cost]
+(api/defendpoint GET "/compare/segment/:segment-id/card/:card-id"
+  "Get comparison x-ray of a card and a segment."
+  [segment-id card-id max_query_cost max_computation_cost]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost}
-  (compare-filtered-field (max-cost max_query_cost max_computation_cost)
-                          (api/read-check Segment segment-id)
-                          (api/read-check Table table-id)
-                          field))
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Segment segment-id)
+           (api/read-check Card card-id)))
+
+(api/defendpoint GET "/compare/table/:table-id/card/:card-id"
+  "Get comparison x-ray of a table and a card."
+  [table-id card-id max_query_cost max_computation_cost]
+  {max_query_cost       MaxQueryCost
+   max_computation_cost MaxComputationCost}
+  (compare (max-cost max_query_cost max_computation_cost)
+           (api/read-check Table table-id)
+           (api/read-check Card card-id)))
 
 (api/defendpoint POST "/compare/card/:id/query"
   "Get comparison x-ray of card and ad-hoc query."
@@ -233,13 +223,5 @@
   (compare (max-cost max_query_cost max_computation_cost)
            (api/read-check Segment id)
            (adhoc-query query)))
-
-(api/defendpoint GET "/compare/valid-pairs"
-  "Get a list of model pairs that can be compared."
-  []
-  [["field" "field"]
-   ["segment" "segment"]
-   ["table" "table"]
-   ["segment" "table"]])
 
 (api/define-routes)

@@ -56,27 +56,26 @@ export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =
         dispatch(cardXrayRequest.trigger({ cardId, ...COSTS[cost].method }))
 )
 
-export const FETCH_SEGMENT_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-const segmentComparisonXrayRequest = new BackgroundJobRequest({
-    creationEndpoint: XRayApi.segment_compare,
+export const FETCH_SHARED_TYPE_COMPARISON_XRAY = 'metabase/xray/FETCH_SHARED_TYPE_COMPARISON_XRAY';
+const sharedTypeComparisonXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.compare_shared_type,
     resultPropName: 'comparison',
-    actionPrefix: FETCH_SEGMENT_COMPARISON
+    actionPrefix: FETCH_SHARED_TYPE_COMPARISON_XRAY
 })
-export const fetchSegmentComparison = createThunkAction(FETCH_SEGMENT_COMPARISON, (segmentId1, segmentId2, cost) =>
+export const fetchSharedTypeComparisonXray = createThunkAction(FETCH_SHARED_TYPE_COMPARISON_XRAY, (modelTypePlural, modelId1, modelId2, cost) =>
     (dispatch) =>
-        dispatch(segmentComparisonXrayRequest.trigger({ segmentId1, segmentId2, ...COSTS[cost].method }))
+        dispatch(sharedTypeComparisonXrayRequest.trigger({ modelTypePlural, modelId1, modelId2, ...COSTS[cost].method }))
 )
 
-
-export const FETCH_SEGMENT_TABLE_COMPARISON = 'metabase/xray/FETCH_SEGMENT_COMPARISON';
-const segmentTableComparisonXrayRequest = new BackgroundJobRequest({
-    creationEndpoint: XRayApi.segment_table_compare,
+export const FETCH_TWO_TYPES_COMPARISON_XRAY = 'metabase/xray/FETCH_TWO_TYPES_COMPARISON_XRAY';
+const twoTypesComparisonXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.compare_two_types,
     resultPropName: 'comparison',
-    actionPrefix: FETCH_SEGMENT_TABLE_COMPARISON
+    actionPrefix: FETCH_TWO_TYPES_COMPARISON_XRAY
 })
-export const fetchSegmentTableComparison = createThunkAction(FETCH_SEGMENT_TABLE_COMPARISON, (segmentId, tableId, cost) =>
+export const fetchTwoTypesComparisonXray = createThunkAction(FETCH_TWO_TYPES_COMPARISON_XRAY, (modelType1, modelId1, modelType2, modelId2, cost) =>
     (dispatch) =>
-        dispatch(segmentTableComparisonXrayRequest.trigger({ segmentId, tableId, ...COSTS[cost].method }))
+        dispatch(twoTypesComparisonXrayRequest.trigger({ modelType1, modelId1, modelType2, modelId2, ...COSTS[cost].method }))
 )
 
 export default handleActions({
@@ -84,7 +83,7 @@ export default handleActions({
     ...tableXrayRequest.getReducers(),
     ...segmentXrayRequest.getReducers(),
     ...cardXrayRequest.getReducers(),
-    ...segmentComparisonXrayRequest.getReducers(),
-    ...segmentTableComparisonXrayRequest.getReducers(),
+    ...sharedTypeComparisonXrayRequest.getReducers(),
+    ...twoTypesComparisonXrayRequest.getReducers(),
     [INITIALIZE]: () => tableXrayRequest.getDefaultState(),
 }, tableXrayRequest.getDefaultState())
