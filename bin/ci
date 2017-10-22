@@ -88,7 +88,7 @@ install-vertica() {
 }
 
 install-presto() {
-    docker run --detach --publish 8080:8080 wiill/presto-mb-ci
+    docker run --detach --publish 8080:8080 metabase/presto-mb-ci
     sleep 10
 }
 

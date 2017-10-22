@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import CollectionActions from "../components/CollectionActions";
@@ -59,14 +58,14 @@ export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch})
     const showSearch = hasCollections || hasQuestionsWithoutCollection;
     const showSetPermissionsLink = isAdmin && hasCollections;
 
-    return (<div className="flex align-center pt4 pb2">
-        <TitleAndDescription title={ hasCollections ? "Collections of Questions" : "Saved Questions" }/>
+    return (
+        <div className="flex align-center pt4 pb2">
+
+          { showSearch && hasCollections &&
+          <ExpandingSearchField onSearch={onSearch}/>
+          }
 
         <div className="flex align-center ml-auto">
-            { showSearch &&
-            <ExpandingSearchField className="mr2" onSearch={onSearch}/>
-            }
-
             <CollectionActions>
                 { showSetPermissionsLink &&
                 <Link to="/collections/permissions">
@@ -78,7 +77,8 @@ export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch})
                 </Link>
             </CollectionActions>
         </div>
-    </div>);
+    </div>
+    );
 };
 
 const mapStateToProps = (state, props) => ({
@@ -112,7 +112,6 @@ export class QuestionIndex extends Component {
 
         const hasEntityListSectionQuery = !!(location.query && location.query.f);
         const showEntityList = hasQuestionsWithoutCollection || hasEntityListSectionQuery;
-        const showEverythingElseTitle = showEntityList && hasCollections;
 
         return (
             <div className={cx("relative px4", {"full-height flex flex-column bg-slate-extra-light": showNoSavedQuestionsState})}>
@@ -132,9 +131,7 @@ export class QuestionIndex extends Component {
 
                 { showNoSavedQuestionsState && <NoSavedQuestionsState /> }
 
-                { showEverythingElseTitle && <h2 className="mt2 mb2">Everything Else</h2> }
-
-                <div className={cx({ "hide": !showEntityList })}>
+                <div className={cx("pt4", { "hide": !showEntityList })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"
@@ -152,4 +149,3 @@ export class QuestionIndex extends Component {
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(QuestionIndex);
-

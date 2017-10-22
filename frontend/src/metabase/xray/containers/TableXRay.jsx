@@ -3,9 +3,8 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { fetchTableXray, initialize } from 'metabase/xray/xray'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-import { push } from "react-router-redux";
 
 import CostSelect from 'metabase/xray/components/CostSelect'
 import Constituent from 'metabase/xray/components/Constituent'
@@ -14,7 +13,9 @@ import {
     getConstituents,
     getFeatures,
     getLoadingStatus,
-    getError, getComparables
+    getError,
+    getComparables,
+    getIsAlreadyFetched,
 } from 'metabase/xray/selectors'
 
 import Icon from 'metabase/components/Icon'
@@ -23,14 +24,15 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
-import Select, { Option } from "metabase/components/Select";
+import { xrayLoadingMessages } from 'metabase/xray/utils'
+import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
 
 type Props = {
-    fetchXray: () => void,
+    fetchTableXray: () => void,
     initialize: () => {},
     constituents: [],
     isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table
     },
@@ -46,19 +48,18 @@ const mapStateToProps = state => ({
     constituents: getConstituents(state),
     comparables: getComparables(state),
     isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
     error: getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray,
-    push
+    fetchTableXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ features }) => features && features.model.display_name || "Table")
 class TableXRay extends Component {
-
     props: Props
 
     componentWillMount () {
@@ -74,9 +75,8 @@ class TableXRay extends Component {
     }
 
     fetch () {
-        const { params, fetchXray } = this.props
-        // TODO this should happen at the action level
-        fetchXray('table', params.tableId, params.cost)
+        const { params, fetchTableXray } = this.props
+        fetchTableXray(params.tableId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
@@ -85,21 +85,12 @@ class TableXRay extends Component {
         }
     }
 
-    navigateToComparison(comparable) {
-        const { features, push } = this.props
-
-        const currentModelType = features.model["type-tag"]
-        const comparableModelType = comparable["type-tag"]
-
-        push(`/xray/compare/${comparableModelType}/${comparable.id}/${currentModelType}/${features.model.id}/approximate`)
-    }
-
     render () {
-        const { comparables, constituents, features, params, isLoading, error } = this.props
+        const { comparables, constituents, features, params, isLoading, isAlreadyFetched, error } = this.props
 
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(features)}
+                loading={isLoading || !isAlreadyFetched}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}
@@ -118,7 +109,7 @@ class TableXRay extends Component {
                                     <p className="m0 text-paragraph text-measure">{features.model.description}</p>
                                 </div>
                                 <div className="ml-auto flex align-center">
-                                   <h3 className="mr2">Fidelity:</h3>
+                                    <h3 className="mr2">Fidelity:</h3>
                                     <CostSelect
                                         xrayType='table'
                                         currentCost={params.cost}
@@ -126,37 +117,12 @@ class TableXRay extends Component {
                                     />
                                 </div>
                             </div>
-                            <div>
-                                { comparables &&
-                                <Select
-                                    value={null}
-                                    // TODO Atte Keinänen: Use links instead of this kind of logic
-                                    onChange={e => this.navigateToComparison(e.target.value)}
-                                    triggerElement={
-                                        <div className="Button bg-white text-brand-hover no-decoration">
-                                            <Icon name="compare" className="mr1" />
-                                            {`Compare with...`}
-                                            <Icon name="chevrondown" size={12} className="ml1" />
-                                        </div>
-                                    }
-                                >
-                                    { comparables
-                                    // NOTE: filter out card comparisons because we don't support those yet
-                                        .filter((comparableModel) => !comparableModel["type-tag"].includes("card") && !comparableModel["type-tag"].includes("table"))
-                                        .map((comparableModel, index) =>
-                                            <Option
-                                                key={index}
-                                                value={comparableModel}
-                                                // icon={collection.id != null ? "collection" : null}
-                                                // iconColor={collection.color}
-                                                // iconSize={18}
-                                            >
-                                                {comparableModel.name}
-                                            </Option>
-                                        )}
-                                </Select>
-                                }
-                            </div>
+                            { comparables.length > 0 &&
+                                <ComparisonDropdown
+                                    models={[features.model]}
+                                    comparables={comparables}
+                                />
+                            }
                             <ol>
                                 { constituents.map((constituent, index) =>
                                     <li key={index}>
@@ -173,5 +139,6 @@ class TableXRay extends Component {
         )
     }
 }
+
 
 export default TableXRay

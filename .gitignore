@@ -47,3 +47,4 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /crate-*
 *.po~
 /locales/metabase-*.pot
+/stats.json

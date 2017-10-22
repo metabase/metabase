@@ -3843,3 +3843,100 @@ databaseChangeLog:
             sql: drop table if exists computation_job_result cascade
         - sql:
             sql: drop table if exists computation_job cascade
+# NOTE Atte Keinänen 9/28/17: This was originally in changeset 65 as explained above
+  - changeSet:
+      id: 67
+      author: attekei
+      changes:
+        - createTable:
+            tableName: computation_job
+            remarks: 'Stores submitted async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_job_ref_user_id
+                    initiallyDeferred: false
+                    references: core_user(id)
+                  name: creator_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: computation_job_result
+            remarks: 'Stores results of async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_result_ref_job_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: computation_job(id)
+                  name: job_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permanence
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+  - changeSet:
+    - id: 68
+    - author: sbelak
+    - changes:
+      - addColumn:
+            tableName: computation_job
+            columns:
+              - column:
+                  name: context
+                  type: text
+              - column:
+                  name: ended_at
+                  type: DATETIME
