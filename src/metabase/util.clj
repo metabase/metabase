@@ -770,10 +770,7 @@
    This is intended for use by various routines that load related namespaces, such as task and events initialization.
    Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand or so
    namespaces that are part of the Metabase project; use this instead for a massive performance increase."
-  ;; Actually we can go ahead and start doing this in the background once the app launches while other stuff is loading, so use a future here
-  ;; This would be faster when running the *JAR* if we just did it at compile-time and made it ^:const, but that would inhibit the "plugin system"
-  ;; from loading "plugin" namespaces at launch if they're on the classpath
-  (future (vec (for [ns-symb (ns-find/find-namespaces (classpath/classpath))
+  (delay (vec (for [ns-symb (ns-find/find-namespaces (classpath/classpath))
                      :when   (and (.startsWith (name ns-symb) "metabase.")
                                   (not (.contains (name ns-symb) "test")))]
                  ns-symb))))
