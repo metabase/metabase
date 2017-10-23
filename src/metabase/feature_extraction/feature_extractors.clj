@@ -273,12 +273,9 @@
                               :gaps {:quality "some"
                                      :mode "missing"
                                      :filter [:IS_NULL [:field-id 5]]}
-                              :noisy {:noise {:value 0.3
-                                                 :description "Noisy data is highly variable jumping all over the place with changes carrying relatively little information."
-                                                 :link "https://en.wikipedia.org/wiki/Noisy_data"}
-                                             :quality "very"
-                                             :recommended-resolution "month"
-                                             :direction "up"}}
+                              :noisy {:quality "very"
+                                      :recommended-resolution "month"
+                                      :direction "up"}}
          :histogram (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num

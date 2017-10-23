@@ -45,19 +45,24 @@ export class GapsInsight extends Component {
     }
 }
 
+const noisinessDefinition = "Noisy data is highly variable jumping all over the place with changes carrying relatively little information."
+const noisinessLink = "https://en.wikipedia.org/wiki/Noisy_data"
+
 export class NoisinessInsight extends Component {
     static insightType = "noisy"
     static title = "Noisy data"
     static icon = "insight"
 
     render() {
-        const { noise, quality, "recommended-resolution": resolution } = this.props
+        const { quality, "recommended-resolution": resolution } = this.props
 
         return (
             <p>
                 Your data is { quality }
                 <span> </span>
-                <TermWithDefinition definition={noise.description} link={noise.link}>noisy</TermWithDefinition>.
+                <TermWithDefinition definition={noisinessDefinition} link={noisinessLink}>
+                    noisy
+                </TermWithDefinition>.
                 Perhaps try smoothing it or choose a { resolution } resolution.
             </p>
         )
