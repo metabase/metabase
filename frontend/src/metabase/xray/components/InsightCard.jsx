@@ -1,23 +1,9 @@
 import React, { Component } from 'react'
-import cxs from "cxs";
 import { formatListOfItems, formatTimeWithUnit, inflect } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 import { Link } from "react-router";
 import Question from "metabase-lib/lib/Question";
-
-const termStyles = cxs({
-    textDecoration: "none",
-    borderBottom: '1px dotted #DCE1E4'
-})
-const TermWithDefinition = ({ children, definition, link }) =>
-    <Tooltip tooltip={definition}>
-        { link
-            ? <a href={link} className={termStyles} target="_blank">{ children }</a>
-            : <span className={termStyles}>{ children }</span>
-        }
-
-    </Tooltip>
+import { TermWithDefinition } from "metabase/components/TermWithDefinition";
 
 class NormalRangeInsight extends Component {
     static insightType = "normal-range"
@@ -110,7 +96,7 @@ const INSIGHT_COMPONENTS = [
     // numeric fields
     NormalRangeInsight,
     GapsInsight,
-    // timestamps
+    // timeseries
     NoisinessInsight,
     RegimeChangeInsight
 ]
