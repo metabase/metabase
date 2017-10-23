@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import cxs from "cxs";
-import { formatTimeWithUnit } from "metabase/lib/formatting";
+import { formatListOfItems, formatTimeWithUnit, inflect } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { Link } from "react-router";
@@ -84,19 +84,23 @@ class RegimeChangeInsight extends Component {
     static title = "Regime change"
     static icon = "insight"
 
-    render() {
-        let { breaks, resolution } = this.props
+    getTextForBreak = ({ from, to, mode, shape }) => {
+        let { resolution } = this.props
+        resolution = resolution || "year"
 
-        resolution = resolution || "day"
+        if (from === "beginning") return `${mode} ${shape} period until ${formatTimeWithUnit(to, resolution)}`
+        if (to === "now") return `${mode} ${shape} period from ${formatTimeWithUnit(from, resolution)} until now`
+        return `${mode} ${shape} period from ${formatTimeWithUnit(from, resolution)} until now`
+    }
+
+    render() {
+        let { breaks } = this.props
 
         return (
             <p>
-                Your data can be split into { breaks.length } periods of growth:
-                { breaks.map(({ from, to, shape }) => {
-                    if (from === "beginning") return <span>{shape} period until {formatTimeWithUnit(to, resolution)}</span>
-                    if (to === "now") return <span>{shape} period from {formatTimeWithUnit(from, resolution)} until now</span>
-                    return <span>{shape} period from {formatTimeWithUnit(from, resolution)} until now.</span>
-                })}
+                Your data can be split into { breaks.length } { inflect("stages", breaks.length) }:
+                <span> </span>
+                { formatListOfItems(breaks.map(this.getTextForBreak)) }.
             </p>
         )
     }
@@ -111,31 +115,19 @@ const INSIGHT_COMPONENTS = [
     RegimeChangeInsight
 ]
 
-const generateInsightCardClasses = (autoSize) => cxs({
-    width: !autoSize && '22em',
-    height: '10em',
-    ' .Icon': {
-        color: '#93a1ab'
-    },
-    ' header span': {
-        fontSize: '0.85em',
-    },
-    ' p': {
-        lineHeight: '1.4em'
-    }
-
-})
-export const InsightCard = ({type, props, features, autoSize}) => {
+export const InsightCard = ({type, props, features}) => {
     const Insight = INSIGHT_COMPONENTS.find((component) => component.insightType === type)
 
     return (
-        <div className={generateInsightCardClasses(autoSize)}>
+        <div className="flex-full" style={{ width: "22em" }}>
             <div className="bg-white bordered rounded shadowed full-height p3">
                 <header className="flex align-center">
-                    <Icon name={Insight.icon} size={24} className="mr1" />
+                    <Icon name={Insight.icon} size={24} className="mr1" style={{ color: '#93a1ab' }} />
                     <span className="text-bold text-uppercase">{Insight.title}</span>
                 </header>
-                <Insight {...props} features={features} />
+                <div style={{ lineHeight: '1.4em' }}>
+                    <Insight {...props} features={features} />
+                </div>
             </div>
         </div>
     )

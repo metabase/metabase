@@ -17,7 +17,7 @@ export class Insights extends Component {
         return (
             <ol className="Grid Grid--gutters Grid--1of4">
                 { parametrizedInsights.map(([type, props], index) =>
-                    <div className="Grid-cell">
+                    <div className="Grid-cell flex flex-column">
                         <InsightCard key={index} type={type} props={props} features={features} />
                     </div>
                 )}
