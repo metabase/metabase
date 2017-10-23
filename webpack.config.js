@@ -11,6 +11,7 @@ var HtmlWebpackPlugin = require('html-webpack-plugin');
 var HtmlWebpackHarddiskPlugin = require('html-webpack-harddisk-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
 var BannerWebpackPlugin = require('banner-webpack-plugin');
+var UglifyJSPlugin = require('uglifyjs-webpack-plugin')
 
 var fs = require('fs');
 
@@ -243,13 +244,15 @@ if (NODE_ENV !== "production") {
     config.output.devtoolModuleFilenameTemplate = '[absolute-resource-path]';
     config.output.pathinfo = true;
 } else {
-    config.plugins.push(new webpack.optimize.UglifyJsPlugin({
-        mangle: {
-            // this is required to ensure we don't minify Chevrotain token identifiers
-            // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
-            except: allTokens.map(function(currTok) {
-                return chevrotain.tokenName(currTok);
-            })
+    config.plugins.push(new UglifyJSPlugin({
+        uglifyOptions: {
+            mangle: {
+                // this is required to ensure we don't minify Chevrotain token identifiers
+                // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
+                except: allTokens.map(function(currTok) {
+                    return chevrotain.tokenName(currTok);
+                })
+            }
         }
     }))
 
