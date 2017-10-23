@@ -138,7 +138,7 @@ class FieldXRay extends Component {
                             </div>
                             <div className="mt4">
                                 <Heading heading="Insights" />
-                                <Insights features={features} />
+                                { features["data-stories"] && <Insights features={features} /> }
                             </div>
                             <div className="mt4">
                                 <Heading heading="Distribution" />
