@@ -15,9 +15,11 @@ export class Insights extends Component {
             .map(([key, value]) => [key.replace("1",""), value])
 
         return (
-            <ol className="Grid Grid--gutters Grid--1of3">
+            <ol className="Grid Grid--gutters Grid--1of4">
                 { parametrizedInsights.map(([type, props], index) =>
-                    <InsightCard key={index} type={type} props={props} features={features} />
+                    <div className="Grid-cell">
+                        <InsightCard key={index} type={type} props={props} features={features} />
+                    </div>
                 )}
             </ol>
         )

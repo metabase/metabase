@@ -5,27 +5,29 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { Link } from "react-router";
 import Question from "metabase-lib/lib/Question";
-import { getMetadata } from "metabase/selectors/metadata";
-import { connect } from "react-redux";
-import { fetchDatabases } from "metabase/redux/metadata"
 
 const termStyles = cxs({
+    textDecoration: "none",
     borderBottom: '1px dotted #DCE1E4'
 })
-const TermWithDefinition = ({ children, definition }) =>
+const TermWithDefinition = ({ children, definition, link }) =>
     <Tooltip tooltip={definition}>
-        <span className={termStyles}>{ children }</span>
+        { link
+            ? <a href={link} className={termStyles} target="_blank">{ children }</a>
+            : <span className={termStyles}>{ children }</span>
+        }
+
     </Tooltip>
 
 class NormalRangeInsight extends Component {
     static insightType = "normal-range"
     static title = "Normal range of values"
-    static logo = "insight"
+    static icon = "insight"
 
     render() {
         const { min, max, features: { model } } = this.props
         return (
-            <div>Normal value for { model.name } is between { min } and { max }.</div>
+            <p>Normal value for { model.name } is between { min } and { max }.</p>
         )
     }
 }
@@ -38,8 +40,6 @@ class GapsInsight extends Component {
     render() {
         const { mode, quality, filter, features: { table } } = this.props
 
-        console.log('filter does not get transformed', filter)
-
         const viewAllRowsUrl = table && Question.create()
             .query()
             // imitate the required hydrated metadata format
@@ -50,11 +50,11 @@ class GapsInsight extends Component {
 
         // construct the question with filter
         return (
-            <div>
+            <p>
                 You have { quality } { mode } values in your data.
                 <span> </span>
                 { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with { mode } value.</span> }
-            </div>
+            </p>
         )
     }
 }
@@ -65,15 +65,16 @@ class NoisinessInsight extends Component {
     static icon = "insight"
 
     render() {
-        const { noise, quality, "recommended-resolution": resolution, direction } = this.props
-        const directionText = direction === "up" ? "smoothing it" : "NO TEXT YET"
+        const { noise, quality, "recommended-resolution": resolution } = this.props
+
         // do we want to display the smoothness in a tooltip or something?
         return (
-            <div>
+            <p>
                 Your data is { quality }
-                <TermWithDefinition definition={noise.description}> noisy</TermWithDefinition>.
-                Perhaps try { directionText } smoothing it or choose a { resolution } resolution.
-            </div>
+                <span> </span>
+                <TermWithDefinition definition={noise.description} link={noise.link}>noisy</TermWithDefinition>.
+                Perhaps try smoothing it or choose a { resolution } resolution.
+            </p>
         )
     }
 }
@@ -89,14 +90,14 @@ class RegimeChangeInsight extends Component {
         resolution = resolution || "day"
 
         return (
-            <div>
+            <p>
                 Your data can be split into { breaks.length } periods of growth:
                 { breaks.map(({ from, to, shape }) => {
                     if (from === "beginning") return <span>{shape} period until {formatTimeWithUnit(to, resolution)}</span>
                     if (to === "now") return <span>{shape} period from {formatTimeWithUnit(from, resolution)} until now</span>
                     return <span>{shape} period from {formatTimeWithUnit(from, resolution)} until now.</span>
                 })}
-            </div>
+            </p>
         )
     }
 }
@@ -129,7 +130,7 @@ export const InsightCard = ({type, props, features, autoSize}) => {
 
     return (
         <div className={generateInsightCardClasses(autoSize)}>
-            <div className="bordered rounded shadowed full-height p3">
+            <div className="bg-white bordered rounded shadowed full-height p3">
                 <header className="flex align-center">
                     <Icon name={Insight.icon} size={24} className="mr1" />
                     <span className="text-bold text-uppercase">{Insight.title}</span>
