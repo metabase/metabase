@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import Question from "metabase-lib/lib/Question";
 import { TermWithDefinition } from "metabase/components/TermWithDefinition";
 
-class NormalRangeInsight extends Component {
+export class NormalRangeInsight extends Component {
     static insightType = "normal-range"
     static title = "Normal range of values"
     static icon = "insight"
@@ -18,7 +18,7 @@ class NormalRangeInsight extends Component {
     }
 }
 
-class GapsInsight extends Component {
+export class GapsInsight extends Component {
     static insightType = "gaps"
     static title = "Gaps in the data"
     static icon = "insight"
@@ -45,7 +45,7 @@ class GapsInsight extends Component {
     }
 }
 
-class NoisinessInsight extends Component {
+export class NoisinessInsight extends Component {
     static insightType = "noisy"
     static title = "Noisy data"
     static icon = "insight"
@@ -53,7 +53,6 @@ class NoisinessInsight extends Component {
     render() {
         const { noise, quality, "recommended-resolution": resolution } = this.props
 
-        // do we want to display the smoothness in a tooltip or something?
         return (
             <p>
                 Your data is { quality }
@@ -65,7 +64,7 @@ class NoisinessInsight extends Component {
     }
 }
 
-class RegimeChangeInsight extends Component {
+export class RegimeChangeInsight extends Component {
     static insightType = "regime-change"
     static title = "Regime change"
     static icon = "insight"
