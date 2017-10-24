@@ -85,5 +85,6 @@ fi
 JAVA_OPTS="${JAVA_OPTS} -XX:+IgnoreUnrecognizedVMOptions"
 JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
 JAVA_OPTS="${JAVA_OPTS} --add-opens=java.base/java.net=ALL-UNNAMED"
+JAVA_OPTS="${JAVA_OPTS} --add-modules=java.xml.bind"
 
 exec java $JAVA_OPTS -jar ./target/uberjar/metabase.jar
