@@ -2,7 +2,7 @@
 const req = require.context(
     "metabase/components",
     true,
-    /^(.*\.info\.(js$))[^.]*$/igm
+    /^(.*\.info\.(js$))[^.]*$/im
 );
 
 export default req.keys().map(key => req(key));
