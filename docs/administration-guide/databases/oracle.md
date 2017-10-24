@@ -36,3 +36,14 @@ If you're running Metabase from the Mac App, the plugins directory defaults to `
 ```
 
 Finally, you can choose a custom plugins directory if the default doesn't suit your needs by setting the environment variable `MB_PLUGINS_DIR`.
+
+
+### Enabling Plugins on Java 9
+
+Java 9 disables dynamically adding JARs to the Java classpath by default for security reasons. When using Java 9, you'll need to pass an extra JVM option:
+
+```bash
+java --add-opens=java.base/java.net=ALL-UNNAMED -jar metabase.jar
+```
+
+The default Docker images already include this option.
