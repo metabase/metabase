@@ -242,12 +242,12 @@
     (fn [{:keys [histogram histogram-categorical kurtosis skewness sum
                  sum-of-squares]}]
       (let [var    (h.impl/variance histogram)
-        sd     (some-> var math/sqrt)
-        min    (h.impl/minimum histogram)
-        max    (h.impl/maximum histogram)
-        mean   (h.impl/mean histogram)
-        median (h.impl/median histogram)
-        range  (some-> max (- min))]
+            sd     (some-> var math/sqrt)
+            min    (h.impl/minimum histogram)
+            max    (h.impl/maximum histogram)
+            mean   (h.impl/mean histogram)
+            median (h.impl/median histogram)
+            range  (some-> max (- min))]
         {:positive-definite? (some-> min (>= 0))
          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
          :var>sd?            (some->> sd (> var))
@@ -268,6 +268,14 @@
          :skewness           skewness
          :sum                sum
          :sum-of-squares     sum-of-squares
+         :data-stories       {:normal-range {:min 12
+                                              :max 25}
+                              :gaps {:quality "some"
+                                     :mode "missing"
+                                     :filter [:IS_NULL [:field-id 5]]}
+                              :noisy {:quality "very"
+                                      :recommended-resolution "month"
+                                      :direction "up"}}
          :histogram (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num
@@ -411,7 +419,25 @@
                 :seasonal-decomposition
                 (when (and resolution
                            (costs/unbounded-computation? max-cost))
-                  (decompose-timeseries resolution series))}
+                  (decompose-timeseries resolution series))
+                :data-stories {:noisy {:noise {:value 0.3
+                                       :description "Noisy data is highly variable jumping all over the place with changes carrying relatively little information."
+                                       :link "https://en.wikipedia.org/wiki/Noisy_data"}
+                                       :quality "very"
+                                       :recommended-resolution "month"
+                                       :direction "up"}
+                               :regime-change {:breaks [{:from "beginning"
+                                                          :to (t/date-time 2015)
+                                                         :shape "linear"
+                                                         :mode "increasing"}
+                                                         {:from (t/date-time 2015)
+                                                          :to (t/date-time 2017)
+                                                         :shape "exponential"
+                                                          :mode "increasing"}
+                                                         {:to "now"
+                                                          :from (t/date-time 2017)
+                                                         :shape "linear"
+                                                         :mode "decreasing"}]}}}
                (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
                  {:YoY (rolling-window-growth 365 query)
