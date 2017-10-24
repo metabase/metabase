@@ -24,19 +24,16 @@
         (neg? x1)                 (- (growth x2 x1))
         :else                     (/ (- x2 x1) x1)))))
 
-(defn differences
-  ""
+(defn saddles
+  "Returns the number of saddles in a given series."
   [series]
   (->> series
        (partition 2 1)
        (map (fn [[[_ y1] [x y2]]]
-              [x (- y2 y1)]))))
-
-(defn saddles
-  "Returns the number of saddles in a given series."
-  [series]
-  (let [differences (differences series)]
-    (dec (count (partition-by (comp pos? second) differences)))))
+              [x (- y2 y1)]))
+       (partition-by (comp pos? second))
+       count
+       dec))
 
 (defn roughly=
   "Is `x` èqual to `y` within precision `precision` (default 0.05)."

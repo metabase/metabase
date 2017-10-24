@@ -3,39 +3,11 @@
              [core :as t]
              [coerce :as t.coerce]]
             [expectations :refer :all]
-            [metabase.feature-extraction.feature-extractors :refer :all :as fe]
-            [metabase.feature-extraction.histogram :as h]
+            [metabase.feature-extraction
+             [feature-extractors :refer :all :as fe]
+             [histogram :as h]
+             [timeseries :as ts]]
             [redux.core :as redux]))
-
-(expect
-  [2
-   (/ 4)
-   nil
-   nil]
-  [(safe-divide 4 2)
-   (safe-divide 4)
-   (safe-divide 0)
-   (safe-divide 4 0)])
-
-(expect
-  [0.23
-   1.0
-   -0.5
-   -5.0
-   5.0
-   2.0
-   nil
-   nil
-   nil]
-  [(growth 123 100)
-   (growth -0.1 -0.2)
-   (growth -0.4 -0.2)
-   (growth -0.4 0.1)
-   (growth 0.1 -0.4)
-   (growth Long/MAX_VALUE Long/MIN_VALUE)
-   (growth 0.1 nil)
-   (growth nil 0.5)
-   (growth 0.5 0.0)])
 
 (expect
   [{:foo 2
@@ -50,39 +22,6 @@
    (transduce identity (rollup (redux/pre-step + :y) :x) [])])
 
 (expect
-  [1
-   1
-   2
-   4]
-  [(#'fe/quarter (t/date-time 2017 1))
-   (#'fe/quarter (t/date-time 2017 3))
-   (#'fe/quarter (t/date-time 2017 5))
-   (#'fe/quarter (t/date-time 2017 12))])
-
-(defn- make-timestamp
-  [& args]
-  (-> (apply t/date-time args)
-      ((var fe/to-double))))
-
-(expect
-  [[(make-timestamp 2016 1) 12]
-   [(make-timestamp 2016 2) 0]
-   [(make-timestamp 2016 3) 4]
-   [(make-timestamp 2016 4) 0]
-   [(make-timestamp 2016 5) 0]
-   [(make-timestamp 2016 6) 0]
-   [(make-timestamp 2016 7) 0]
-   [(make-timestamp 2016 8) 0]
-   [(make-timestamp 2016 9) 0]
-   [(make-timestamp 2016 10) 0]
-   [(make-timestamp 2016 11) 0]
-   [(make-timestamp 2016 12) 0]
-   [(make-timestamp 2017 1) 25]]
-  (#'fe/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
-                                     [(make-timestamp 2016 3) 4]
-                                      [(make-timestamp 2017 1) 25]]))
-
-(expect
   [2
    0]
   [(transduce identity cardinality [:foo :bar :foo])
@@ -94,15 +33,14 @@
                     (fn [m] {:bar (count m)})
                     (fn [_] {:baz 1})) {}))
 
-(def ^:private hist (transduce identity h/histogram (concat (range 50)
-                                                            (range 200 250))))
-
 (expect
   [["TEST" "SHARE"]
    3
    true
    [[17.0 1.0]]]
-  (let [dataset (#'fe/histogram->dataset {:name "TEST"} hist)]
+  (let [hist (transduce identity h/histogram (concat (range 50)
+                                                     (range 200 250)))
+        dataset (#'fe/histogram->dataset {:name "TEST"} hist)]
     [(:columns dataset)
      (count (:rows dataset))
      (->> (transduce identity h/histogram [])
@@ -114,10 +52,10 @@
           :rows
           vec)]))
 
-(expect
-  [true false]
-  [(roughly= 30 30.5 0.05)
-   (roughly= 130 30.5 0.05)])
+(defn- make-timestamp
+  [& args]
+  (-> (apply t/date-time args)
+      ts/to-double))
 
 (expect
   [:day
