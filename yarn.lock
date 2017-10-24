@@ -4600,6 +4600,10 @@ insert-css@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/insert-css/-/insert-css-0.2.0.tgz#d15789971662d9899c28977fb6220d5381d2451a"
 
+insightful@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/insightful/-/insightful-1.1.0.tgz#01afb2a62b49a6324bd5279618cd108e445037eb"
+
 internal-ip@1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/internal-ip/-/internal-ip-1.2.0.tgz#ae9fbf93b984878785d50a8de1b356956058cf5c"
