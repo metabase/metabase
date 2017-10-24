@@ -180,8 +180,15 @@ export const GRAPH_COLORS_SETTINGS = {
       getProps: (series, vizSettings) => {
           return { seriesTitles: getSeriesTitles(series, vizSettings) };
       }
-  }
-}
+  },
+    // TODO - does this need to have anything else set? It's not supposed to be manually editable. Or is it?
+    "graph.colorsMap": {
+        getDefault: (series, vizSettings) => {
+            console.log("getting colors map for vizSettings:", vizSettings, "->", vizSettings["graph.colorsMap"] || {}); // NOCOMMIT
+            return vizSettings["graph.colorsMap"] || {};
+        }
+    }
+};
 
 export const GRAPH_AXIS_SETTINGS = {
   "graph.x_axis._is_timeseries": {

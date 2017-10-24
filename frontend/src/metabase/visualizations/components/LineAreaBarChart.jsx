@@ -188,6 +188,7 @@ export default class LineAreaBarChart extends Component {
         const { series, hovered, showTitle, actionButtons, onChangeCardAndRun, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const settings = this.getSettings();
+        console.log("LineAreaBarChart settings colorMap:", settings["graph.colorsMap"]); // NOCOMMIT
 
         let multiseriesHeaderSeries;
         if (series.length > 1) {

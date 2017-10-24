@@ -8,6 +8,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { normal } from "metabase/lib/colors";
 import Query from "metabase/lib/query";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -15,6 +16,8 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import _ from "underscore";
 import cx from "classnames";
 import { getIn } from "icepick";
+
+const DEFAULT_COLORS = Object.values(normal);
 
 function getQueryColumns(card, databases) {
     let dbId = card.dataset_query.database;
@@ -125,11 +128,36 @@ export default class AddSeriesModal extends Component {
         MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
     }
 
+    // TODO - explain what the hell is going on
+    seriesColorsMap(vizSettings, series) {
+        const colorsMap = vizSettings["graph.colorsMap"] || {};
+
+        for (let i = 0; i < series.length; i++) {
+            const thisSeries = series[i];
+
+            if (colorsMap[thisSeries.id]) continue;
+
+            const colors     = vizSettings["graph.colors"] || DEFAULT_COLORS;
+            const colorIndex = (i + 1) % colors.length;
+            const color      = colors[colorIndex];
+
+            colorsMap[thisSeries.id] = color;
+        }
+
+        return colorsMap;
+    }
+
     onDone() {
+        const colorsMap = this.seriesColorsMap(this.props.dashcard.visualization_settings, this.state.series);
+
+        console.log("saving new colorsMap:", colorsMap); // NOCOMMIT
+
         this.props.setDashCardAttributes({
             id: this.props.dashcard.id,
-            attributes: { series: this.state.series }
-        });
+            attributes: {
+                visualization_settings: { ...this.props.dashcard.visualization_settings, "graph.colorsMap": colorsMap },
+                series: this.state.series
+            }});
         this.props.onClose();
         MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "done");
     }
