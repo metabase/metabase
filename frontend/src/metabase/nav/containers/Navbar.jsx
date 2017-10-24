@@ -57,7 +57,7 @@ const MainNavLink = ({ to, name, eventName, icon }) =>
         to={to}
         data-metabase-event={`NavBar;${eventName}`}
         style={BUTTON_PADDING_STYLES.navButton}
-        className={"NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background"}
+        className={"NavItem cursor-pointer flex-full text-white text-bold no-decoration flex align-center px2 transition-background"}
         activeClassName="NavItem--selected"
     >
         <Icon name={icon} className="md-hide" />

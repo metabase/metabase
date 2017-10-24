@@ -7,6 +7,6 @@ export default class Smile extends Component {
             height: '48px',
             backgroundImage: 'url("app/assets/img/smile.svg")',
         }
-        return <div style={styles} className="mr2"></div>
+        return <div style={styles} className="hide md-show"></div>
     }
 }
