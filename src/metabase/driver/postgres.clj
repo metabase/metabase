@@ -85,9 +85,8 @@
 
 (def ^:private ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
-  {:ssl        true
-   :sslmode    "require"
-   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
+  {:ssl     true
+   :sslmode "require"})
 
 (def ^:private ^:const disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
