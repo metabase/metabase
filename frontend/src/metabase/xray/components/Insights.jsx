@@ -9,7 +9,7 @@ export class Insights extends Component {
     render() {
         const { features } = this.props;
 
-        const parametrizedInsights = Object.entries(features["data-stories"])
+        const parametrizedInsights = Object.entries(features["insights"])
             // temporary hacks as we have two formats
             .filter(([key, value]) => !key.includes(2))
             .map(([key, value]) => [key.replace("1",""), value])
@@ -25,4 +25,3 @@ export class Insights extends Component {
         )
     }
 }
-

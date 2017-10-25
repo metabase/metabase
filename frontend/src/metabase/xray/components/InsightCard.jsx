@@ -49,7 +49,7 @@ const noisinessDefinition = "Noisy data is highly variable jumping all over the 
 const noisinessLink = "https://en.wikipedia.org/wiki/Noisy_data"
 
 export class NoisinessInsight extends Component {
-    static insightType = "noisy"
+    static insightType = "noisiness"
     static title = "Noisy data"
     static icon = "insight"
 
@@ -69,6 +69,52 @@ export class NoisinessInsight extends Component {
     }
 }
 
+const autocorrelationDefinition = "Measure of how much (changes in) previous values predict future values."
+const autocorrelationLink = "https://en.wikipedia.org/wiki/Autocorrelation"
+
+export class AutocorrelationInsight extends Component {
+    static insightType = "autocorrelation"
+    static title = "Autocorrelation"
+    static icon = "insight"
+
+    render() {
+        const { quality, lag } = this.props
+
+        return (
+            <p>
+                Your data has a { quality }
+                <span> </span>
+                <TermWithDefinition definition={autocorrelationDefinition} link={autocorrelationLink}>
+                    autocorrelation
+            </TermWithDefinition>
+		at lag { lag }.
+            </p>
+        )
+    }
+}
+
+const variationTrendDefinition = "How variance in your data is changing over time."
+const varianceLink = "https://en.wikipedia.org/wiki/Variance"
+
+export class VariationTrendInsight extends Component {
+    static insightType = "variation-trend"
+    static title = "Variation trend"
+    static icon = "insight"
+
+    render() {
+        const { mode } = this.props
+
+        return (
+            <p>
+                The <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
+                    range of variation
+            </TermWithDefinition>
+		is { mode }.
+            </p>
+        )
+    }
+}
+/*
 export class RegimeChangeInsight extends Component {
     static insightType = "regime-change"
     static title = "Regime change"
@@ -95,6 +141,8 @@ export class RegimeChangeInsight extends Component {
         )
     }
 }
+*/
+
 
 const INSIGHT_COMPONENTS = [
     // numeric fields
@@ -102,7 +150,9 @@ const INSIGHT_COMPONENTS = [
     GapsInsight,
     // timeseries
     NoisinessInsight,
-    RegimeChangeInsight
+    VariationTrendInsight,
+    AutocorrelationInsight,
+    // RegimeChangeInsight
 ]
 
 export const InsightCard = ({type, props, features}) => {
