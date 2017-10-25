@@ -43,7 +43,7 @@ export default class ComponentsApp extends Component {
                                                 className="border-left border-right border-bottom text-code"
                                             >
                                                 <div className="p1">
-                                                    {component.showExample && reactElementToJSXString(element)}
+                                                    {reactElementToJSXString(element)}
                                                 </div>
                                             </div>
                                         </div>
