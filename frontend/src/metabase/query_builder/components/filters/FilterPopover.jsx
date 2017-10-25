@@ -261,6 +261,7 @@ export default class FilterPopover extends Component {
             return (
                 <div style={{
                     minWidth: 300,
+                    // $FlowFixMe
                     maxWidth: dimension.field().isDate() ? null : 500
                 }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
