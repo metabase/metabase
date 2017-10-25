@@ -7,7 +7,7 @@ export default function ChartSettingInputGroup({ value: values, onChange }) {
     const inputs = values.map((str, i) => (
         <Input
             key={i}
-            className="input block full"
+            className="input block full mb1"
             value={str}
             onBlurChange={(e) => {
                 const newStr = e.target.value.trim();
