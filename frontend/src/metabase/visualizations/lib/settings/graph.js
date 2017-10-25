@@ -341,7 +341,7 @@ export const GRAPH_AXIS_SETTINGS = {
     "graph.series_labels": {
         section: "Labels",
         title: "Series labels",
-        widget: "inputs",
+        widget: "inputGroup",
         readDependencies: ["graph.dimensions", "graph.metrics"],
         getHidden: (series) => series.length < 2,
         getDefault: (series, vizSettings) => getSeriesDefaultTitles(series, vizSettings)

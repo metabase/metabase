@@ -3,7 +3,7 @@ import React from "react";
 import Input from "metabase/components/Input.jsx";
 
 // value is an array of strings. This component provides one input box per string
-export default function ChartSettingInputs({ value, onChange }) {
+export default function ChartSettingInputGroup({ value, onChange }) {
     const inputs = value.map((str, i) => (
         <Input
             key={i}
