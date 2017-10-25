@@ -63,7 +63,9 @@
     :message-type message-type
     :message      message))
 
-(defn create-slack-attachment-data [card-results]
+(defn create-slack-attachment-data
+  "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
+  [card-results]
   (let [{channel-id :id} (slack/files-channel)]
     (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
       {:title      card-name

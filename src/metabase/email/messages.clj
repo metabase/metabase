@@ -212,7 +212,7 @@
           :logoFooter   true}
          (random-quote-context)))
 
-(defn render-message-body
+(defn- render-message-body
   [message-template message-context images]
   (vec (cons {:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-context)}
              (map write-image-content images))))
