@@ -30,7 +30,8 @@
      :filter [[:IS_NULL [:field-id (:id field)]]]}))
 
 (definsight autocorrelation
-  ""
+  "
+  Template: Your data has a [strong/mild] autocorrelation at lag [lag]."
   [series]
   (let [{:keys [autocorrelation lag]} (math/autocorrelation (map second series))]
     (when (> autocorrelation 0.3)
@@ -50,7 +51,8 @@
        :recommended-resolution (ts/higher-resolution resolution)})))
 
 (definsight variation-trend
-  ""
+  "
+  "
   [resolution series]
   (when resolution
     (let [trend (->> series

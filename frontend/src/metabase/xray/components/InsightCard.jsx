@@ -11,9 +11,9 @@ export class NormalRangeInsight extends Component {
     static icon = "insight"
 
     render() {
-        const { min, max, features: { model } } = this.props
+        const { lower, upper, features: { model } } = this.props
         return (
-            <p>Normal value for { model.name } is between { min } and { max }.</p>
+            <p>Normal value for { model.name } is between { lower } and { upper }.</p>
         )
     }
 }
