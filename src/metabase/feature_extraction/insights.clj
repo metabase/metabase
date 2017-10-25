@@ -6,11 +6,11 @@
              [timeseries :as ts]]))
 
 (defmacro definsight
-  [name docs features & body]
-  `(defn ~name ~docs
+  [insight docs features & body]
+  `(defn ~insight ~docs
      [{:keys ~features}]
      (when-let [insight# (do ~@body)]
-       {~(keyword name) insight#})))
+       {~(keyword insight) insight#})))
 
 (definsight normal-range
   ""
