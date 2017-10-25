@@ -29,6 +29,7 @@ const mapDispatchToProps = {
     onChangeLocation: push
 }
 
+
 @connect(mapStateToProps, mapDispatchToProps)
 export default class HomepageApp extends Component {
 
@@ -36,15 +37,20 @@ export default class HomepageApp extends Component {
         onChangeLocation: PropTypes.func.isRequired,
         showOnboarding: PropTypes.bool.isRequired,
         user: PropTypes.object.isRequired,
+        // TODO - these should be used by their call sites rather than passed
         activity: PropTypes.array,
-        recentViews: PropTypes.array,
         fetchActivity: PropTypes.func.isRequired,
+
+        recentViews: PropTypes.array,
         fetchRecentViews: PropTypes.func.isRequired
     };
 
-    constructor(props, context) {
-        super(props, context);
-
+    constructor(props) {
+        super()
+        this.state = {
+            onboarding: props.showOnboarding,
+            greeting: Greeting.sayHello(props.user.first_name)
+        }
     }
 
     completeOnboarding() {
@@ -68,10 +74,10 @@ export default class HomepageApp extends Component {
                 <div className="bg-white md-bg-brand text-brand md-text-white md-pl4">
                     <div className="HomepageGreeting">
                         <div className="Layout-mainColumn">
-                            <header className="flex align-center p2 md-pb4">
+                            <header className="flex align-center px2 py3 md-pb4">
                                 <Smile />
-                                <div className="h2 text-bold md-h1 md-ml2" id="Greeting">
-                                    {Greeting.sayHelo(user.first_name)}
+                                <div className="h1 text-bold md-ml2">
+                                    {this.state.greeting}
                                 </div>
                             </header>
                         </div>
@@ -80,8 +86,10 @@ export default class HomepageApp extends Component {
                 <div className="flex">
                     <div className="wrapper">
                         <div className="Layout-mainColumn pl2">
-                          <div className="pt4 h2 text-normal ml2">{t`Activity`}</div>
-                          <Activity {...this.props} />
+                            <div className="md-pt4 h3 md-h2">
+                                {t`Activity`}
+                            </div>
+                            <Activity {...this.props} />
                         </div>
                     </div>
                     <div className="Layout-sidebar flex-no-shrink hide sm-show">

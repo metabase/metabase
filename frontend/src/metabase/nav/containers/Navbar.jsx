@@ -116,9 +116,14 @@ export default class Navbar extends Component {
     renderMainNav() {
         return (
             <nav className="Nav relative bg-brand">
-                <ul className="flex align-center">
+                <ul className="md-pl4 flex align-center md-pr1">
                     <li>
-                        <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center transition-background">
+                        <Link
+                            to="/"
+                            data-metabase-event={"Navbar;Logo"}
+                            className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
+                            activeClassName="NavItem--selected"
+                        >
                             <LogoIcon dark={true}></LogoIcon>
                         </Link>
                     </li>

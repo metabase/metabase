@@ -7,9 +7,7 @@
   background-color: rgba(0, 0, 0, 0.2);
 }
 
-.NavItem {
-  flex: 0 20%;
-}
+
 .NavItem > .Icon {
   padding-left: 1em;
   padding-right: 1em;
@@ -213,3 +211,29 @@
     margin-right: 346px;
   }
 }
+
+/* there are 5 mav items on mobile, so distribute the items evenly */
+.Nav ul li { flex: 0 20%; }
+
+/* on larger screens, things should just flow naturally */
+@media screen and (--breakpoint-min-md) {
+  .Nav ul li { flex: unset; }
+}
+
+/* the logo nav item needs a little bit of additional padding so that it
+ * matches up with the other nav items which have 16px icons and 0.75em padding.
+ * Since the logo is 32px we cut the padding in half to get 0.375
+ * */
+.LogoNavItem {
+  padding-top: 0.375em;
+  padding-bottom: 0.375em;
+}
+
+/* we want to unset the above when we no longer need the nav item to fill the space */
+@media screen and (--breakpoint-min-md) {
+  .LogoNavItem {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
