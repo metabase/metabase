@@ -317,7 +317,7 @@
                          series)]
         (merge {:resolution             resolution
                 :series                 series
-                :linear-regression      math/linear-regression
+                :linear-regression      linear-regression
                 :growth-series          (when resolution
                                           (->> series
                                                (partition 2 1)
@@ -347,7 +347,7 @@
                     {:name         "TREND"
                      :display_name "Linear regression trend"
                      :base_type    :type/Float}]
-                   (for [[x y] series]
+                   (for [[x _] series]
                      [x (+ (* slope x) offset)])))
 
 (defmethod x-ray [DateTime Num]
@@ -440,40 +440,38 @@
 
 (defmethod x-ray DateTime
   [{:keys [field earliest latest histogram] :as features}]
-  (let [earliest (ts/from-double earliest)
-        latest   (ts/from-double latest)]
-    (-> features
-        (assoc  :earliest          earliest)
-        (assoc  :latest            latest)
-        (update :histogram         (partial histogram->dataset ts/from-double field))
-        (update :percentiles       (partial m/map-vals ts/from-double))
-        (update :histogram-hour    (somef
-                                    (partial histogram->dataset
-                                             {:name         "HOUR"
-                                              :display_name "Hour of day"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category})))
-        (update :histogram-day     (partial histogram->dataset
-                                            {:name         "DAY"
-                                             :display_name "Day of week"
-                                             :base_type    :type/Integer
-                                             :special_type :type/Category}))
-        (update :histogram-month   (fn [histogram]
-                                     (when-not (h/empty? histogram)
-                                       (->> histogram
-                                            (histogram->dataset
-                                             {:name         "MONTH"
-                                              :display_name "Month of year"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category})))))
-        (update :histogram-quarter (fn [histogram]
-                                     (when-not (h/empty? histogram)
-                                       (->> histogram
-                                            (histogram->dataset
-                                             {:name         "QUARTER"
-                                              :display_name "Quarter of year"
-                                              :base_type    :type/Integer
-                                              :special_type :type/Category}))))))))
+  (-> features
+      (update :earliest          ts/from-double)
+      (update :latest            ts/from-double)
+      (update :histogram         (partial histogram->dataset ts/from-double field))
+      (update :percentiles       (partial m/map-vals ts/from-double))
+      (update :histogram-hour    (somef
+                                  (partial histogram->dataset
+                                           {:name         "HOUR"
+                                            :display_name "Hour of day"
+                                            :base_type    :type/Integer
+                                            :special_type :type/Category})))
+      (update :histogram-day     (partial histogram->dataset
+                                          {:name         "DAY"
+                                           :display_name "Day of week"
+                                           :base_type    :type/Integer
+                                           :special_type :type/Category}))
+      (update :histogram-month   (fn [histogram]
+                                   (when-not (h/empty? histogram)
+                                     (->> histogram
+                                          (histogram->dataset
+                                           {:name         "MONTH"
+                                            :display_name "Month of year"
+                                            :base_type    :type/Integer
+                                            :special_type :type/Category})))))
+      (update :histogram-quarter (fn [histogram]
+                                   (when-not (h/empty? histogram)
+                                     (->> histogram
+                                          (histogram->dataset
+                                           {:name         "QUARTER"
+                                            :display_name "Quarter of year"
+                                            :base_type    :type/Integer
+                                            :special_type :type/Category})))))))
 
 (defmethod feature-extractor Category
   [_ field]

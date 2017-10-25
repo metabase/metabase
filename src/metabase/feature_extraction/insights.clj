@@ -13,12 +13,14 @@
        {~(keyword name) insight#})))
 
 (definsight normal-range
+  ""
   [histogram]
   (let [{lower 0.25 upper 0.75} (h/percentiles histogram 0.25 0.75)]
     {:lower lower
      :upper upper}))
 
 (definsight gaps
+  ""
   [nil% field]
   (when (pos? nil%)
     {:mode :nils
@@ -28,6 +30,7 @@
      :filter [[:IS_NULL [:field-id (:id field)]]]}))
 
 (definsight autocorrelation
+  ""
   [series]
   (let [{:keys [autocorrelation lag]} (math/autocorrelation (map second series))]
     (when (> autocorrelation 0.3)
@@ -37,6 +40,7 @@
        :lag     lag})))
 
 (definsight noisiness
+  ""
   [series resolution]
   (let [saddles% (/ (math/saddles series) (max (count series) 1))]
     (when (> saddles% 0.1)
@@ -46,9 +50,12 @@
        :recommended-resolution (ts/higher-resolution resolution)})))
 
 (definsight variation-trend
+  ""
   [resolution series]
   (when resolution
-    (let [trend (math/variation-trend (ts/period-length resolution) series)]
+    (let [trend (->> series
+                     (map second)
+                     (math/variation-trend (ts/period-length resolution)))]
       (when (> trend 0.1)
         {:mode (if (pos? trend)
                  :increasing

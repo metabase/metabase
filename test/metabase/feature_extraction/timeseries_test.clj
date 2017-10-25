@@ -34,16 +34,16 @@
    [(make-timestamp 2016 11) 0]
    [(make-timestamp 2016 12) 0]
    [(make-timestamp 2017 1) 25]]
-  (fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
-                                 [(make-timestamp 2016 3) 4]
-                                 [(make-timestamp 2017 1) 25]]))
+  (fill-timeseries :month [[(make-timestamp 2016 1) 12]
+                           [(make-timestamp 2016 3) 4]
+                           [(make-timestamp 2017 1) 25]]))
 
 (def ^:private ts (mapv vector (range) (take 100 (cycle (range 10)))))
 
 (expect
   true
-  (every? (decompose 10 ts) [:trend :residual :seasonal]))
+  (every? (decompose :month ts) [:trend :residual :seasonal]))
 
 (expect
-  IllegalArgumentException
+  nil
   (decompose 100 ts))
