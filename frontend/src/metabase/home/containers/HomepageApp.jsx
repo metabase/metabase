@@ -46,10 +46,10 @@ export default class HomepageApp extends Component {
     };
 
     constructor(props) {
-        super()
+        super(props)
         this.state = {
+            greeting: Greeting.sayHello(props.user && props.user.first_name),
             onboarding: props.showOnboarding,
-            greeting: Greeting.sayHello(props.user.first_name)
         }
     }
 
@@ -62,7 +62,7 @@ export default class HomepageApp extends Component {
 
         return (
             <div className="full">
-                { this.props.showOnboarding ?
+                { this.state.onboarding ?
                     <Modal>
                         <NewUserOnboardingModal
                             user={user}
