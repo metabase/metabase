@@ -115,6 +115,7 @@
     "html-webpack-plugin": "^2.30.1",
     "image-diff": "^1.6.3",
     "imports-loader": "^0.7.0",
+    "insightful": "^1.1.0",
     "jasmine": "^2.4.1",
     "jasmine-core": "^2.4.1",
     "jasmine-promises": "^0.4.1",
