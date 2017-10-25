@@ -139,7 +139,7 @@ export default class Calendar extends Component {
     renderCalender(current, side) {
         return (
             <div className={
-                cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
+                cx("Calendar Grid-cell", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
                 {this.renderMonthHeader(current, side)}
                 {this.renderDayNames(current)}
                 {this.renderWeeks(current)}
@@ -151,10 +151,8 @@ export default class Calendar extends Component {
         const { current } = this.state;
         if (this.props.isDual) {
             return (
-                <div className="flex">
-                    <div className="mr3">
-                        {this.renderCalender(current, "left")}
-                    </div>
+                <div className="Grid Grid--1of2 Grid--gutters">
+                    {this.renderCalender(current, "left")}
                     {this.renderCalender(moment(current).add(1, "month"), "right")}
                 </div>
             )
