@@ -80,8 +80,8 @@
                                              (/ var mean)))
                                           xsi)]))
              (redux/post-complete
-              (redux/fuse {:slope (redux/post-complete linear-regression :slope)
-                           :error (stats/standard-error-estimate first second)}))
+              (redux/fuse {:slope (redux/post-complete linear-regression :slope)})
+              :slope)
              (partition period 1 xs)))
 
 (def magnitude
