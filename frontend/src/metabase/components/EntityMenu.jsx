@@ -94,7 +94,7 @@ class EntityMenu extends Component {
                                                                 <EntityMenuItem
                                                                     icon={item.icon}
                                                                     title={item.title}
-                                                                    action={item.action}
+                                                                    action={() => {item.action(); this.toggleMenu()}}
                                                                     link={item.link}
                                                                 />
                                                             </li>

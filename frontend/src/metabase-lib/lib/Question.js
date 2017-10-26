@@ -386,8 +386,20 @@ export default class Question {
         return this._card.alarms || []
     }
 
-    addAlarm(schedule) {
-        return this.setCard(assoc(this.card(), "alarm", [{ schedule }]));
+    addAlarm(alarm) {
+        return this.setCard({
+            ...this.card(),
+            alarms: [...this.alarms(), alarm]
+        });
+    }
+
+    updateAlarm(alarmToUpdate) {
+        return this.setCard({
+            ...this.card(),
+            alarms: this.alarms().map((alarm) =>
+                alarm.id === alarmToUpdate.id ? alarmToUpdate : alarm
+            )
+        });
     }
 
     // predicate function that dermines if the question is "dirty" compared to the given question

@@ -34,7 +34,7 @@ import _ from "underscore";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Utils from "metabase/lib/utils";
 import EntityMenu from "metabase/components/EntityMenu";
-import { AlertsModalContent } from "metabase/query_builder/components/AlertsModalContent";
+import { CreateAlertModalContent, UpdateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 
 const mapDispatchToProps = {
     clearRequestState
@@ -442,7 +442,8 @@ export default class QueryHeader extends Component {
                             {
                                 title: "Get alerts about this",
                                 icon: "alert",
-                                content: (toggleMenu) => <AlertsModalContent onClose={toggleMenu} />
+                                // trigger modal here omg
+                                action: () => this.setState({ modal: "create-alert" })
                             }
                         ]}
                     />
@@ -458,6 +459,7 @@ export default class QueryHeader extends Component {
     onCloseModal = () => {
         this.setState({ modal: null });
     }
+
 
     render() {
         return (
@@ -494,6 +496,14 @@ export default class QueryHeader extends Component {
                         onClose={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
+                </Modal>
+
+                <Modal full isOpen={this.state.modal === "create-alert"} onClose={this.onCloseModal}>
+                    <CreateAlertModalContent onClose={this.onCloseModal} />
+                </Modal>
+
+                <Modal full isOpen={this.state.modal === "update-alert"} onClose={this.onCloseModal}>
+                    <UpdateAlertModalContent onClose={this.onCloseModal} />
                 </Modal>
             </div>
         );

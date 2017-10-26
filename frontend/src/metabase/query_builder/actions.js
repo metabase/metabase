@@ -18,7 +18,7 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, createUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent } from "metabase/meta/Card";
 
@@ -618,11 +618,11 @@ export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD,
  * Also shows/hides the template tag editor if the number of template tags has changed.
  */
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
-export const updateQuestion = (newQuestion) => {
+export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
     return (dispatch, getState) => {
         // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
         // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
-        if (!getIsEditing(getState()) && newQuestion.isSaved()) {
+        if (!doNotClearNameAndId && !getIsEditing(getState()) && newQuestion.isSaved()) {
             newQuestion = newQuestion.withoutNameAndId();
         }
 
@@ -1139,20 +1139,6 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
-// TODO - this is pretty much a duplicate of SET_ARCHIVED in questions/questions.js
-// unfortunately we have to do this because that action relies on its part of the store
-// for the card lookup
-// A simplified version of a similar method in questions/questions.js
-function createUndo(type, action) {
-    return {
-        type: type,
-        count: 1,
-        message: (undo) => // eslint-disable-line react/display-name
-                <div> { "Question  was " + type + "."} </div>,
-        actions: [action]
-    };
-}
-
 export const ARCHIVE_QUESTION = 'metabase/qb/ARCHIVE_QUESTION';
 export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, archived = true) =>
     async (dispatch, getState) => {
@@ -1162,10 +1148,14 @@ export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, 
         }
         let response = await CardApi.update(card)
 
-        dispatch(addUndo(createUndo(
-            archived ? "archived" : "unarchived",
-            archiveQuestion(card.id, !archived)
-        )));
+        const type = archived ? "archived" : "unarchived"
+
+        dispatch(addUndo(createUndo({
+            type,
+            // eslint-disable-next-line react/display-name
+            message: () => <div> { "Question  was " + type + "."} </div>,
+            action: archiveQuestion(card.id, !archived)
+        })));
 
         dispatch(push('/questions'))
         return response
@@ -1215,15 +1205,29 @@ export const viewPreviousObjectDetail = () => {
 }
 
 export const CREATE_ALERT = 'metabase/qb/CREATE_ALERT'
-export const createAlert = (schedule) => {
+export const createAlert = (alert) => {
     return (dispatch, getState) => {
         const question = getQuestion(getState());
-
         dispatch(updateQuestion(
-            question.addAlarm(schedule)
+            question.addAlarm(alert),
+            { doNotClearNameAndId: true }
         ))
 
+        dispatch(addUndo(createUndo({
+            type: "create-alert",
+            // eslint-disable-next-line react/display-name
+            message: () => <div>Your alert is all set up.</div>,
+            action: null // no undo action in this case
+        })));
+
         dispatch.action(CREATE_ALERT)
+    }
+}
+
+export const UPDATE_ALERT = 'metabase/qb/UPDATE_ALERT'
+export const updateAlert = (alert) => {
+    return (dispatch, getState) => {
+        dispatch.action(UPDATE_ALERT)
     }
 }
 
