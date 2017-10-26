@@ -45,7 +45,8 @@ type Props = {
         table: Table,
         histogram: {
             value: {}
-        }
+        },
+        insights: []
     },
     params: {
         cost: string,

@@ -362,7 +362,7 @@ export function slugify(name: string) {
 }
 
 // Adds commas and spaces between array items and replaces the comma between two last items with "and"
-export function formatListOfItems(items) {
+export function formatListOfItems(items: []): string {
     return [items.slice(0, -1).join(', '), items.slice(-1)[0]].join(items.length < 2 ? '' : ' and ');
 }
 
