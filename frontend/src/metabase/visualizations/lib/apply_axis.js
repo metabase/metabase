@@ -245,8 +245,10 @@ export function applyChartYAxis(chart, settings, series, yExtent, axisName) {
 
     if (axis.setting("axis_enabled")) {
         // special case for normalized stacked charts
+        // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
+        // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
         if (settings["stackable.stack_type"] === "normalized") {
-            axis.axis().tickFormat(value => (value * 100) + "%");
+            axis.axis().tickFormat(value => Math.round(value * 100) + "%");
         }
         chart.renderHorizontalGridLines(true);
         adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
