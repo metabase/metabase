@@ -1,9 +1,18 @@
 import React, { Component } from 'react'
-import { formatListOfItems, formatTimeWithUnit, inflect } from "metabase/lib/formatting";
+import {
+    //formatListOfItems,
+    //formatTimeWithUnit,
+    //inflect
+} from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon";
 import { Link } from "react-router";
 import Question from "metabase-lib/lib/Question";
 import { TermWithDefinition } from "metabase/components/TermWithDefinition";
+
+const InsightText = ({ children }) =>
+    <p className="text-paragraph">
+        {children}
+    </p>
 
 export class NormalRangeInsight extends Component {
     static insightType = "normal-range"
@@ -13,7 +22,9 @@ export class NormalRangeInsight extends Component {
     render() {
         const { lower, upper, features: { model } } = this.props
         return (
-            <p>Normal value for { model.name } is between { lower } and { upper }.</p>
+            <InsightText>
+                Most of the values for { model.name } are between <b>{ lower }</b> and <b>{ upper }</b>.
+            </InsightText>
         )
     }
 }
@@ -36,11 +47,11 @@ export class GapsInsight extends Component {
 
         // construct the question with filter
         return (
-            <p>
+            <InsightText>
                 You have { quality } { mode } values in your data.
                 <span> </span>
                 { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with { mode } value.</span> }
-            </p>
+            </InsightText>
         )
     }
 }
@@ -57,14 +68,14 @@ export class NoisinessInsight extends Component {
         const { quality, "recommended-resolution": resolution } = this.props
 
         return (
-            <p>
+            <InsightText>
                 Your data is { quality }
                 <span> </span>
                 <TermWithDefinition definition={noisinessDefinition} link={noisinessLink}>
                     noisy
                 </TermWithDefinition>.
                 Perhaps try smoothing it or choose a { resolution } resolution.
-            </p>
+            </InsightText>
         )
     }
 }
@@ -159,15 +170,18 @@ export const InsightCard = ({type, props, features}) => {
     const Insight = INSIGHT_COMPONENTS.find((component) => component.insightType === type)
 
     return (
-        <div className="flex-full" style={{ width: "22em" }}>
-            <div className="bg-white bordered rounded shadowed full-height p3">
-                <header className="flex align-center">
-                    <Icon name={Insight.icon} size={24} className="mr1" style={{ color: '#93a1ab' }} />
-                    <span className="text-bold text-uppercase">{Insight.title}</span>
-                </header>
-                <div style={{ lineHeight: '1.4em' }}>
-                    <Insight {...props} features={features} />
-                </div>
+        <div className="bg-white bordered rounded shadowed full-height p3">
+            <header className="flex align-center">
+                <Icon
+                    name={Insight.icon}
+                    size={24}
+                    className="mr1"
+                    style={{ color: '#93a1ab' }}
+                />
+                <span className="text-bold text-uppercase">{Insight.title}</span>
+            </header>
+            <div style={{ lineHeight: '1.4em' }}>
+                <Insight {...props} features={features} />
             </div>
         </div>
     )
