@@ -38,12 +38,14 @@
               from-double
               (t.periodic/periodic-seq step)))))
 
-(def period-length {:hour         24
-                    :minute       60
-                    :month        12
-                    :week         52
-                    :quarter      4
-                    :day          365})
+(def period-length
+  "What is the period for a given time resolution."
+  {:hour         24
+   :minute       60
+   :month        12
+   :week         52
+   :quarter      4
+   :day          365})
 
 (def ^:private stl-setters
   {:inner-loop-passes           (memfn ^StlConfig setNumberOfInnerLoopPasses n)

@@ -71,17 +71,18 @@
    Assumes `xs` are evenly (unit) spaced.
    https://en.wikipedia.org/wiki/Variance"
   [period xs]
-  (:slope (transduce
-           (map-indexed (fn [i xsi]
-                          [i (transduce identity
-                                        (redux/post-complete
-                                         (redux/fuse {:var  stats/variance
-                                                      :mean stats/mean})
-                                         (fn [{:keys [var mean]}]
-                                           (/ var mean)))
-                                        xsi)]))
-           linear-regression
-           (partition period 1 xs))))
+  (transduce (map-indexed (fn [i xsi]
+                            [i (transduce identity
+                                          (redux/post-complete
+                                           (redux/fuse {:var  stats/variance
+                                                        :mean stats/mean})
+                                           (fn [{:keys [var mean]}]
+                                             (/ var mean)))
+                                          xsi)]))
+             (redux/post-complete
+              (redux/fuse {:slope (redux/post-complete linear-regression :slope)
+                           :error (stats/standard-error-estimate first second)}))
+             (partition period 1 xs)))
 
 (def magnitude
   "Transducer that claclulates magnitude (Euclidean norm) of given vector.

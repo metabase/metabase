@@ -60,7 +60,7 @@
      :latitude   (random-latitude)
      :longitude  (random-longitude)
      :source     (rand-nth ["Google" "Twitter" "Facebook" "Organic" "Affiliate"])
-     :created_at (random-date-between (u/relative-date :year -1) (u/relative-date :year 1))}))
+     :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))}))
 
 ;;; ## PRODUCTS
 
@@ -110,7 +110,7 @@
    :category   (rand-nth ["Widget" "Gizmo" "Gadget" "Doohickey"])
    :vendor     (random-company-name)
    :price      (random-price 12 100)
-   :created_at (random-date-between (u/relative-date :year -1) (u/relative-date :year 1))})
+   :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))})
 
 
 ;;; ## ORDERS
@@ -194,6 +194,11 @@
   (doto (Date.)
     (.setTime (apply min (map #(.getTime ^Date %) dates)))))
 
+(defn- sometimes
+  [p f]
+  (when (> p (rand))
+    (f)))
+
 (defn random-order [{:keys [state], :as ^Person person} {:keys [price], :as product}]
   {:pre [(string? state)
          (number? price)]
@@ -206,8 +211,10 @@
      :product_id (:id product)
      :subtotal   price
      :tax        tax
+     :quantity   (random-price 1 10)
+     :discount   (sometimes 0.1 #(random-price 1 10))
      :total      (+ price tax)
-     :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 1))}))
+     :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 2))}))
 
 
 ;;; ## REVIEWS
@@ -221,7 +228,7 @@
                           4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4
                           5 5 5 5 5 5 5 5 5 5 5 5 5])
    :body       (first (lorem/paragraphs))
-   :created_at (random-date-between (:created_at product) (u/relative-date :year 1))})
+   :created_at (random-date-between (:created_at product) (u/relative-date :year 2))})
 
 (defn- create-randoms [n f]
   (vec (map-indexed (fn [id obj]
@@ -248,6 +255,21 @@
       person
       (assoc person :orders (vec (repeatedly num-orders #(random-order person (rand-nth products))))))))
 
+(defn- add-autocorrelation
+  ([k xs] (add-autocorrelation 1 k xs))
+  ([lag k xs]
+   (map (fn [prev next]
+          (update prev k + (k next)))
+        xs
+        (drop lag xs))))
+
+(defn add-increasing-variance
+  [k xs]
+  (let [n (count xs)]
+    (map-indexed (fn [i x]
+                   (update x k * (/ i n) (rand)))
+                 xs)))
+
 (defn create-random-data [& {:keys [people products]
                              :or   {people 2500 products 200}}]
   {:post [(map? %)
@@ -261,7 +283,11 @@
     {:people   (mapv #(dissoc % :orders) people)
      :products (mapv #(dissoc % :reviews) products)
      :reviews  (vec (mapcat :reviews products))
-     :orders   (vec (mapcat :orders people))}))
+     :orders   (->> people
+                    (mapcat :orders)
+                    (add-autocorrelation :quantity)
+                    (add-increasing-variance :total)
+                    vec)}))
 
 ;;; # LOADING THE DATA
 
@@ -302,7 +328,9 @@
             :subtotal   "FLOAT"
             :tax        "FLOAT"
             :total      "FLOAT"
-            :created_at "DATETIME"}
+            :discount   "FLOAT"
+            :created_at "DATETIME"
+            :quantity   "INTEGER"}
    :reviews {:product_id "INTEGER"
              :reviewer   "VARCHAR(255)"
              :rating     "SMALLINT"
@@ -330,7 +358,9 @@
                                                            "on some products are not included here, but instead are accounted for in the subtotal.")}
                             :total      {:description "The total billed amount."}
                             :user_id    {:description (str "The id of the user who made this order. Note that in some cases where an order was created on behalf "
-                                                           "of a customer who phoned the order in, this might be the employee who handled the request.")}}}
+                                                           "of a customer who phoned the order in, this might be the employee who handled the request.")}
+                            :quantity   {:description "Number of products bought."}
+                            :discount   {:description "Discount amount."}}}
    :people {:description "This is a user account. Note that employees and customer support staff will have accounts."
             :columns     {:address    {:description "The street address of the account’s billing address"}
                           :birth_date {:description "The date of birth of the user"}

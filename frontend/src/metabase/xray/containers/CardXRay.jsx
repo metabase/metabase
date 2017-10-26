@@ -97,7 +97,7 @@ class CardXRay extends Component {
                         <div className="mt4 mb2">
                             <h1 className="my3">{xray.features.model.name} X-ray</h1>
                         </div>
-                        { xray.features["data-stories"] &&
+                        { xray.features["insights"] &&
                             <div className="mt4">
                                 <Heading heading="Takeaways" />
                                 <Insights features={xray.features} />
