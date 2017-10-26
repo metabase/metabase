@@ -300,7 +300,7 @@
   (format "CREATE TABLE \"%s\" (\"ID\" BIGINT AUTO_INCREMENT, %s, PRIMARY KEY (\"ID\"));"
           (s/upper-case (name table-name))
           (apply str (->> (for [[field type] (seq field->type)]
-                            (format "\"%s\" %s NOT NULL" (s/upper-case (name field)) type))
+                            (format "\"%s\" %s" (s/upper-case (name field)) type))
                           (interpose ", ")))))
 
 (def ^:private ^:const tables
