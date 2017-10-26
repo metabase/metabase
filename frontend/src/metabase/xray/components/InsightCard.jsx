@@ -14,6 +14,15 @@ const InsightText = ({ children }) =>
         {children}
     </p>
 
+const Feedback = ({ yes, no }) =>
+    <div className="flex align-center px1">
+        Was this helpful?
+        <div className="ml-auto text-bold">
+            <a className="text-brand-hover" onClick={yes}>Yes</a>
+            <a className="text-brand-hover ml1" onClick={no}>No</a>
+        </div>
+    </div>
+
 export class NormalRangeInsight extends Component {
     static insightType = "normal-range"
     static title = "Normal range of values"
@@ -71,10 +80,13 @@ export class NoisinessInsight extends Component {
             <InsightText>
                 Your data is { quality }
                 <span> </span>
-                <TermWithDefinition definition={noisinessDefinition} link={noisinessLink}>
+                <TermWithDefinition
+                    definition={noisinessDefinition}
+                    link={noisinessLink}
+                >
                     noisy
                 </TermWithDefinition>.
-                Perhaps try smoothing it or choose a { resolution } resolution.
+                You might consider looking at it by { resolution }.
             </InsightText>
         )
     }
@@ -92,14 +104,11 @@ export class AutocorrelationInsight extends Component {
         const { quality, lag } = this.props
 
         return (
-            <p>
-                Your data has a { quality }
-                <span> </span>
-                <TermWithDefinition definition={autocorrelationDefinition} link={autocorrelationLink}>
+            <InsightText>
+                Your data has a { quality } <TermWithDefinition definition={autocorrelationDefinition} link={autocorrelationLink}>
                     autocorrelation
-            </TermWithDefinition>
-		at lag { lag }.
-            </p>
+                </TermWithDefinition> at lag { lag }.
+            </InsightText>
         )
     }
 }
@@ -116,12 +125,12 @@ export class VariationTrendInsight extends Component {
         const { mode } = this.props
 
         return (
-            <p>
+            <InsightText>
                 The <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
                     range of variation
-            </TermWithDefinition>
-		is { mode }.
-            </p>
+                </TermWithDefinition>
+                is { mode }.
+            </InsightText>
         )
     }
 }
@@ -170,18 +179,26 @@ export const InsightCard = ({type, props, features}) => {
     const Insight = INSIGHT_COMPONENTS.find((component) => component.insightType === type)
 
     return (
-        <div className="bg-white bordered rounded shadowed full-height p3">
-            <header className="flex align-center">
-                <Icon
-                    name={Insight.icon}
-                    size={24}
-                    className="mr1"
-                    style={{ color: '#93a1ab' }}
+        <div>
+            <div className="bg-white bordered rounded shadowed full-height p3">
+                <header className="flex align-center">
+                    <Icon
+                        name={Insight.icon}
+                        size={24}
+                        className="mr1"
+                        style={{ color: '#93a1ab' }}
+                    />
+                    <span className="text-bold text-uppercase">{Insight.title}</span>
+                </header>
+                <div style={{ lineHeight: '1.4em' }}>
+                    <Insight {...props} features={features} />
+                </div>
+            </div>
+            <div className="mt1">
+                <Feedback
+                    yes={() => alert('This should')}
+                    no={() => alert('')}
                 />
-                <span className="text-bold text-uppercase">{Insight.title}</span>
-            </header>
-            <div style={{ lineHeight: '1.4em' }}>
-                <Insight {...props} features={features} />
             </div>
         </div>
     )
