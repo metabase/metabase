@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 import { Link } from "react-router";
 import Question from "metabase-lib/lib/Question";
 import { TermWithDefinition } from "metabase/components/TermWithDefinition";
+import { t } from 'c-3po'
 
 const InsightText = ({ children }) =>
     <p className="text-paragraph">
@@ -16,10 +17,14 @@ const InsightText = ({ children }) =>
 
 const Feedback = ({ yes, no }) =>
     <div className="flex align-center px1">
-        Was this helpful?
+        {t`Was this helpful?`}
         <div className="ml-auto text-bold">
-            <a className="text-brand-hover" onClick={yes}>Yes</a>
-            <a className="text-brand-hover ml1" onClick={no}>No</a>
+            <a className="text-brand-hover" onClick={yes}>
+                {t`Yes`}
+            </a>
+            <a className="text-brand-hover ml1" onClick={no}>
+                {t`No`}
+            </a>
         </div>
     </div>
 
