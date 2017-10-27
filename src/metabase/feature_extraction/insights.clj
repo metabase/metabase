@@ -84,7 +84,7 @@
                         :s-y  (redux/pre-step + second)
                         :s-yy (redux/pre-step + #(num/expt (second %) 2))}))
                      (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
-                       (when (and (> n 2) (not (zero? ss-x)))
+                       (when (and (> n 2) (not-any? zero? [ss-x s-x]))
                          (let [slope  (/ ss-xy ss-x)
                                error  (* (/ 1
                                             (- n 2)
