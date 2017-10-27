@@ -93,7 +93,9 @@
                                             (num/expt s-y 2)
                                             (* (num/expt slope 2)
                                                (- (* n s-xx) (num/expt s-x 2)))))
-                               t      (/ slope error)
+                               t      (if (zero? slope)
+                                        0
+                                        (/ slope error))
                                t-crit (-> (d/t-distribution (- n 2))
                                           (d/icdf (- 1 (/ 0.05 2))))]
                            (when (> t t-crit)
