@@ -15,14 +15,14 @@ const InsightText = ({ children }) =>
         {children}
     </p>
 
-const Feedback = ({ yes, no }) =>
+const Feedback = ({ insightType }) =>
     <div className="flex align-center px1">
         {t`Was this helpful?`}
         <div className="ml-auto text-bold">
-            <a className="text-brand-hover" onClick={yes}>
+            <a className="text-brand-hover" data-metabase-event={`InsightFeedback;${insightType};Yes`}>
                 {t`Yes`}
             </a>
-            <a className="text-brand-hover ml1" onClick={no}>
+            <a className="text-brand-hover ml1" data-metabase-event={`InsightFeedback;${insightType};No`}>
                 {t`No`}
             </a>
         </div>
@@ -216,10 +216,7 @@ export const InsightCard = ({type, props, features}) => {
                 </div>
             </div>
             <div className="mt1">
-                <Feedback
-                    yes={() => alert('This should')}
-                    no={() => alert('')}
-                />
+                <Feedback insightType={type} />
             </div>
         </div>
     )
