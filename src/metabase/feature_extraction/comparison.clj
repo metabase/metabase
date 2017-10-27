@@ -1,6 +1,7 @@
 (ns metabase.feature-extraction.comparison
   "Feature vector similarity comparison."
   (:require [bigml.histogram.core :as h.impl]
+            [clojure.math.numeric-tower :as num]
             [clojure.set :as set]
             [kixi.stats.core :as stats]
             [metabase.feature-extraction
@@ -23,8 +24,8 @@
                  (zero? (max a b)) 1
                  :else             (let [a (double a)
                                          b (double b)]
-                                     (/ (Math/abs (- a b))
-                                        2 (max (Math/abs a) (Math/abs b)))))})
+                                     (/ (num/abs (- a b))
+                                        2 (max (num/abs a) (num/abs b)))))})
 
 (defmethod difference [Boolean Boolean]
   [a b]
@@ -61,7 +62,7 @@
                               (map vector a b))]
     {:correlation  corr
      :covariance   cov
-     :significant? (some-> corr Math/abs (> 0.3))
+     :significant? (some-> corr num/abs (> 0.3))
      :difference   (or (math/cosine-distance a b) 0.5)
      :deltas       (map (fn [t a b]
                           [t (- a b)])
@@ -114,7 +115,7 @@
                             (> distance (chi-squared-critical-value (min m n))))
      :top-contributors (when (h/categorical? a)
                          (->> (map (fn [[bin pi] [_ qi]]
-                                     [bin (Math/abs (- pi qi))])
+                                     [bin (num/abs (- pi qi))])
                                    pdf-a pdf-b)
                               (math/head-tails-breaks second)
                               (map first)))}))
@@ -151,7 +152,7 @@
     {:distance         (transduce (keep (comp :difference val))
                                   (redux/post-complete
                                    math/magnitude
-                                   #(/ % (Math/sqrt (count differences))))
+                                   #(/ % (num/sqrt (count differences))))
                                   differences)
      :components       differences
      :top-contributors (->> differences

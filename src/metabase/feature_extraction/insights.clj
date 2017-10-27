@@ -1,6 +1,7 @@
 (ns metabase.feature-extraction.insights
   "Data insights -- morsels of prepackaged analysis."
   (:require [bigml.histogram.core :as h]
+            [clojure.math.numeric-tower :as num]
             [distributions.core :as d]
             [kixi.stats.core :as stats]
             [redux.core :as redux]
@@ -35,8 +36,13 @@
 (definsight autocorrelation
   "
   Template: Your data has a [strong/mild] autocorrelation at lag [lag]."
-  [series]
-  (let [{:keys [autocorrelation lag]} (math/autocorrelation (map second series))]
+  [series resolution]
+  (let [{:keys [autocorrelation lag]} (math/autocorrelation
+                                       {:max-lag (or (some-> resolution
+                                                             ts/period-length
+                                                             dec)
+                                                     (/ (count series) 2))}
+                                       (map second series))]
     (when (> autocorrelation 0.3)
       {:quality (if (< autocorrelation 0.6)
                   :weak
@@ -74,19 +80,19 @@
                       (stats/sum-squares first second)
                       (redux/fuse
                        {:s-x  (redux/pre-step + first)
-                        :s-xx (redux/pre-step + #(Math/pow (first %) 2))
+                        :s-xx (redux/pre-step + #(num/expt (first %) 2))
                         :s-y  (redux/pre-step + second)
-                        :s-yy (redux/pre-step + #(Math/pow (second %) 2))}))
+                        :s-yy (redux/pre-step + #(num/expt (second %) 2))}))
                      (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
                        (when (and (> n 2) (not (zero? ss-x)))
                          (let [slope  (/ ss-xy ss-x)
                                error  (* (/ 1
                                             (- n 2)
-                                            (- (* n s-xx) (Math/pow s-x 2)))
+                                            (- (* n s-xx) (num/expt s-x 2)))
                                          (- (* n s-yy)
-                                            (Math/pow s-y 2)
-                                            (* (Math/pow slope 2)
-                                               (- (* n s-xx) (Math/pow s-x 2)))))
+                                            (num/expt s-y 2)
+                                            (* (num/expt slope 2)
+                                               (- (* n s-xx) (num/expt s-x 2)))))
                                t      (/ slope error)
                                t-crit (-> (d/t-distribution (- n 2))
                                           (d/icdf (- 1 (/ 0.05 2))))]
@@ -101,8 +107,8 @@
   (when seasonal-decomposition
     (let [diff (transduce identity stats/mean
                           (map (fn [[_ seasonal] [_ residual]]
-                                 (math/growth (Math/abs seasonal)
-                                              (Math/abs residual)))
+                                 (math/growth (num/abs seasonal)
+                                              (num/abs residual)))
                                (:seasonal seasonal-decomposition)
                                (:residual seasonal-decomposition)))]
       (when (pos? diff)

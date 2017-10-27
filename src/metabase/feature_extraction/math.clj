@@ -43,23 +43,24 @@
 
 (defn autocorrelation
   "Calculate autocorrelation at lag `lag` or find the lag with the highest
-   autocorrelation if `lag` is not given.
+   autocorrelation up to `max-lag` if `lag` is not given.
    https://en.wikipedia.org/wiki/Autocorrelation"
-  ([xs]
-   (reduce (fn [best lag]
-             (let [r (autocorrelation lag xs)]
-               (if (pos? (compare
-                          [(math/abs r) (- lag)]
-                          [(math/abs (:autocorrelation best)) (- (:lag best))]))
-                 {:autocorrelation r
-                  :lag             lag}
-                 best)))
-           {:lag             0
-            :autocorrelation 0}
-           (range 1 (/ (count xs) 2))))
-  ([lag xs]
-   (transduce identity (stats/correlation first second)
-              (map vector xs (drop lag xs)))))
+  ([xs] (autocorrelation {:max-lag (/ (count xs) 2)} xs))
+  ([{:keys [lag max-lag]} xs]
+   {:pre [(or lag max-lag)]}
+   (if lag
+     (transduce identity (stats/correlation first second)
+                (map vector xs (drop lag xs)))
+     (reduce (fn [{r-best :autocorrelation lag-best :lag :as best} lag]
+               (let [r (autocorrelation {:lag lag} xs)]
+                 (if (pos? (compare [(math/abs r) (- lag)]
+                                    [(math/abs r-best) (- lag-best)]))
+                   {:autocorrelation r
+                    :lag             lag}
+                   best)))
+             {:lag             0
+              :autocorrelation 0}
+             (range 1 (inc max-lag))))))
 
 (def linear-regression
   "Transducer that calculates (simple) linear regression."
