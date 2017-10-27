@@ -1,6 +1,9 @@
 (ns metabase.feature-extraction.insights
   "Data insights -- morsels of prepackaged analysis."
   (:require [bigml.histogram.core :as h]
+            [distributions.core :as d]
+            [kixi.stats.core :as stats]
+            [redux.core :as redux]
             [metabase.feature-extraction
              [math :as math]
              [timeseries :as ts]]))
@@ -52,13 +55,42 @@
 
 (definsight variation-trend
   "
-  "
+  https://en.wikipedia.org/wiki/Variance"
   [resolution series]
   (when resolution
-    (let [trend (->> series
-                     (map second)
-                     (math/variation-trend (ts/period-length resolution)))]
-      (when (> trend 0.1)
-        {:mode (if (pos? trend)
-                 :increasing
-                 :decreasing)}))))
+    (->> series
+         (map second)
+         (partition (ts/period-length resolution) 1)
+         (transduce (map-indexed (fn [i xsi]
+                                   [i (transduce identity
+                                                 (redux/post-complete
+                                                  (redux/juxt stats/variance
+                                                              stats/mean)
+                                                  (fn [[var mean]]
+                                                    (/ var mean)))
+                                                 xsi)]))
+                    (redux/post-complete
+                     (redux/juxt
+                      (stats/sum-squares first second)
+                      (redux/fuse
+                       {:s-x  (redux/pre-step + first)
+                        :s-xx (redux/pre-step + #(Math/pow (first %) 2))
+                        :s-y  (redux/pre-step + second)
+                        :s-yy (redux/pre-step + #(Math/pow (second %) 2))}))
+                     (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
+                       (when (and (> n 2) (not (zero? ss-x)))
+                         (let [slope  (/ ss-xy ss-x)
+                               error  (* (/ 1
+                                            (- n 2)
+                                            (- (* n s-xx) (Math/pow s-x 2)))
+                                         (- (* n s-yy)
+                                            (Math/pow s-y 2)
+                                            (* (Math/pow slope 2)
+                                               (- (* n s-xx) (Math/pow s-x 2)))))
+                               t      (/ slope error)
+                               t-crit (-> (d/t-distribution (- n 2))
+                                          (d/icdf (- 1 (/ 0.05 2))))]
+                           (when (> t t-crit)
+                             {:mode (if (pos? slope)
+                                      :increasing
+                                      :decreasing)})))))))))

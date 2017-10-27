@@ -62,27 +62,9 @@
               (map vector xs (drop lag xs)))))
 
 (def linear-regression
-  "Transducer that calculats (simple) linear regression."
+  "Transducer that calculates (simple) linear regression."
   (redux/post-complete (stats/simple-linear-regression first second)
                        (partial zipmap [:offset :slope])))
-
-(defn variation-trend
-  "Calculate the trend of variation using a sliding window of width `period`.
-   Assumes `xs` are evenly (unit) spaced.
-   https://en.wikipedia.org/wiki/Variance"
-  [period xs]
-  (transduce (map-indexed (fn [i xsi]
-                            [i (transduce identity
-                                          (redux/post-complete
-                                           (redux/fuse {:var  stats/variance
-                                                        :mean stats/mean})
-                                           (fn [{:keys [var mean]}]
-                                             (/ var mean)))
-                                          xsi)]))
-             (redux/post-complete
-              (redux/fuse {:slope (redux/post-complete linear-regression :slope)})
-              :slope)
-             (partition period 1 xs)))
 
 (def magnitude
   "Transducer that claclulates magnitude (Euclidean norm) of given vector.
