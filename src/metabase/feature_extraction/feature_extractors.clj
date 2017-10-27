@@ -357,7 +357,8 @@
         (dissoc :series)
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
-                                      insights/autocorrelation)
+                                      insights/autocorrelation
+                                      insights/seasonality)
                           features))
         (update :growth-series (partial series->dataset ts/from-double
                                         [x-field

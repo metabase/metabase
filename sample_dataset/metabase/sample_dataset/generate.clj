@@ -211,7 +211,7 @@
      :product_id (:id product)
      :subtotal   price
      :tax        tax
-     :quantity   (random-price 1 10)
+     :quantity   (random-price 1 5)
      :discount   (sometimes 0.1 #(random-price 1 10))
      :total      (+ price tax)
      :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 2))}))
@@ -259,7 +259,7 @@
   ([k xs] (add-autocorrelation 1 k xs))
   ([lag k xs]
    (map (fn [prev next]
-          (update prev k + (k next)))
+          (update prev k #(/ (+ % (k next)) 2)))
         xs
         (drop lag xs))))
 
@@ -269,6 +269,11 @@
     (map-indexed (fn [i x]
                    (update x k * (/ i n) (rand)))
                  xs)))
+
+(defn add-seasonality
+  [season-fn k seasonality-map xs]
+  (for [x xs]
+    (update x k * (seasonality-map (season-fn x)))))
 
 (defn create-random-data [& {:keys [people products]
                              :or   {people 2500 products 200}}]
@@ -287,6 +292,19 @@
                     (mapcat :orders)
                     (add-autocorrelation :quantity)
                     (add-increasing-variance :total)
+                    (add-seasonality #(.getMonth ^java.util.Date (:created_at %))
+                                     :quantity {0 0.6
+                                                1 0.5
+                                                2 0.3
+                                                3 0.9
+                                                4 1.3
+                                                5 1.9
+                                                6 1.5
+                                                7 2.1
+                                                8 1.5
+                                                9 1.7
+                                                10 0.9
+                                                11 0.6})
                     vec)}))
 
 ;;; # LOADING THE DATA

@@ -133,8 +133,23 @@ export class VariationTrendInsight extends Component {
             <InsightText>
                 The <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
                     range of variation
-                </TermWithDefinition>
-                is { mode }.
+                </TermWithDefinition> is { mode }.
+            </InsightText>
+        )
+    }
+}
+
+export class SeasonalityInsight extends Component {
+    static insightType = "seasonality"
+    static title = "Seasonality"
+    static icon = "insight"
+
+    render() {
+        const { quality } = this.props
+
+        return (
+		<InsightText>
+		Your data has a { quality } seasonal compoment.
             </InsightText>
         )
     }
@@ -177,6 +192,7 @@ const INSIGHT_COMPONENTS = [
     NoisinessInsight,
     VariationTrendInsight,
     AutocorrelationInsight,
+    SeasonalityInsight,
     // RegimeChangeInsight
 ]
 

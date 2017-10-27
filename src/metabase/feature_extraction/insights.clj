@@ -8,7 +8,7 @@
              [math :as math]
              [timeseries :as ts]]))
 
-(defmacro definsight
+(defmacro ^:private definsight
   [insight docs features & body]
   `(defn ~insight ~docs
      [{:keys ~features}]
@@ -94,3 +94,18 @@
                              {:mode (if (pos? slope)
                                       :increasing
                                       :decreasing)})))))))))
+
+(definsight seasonality
+  ""
+  [seasonal-decomposition]
+  (when seasonal-decomposition
+    (let [diff (transduce identity stats/mean
+                          (map (fn [[_ seasonal] [_ residual]]
+                                 (math/growth (Math/abs seasonal)
+                                              (Math/abs residual)))
+                               (:seasonal seasonal-decomposition)
+                               (:residual seasonal-decomposition)))]
+      (when (pos? diff)
+        {:quality (if (< diff 1)
+                    :weak
+                    :strong)}))))
