@@ -15,14 +15,14 @@ const InsightText = ({ children }) =>
         {children}
     </p>
 
-const Feedback = ({ yes, no }) =>
+const Feedback = ({ insightType }) =>
     <div className="flex align-center px1">
         {t`Was this helpful?`}
         <div className="ml-auto text-bold">
-            <a className="text-brand-hover" onClick={yes}>
+            <a className="text-brand-hover" data-metabase-event={`InsightFeedback;${insightType};Yes`}>
                 {t`Yes`}
             </a>
-            <a className="text-brand-hover ml1" onClick={no}>
+            <a className="text-brand-hover ml1" data-metabase-event={`InsightFeedback;${insightType};No`}>
                 {t`No`}
             </a>
         </div>
@@ -46,7 +46,7 @@ export class NormalRangeInsight extends Component {
 export class GapsInsight extends Component {
     static insightType = "gaps"
     static title = "Gaps in the data"
-    static icon = "insight"
+    static icon = "warning"
 
     render() {
         const { mode, quality, filter, features: { table } } = this.props
@@ -76,7 +76,7 @@ const noisinessLink = "https://en.wikipedia.org/wiki/Noisy_data"
 export class NoisinessInsight extends Component {
     static insightType = "noisiness"
     static title = "Noisy data"
-    static icon = "insight"
+    static icon = "warning"
 
     render() {
         const { quality, "recommended-resolution": resolution } = this.props
@@ -123,7 +123,7 @@ const varianceLink = "https://en.wikipedia.org/wiki/Variance"
 
 export class VariationTrendInsight extends Component {
     static insightType = "variation-trend"
-    static title = "Variation trend"
+    static title = `Trending variation`
     static icon = "insight"
 
     render() {
@@ -131,9 +131,9 @@ export class VariationTrendInsight extends Component {
 
         return (
             <InsightText>
-                The <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
-                    range of variation
-                </TermWithDefinition> is { mode }.
+                Looks like this data has grown { mode }ly  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
+                    varied
+                </TermWithDefinition> over time.
             </InsightText>
         )
     }
@@ -148,8 +148,8 @@ export class SeasonalityInsight extends Component {
         const { quality } = this.props
 
         return (
-		<InsightText>
-		Your data has a { quality } seasonal compoment.
+            <InsightText>
+                Your data has a { quality } seasonal compoment.
             </InsightText>
         )
     }
@@ -200,7 +200,7 @@ export const InsightCard = ({type, props, features}) => {
     const Insight = INSIGHT_COMPONENTS.find((component) => component.insightType === type)
 
     return (
-        <div>
+        <div className="full-height">
             <div className="bg-white bordered rounded shadowed full-height p3">
                 <header className="flex align-center">
                     <Icon
@@ -216,10 +216,7 @@ export const InsightCard = ({type, props, features}) => {
                 </div>
             </div>
             <div className="mt1">
-                <Feedback
-                    yes={() => alert('This should')}
-                    no={() => alert('')}
-                />
+                <Feedback insightType={type} />
             </div>
         </div>
     )
