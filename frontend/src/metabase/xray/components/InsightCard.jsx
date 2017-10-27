@@ -123,7 +123,7 @@ const varianceLink = "https://en.wikipedia.org/wiki/Variance"
 
 export class VariationTrendInsight extends Component {
     static insightType = "variation-trend"
-    static title = "Variation trend"
+    static title = `Trending variation`
     static icon = "insight"
 
     render() {
@@ -131,9 +131,9 @@ export class VariationTrendInsight extends Component {
 
         return (
             <InsightText>
-                The <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
-                    range of variation
-                </TermWithDefinition> is { mode }.
+                Looks like this data has grown { mode }  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
+                    varied
+                </TermWithDefinition> over time.
             </InsightText>
         )
     }
