@@ -46,7 +46,7 @@ export class NormalRangeInsight extends Component {
 export class GapsInsight extends Component {
     static insightType = "gaps"
     static title = "Gaps in the data"
-    static icon = "insight"
+    static icon = "warning"
 
     render() {
         const { mode, quality, filter, features: { table } } = this.props
@@ -76,7 +76,7 @@ const noisinessLink = "https://en.wikipedia.org/wiki/Noisy_data"
 export class NoisinessInsight extends Component {
     static insightType = "noisiness"
     static title = "Noisy data"
-    static icon = "insight"
+    static icon = "warning"
 
     render() {
         const { quality, "recommended-resolution": resolution } = this.props
@@ -148,8 +148,8 @@ export class SeasonalityInsight extends Component {
         const { quality } = this.props
 
         return (
-		<InsightText>
-		Your data has a { quality } seasonal compoment.
+            <InsightText>
+                Your data has a { quality } seasonal compoment.
             </InsightText>
         )
     }
