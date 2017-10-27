@@ -292,18 +292,26 @@
   (somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
-  "Given a coll of `[DateTime, Any]` pairs evenly spaced `step` apart, fill
+  "Given a coll of `[DateTime, Num]` pairs evenly spaced `step` apart, fill
    missing points with 0."
-  [step ts]
-  (let [ts-index (into {} ts)]
+  [resolution ts]
+  (let [[step rounder] (case resolution
+                         :month   [(t/months 1) t/month]
+                         :quarter [(t/months 3) t/month]
+                         :year    [(t/years 1) t/year]
+                         :week    [(t/weeks 1) t/day]
+                         :day     [(t/days 1) t/day]
+                         :hour    [(t/hours 1) t/day]
+                         :minute  [(t/minutes 1) t/minute])
+        ts             (for [[x y] ts]
+                         [(-> x from-double (t/floor rounder)) y])
+        ts-index       (into {} ts)]
     (into []
-      (comp (map to-double)
-            (take-while (partial >= (-> ts last first)))
+      (comp (take-while (partial (complement t/before?) (-> ts last first)))
             (map (fn [t]
-                   [t (ts-index t 0)])))
+                   [(to-double t) (ts-index t 0)])))
       (some-> ts
               ffirst
-              from-double
               (t.periodic/periodic-seq step)))))
 
 (defn- decompose-timeseries
