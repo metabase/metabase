@@ -12,7 +12,8 @@
     (let [{:keys [status result] :as response}
           ((user->client user) :get 200 (str "async/" job-id))]
       (cond
-        (#{"done" "error"} status) result
+        (= status "done") result
+        (= status "error") (throw (ex-info "Error encountered." result))
         (> tries max-retries) (throw (ex-info "Timeout. Max retries exceeded."
                                        response))
         :else                 (do
