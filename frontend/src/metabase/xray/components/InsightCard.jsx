@@ -90,8 +90,8 @@ export class NoisinessInsight extends Component {
                     link={noisinessLink}
                 >
                     noisy
-                </TermWithDefinition>.
-                You might consider looking at it by { resolution }.
+            </TermWithDefinition>.
+		{ resolution && ` You might consider looking at it by ${resolution}.` }
             </InsightText>
         )
     }
