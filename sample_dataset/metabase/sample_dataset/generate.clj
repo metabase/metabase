@@ -12,7 +12,7 @@
              [internet :as internet]
              [lorem :as lorem]
              [name :as name]]
-            [incanter.distributions :as dist]
+            [distributions.core :as dist]
             [metabase.db.spec :as dbspec]
             [metabase.util :as u])
   (:import java.util.Date))
@@ -21,7 +21,7 @@
   (str (System/getProperty "user.dir") "/resources/sample-dataset.db"))
 
 (defn- normal-distribution-rand [mean median]
-  (dist/draw (dist/normal-distribution mean median)))
+  (dist/sample (dist/normal mean median)))
 
 (defn- normal-distribution-rand-int [mean median]
   (math/round (normal-distribution-rand mean median)))

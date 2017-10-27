@@ -164,8 +164,7 @@
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
                                   "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
              ;; generate sample dataset with `lein generate-sample-dataset`
-             :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby library
-                                                      [incanter/incanter-core "1.9.1"]] ; Satistical functions like normal distibutions}})
+             :generate-sample-dataset {:dependencies [[faker "0.2.2"]]                   ; Fake data generator -- port of Perl/Ruby library
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
              ;; Profile Metabase start time with `lein profile`
