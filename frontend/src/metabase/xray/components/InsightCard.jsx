@@ -131,7 +131,7 @@ export class VariationTrendInsight extends Component {
 
         return (
             <InsightText>
-                Looks like this data has grown { mode }  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
+                Looks like this data has grown { mode }ly  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
                     varied
                 </TermWithDefinition> over time.
             </InsightText>
