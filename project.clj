@@ -44,7 +44,8 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
-                 [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
+                 [com.github.brandtg/stl-java "0.1.1"                 ; STL decomposition
+                  :exclusions [org.apache.commons/commons-math3]]
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev139-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
@@ -58,6 +59,8 @@
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
+                 [distributions "0.1.3-SNAPSHOT"                      ; Probability distribution
+                  :exclusions [org.clojure/clojure]]
                  [dk.ative/docjure "1.11.0"]                          ; Excel export
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
