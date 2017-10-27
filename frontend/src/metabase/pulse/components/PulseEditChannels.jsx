@@ -19,7 +19,7 @@ import { channelIsValid } from "metabase/lib/pulse";
 
 import cx from "classnames";
 
-const CHANNEL_ICONS = {
+export const CHANNEL_ICONS = {
     email: "mail",
     slack: "slack"
 };

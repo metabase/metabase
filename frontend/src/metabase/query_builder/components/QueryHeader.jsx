@@ -33,6 +33,8 @@ import cx from "classnames";
 import _ from "underscore";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Utils from "metabase/lib/utils";
+import EntityMenu from "metabase/components/EntityMenu";
+import { CreateAlertModalContent, UpdateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 
 const mapDispatchToProps = {
     clearRequestState
@@ -419,7 +421,7 @@ export default class QueryHeader extends Component {
         ]);
 
         // data reference button
-        var dataReferenceButtonClasses = cx('mr1 transition-color', {
+        var dataReferenceButtonClasses = cx('transition-color', {
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
@@ -431,6 +433,24 @@ export default class QueryHeader extends Component {
             </Tooltip>
         ]);
 
+        if (!isNew && card.can_write) {
+            buttonSections.push([
+                <div className="mr1" style={{ marginLeft: "-15px" }}>
+                    <EntityMenu
+                        triggerIcon='burger'
+                        items={[
+                            {
+                                title: "Get alerts about this",
+                                icon: "alert",
+                                // trigger modal here omg
+                                action: () => this.setState({ modal: "create-alert" })
+                            }
+                        ]}
+                    />
+                </div>
+            ]);
+        }
+
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection borderless" />
         );
@@ -439,6 +459,7 @@ export default class QueryHeader extends Component {
     onCloseModal = () => {
         this.setState({ modal: null });
     }
+
 
     render() {
         return (
@@ -475,6 +496,14 @@ export default class QueryHeader extends Component {
                         onClose={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
+                </Modal>
+
+                <Modal full isOpen={this.state.modal === "create-alert"} onClose={this.onCloseModal}>
+                    <CreateAlertModalContent onClose={this.onCloseModal} />
+                </Modal>
+
+                <Modal full isOpen={this.state.modal === "update-alert"} onClose={this.onCloseModal}>
+                    <UpdateAlertModalContent onClose={this.onCloseModal} />
                 </Modal>
             </div>
         );

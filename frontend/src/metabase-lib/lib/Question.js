@@ -382,6 +382,26 @@ export default class Question {
         return (Object.values(this.parameters()): ParameterObject[]);
     }
 
+    alarms() {
+        return this._card.alarms || []
+    }
+
+    addAlarm(alarm) {
+        return this.setCard({
+            ...this.card(),
+            alarms: [...this.alarms(), alarm]
+        });
+    }
+
+    updateAlarm(alarmToUpdate) {
+        return this.setCard({
+            ...this.card(),
+            alarms: this.alarms().map((alarm) =>
+                alarm.id === alarmToUpdate.id ? alarmToUpdate : alarm
+            )
+        });
+    }
+
     // predicate function that dermines if the question is "dirty" compared to the given question
     isDirtyComparedTo(originalQuestion: Question) {
         // TODO Atte Keinänen 6/8/17: Reconsider these rules because they don't completely match
