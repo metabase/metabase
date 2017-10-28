@@ -6,20 +6,20 @@ import { t } from 'c-3po'
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
-import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
 import Header from "metabase/components/Header.jsx";
-import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
-import { getDashboardActions } from "./DashboardActions";
-
 import EntityMenu from "metabase/components/EntityMenu"
 
-import ParametersPopover from "./ParametersPopover.jsx";
-import Popover from "metabase/components/Popover.jsx";
+// These may or may not be needed as the menu refactor continues
+// import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
+// import HistoryModal from "metabase/components/HistoryModal.jsx";
+// import { getDashboardActions } from "./DashboardActions";
+// import ParametersPopover from "./ParametersPopover.jsx";
+// import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -257,6 +257,30 @@ export default class DashboardHeader extends Component {
                     ]}
                 />
             );
+            buttons.push(
+                <EntityMenu
+                    triggerIcon="burger"
+                    items={[
+                        {
+                            title: t`Edit dashboard`,
+                            icon: 'editdocument',
+                            action: () => this.onEdit()
+                        },
+                        {
+                            title: t`View revision history`,
+                            icon: 'history',
+                            // TODO - we need to figure out a way to have modals present but not open?
+                            action: () => this.refs.dashboardHistory.toggle()
+                        },
+                        {
+                            title: t`Archive`,
+                            icon: 'archive',
+                            // TODO - we need to figure out a way to have modals present but not open?
+                            action: () => this.refs.dashboardHistory.toggle()
+                        }
+                    ]}
+                />
+            );
         }
 
         if (!isFullscreen && canEdit) {
@@ -294,7 +318,8 @@ export default class DashboardHeader extends Component {
             )
         }
 
-        buttons.push(...getDashboardActions(this.props));
+        // A bunch of actions based on the state come from this call
+        //buttons.push(...getDashboardActions(this.props));
 
         return [buttons];
     }
