@@ -2,6 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from 'c-3po'
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
@@ -14,6 +15,8 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import { getDashboardActions } from "./DashboardActions";
+
+import EntityMenu from "metabase/components/EntityMenu"
 
 import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -176,6 +179,7 @@ export default class DashboardHeader extends Component {
             buttons.push(parametersWidget);
         }
 
+            /*
         if (isEditing) {
             // Parameters
             buttons.push(
@@ -226,14 +230,32 @@ export default class DashboardHeader extends Component {
                 </ModalWithTrigger>
             );
         }
+        */
 
         if (!isFullscreen && !isEditing && canEdit) {
             buttons.push(
-                <Tooltip tooltip="Edit dashboard">
-                    <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
-                        <Icon name="pencil" size={16} />
-                    </a>
-                </Tooltip>
+                <EntityMenu
+                    triggerIcon="pencil"
+                    items={[
+                        {
+                            title: t`Edit dashboard`,
+                            icon: 'editdocument',
+                            action: () => this.onEdit()
+                        },
+                        {
+                            title: t`View revision history`,
+                            icon: 'history',
+                            // TODO - we need to figure out a way to have modals present but not open?
+                            action: () => this.refs.dashboardHistory.toggle()
+                        },
+                        {
+                            title: t`Archive`,
+                            icon: 'archive',
+                            // TODO - we need to figure out a way to have modals present but not open?
+                            action: () => this.refs.dashboardHistory.toggle()
+                        }
+                    ]}
+                />
             );
         }
 
