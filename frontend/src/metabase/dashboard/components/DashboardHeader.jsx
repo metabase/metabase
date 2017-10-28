@@ -150,18 +150,6 @@ export default class DashboardHeader extends Component {
             <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small" onClick={() => this.onCancel()}>
                 Cancel
             </a>,
-            <ModalWithTrigger
-                key="archive"
-                ref="archiveDashboardModal"
-                triggerClasses="Button Button--small"
-                triggerElement="Archive"
-            >
-                <ArchiveDashboardModal
-                    dashboard={this.props.dashboard}
-                    onClose={() => this.refs.archiveDashboardModal.toggle()}
-                    onArchive={() => this.onArchive()}
-                />
-            </ModalWithTrigger>,
             <ActionButton
                 key="save"
                 actionFn={() => this.onSave()}
