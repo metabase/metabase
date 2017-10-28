@@ -3,17 +3,17 @@ import { connect } from "react-redux";
 import { push, replace, goBack } from "react-router-redux";
 import title from "metabase/hoc/Title";
 
-import Icon from "metabase/components/Icon";
+import EntityList from "./EntityList";
+import EntityMenu from "metabase/components/EntityMenu";
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 
-import CollectionActions from "../components/CollectionActions";
-import ArchiveCollectionWidget from "./ArchiveCollectionWidget";
-import EntityList from "./EntityList";
 import { loadCollections } from "../collections";
+
 
 import _ from "underscore";
 
 const mapStateToProps = (state, props) => ({
+    // TODO - this should use a selector
     collection: _.findWhere(state.collections.collections, { slug: props.params.collectionSlug })
 })
 
@@ -22,8 +22,6 @@ const mapDispatchToProps = ({
     replace,
     goBack,
     goToQuestions: () => push(`/questions`),
-    editCollection: (id) => push(`/collections/${id}`),
-    editPermissions: (id) => push(`/collections/permissions?collectionId=${id}`),
     loadCollections,
 })
 
@@ -47,13 +45,36 @@ export default class CollectionPage extends Component {
                             () => goBack()
                         }
                     />
-                    <div className="ml-auto">
-                        <CollectionActions>
-                            { canEdit && <ArchiveCollectionWidget collectionId={this.props.collection.id} onArchived={this.props.goToQuestions}/> }
-                            { canEdit && <Icon size={18} name="pencil" tooltip="Edit collection" onClick={() => this.props.editCollection(this.props.collection.id)} /> }
-                            { canEdit && <Icon size={18} name="lock" tooltip="Set permissions" onClick={() => this.props.editPermissions(this.props.collection.id)} /> }
-                        </CollectionActions>
-                    </div>
+                    { canEdit && (
+                        <div className="ml-auto flex align-center">
+                            <EntityMenu
+                                triggerIcon="pencil"
+                                items={[
+                                    {
+                                        title: t`Edit collection details`,
+                                        icon: 'editdocument',
+                                        link: `/collections/${collection.id}`
+                                    },
+                                    {
+                                        title: t`Archive this collection`,
+                                        icon: 'archive',
+                                        // TODO - @kdoh figure out archive
+                                        action: () => alert('This should archive')
+                                    }
+                                ]}
+                            />
+                            <EntityMenu
+                                triggerIcon="share"
+                                items={[
+                                    {
+                                        title: t`Set permissions`,
+                                        icon: 'lock',
+                                        link: `/collections/permissions?collectionId=${collection.id}`
+                                    },
+                                ]}
+                            />
+                        </div>
+                    )}
                 </div>
                 <div className="mt4">
                     <EntityList
