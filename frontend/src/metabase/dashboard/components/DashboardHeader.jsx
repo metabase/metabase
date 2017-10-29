@@ -341,8 +341,7 @@ export default class DashboardHeader extends Component {
                 headerModalMessage={this.props.isEditingParameter ?
                     "Select the field that should be filtered for each card" : null}
                 onHeaderModalDone={() => this.props.setEditingParameter(null)}
-            >
-            </Header>
+            />
         );
     }
 }
