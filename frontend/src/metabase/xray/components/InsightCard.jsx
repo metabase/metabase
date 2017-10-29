@@ -43,13 +43,13 @@ export class NormalRangeInsight extends Component {
     }
 }
 
-export class GapsInsight extends Component {
-    static insightType = "gaps"
-    static title = "Gaps in the data"
+export class NilsInsight extends Component {
+    static insightType = "nils"
+    static title = "Missing data"
     static icon = "warning"
 
     render() {
-        const { mode, quality, filter, features: { table } } = this.props
+        const { quality, filter, features: { table } } = this.props
 
         const viewAllRowsUrl = table && Question.create()
             .query()
@@ -62,9 +62,36 @@ export class GapsInsight extends Component {
         // construct the question with filter
         return (
             <InsightText>
-                You have { quality } { mode } values in your data.
+                You have { quality } missing (null) values in your data.
                 <span> </span>
-                { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with { mode } value.</span> }
+                { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with missing value.</span> }
+            </InsightText>
+        )
+    }
+}
+
+export class ZerosInsight extends Component {
+    static insightType = "zeros"
+    static title = "0s in your data"
+    static icon = "warning"
+
+    render() {
+        const { quality, filter, features: { table } } = this.props
+
+        const viewAllRowsUrl = table && Question.create()
+            .query()
+            // imitate the required hydrated metadata format
+            .setTable({ ...table, database: { id: table.db_id }})
+            .addFilter(filter)
+            .question()
+            .getUrl()
+
+        // construct the question with filter
+        return (
+            <InsightText>
+                You have { quality } zeros in your data. They may be standins for missing data or indicate some other abnormality.
+                <span> </span>
+                { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with zeros.</span> }
             </InsightText>
         )
     }
@@ -185,9 +212,11 @@ export class RegimeChangeInsight extends Component {
 
 
 const INSIGHT_COMPONENTS = [
+    // any field
+    NilsInsight,
     // numeric fields
     NormalRangeInsight,
-    GapsInsight,
+    ZerosInsight,
     // timeseries
     NoisinessInsight,
     VariationTrendInsight,

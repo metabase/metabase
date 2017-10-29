@@ -1,11 +1,11 @@
 (ns metabase.feature-extraction.insights
   "Data insights -- morsels of prepackaged analysis."
-  (:require [bigml.histogram.core :as h]
-            [clojure.math.numeric-tower :as num]
+  (:require [clojure.math.numeric-tower :as num]
             [distributions.core :as d]
             [kixi.stats.core :as stats]
             [redux.core :as redux]
             [metabase.feature-extraction
+             [histogram :as h]
              [math :as math]
              [timeseries :as ts]]))
 
@@ -17,25 +17,35 @@
        {~(keyword insight) insight#})))
 
 (definsight normal-range
-  ""
+  "What is the normal (expected) range for this data?
+   We define normal as being within interquartile range.
+   https://en.wikipedia.org/wiki/Interquartile_range"
   [histogram]
-  (let [{lower 0.25 upper 0.75} (h/percentiles histogram 0.25 0.75)]
-    {:lower lower
-     :upper upper}))
+  (let [{:keys [q1 q3]} (h/iqr histogram)]
+    {:lower q1
+     :upper q3}))
 
-(definsight gaps
-  ""
+(definsight nils
+  "Are there any nils in the data?"
   [nil% field]
   (when (pos? nil%)
-    {:mode :nils
-     :quality (if (< nil% 0.1)
+    {:quality (if (< nil% 0.1)
                 :some
                 :many)
-     :filter [[:IS_NULL [:field-id (:id field)]]]}))
+     :filter  [:IS_NULL [:field-id (:id field)]]}))
+
+(definsight zeros
+  "Are there any 0s in the data?"
+  [zero% field]
+  (when (pos? zero%)
+    {:quality (if (< zero% 0.1)
+                :some
+                :many)
+     :filter  [:= [:field-id (:id field)] 0]}))
 
 (definsight autocorrelation
-  "
-  Template: Your data has a [strong/mild] autocorrelation at lag [lag]."
+  "Is there a significant autocorrelation at lag up to period length?
+   https://en.wikipedia.org/wiki/Autocorrelation"
   [series resolution]
   (let [{:keys [autocorrelation lag]} (math/autocorrelation
                                        {:max-lag (or (some-> resolution
@@ -50,7 +60,8 @@
        :lag     lag})))
 
 (definsight noisiness
-  ""
+  "Is the data is noisy?
+   We determine noisiness by the relatve number of saddles in the series."
   [series resolution]
   (let [saddles% (/ (math/saddles series) (max (count series) 1))]
     (when (> saddles% 0.1)
@@ -60,8 +71,9 @@
        :recommended-resolution (ts/higher-resolution resolution)})))
 
 (definsight variation-trend
-  "
-  https://en.wikipedia.org/wiki/Variance"
+  "Is there a consistent thrend in changes of variation from one period to the
+   next.
+   https://en.wikipedia.org/wiki/Variance"
   [resolution series]
   (when resolution
     (->> series
@@ -104,7 +116,8 @@
                                       :decreasing)})))))))))
 
 (definsight seasonality
-  ""
+  "Is there a seasonal component to the changes in data?
+   https://www.wessa.net/download/stl.pdf"
   [seasonal-decomposition]
   (when seasonal-decomposition
     (let [diff (transduce identity stats/mean

@@ -212,7 +212,7 @@
      :subtotal   price
      :tax        tax
      :quantity   (random-price 1 5)
-     :discount   (sometimes 0.1 #(random-price 1 10))
+     :discount   (sometimes 0.1 #(random-price 0 10))
      :total      (+ price tax)
      :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 2))}))
 

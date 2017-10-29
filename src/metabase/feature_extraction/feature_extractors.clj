@@ -170,7 +170,7 @@
   (let [nil-count   (h/nil-count histogram)
         total-count (h/total-count histogram)]
     (merge {:histogram histogram
-            :nil%      (/ nil-count (max total-count 1))
+            :nil%      (math/safe-divide nil-count total-count)
             :has-nils? (pos? nil-count)
             :count     total-count
             :entropy   (h/entropy histogram)}
@@ -179,10 +179,10 @@
 
 (defn- cardinality-extractor
   [{:keys [cardinality histogram]}]
-  (let [uniqueness (/ cardinality (max (h/total-count histogram) 1))]
+  (let [uniqueness (math/safe-divide cardinality (h/total-count histogram))]
     {:uniqueness    uniqueness
      :cardinality   cardinality
-     :all-distinct? (>= uniqueness (- 1 cardinality-error))}))
+     :all-distinct? (some-> uniqueness (>= (- 1 cardinality-error)))}))
 
 (defn- field-metadata-extractor
   [field]
@@ -200,7 +200,8 @@
      {:histogram   h/histogram
       :cardinality cardinality
       :kurtosis    (redux/pre-step stats/kurtosis (somef double))
-      :skewness    (redux/pre-step stats/skewness (somef double))}
+      :skewness    (redux/pre-step stats/skewness (somef double))
+      :zeros       (redux/with-xform stats/count (filter (somef zero?)))}
      (when (costs/full-scan? max-cost)
        {:sum            (redux/with-xform + (keep (somef double)))
         :sum-of-squares (redux/with-xform + (keep (somef #(Math/pow % 2))))})
@@ -210,7 +211,7 @@
     histogram-extractor
     cardinality-extractor
     (field-metadata-extractor field)
-    (fn [{:keys [histogram histogram-categorical kurtosis skewness sum
+    (fn [{:keys [histogram histogram-categorical kurtosis skewness sum zeros
                  sum-of-squares]}]
       (let [var    (h.impl/variance histogram)
             sd     (some-> var Math/sqrt)
@@ -239,12 +240,13 @@
          :skewness           skewness
          :sum                sum
          :sum-of-squares     sum-of-squares
+         :zero%              (math/safe-divide zeros (h/total-count histogram))
          :histogram          (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num
   [features]
   (select-keys features
-               [:histogram :mean :median :min :max :sd :count :kurtosis
+               [:histogram :mean :median :min :max :sd :count :kurtosis :zero%
                 :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
 
 (defmethod x-ray Num
@@ -252,7 +254,8 @@
   (-> features
       (update :histogram (partial histogram->dataset field))
       (assoc :insights ((merge-juxt insights/normal-range
-                                    insights/gaps)
+                                    insights/zeros
+                                    insights/nils)
                         features))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
               :positive-definite? :var>sd? :uniqueness :min-vs-max)))
@@ -511,6 +514,6 @@
     (field-metadata-extractor field)
     (fn [{:keys [total-count nil-count]}]
       {:count     total-count
-       :nil%      (/ nil-count (max total-count 1))
+       :nil%      (math/safe-divide nil-count total-count)
        :has-nils? (pos? nil-count)
        :type      nil}))))
