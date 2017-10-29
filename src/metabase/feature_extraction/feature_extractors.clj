@@ -213,13 +213,14 @@
     (field-metadata-extractor field)
     (fn [{:keys [histogram histogram-categorical kurtosis skewness sum zeros
                  sum-of-squares]}]
-      (let [var    (h.impl/variance histogram)
-            sd     (some-> var Math/sqrt)
-            min    (h.impl/minimum histogram)
-            max    (h.impl/maximum histogram)
-            mean   (h.impl/mean histogram)
-            median (h.impl/median histogram)
-            range  (some-> max (- min))]
+      (let [var             (h.impl/variance histogram)
+            sd              (some-> var Math/sqrt)
+            min             (h.impl/minimum histogram)
+            max             (h.impl/maximum histogram)
+            mean            (h.impl/mean histogram)
+            median          (h.impl/median histogram)
+            range           (some-> max (- min))
+            {:keys [q1 q3]} (h/iqr histogram)]
         {:positive-definite? (some-> min (>= 0))
          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
          :var>sd?            (some->> sd (> var))
@@ -234,6 +235,8 @@
          :max                max
          :mean               mean
          :median             median
+         :q1                 q1
+         :q3                 q3
          :var                var
          :sd                 sd
          :kurtosis           kurtosis
@@ -247,7 +250,8 @@
   [features]
   (select-keys features
                [:histogram :mean :median :min :max :sd :count :kurtosis :zero%
-                :skewness :entropy :nil% :uniqueness :range :min-vs-max]))
+                :skewness :entropy :nil% :uniqueness :range :min-vs-max :q1
+                :q3]))
 
 (defmethod x-ray Num
   [{:keys [field] :as features}]

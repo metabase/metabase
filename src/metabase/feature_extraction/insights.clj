@@ -20,8 +20,8 @@
   "What is the normal (expected) range for this data?
    We define normal as being within interquartile range.
    https://en.wikipedia.org/wiki/Interquartile_range"
-  [histogram]
-  (let [{:keys [q1 q3]} (h/iqr histogram)]
+  [q1 q3]
+  (when q1
     {:lower q1
      :upper q3}))
 
