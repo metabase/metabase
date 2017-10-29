@@ -52,15 +52,16 @@ const AdminNavItem = ({ name, path, currentPath }) =>
         </Link>
     </li>
 
-const MainNavLink = ({ to, name, eventName }) =>
+const MainNavLink = ({ to, name, eventName, icon }) =>
     <Link
         to={to}
         data-metabase-event={`NavBar;${eventName}`}
         style={BUTTON_PADDING_STYLES.navButton}
-        className={"NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background"}
+        className={"NavItem cursor-pointer flex-full text-white text-bold no-decoration flex align-center px2 transition-background"}
         activeClassName="NavItem--selected"
     >
-        {name}
+        <Icon name={icon} className="md-hide" />
+        <span className="hide md-show">{name}</span>
     </Link>
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -84,7 +85,7 @@ export default class Navbar extends Component {
                         <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin</span>
                     </div>
 
-                    <ul className="sm-ml4 flex flex-full text-strong">
+                    <ul className="sm-ml4 flex flex-full">
                         <AdminNavItem name="Settings"    path="/admin/settings"     currentPath={this.props.path} />
                         <AdminNavItem name="People"      path="/admin/people"       currentPath={this.props.path} />
                         <AdminNavItem name="Data Model"  path="/admin/datamodel"    currentPath={this.props.path} />
@@ -114,31 +115,36 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className="Nav relative bg-brand sm-py1">
-                <ul className="sm-pl4 pr1 flex align-center">
+            <nav className="Nav relative bg-brand">
+                <ul className="md-pl4 flex align-center md-pr1">
                     <li>
-                        <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background p1">
+                        <Link
+                            to="/"
+                            data-metabase-event={"Navbar;Logo"}
+                            className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
+                            activeClassName="NavItem--selected"
+                        >
                             <LogoIcon dark={true}></LogoIcon>
                         </Link>
                     </li>
-                    <li className="pl3 hide xs-show">
-                        <MainNavLink to="/dashboards" name={t`Dashboards`} eventName="Dashboards" />
+                    <li className="md-pl3 hide xs-show">
+                        <MainNavLink to="/dashboards" name={t`Dashboards`} eventName="Dashboards" icon="dashboard" />
                     </li>
-                    <li className="pl1 hide xs-show">
-                        <MainNavLink to="/questions" name={t`Questions`} eventName="Questions" />
+                    <li className="md-pl1 hide xs-show">
+                        <MainNavLink to="/questions" name={t`Questions`} eventName="Questions" icon="all" />
                     </li>
-                    <li className="pl1 hide sm-show">
-                        <MainNavLink to="/pulse" name={t`Pulses`} eventName="Pulses" />
+                    <li className="md-pl1 hide xs-show">
+                        <MainNavLink to="/pulse" name={t`Pulses`} eventName="Pulses" icon="pulse" />
                     </li>
-                    <li className="pl1 hide sm-show">
-                        <MainNavLink to="/reference/guide" name={t`Data Reference`} eventName="DataReference" />
+                    <li className="md-pl1 hide xs-show">
+                        <MainNavLink to="/reference/guide" name={t`Data Reference`} eventName="DataReference" icon="reference" />
                     </li>
-                    <li className="pl3 hide sm-show">
+                    <li className="md-pl3 hide sm-show">
                         <Link to={Urls.newQuestion()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
                             {t`New Question`}
                         </Link>
                     </li>
-                    <li className="flex-align-right transition-background">
+                    <li className="flex-align-right transition-background hide sm-show">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>
                     </li>
                 </ul>

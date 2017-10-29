@@ -4,14 +4,15 @@ import { connect } from 'react-redux'
 
 import { saturated } from 'metabase/lib/colors'
 
-import { fetchXray, initialize } from 'metabase/xray/xray'
+import { fetchCardXray, initialize } from 'metabase/xray/xray'
 import {
     getLoadingStatus,
     getError,
-    getXray
+    getXray,
+    getIsAlreadyFetched
 } from 'metabase/xray/selectors'
 
-import { hasXray, xrayLoadingMessages } from 'metabase/xray/utils'
+import { xrayLoadingMessages } from 'metabase/xray/utils'
 
 import Icon from 'metabase/components/Icon'
 import Tooltip from 'metabase/components/Tooltip'
@@ -25,18 +26,19 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 const mapStateToProps = state => ({
     xray: getXray(state),
     isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
     error: getError(state)
 })
 
 const mapDispatchToProps = {
     initialize,
-    fetchXray
+    fetchCardXray
 }
 
 type Props = {
     initialize: () => void,
     initialize: () => {},
-    fetchXray: () => void,
+    fetchCardXray: () => void,
     isLoading: boolean,
     xray: {}
 }
@@ -63,13 +65,12 @@ const GrowthRateDisplay = ({ period }) =>
     </div>
 
 class CardXRay extends Component {
-
     props: Props
 
     componentWillMount () {
         const { cardId, cost } = this.props.params
         this.props.initialize()
-        this.props.fetchXray('card', cardId, cost)
+        this.props.fetchCardXray(cardId, cost)
     }
 
     componentWillUnmount() {
@@ -80,10 +81,11 @@ class CardXRay extends Component {
     }
 
     render () {
-        const { xray, isLoading, error } = this.props
+        const { xray, isLoading, isAlreadyFetched, error } = this.props
+
         return (
             <LoadingAndErrorWrapper
-                loading={isLoading || !hasXray(xray)}
+                loading={isLoading || !isAlreadyFetched}
                 error={error}
                 noBackground
                 loadingMessages={xrayLoadingMessages}
@@ -92,7 +94,7 @@ class CardXRay extends Component {
                 { () =>
                     <XRayPageWrapper>
                         <div className="mt4 mb2">
-                            <h1 className="my3">{xray.features.card.name} X-ray</h1>
+                            <h1 className="my3">{xray.features.model.name} X-ray</h1>
                         </div>
                         <Heading heading="Growth rate" />
                         <div className="bg-white bordered rounded shadowed">
@@ -115,7 +117,7 @@ class CardXRay extends Component {
                                     <Visualization
                                         series={[
                                             {
-                                                card: xray.features.card,
+                                                card: xray.features.model,
                                                 data: xray.dataset
                                             },
                                             {

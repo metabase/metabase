@@ -155,20 +155,22 @@ export const MetabaseApi = {
     dataset_duration:           POST("/api/dataset/duration")
 };
 
+export const AsyncApi = {
+    status:                     GET("/api/async/:jobId"),
+    // endpoints:                  GET("/api/async/running-jobs")
+}
+
 export const XRayApi = {
     // X-Rays
+    // NOTE Atte Keinänen 9/28/17: All xrays endpoints are asynchronous.
+    // You should use BackgroundJobRequest in `metabase/lib/promise` for invoking them.
     field_xray:                  GET("/api/x-ray/field/:fieldId"),
     table_xray:                  GET("/api/x-ray/table/:tableId"),
     segment_xray:                GET("/api/x-ray/segment/:segmentId"),
     card_xray:                   GET("/api/x-ray/card/:cardId"),
 
-    field_compare:               GET("/api/x-ray/compare/fields/:fieldId1/:fieldId2"),
-    table_compare:               GET("/api/x-ray/compare/tables/:tableId1/:tableId2"),
-    segment_compare:             GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2"),
-    segment_table_compare:       GET("/api/x-ray/compare/segment/:segmentId/table/:tableId"),
-    segment_field_compare:       GET("/api/x-ray/compare/segments/:segmentId1/:segmentId2/field/:fieldName"),
-    segment_table_field_compare: GET("/api/x-ray/compare/segment/:segmentId/table/:tableId/field/:fieldName"),
-    card_compare:                GET("/api/x-ray/compare/cards/:cardId1/:cardId2")
+    compare_shared_type:         GET("/api/x-ray/compare/:modelTypePlural/:modelId1/:modelId2"),
+    compare_two_types:           GET("/api/x-ray/compare/:modelType1/:modelId1/:modelType2/:modelId2"),
 };
 
 export const PulseApi = {

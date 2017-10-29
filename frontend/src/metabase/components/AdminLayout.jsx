@@ -4,13 +4,13 @@ import AdminHeader from "./AdminHeader.jsx";
 
 export default class AdminLayout extends Component {
 
-    setSaving() {
+    setSaving = () => {
         this.refs.header.refs.status.setSaving();
     }
-    setSaved() {
+    setSaved = () => {
         this.refs.header.refs.status.setSaved();
     }
-    setSaveError(error) {
+    setSaveError = (error) => {
         this.refs.header.refs.status.setSaveError(error);
     }
 

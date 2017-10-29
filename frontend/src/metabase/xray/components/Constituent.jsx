@@ -6,14 +6,14 @@ import SimpleStat from 'metabase/xray/SimpleStat'
 
 const Constituent = ({constituent}) =>
     <Link
-        to={`xray/field/${constituent.field.id}/approximate`}
+        to={`xray/field/${constituent.model.id}/approximate`}
         className="no-decoration"
     >
         <div className="Grid my3 bg-white bordered rounded shadowed shadow-hover no-decoration">
             <div className="Grid-cell Cell--1of3 border-right">
                 <div className="p4">
-                    <h2 className="text-bold text-brand">{constituent.field.display_name}</h2>
-                    <p className="text-measure text-paragraph">{constituent.field.description}</p>
+                    <h2 className="text-bold text-brand">{constituent.model.display_name}</h2>
+                    <p className="text-measure text-paragraph">{constituent.model.description}</p>
 
                     <div className="flex align-center">
                         { constituent.min && (

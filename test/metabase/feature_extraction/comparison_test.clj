@@ -1,6 +1,8 @@
 (ns metabase.feature-extraction.comparison-test
   (:require [expectations :refer :all]
-            [metabase.feature-extraction.comparison :refer :all :as c]))
+            [metabase.feature-extraction
+             [comparison :refer :all :as c]
+             [histogram :as h]]))
 
 (expect
   (approximately 5.5 0.1)
@@ -22,14 +24,14 @@
 (expect
   [0.25
    0
-   1
-   1
+   nil
+   nil
    0
    1
    1
    0
    0.5
-   0]
+   nil]
   (mapv :difference [(difference 1 2.0)
                      (difference 2.0 2.0)
                      (difference 2.0 nil)
@@ -60,6 +62,17 @@
    {:foo 4 :bar_a 4 :bar_b_x 4 :bar_b_y 7}]
   [(#'c/flatten-map {:foo 4 :bar 5})
    (#'c/flatten-map {:foo 4 :bar {:a 4 :b {:x 4 :y 7}}})])
+
+(expect
+  [true
+   false
+   nil]
+  (let [h1      (transduce identity h/histogram (range 10))
+        h2      (transduce identity h/histogram (repeat 10 10))
+        h-empty (transduce identity h/histogram nil)]
+    (map :significant? [(difference h1 h2)
+                        (difference h1 h1)
+                        (difference h1 h-empty)])))
 
 (expect
   (approximately 0.3 0.1)

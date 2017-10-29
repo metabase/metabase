@@ -102,15 +102,15 @@
 
 (defmethod difference [nil Object]
   [a b]
-  {:difference 1})
+  {:difference nil})
 
 (defmethod difference [Object nil]
   [a b]
-  {:difference 1})
+  {:difference nil})
 
 (defmethod difference [nil nil]
   [a b]
-  {:difference 0})
+  {:difference nil})
 
 (defn chi-squared-distance
   "Chi-squared distane between empirical probability distributions `p` and `q`.
@@ -136,9 +136,10 @@
    https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test"
   ([m p n q] (ks-test 0.95 m p n q))
   ([significance-level m p n q]
-   (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
-         c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
-     (> D (* c (math/sqrt (/ (+ m n) (* m n))))))))
+   (when-not (zero? (* m n))
+     (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
+           c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
+       (> D (* c (math/sqrt (/ (+ m n) (* m n)))))))))
 
 (defn- unify-categories
   "Given two PMFs add missing categories and align them so they both cover the
@@ -197,8 +198,9 @@
   "Pairwise differences of feature vectors `a` and `b`."
   [a b]
   (into {}
-    (map (fn [[k a] [_ b]]
-           [k (difference a b)])
+    (map (fn [[ka va] [kb vb]]
+           (assert (= ka kb) "Incomparable models.")
+           [ka (difference va vb)])
          (flatten-map (fe/comparison-vector a))
          (flatten-map (fe/comparison-vector b)))))
 
@@ -208,12 +210,14 @@
   "Distance metric between feature vectors `a` and `b`."
   [a b]
   (let [differences (pairwise-differences a b)]
-    {:distance         (transduce (map (comp :difference val))
+    {:distance         (transduce (keep (comp :difference val))
                                   (redux/post-complete
                                    magnitude
                                    #(/ % (math/sqrt (count differences))))
                                   differences)
      :components       differences
-     :top-contributors (head-tails-breaks (comp :difference second) differences)
+     :top-contributors (->> differences
+                            (filter (comp :difference second))
+                            (head-tails-breaks (comp :difference second)))
      :thereshold       interestingness-thershold
      :significant?     (some :significant? (vals differences))}))

@@ -103,7 +103,7 @@ class ChartSettings extends Component {
         const { series } = this.state;
 
         const tabs = {};
-        for (let widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
+        for (const widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
             tabs[widget.section] = tabs[widget.section] || [];
             tabs[widget.section].push(widget);
         }

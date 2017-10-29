@@ -240,13 +240,13 @@ export default class FilterPopover extends Component {
     render() {
         const { query } = this.props;
         const { filter } = this.state;
-        const [operator, field] = filter;
-        if (operator === "SEGMENT" || field == undefined) {
+        const [operator, fieldRef] = filter;
+        if (operator === "SEGMENT" || fieldRef == undefined) {
             return (
                 <div className="FilterPopover">
                     <FieldList
                         className="text-purple"
-                        field={field}
+                        field={fieldRef}
                         fieldOptions={query.filterFieldOptions(filter)}
                         segmentOptions={query.filterSegmentOptions(filter)}
                         tableMetadata={query.table()}
@@ -256,11 +256,13 @@ export default class FilterPopover extends Component {
                 </div>
             );
         } else {
-            let { table, field } = Query.getFieldTarget(filter[1], query.table());
-
+            let { table, field } = Query.getFieldTarget(fieldRef, query.table());
+            const dimension = query.parseFieldReference(fieldRef);
             return (
                 <div style={{
-                    minWidth: 300
+                    minWidth: 300,
+                    // $FlowFixMe
+                    maxWidth: dimension.field().isDate() ? null : 500
                 }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
                         <a className="cursor-pointer text-purple-hover transition-color flex align-center" onClick={this.clearField}>

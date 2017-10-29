@@ -166,7 +166,7 @@
    (var-get #'fe/DateTime)
    [:type/Text :type/Category]
    (var-get #'fe/Text)
-   [nil [:type/NeverBeforeSeen :type/*]]]
+   nil]
   [(-> (->features {:base_type :type/Number} numbers) :type)
    (-> (->features {:base_type :type/Number} ints) :type)
    (-> (->features {:base_type :type/DateTime} datetimes) :type)

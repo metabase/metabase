@@ -48,6 +48,7 @@
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
+                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
                  [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [com.google.inject/guice
                                commons-codec
@@ -95,10 +96,11 @@
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-                 [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
+                 [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
-                 [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
+                 [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
+                 [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
                  [ring/ring-jetty-adapter "1.6.0"                     ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
@@ -106,10 +108,9 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
-                  :exclusions [honeysql]]
-                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]]  ; Redshift JDBC driver
-  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]
-                 ["redshift" "http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release"]] ; Repo for Crate JDBC driver
+                  :exclusions [honeysql]]]
+  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
+                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
@@ -117,10 +118,13 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
-  :jvm-opts ["-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
+  :jvm-opts ["-XX:+IgnoreUnrecognizedVMOptions"                       ; ignore things not recognized for our Java version instead of refusing to start
+             "-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
              "-Xverify:none"                                          ; disable bytecode verification when running in dev so it starts slightly faster
              "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
              "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+             "--add-opens=java.base/java.net=ALL-UNNAMED"             ; let Java 9 dynamically add to classpath -- see https://github.com/tobias/dynapath#note-on-java-9
+             "--add-modules=java.xml.bind"                            ; tell Java 9 (Oracle VM only) to add java.xml.bind to classpath. No longer on it by default. See https://stackoverflow.com/questions/43574426/how-to-resolve-java-lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
