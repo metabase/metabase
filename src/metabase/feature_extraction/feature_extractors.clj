@@ -398,15 +398,7 @@
     (fn [{:keys [series linear-regression]}]
       (let [resolution (infer-resolution query series)
             series     (if resolution
-                         (fill-timeseries (case resolution
-                                            :month   (t/months 1)
-                                            :quarter (t/months 3)
-                                            :year    (t/years 1)
-                                            :week    (t/weeks 1)
-                                            :day     (t/days 1)
-                                            :hour    (t/hours 1)
-                                            :minute  (t/minutes 1))
-                                          series)
+                         (fill-timeseries resolution series)
                          series)]
         (merge {:resolution             resolution
                 :series                 series

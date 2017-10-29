@@ -12,10 +12,10 @@
     (let [{:keys [status result] :as response}
           ((user->client user) :get 200 (str "async/" job-id))]
       (cond
-        (= status "done") result
-        (= status "error") (throw (ex-info "Error encountered." result))
-        (> tries max-retries) (throw (ex-info "Timeout. Max retries exceeded."
-                                       response))
+        (= status "done")     result
+        (= status "error")    (throw (ex-info (str "Error encountered.\n" result)
+                                       result))
+        (> tries max-retries) (throw (ex-info "Timeout. Max retries exceeded." {}))
         :else                 (do
                                 (log/info (format "Waiting for computation to finish. Retry: %" tries))
                                 (Thread/sleep (* 100 tries))
