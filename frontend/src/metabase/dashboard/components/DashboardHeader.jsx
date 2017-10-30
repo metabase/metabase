@@ -15,10 +15,10 @@ import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 import EntityMenu from "metabase/components/EntityMenu"
 
 // These may or may not be needed as the menu refactor continues
-// import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
 // import { getDashboardActions } from "./DashboardActions";
 
-import HistoryModal from "metabase/components/HistoryModal.jsx";
+import HistoryModal from "metabase/components/HistoryModal";
+import ArchiveDashboardModal from "./ArchiveDashboardModal";
 import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
@@ -42,6 +42,7 @@ type Props = {
     isAdmin:                boolean,
     isEditable:             boolean,
     isEditing:              boolean,
+    isEditingParameter:     boolean,
     isFullscreen:           boolean,
     isNightMode:            boolean,
 
@@ -179,30 +180,6 @@ export default class DashboardHeader extends Component {
                     }
                 </span>
             );
-
-            buttons.push(
-                <ModalWithTrigger
-                    key="history"
-                    ref="dashboardHistory"
-                    triggerElement={
-                        <Tooltip tooltip="Revision history">
-                            <span data-metabase-event={"Dashboard;Revisions"}>
-                                <Icon className="text-brand-hover" name="history" size={16} />
-                            </span>
-                        </Tooltip>
-                    }
-                >
-                    <HistoryModal
-                        entityType="dashboard"
-                        entityId={dashboard.id}
-                        revisions={this.props.revisions["dashboard-"+dashboard.id]}
-                        onFetchRevisions={this.onFetchRevisions.bind(this)}
-                        onRevertToRevision={this.onRevertToRevision.bind(this)}
-                        onClose={() => this.refs.dashboardHistory.toggle()}
-                        onReverted={() => this.onRevertedRevision()}
-                    />
-                </ModalWithTrigger>
-            );
         }
 
         if (!isFullscreen && !isEditing && canEdit) {
@@ -218,14 +195,12 @@ export default class DashboardHeader extends Component {
                         {
                             title: t`View revision history`,
                             icon: 'history',
-                            // TODO - we need to figure out a way to have modals present but not open?
                             action: () => this.refs.dashboardHistory.toggle()
                         },
                         {
                             title: t`Archive`,
                             icon: 'archive',
-                            // TODO - we need to figure out a way to have modals present but not open?
-                            action: () => this.refs.dashboardHistory.toggle()
+                            action: () => this.refs.dashboardArchive.toggle()
                         }
                     ]}
                 />
@@ -240,23 +215,21 @@ export default class DashboardHeader extends Component {
                             action: () => this.onEdit()
                         },
                         {
-                            title: t`View revision history`,
+                            title: t`Short`,
                             icon: 'history',
-                            // TODO - we need to figure out a way to have modals present but not open?
                             action: () => this.refs.dashboardHistory.toggle()
                         },
                         {
                             title: t`Archive`,
                             icon: 'archive',
-                            // TODO - we need to figure out a way to have modals present but not open?
-                            action: () => this.refs.dashboardHistory.toggle()
+                            action: () => this.refs.dashboarArchive.toggle()
                         }
                     ]}
                 />
             );
         }
 
-        if (!isFullscreen && canEdit) {
+        if (!isFullscreen && canEdit && isEditing) {
             buttons.push(
                 <ModalWithTrigger
                     full
@@ -286,9 +259,7 @@ export default class DashboardHeader extends Component {
             (isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
             (isEmbeddingEnabled && isAdmin)
         )) {
-            buttons.push(
-                <DashboardEmbedWidget dashboard={dashboard} />
-            )
+            buttons.push(<DashboardEmbedWidget dashboard={dashboard} />)
         }
 
         // A bunch of actions based on the state come from this call
@@ -298,25 +269,67 @@ export default class DashboardHeader extends Component {
     }
 
     render() {
-        var { dashboard } = this.props;
+        const {
+            dashboard,
+            isEditing,
+            isEditingParameter,
+            setDashboardAttribute,
+            setEditingParameter
+        } = this.props;
 
         return (
-            <Header
-                headerClassName="wrapper"
-                objectType="dashboard"
-                // For some reason flow complains about the creator here
-                // $FlowFixMe
-                item={dashboard}
-                isEditing={this.props.isEditing}
-                isEditingInfo={this.props.isEditing}
-                headerButtons={this.getHeaderButtons()}
-                editingTitle="You are editing a dashboard"
-                editingButtons={this.getEditingButtons()}
-                setItemAttributeFn={this.props.setDashboardAttribute}
-                headerModalMessage={this.props.isEditingParameter ?
-                    "Select the field that should be filtered for each card" : null}
-                onHeaderModalDone={() => this.props.setEditingParameter(null)}
-            />
+            <span>
+                <Header
+                    headerClassName="wrapper"
+                    objectType="dashboard"
+                    // For some reason flow complains about the creator here
+                    // $FlowFixMe
+                    item={dashboard}
+                    isEditing={isEditing}
+                    isEditingInfo={isEditing}
+                    headerButtons={this.getHeaderButtons()}
+                    editingTitle="You are editing a dashboard"
+                    editingButtons={this.getEditingButtons()}
+                    setItemAttributeFn={setDashboardAttribute}
+                    headerModalMessage={
+                        isEditingParameter
+                            ? "Select the field that should be filtered for each card"
+                            : null
+                    }
+                    onHeaderModalDone={() => setEditingParameter(null)}
+                />
+                {
+                    /*
+                     * we need to include the modals here so the're avaliable
+                     * to be triggered by actions in the entiy menus
+                     * TODO - should these still be <ModalWithTrigger /> ?
+                     * */
+                }
+                <ModalWithTrigger
+                    key="history"
+                    ref="dashboardHistory"
+                >
+                    <HistoryModal
+                        entityType="dashboard"
+                        entityId={dashboard.id}
+                        revisions={this.props.revisions["dashboard-"+dashboard.id]}
+                        onFetchRevisions={this.onFetchRevisions.bind(this)}
+                        onRevertToRevision={this.onRevertToRevision.bind(this)}
+                        onClose={() => this.refs.dashboardHistory.toggle()}
+                        onReverted={() => this.onRevertedRevision()}
+                    />
+                </ModalWithTrigger>
+                <ModalWithTrigger
+                    key="archive"
+                    ref="dashboardArchive"
+                >
+                    <ArchiveDashboardModal
+                        dashboard={dashboard}
+                        onClose={() => this.refs.dashboardArchive.toggle()}
+                        onArchive={this.onArchive}
+                    />
+                </ModalWithTrigger>
+            </span>
         );
     }
 }
