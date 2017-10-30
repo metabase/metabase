@@ -14,7 +14,7 @@ export const examples = {
             objectType='dashboard'
             item={{
             }}
-            headerButtons={[[
+            defaultActions={[[
                 <EntityMenu
                     triggerIcon='pencil'
                     items={[

@@ -1,6 +1,6 @@
 /* @flow */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import { findDOMNode } from "react-dom";
 
 import Input from "metabase/components/Input";
 import HeaderModal from "metabase/components/HeaderModal";
@@ -10,11 +10,21 @@ import EditBar from "metabase/components/EditBar";
 import { getScrollY } from "metabase/lib/dom";
 
 type Props = {
-    // Buttons to be displayed in the header
-    headerButtons: [],
+    // Buttons to be displayed in the header in default mode
+    defaultActions: [],
+
+    // Actions to be displayed in the header in edit mode
+    editingActions: [],
+
+    // Actions to be displayed in the header if in fullscreen mode
+    fullscreenActions: [],
 
     // Whether or not editing is taking place
     isEditing: bool,
+
+    // Whether or not fullscreen is active
+    isFullscreen: bool,
+
     // What is this for and why?
     isEditingInfo: bool,
 
@@ -38,7 +48,7 @@ type Props = {
     onHeaderModalCancel?: () => void,
     editingTitle: string,
     editingSubtitle: string,
-    editingButtons: []
+    editBarButtons: [],
 }
 
 export default class Header extends Component {
@@ -49,11 +59,13 @@ export default class Header extends Component {
     }
 
     static defaultProps = {
-        headerButtons: [],
-        isEditing: false,
+        defaultActions: [],
+        editingActions: [],
+        fullscreenActions: [],
         editingTitle: "",
         editingSubtitle: "",
-        editingButtons: [],
+        isEditing: false,
+        isFullscreen: false,
     }
 
    componentDidMount() {
@@ -70,7 +82,7 @@ export default class Header extends Component {
     updateHeaderHeight() {
         if (!this.refs.header) return;
 
-        const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+        const rect = findDOMNode(this.refs.header).getBoundingClientRect();
         const headerHeight = rect.top + getScrollY();
         if (this.state.headerHeight !== headerHeight) {
             this.setState({ headerHeight });
@@ -88,9 +100,12 @@ export default class Header extends Component {
             isEditingInfo,
             editingTitle,
             editingSubtitle,
-            editingButtons,
-            headerButtons,
-            objectType
+            defaultActions,
+            editingActions,
+            fullscreenActions,
+            objectType,
+            isFullscreen,
+            editBarButtons
         } = this.props
 
         return (
@@ -100,7 +115,7 @@ export default class Header extends Component {
                         title={editingTitle}
                         subtitle={editingSubtitle}
                         // TODO - @kdoh - shouldnt bars have standard buttons?
-                        buttons={editingButtons}
+                        buttons={editBarButtons}
                     />
                 )}
                 {
@@ -155,15 +170,37 @@ export default class Header extends Component {
                         }
                     </div>
 
-                    <div className="flex align-center flex-align-right">
-                        {headerButtons.map((section, sectionIndex) => {
+                    { /* TODO - this should get cleaned up */ }
+                    <div className="flex align-center ml-auto">
+                        {!isEditing && !isFullscreen && defaultActions.map((section, sectionIndex) => {
                             return section && section.length > 0 && (
-                                <span
-                                    key={sectionIndex}
-                                    className="Header-buttonSection flex align-center"
-                                >
+                                <span key={sectionIndex} className="flex align-center">
                                     {section.map((button, buttonIndex) =>
-                                        <span key={buttonIndex} className="Header-button">
+                                        <span key={buttonIndex}>
+                                            {button}
+                                        </span>
+                                    )}
+                                </span>
+                            );
+                        })}
+                        { isEditing && !isFullscreen && editingActions.map((section, sectionIndex) => {
+                            return section && section.length > 0 && (
+                                <span key={sectionIndex} className="flex align-center">
+                                    {section.map((button, buttonIndex) =>
+                                        <span key={buttonIndex}>
+                                            {button}
+                                        </span>
+                                    )}
+                                </span>
+                            );
+
+                        })}
+
+                        { isFullscreen && fullscreenActions.map((section, sectionIndex) => {
+                            return section && section.length > 0 && (
+                                <span key={sectionIndex} className="flex align-center">
+                                    {section.map((button, buttonIndex) =>
+                                        <span key={buttonIndex}>
                                             {button}
                                         </span>
                                     )}

@@ -455,14 +455,12 @@ exports[`Header should render "A new item with buttons" correctly 1`] = `
       </div>
     </div>
     <div
-      className="flex align-center flex-align-right"
+      className="flex align-center ml-auto"
     >
       <span
-        className="Header-buttonSection flex align-center"
+        className="flex align-center"
       >
-        <span
-          className="Header-button"
-        >
+        <span>
           <div
             className="relative"
           >
@@ -533,7 +531,7 @@ exports[`Header should render "Editing" correctly 1`] = `
       </div>
     </div>
     <div
-      className="flex align-center flex-align-right"
+      className="flex align-center ml-auto"
     />
   </div>
 </div>

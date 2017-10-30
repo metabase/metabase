@@ -12,9 +12,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import EntityMenu from "metabase/components/EntityMenu"
-
-// These may or may not be needed as the menu refactor continues
-// import { getDashboardActions } from "./DashboardActions";
+import EntityMenuTrigger from "metabase/components/EntityMenuTrigger"
 
 import HistoryModal from "metabase/components/HistoryModal";
 import ArchiveDashboardModal from "./ArchiveDashboardModal";
@@ -123,7 +121,7 @@ export default class DashboardHeader extends Component {
         this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
-    getEditingButtons() {
+    getEditBarButtons() {
         return [
             <a
                 data-metabase-event="Dashboard;Cancel Edits"
@@ -148,128 +146,14 @@ export default class DashboardHeader extends Component {
     getHeaderButtons() {
         const {
             dashboard,
-            parametersWidget,
-            isEditing,
             isFullscreen,
-            isEditable,
             isAdmin,
-            onFullscreenChange
         } = this.props;
-
-        const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-        const canEdit = isEditable && !!dashboard;
 
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
 
-        const buttons = [];
-
-        if (isFullscreen && parametersWidget) {
-            buttons.push(parametersWidget);
-        }
-
-        if (isEditing) {
-            // Parameters
-            buttons.push(
-                <span>
-                    <Tooltip tooltip="Add a filter">
-                        <a
-                          key="parameters"
-                          className={cx("text-brand-hover", { "text-brand": this.state.modal == "parameters" })}
-                          title="Parameters"
-                          onClick={() => this.setState({ modal: "parameters" })}
-                        >
-                            <Icon name="funneladd" size={16} />
-                        </a>
-                    </Tooltip>
-
-                    {this.state.modal && this.state.modal === "parameters" &&
-                        <Popover onClose={() => this.setState({ modal: null })}>
-                            <ParametersPopover
-                                onAddParameter={this.props.addParameter}
-                                onClose={() => this.setState({ modal: null })}
-                            />
-                        </Popover>
-                    }
-                </span>
-            );
-        }
-
-        if (!isFullscreen && !isEditing && canEdit) {
-            buttons.push(
-                <EntityMenu
-                    triggerIcon="pencil"
-                    items={[
-                        {
-                            title: t`Edit dashboard`,
-                            icon: 'editdocument',
-                            action: () => this.onEdit()
-                        },
-                        {
-                            title: t`View revision history`,
-                            icon: 'history',
-                            action: () => this.refs.dashboardHistory.toggle()
-                        },
-                        {
-                            title: t`Archive`,
-                            icon: 'archive',
-                            action: () => this.refs.dashboardArchive.toggle()
-                        }
-                    ]}
-                />
-            );
-            buttons.push(
-                <EntityMenu
-                    triggerIcon="burger"
-                    items={[
-                        {
-                            title: isFullscreen
-                                ? t`Exit fullscreen`
-                                : t`Enter fullscreen`,
-                            icon: 'fullscreen',
-                            action: () => onFullscreenChange(!isFullscreen)
-                        },
-                        {
-                            title: t`Short`,
-                            icon: 'history',
-                            action: () => this.refs.dashboardHistory.toggle()
-                        },
-                        {
-                            title: t`Archive`,
-                            icon: 'archive',
-                            action: () => this.refs.dashboarArchive.toggle()
-                        }
-                    ]}
-                />
-            );
-        }
-
-        if (!isFullscreen && canEdit && isEditing) {
-            buttons.push(
-                <ModalWithTrigger
-                    full
-                    key="add"
-                    ref="addQuestionModal"
-                    triggerElement={
-                        <Tooltip tooltip="Add a question">
-                            <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
-                            </span>
-                        </Tooltip>
-                    }
-                >
-                    <AddToDashSelectQuestionModal
-                        dashboard={dashboard}
-                        cards={this.props.cards}
-                        fetchCards={this.props.fetchCards}
-                        addCardToDashboard={this.props.addCardToDashboard}
-                        onEditingChange={this.props.onEditingChange}
-                        onClose={() => this.refs.addQuestionModal.toggle()}
-                    />
-                </ModalWithTrigger>
-            );
-        }
-
+        const buttons = []
         if (!isFullscreen && (
             (isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
             (isEmbeddingEnabled && isAdmin)
@@ -277,10 +161,141 @@ export default class DashboardHeader extends Component {
             buttons.push(<DashboardEmbedWidget dashboard={dashboard} />)
         }
 
-        // A bunch of actions based on the state come from this call
-        //buttons.push(...getDashboardActions(this.props));
+    }
 
-        return [buttons];
+    getDefaultActions = () => {
+        const {
+            isFullscreen,
+            onFullscreenChange,
+            isNightMode,
+            onNightModeChange
+        } = this.props
+
+        return [
+            <EntityMenu
+                triggerIcon="pencil"
+                items={[
+                    {
+                        title: t`Edit dashboard`,
+                        icon: 'editdocument',
+                        action: () => this.onEdit()
+                    },
+                    {
+                        title: t`View revision history`,
+                        icon: 'history',
+                        action: () => this.refs.dashboardHistory.toggle()
+                    },
+                    {
+                        title: t`Archive`,
+                        icon: 'archive',
+                        action: () => this.refs.dashboardArchive.toggle()
+                    }
+                ]}
+            />,
+            <EntityMenu
+                triggerIcon="burger"
+                items={[
+                    {
+                        title: isFullscreen
+                            ? t`Exit fullscreen`
+                            : t`Enter fullscreen`,
+                        icon: isFullscreen
+                            ? 'contract'
+                            : 'expand',
+                        action: () => onFullscreenChange(!isFullscreen)
+                    },
+                    {
+                        title: t`Auto refresh`,
+                        icon: 'clock',
+                        action: () => this.refs.dashboardHistory.toggle()
+                    },
+                    {
+                        title: t`Night mode`,
+                        icon: 'moon',
+                        action: () => onNightModeChange(!isNightMode)
+                    }
+                ]}
+            />
+        ]
+    }
+
+    getEditingActions = () => {
+        const {
+            dashboard,
+            cards,
+            fetchCards,
+            addCardToDashboard,
+            onEditingChange,
+        } = this.props
+
+        const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
+
+        return [
+            <ModalWithTrigger
+                full
+                key="add"
+                ref="addQuestionModal"
+                triggerElement={
+                    <Tooltip tooltip="Add a question">
+                        <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
+                            <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
+                        </span>
+                    </Tooltip>
+                }
+            >
+                <AddToDashSelectQuestionModal
+                    dashboard={dashboard}
+                    cards={cards}
+                    fetchCards={fetchCards}
+                    addCardToDashboard={addCardToDashboard}
+                    onEditingChange={onEditingChange}
+                    onClose={() => this.refs.addQuestionModal.toggle()}
+                />
+            </ModalWithTrigger>,
+            <span>
+                <Tooltip tooltip="Add a filter">
+                    <a
+                      key="parameters"
+                      className={cx("text-brand-hover", { "text-brand": this.state.modal == "parameters" })}
+                      title="Parameters"
+                      onClick={() => this.setState({ modal: "parameters" })}
+                    >
+                        <Icon name="funneladd" size={16} />
+                    </a>
+                </Tooltip>
+
+                {this.state.modal && this.state.modal === "parameters" &&
+                    <Popover onClose={() => this.setState({ modal: null })}>
+                        <ParametersPopover
+                            onAddParameter={this.props.addParameter}
+                            onClose={() => this.setState({ modal: null })}
+                        />
+                    </Popover>
+                }
+            </span>
+        ]
+    }
+
+    getFullscreenActions = () => {
+        const {
+            isFullscreen,
+            isNightMode,
+            onFullscreenChange,
+            onNightModeChange,
+            parametersWidget
+        } = this.props
+
+        return [
+            <EntityMenuTrigger
+                icon={ isNightMode ? 'moon' : 'sun' }
+                onClick={() => onNightModeChange(!isNightMode)}
+            />,
+            <EntityMenuTrigger
+                icon='contract'
+                onClick={() => onFullscreenChange(!isFullscreen)}
+            />,
+            parametersWidget && parametersWidget
+        ]
     }
 
     render() {
@@ -288,8 +303,10 @@ export default class DashboardHeader extends Component {
             dashboard,
             isEditing,
             isEditingParameter,
+            isFullscreen,
+            revisions,
             setDashboardAttribute,
-            setEditingParameter
+            setEditingParameter,
         } = this.props;
 
         return (
@@ -299,14 +316,24 @@ export default class DashboardHeader extends Component {
                     // For some reason flow complains about the creator here
                     // $FlowFixMe
                     item={dashboard}
+
+                    defaultActions={[this.getDefaultActions()]}
+
                     isEditing={isEditing}
                     isEditingInfo={isEditing}
-                    headerButtons={this.getHeaderButtons()}
+                    editingActions={[this.getEditingActions()]}
+
+                    isFullscreen={isFullscreen}
+                    fullscreenActions={[this.getFullscreenActions()]}
+
+                    editBarButtons={this.getEditBarButtons()}
+
                     // This seems like it could be moved into the edit bar based
                     // on the objectType
                     editingTitle="You are editing a dashboard"
-                    editingButtons={this.getEditingButtons()}
+
                     setItemAttributeFn={setDashboardAttribute}
+
                     headerModalMessage={
                         isEditingParameter
                             ? "Select the field that should be filtered for each card"
@@ -321,24 +348,19 @@ export default class DashboardHeader extends Component {
                      * TODO - should these still be <ModalWithTrigger /> ?
                      * */
                 }
-                <ModalWithTrigger
-                    key="history"
-                    ref="dashboardHistory"
-                >
+                <ModalWithTrigger key="history" ref="dashboardHistory" >
                     <HistoryModal
                         entityType="dashboard"
                         entityId={dashboard.id}
-                        revisions={this.props.revisions["dashboard-"+dashboard.id]}
+                        revisions={revisions[`dashboard-${dashboard.id}`]}
                         onFetchRevisions={this.onFetchRevisions.bind(this)}
                         onRevertToRevision={this.onRevertToRevision.bind(this)}
                         onClose={() => this.refs.dashboardHistory.toggle()}
                         onReverted={() => this.onRevertedRevision()}
                     />
                 </ModalWithTrigger>
-                <ModalWithTrigger
-                    key="archive"
-                    ref="dashboardArchive"
-                >
+
+                <ModalWithTrigger key="archive" ref="dashboardArchive">
                     <ArchiveDashboardModal
                         dashboard={dashboard}
                         onClose={() => this.refs.dashboardArchive.toggle()}
