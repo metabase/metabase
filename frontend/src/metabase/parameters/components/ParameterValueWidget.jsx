@@ -168,13 +168,15 @@ export default class ParameterValueWidget extends Component {
                 <PopoverWithTrigger
                     ref="valuePopover"
                     triggerElement={
-                    <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
-                        { getParameterTypeIcon() }
-                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
-                        { getWidgetStatusIcon() }
-                    </div>
-                }
+                        <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
+                            { getParameterTypeIcon() }
+                            <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
+                            { getWidgetStatusIcon() }
+                        </div>
+                    }
                     target={() => this.refs.trigger} // not sure why this is necessary
+                    // make sure the full date picker will expand to fit the dual calendars
+                    autoWidth={parameter.type === "date/all-options"}
                 >
                     <Widget value={value} values={values} setValue={setValue}
                             onClose={() => this.refs.valuePopover.close()}/>
