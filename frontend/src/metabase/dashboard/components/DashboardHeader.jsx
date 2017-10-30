@@ -80,32 +80,6 @@ export default class DashboardHeader extends Component {
         modal: null,
     };
 
-    static propTypes = {
-        dashboard: PropTypes.object.isRequired,
-        revisions: PropTypes.object.isRequired,
-        isEditable: PropTypes.bool.isRequired,
-        isEditing: PropTypes.bool.isRequired,
-        isFullscreen: PropTypes.bool.isRequired,
-        isNightMode: PropTypes.bool.isRequired,
-
-        refreshPeriod: PropTypes.number,
-        refreshElapsed: PropTypes.number,
-
-        addCardToDashboard: PropTypes.func.isRequired,
-        archiveDashboard: PropTypes.func.isRequired,
-        fetchCards: PropTypes.func.isRequired,
-        fetchDashboard: PropTypes.func.isRequired,
-        fetchRevisions: PropTypes.func.isRequired,
-        revertToRevision: PropTypes.func.isRequired,
-        saveDashboardAndCards: PropTypes.func.isRequired,
-        setDashboardAttribute: PropTypes.func.isRequired,
-
-        onEditingChange: PropTypes.func.isRequired,
-        onRefreshPeriodChange: PropTypes.func.isRequired,
-        onNightModeChange: PropTypes.func.isRequired,
-        onFullscreenChange: PropTypes.func.isRequired
-    };
-
     onEdit() {
         this.props.onEditingChange(true);
     }
