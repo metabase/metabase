@@ -1,13 +1,16 @@
 (ns metabase.feature-extraction.insights
   "Data insights -- morsels of prepackaged analysis."
-  (:require [clojure.math.numeric-tower :as num]
+  (:require [bigml.histogram.core :as h.impl]
+            [clojure.math.numeric-tower :as num]
             [distributions.core :as d]
             [kixi.stats.core :as stats]
             [redux.core :as redux]
             [metabase.feature-extraction
              [histogram :as h]
              [math :as math]
-             [timeseries :as ts]]))
+             [timeseries :as ts]])
+  (:import net.sourceforge.jdistlib.disttest.DistributionTest)
+  )
 
 (defmacro ^:private definsight
   [insight docs features & body]
@@ -130,3 +133,15 @@
         {:quality (if (< diff 1)
                     :weak
                     :strong)}))))
+
+(definsight multimodal
+  "Is the data multimodal?
+   https://en.wikipedia.org/wiki/Multimodal_distribution
+   http://www.nicprice.net/diptest/Hartigan_1985_AnnalStat.pdf"
+  [histogram]
+  (-> histogram
+      (h.impl/sample 1000)
+      double-array
+      DistributionTest/diptest
+      second
+      (< 0.05)))

@@ -72,7 +72,7 @@ export class NilsInsight extends Component {
 
 export class ZerosInsight extends Component {
     static insightType = "zeros"
-    static title = "0s in your data"
+    static title = "Zeros in your data"
     static icon = "warning"
 
     render() {
@@ -181,6 +181,25 @@ export class SeasonalityInsight extends Component {
         )
     }
 }
+
+const multimodalDefinition = "Data distribution with multiple peaks (modes)."
+const multimodalLink = "https://en.wikipedia.org/wiki/Multimodal_distribution"
+
+export class MultimodalInsight extends Component {
+    static insightType = "multimodal"
+    static title = "Multimodal"
+    static icon = "warning"
+
+    render() {
+        return (
+            <InsightText>
+                Your data looks to be <TermWithDefinition definition={multimodalDefinition} link={multimodalLink}>
+                    multimodal
+                </TermWithDefinition>. This is often the case when different segments of data are mixed together.
+            </InsightText>
+        )
+    }
+}
 /*
 export class RegimeChangeInsight extends Component {
     static insightType = "regime-change"
@@ -217,6 +236,7 @@ const INSIGHT_COMPONENTS = [
     // numeric fields
     NormalRangeInsight,
     ZerosInsight,
+    MultimodalInsight,
     // timeseries
     NoisinessInsight,
     VariationTrendInsight,

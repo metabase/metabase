@@ -259,7 +259,8 @@
       (update :histogram (partial histogram->dataset field))
       (assoc :insights ((merge-juxt insights/normal-range
                                     insights/zeros
-                                    insights/nils)
+                                    insights/nils
+                                    insights/multimodal)
                         features))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
               :positive-definite? :var>sd? :uniqueness :min-vs-max)))

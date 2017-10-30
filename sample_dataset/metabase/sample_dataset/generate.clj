@@ -67,11 +67,20 @@
 (defn- random-company-name []
   (first (company/names)))
 
+(defn- rejection-sample
+  [min max dist]
+  (let [x (dist/sample dist)]
+    (if (<= min x max)
+      x
+      (rejection-sample min max dist))))
+
 (defn- random-price [min max]
-  (let [range (- max min)]
-    (-> (rand-int (* range 100))
-        (/ 100.0)
-        (+ min))))
+  (let [range    (- max min)
+        m1       (+ min (* range 0.3))
+        m2       (+ min (* range 0.75))
+        variance (/ range 8)]
+    (rejection-sample min max (rand-nth [(dist/normal m1 variance)
+                                         (dist/normal m2 variance)]))))
 
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
@@ -267,7 +276,7 @@
   [k xs]
   (let [n (count xs)]
     (map-indexed (fn [i x]
-                   (update x k * (/ i n) (rand)))
+                   (update x k * (+ 1 (* (/ i n) (- (rand 2) 0.9)))))
                  xs)))
 
 (defn add-seasonality

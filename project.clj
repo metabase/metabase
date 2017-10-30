@@ -77,6 +77,8 @@
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+                 [net.sourceforge.jdistlib/jdistlib "0.4.5"           ; Distribution statistic tests
+                  :exclusions [com.github.wendykierp/JTransforms]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
