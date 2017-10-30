@@ -78,9 +78,9 @@
    [(make-timestamp 2016 11) 0]
    [(make-timestamp 2016 12) 0]
    [(make-timestamp 2017 1) 25]]
-  (#'fe/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
-                                     [(make-timestamp 2016 3) 4]
-                                      [(make-timestamp 2017 1) 25]]))
+  (#'fe/fill-timeseries :month [[(make-timestamp 2016 1 12 4) 12]
+                                [(make-timestamp 2016 3 2 2) 4]
+                                [(make-timestamp 2017 1) 25]]))
 
 (expect
   [2
