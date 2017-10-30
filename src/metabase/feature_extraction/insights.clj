@@ -9,7 +9,7 @@
              [histogram :as h]
              [math :as math]
              [timeseries :as ts]])
-  (:import net.sourceforge.jdistlib.disttest.DistributionTest)
+  ;(:import net.sourceforge.jdistlib.disttest.DistributionTest)
   )
 
 (defmacro ^:private definsight
@@ -139,9 +139,10 @@
    https://en.wikipedia.org/wiki/Multimodal_distribution
    http://www.nicprice.net/diptest/Hartigan_1985_AnnalStat.pdf"
   [histogram]
-  (-> histogram
-      (h.impl/sample 1000)
-      double-array
-      DistributionTest/diptest
-      second
-      (< 0.05)))
+  ;; (-> histogram
+  ;;     (h.impl/sample 1000)
+  ;;     double-array
+  ;;     DistributionTest/diptest
+  ;;     second
+  ;;     (< 0.05))
+  nil)
