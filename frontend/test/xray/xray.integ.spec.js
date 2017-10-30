@@ -157,10 +157,8 @@ describe("xray integration tests", () => {
             expect(fieldXRay.length).toBe(1)
             expect(fieldXRay.find(CostSelect).length).toBe(1)
 
-            expect(app.find(InsightCard).length).toBe(3)
+            expect(app.find(InsightCard).length).toBe(1)
             expect(app.find(NormalRangeInsight).length).toBe(1)
-            expect(app.find(GapsInsight).length).toBe(1)
-            expect(app.find(NoisinessInsight).length).toBe(1)
         })
     })
 
@@ -315,7 +313,7 @@ describe("xray integration tests", () => {
             // Should contain the expected insights
             expect(app.find(InsightCard).length).toBe(2)
             expect(app.find(NoisinessInsight).length).toBe(1)
-            expect(app.find(RegimeChangeInsight).length).toBe(1)
+            expect(app.find(AutocorrelationInsight).length).toBe(1)
         })
 
         it("let you see segment xray for a question containing a segment", async () => {
