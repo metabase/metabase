@@ -98,19 +98,22 @@ export function computeTimeseriesDataInverval(xValues, unit) {
     return TIMESERIES_INTERVALS[computeTimeseriesDataInvervalIndex(xValues, unit)];
 }
 
-export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth, minPixels) {
+export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth) {
+    /// number of pixels each tick should get. TODO - this doesn't take into account the width of each tick, leading to overlappery
+    const MIN_PIXELS_PER_TICK = 100;
+
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
-    const maxTickCount = Math.round(chartWidth / minPixels);
+    const maxTickCount = Math.round(chartWidth / MIN_PIXELS_PER_TICK);
+
     let index = _.findIndex(TIMESERIES_INTERVALS, ({ interval, count }) => interval === xInterval.interval && count === xInterval.count);
-    while (index < TIMESERIES_INTERVALS.length - 1) {
+    for (; index < TIMESERIES_INTERVALS.length - 1; index++) {
         const interval   = TIMESERIES_INTERVALS[index];
         const intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
         const tickCount  = (xDomain[1] - xDomain[0]) / intervalMs;
         if (tickCount <= maxTickCount) {
             break;
         }
-        index++;
     }
     return TIMESERIES_INTERVALS[index];
 }
