@@ -12,21 +12,69 @@ import { parseTimestamp } from "metabase/lib/time";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import { getFriendlyName } from "./utils";
 
-const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
-
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
 const Y_LABEL_PADDING = 22;
 
-function adjustTicksIfNeeded(axis, axisSize: number, minPixelsPerTick: number) {
+/// d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
+/// if it's an array then convert to a num. Use this function so you're guaranteed to get a number;
+function getNumTicks(axis) {
     const ticks = axis.ticks();
-    // d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
-    // if it's an array then convert to a num
-    const numTicks: number = Array.isArray(ticks) ? ticks[0] : ticks;
+    return Array.isArray(ticks) ? ticks[0] : ticks;
+}
 
-    if ((axisSize / numTicks) < minPixelsPerTick) {
-        axis.ticks(Math.round(axisSize / minPixelsPerTick));
+/// adjust the number of ticks to display on the y Axis based on its height in pixels. Since y axis ticks
+/// are all the same height there's no need to do fancy measurement like we do below for the x axis.
+function adjustYAxisTicksIfNeeded(axis, axisHeightPixels) {
+    const MIN_PIXELS_PER_TICK = 32;
+
+    const numTicks = getNumTicks(axis);
+
+    if ((axisHeightPixels / numTicks) < MIN_PIXELS_PER_TICK) {
+        axis.ticks(Math.floor(axisHeightPixels / MIN_PIXELS_PER_TICK));
     }
+}
+
+/// Calculate the average length of values as strings.
+///
+///   averageStringLengthOfValues(["a", "toucan", "is", "wow"]); //-> 4
+///
+/// This is done so we can estimate how many ticks to show on the x axis, based on the average width of the tick
+/// labels. To avoid wasting everyone's time measuring too many strings we only measure the first 100 which seems to
+/// work well enough.
+function averageStringLengthOfValues(values) {
+    const MAX_VALUES_TO_MEASURE = 100;
+    values = values.slice(0, MAX_VALUES_TO_MEASURE);
+
+    let totalLength = 0;
+    for (let value of values) totalLength += String(value).length;
+
+    return Math.round(totalLength / values.length);
+}
+
+/// adjust the number of ticks displayed on the x axis based on the average width of each xValue. We measure the
+/// xValues to determine an average length and then figure out how many will be able to fit based on the width of the
+/// chart.
+function adjustXAxisTicksIfNeeded(axis, chartWidthPixels, xValues) {
+    // The const below is the number of pixels we should devote to each character for x-axis ticks. It can be thought
+    // of as an average pixel width of a single character; this number is an approximation; adjust it to taste.
+    // Higher values will reduce the number of ticks show on the x axis, increasing space between them; decreasing it
+    // will increase tick density.
+    const APPROXIMATE_AVERAGE_CHAR_WIDTH_PIXELS = 8;
+
+    // calculate the average length of each tick, then convert that to pixels
+    const tickAverageStringLength = averageStringLengthOfValues(xValues);
+    const tickAverageWidthPixels  = tickAverageStringLength * APPROXIMATE_AVERAGE_CHAR_WIDTH_PIXELS;
+
+    console.log("tickAverageWidthPixels:", tickAverageWidthPixels); // NOCOMMIT
+
+    // now figure out the approximate number of ticks we'll be able to show based on the width of the chart. Round
+    // down so we error on the side of more space rather than less.
+    const maxTicks = Math.floor(chartWidthPixels / tickAverageWidthPixels);
+    console.log("maxTicks:", maxTicks); // NOCOMMIT
+
+    // finally, if the chart is currently showing more ticks than we think it can show, adjust it down
+    if (getNumTicks(axis) > maxTicks) axis.ticks(maxTicks);
 }
 
 export function applyChartTimeseriesXAxis(chart, settings, series, { xValues, xDomain, xInterval }) {
@@ -58,7 +106,7 @@ export function applyChartTimeseriesXAxis(chart, settings, series, { xValues, xD
         // TODO: are there any other cases where we should do this?
         if (dataInterval.interval === "week") {
             // if tick interval is compressed then show months instead of weeks because they're nicer formatted
-            const newTickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
+            const newTickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width());
             if (newTickInterval.interval !== tickInterval.interval || newTickInterval.count !== tickInterval.count) {
                 dimensionColumn = { ...dimensionColumn, unit: "month" },
                 tickInterval = { interval: "month", count: 1 };
@@ -73,7 +121,7 @@ export function applyChartTimeseriesXAxis(chart, settings, series, { xValues, xD
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        tickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
+        tickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width());
         chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
@@ -101,7 +149,7 @@ export function applyChartQuantitativeXAxis(chart, settings, series, { xValues, 
     }
     if (settings["graph.x_axis.axis_enabled"]) {
         chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
-        adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
+        adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
         chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
     } else {
@@ -144,14 +192,11 @@ export function applyChartOrdinalXAxis(chart, settings, series, { xValues }) {
     if (settings["graph.x_axis.axis_enabled"]) {
         chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
         chart.xAxis().ticks(xValues.length);
-        adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
+        adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
         // unfortunately with ordinal axis you can't rely on xAxis.ticks(num) to control the display of labels
         // so instead if we want to display fewer ticks than our full set we need to calculate visibleTicks()
-        let numTicks = chart.xAxis().ticks();
-        if (Array.isArray(numTicks)) {
-            numTicks = numTicks[0];
-        }
+        const numTicks = getNumTicks(chart.xAxis());
         if (numTicks < xValues.length) {
             let keyInterval = Math.round(xValues.length / numTicks);
             let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
@@ -206,7 +251,7 @@ export function applyChartYAxis(chart, settings, series, yExtent, axisName) {
             axis.axis().tickFormat(value => Math.round(value * 100) + "%");
         }
         chart.renderHorizontalGridLines(true);
-        adjustTicksIfNeeded(axis.axis(), chart.height(), MIN_PIXELS_PER_TICK.y);
+        adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
     } else {
         axis.axis().ticks(0);
     }
