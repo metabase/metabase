@@ -21,26 +21,32 @@ type Props = {
     // The item in question being viewed, most likely a question or dashbaord
     item: {
         name: string,
-        description: string,
+        description: ?string,
         creator: {
             common_name: string
         }
     },
 
-    // An object with properties that should be passed to the edit bar
-    edtiBar: {},
-    // An object with properties that should be passed to the header modal
-    headerModal: {},
-
     // The kind of thing being edited, again, probably a dashboard or question
     objectType: string,
 
     // the function that gets called when you edit the title or description
-    setItemAttributeFn: () => void
+    setItemAttributeFn: (attribute: string, value: string) => void,
+
+    headerModalMessage: ?string,
+    onHeaderModalDone?: () => void,
+    onHeaderModalCancel?: () => void,
+    editingTitle: string,
+    editingSubtitle: string,
+    editingButtons: []
 }
 
 export default class Header extends Component {
     props: Props
+
+    state = {
+        headerHeight: 0
+    }
 
     static defaultProps = {
         headerButtons: [],
@@ -48,10 +54,6 @@ export default class Header extends Component {
         editingTitle: "",
         editingSubtitle: "",
         editingButtons: [],
-    }
-
-    state = {
-        headerHeight: 0
     }
 
    componentDidMount() {

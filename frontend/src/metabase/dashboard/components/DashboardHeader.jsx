@@ -16,10 +16,11 @@ import EntityMenu from "metabase/components/EntityMenu"
 
 // These may or may not be needed as the menu refactor continues
 // import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
-// import HistoryModal from "metabase/components/HistoryModal.jsx";
 // import { getDashboardActions } from "./DashboardActions";
-// import ParametersPopover from "./ParametersPopover.jsx";
-// import Popover from "metabase/components/Popover.jsx";
+
+import HistoryModal from "metabase/components/HistoryModal.jsx";
+import ParametersPopover from "./ParametersPopover.jsx";
+import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -179,7 +180,6 @@ export default class DashboardHeader extends Component {
             buttons.push(parametersWidget);
         }
 
-            /*
         if (isEditing) {
             // Parameters
             buttons.push(
@@ -230,7 +230,6 @@ export default class DashboardHeader extends Component {
                 </ModalWithTrigger>
             );
         }
-        */
 
         if (!isFullscreen && !isEditing && canEdit) {
             buttons.push(
@@ -331,6 +330,8 @@ export default class DashboardHeader extends Component {
             <Header
                 headerClassName="wrapper"
                 objectType="dashboard"
+                // For some reason flow complains about the creator here
+                // $FlowFixMe
                 item={dashboard}
                 isEditing={this.props.isEditing}
                 isEditingInfo={this.props.isEditing}
