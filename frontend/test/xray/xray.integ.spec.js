@@ -53,11 +53,10 @@ import { TestPopover } from "metabase/components/Popover";
 import ItemLink from "metabase/xray/components/ItemLink";
 import { TableLikeComparisonXRay } from "metabase/xray/containers/TableLikeComparison";
 import {
-    GapsInsight,
     InsightCard,
     NoisinessInsight,
     NormalRangeInsight,
-    RegimeChangeInsight
+    AutocorrelationInsight
 } from "metabase/xray/components/InsightCard";
 
 describe("xray integration tests", () => {
