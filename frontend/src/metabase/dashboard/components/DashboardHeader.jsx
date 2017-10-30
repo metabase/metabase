@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { t } from 'c-3po'
 
 import ActionButton from "metabase/components/ActionButton.jsx";
@@ -126,7 +125,12 @@ export default class DashboardHeader extends Component {
 
     getEditingButtons() {
         return [
-            <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small" onClick={() => this.onCancel()}>
+            <a
+                data-metabase-event="Dashboard;Cancel Edits"
+                key="cancel"
+                className="Button Button--small"
+                onClick={() => this.onCancel()}
+            >
                 Cancel
             </a>,
             <ActionButton
@@ -142,7 +146,16 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, parametersWidget, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
+        const {
+            dashboard,
+            parametersWidget,
+            isEditing,
+            isFullscreen,
+            isEditable,
+            isAdmin,
+            onFullscreenChange
+        } = this.props;
+
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = isEditable && !!dashboard;
 
@@ -210,9 +223,11 @@ export default class DashboardHeader extends Component {
                     triggerIcon="burger"
                     items={[
                         {
-                            title: t`Edit dashboard`,
-                            icon: 'editdocument',
-                            action: () => this.onEdit()
+                            title: isFullscreen
+                                ? t`Exit fullscreen`
+                                : t`Enter fullscreen`,
+                            icon: 'fullscreen',
+                            action: () => onFullscreenChange(!isFullscreen)
                         },
                         {
                             title: t`Short`,
@@ -280,7 +295,6 @@ export default class DashboardHeader extends Component {
         return (
             <span>
                 <Header
-                    headerClassName="wrapper"
                     objectType="dashboard"
                     // For some reason flow complains about the creator here
                     // $FlowFixMe
@@ -288,6 +302,8 @@ export default class DashboardHeader extends Component {
                     isEditing={isEditing}
                     isEditingInfo={isEditing}
                     headerButtons={this.getHeaderButtons()}
+                    // This seems like it could be moved into the edit bar based
+                    // on the objectType
                     editingTitle="You are editing a dashboard"
                     editingButtons={this.getEditingButtons()}
                     setItemAttributeFn={setDashboardAttribute}
