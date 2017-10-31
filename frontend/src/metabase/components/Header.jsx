@@ -160,14 +160,6 @@ export default class Header extends Component {
                                     />
                                 )
                         }
-                        {
-                            // TODO - @kdoh - does this ever evalutate to true?
-                            item && item.creator && (
-                                <div className="Header-attribution">
-                                    Asked by {item.creator.common_name}
-                                </div>
-                            )
-                        }
                     </div>
 
                     { /* TODO - this should get cleaned up */ }
