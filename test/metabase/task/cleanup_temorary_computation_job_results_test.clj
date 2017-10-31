@@ -10,18 +10,18 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(tt/expect-with-temp
- [ComputationJob       [{job-id :id} {:type   :simple-job
-                                      :status :done}]
-  ComputationJobResult [{result-id :id} {:job_id     job-id
-                                         :permanence :temporary
-                                         :payload    1}]]
-  true
-  (let [c1 (count (ComputationJobResult))]
-    (db/update! ComputationJobResult result-id
-                :created_at (->> #'task/temporary-result-lifetime
-                                 var-get
-                                 (t/minus (t/now) (t/days 1))
-                                 t.coerce/to-sql-time))
-    (#'task/cleanup-temporary-results!)
-    (> c1 (count (ComputationJobResult)))))
+;; check that cleanup-temporary-results deletes :temporary ComputationJobResult objects
+(expect
+  (tt/with-temp* [ComputationJob       [{job-id :id} {:type   :simple-job
+                                                      :status :done}]
+                  ComputationJobResult [{result-id :id} {:job_id     job-id
+                                                         :permanence :temporary
+                                                         :payload    1}]]
+    (let [initial-count (db/count ComputationJobResult)]
+      (db/update! ComputationJobResult result-id
+        :created_at (->> #'task/temporary-result-lifetime
+                         var-get
+                         (t/minus (t/now) (t/days 1))
+                         t.coerce/to-sql-time))
+      (#'task/cleanup-temporary-results!)
+      (> initial-count (db/count ComputationJobResult)))))
