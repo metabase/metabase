@@ -12,7 +12,7 @@
 (expect
   [true :canceled false]
   (let [job-id (compute (gensym) #(loop [] (Thread/sleep 100) (recur)))
-        r? (running? (ComputationJob job-id))]
+        r?     (running? (ComputationJob job-id))]
     (Thread/sleep 100)
     (cancel (ComputationJob job-id))
     [r? (:status (ComputationJob job-id)) (running? (ComputationJob job-id))]))
