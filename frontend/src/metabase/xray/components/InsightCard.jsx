@@ -37,7 +37,7 @@ export class NormalRangeInsight extends Component {
         const { lower, upper, features: { model } } = this.props
         return (
             <InsightText>
-                Most of the values for { model.name } are between <b>{ lower }</b> and <b>{ upper }</b>.
+                Most of the values for { model.display_name || model.name } are between <b>{ lower }</b> and <b>{ upper }</b>.
             </InsightText>
         )
     }
