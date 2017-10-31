@@ -2,12 +2,27 @@
     z-index: 4;
 }
 
-.NavItem {
-    border-radius: 8px;
+
+.NavItem.NavItem--selected {
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
-.NavItem:hover, .NavItem.NavItem--selected {
-    background-color: rgba(255, 255, 255, 0.08);
+
+.NavItem > .Icon {
+  padding-left: 1em;
+  padding-right: 1em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .NavItem {
+      border-radius: 8px;
+  }
+  .NavItem:hover,
+  .NavItem.NavItem--selected {
+      background-color: rgba(255, 255, 255, 0.08);
+  }
 }
 
 .NavNewQuestion {
@@ -190,3 +205,35 @@
     line-height: 1;
     text-transform: uppercase;
 }
+
+@media screen and (--breakpoint-min-md) {
+  .HomepageGreeting {
+    margin-right: 346px;
+  }
+}
+
+/* there are 5 mav items on mobile, so distribute the items evenly */
+.Nav ul li { flex: 0 20%; }
+
+/* on larger screens, things should just flow naturally */
+@media screen and (--breakpoint-min-md) {
+  .Nav ul li { flex: unset; }
+}
+
+/* the logo nav item needs a little bit of additional padding so that it
+ * matches up with the other nav items which have 16px icons and 0.75em padding.
+ * Since the logo is 32px we cut the padding in half to get 0.375
+ * */
+.LogoNavItem {
+  padding-top: 0.375em;
+  padding-bottom: 0.375em;
+}
+
+/* we want to unset the above when we no longer need the nav item to fill the space */
+@media screen and (--breakpoint-min-md) {
+  .LogoNavItem {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+

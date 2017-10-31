@@ -212,6 +212,11 @@
           :logoFooter   true}
          (random-quote-context)))
 
+(defn- render-message-body
+  [message-template message-context images]
+  (vec (cons {:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-context)}
+             (map write-image-content images))))
+
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone pulse results]
@@ -219,8 +224,5 @@
         body         (binding [render/*include-title* true
                                render/*render-img-fn* (partial render-image images)]
                        (vec (cons :div (for [result results]
-                                         (render/render-pulse-section timezone result)))))
-        message-body (stencil/render-file "metabase/email/pulse"
-                       (pulse-context body pulse))]
-    (vec (cons {:type "text/html; charset=utf-8" :content message-body}
-               (mapv write-image-content (seq @images))))))
+                                         (render/render-pulse-section timezone result)))))]
+    (render-message-body "metabase/email/pulse" (pulse-context body pulse) (seq @images))))

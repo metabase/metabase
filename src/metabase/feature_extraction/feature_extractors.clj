@@ -14,6 +14,7 @@
              [histogram :as h]
              [stl :as stl]
              [values :as values]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase
              [query-processor :as qp]
@@ -123,16 +124,10 @@
    :columns (map :name field)
    :cols    (map #(dissoc % :remapped_from) field)})
 
-(def ^:private Num      [:type/Number :type/*])
-(def ^:private DateTime [:type/DateTime :type/*])
-(def ^:private Category [:type/* :type/Category])
-(def ^:private Any      [:type/* :type/*])
-(def ^:private Text     [:type/Text :type/*])
-
-(defn- periodic-date-time?
-  [field]
-  (#{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
-     :week-of-year :month-of-year :quarter-of-year} (:unit field)))
+(def ^:private ^{:arglists '([field])} periodic-date-time?
+  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year
+          :week-of-year :month-of-year :quarter-of-year}
+        :unit))
 
 (defn- unix-timestamp?
   [{:keys [base_type special_type]}]
@@ -177,7 +172,23 @@
 
 (defmethod comparison-vector :default
   [features]
-  (dissoc features :type :field :has-nils? :all-distinct? :percentiles))
+  (dissoc features :type :field :has-nils? :all-distinct? :percentiles :table :model))
+
+(def ^:private Num      [:type/Number :type/*])
+(def ^:private DateTime [:type/DateTime :type/*])
+(def ^:private Category [:type/* :type/Category])
+(def ^:private Any      [:type/* :type/*])
+(def ^:private Text     [:type/Text :type/*])
+
+(prefer-method feature-extractor Category Text)
+(prefer-method feature-extractor Num Category)
+(prefer-method feature-extractor [DateTime Num] [Any Num])
+(prefer-method x-ray Category Text)
+(prefer-method x-ray Num Category)
+(prefer-method x-ray [DateTime Num] [Any Num])
+(prefer-method comparison-vector Category Text)
+(prefer-method comparison-vector Num Category)
+(prefer-method comparison-vector [DateTime Num] [Any Num])
 
 (def ^:private percentiles (range 0 1 0.1))
 
@@ -204,7 +215,9 @@
   [field]
   (fn [_]
     {:field field
-     :type  (field-type field)}))
+     :model field
+     :type  (field-type field)
+     :table (Table (:table_id field))}))
 
 (defmethod feature-extractor Num
   [{:keys [max-cost]} field]
@@ -279,18 +292,26 @@
   (somef (comp t.coerce/from-long long)))
 
 (defn- fill-timeseries
-  "Given a coll of `[DateTime, Any]` pairs evenly spaced `step` apart, fill
+  "Given a coll of `[DateTime, Num]` pairs evenly spaced `step` apart, fill
    missing points with 0."
-  [step ts]
-  (let [ts-index (into {} ts)]
+  [resolution ts]
+  (let [[step rounder] (case resolution
+                         :month   [(t/months 1) t/month]
+                         :quarter [(t/months 3) t/month]
+                         :year    [(t/years 1) t/year]
+                         :week    [(t/weeks 1) t/day]
+                         :day     [(t/days 1) t/day]
+                         :hour    [(t/hours 1) t/day]
+                         :minute  [(t/minutes 1) t/minute])
+        ts             (for [[x y] ts]
+                         [(-> x from-double (t/floor rounder)) y])
+        ts-index       (into {} ts)]
     (into []
-      (comp (map to-double)
-            (take-while (partial >= (-> ts last first)))
+      (comp (take-while (partial (complement t/before?) (-> ts last first)))
             (map (fn [t]
-                   [t (ts-index t 0)])))
+                   [(to-double t) (ts-index t 0)])))
       (some-> ts
               ffirst
-              from-double
               (t.periodic/periodic-seq step)))))
 
 (defn- decompose-timeseries
@@ -377,15 +398,7 @@
     (fn [{:keys [series linear-regression]}]
       (let [resolution (infer-resolution query series)
             series     (if resolution
-                         (fill-timeseries (case resolution
-                                            :month   (t/months 1)
-                                            :quarter (t/months 3)
-                                            :year    (t/years 1)
-                                            :week    (t/weeks 1)
-                                            :day     (t/days 1)
-                                            :hour    (t/hours 1)
-                                            :minute  (t/minutes 1))
-                                          series)
+                         (fill-timeseries resolution series)
                          series)]
         (merge {:resolution             resolution
                 :series                 series
@@ -442,13 +455,13 @@
                               :base_type    :type/Float}]))
         (update-in [:seasonal-decomposition :seasonal]
                    (partial series->dataset from-double
-                            [(first field)
+                            [x-field
                              {:name         "SEASONAL"
                               :display_name "Seasonal component"
                               :base_type    :type/Float}]))
         (update-in [:seasonal-decomposition :residual]
                    (partial series->dataset from-double
-                            [(first field)
+                            [x-field
                              {:name         "RESIDUAL"
                               :display_name "Decomposition residual"
                               :base_type    :type/Float}])))))
@@ -596,14 +609,4 @@
       {:count     total-count
        :nil%      (/ nil-count (max total-count 1))
        :has-nils? (pos? nil-count)
-       :type      [nil (field-type field)]}))))
-
-(prefer-method feature-extractor Category Text)
-(prefer-method feature-extractor Num Category)
-(prefer-method feature-extractor [DateTime Num] [Any Num])
-(prefer-method x-ray Category Text)
-(prefer-method x-ray Num Category)
-(prefer-method x-ray [DateTime Num] [Any Num])
-(prefer-method comparison-vector Category Text)
-(prefer-method comparison-vector Num Category)
-(prefer-method comparison-vector [DateTime Num] [Any Num])
+       :type      nil}))))

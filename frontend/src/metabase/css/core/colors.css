@@ -61,6 +61,10 @@
 .bg-brand-hover:hover,
 .bg-brand-active:active { background-color: var(--brand-color); }
 
+@media screen and (--breakpoint-min-md) {
+  .md-bg-brand { background-color: var(--brand-color) !important; }
+}
+
 
 /* success */
 
@@ -166,6 +170,10 @@
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white, :local(.text-white),
 .text-white-hover:hover { color: #fff; }
+
+@media screen and (--breakpoint-min-md) {
+  .md-text-white { color: #fff; }
+}
 
 /* common pattern, background brand, text white when hovering or selected */
 .brand-hover:hover {

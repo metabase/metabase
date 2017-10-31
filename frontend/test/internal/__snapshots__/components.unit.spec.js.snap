@@ -436,6 +436,76 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
 </div>
 `;
 
+exports[`Select should render "Default" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect flex align-center  text-grey-3"
+  >
+    <span
+      className="AdminSelect-content mr1"
+    >
+      Yellow
+    </span>
+    <svg
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right"
+      fill="currentcolor"
+      height={12}
+      name="chevrondown"
+      size={12}
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+      />
+    </svg>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
+exports[`Select should render "With search" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect flex align-center  text-grey-3"
+  >
+    <span
+      className="AdminSelect-content mr1"
+    >
+      Yellow
+    </span>
+    <svg
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right"
+      fill="currentcolor"
+      height={12}
+      name="chevrondown"
+      size={12}
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+      />
+    </svg>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
 exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
 <div
   className="relative"

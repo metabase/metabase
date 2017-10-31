@@ -8,8 +8,12 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
 
-function getSeriesTitles(series, vizSettings) {
+function getSeriesDefaultTitles(series, vizSettings) {
     return series.map(s => s.card.name);
+}
+
+function getSeriesTitles(series, vizSettings) {
+    return vizSettings["graph.series_labels"] || getSeriesDefaultTitles(series, vizSettings);
 }
 
 export const GRAPH_DATA_SETTINGS = {
@@ -173,8 +177,8 @@ export const GRAPH_COLORS_SETTINGS = {
       getTitle: ([{ card: { display } }]) =>
           capitalize(display === "scatter" ? "bubble" : display) + " colors",
       widget: "colors",
-      readDependencies: ["graph.dimensions", "graph.metrics"],
-      getDefault: ([{ card, data }], vizSettings) => {
+      readDependencies: ["graph.dimensions", "graph.metrics", "graph.series_labels"],
+      getDefault: ([{ card }], vizSettings) => {
           return getCardColors(card);
       },
       getProps: (series, vizSettings) => {
@@ -334,4 +338,12 @@ export const GRAPH_AXIS_SETTINGS = {
       getDefault: (series, vizSettings) =>
           series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null
   },
+    "graph.series_labels": {
+        section: "Labels",
+        title: "Series labels",
+        widget: "inputGroup",
+        readDependencies: ["graph.dimensions", "graph.metrics"],
+        getHidden: (series) => series.length < 2,
+        getDefault: (series, vizSettings) => getSeriesDefaultTitles(series, vizSettings)
+    },
 }

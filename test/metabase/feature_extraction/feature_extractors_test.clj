@@ -78,9 +78,9 @@
    [(make-timestamp 2016 11) 0]
    [(make-timestamp 2016 12) 0]
    [(make-timestamp 2017 1) 25]]
-  (#'fe/fill-timeseries (t/months 1) [[(make-timestamp 2016 1) 12]
-                                     [(make-timestamp 2016 3) 4]
-                                      [(make-timestamp 2017 1) 25]]))
+  (#'fe/fill-timeseries :month [[(make-timestamp 2016 1 12 4) 12]
+                                [(make-timestamp 2016 3 2 2) 4]
+                                [(make-timestamp 2017 1) 25]]))
 
 (expect
   [2
@@ -166,7 +166,7 @@
    (var-get #'fe/DateTime)
    [:type/Text :type/Category]
    (var-get #'fe/Text)
-   [nil [:type/NeverBeforeSeen :type/*]]]
+   nil]
   [(-> (->features {:base_type :type/Number} numbers) :type)
    (-> (->features {:base_type :type/Number} ints) :type)
    (-> (->features {:base_type :type/DateTime} datetimes) :type)
