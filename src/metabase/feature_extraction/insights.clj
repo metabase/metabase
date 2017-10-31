@@ -30,18 +30,18 @@
 
 (definsight nils
   "Are there any nils in the data?"
-  [nil% field]
+  [nil% field count]
   (when (pos? nil%)
-    {:quality (if (< nil% 0.1)
+    {:quality (if (< nil% (/ (Math/log (inc count))))
                 :some
                 :many)
      :filter  [:IS_NULL [:field-id (:id field)]]}))
 
 (definsight zeros
   "Are there any 0s in the data?"
-  [zero% field]
+  [zero% field count]
   (when (pos? zero%)
-    {:quality (if (< zero% 0.1)
+    {:quality (if (< zero% (/ (Math/log (inc count))))
                 :some
                 :many)
      :filter  [:= [:field-id (:id field)] 0]}))
@@ -49,14 +49,9 @@
 (definsight autocorrelation
   "Is there a significant autocorrelation at lag up to period length?
    https://en.wikipedia.org/wiki/Autocorrelation"
-  [series resolution]
-  (let [{:keys [autocorrelation lag]} (math/autocorrelation
-                                       {:max-lag (or (some-> resolution
-                                                             ts/period-length
-                                                             dec)
-                                                     (/ (count series) 2))}
-                                       (map second series))]
-    (when (> autocorrelation 0.3)
+  [autocorrelation]
+  (let [{:keys [autocorrelation lag]} autocorrelation]
+    (when (some-> autocorrelation (> 0.3))
       {:quality (if (< autocorrelation 0.6)
                   :weak
                   :strong)

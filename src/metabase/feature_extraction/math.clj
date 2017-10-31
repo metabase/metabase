@@ -29,11 +29,10 @@
   [series]
   (->> series
        (partition 2 1)
-       (map (fn [[[_ y1] [x y2]]]
-              [x (- y2 y1)]))
-       (partition-by (comp pos? second))
-       count
-       dec))
+       (partition-by (fn [[[_ y1] [_ y2]]]
+                       (>= y2 y1)))
+       rest
+       count))
 
 (defn roughly=
   "Is `x` èqual to `y` within precision `precision` (default 0.05)."
@@ -45,22 +44,26 @@
   "Calculate autocorrelation at lag `lag` or find the lag with the highest
    autocorrelation up to `max-lag` if `lag` is not given.
    https://en.wikipedia.org/wiki/Autocorrelation"
-  ([xs] (autocorrelation {:max-lag (/ (count xs) 2)} xs))
+  ([xs] (autocorrelation {:max-lag (Math/floor (/ (count xs) 2))} xs))
   ([{:keys [lag max-lag]} xs]
    {:pre [(or lag max-lag)]}
    (if lag
-     (transduce identity (stats/correlation first second)
+     (transduce identity (redux/post-complete
+                          (stats/correlation first second)
+                          (stats/somef #(max (min % 1.0) -1.0)))
                 (map vector xs (drop lag xs)))
-     (reduce (fn [{r-best :autocorrelation lag-best :lag :as best} lag]
-               (let [r (autocorrelation {:lag lag} xs)]
-                 (if (pos? (compare [(math/abs r) (- lag)]
-                                    [(math/abs r-best) (- lag-best)]))
-                   {:autocorrelation r
-                    :lag             lag}
-                   best)))
-             {:lag             0
-              :autocorrelation 0}
-             (range 1 (inc max-lag))))))
+     (let [r-crit (/ 1.96 (math/sqrt (count xs)))]
+       (reduce (fn [best lag]
+                 (let [r (autocorrelation {:lag lag} xs)]
+                   (if (and (some-> r math/abs (> r-crit))
+                            (pos? (compare [(math/abs r) (- lag)]
+                                           [(math/abs (:autocorrelation best 0))
+                                            (- (:lag best 0))])))
+                     {:autocorrelation r
+                      :lag             lag}
+                     best)))
+               nil
+               (range 1 (inc max-lag)))))))
 
 (def linear-regression
   "Transducer that calculates (simple) linear regression."

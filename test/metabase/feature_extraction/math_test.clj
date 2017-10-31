@@ -60,3 +60,22 @@
   [true false]
   [(roughly= 30 30.5 0.05)
    (roughly= 130 30.5 0.05)])
+
+(expect
+  [0 1 3 0]
+  [(saddles [[1 1] [2 2] [3 3]])
+   (saddles [[1 1] [2 2] [3 -2]])
+   (saddles [[1 1] [2 2] [3 -2] [4 5] [5 2]])
+   (saddles nil)])
+
+(expect
+  [{:autocorrelation 1.0
+    :lag 1}
+   {:autocorrelation -1.0
+    :lag 1}
+   nil nil nil]
+  [(autocorrelation (range 10))
+   (autocorrelation [1 -1 1 -1 1 -1])
+   (autocorrelation [1 2 3]) ; not significant
+   (autocorrelation [1])
+   (autocorrelation [])])

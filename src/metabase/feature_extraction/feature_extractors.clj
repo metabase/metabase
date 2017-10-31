@@ -87,7 +87,7 @@
     :columns [(:name field) "SHARE"]
     :cols    [(dissoc field :remapped_from)
               {:name         "SHARE"
-               :display_name "Share"
+               :display_name "Share [%]"
                :description  "Share of corresponding bin in the overall population."
                :base_type    :type/Float}]}))
 
@@ -163,19 +163,15 @@
 (prefer-method comparison-vector Num Category)
 (prefer-method comparison-vector [DateTime Num] [Any Num])
 
-(def ^:private percentiles (range 0 1 0.1))
-
 (defn- histogram-extractor
   [{:keys [histogram]}]
   (let [nil-count   (h/nil-count histogram)
         total-count (h/total-count histogram)]
-    (merge {:histogram histogram
-            :nil%      (math/safe-divide nil-count total-count)
-            :has-nils? (pos? nil-count)
-            :count     total-count
-            :entropy   (h/entropy histogram)}
-           (when-not (h/categorical? histogram)
-             {:percentiles (apply h.impl/percentiles histogram percentiles)}))))
+    {:histogram histogram
+     :nil%      (math/safe-divide nil-count total-count)
+     :has-nils? (pos? nil-count)
+     :count     total-count
+     :entropy   (h/entropy histogram)}))
 
 (defn- cardinality-extractor
   [{:keys [cardinality histogram]}]
@@ -244,6 +240,7 @@
          :sum                sum
          :sum-of-squares     sum-of-squares
          :zero%              (math/safe-divide zeros (h/total-count histogram))
+         :percentiles        (apply h.impl/percentiles histogram (range 0 1 0.1))
          :histogram          (or histogram-categorical histogram)})))))
 
 (defmethod comparison-vector Num
@@ -334,7 +331,13 @@
                 :seasonal-decomposition
                 (when (and resolution
                            (costs/unbounded-computation? max-cost))
-                  (ts/decompose resolution series))}
+                  (ts/decompose resolution series))
+                :autocorrelation
+                (math/autocorrelation {:max-lag (or (some-> resolution
+                                                            ts/period-length
+                                                            dec)
+                                                    (/ (count series) 2))}
+                                      (map second series))}
                (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
                  {:YoY (rolling-window-growth 365 query)
@@ -362,7 +365,7 @@
   [{:keys [field series] :as features}]
   (let [x-field (first field)]
     (-> features
-        (dissoc :series)
+        (dissoc :series :autocorrelation)
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
                                       insights/autocorrelation
@@ -371,7 +374,7 @@
         (update :growth-series (partial series->dataset ts/from-double
                                         [x-field
                                          {:name         "GROWTH"
-                                          :display_name "Growth"
+                                          :display_name "Growth [%]"
                                           :base_type    :type/Float}]))
         (update :linear-regression
                 (partial unpack-linear-regression ts/from-double x-field series))

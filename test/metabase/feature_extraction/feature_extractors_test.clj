@@ -81,7 +81,7 @@
   (-> (apply t/date-time args)
       t.coerce/to-sql-time))
 
-(def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
+(def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22 0.0])
 (def ^:private ints [0 nil Long/MAX_VALUE Long/MIN_VALUE 5 -100])
 (def ^:private datetimes [(make-sql-timestamp 2015 6 1)
                           nil
@@ -118,3 +118,12 @@
         :type)
    (-> (->features {:base_type :type/NeverBeforeSeen} numbers)
        :type)])
+
+(expect
+  [:some
+   :some
+   0.5025]
+  (let [x-ray (-> (->features {:base_type :type/Number} numbers) x-ray :insights)]
+    [(-> x-ray :zeros :quality)
+     (-> x-ray :nils :quality)
+     (-> x-ray :normal-range :upper)]))
