@@ -6,8 +6,6 @@ import Header from 'metabase/components/Header'
 import Input from 'metabase/components/Input'
 import TitleAndDescription from 'metabase/components/TitleAndDescription'
 
-import EntityMenu from 'metabase/components/EntityMenu'
-
 const TEST_ITEM =  {
     name: 'A good thing',
     description: `It's good. Didn't you read the title?`
