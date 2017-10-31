@@ -342,64 +342,6 @@
 ;; ORDER BY [sad_toucan_incidents.incidents.timestamp] ASC
 ;; LIMIT 10
 
-(defn- deduplicate-aliases
-  "Given a sequence of aliases, return a sequence where duplicate aliases have been appropriately suffixed.
-
-     (deduplicate-aliases [\"sum\" \"count\" \"sum\" \"avg\" \"sum\" \"min\"])
-     ;; -> [\"sum\" \"count\" \"sum_2\" \"avg\" \"sum_3\" \"min\"]"
-  [aliases]
-  (loop [acc [], alias->use-count {}, [alias & more, :as aliases] aliases]
-    (let [use-count (get alias->use-count alias)]
-      (cond
-        (empty? aliases) acc
-        (not alias)      (recur (conj acc alias) alias->use-count more)
-        (not use-count)  (recur (conj acc alias) (assoc alias->use-count alias 1) more)
-        :else            (let [new-count (inc use-count)
-                               new-alias (str alias "_" new-count)]
-                           (recur (conj acc new-alias) (assoc alias->use-count alias new-count, new-alias 1) more))))))
-
-(defn- select-subclauses->aliases
-  "Return a vector of aliases used in HoneySQL SELECT-SUBCLAUSES.
-   (For clauses that aren't aliased, `nil` is returned as a placeholder)."
-  [select-subclauses]
-  (for [subclause select-subclauses]
-    (when (and (vector? subclause)
-               (= 2 (count subclause)))
-      (second subclause))))
-
-(defn update-select-subclause-aliases
-  "Given a vector of HoneySQL SELECT-SUBCLAUSES and a vector of equal length of NEW-ALIASES,
-   return a new vector with combining the original `SELECT` subclauses with the new aliases.
-
-   Subclauses that are not aliased are not modified; they are given a placeholder of `nil` in the NEW-ALIASES vector.
-
-     (update-select-subclause-aliases [[:user_id \"user_id\"] :venue_id]
-                                      [\"user_id_2\" nil])
-     ;; -> [[:user_id \"user_id_2\"] :venue_id]"
-  [select-subclauses new-aliases]
-  (for [[subclause new-alias] (partition 2 (interleave select-subclauses new-aliases))]
-    (if-not new-alias
-      subclause
-      [(first subclause) new-alias])))
-
-(defn- deduplicate-select-aliases
-  "Replace duplicate aliases in SELECT-SUBCLAUSES with appropriately suffixed aliases.
-
-   BigQuery doesn't allow duplicate aliases in `SELECT` statements; a statement like `SELECT sum(x) AS sum, sum(y) AS sum` is invalid. (See #4089)
-   To work around this, we'll modify the HoneySQL aliases to make sure the same one isn't used twice by suffixing duplicates appropriately.
-   (We'll generate SQL like `SELECT sum(x) AS sum, sum(y) AS sum_2` instead.)"
-  [select-subclauses]
-  (let [aliases (select-subclauses->aliases select-subclauses)
-        deduped (deduplicate-aliases aliases)]
-    (update-select-subclause-aliases select-subclauses deduped)))
-
-(defn apply-aggregation
-  "An implementation of `apply-aggregation` that just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results."
-  [driver honeysql-form query]
-  (-> (sqlqp/apply-aggregation driver honeysql-form query)
-      (update :select deduplicate-select-aliases)))
-
-
 (defn- field->breakout-identifier [field]
   (hsql/raw (str \[ (field->alias field) \])))
 
@@ -444,7 +386,7 @@
 (u/strict-extend BigQueryDriver
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:apply-aggregation         apply-aggregation
+         {:apply-aggregation         sqlqp/apply-aggregation-deduplicate-select-aliases
           :apply-breakout            (u/drop-first-arg apply-breakout)
           :apply-order-by            (u/drop-first-arg apply-order-by)
           :column->base-type         (constantly nil)                           ; these two are actually not applicable

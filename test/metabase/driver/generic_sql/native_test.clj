@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [medley.core :as m]
             [metabase.models.database :refer [Database]]
+            [metabase.driver.generic-sql.query-processor :as qp-processor]
             [metabase.query-processor :as qp]
             [metabase.test.data :refer :all]
             [toucan.db :as db]))
@@ -60,3 +61,20 @@
                                     :type     :native
                                     :native   {:query "SELECT 1"}}))
          (finally (db/delete! Database :name "Fake-H2-DB")))))
+
+;;; APPLY-PAGE
+(expect
+  {:select ["name" "id"]
+   :from   [{:select   [[:default.categories.name "name"] [:default.categories.id "id"] [{:s "row_number() OVER (ORDER BY default.categories.id ASC)"} :__rownum__]]
+             :from     [:default.categories]
+             :order-by [[:default.categories.id :asc]]}]
+   :where  [:> :__rownum__ 5]
+   :limit  5}
+  (qp-processor/apply-page-using-row-number-for-offset
+   ;; this should work for any driver, so pass nil
+   nil
+   {:select [[:default.categories.name "name"] [:default.categories.id "id"]]
+    :from     [:default.categories]
+    :order-by [[:default.categories.id :asc]]}
+   {:page {:page  2
+           :items 5}}))

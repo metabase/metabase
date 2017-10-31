@@ -12,7 +12,7 @@
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
 
-(resolve-private-vars metabase.driver.presto details->uri details->request parse-presto-results quote-name quote+combine-names rename-duplicates apply-page)
+(resolve-private-vars metabase.driver.presto details->uri details->request parse-presto-results quote-name quote+combine-names rename-duplicates)
 
 ;;; HELPERS
 
@@ -109,21 +109,6 @@
    ["Brite Spot Family Restaurant"]]
   (take 5 (driver/table-rows-sample (Table (data/id :venues))
             [(Field (data/id :venues :name))])))
-
-
-;;; APPLY-PAGE
-(expect
-  {:select ["name" "id"]
-   :from   [{:select   [[:default.categories.name "name"] [:default.categories.id "id"] [{:s "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)"} :__rownum__]]
-             :from     [:default.categories]
-             :order-by [[:default.categories.id :asc]]}]
-   :where  [:> :__rownum__ 5]
-   :limit  5}
-  (apply-page {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
-               :from     [:default.categories]
-               :order-by [[:default.categories.id :asc]]}
-              {:page {:page  2
-                      :items 5}}))
 
 (expect
   #"com.jcraft.jsch.JSchException:"

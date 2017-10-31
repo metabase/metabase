@@ -70,7 +70,7 @@
                                                   "User ID Plus Venue ID"]]}})))
 
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
-(tu/resolve-private-vars metabase.driver.bigquery
+(tu/resolve-private-vars metabase.driver.generic-sql.query-processor
   deduplicate-aliases update-select-subclause-aliases)
 
 (expect

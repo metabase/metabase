@@ -70,33 +70,44 @@
 
 ;; workaround for DRILL-5136 (can't use prepared statements for DDL)
 ;; instead of prepared statements, we use plain statements.
-(defn sequentially-execute-sql!
+;; since execute in the jdbc driver uses prepared statements by default,
+;; we use .createStatement and .execute explicitly.
+(defn execute-without-prepared-statement! [conn driver context dbdef sql]
+  (let [sql (some-> sql s/trim)]
+    (when (and (seq sql)
+               ;; make sure SQL isn't just semicolons
+               (not (s/blank? (s/replace sql #";" ""))))
+      ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
+      (let [sql (s/replace sql #";+" ";")]
+        (try
+          (with-open [sql-statement (.createStatement conn)]
+            (.execute sql-statement sql))
+          (catch SQLException e
+            (println "Error executing SQL:" sql)
+            (printf "Caught SQLException:\n%s\n"
+                    (with-out-str (jdbc/print-sql-exception-chain e)))
+            (throw e))
+          (catch Throwable e
+            (println "Error executing SQL:" sql)
+            (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
+                    (with-out-str (.printStackTrace e)))
+            (throw e)))))))
+
+(defn sequentially-execute-sql-without-prepared-statements!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
    that don't support executing multiple statements at once.
 
    Since there are some cases were you might want to execute compound statements without splitting, an upside-down ampersand (`⅋`) is understood as an
    \"escaped\" semicolon in the resulting SQL statement."
   [driver context dbdef sql]
-  (when sql
-    (try
-      (with-open [conn (jdbc/get-connection (generic/database->spec driver context dbdef))]
-        (doseq [statement (map s/trim (s/split (s/replace sql #"⅋" ";") #";+"))]
-          (when (seq statement)
-            (with-open [sql-statement (.createStatement conn)]
-              (.execute sql-statement statement)))))
-      (catch SQLException e
-        (printf "Caught SQLException:\n%s\n"
-                (with-out-str (jdbc/print-sql-exception-chain e)))
-        (throw e))
-      (catch Throwable e
-        (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
-                (with-out-str (.printStackTrace e)))
-        (throw e)))))
+  (with-open [conn (jdbc/get-connection (generic/database->spec driver context dbdef))]
+    (generic/sequentially-execute-sql! driver context dbdef sql
+                                       :execute (partial execute-without-prepared-statement! conn))))
 
 (defn- unprepare [x]
   (if (instance? honeysql.types.SqlRaw x)
     (s/join " " (hsql/format x))
-    (drill-driver/drill-unprepare-arg x)))
+    (drill-driver/drill-unprepare [x])))
 
 (defn make-row-formatter [field-definitions]
   (let [field-name->base-type (reduce (fn [acc {:keys [field-name base-type]}]
@@ -138,7 +149,7 @@
         format-row (make-row-formatter field-definitions)]
     (if (some #(instance? honeysql.types.SqlRaw %) (->> rows second vals))
       (do
-        (sequentially-execute-sql! driver nil dbdef
+        (sequentially-execute-sql-without-prepared-statements! driver nil dbdef
           (s/join "; " ["ALTER SESSION SET `store.format`='csv'"
                         (format "DROP TABLE IF EXISTS %s" full-table-name)
                         create-table-as]))
@@ -154,24 +165,24 @@
           (csv/write-csv out (map format-row rows)))))))
 
 (u/strict-extend DrillDriver
-                 generic/IGenericSQLTestExtensions
-                 (merge generic/DefaultsMixin
-                        {:add-fk-sql                (constantly nil)
-                         :execute-sql!              sequentially-execute-sql!
-                         :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-                         :create-table-sql          (u/drop-first-arg create-table-sql)
-                         :drop-table-if-exists-sql  (u/drop-first-arg drop-table-if-exists-sql)
+  generic/IGenericSQLTestExtensions
+  (merge generic/DefaultsMixin
+         {:add-fk-sql                (constantly nil)
+          :execute-sql!              sequentially-execute-sql-without-prepared-statements!
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
+          :create-table-sql          (u/drop-first-arg create-table-sql)
+          :drop-table-if-exists-sql  (u/drop-first-arg drop-table-if-exists-sql)
 
-                         ;; Drill doesn't have a concept of databases
-                         :create-db-sql             (constantly nil)
-                         :drop-db-if-exists-sql     (constantly nil)
-                         :qualified-name-components (u/drop-first-arg qualified-name-components)
+          ;; Drill doesn't have a concept of databases
+          :create-db-sql             (constantly nil)
+          :drop-db-if-exists-sql     (constantly nil)
+          :qualified-name-components (u/drop-first-arg qualified-name-components)
 
-                         :load-data!                load-data!
-                         :pk-sql-type               (constantly "INT")
-                         :quote-name                (u/drop-first-arg quote-name)})
-                 i/IDriverTestExtensions
-                 (merge generic/IDriverTestExtensionsMixin
-                        {:database->connection-details (u/drop-first-arg database->connection-details)
-                         :default-schema               (constantly "dfs.tmp")
-                         :engine                       (constantly :drill)}))
+          :load-data!                load-data!
+          :pk-sql-type               (constantly "INT")
+          :quote-name                (u/drop-first-arg quote-name)})
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
+         {:database->connection-details (u/drop-first-arg database->connection-details)
+          :default-schema               (constantly "dfs.tmp")
+          :engine                       (constantly :drill)}))

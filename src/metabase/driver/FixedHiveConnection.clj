@@ -7,15 +7,19 @@
    :init init
    :constructors {[String java.util.Properties] [String java.util.Properties]}))
 
-(set! *warn-on-reflection* true)
-
-(defn -init [uri properties]
+(defn -init
+  "Initializes the connection"
+  [uri properties]
   [[uri properties] nil])
 
-(defn -getHoldability [^org.apache.hive.jdbc.HiveConnection this]
+(defn -getHoldability
+  "Returns the holdability setting for this JDBC driver"
+  [^org.apache.hive.jdbc.HiveConnection this]
   ResultSet/CLOSE_CURSORS_AT_COMMIT)
 
-(defn -setReadOnly [^org.apache.hive.jdbc.HiveConnection this read-only?]
+(defn -setReadOnly
+  "Sets this connection to read only"
+  [^org.apache.hive.jdbc.HiveConnection this read-only?]
   (when (.isClosed this)
     (throw (SQLException. "Connection is closed")))
   (when read-only?

@@ -284,11 +284,11 @@
 
    Since there are some cases were you might want to execute compound statements without splitting, an upside-down ampersand (`⅋`) is understood as an
    \"escaped\" semicolon in the resulting SQL statement."
-  [driver context dbdef sql]
+  [driver context dbdef sql & {:keys [execute] :or {execute default-execute-sql!}}]
   (when sql
     (doseq [statement (map s/trim (s/split sql #";+"))]
       (when (seq statement)
-        (default-execute-sql! driver context dbdef (s/replace statement #"⅋" ";"))))))
+        (execute driver context dbdef (s/replace statement #"⅋" ";"))))))
 
 (defn- create-db! [driver {:keys [table-definitions], :as dbdef}]
   ;; Exec SQL for creating the DB

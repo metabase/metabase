@@ -2,14 +2,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [environ.core :refer [env]]
+            (honeysql [core :as hsql]
+                      [format :as hformat]
+                      [helpers :as h])
             (metabase.driver [generic-sql :as sql]
                              [hive-like :as hive-like])
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.util :as u]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h])
             [metabase.util.honeysql-extensions :as hx])
   (:import metabase.driver.sparksql.SparkSQLDriver))
 

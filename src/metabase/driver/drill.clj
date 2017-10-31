@@ -3,15 +3,18 @@
             (clojure [set :as set]
                      [string :as s])
             (honeysql [core :as hsql]
+                      [format :as hformat]
                       [helpers :as h])
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.driver.hive-like :as hive-like]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as qp]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.driver.hive-like :as hive-like]
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.query-processor.util :as qputil])
+            [metabase.util.honeysql-extensions :as hx])
   (:import
    (java.util Collections Date)
    (metabase.query_processor.interface DateTimeValue Value)))
@@ -64,13 +67,7 @@
 (defn- date-format [format-str expr]
   (hsql/call :to_char expr (hx/literal format-str)))
 
-(defn- str-to-date [format-str expr]
-  (hsql/call :to_timestamp expr (hx/literal format-str)))
-
-(defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str expr)))
-
-(defn date [unit expr]
+(defn- date [unit expr]
   (case unit
     :default (hx/->timestamp expr)
     :minute (hsql/call :date_trunc_minute (hx/->timestamp expr))
@@ -104,29 +101,19 @@
                                        3.0)))
     :year (hsql/call :extract "year" (hx/->timestamp expr))))
 
-(defprotocol ^:private IDrillUnprepare
-  (drill-unprepare-arg ^String [this]))
+(defmethod hformat/fn-handler "drill-from-unixtime" [_ datetime-literal]
+  (hformat/to-sql
+   (hsql/call :to_timestamp
+              ;;(hx/literal (u/date->iso-8601 datetime-literal))
+              datetime-literal
+              (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ"))))
 
-(extend-protocol IDrillUnprepare
-  nil     (drill-unprepare-arg [this] "NULL")
-  String  (drill-unprepare-arg [this] (str \' (s/replace this "'" "''") \')) ; escape single-quotes
-  Boolean (drill-unprepare-arg [this] (if this "TRUE" "FALSE"))
-  Number  (drill-unprepare-arg [this] (str this))
-  Date    (drill-unprepare-arg [this] (first (hsql/format
-                                                 (hsql/call :to_timestamp
-                                                   (hx/literal (u/date->iso-8601 this))
-                                                   (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ"))))))
+(defn drill-unprepare
+  "Translates `sql-and-args` to the Drill SQL dialect"
+  [sql-and-args]
+  (unprepare/unprepare sql-and-args :iso-8601-fn :drill-from-unixtime))
 
-(defn- drill-unprepare
-  "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
-  ^String [[sql & args]]
-  (loop [sql sql, [arg & more-args, :as args] args]
-    (if-not (seq args)
-      sql
-      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (drill-unprepare-arg arg))
-             more-args))))
-
-(defn execute-query
+(defn- execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
   (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
@@ -134,7 +121,7 @@
                                   (drill-unprepare (cons (:query query) (:params query)))
                                   (:query query)))
                   (dissoc :params))]
-    (hive-like/do-with-try-catch
+    (qp/do-with-try-catch
      (fn []
        (let [db-connection (sql/db->jdbc-connection-spec database)]
          (hive-like/run-query-without-timezone driver settings db-connection query))))))
@@ -156,7 +143,7 @@
   Number (prepare-value [this] this)
   Object (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
 
-(defn date-interval [unit amount]
+(defn- date-interval [unit amount]
   (hsql/raw (format "(NOW() + INTERVAL '%d' %s(%d))" (int amount) (name unit)
                     (count (str amount)))))
 
@@ -165,32 +152,33 @@
   (getName [_] "Drill"))
 
 (u/strict-extend DrillDriver
-                 driver/IDriver
-                 (merge (sql/IDriverSQLDefaultsMixin)
-                        {:can-connect? (u/drop-first-arg can-connect?)
-                         :date-interval (u/drop-first-arg date-interval)
-                         :describe-table-fks (constantly #{})
-                         :details-fields (constantly [{:name "drill-connect"
-                                                       :display-name "Drill connect string"
-                                                       :default "drillbit=localhost or zk=localhost:2181/drill/cluster-id"}])
-                         :execute-query execute-query
-                         :features (constantly #{:basic-aggregations
-                                                 :standard-deviation-aggregations
-                                                 ;;:foreign-keys
-                                                 :expressions
-                                                 :expression-aggregations
-                                                 :native-parameters})})
-                 sql/ISQLDriver
-                 (merge (sql/ISQLDriverDefaultsMixin)
-                        {:apply-aggregation bigquery/apply-aggregation
-                         :column->base-type (u/drop-first-arg column->base-type)
-                         :connection-details->spec (u/drop-first-arg connection-details->spec)
-                         :date (u/drop-first-arg date)
-                         :field->identifier (u/drop-first-arg hive-like/field->identifier)
-                         :prepare-value (u/drop-first-arg prepare-value)
-                         :quote-style (constantly :mysql)
-                         :current-datetime-fn (u/drop-first-arg (constantly hive-like/now))
-                         :string-length-fn (u/drop-first-arg hive-like/string-length-fn)
-                         :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
+  driver/IDriver
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:can-connect? (u/drop-first-arg can-connect?)
+          :date-interval (u/drop-first-arg date-interval)
+          :describe-table-fks (constantly #{})
+          :details-fields (constantly [{:name "drill-connect"
+                                        :display-name "Drill connect string"
+                                        :default "drillbit=localhost or zk=localhost:2181/drill/cluster-id"}])
+          :execute-query execute-query
+          :features (constantly #{:basic-aggregations
+                                  ;;:foreign-keys
+                                  :expressions
+                                  :expression-aggregations
+                                  :native-parameters
+                                  :nested-queries
+                                  :standard-deviation-aggregations})})
+  sql/ISQLDriver
+  (merge (sql/ISQLDriverDefaultsMixin)
+         {:apply-aggregation qp/apply-aggregation-deduplicate-select-aliases
+          :column->base-type (u/drop-first-arg column->base-type)
+          :connection-details->spec (u/drop-first-arg connection-details->spec)
+          :date (u/drop-first-arg date)
+          :field->identifier (u/drop-first-arg hive-like/field->identifier)
+          :prepare-value (u/drop-first-arg prepare-value)
+          :quote-style (constantly :mysql)
+          :current-datetime-fn (u/drop-first-arg (constantly hive-like/now))
+          :string-length-fn (u/drop-first-arg hive-like/string-length-fn)
+          :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
 (driver/register-driver! :drill (DrillDriver.))

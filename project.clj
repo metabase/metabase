@@ -29,17 +29,6 @@
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
-                 [org.apache.hadoop/hadoop-common "2.7.3"]
-                 [org.apache.drill.exec/drill-jdbc-all "1.10.0"
-                  :exclusions [org.slf4j/log4j-over-slf4j
-                               org.slf4j/jcl-over-slf4j
-                               org.slf4j/slf4j-api
-                               log4j]]
-                 [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
-                  :exclusions [org.codehaus.jackson/jackson-xc
-                               org.eclipse.jetty.aggregate/jetty-all
-                               org.mortbay.jetty/jetty]
-                  :classifier "standalone"]
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -50,10 +39,7 @@
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
                  [com.cemerick/friend "0.2.3"                         ; auth library
-                  :exclusions [com.google.inject/guice
-                               commons-codec
-                               net.sourceforge.nekohtml/nekohtml
-                               org.apache.httpcomponents/httpclient
+                  :exclusions [net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
@@ -92,10 +78,20 @@
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
                   :exclusions [org.slf4j/slf4j-api
                                it.unimi.dsi/fastutil]]
+                 [org.apache.drill.exec/drill-jdbc-all "1.10.0"       ; Drill JDBC driver
+                  :exclusions [org.slf4j/log4j-over-slf4j
+                               org.slf4j/jcl-over-slf4j
+                               org.slf4j/slf4j-api
+                               log4j]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+                 [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
+                  :exclusions [org.codehaus.jackson/jackson-xc
+                               org.eclipse.jetty.aggregate/jetty-all
+                               org.mortbay.jetty/jetty]
+                  :classifier "standalone"]
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
@@ -103,8 +99,7 @@
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
-                 [ring/ring-jetty-adapter "1.6.0"                     ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-                  :exclusions [commons-io]]
+                 [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities

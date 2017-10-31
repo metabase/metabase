@@ -14,6 +14,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as qp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor.util :as qputil]
             [metabase.util
@@ -204,23 +205,6 @@
     message))
 
 
-;;; ISQLDriver implementation
-
-(defn- apply-page [honeysql-query {{:keys [items page]} :page}]
-  (let [offset (* (dec page) items)]
-    (if (zero? offset)
-      ;; if there's no offset we can simply use limit
-      (h/limit honeysql-query items)
-      ;; if we need to do an offset we have to do nesting to generate a row number and where on that
-      (let [over-clause (format "row_number() OVER (%s)"
-                                (first (hsql/format (select-keys honeysql-query [:order-by])
-                                                    :allow-dashed-names? true
-                                                    :quoting :ansi)))]
-        (-> (apply h/select (map last (:select honeysql-query)))
-            (h/from (h/merge-select honeysql-query [(hsql/raw over-clause) :__rownum__]))
-            (h/where [:> :__rownum__ offset])
-            (h/limit items))))))
-
 (defn- date [unit expr]
   (case unit
     :default         expr
@@ -309,7 +293,7 @@
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:apply-page                (u/drop-first-arg apply-page)
+         {:apply-page                qp/apply-page-using-row-number-for-offset
           :column->base-type         (constantly nil)
           :connection-details->spec  (constantly nil)
           :current-datetime-fn       (constantly :%now)
