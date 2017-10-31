@@ -215,7 +215,7 @@
             max             (h.impl/maximum histogram)
             mean            (h.impl/mean histogram)
             median          (h.impl/median histogram)
-            range           (some-> max (- min))
+            spread          (some-> max (- min))
             {:keys [q1 q3]} (h/iqr histogram)]
         {:positive-definite? (some-> min (>= 0))
          :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
@@ -223,10 +223,10 @@
          :0<=x<=1?           (when min (<= 0 min max 1))
          :-1<=x<=1?          (when min (<= -1 min max 1))
          :cv                 (some-> sd (math/safe-divide mean))
-         :range-vs-sd        (some->> sd (math/safe-divide range))
-         :mean-median-spread (some->> range (math/safe-divide (- mean median)))
+         :range-vs-sd        (some->> sd (math/safe-divide spread))
+         :mean-median-spread (some->> spread (math/safe-divide (- mean median)))
          :min-vs-max         (some->> max (math/safe-divide min))
-         :range              range
+         :range              spread
          :min                min
          :max                max
          :mean               mean
