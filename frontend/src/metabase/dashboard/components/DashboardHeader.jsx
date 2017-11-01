@@ -320,7 +320,6 @@ export default class DashboardHeader extends Component {
                     defaultActions={[this.getDefaultActions()]}
 
                     isEditing={isEditing}
-                    isEditingInfo={isEditing}
                     editingActions={[this.getEditingActions()]}
 
                     isFullscreen={isFullscreen}

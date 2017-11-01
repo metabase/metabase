@@ -131,8 +131,7 @@ export default class Header extends Component {
                 />
                 <div className="py1 lg-py2 xl-py3 wrapper flex align-center" ref="header">
                     <div className="Entity py3">
-                        {
-                            isEditingInfo
+                        {isEditing
                                 ? (
                                     <div className="Header-title flex flex-column flex-full bordered rounded my1">
                                         <Input

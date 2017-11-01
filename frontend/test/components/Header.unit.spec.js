@@ -70,8 +70,7 @@ describe('Header', () => {
             const wrapper = shallow(
                 <Header
                     item={TEST_ITEM}
-                    // TODO - seems weird you have to set both of these
-                    isEditingInfo={true}
+                    isEditing={true}
                 />
             )
 
