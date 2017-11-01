@@ -13,6 +13,7 @@ import {
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
+import PremiumEmbeddingWidget from "./components/widgets/PremiumEmbeddingWidget.jsx";
 
 import { UtilApi } from "metabase/services";
 
@@ -388,6 +389,16 @@ const SECTIONS = [
                 type: "string",
                 allowValueCollection: true
 
+            }
+        ]
+    },
+    {
+        name: "Premium Embedding",
+        settings: [
+            {
+                key: "premium-embedding-token",
+                display_name: "Premium Embedding Token",
+                widget: PremiumEmbeddingWidget
             }
         ]
     }

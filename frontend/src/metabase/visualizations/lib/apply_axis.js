@@ -66,12 +66,9 @@ function adjustXAxisTicksIfNeeded(axis, chartWidthPixels, xValues) {
     const tickAverageStringLength = averageStringLengthOfValues(xValues);
     const tickAverageWidthPixels  = tickAverageStringLength * APPROXIMATE_AVERAGE_CHAR_WIDTH_PIXELS;
 
-    console.log("tickAverageWidthPixels:", tickAverageWidthPixels); // NOCOMMIT
-
     // now figure out the approximate number of ticks we'll be able to show based on the width of the chart. Round
     // down so we error on the side of more space rather than less.
     const maxTicks = Math.floor(chartWidthPixels / tickAverageWidthPixels);
-    console.log("maxTicks:", maxTicks); // NOCOMMIT
 
     // finally, if the chart is currently showing more ticks than we think it can show, adjust it down
     if (getNumTicks(axis) > maxTicks) axis.ticks(maxTicks);
