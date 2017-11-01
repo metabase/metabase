@@ -50,13 +50,34 @@ node-5() {
     run_step yarn run lint
     run_step yarn run flow
     run_step yarn run test-unit
+    report-frontend-coverage
     run_step yarn run test-karma
 }
 node-6() {
-    run_step ./bin/build version sample-dataset uberjar
+    run_step ./bin/build version frontend-fast sample-dataset uberjar
+    report-frontend-size
+    report-uberjar-size
     run_step yarn run test-integrated
 }
 
+report() {
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  name="$1"
+  value="$2"
+  if ! [ -z ${STATS_DB+x} ]; then
+    psql "$STATS_DB" -c "INSERT INTO build_stats (timestamp, name, value, build_number, node_index, branch, hash) VALUES ('$timestamp', '$name', $value, $CIRCLE_BUILD_NUM, $CIRCLE_NODE_INDEX, '$CIRCLE_BRANCH', '$CIRCLE_SHA1');" > /dev/null
+  fi
+}
+
+report-frontend-coverage() {
+  report "frontend-coverage" $(node -e "console.log(require('./coverage-summary.json').total.lines.pct)")
+}
+report-frontend-size() {
+  report "frontend-size" "$(wc -c < resources/frontend_client/app/dist/app-main.bundle.js)"
+}
+report-uberjar-size() {
+  report "uberjar-size" "$(wc -c < target/uberjar/metabase.jar)"
+}
 
 install-crate() {
     sudo add-apt-repository ppa:crate/stable -y
@@ -123,6 +144,8 @@ run_step() {
     wait $! || status=$?
     elapsed=$(expr $(date +%s) - $start || true)
     summary="${summary}status=$status time=$elapsed command=$@\n"
+    report "run-status \"$*\"" "$status"
+    report "run-time \"$*\"" "$elapsed"
     return $status
 }
 
@@ -139,6 +162,10 @@ summary() {
 trap summary EXIT
 
 fail_fast() {
+  if [ -z ${CIRCLE_NODE_TOTAL+x} ]; then
+    return 0
+  fi
+
   echo -e "========================================"
   echo -e "Failing fast! Stopping other nodes..."
   # Touch a file to differentiate between a local failure and a
@@ -160,6 +187,10 @@ exit_early() {
 }
 
 trap exit_early SIGUSR1
+
+if [ -z ${CIRCLE_BUILD_NUM+x} ]; then
+    export CIRCLE_BUILD_NUM="-1"
+fi
 
 if [ -z ${CIRCLE_SHA1+x} ]; then
     export CIRCLE_SHA1="$(git rev-parse HEAD)"
@@ -184,7 +215,8 @@ if [ -z ${CIRCLE_NODE_INDEX+x} ]; then
     # If CIRCLE_NODE_INDEX isn't set, read node numbers from the args
     # Useful for testing locally.
     for i in "$@"; do
-        node-$i
+      export CIRCLE_NODE_INDEX="$i"
+      node-$i
     done
 else
     # Normal mode on CircleCI

@@ -20,5 +20,8 @@
     "ace": {},
     "ga": {},
     "document": {}
-  }
+  },
+  "collectCoverage": true,
+  "coverageDirectory": "./",
+  "coverageReporters": ["text", "json-summary"]
 }
