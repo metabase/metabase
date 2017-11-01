@@ -121,7 +121,8 @@
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init!
-         :destroy metabase.core/destroy}
+         :destroy metabase.core/destroy
+         :reload-paths ["src"]}
   :eastwood {:exclude-namespaces [:test-paths
                                   metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
              :add-linters [:unused-private-vars
@@ -147,16 +148,16 @@
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
-                   :jvm-opts ["-Dlogfile.path=target/log"
-                              "-Xms1024m"                             ; give JVM a decent heap size to start with
-                              "-Xmx2048m"]                            ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
+                   :jvm-opts ["-Dlogfile.path=target/log"]
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
-                            :jvm-opts ["-Duser.timezone=UTC"
+                            :jvm-opts ["-Xms1024m"                    ; give JVM a decent heap size to start with
+                                       "-Xmx2048m"                    ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
+                                       "-Duser.timezone=UTC"
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
