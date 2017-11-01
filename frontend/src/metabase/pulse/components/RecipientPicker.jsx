@@ -2,16 +2,24 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-import { KEYCODE_ESCAPE, KEYCODE_COMMA, KEYCODE_TAB, KEYCODE_UP, KEYCODE_DOWN, KEYCODE_BACKSPACE } from "metabase/lib/keyboard";
-
 import _ from "underscore";
 import cx from "classnames";
+
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import UserAvatar from "metabase/components/UserAvatar";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
+
+import {
+    KEYCODE_ESCAPE,
+    KEYCODE_COMMA,
+    KEYCODE_TAB,
+    KEYCODE_UP,
+    KEYCODE_DOWN,
+    KEYCODE_BACKSPACE
+} from "metabase/lib/keyboard";
+
 
 const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -44,8 +52,12 @@ export default class RecipientPicker extends Component {
     };
 
     setInputValue(inputValue) {
-        let { users, recipients } = this.props;
+        const { users, recipients } = this.props;
+        const searchString = inputValue.toLowerCase()
+
         let { selectedUser } = this.state;
+        let filteredUsers = [];
+
 
         let recipientsById = {};
         for (let recipient of recipients) {
@@ -54,15 +66,20 @@ export default class RecipientPicker extends Component {
             }
         }
 
-        let filteredUsers = [];
+
         if (inputValue) {
             // case insensitive search of name or email
-            let inputValueLower = inputValue.toLowerCase()
+
             filteredUsers = users.filter(user =>
+                // filter out users who have already been selected
                 !(user.id in recipientsById) &&
-                (user.common_name.toLowerCase().indexOf(inputValueLower) >= 0 || user.email.toLowerCase().indexOf(inputValueLower) >= 0)
+                (
+                    user.common_name.toLowerCase().indexOf(searchString) >= 0 ||
+                    user.email.toLowerCase().indexOf(searchString) >= 0
+                )
             );
         }
+
 
         if (selectedUser == null || !_.find(filteredUsers, (u) => u.id === selectedUser)) {
             if (filteredUsers.length > 0) {
@@ -72,7 +89,11 @@ export default class RecipientPicker extends Component {
             }
         }
 
-        this.setState({ inputValue, filteredUsers, selectedUser });
+        this.setState({
+            inputValue,
+            filteredUsers,
+            selectedUser
+        });
     }
 
     onInputChange(e) {
@@ -80,6 +101,7 @@ export default class RecipientPicker extends Component {
     }
 
     onInputKeyDown(e) {
+        console.log(e)
         // enter, tab, comma
         if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_TAB || e.keyCode === KEYCODE_COMMA) {
             this.addCurrentRecipient();
@@ -139,16 +161,34 @@ export default class RecipientPicker extends Component {
 
     addRecipient(recipient) {
         // recipient is a user object, or plain object containing "email" key
-        this.props.onRecipientsChange(this.props.recipients.concat(recipient));
+        this.props.onRecipientsChange(
+            this.props.recipients.concat(recipient)
+        );
+        // reset the input value
         this.setInputValue("");
 
-        MetabaseAnalytics.trackEvent((this.props.isNewPulse) ? "PulseCreate" : "PulseEdit", "AddRecipient", (recipient.id) ? "user" : "email");
+        MetabaseAnalytics.trackEvent(
+            (this.props.isNewPulse) ? "PulseCreate" : "PulseEdit",
+            "AddRecipient",
+            (recipient.id) ? "user" : "email"
+        );
     }
 
     removeRecipient(recipient) {
-        this.props.onRecipientsChange(this.props.recipients.filter(r => recipient.id != null ? recipient.id !== r.id : recipient.email !== r.email));
+        const { recipients, onRecipientsChange } = this.props
+        onRecipientsChange(
+            recipients.filter(r =>
+                recipient.id != null
+                    ? recipient.id !== r.id
+                    : recipient.email !== r.email
+            )
+        );
 
-        MetabaseAnalytics.trackEvent((this.props.isNewPulse) ? "PulseCreate" : "PulseEdit", "RemoveRecipient", (recipient.id) ? "user" : "email");
+        MetabaseAnalytics.trackEvent(
+            (this.props.isNewPulse) ? "PulseCreate" : "PulseEdit",
+            "RemoveRecipient",
+            (recipient.id) ? "user" : "email"
+        );
     }
 
     render() {
