@@ -200,6 +200,47 @@ export class MultimodalInsight extends Component {
         )
     }
 }
+
+export class OutliersInsight extends Component {
+    static insightType = "outliers"
+    static title = "Outliers"
+    static icon = "warning"
+
+    render() {
+        const { filter, features: { table } } = this.props
+
+        const viewAllRowsUrl = table && Question.create()
+            .query()
+            // imitate the required hydrated metadata format
+            .setTable({ ...table, database: { id: table.db_id }})
+            .addFilter(filter)
+            .question()
+            .getUrl()
+
+        // construct the question with filter
+        return (
+            <InsightText>
+                You have some outliers.
+                <span> </span>
+                { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with outliers.</span> }
+            </InsightText>
+        )
+    }
+}
+
+export class StructuralBreaksInsight extends Component {
+    static insightType = "structural-breaks"
+    static title = "Structural breaks"
+    static icon = "insight"
+
+    render() {
+        return (
+            <InsightText>
+		You have structural breaks.
+            </InsightText>
+        )
+    }
+}
 /*
 export class RegimeChangeInsight extends Component {
     static insightType = "regime-change"
@@ -242,7 +283,10 @@ const INSIGHT_COMPONENTS = [
     VariationTrendInsight,
     AutocorrelationInsight,
     SeasonalityInsight,
+    StructuralBreaksInsight,
     // RegimeChangeInsight
+    // numeric field, and timeseries
+    OutliersInsight,
 ]
 
 export const InsightCard = ({type, props, features}) => {

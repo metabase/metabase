@@ -217,31 +217,31 @@
             median          (h.impl/median histogram)
             spread          (some-> max (- min))
             {:keys [q1 q3]} (h/iqr histogram)]
-        {:positive-definite? (some-> min (>= 0))
-         :%>mean             (some->> mean ((h.impl/cdf histogram)) (- 1))
-         :var>sd?            (some->> sd (> var))
-         :0<=x<=1?           (when min (<= 0 min max 1))
-         :-1<=x<=1?          (when min (<= -1 min max 1))
-         :cv                 (some-> sd (math/safe-divide mean))
-         :range-vs-sd        (some->> sd (math/safe-divide spread))
-         :mean-median-spread (some->> spread (math/safe-divide (- mean median)))
-         :min-vs-max         (some->> max (math/safe-divide min))
-         :range              spread
-         :min                min
-         :max                max
-         :mean               mean
-         :median             median
-         :q1                 q1
-         :q3                 q3
-         :var                var
-         :sd                 sd
-         :kurtosis           kurtosis
-         :skewness           skewness
-         :sum                sum
-         :sum-of-squares     sum-of-squares
-         :zero%              (math/safe-divide zeros (h/total-count histogram))
-         :percentiles        (apply h.impl/percentiles histogram (range 0 1 0.1))
-         :histogram          (or histogram-categorical histogram)})))))
+        {:positive-definite?    (some-> min (>= 0))
+         :%>mean                (some->> mean ((h.impl/cdf histogram)) (- 1))
+         :var>sd?               (some->> sd (> var))
+         :0<=x<=1?              (when min (<= 0 min max 1))
+         :-1<=x<=1?             (when min (<= -1 min max 1))
+         :cv                    (some-> sd (math/safe-divide mean))
+         :range-vs-sd           (some->> sd (math/safe-divide spread))
+         :mean-median-spread    (some->> spread (math/safe-divide (- mean median)))
+         :min-vs-max            (some->> max (math/safe-divide min))
+         :range                 spread
+         :min                   min
+         :max                   max
+         :mean                  mean
+         :median                median
+         :q1                    q1
+         :q3                    q3
+         :var                   var
+         :sd                    sd
+         :kurtosis              kurtosis
+         :skewness              skewness
+         :sum                   sum
+         :sum-of-squares        sum-of-squares
+         :zero%                 (math/safe-divide zeros (h/total-count histogram))
+         :percentiles           (apply h.impl/percentiles histogram (range 0 1.1 0.1))
+         :histogram-categorical histogram-categorical})))))
 
 (defmethod comparison-vector Num
   [features]
@@ -251,16 +251,19 @@
                 :q3]))
 
 (defmethod x-ray Num
-  [{:keys [field] :as features}]
+  [{:keys [field histogram histogram-categorical] :as features}]
   (-> features
-      (update :histogram (partial histogram->dataset field))
+      (assoc :histogram (histogram->dataset field (or histogram-categorical
+                                                      histogram)))
       (assoc :insights ((merge-juxt insights/normal-range
                                     insights/zeros
                                     insights/nils
-                                    insights/multimodal)
+                                    insights/multimodal
+                                    insights/outliers)
                         features))
       (dissoc :has-nils? :var>sd? :0<=x<=1? :-1<=x<=1? :all-distinct?
-              :positive-definite? :var>sd? :uniqueness :min-vs-max)))
+              :positive-definite? :var>sd? :uniqueness :min-vs-max
+              :histogram-categorical)))
 
 (defn- last-n-days
   [n offset {:keys [breakout filter] :as query}]
@@ -369,7 +372,9 @@
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
                                       insights/autocorrelation
-                                      insights/seasonality)
+                                      insights/seasonality
+                                      insights/structural-breaks
+                                      insights/outliers)
                           features))
         (update :growth-series (partial series->dataset ts/from-double
                                         [x-field

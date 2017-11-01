@@ -1,10 +1,16 @@
 (ns metabase.feature-extraction.timeseries
   "Timeseries analysis and utilities."
-  (:require [clj-time
+  (:require [bigml.histogram.core :as h.impl]
+            [clj-time
              [coerce :as t.coerce]
              [core :as t]
              [periodic :as t.periodic]]
-            [kixi.stats.core :refer [somef]])
+            [kixi.stats
+             [core :refer [somef] :as stast]
+             [math :as k.math]]
+            [metabase.feature-extraction
+             [histogram :as h]
+             [math :as math]])
   (:import (com.github.brandtg.stl StlDecomposition StlResult StlConfig)))
 
 (def ^{:arglists '([t])} to-double
@@ -19,23 +25,23 @@
   "Given a coll of `[DateTime, Num]` pairs evenly spaced `step` apart, fill
    missing points with 0."
   [resolution ts]
-  (let [step (case resolution
-               :month   (t/months 1)
-               :quarter (t/months 3)
-               :year    (t/years 1)
-               :week    (t/weeks 1)
-               :day     (t/days 1)
-               :hour    (t/hours 1)
-               :minute  (t/minutes 1))
-        ts-index (into {} ts)]
+  (let [[step rounder] (case resolution
+                         :month   [(t/months 1) t/month]
+                         :quarter [(t/months 3) t/month]
+                         :year    [(t/years 1) t/year]
+                         :week    [(t/weeks 1) t/day]
+                         :day     [(t/days 1) t/day]
+                         :hour    [(t/hours 1) t/day]
+                         :minute  [(t/minutes 1) t/minute])
+        ts             (for [[x y] ts]
+                         [(-> x from-double (t/floor rounder)) y])
+        ts-index       (into {} ts)]
     (into []
-      (comp (map to-double)
-            (take-while (partial >= (-> ts last first)))
+      (comp (take-while (partial (complement t/before?) (-> ts last first)))
             (map (fn [t]
-                   [t (ts-index t 0)])))
+                   [(to-double t) (ts-index t 0)])))
       (some-> ts
               ffirst
-              from-double
               (t.periodic/periodic-seq step)))))
 
 (def period-length
@@ -110,3 +116,42 @@
   Quarter
   (quarter [dt]
     (-> dt t/month (* 0.33) Math/ceil long)))
+
+(defn breaks
+  "Find positions of structural breaks.
+   https://en.wikipedia.org/wiki/Structural_break
+   http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0059279#pone.0059279.s003"
+  [period series]
+  (let [half-period (-> period (/ 2) Math/floor int inc)
+        q           (fn [window]
+                      (-> (transduce (map second) h/histogram window)
+                          (h.impl/percentiles 0.25 0.5 0.75)
+                          vals))]
+    (->> (map (fn [left right idx]
+                (let [x      (ffirst right)
+                      window (map second (concat left right))
+                      range  (- (apply max window) (apply min window))
+                      ql     (q left)
+                      qr     (q right)]
+                  {:eta (/ (reduce + (map (comp k.math/sq -) ql qr))
+                           3 (k.math/sq range))
+                   :x   x
+                   :idx idx}))
+              (partition half-period 1 series)
+              (partition half-period 1 (drop (dec half-period) series))
+              (range))
+         (math/outliers :eta)
+         (reduce (fn [[head & tail :as breaks] {:keys [idx x eta]}]
+                   (if (some-> head :idx inc (= idx))
+                     (concat [(if (> (:eta head) eta)
+                                (update head :idx inc)
+                                {:idx idx
+                                 :x   x
+                                 :eta eta})]
+                             tail)
+                     (concat [{:idx idx
+                               :x   x
+                               :eta eta}]
+                             breaks)))
+                 [])
+         (map :x))))

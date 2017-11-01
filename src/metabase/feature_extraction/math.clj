@@ -3,6 +3,7 @@
   (:require [kixi.stats
              [core :as stats]
              [math :as math]]
+            [metabase.feature-extraction.histogram :as h]
             [redux.core :as redux]))
 
 (defn safe-divide
@@ -129,3 +130,13 @@
      (let [D (apply max (map (comp math/abs -) (pdf->cdf p) (pdf->cdf q)))
            c (math/sqrt (* -0.5 (Math/log (/ significance-level 2))))]
        (> D (* c (math/sqrt (/ (+ m n) (* m n)))))))))
+
+(defn outliers
+  "Find outliers using 1.5*IQR heuristic.
+   https://en.wikipedia.org/wiki/Interquartile_range"
+  ([xs] (outliers identity xs))
+  ([keyfn xs]
+   (let [{:keys [q1 q3 iqr]} (->> xs (transduce (map keyfn) h/histogram) h/iqr)
+         lower-bound         (- q1 (* 1.5 iqr))
+         upper-bound         (+ q3 (* 1.5 iqr))]
+     (remove (comp #(< lower-bound % upper-bound) keyfn) xs))))

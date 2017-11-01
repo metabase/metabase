@@ -212,10 +212,16 @@
   {:pre [(string? state)
          (number? price)]
    :post [(map? %)]}
-  (let [tax-rate (state->tax-rate state)
-        _        (assert tax-rate
-                   (format "No tax rate found for state '%s'." state))
-        tax      (u/round-to-decimals 2 (* price tax-rate))]
+  (let [tax-rate   (state->tax-rate state)
+        _          (assert tax-rate
+                     (format "No tax rate found for state '%s'." state))
+        created-at (random-date-between (min-date (:created_at person)
+                                                  (:created_at product))
+                                        (u/relative-date :year 2))
+        price      (if (> (.getTime created-at) (.getTime (Date. 118 0 1)))
+                     (* 1.5 price)
+                     price)
+        tax        (u/round-to-decimals 2 (* price tax-rate))]
     {:user_id    (:id person)
      :product_id (:id product)
      :subtotal   price
@@ -223,7 +229,7 @@
      :quantity   (random-price 1 5)
      :discount   (sometimes 0.1 #(random-price 0 10))
      :total      (+ price tax)
-     :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 2))}))
+     :created_at created-at}))
 
 
 ;;; ## REVIEWS
@@ -284,6 +290,13 @@
   (for [x xs]
     (update x k * (seasonality-map (season-fn x)))))
 
+(defn add-outliers
+  [k xs]
+  (for [x xs]
+    (if (< (rand) 0.02)
+      (update x k * 10)
+      x)))
+
 (defn create-random-data [& {:keys [people products]
                              :or   {people 2500 products 200}}]
   {:post [(map? %)
@@ -300,6 +313,7 @@
      :orders   (->> people
                     (mapcat :orders)
                     (add-autocorrelation :quantity)
+                    (add-outliers :quantity)
                     (add-increasing-variance :total)
                     (add-seasonality #(.getMonth ^java.util.Date (:created_at %))
                                      :quantity {0 0.6

@@ -141,3 +141,29 @@
   ;;     second
   ;;     (< 0.05))
   nil)
+
+(definsight structural-breaks
+  "Are there any structural breaks in the data?
+   https://en.wikipedia.org/wiki/Structural_break"
+  [resolution series]
+  (when resolution
+    (some->> series
+             (ts/breaks (ts/period-length resolution))
+             (map ts/from-double)
+             not-empty
+             (hash-map :breaks))))
+
+(definsight outliers
+  "Are there any outliers in the data?
+   Finds outliers using 1.5*IQR heuristic.
+   https://en.wikipedia.org/wiki/Interquartile_range"
+  [histogram field min max series]
+  (if series
+    nil
+    (let [{:keys [q1 q3 iqr]} (h/iqr histogram)
+          lower-bound         (- q1 (* 1.5 iqr))
+          upper-bound         (+ q3 (* 1.5 iqr))]
+      (when (or (< min lower-bound)
+                (> max upper-bound))
+        {:filter [:or [:> [:field-id (:id field)] upper-bound]
+                  [:< [:field-id (:id field)] lower-bound]]}))))
