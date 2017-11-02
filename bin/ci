@@ -11,6 +11,8 @@ node-0() {
     MB_MYSQL_TEST_USER=ubuntu run_step lein-test
 }
 node-1() {
+    run_step lein docstring-checker
+
     is_enabled "drivers" && export ENGINES="h2,sqlserver,oracle" || export ENGINES="h2"
     if is_engine_enabled "oracle"; then
         run_step install-oracle
@@ -19,6 +21,8 @@ node-1() {
         run_step lein-test
 }
 node-2() {
+    run_step lein bikeshed
+
     is_enabled "drivers" && export ENGINES="h2,postgres,sqlite,presto" || export ENGINES="h2"
     if is_engine_enabled "crate"; then
         run_step install-crate
@@ -31,6 +35,9 @@ node-2() {
         run_step lein-test
 }
 node-3() {
+    run_step yarn run lint
+    run_step yarn run flow
+
     is_enabled "drivers" && export ENGINES="h2,redshift,druid,vertica" || export ENGINES="h2"
     if is_engine_enabled "vertica"; then
         run_step install-vertica
@@ -41,22 +48,18 @@ node-3() {
     fi
 }
 node-4() {
-    run_step lein bikeshed
-    run_step lein docstring-checker
     run_step ./bin/reflection-linter
 
-    # build the frontend, jar, and record the sizes
     run_step ./bin/build version frontend sample-dataset uberjar
     report-frontend-size
     report-uberjar-size
 }
 node-5() {
     run_step lein eastwood
-    run_step yarn run lint
-    run_step yarn run flow
+
+    run_step yarn run test-karma
     run_step yarn run test-unit
     report-frontend-coverage
-    run_step yarn run test-karma
 }
 node-6() {
     run_step ./bin/build version sample-dataset uberjar
