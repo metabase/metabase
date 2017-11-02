@@ -12,8 +12,8 @@ import {
 } from "./components/widgets/PublicLinksListing.jsx";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
-import PremiumEmbeddingWidget from "./components/widgets/PremiumEmbeddingWidget.jsx";
 
 import { UtilApi } from "metabase/services";
 
@@ -312,6 +312,7 @@ const SECTIONS = [
                 widget: EmbeddingLegalese,
                 getHidden: (settings) => settings["enable-embedding"],
                 onChanged: async (oldValue, newValue, settingsValues, onChange) => {
+                    // Generate a secret key if none already exists
                     if (!oldValue && newValue && !settingsValues["embedding-secret-key"]) {
                         let result = await UtilApi.random_token();
                         await onChange("embedding-secret-key", result.token);
@@ -320,8 +321,7 @@ const SECTIONS = [
             },
             {
                 key: "enable-embedding",
-                display_name: "Enable Embedding Metabase in other Applications",
-                type: "boolean",
+                widget: EmbeddingLevel,
                 getHidden: (settings) => !settings["enable-embedding"]
             },
             {
@@ -392,6 +392,7 @@ const SECTIONS = [
             }
         ]
     },
+    /*
     {
         name: "Premium Embedding",
         settings: [
@@ -402,6 +403,7 @@ const SECTIONS = [
             }
         ]
     }
+    */
 ];
 for (const section of SECTIONS) {
     section.slug = slugify(section.name);

@@ -25,18 +25,20 @@ export default class SecretKeyWidget extends Component {
     render() {
         const { setting } = this.props;
         return (
-            <div className="flex align-center">
-                <SettingInput {...this.props} />
+            <div className="p2 flex align-center full bordered rounded" style={{ maxWidth: 820 }}>
+                <div className="full">
+                    <SettingInput {...this.props} />
+                </div>
                 { setting.value ?
                     <Confirm
                         title="Regenerate embedding key?"
                         content="This will cause existing embeds to stop working until they are updated with the new key."
                         action={this._generateToken}
                     >
-                        <Button className="ml1" primary medium>Regenerate key</Button>
+                        <Button className="ml-auto" primary medium>Regenerate key</Button>
                     </Confirm>
                 :
-                    <Button className="ml1" primary medium onClick={this._generateToken}>Generate Key</Button>
+                    <Button className="ml-auto" primary medium onClick={this._generateToken}>Generate Key</Button>
                 }
             </div>
         );
