@@ -3,14 +3,13 @@
   (:require [bigml.histogram.core :as h.impl]
             [clojure.math.numeric-tower :as num]
             [distributions.core :as d]
+            [jdistlib.core :as d.tests]
             [kixi.stats.core :as stats]
-            [redux.core :as redux]
             [metabase.feature-extraction
              [histogram :as h]
              [math :as math]
-             [timeseries :as ts]])
-  ;(:import net.sourceforge.jdistlib.disttest.DistributionTest)
-  )
+             [timeseries :as ts]]
+            [redux.core :as redux]))
 
 (defmacro ^:private definsight
   [insight docs features & body]
@@ -134,13 +133,11 @@
    https://en.wikipedia.org/wiki/Multimodal_distribution
    http://www.nicprice.net/diptest/Hartigan_1985_AnnalStat.pdf"
   [histogram]
-  ;; (-> histogram
-  ;;     (h.impl/sample 1000)
-  ;;     double-array
-  ;;     DistributionTest/diptest
-  ;;     second
-  ;;     (< 0.05))
-  nil)
+  (-> histogram
+      (h.impl/sample 1000)
+      d.tests/dip-test
+      second
+      (< 0.05)))
 
 (definsight structural-breaks
   "Are there any structural breaks in the data?
@@ -157,13 +154,11 @@
   "Are there any outliers in the data?
    Finds outliers using 1.5*IQR heuristic.
    https://en.wikipedia.org/wiki/Interquartile_range"
-  [histogram field min max series]
-  (if series
-    nil
-    (let [{:keys [q1 q3 iqr]} (h/iqr histogram)
-          lower-bound         (- q1 (* 1.5 iqr))
-          upper-bound         (+ q3 (* 1.5 iqr))]
-      (when (or (< min lower-bound)
-                (> max upper-bound))
-        {:filter [:or [:> [:field-id (:id field)] upper-bound]
-                  [:< [:field-id (:id field)] lower-bound]]}))))
+  [histogram field min max]
+  (let [{:keys [q1 q3 iqr]} (h/iqr histogram)
+        lower-bound         (- q1 (* 1.5 iqr))
+        upper-bound         (+ q3 (* 1.5 iqr))]
+    (when (or (< min lower-bound)
+              (> max upper-bound))
+      {:filter [:or [:> [:field-id (:id field)] upper-bound]
+                [:< [:field-id (:id field)] lower-bound]]})))

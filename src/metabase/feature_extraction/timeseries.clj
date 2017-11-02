@@ -39,7 +39,7 @@
     (into []
       (comp (take-while (partial (complement t/before?) (-> ts last first)))
             (map (fn [t]
-                   [(to-double t) (ts-index t 0)])))
+                   [(to-double t) (or (ts-index t) 0)])))
       (some-> ts
               ffirst
               (t.periodic/periodic-seq step)))))

@@ -13,6 +13,7 @@
              [lorem :as lorem]
              [name :as name]]
             [distributions.core :as dist]
+            [medley.core :as m]
             [metabase.db.spec :as dbspec]
             [metabase.util :as u])
   (:import java.util.Date))
@@ -291,11 +292,21 @@
     (update x k * (seasonality-map (season-fn x)))))
 
 (defn add-outliers
-  [k xs]
-  (for [x xs]
-    (if (< (rand) 0.02)
-      (update x k * 10)
-      x)))
+  [mode n k xs]
+  (if (= mode :share)
+    (for [x xs]
+      (if (< (rand) n)
+        (update x k * 10)
+        x))
+    (let [candidates   (keep (fn [[idx x]]
+                               (when (k x)
+                                 idx))
+                             (m/indexed xs))
+          outlier-idx? (set (repeatedly n #(rand-nth candidates)))]
+      (for [[idx x] (m/indexed xs)]
+        (if (outlier-idx? idx)
+          (update x k * 10)
+          x)))))
 
 (defn create-random-data [& {:keys [people products]
                              :or   {people 2500 products 200}}]
@@ -313,7 +324,8 @@
      :orders   (->> people
                     (mapcat :orders)
                     (add-autocorrelation :quantity)
-                    (add-outliers :quantity)
+                    (add-outliers :share 0.01 :quantity)
+                    (add-outliers :count 5 :discount)
                     (add-increasing-variance :total)
                     (add-seasonality #(.getMonth ^java.util.Date (:created_at %))
                                      :quantity {0 0.6

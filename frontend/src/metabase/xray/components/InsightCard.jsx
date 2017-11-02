@@ -210,20 +210,20 @@ export class OutliersInsight extends Component {
         const { filter, features: { table } } = this.props
 
         const viewAllRowsUrl = table && Question.create()
-            .query()
-            // imitate the required hydrated metadata format
-            .setTable({ ...table, database: { id: table.db_id }})
-            .addFilter(filter)
-            .question()
-            .getUrl()
+              .query()
+              // imitate the required hydrated metadata format
+              .setTable({ ...table, database: { id: table.db_id }})
+              .addFilter(filter)
+              .question()
+              .getUrl()
 
         // construct the question with filter
-        return (
-            <InsightText>
+	return (
+		<InsightText>
                 You have some outliers.
                 <span> </span>
                 { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with outliers.</span> }
-            </InsightText>
+	    </InsightText>
         )
     }
 }
@@ -234,9 +234,26 @@ export class StructuralBreaksInsight extends Component {
     static icon = "insight"
 
     render() {
+	const { breaks } = this.props
+
+	const breakPoints = breaks.map( (point, idx) => {
+	    if (idx == breaks.length - 1 && breaks.length > 1) {
+		return (
+			<span>and { point }</span>
+		)
+	    } else {
+		return (
+			<span>{ point }</span>
+		)
+	    }
+	})
+
         return (
             <InsightText>
-		You have structural breaks.
+		It looks like your data has
+	    { breaks.length > 1 && <span> structural breaks </span>}
+	    { breaks.length == 1 && <span> a structural break </span>}
+	    at { breakPoints }.
             </InsightText>
         )
     }
@@ -278,6 +295,7 @@ const INSIGHT_COMPONENTS = [
     NormalRangeInsight,
     ZerosInsight,
     MultimodalInsight,
+    OutliersInsight,
     // timeseries
     NoisinessInsight,
     VariationTrendInsight,
@@ -285,8 +303,6 @@ const INSIGHT_COMPONENTS = [
     SeasonalityInsight,
     StructuralBreaksInsight,
     // RegimeChangeInsight
-    // numeric field, and timeseries
-    OutliersInsight,
 ]
 
 export const InsightCard = ({type, props, features}) => {
