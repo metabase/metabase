@@ -44,6 +44,11 @@ node-4() {
     run_step lein bikeshed
     run_step lein docstring-checker
     run_step ./bin/reflection-linter
+
+    # build the frontend, jar, and record the sizes
+    run_step ./bin/build version frontend sample-dataset uberjar
+    report-frontend-size
+    report-uberjar-size
 }
 node-5() {
     run_step lein eastwood
@@ -54,9 +59,7 @@ node-5() {
     run_step yarn run test-karma
 }
 node-6() {
-    run_step ./bin/build version frontend-fast sample-dataset uberjar
-    report-frontend-size
-    report-uberjar-size
+    run_step ./bin/build version sample-dataset uberjar
     run_step yarn run test-integrated
 }
 
