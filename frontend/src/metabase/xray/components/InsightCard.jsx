@@ -293,8 +293,8 @@ export const InsightCard = ({type, props, features}) => {
     const Insight = INSIGHT_COMPONENTS.find((component) => component.insightType === type)
 
     return (
-        <div className="full-height">
-            <div className="bg-white bordered rounded shadowed full-height p3">
+        <div>
+            <div className="bg-white bordered rounded shadowed p3" style={{ height: 180 }}>
                 <header className="flex align-center">
                     <Icon
                         name={Insight.icon}
