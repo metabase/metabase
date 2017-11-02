@@ -258,24 +258,41 @@ export class StructuralBreaksInsight extends Component {
         )
     }
 }
+
+const stationaryDefinition = "Mean does not change with time."
+const stationaryLink = "https://en.wikipedia.org/wiki/Stationary_process"
+
+export class StationaryInsight extends Component {
+    static insightType = "stationary"
+    static title = "Stationary data"
+    static icon = "insight"
+
+    render() {
+
+	return (
+		<InsightText>
+                Your data looks to be <TermWithDefinition definition={stationaryDefinition} link={stationaryLink}>
+                    stationary
+                </TermWithDefinition>.
+            </InsightText>
+        )
+    }
+}
+
 /*
 export class RegimeChangeInsight extends Component {
     static insightType = "regime-change"
     static title = "Regime change"
     static icon = "insight"
-
     getTextForBreak = ({ from, to, mode, shape }) => {
         let { resolution } = this.props
         resolution = resolution || "year"
-
         if (from === "beginning") return `${mode} ${shape} period until ${formatTimeWithUnit(to, resolution)}`
         if (to === "now") return `${mode} ${shape} period from ${formatTimeWithUnit(from, resolution)} until now`
         return `${mode} ${shape} period from ${formatTimeWithUnit(from, resolution)} until now`
     }
-
     render() {
         let { breaks } = this.props
-
         return (
             <p>
                 Your data can be split into { breaks.length } { inflect("stages", breaks.length) }:
@@ -302,6 +319,7 @@ const INSIGHT_COMPONENTS = [
     AutocorrelationInsight,
     SeasonalityInsight,
     StructuralBreaksInsight,
+    StationaryInsight,
     // RegimeChangeInsight
 ]
 

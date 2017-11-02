@@ -373,7 +373,8 @@
                                       insights/variation-trend
                                       insights/autocorrelation
                                       insights/seasonality
-                                      insights/structural-breaks)
+                                      insights/structural-breaks
+                                      insights/stationary)
                           features))
         (update :growth-series (partial series->dataset ts/from-double
                                         [x-field

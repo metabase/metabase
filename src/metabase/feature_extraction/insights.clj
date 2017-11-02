@@ -162,3 +162,29 @@
               (> max upper-bound))
       {:filter [:or [:> [:field-id (:id field)] upper-bound]
                 [:< [:field-id (:id field)] lower-bound]]})))
+
+(definsight stationary
+  ""
+  [series resolution]
+  (when resolution
+    (let [n (ts/period-length resolution)]
+      (->> series
+           (partition n 1)
+           (map (partial transduce (map second)
+                         (redux/fuse {:mean stats/mean
+                                      :var  stats/variance})))
+           (partition 2 1)
+           (map (fn [[{mean1 :mean variance1 :var} {mean2 :mean variance2 :var}]]
+                  (if (= variance1 variance2 0)
+                    false
+                    (let [t (/ (- mean1 mean2)
+                               (num/sqrt (/ (+ variance1 variance2) n)))
+                          k (num/round
+                             (/ (num/expt (/ (+ variance1 variance2) n) 2)
+                                (/ (+ (num/expt variance1 2)
+                                      (num/expt variance2 2))
+                                   (* n (- n 1)))))
+                          t-crit (-> (d/t-distribution k)
+                                     (d/icdf (- 1 (/ 0.05 2))))]
+                      (< t t-crit)))))
+           (every? false?)))))
