@@ -6,8 +6,6 @@ import SettingInput from "./SettingInput.jsx";
 
 export default class PremiumEmbeddingWidget extends Component {
     render() {
-        const { setting } = this.props;
-
         return (
             <div>
                 <SettingInput {...this.props} />
