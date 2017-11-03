@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import {
     //formatListOfItems,
-    //formatTimeWithUnit,
+    formatTimeWithUnit,
     //inflect
 } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon";
@@ -234,16 +234,17 @@ export class StructuralBreaksInsight extends Component {
     static icon = "insight"
 
     render() {
-	const { breaks } = this.props
+	const { breaks, features: { resolution } } = this.props
 
 	const breakPoints = breaks.map( (point, idx) => {
+	    point = formatTimeWithUnit(point, resolution);
 	    if (idx == breaks.length - 1 && breaks.length > 1) {
 		return (
-			<span>and { point }</span>
+			<span>, and { point }</span>
 		)
 	    } else {
 		return (
-			<span>{ point }</span>
+			<span>{ idx > 0 && <span>, </span>}{ point }</span>
 		)
 	    }
 	})

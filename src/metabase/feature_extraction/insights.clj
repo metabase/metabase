@@ -156,6 +156,7 @@
   (when resolution
     (some->> series
              (ts/breaks (ts/period-length resolution))
+             sort
              (map ts/from-double)
              not-empty
              (hash-map :breaks))))
