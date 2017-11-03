@@ -165,7 +165,7 @@ function getSetting(settingDefs, id, vizSettings, series) {
         return;
     }
 
-    const settingDef = settingDefs[id];
+    const settingDef = settingDefs[id] || {};
     const [{ card }] = series;
     const visualization_settings = card.visualization_settings || {};
 
