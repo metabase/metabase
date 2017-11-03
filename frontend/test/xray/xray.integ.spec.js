@@ -156,7 +156,7 @@ describe("xray integration tests", () => {
             expect(fieldXRay.length).toBe(1)
             expect(fieldXRay.find(CostSelect).length).toBe(1)
 
-            expect(app.find(InsightCard).length).toBe(2)
+            expect(app.find(InsightCard).length).toBe(1)
             expect(app.find(NormalRangeInsight).length).toBe(1)
         })
     })
@@ -327,7 +327,7 @@ describe("xray integration tests", () => {
             const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
             click(xrayOptionIcon);
 
-            await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 5000 })
+            await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 })
             expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`)
 
             const segmentXRay = app.find(SegmentXRay)
@@ -347,7 +347,7 @@ describe("xray integration tests", () => {
 
             app = mount(store.getAppContainer())
 
-            await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
+            await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS], { timeout: 20000 })
 
             const xraySettings = app.find(SettingsXrayForm)
             const xrayToggle = xraySettings.find(Toggle)
