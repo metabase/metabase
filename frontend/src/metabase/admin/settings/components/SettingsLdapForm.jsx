@@ -186,7 +186,7 @@ export default class SettingsLdapForm extends Component {
                     <SettingsSetting
                         key={element.key}
                         setting={{ ...element, value }}
-                        updateSetting={this.handleChangeEvent.bind(this, element)}
+                        onChange={this.handleChangeEvent.bind(this, element)}
                         mappings={formData['ldap-group-mappings']}
                         updateMappings={this.handleChangeEvent.bind(this, { key: 'ldap-group-mappings' })}
                         errorMessage={errorMessage}
@@ -198,7 +198,7 @@ export default class SettingsLdapForm extends Component {
                 <SettingsSetting
                     key={element.key}
                     setting={{ ...element, value }}
-                    updateSetting={this.handleChangeEvent.bind(this, element)}
+                    onChange={this.handleChangeEvent.bind(this, element)}
                     errorMessage={errorMessage}
                 />
             );
