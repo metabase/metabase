@@ -60,7 +60,7 @@ const getRelativeUrlWithoutHash = (url) =>
     url.replace(/#.*$/, "").replace(/http:\/\/.*?\//, "/")
 
 const COUNT_ALL = "200";
-const COUNT_DOOHICKEY = "44";
+const COUNT_DOOHICKEY = "51";
 const COUNT_GADGET = "59";
 
 describe("parameters", () => {

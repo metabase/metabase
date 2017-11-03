@@ -46,7 +46,7 @@ describe("Question", () => {
             question._parameterValues = { [templateTagId]: "5" };
             const results2 = await question.getResults({ ignoreCache: true });
             expect(results2[0]).toBeDefined();
-            expect(results2[0].data.rows[0][0]).toEqual(77.92168947901892);
+            expect(results2[0].data.rows[0][0]).toEqual(116.35497575401975);
         });
 
         it("should return correct result with an optional template tag clause", async () => {
@@ -79,7 +79,7 @@ describe("Question", () => {
             question._parameterValues = { [templateTagId]: "5" };
             const results2 = await question.getResults({ ignoreCache: true });
             expect(results2[0]).toBeDefined();
-            expect(results2[0].data.rows[0][0]).toEqual(77.92168947901892);
+            expect(results2[0].data.rows[0][0]).toEqual(116.35497575401975);
         });
     });
 });

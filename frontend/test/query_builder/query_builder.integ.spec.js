@@ -451,7 +451,7 @@ describe("QueryBuilder", () => {
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 // We can use the visible row count as we have a low number of result rows
-                expect(qb.find(".ShownRowCount").text()).toBe("Showing 9 rows");
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 14 rows");
 
                 // Get the binning
                 const results = getQueryResults(store.getState())[0]
@@ -478,7 +478,7 @@ describe("QueryBuilder", () => {
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
-                expect(qb.find(".ShownRowCount").text()).toBe("Showing 173 rows");
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 253 rows");
                 const results = getQueryResults(store.getState())[0]
                 const breakoutBinningInfo = results.data.cols[0].binning_info;
                 expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
@@ -605,7 +605,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("4  –  6");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("4");
+                expect(countCell.text()).toBe("2");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -646,7 +646,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("AA");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("224");
+                expect(countCell.text()).toBe("233");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -690,7 +690,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("679");
+                expect(countCell.text()).toBe("701");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -796,7 +796,7 @@ describe("QueryBuilder", () => {
 
                 expect(firstRowCells.length).toBe(6);
 
-                expect(firstRowCells.at(4).text()).toBe("Enjoyable");
+                expect(firstRowCells.at(4).text()).toBe("Perfecto");
             })
         });
 
@@ -816,7 +816,7 @@ describe("QueryBuilder", () => {
 
                 expect(firstRowCells.length).toBe(6);
 
-                expect(firstRowCells.at(3).text()).toBe("Durable Silk Chair");
+                expect(firstRowCells.at(3).text()).toBe("Awesome Wooden Pants");
             })
         });
 
