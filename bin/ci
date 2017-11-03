@@ -76,7 +76,12 @@ report() {
 }
 
 report-frontend-coverage() {
-  report "frontend-coverage" $(node -e "console.log(require('./coverage-summary.json').total.lines.pct)")
+  report "frontend-coverage-lines" $(node -e "console.log(require('./coverage-summary.json').total.lines.pct)")
+  report "frontend-coverage-functions" $(node -e "console.log(require('./coverage-summary.json').total.functions.pct)")
+  report "frontend-coverage-branches" $(node -e "console.log(require('./coverage-summary.json').total.branches.pct)")
+  report "frontend-coverage-statements" $(node -e "console.log(require('./coverage-summary.json').total.statements.pct)")
+
+  report "frontend-loc" $(node -e "console.log(require('./coverage-summary.json').total.lines.total)")
 }
 report-frontend-size() {
   report "frontend-size" "$(wc -c < resources/frontend_client/app/dist/app-main.bundle.js)"

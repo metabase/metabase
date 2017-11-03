@@ -23,5 +23,6 @@
   },
   "collectCoverage": true,
   "coverageDirectory": "./",
-  "coverageReporters": ["text", "json-summary"]
+  "coverageReporters": ["text", "json-summary"],
+  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"]
 }
