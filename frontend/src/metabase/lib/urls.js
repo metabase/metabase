@@ -68,7 +68,7 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 }
 
 export function collection(collection) {
-    return `/questions/collections/${encodeURIComponent(collection.slug)}`;
+    return `/questions/collections/${collection.slug}`;
 }
 
 export function label(label) {

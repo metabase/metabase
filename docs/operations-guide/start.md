@@ -26,9 +26,6 @@ Metabase provides a binary Mac OS X application for users who are interested in 
 #### [Running on Docker](running-metabase-on-docker.md)
 If you are using Docker containers and prefer to manage your Metabase installation that way then we've got you covered.  This guide discusses how to use the Metabase Docker image to launch a container running Metabase.
 
-
-
-
 ### Cloud Platforms
 
 #### [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
@@ -39,6 +36,12 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 
 #### [Running on Cloud66](running-metabase-on-cloud66.md)
 Community support only at this time, but we have reports of Metabase instances running on Cloud66!
+
+#### [Running on Debian as a service](running-metabase-on-debian.md)
+Community support only at this time, but learn how to deploy Metabase as a service on Debian (and Debian-based) systems. Simple, guided, step-by-step approach that will work on any VPS.
+
+#### [Running on Kubernetes](running-metabase-on-kubernetes.md)
+Community Helm chart for running Metabase on Kubernetes
 
 # Upgrading Metabase
 
@@ -53,7 +56,7 @@ How you upgrade Metabase depends on how you are running it. See below for inform
 If you are running Metabase via docker, then you simply need to kill the Docker process and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
 #### Jar file
-If you are running the JVM Jar file directly, then you simply kill the process and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
+If you are running the JVM Jar file directly, then you simply kill the process, replace the .jar file with the newer version and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
 
 #### macOS Application

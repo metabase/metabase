@@ -79,9 +79,20 @@
       (when (values-less-than-total-max-length? values)
         values))))
 
+(defn- fixup-human-readable-values
+  "Field values and human readable values are lists that are zipped
+  together. If the field values have changes, the human readable
+  values will need to change too. This function reconstructs the
+  human_readable_values to reflect `NEW-VALUES`. If a new field value
+  is found, a string version of that is used"
+  [{old-values :values, old-hrv :human_readable_values} new-values]
+  (when (seq old-hrv)
+    (let [orig-remappings (zipmap old-values old-hrv)]
+      (map #(get orig-remappings % (str %)) new-values))))
 
 (defn create-or-update-field-values!
-  "Create or update the FieldValues object for FIELD."
+  "Create or update the FieldValues object for FIELD. If the FieldValues object already exists, then update values for
+   it; otherwise create a new FieldValues object with the newly fetched values."
   [field & [human-readable-values]]
   (let [field-values (FieldValues :field_id (u/get-id field))
         values       (distinct-values field)
@@ -91,8 +102,9 @@
       (and field-values values)
       (do
         (log/debug (format "Storing updated FieldValues for Field %s..." field-name))
-        (db/update! FieldValues (u/get-id field-values)
-          :values values))
+        (db/update-non-nil-keys! FieldValues (u/get-id field-values)
+          :values                values
+          :human_readable_values (fixup-human-readable-values field-values values)))
       ;; if FieldValues object doesn't exist create one
       values
       (do
@@ -107,8 +119,8 @@
 
 
 (defn field-values->pairs
-  "Returns a list of pairs (or single element vectors if there are no
-  human_readable_values) for the given `FIELD-VALUES` instance"
+  "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
+   `FIELD-VALUES` instance."
   [{:keys [values human_readable_values] :as field-values}]
   (if (seq human_readable_values)
     (map vector values human_readable_values)
@@ -133,7 +145,37 @@
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
-  "Remove the `FieldValues` for FIELD-ID."
-  [field-id]
-  {:pre [(integer? field-id)]}
-  (db/delete! FieldValues :field_id field-id))
+  "Remove the `FieldValues` for FIELD-OR-ID."
+  [field-or-id]
+  (db/delete! FieldValues :field_id (u/get-id field-or-id)))
+
+
+(defn- table-ids->table-id->is-on-demand?
+  "Given a collection of TABLE-IDS return a map of Table ID to whether or not its Database is subject to 'On Demand'
+   FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
+   when they are used in new Dashboard or Card parameters."
+  [table-ids]
+  (let [table-ids            (set table-ids)
+        table-id->db-id      (when (seq table-ids)
+                               (db/select-id->field :db_id 'Table :id [:in table-ids]))
+        db-id->is-on-demand? (when (seq table-id->db-id)
+                               (db/select-id->field :is_on_demand 'Database
+                                 :id [:in (set (vals table-id->db-id))]))]
+    (into {} (for [table-id table-ids]
+               [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
+
+(defn update-field-values-for-on-demand-dbs!
+  "Update the FieldValues for any Fields with FIELD-IDS if the Field should have FieldValues and it belongs to a
+   Database that is set to do 'On-Demand' syncing."
+  [field-ids]
+  (let [fields (when (seq field-ids)
+                 (filter field-should-have-field-values?
+                         (db/select ['Field :name :id :base_type :special_type :visibility_type :table_id]
+                           :id [:in field-ids])))
+        table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
+    (doseq [{table-id :table_id, :as field} fields]
+      (when (table-id->is-on-demand? table-id)
+        (log/debug
+         (format "Field %d '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
+                 (u/get-id field) (:name field)))
+        (create-or-update-field-values! field)))))

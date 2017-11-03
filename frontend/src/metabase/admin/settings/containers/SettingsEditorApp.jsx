@@ -16,6 +16,7 @@ import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
 import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
+import SettingsXrayForm from "../components/SettingsXrayForm.jsx";
 
 import { prepareAnalyticsValue } from 'metabase/admin/settings/utils'
 
@@ -48,6 +49,8 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
+    layout = null // the reference to AdminLayout
+
     static propTypes = {
         sections: PropTypes.array.isRequired,
         activeSection: PropTypes.object,
@@ -65,7 +68,7 @@ export default class SettingsEditorApp extends Component {
     updateSetting = async (setting, newValue) => {
         const { settings, settingValues, updateSetting } = this.props;
 
-        this.refs.layout.setSaving();
+        this.layout.setSaving();
 
         const oldValue = setting.value;
 
@@ -85,7 +88,7 @@ export default class SettingsEditorApp extends Component {
                 })
             }
 
-            this.refs.layout.setSaved();
+            this.layout.setSaved();
 
             const value = prepareAnalyticsValue(setting);
 
@@ -98,7 +101,7 @@ export default class SettingsEditorApp extends Component {
             );
         } catch (error) {
             let message = error && (error.message || (error.data && error.data.message));
-            this.refs.layout.setSaveError(message);
+            this.layout.setSaveError(message);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         }
     }
@@ -165,6 +168,14 @@ export default class SettingsEditorApp extends Component {
             } else {
                 return (<SettingsAuthenticationOptions />)
             }
+        } else if (activeSection.name === "X-Rays") {
+            return (
+                <SettingsXrayForm
+                    settings={this.props.settings}
+                    elements={activeSection.settings}
+                    updateSetting={this.updateSetting.bind(this)}
+                />
+            )
         } else {
             return (
                 <ul>
@@ -232,7 +243,7 @@ export default class SettingsEditorApp extends Component {
     render() {
         return (
             <AdminLayout
-                ref="layout"
+                ref={(layout) => this.layout = layout}
                 title="Settings"
                 sidebar={this.renderSettingsSections()}
             >

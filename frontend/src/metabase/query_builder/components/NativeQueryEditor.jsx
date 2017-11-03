@@ -6,6 +6,7 @@ import ReactDOM from "react-dom";
 
 import "./NativeQueryEditor.css";
 
+// $FlowFixMe react-resizable causes Flow errors
 import { ResizableBox } from 'react-resizable';
 
 import 'ace/ace';
@@ -195,12 +196,8 @@ export default class NativeQueryEditor extends Component {
 
         aceLanguageTools.addCompleter({
             getCompletions: async (editor, session, pos, prefix, callback) => {
-                if (prefix.length < 2) {
-                    callback(null, []);
-                    return;
-                }
                 try {
-                    // HACK: call this.props.autocompleteResultsFn rathern than caching the prop since it might change
+                    // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
                     let results = await this.props.autocompleteResultsFn(prefix);
                     // transform results of the API call into what ACE expects
                     let js_results = results.map(function(result) {

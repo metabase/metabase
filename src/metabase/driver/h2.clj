@@ -200,6 +200,9 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
+(def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
+(def ^:private h2-date-formatter (driver/create-db-time-formatter date-format-str))
+(def ^:private h2-db-time-query (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
 (defrecord H2Driver []
   clojure.lang.Named
@@ -214,7 +217,8 @@
                                                            :placeholder  "file:/Users/camsaul/bird_sightings/toucans"
                                                            :required     true}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :process-query-in-context          (u/drop-first-arg process-query-in-context)})
+          :process-query-in-context          (u/drop-first-arg process-query-in-context)
+          :current-db-time                   (driver/make-current-db-time-fn h2-date-formatter h2-db-time-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

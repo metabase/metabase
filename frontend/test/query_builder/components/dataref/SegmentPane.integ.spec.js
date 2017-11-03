@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils";
@@ -15,11 +15,10 @@ import { delay } from "metabase/lib/promise"
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import { orders_past_30_days_segment } from "__support__/sample_dataset_fixture";
+import { orders_past_300_days_segment } from "__support__/sample_dataset_fixture";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
-import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table";
 import UseForButton from "metabase/query_builder/components/dataref/UseForButton";
 import { SegmentApi } from "metabase/services";
@@ -32,8 +31,8 @@ describe("SegmentPane", () => {
     let segment = null;
 
     beforeAll(async () => {
-        await login();
-        segment = await SegmentApi.create(orders_past_30_days_segment);
+        useSharedAdminLogin();
+        segment = await SegmentApi.create(orders_past_300_days_segment);
         store = await createTestStore()
 
         store.pushPath(Urls.plainQuestion());
@@ -65,7 +64,7 @@ describe("SegmentPane", () => {
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
         await delay(3000)
 
-        click(dataReference.find(`a[children="${orders_past_30_days_segment.name}"]`).first())
+        click(dataReference.find(`a[children="${orders_past_300_days_segment.name}"]`).first())
 
         await store.waitForActions([FETCH_TABLE_METADATA]);
     });
@@ -73,7 +72,7 @@ describe("SegmentPane", () => {
     it("shows you the correct segment definition", () => {
         const queryDefinition = queryBuilder.find(DataReference).find(QueryDefinition);
         // eslint-disable-next-line no-irregular-whitespace
-        expect(queryDefinition.text()).toMatch(/Created At -30day/);
+        expect(queryDefinition.text()).toMatch(/Created At -300day/);
     })
 
     it("lets you apply the filter to your current query", async () => {
@@ -88,7 +87,7 @@ describe("SegmentPane", () => {
         expect(queryBuilder.find(DataReference).find(UseForButton).length).toBe(0);
     });
 
-    it("lets you see count of rows for past 30 days", async () => {
+    it("lets you see count of rows for past 300 days", async () => {
         const numberQueryButton = queryBuilder.find(DataReference).find(QueryButton).at(0);
 
         try {
@@ -102,10 +101,9 @@ describe("SegmentPane", () => {
 
         // The value changes daily which wasn't originally taken into account
         // expect(queryBuilder.find(Scalar).text()).toBe("1,236")
-        expect(queryBuilder.find(Scalar).text().length).toBe(5)
     });
 
-    it("lets you see raw data for past 30 days", async () => {
+    it("lets you see raw data for past 300 days", async () => {
         const allQueryButton = queryBuilder.find(DataReference).find(QueryButton).at(1);
 
         try {

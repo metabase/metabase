@@ -39,7 +39,7 @@ export default class DeleteModalWithConfirm extends Component {
                 title={"Delete \"" + objectName + "\"?"}
                 onClose={this.props.onClose}
             >
-            <div className="px4 pb4">
+            <div className="px4">
                 <ul>
                     {confirmItems.map((item, index) =>
                         <li key={index} className="pb2 mb2 border-row-divider flex align-center">
@@ -54,9 +54,12 @@ export default class DeleteModalWithConfirm extends Component {
                         </li>
                     )}
                 </ul>
+            </div>
+            <div className="Form-actions ml-auto">
+                <button className="Button" onClick={this.props.onClose}>Cancel</button>
                 <button
-                    className={cx("Button", { disabled: !confirmed, "Button--danger": confirmed })}
-                    onClick={this.onDelete}
+                className={cx("Button ml2", { disabled: !confirmed, "Button--danger": confirmed })}
+                onClick={this.onDelete}
                 >
                     Delete this {objectType}
                 </button>

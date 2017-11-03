@@ -18,7 +18,6 @@ Our macOS application is best thought of as Metabase in single-player mode. It's
 When you need to share dashboards or pulses with others, we *strongly* recommend you run our server application.
 
 
-
 ## Asking questions and running queries
 
 ### Can I use SQL with Metabase?
@@ -44,6 +43,12 @@ We're constantly trying to walk the line between putting more functionality into
 Metabase allows you to [click on your charts or tables to explore or zoom in](http://www.metabase.com/docs/latest/users-guide/03-basic-exploration.html), but these features don't currently work with SQL/native queries (this is because Metabase doesn't currently parse these kinds of queries). The same is true of the question actions menu in the bottom-right of the question detail page.
 
 However, in [Metabase version 0.25 we introduced nested queries](http://www.metabase.com/blog/Metabase-0.25#nested-questions), a feature that lets you use the results of SQL/native queries as the starting table for GUI-based questions. This means you'll be able to use sophisticated SQL/native queries to create the exact segments you need, and you and your team will be able to use drill-through and actions if you create GUI-based questions from those segments.
+
+## Why are my field or table names showing up with weird spacing?
+
+By default, Metabase attempts to make field names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under Settings > General > Friendly Table and Field Names.
+
+Note that even with this setting turned off, Metabase will replace underscores with spaces. To manually fix field or table names if they still look wrong, you can go to the Metadata section of the Admin Panel, select the database that contains the table or field you want to edit, select the table, and then edit the name(s) in the input boxes that appear.
 
 ## Dashboards
 

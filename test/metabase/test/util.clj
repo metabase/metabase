@@ -1,13 +1,13 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+            [clj-time.core :as time]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
             [metabase
+             [driver :as driver]
              [task :as task]
              [util :as u]]
             [metabase.models
@@ -27,8 +27,12 @@
              [table :refer [Table]]
              [user :refer [User]]]
             [metabase.test.data :as data]
+            [metabase.test.data.datasets :refer [*driver*]]
+            [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+  (:import java.util.TimeZone
+           [org.joda.time DateTime DateTimeZone]
+           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 ;; ## match-$
 
@@ -405,3 +409,56 @@
                                 {:key (.getName (.getKey trigger))}
                                 (when (instance? CronTrigger trigger)
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)}))))}))))))
+
+(defn db-timezone-id
+  "Return the timezone id from the test database. Must be called with
+  `metabase.test.data.datasets/*driver*` bound, such as via
+  `metabase.test.data.datasets/with-engine`"
+  []
+  (assert (bound? #'*driver*))
+  (data/dataset test-data
+    (-> (driver/current-db-time *driver* (data/db))
+        .getChronology
+        .getZone
+        .getID)))
+
+(defn call-with-jvm-tz
+  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the
+  various timezone settings back the way it found it when it exits."
+  [^DateTimeZone dtz f]
+  (let [orig-tz (TimeZone/getDefault)
+        orig-dtz (time/default-time-zone)
+        orig-tz-prop (System/getProperty "user.timezone")]
+    (try
+      ;; It looks like some DB drivers cache the timezone information
+      ;; when instantiated, this clears those to force them to reread
+      ;; that timezone value
+      (reset! @#'metabase.driver.generic-sql/database-id->connection-pool {})
+      ;; Used by JDBC, and most JVM things
+      (TimeZone/setDefault (.toTimeZone dtz))
+      ;; Needed as Joda time has a different default TZ
+      (DateTimeZone/setDefault dtz)
+      ;; We read the system property directly when formatting results, so this needs to be changed
+      (System/setProperty "user.timezone" (.getID dtz))
+      (f)
+      (finally
+        ;; We need to ensure we always put the timezones back the way
+        ;; we found them as it will cause test failures
+        (TimeZone/setDefault orig-tz)
+        (DateTimeZone/setDefault orig-dtz)
+        (System/setProperty "user.timezone" orig-tz-prop)))))
+
+(defmacro with-jvm-tz
+  "Invokes `BODY` with the JVM timezone set to `DTZ`"
+  [dtz & body]
+  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
+
+(defmacro with-model-cleanup
+  "This will delete all rows found for each model in `MODEL-SEQ`. This calls `delete!`, so if the model has defined
+  any `pre-delete` behavior, that will be preserved."
+  [model-seq & body]
+  `(try
+     ~@body
+     (finally
+       (doseq [model# ~model-seq]
+         (db/delete! model#)))))

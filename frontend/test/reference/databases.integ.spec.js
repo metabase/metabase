@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils"
@@ -42,7 +42,7 @@ describe("The Reference Section", () => {
 
     // Scaffolding
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
 
     })
 

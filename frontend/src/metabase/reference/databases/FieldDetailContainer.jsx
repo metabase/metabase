@@ -19,13 +19,16 @@ import {
     getIsEditing
 } from '../selectors';
 
+import { getXrayEnabled } from 'metabase/xray/selectors'
+
 const mapStateToProps = (state, props) => ({
-    database: getDatabase(state, props),    
-    table: getTable(state, props),    
-    field: getField(state, props),    
+    database: getDatabase(state, props),
+    table: getTable(state, props),
+    field: getField(state, props),
     databaseId: getDatabaseId(state, props),
     isEditing: getIsEditing(state, props),
-    metadata: getMetadata(state, props)
+    metadata: getMetadata(state, props),
+    showXray: getXrayEnabled(state)
 });
 
 const mapDispatchToProps = {
@@ -43,7 +46,8 @@ export default class FieldDetailContainer extends Component {
         table: PropTypes.object.isRequired,
         field: PropTypes.object.isRequired,
         isEditing: PropTypes.bool,
-        metadata: PropTypes.object
+        metadata: PropTypes.object,
+        showXray: PropTypes.bool
     };
 
     async fetchContainerData(){
@@ -68,14 +72,15 @@ export default class FieldDetailContainer extends Component {
             database,
             table,
             field,
-            isEditing
+            isEditing,
+            showXray
         } = this.props;
 
         return (
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<FieldSidebar database={database} table={table} field={field}/>}
+                sidebar={<FieldSidebar database={database} table={table} field={field} showXray={showXray}/>}
             >
                 <FieldDetail {...this.props} />
             </SidebarLayout>

@@ -15,6 +15,9 @@ window.MetabaseBootstrap = {
         "US\/Pacific",
         "America\/Costa_Rica"
     ],
+    available_locales: [
+        ["en", "English"]
+    ],
     types: {
         "type/Address":                   ["type/*"],
         "type/Array":                     ["type/Collection"],

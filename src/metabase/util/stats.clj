@@ -1,6 +1,7 @@
 (ns metabase.util.stats
   "Functions which summarize the usage of an instance"
   (:require [clj-http.client :as client]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
@@ -347,6 +348,25 @@
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)}))
 
+;;; System Metrics
+
+(defn- bytes->megabytes [b]
+  (Math/round (double (/ b 1024 1024))))
+
+(def ^:private system-property-names
+  ["java.version" "java.vm.specification.version"  "java.runtime.name"
+   "user.timezone" "user.language" "user.country" "file.encoding"
+   "os.name" "os.version"])
+
+(defn- system-metrics
+  "Metadata about the environment Metabase is running in"
+  []
+  (let [runtime (Runtime/getRuntime)]
+    (merge
+     {:max_memory (bytes->megabytes (.maxMemory runtime))
+      :processors (.availableProcessors runtime)}
+     (zipmap (map #(keyword (str/replace % \. \_)) system-property-names)
+             (map #(System/getProperty %) system-property-names)))))
 
 ;;; Combined Stats & Logic for sending them in
 
@@ -367,6 +387,7 @@
                   :pulse      (pulse-metrics)
                   :question   (question-metrics)
                   :segment    (segment-metrics)
+                  :system     (system-metrics)
                   :table      (table-metrics)
                   :user       (user-metrics)}}))
 

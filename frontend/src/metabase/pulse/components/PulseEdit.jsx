@@ -84,7 +84,7 @@ export default class PulseEdit extends Component {
             c.channel_type === "email" ?
                 <span>This pulse will no longer be emailed to <strong>{c.recipients.length} {inflect("address", c.recipients.length)}</strong> <strong>{c.schedule_type}</strong>.</span>
             : c.channel_type === "slack" ?
-                <span>Slack channel <strong>{c.details.channel}</strong> will no longer get this pulse <strong>{c.schedule_type}</strong>.</span>
+                <span>Slack channel <strong>{c.details && c.details.channel}</strong> will no longer get this pulse <strong>{c.schedule_type}</strong>.</span>
             :
                 <span>Channel <strong>{c.channel_type}</strong> will no longer receive this pulse <strong>{c.schedule_type}</strong>.</span>
         );
@@ -153,7 +153,7 @@ export default class PulseEdit extends Component {
                         failedText="Save failed"
                         successText="Saved"
                     />
-                    <Link to="/pulse" className="text-bold flex-align-right no-decoration text-brand-hover">Cancel</Link>
+                  <Link to="/pulse" className="Button ml2">Cancel</Link>
                 </div>
             </div>
         );

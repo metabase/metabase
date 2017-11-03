@@ -1,12 +1,12 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
 
 import {
     clickButton,
     setInputValue,
-    click
+    click, dispatchBrowserEvent
 } from "__support__/enzyme_utils"
 import {
     DELETE_FIELD_DIMENSION,
@@ -27,7 +27,10 @@ import { mount } from "enzyme";
 import { FETCH_IDFIELDS } from "metabase/admin/datamodel/datamodel";
 import { delay } from "metabase/lib/promise"
 import FieldApp, {
-    FieldHeader, FieldRemapping, FieldValueMapping,
+    FieldHeader,
+    FieldRemapping,
+    FieldValueMapping,
+    RemappingNamingTip,
     ValueRemappings
 } from "metabase/admin/datamodel/containers/FieldApp";
 import Input from "metabase/components/Input";
@@ -39,6 +42,7 @@ import { TestPopover } from "metabase/components/Popover";
 import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import { getMetadata } from "metabase/selectors/metadata";
 
 const getRawFieldWithId = (store, fieldId) => store.getState().metadata.fields[fieldId];
 
@@ -66,7 +70,7 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
 
 describe("FieldApp", () => {
     beforeAll(async () => {
-        await login()
+        useSharedAdminLogin()
     })
 
     describe("name settings", () => {
@@ -301,6 +305,36 @@ describe("FieldApp", () => {
             store.waitForActions([DELETE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
         })
 
+        it("forces you to choose the FK field manually if there is no field with Field Name special type", async () => {
+            const { store, fieldApp } = await initFieldApp({ fieldId: USER_ID_FK_ID });
+
+            // Set FK id to `Reviews -> ID`  with a direct metadata update call
+            const field = getMetadata(store.getState()).fields[USER_ID_FK_ID]
+            await store.dispatch(updateField({
+                ...field.getPlainObject(),
+                fk_target_field_id: 31
+            }));
+
+            const section = fieldApp.find(FieldRemapping)
+            const mappingTypePicker = section.find(Select);
+            expect(mappingTypePicker.text()).toBe('Use original value')
+            click(mappingTypePicker);
+            const pickerOptions = mappingTypePicker.find(TestPopover).find("li");
+            expect(pickerOptions.length).toBe(2);
+
+            const useFKButton = pickerOptions.at(1).children().first()
+            click(useFKButton);
+            store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA])
+            // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
+            await delay(500);
+
+            expect(section.find(RemappingNamingTip).length).toBe(1)
+
+            dispatchBrowserEvent('mousedown', { e: { target: document.documentElement }})
+            await delay(300); // delay needed because of setState in FieldApp; app.update() does not work for whatever reason
+            expect(section.find(".text-danger").length).toBe(1) // warning that you should choose a column
+        })
+
         it("doesn't let you enter custom remappings for a field with string values", async () => {
             const { fieldApp } = await initFieldApp({ tableId: USER_SOURCE_TABLE_ID, fieldId: USER_SOURCE_ID });
             const section = fieldApp.find(FieldRemapping)
@@ -365,6 +399,13 @@ describe("FieldApp", () => {
 
         afterAll(async () => {
             const store = await createTestStore()
+            await store.dispatch(fetchTableMetadata(1))
+
+            const field = getMetadata(store.getState()).fields[USER_ID_FK_ID]
+            await store.dispatch(updateField({
+                ...field.getPlainObject(),
+                fk_target_field_id: 13 // People -> ID
+            }));
 
             await store.dispatch(deleteFieldDimension(USER_ID_FK_ID));
             await store.dispatch(deleteFieldDimension(PRODUCT_RATING_ID));

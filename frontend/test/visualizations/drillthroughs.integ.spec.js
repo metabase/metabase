@@ -6,7 +6,7 @@ import { initializeQB, navigateToNewCardInsideQB } from "metabase/query_builder/
 import { parse as urlParse } from "url";
 
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 
@@ -36,7 +36,7 @@ const question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE
 
 describe('Visualization drill-through', () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     });
 
     // NOTE: Should this be here or somewhere in QB directory?

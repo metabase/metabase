@@ -7,7 +7,9 @@ import type {
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default (
+    { question, clicked, settings }: ClickActionProps
+): ClickAction[] => {
     const dimensions = (clicked && clicked.dimensions) || [];
     const drilldown = drillDownForDimensions(dimensions, question.metadata());
     if (!drilldown) {

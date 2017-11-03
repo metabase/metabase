@@ -58,10 +58,16 @@
 
 (api/defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name parameters], :as dashboard} :body}]
-  {name       su/NonBlankString
-   parameters [su/Map]}
-  (dashboard/create-dashboard! dashboard api/*current-user-id*))
+  [:as {{:keys [name description parameters], :as dashboard} :body}]
+  {name        su/NonBlankString
+   parameters  [su/Map]
+   description (s/maybe s/Str)}
+  (->> (db/insert! Dashboard
+         :name        name
+         :description description
+         :parameters  (or parameters [])
+         :creator_id  api/*current-user-id*)
+       (events/publish-event! :dashboard-create)))
 
 
 ;;; ------------------------------------------------------------ Hiding Unreadable Cards ------------------------------------------------------------
@@ -219,20 +225,15 @@
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
-  [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
+  [id :as {{:keys [cardId parameter_mappings series], :as dashboard-card} :body}]
   {cardId             su/IntGreaterThanZero
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
   (api/check-not-archived (api/read-check Card cardId))
-  (let [defaults       {:dashboard_id           id
-                        :card_id                cardId
-                        :visualization_settings {}
-                        :creator_id             api/*current-user-id*
-                        :series                 (or series [])}
-        dashboard-card (-> (merge dashboard-card defaults)
-                           (update :series #(filter identity (map :id %))))]
-    (u/prog1 (api/check-500 (create-dashboard-card! dashboard-card))
-      (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]}))))
+  (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
+                                                                 (assoc :creator_id api/*current-user*)
+                                                                 (dissoc :cardId))))
+    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
 
 
 ;; TODO - we should use schema to validate the format of the Cards :D
@@ -248,11 +249,7 @@
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
   (api/check-not-archived (api/write-check Dashboard id))
-  (let [dashcard-ids (db/select-ids DashboardCard, :dashboard_id id)]
-    (doseq [{dashcard-id :id, :as dashboard-card} cards]
-      ;; ensure the dashcard we are updating is part of the given dashboard
-      (when (contains? dashcard-ids dashcard-id)
-        (update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))))
+  (dashboard/update-dashcards! id cards)
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 

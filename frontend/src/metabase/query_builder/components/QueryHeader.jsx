@@ -38,6 +38,8 @@ const mapDispatchToProps = {
     clearRequestState
 };
 
+const ICON_SIZE = 16
+
 @connect(null, mapDispatchToProps)
 export default class QueryHeader extends Component {
     constructor(props, context) {
@@ -259,7 +261,7 @@ export default class QueryHeader extends Component {
                     buttonSections.push([
                         <button
                             key="recentlySaved"
-                            className="cursor-pointer bg-white text-success text-strong text-uppercase"
+                            className="cursor-pointer bg-white text-success text-bold text-uppercase"
                         >
                             <span>
                                 <Icon name='check' size={12} />
@@ -349,7 +351,7 @@ export default class QueryHeader extends Component {
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
                     <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
-                        <Icon name="addtodash" size={16} />
+                        <Icon name="addtodash" size={ICON_SIZE} />
                     </span>
                 </Tooltip>
             ]);
@@ -360,7 +362,7 @@ export default class QueryHeader extends Component {
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
                         triggerClasses="h4 text-brand-hover text-uppercase"
-                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={16} /></span>}
+                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={ICON_SIZE} /></span>}
                     >
                         <SaveQuestionModal
                             card={this.props.card}
@@ -424,7 +426,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
             <Tooltip key="dataReference" tooltip="Learn about your data">
                 <a className={dataReferenceButtonClasses}>
-                    <Icon name='reference' size={16} onClick={this.onToggleDataReference}></Icon>
+                    <Icon name='reference' size={ICON_SIZE} onClick={this.onToggleDataReference}></Icon>
                 </a>
             </Tooltip>
         ]);

@@ -1,5 +1,5 @@
 ### Exploring in Metabase
-As long as you're not the very first user in your team's Metabase, the easiest way to get started is by exploring charts and dashboards that your teammates have already created.
+As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created.
 
 #### Exploring dashboards
 Click on the `Dashboards` nav item to see all the dashboards your teammates have created. Dashboards are simply collections of charts and numbers that you want to be able to refer back to regularly. (You can learn more about dashboards [here](07-dashboards.md))

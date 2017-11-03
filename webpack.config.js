@@ -5,25 +5,18 @@ require("babel-register");
 require("babel-polyfill");
 
 var webpack = require('webpack');
-var webpackPostcssTools = require('webpack-postcss-tools');
 
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var HtmlWebpackHarddiskPlugin = require('html-webpack-harddisk-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
 var BannerWebpackPlugin = require('banner-webpack-plugin');
+var UglifyJSPlugin = require('uglifyjs-webpack-plugin')
 
-var _ = require('underscore');
-var glob = require('glob');
 var fs = require('fs');
 
 var chevrotain = require("chevrotain");
 var allTokens = require("./frontend/src/metabase/lib/expressions/tokens").allTokens;
-
-function hasArg(arg) {
-    var regex = new RegExp("^" + ((arg.length === 2) ? ("-\\w*"+arg[1]+"\\w*") : (arg)) + "$");
-    return process.argv.filter(regex.test.bind(regex)).length > 0;
-}
 
 var SRC_PATH = __dirname + '/frontend/src/metabase';
 var LIB_SRC_PATH = __dirname + '/frontend/src/metabase-lib';
@@ -33,44 +26,15 @@ var BUILD_PATH = __dirname + '/resources/frontend_client';
 // default NODE_ENV to development
 var NODE_ENV = process.env["NODE_ENV"] || "development";
 
-// Need to scan the CSS files for variable and custom media used across files
-// NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-var IS_WATCHING = hasArg("-w") || hasArg("--watch");
-if (IS_WATCHING) {
-    process.stderr.write("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries\n");
-}
-
 // Babel:
 var BABEL_CONFIG = {
-    cacheDirectory: ".babel_cache"
-};
-
-// Build mapping of CSS variables
-var CSS_SRC = glob.sync(SRC_PATH + '/css/**/*.css');
-var CSS_MAPS = { vars: {}, media: {}, selector: {} };
-CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
-    for (var name in CSS_MAPS) _.extend(CSS_MAPS[name], map[name]);
-});
-
-// CSS Next:
-var CSSNEXT_CONFIG = {
-    features: {
-        // pass in the variables and custom media we scanned for before
-        customProperties: { variables: CSS_MAPS.vars },
-        customMedia: { extensions: CSS_MAPS.media }
-    },
-    import: {
-        path: ['resources/frontend_client/app/css']
-    },
-    compress: false
+    cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache"
 };
 
 var CSS_CONFIG = {
     localIdentName: NODE_ENV !== "production" ?
         "[name]__[local]___[hash:base64:5]" :
         "[hash:base64:5]",
-    restructuring: false,
-    compatibility: true,
     url: false, // disabled because we need to use relative url()
     importLoaders: 1
 }
@@ -96,74 +60,93 @@ var config = module.exports = {
     },
 
     module: {
-        loaders: [
+        rules: [
             {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
-                loader: "babel",
-                query: BABEL_CONFIG
+                use: [
+                    { loader: "babel-loader", options: BABEL_CONFIG }
+                ]
             },
             {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules|\.spec\.js/,
-                loader: 'eslint'
+                use: [
+                    { loader: "eslint-loader" }
+                ]
             },
             {
                 test: /\.(eot|woff2?|ttf|svg|png)$/,
-                loader: "file-loader"
-            },
-            {
-                test: /\.json$/,
-                loader: "json-loader"
+                use: [
+                    { loader: "file-loader" }
+                ]
             },
             {
                 test: /\.css$/,
-                loader: ExtractTextPlugin.extract("style-loader", "css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader")
+                use: ExtractTextPlugin.extract({
+                    fallback: "style-loader",
+                    use: [
+                        { loader: "css-loader", options: CSS_CONFIG },
+                        { loader: "postcss-loader" }
+                    ]
+                })
             }
         ]
     },
-
     resolve: {
-        extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
+        extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH,
             'metabase-lib':         LIB_SRC_PATH,
             '__support__':          TEST_SUPPORT_PATH,
-            'style':                SRC_PATH + '/css/core/index.css',
+            'style':                SRC_PATH + '/css/core/index',
             'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
         }
     },
 
     plugins: [
+        new webpack.optimize.CommonsChunkPlugin({
+            name: 'vendor',
+            minChunks (module) {
+                return module.context && module.context.indexOf('node_modules') >= 0
+            }
+        }),
         new UnusedFilesWebpackPlugin({
             globOptions: {
                 ignore: [
                     "**/types/*.js",
                     "**/*.spec.*",
-                    "**/__support__/*.js"
+                    "**/__support__/*.js",
+                    "public/lib/types.js",
+                    "internal/lib/components-node.js"
                 ]
             }
         }),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
         // NOTE: the filename on disk won't include "?[chunkhash]" but the URL in index.html generated by HtmlWebpackPlugin will:
-        new ExtractTextPlugin('[name].bundle.css?[contenthash]'),
+        new ExtractTextPlugin({
+            filename: '[name].bundle.css?[contenthash]'
+        }),
         new HtmlWebpackPlugin({
             filename: '../../index.html',
-            chunks: ["app-main", "styles"],
+            chunksSortMode: 'manual',
+            chunks: ["vendor", "styles", "app-main"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../public.html',
-            chunks: ["app-public", "styles"],
+            chunksSortMode: 'manual',
+            chunks: ["vendor", "styles", "app-public"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../embed.html',
-            chunks: ["app-embed", "styles"],
+            chunksSortMode: 'manual',
+            chunks: ["vendor", "styles", "app-embed"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head',
             alwaysWriteToDisk: true,
@@ -189,15 +172,7 @@ var config = module.exports = {
                 },
             }
         }),
-    ],
-
-    postcss: function (webpack) {
-        return [
-            require("postcss-import")(),
-            require("postcss-url")(),
-            require("postcss-cssnext")(CSSNEXT_CONFIG)
-        ]
-    }
+    ]
 };
 
 if (NODE_ENV === "hot") {
@@ -207,19 +182,32 @@ if (NODE_ENV === "hot") {
     // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
     config.output.publicPath = "http://localhost:8080/" + config.output.publicPath;
 
-    config.module.loaders.unshift({
+    config.module.rules.unshift({
         test: /\.jsx$/,
         exclude: /node_modules/,
-        loaders: ['react-hot', 'babel?'+JSON.stringify(BABEL_CONFIG)]
+        use: [
+            // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
+            // because newer versions would require us to upgrade to react-router v4 and possibly deal with
+            // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
+            { loader: 'react-hot-loader' },
+            { loader: 'babel-loader', options: BABEL_CONFIG }
+        ]
     });
 
     // disable ExtractTextPlugin
-    config.module.loaders[config.module.loaders.length - 1].loader = "style-loader!css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader"
+    config.module.rules[config.module.rules.length - 1].use = [
+        { loader: "style-loader" },
+        { loader: "css-loader", options: CSS_CONFIG },
+        { loader: "postcss-loader" }
+    ]
 
     config.devServer = {
         hot: true,
         inline: true,
-        contentBase: "frontend"
+        contentBase: "frontend",
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        }
         // if webpack doesn't reload UI after code change in development
         // watchOptions: {
         //     aggregateTimeout: 300,
@@ -230,7 +218,8 @@ if (NODE_ENV === "hot") {
     };
 
     config.plugins.unshift(
-        new webpack.NoErrorsPlugin(),
+        new webpack.NoEmitOnErrorsPlugin(),
+        new webpack.NamedModulesPlugin(),
         new webpack.HotModuleReplacementPlugin()
     );
 }
@@ -255,18 +244,15 @@ if (NODE_ENV !== "production") {
     config.output.devtoolModuleFilenameTemplate = '[absolute-resource-path]';
     config.output.pathinfo = true;
 } else {
-    config.plugins.push(new webpack.optimize.UglifyJsPlugin({
-        // suppress uglify warnings in production
-        // output from these warnings was causing Heroku builds to fail (#5410)
-        compress: {
-            warnings: false,
-        },
-        mangle: {
-            // this is required to ensure we don't minify Chevrotain token identifiers
-            // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
-            except: allTokens.map(function(currTok) {
-                return chevrotain.tokenName(currTok);
-            })
+    config.plugins.push(new UglifyJSPlugin({
+        uglifyOptions: {
+            mangle: {
+                // this is required to ensure we don't minify Chevrotain token identifiers
+                // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
+                except: allTokens.map(function(currTok) {
+                    return chevrotain.tokenName(currTok);
+                })
+            }
         }
     }))
 

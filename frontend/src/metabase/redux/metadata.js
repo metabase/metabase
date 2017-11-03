@@ -81,7 +81,6 @@ export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPOR
     };
 });
 
-
 export const FETCH_SEGMENTS = "metabase/metadata/FETCH_SEGMENTS";
 export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) => {
     return async (dispatch, getState) => {

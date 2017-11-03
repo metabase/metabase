@@ -1,6 +1,6 @@
 import React from 'react'
 import { mount } from 'enzyme'
-import ObjectDetail from 'metabase/visualizations/visualizations/ObjectDetail'
+import { ObjectDetail } from 'metabase/visualizations/visualizations/ObjectDetail'
 
 import { TYPE } from "metabase/lib/types";
 

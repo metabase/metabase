@@ -5,7 +5,7 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "220"]
+  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "205"]
             "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
@@ -37,6 +37,7 @@
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
+                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
                  [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient
@@ -52,6 +53,7 @@
                  [com.h2database/h2 "1.4.194"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
+                 [com.microsoft.sqlserver/mssql-jdbc "6.2.1.jre7"]    ; SQLServer JDBC driver. TODO - Switch this to `.jre8` once we officially switch to Java 8
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
@@ -60,7 +62,8 @@
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
-                 [kixi/stats "0.3.8"                                  ; Various statistic measures implemented as transducers
+                 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
+                 [kixi/stats "0.3.9"                                  ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
@@ -73,18 +76,18 @@
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
-                 [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
                   :exclusions [org.slf4j/slf4j-api
                                it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-                 [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
+                 [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
-                 [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
+                 [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
+                 [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
@@ -92,23 +95,29 @@
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
-  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
+  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
+                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
-             :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
+             :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
+            [puppetlabs/i18n "0.8.0"]]                                ; i18n helpers
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
-  :jvm-opts ["-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
+  :jvm-opts ["-XX:+IgnoreUnrecognizedVMOptions"                       ; ignore things not recognized for our Java version instead of refusing to start
+             "-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
              "-Xverify:none"                                          ; disable bytecode verification when running in dev so it starts slightly faster
              "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
              "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+             "--add-opens=java.base/java.net=ALL-UNNAMED"             ; let Java 9 dynamically add to classpath -- see https://github.com/tobias/dynapath#note-on-java-9
+             "--add-modules=java.xml.bind"                            ; tell Java 9 (Oracle VM only) to add java.xml.bind to classpath. No longer on it by default. See https://stackoverflow.com/questions/43574426/how-to-resolve-java-lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init!
-         :destroy metabase.core/destroy}
+         :destroy metabase.core/destroy
+         :reload-paths ["src"]}
   :eastwood {:exclude-namespaces [:test-paths
                                   metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
              :add-linters [:unused-private-vars
@@ -125,7 +134,7 @@
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
-                   :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
+                   :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
@@ -134,16 +143,16 @@
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
-                   :jvm-opts ["-Dlogfile.path=target/log"
-                              "-Xms1024m"                             ; give JVM a decent heap size to start with
-                              "-Xmx2048m"]                            ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
+                   :jvm-opts ["-Dlogfile.path=target/log"]
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
-                            :jvm-opts ["-Duser.timezone=UTC"
+                            :jvm-opts ["-Xms1024m"                    ; give JVM a decent heap size to start with
+                                       "-Xmx2048m"                    ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
+                                       "-Duser.timezone=UTC"
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
@@ -160,16 +169,5 @@
              ;; Profile Metabase start time with `lein profile`
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
-             ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
-             ;; Create the reset password JAR:  lein with-profile reset-password jar
-             ;;                                   -> ./reset-password-artifacts/reset-password/reset-password.jar
-             ;; Run the reset password JAR:     MB_DB_PATH=/path/to/metabase.db java -classpath /path/to/metabase-uberjar.jar:/path/to/reset-password.jar \
-             ;;                                   metabase.reset_password.core email@address.com
-             :reset-password {:source-paths ["reset_password"]
-                              :main metabase.reset-password.core
-                              :jar-name "reset-password.jar"
-                              ;; Exclude everything except for reset-password specific code in the created jar
-                              :jar-exclusions [#"^(?!metabase/reset_password).*$"]
-                              :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
              ;; get the H2 shell with 'lein h2'
              :h2-shell {:main org.h2.tools.Shell}})

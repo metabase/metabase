@@ -52,6 +52,14 @@ const SECTIONS = [
                 allowValueCollection: true
             },
             {
+                key: "site-locale",
+                display_name: "Language",
+                type: "select",
+                options:  (MetabaseSettings.get("available_locales") || []).map(([value, name]) => ({ name, value })),
+                placeholder: "Select a language",
+                getHidden: () => MetabaseSettings.get("available_locales").length < 2
+            },
+            {
                 key: "anon-tracking-enabled",
                 display_name: "Anonymous Tracking",
                 type: "boolean"
@@ -363,6 +371,23 @@ const SECTIONS = [
                 type: "number",
                 getHidden: (settings) => !settings["enable-query-caching"],
                 allowValueCollection: true
+            }
+        ]
+    },
+    {
+        name: "X-Rays",
+        settings: [
+            {
+                key: "enable-xrays",
+                display_name: "Enable X-Rays",
+                type: "boolean",
+                allowValueCollection: true
+            },
+            {
+                key: "xray-max-cost",
+                type: "string",
+                allowValueCollection: true
+
             }
         ]
     }

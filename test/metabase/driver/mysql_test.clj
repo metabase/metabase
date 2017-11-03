@@ -5,7 +5,9 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]
@@ -29,7 +31,9 @@
 
 ;; make sure connection details w/ extra params work as expected
 (expect
-  "//localhost:3306/cool?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8&characterSetResults=UTF8&useSSL=false&tinyInt1isBit=false"
+  (str "//localhost:3306/cool?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8"
+       "&characterSetResults=UTF8&useLegacyDatetimeCode=true&useJDBCCompliantTimezoneShift=true"
+       "&useSSL=false&tinyInt1isBit=false")
   (:subname (sql/connection-details->spec (MySQLDriver.) {:host               "localhost"
                                                           :port               "3306"
                                                           :dbname             "cool"
@@ -69,3 +73,7 @@
                                            :additional-options "tinyInt1isBit=false")}]
       (sync/sync-database! db)
       (db->fields db))))
+
+(expect-with-engine :mysql
+  "America/Los_Angeles"
+  (tu/db-timezone-id))

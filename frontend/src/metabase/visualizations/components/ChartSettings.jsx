@@ -103,7 +103,7 @@ class ChartSettings extends Component {
         const { series } = this.state;
 
         const tabs = {};
-        for (let widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
+        for (const widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
             tabs[widget.section] = tabs[widget.section] || [];
             tabs[widget.section].push(widget);
         }
@@ -151,11 +151,14 @@ class ChartSettings extends Component {
                     </div>
                 </div>
                 <div className="pt1">
-                  <a className="Button Button--primary" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
-                  <a className="text-grey-2 ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
-                  { !_.isEqual(this.state.settings, {}) &&
-                      <a className="Button Button--warning float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
-                  }
+                    { !_.isEqual(this.state.settings, {}) &&
+                        <a className="Button Button--danger float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
+                    }
+
+                    <div className="float-left">
+                      <a className="Button Button--primary ml2" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
+                      <a className="Button ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
+                    </div>
                 </div>
             </div>
         );

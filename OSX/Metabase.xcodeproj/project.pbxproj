@@ -43,7 +43,6 @@
 		D1BDAC6A1C053E220075D3AC /* ResetPasswordWindowController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */; };
 		D1BDAC6D1C0565640075D3AC /* JavaTask.m in Sources */ = {isa = PBXBuildFile; fileRef = D1BDAC6C1C0565640075D3AC /* JavaTask.m */; };
 		D1BDAC721C05695B0075D3AC /* ResetPasswordTask.m in Sources */ = {isa = PBXBuildFile; fileRef = D1BDAC711C05695B0075D3AC /* ResetPasswordTask.m */; };
-		D1BDAC731C056C7C0075D3AC /* reset-password.jar in Resources */ = {isa = PBXBuildFile; fileRef = D1BDAC6E1C0566490075D3AC /* reset-password.jar */; };
 		D1CB9FE81BCEDE9A009A61FB /* LoadingView.m in Sources */ = {isa = PBXBuildFile; fileRef = D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */; };
 		D1CB9FEA1BCEDEA5009A61FB /* LoadingView.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */; };
 		D1CB9FED1BCEDF02009A61FB /* Loading_View_Inner.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CB9FEB1BCEDF02009A61FB /* Loading_View_Inner.png */; };
@@ -129,7 +128,6 @@
 		D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = ResetPasswordWindowController.xib; sourceTree = "<group>"; };
 		D1BDAC6B1C0565640075D3AC /* JavaTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JavaTask.h; sourceTree = "<group>"; };
 		D1BDAC6C1C0565640075D3AC /* JavaTask.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JavaTask.m; sourceTree = "<group>"; };
-		D1BDAC6E1C0566490075D3AC /* reset-password.jar */ = {isa = PBXFileReference; lastKnownFileType = archive.jar; path = "reset-password.jar"; sourceTree = "<group>"; };
 		D1BDAC701C05695B0075D3AC /* ResetPasswordTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResetPasswordTask.h; sourceTree = "<group>"; };
 		D1BDAC711C05695B0075D3AC /* ResetPasswordTask.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ResetPasswordTask.m; sourceTree = "<group>"; };
 		D1CB9FE61BCEDE9A009A61FB /* LoadingView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoadingView.h; sourceTree = "<group>"; };
@@ -338,7 +336,6 @@
 			children = (
 				D18853D61BB0CEC600D89803 /* Images.xcassets */,
 				D105B2321BB5BE4A00A5D850 /* Images */,
-				D1BDAC6E1C0566490075D3AC /* reset-password.jar */,
 				D18854021BB0DB6000D89803 /* metabase.jar */,
 				D121FD681BC5B4E7002101B0 /* dsa_pub.pem */,
 			);
@@ -426,7 +423,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D1BDAC731C056C7C0075D3AC /* reset-password.jar in Resources */,
 				D1DFF6C31BCEF9E700ECC7B6 /* Loading_View_Inner@2x.png in Resources */,
 				D1CB9FEE1BCEDF02009A61FB /* Loading_View_Outer.png in Resources */,
 				D105B23D1BB5BE4A00A5D850 /* back_icon@2x.png in Resources */,
@@ -541,6 +537,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -573,6 +570,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				VALID_ARCHS = x86_64;
 			};
 			name = Debug;
 		};
@@ -580,6 +578,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
@@ -605,7 +604,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				VALID_ARCHS = x86_64;
 			};
 			name = Release;
 		};

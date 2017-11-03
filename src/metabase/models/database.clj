@@ -13,24 +13,27 @@
              [db :as db]
              [models :as models]]))
 
-;;; ------------------------------------------------------------ Constants ------------------------------------------------------------
+;;; --------------------------------------------------- Constants ---------------------------------------------------
 
 ;; TODO - should this be renamed `saved-cards-virtual-id`?
 (def ^:const ^Integer virtual-id
   "The ID used to signify that a database is 'virtual' rather than physical.
 
-   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using something that would otherwise
-   be a legal ID, *nothing* need change there, and the frontend can query against this 'database' none the wiser. (This integer ID is negative
-   which means it will never conflict with a *real* database ID.)
+   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
+   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this
+   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database
+   ID.)
 
-   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is this 'virtual' database and
-   take the appropriate actions."
+   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
+   this 'virtual' database and take the appropriate actions."
   -1337)
-;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize if not completely eliminate
-;; any changes to the frontend. After experimenting with several possible ways to do this this implementation seemed simplest and best met the goal.
-;; Luckily this is the only place this "magic number" is defined and the entire frontend can remain blissfully unaware of its value.
+;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
+;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this
+;; implementation seemed simplest and best met the goal. Luckily this is the only place this "magic number" is defined
+;; and the entire frontend can remain blissfully unaware of its value.
 
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Database :metabase_database)
 
@@ -82,7 +85,8 @@
     ;; if the sync operation schedules have changed, we need to reschedule this DB
     (when (or new-metadata-schedule new-fieldvalues-schedule)
       (let [{old-metadata-schedule    :metadata_sync_schedule
-             old-fieldvalues-schedule :cache_field_values_schedule} (db/select-one [Database :metadata_sync_schedule :cache_field_values_schedule] :id (u/get-id database))
+             old-fieldvalues-schedule :cache_field_values_schedule} (db/select-one [Database :metadata_sync_schedule :cache_field_values_schedule]
+                                                                      :id (u/get-id database))
             ;; if one of the schedules wasn't passed continue using the old one
             new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
             new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
@@ -121,12 +125,13 @@
           :can-write?        i/superuser?}))
 
 
-;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------
+;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn ^:hydrate tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
-  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]})) ; TODO - do we want to include tables that should be `:hidden`?
+  ;; TODO - do we want to include tables that should be `:hidden`?
+  (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
 
 (defn schema-names
   "Return a *sorted set* of schema names (as strings) associated with this `Database`."
@@ -149,7 +154,7 @@
   (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 
 
-;;; ------------------------------------------------------------ JSON Encoder ------------------------------------------------------------
+;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
 (def ^:const protected-password
   "The string to replace passwords with when serializing Databases."

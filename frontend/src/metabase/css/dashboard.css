@@ -340,3 +340,8 @@
 }
 
 @page { margin: 1cm; }
+
+/* when in night mode goal lines should be more visible */
+.Dashboard--night .goal .line {
+  stroke: white;
+}

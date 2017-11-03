@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 
@@ -28,18 +28,18 @@ import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFiel
 describe("The Reference Section", () => {
     // Test data
     const segmentDef = {name: "A Segment", description: "I did it!", table_id: 1, show_in_getting_started: true,
-                        definition: {database: 1, query: {filter: ["abc"]}}}
+                        definition: {source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"]}}
 
     const anotherSegmentDef = {name: "Another Segment", description: "I did it again!", table_id: 1, show_in_getting_started: true,
-                               definition:{database: 1, query: {filter: ["def"]}}}
+                               definition:{source_table: 1, filter: ["time-interval", ["field-id", 1], -15, "day"]}}
     
-    const segmentCardDef = { name :"A card", display: "scalar", 
+    const segmentCardDef = { name :"A card", display: "scalar",
                       dataset_query: {database: 1, table_id: 1, type: "query", query: {source_table: 1, "aggregation": ["count"], "filter": ["segment", 1]}},
                       visualization_settings: {}}
 
     // Scaffolding
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
 
     })
 

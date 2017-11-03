@@ -1,7 +1,7 @@
 // Converted from a Selenium E2E test
 import {
     createTestStore,
-    login
+    useSharedAdminLogin
 } from "__support__/integrated_tests";
 import {
     click,
@@ -27,7 +27,7 @@ describe("admin/people", () => {
     let createdUserId = null;
 
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     })
 
     describe("user management", () => {
@@ -41,12 +41,12 @@ describe("admin/people", () => {
             const firstName = "Testy";
             const lastName = "McTestFace";
 
-            click(app.find('button[children="Add person"]'));
+            click(app.find('button[children="Add someone"]'));
             await store.waitForActions([SHOW_MODAL])
             await delay(1000);
 
             const addUserModal = app.find(ModalContent);
-            const addButton = addUserModal.find('div[children="Add Person"]').closest(Button)
+            const addButton = addUserModal.find('div[children="Add"]').closest(Button)
             expect(addButton.props().disabled).toBe(true);
 
             setInputValue(addUserModal.find("input[name='firstName']"), firstName)
@@ -86,7 +86,7 @@ describe("admin/people", () => {
 
             const editDetailsModal = app.find(ModalContent);
 
-            const saveButton = editDetailsModal.find('div[children="Save Changes"]').closest(Button)
+            const saveButton = editDetailsModal.find('div[children="Save changes"]').closest(Button)
             expect(saveButton.props().disabled).toBe(true);
 
             setInputValue(editDetailsModal.find("input[name='firstName']"), firstName + "x")

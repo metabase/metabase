@@ -114,7 +114,7 @@ function getPermissionWarningModal(entityType, getter, defaultGroup, permissions
 function getControlledDatabaseWarningModal(permissions, groupId, entityId) {
     if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
         return {
-            title: "Changing this database to limited access",
+            title: "Change access to this database to limited?",
             confirmButtonText: "Change",
             cancelButtonText: "Cancel"
         };

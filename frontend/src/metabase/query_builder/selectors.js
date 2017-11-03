@@ -29,6 +29,10 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getQueryResult     = state => state.qb.queryResult;
 export const getQueryResults    = state => state.qb.queryResults;
 
+// get instance settings, used for determining whether to display certain actions,
+// currently used only for xrays
+export const getSettings        = state => state.settings.values
+
 export const getIsDirty = createSelector(
     [getCard, getOriginalCard],
     (card, originalCard) => {

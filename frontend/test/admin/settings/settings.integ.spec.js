@@ -1,6 +1,6 @@
 // Converted from an old Selenium E2E test
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
 import { mount } from "enzyme";
@@ -11,7 +11,7 @@ import { setInputValue } from "__support__/enzyme_utils";
 
 describe("admin/settings", () => {
     beforeAll(async () =>
-        await login()
+        useSharedAdminLogin()
     );
 
     // TODO Atte Keinänen 6/22/17: Disabled because we already have converted this to Jest&Enzyme in other branch

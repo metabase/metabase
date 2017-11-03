@@ -1,9 +1,10 @@
 // Converted from an old Selenium E2E test
 import {
-    login,
+    useSharedAdminLogin,
     logout,
     createTestStore,
-    restorePreviousLogin
+    restorePreviousLogin,
+    waitForRequestToComplete
 } from "__support__/integrated_tests";
 import {
     click, clickButton,
@@ -64,7 +65,7 @@ const COUNT_GADGET = "43";
 
 describe("parameters", () => {
     beforeAll(async () =>
-        await login()
+        useSharedAdminLogin()
     );
 
     describe("questions", () => {
@@ -138,7 +139,7 @@ describe("parameters", () => {
 
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
 
-            await delay(100);
+            await delay(500);
 
             setInputValue(tagEditorSidebar.find(".TestPopoverBody .AdminSelect").first(), "cat")
             const categoryRow = tagEditorSidebar.find(".TestPopoverBody .ColumnarSelector-row").first();
@@ -173,7 +174,7 @@ describe("parameters", () => {
 
             click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(
-            await delay(200);
+            await delay(500);
 
             // open sharing panel
             click(app.find(".Icon-share"));
@@ -186,7 +187,7 @@ describe("parameters", () => {
 
             click(app.find(".TestPopoverBody .Icon-pencil"))
 
-            await delay(200);
+            await delay(500);
 
             click(app.find("div[children='Publish']"));
             await store.waitForActions([UPDATE_ENABLE_EMBEDDING, UPDATE_EMBEDDING_PARAMS])
@@ -208,40 +209,42 @@ describe("parameters", () => {
         describe("as an anonymous user", () => {
             beforeAll(() => logout());
 
-            async function runSharedQuestionTests(store, questionUrl) {
+            async function runSharedQuestionTests(store, questionUrl, apiRegex) {
                 store.pushPath(questionUrl);
                 const app = mount(store.getAppContainer())
 
                 await store.waitForActions([ADD_PARAM_VALUES]);
 
-                // Loading the query results is done in PublicQuestion itself so we have to add a delay here
-                await delay(200);
-
-                expect(app.find(Scalar).text()).toBe(COUNT_ALL + "sql parametrized");
+                // Loading the query results is done in PublicQuestion itself so we have to listen to API request instead of Redux action
+                await waitForRequestToComplete("GET", apiRegex)
+                // use `update()` because of setState
+                expect(app.update().find(Scalar).text()).toBe(COUNT_ALL + "sql parametrized");
 
                 // manually click parameter (sadly the query results loading happens inline again)
                 click(app.find(Parameters).find("a").first());
                 click(app.find(CategoryWidget).find('li[children="Doohickey"]'));
-                await delay(200);
-                expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY + "sql parametrized");
+
+                await waitForRequestToComplete("GET", apiRegex)
+                expect(app.update().find(Scalar).text()).toBe(COUNT_DOOHICKEY + "sql parametrized");
 
                 // set parameter via url
                 store.pushPath("/"); // simulate a page reload by visiting other page
                 store.pushPath(questionUrl + "?category=Gadget");
-                await delay(500);
-                expect(app.find(Scalar).text()).toBe(COUNT_GADGET + "sql parametrized");
+                await waitForRequestToComplete("GET", apiRegex)
+                // use `update()` because of setState
+                expect(app.update().find(Scalar).text()).toBe(COUNT_GADGET + "sql parametrized");
             }
 
             it("should allow seeing an embedded question", async () => {
                 if (!embedUrl) throw new Error("This test fails because previous tests didn't produce an embed url.")
                 const embedUrlTestStore = await createTestStore({ embedApp: true });
-                await runSharedQuestionTests(embedUrlTestStore, embedUrl)
+                await runSharedQuestionTests(embedUrlTestStore, embedUrl, new RegExp("/api/embed/card/.*/query"))
             })
 
             it("should allow seeing a public question", async () => {
                 if (!publicUrl) throw new Error("This test fails because previous tests didn't produce a public url.")
                 const publicUrlTestStore = await createTestStore({ publicApp: true });
-                await runSharedQuestionTests(publicUrlTestStore, publicUrl)
+                await runSharedQuestionTests(publicUrlTestStore, publicUrl, new RegExp("/api/public/card/.*/query"))
             })
 
             // I think it's cleanest to restore the login here so that there are no surprises if you want to add tests

@@ -17,4 +17,4 @@
     (when-let [average-length (get-in fingerprint [:type :type/Text :average-length])]
       (when (> average-length average-length-no-preview-threshold)
         (assoc field
-          :npreview_display false)))))
+          :preview_display false)))))

@@ -43,14 +43,18 @@ export type ClickAction = {
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
     question?: () => ?Question,
-
+    url?: () => string,
     section?: string,
     name?: string,
 }
 
 export type ClickActionProps = {
     question: Question,
-    clicked?: ClickObject
+    clicked?: ClickObject,
+    settings: {
+        'enable_xrays': boolean,
+        'xray_max_cost': string
+    }
 }
 
 export type OnChangeCardAndRun = ({ nextCard: Card, previousCard?: ?Card }) => void

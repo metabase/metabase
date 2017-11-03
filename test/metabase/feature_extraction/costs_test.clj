@@ -7,7 +7,7 @@
    true
    true
    true
-   false
+   true
    false
    true
    true
@@ -27,7 +27,21 @@
    (-> {:query :sample} sample-only? boolean)
    (-> {:query :full-scan} full-scan? boolean)
    (-> {:query :joins} full-scan? boolean)
-   (-> {:query :joins} alow-joins? boolean)
+   (-> {:query :joins} allow-joins? boolean)
    (-> nil full-scan? boolean)
-   (-> nil alow-joins? boolean)
+   (-> nil allow-joins? boolean)
    (-> {:query :sample} full-scan? boolean)])
+
+(expect
+  [true
+   true
+   false
+   false]
+  (let [xray-max-cost (constantly {:query       :full-scan
+                                   :computation :linear})
+        max-cost (apply-global-cost-cap {:computation :unbounded
+                                         :query       :sample})]
+    [(-> max-cost unbounded-computation?)
+     (-> max-cost linear-computation?)
+     (-> max-cost full-scan?)
+     (-> max-cost allow-joins? )]))

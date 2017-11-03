@@ -7,7 +7,7 @@ import { parse as urlParse } from "url";
 import {
     createSavedQuestion,
     createTestStore,
-    login
+    useSharedAdminLogin
 } from "__support__/integrated_tests";
 import { initializeQB } from "metabase/query_builder/actions";
 import { getCard, getOriginalCard, getQueryResults } from "metabase/query_builder/selectors";
@@ -23,7 +23,7 @@ describe("QueryBuilder", () => {
     let store = null;
 
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
         store = await createTestStore()
     })
 

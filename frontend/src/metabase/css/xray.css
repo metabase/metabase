@@ -1,0 +1,4 @@
+.XRayPageWrapper .ComparisonTable .Card-title,
+.XRayPageWrapper .ComparisonContributor .Card-title {
+  display: none;
+}

@@ -17,6 +17,9 @@
 .link--nohover:hover {
   text-decoration: none;
 }
+.link--wrappable {
+  word-break: break-all;
+}
 
 .expand-clickable {
   display: inline-block;

@@ -246,3 +246,9 @@
 (expect
   [-2 -1 0 1 2 3 0 3]
   (map order-of-magnitude [0.01 0.5 4 12 444 1023 0 -1444]))
+
+(expect
+  [{:foo 2}
+   {:foo 2 :bar 3}]
+  [(update-when {:foo 2} :bar inc)
+   (update-when {:foo 2 :bar 2} :bar inc)])

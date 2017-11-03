@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [compojure
              [core :refer [context defroutes GET]]
              [route :as route]]
@@ -13,6 +14,7 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
+            [puppetlabs.i18n.core :refer [trs *locale*]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 
@@ -31,13 +33,28 @@
 (defn- load-template [path variables]
   (stencil/render-string (load-file-at-path path) variables))
 
+(defn- fallback-localization
+  [locale]
+  (json/generate-string {"headers" {"language" locale}
+                         "translations" {"" {"Metabase" {"msgid" "Metabase"}}}}))
+
+(defn- load-localization []
+  (if (and *locale* (not= (str *locale*) "en"))
+    (try
+      (load-file-at-path (str "frontend_client/app/locales/" *locale* ".json"))
+    (catch Throwable e
+      (log/warn (str "Locale " *locale* " not found."))
+      (fallback-localization *locale*)))
+    (fallback-localization *locale*)))
+
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
         (load-template (str "frontend_client/" entry ".html")
-                       {:bootstrap_json (escape-script (json/generate-string (public-settings/public-settings)))
-                        :uri            (escape-script (json/generate-string uri))
-                        :base_href      (escape-script (json/generate-string (base-href)))
-                        :embed_code     (when embeddable? (embed/head uri))})
+                       {:bootstrap_json    (escape-script (json/generate-string (public-settings/public-settings)))
+                        :localization_json (escape-script (load-localization))
+                        :uri               (escape-script (json/generate-string uri))
+                        :base_href         (escape-script (json/generate-string (base-href)))
+                        :embed_code        (when embeddable? (embed/head uri))})
         (load-file-at-path "frontend_client/init.html"))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))

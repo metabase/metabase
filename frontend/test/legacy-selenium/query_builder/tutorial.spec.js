@@ -1,3 +1,9 @@
+/* eslint-disable */
+// NOTE Atte Keinänen 28/8/17: This should be converted to Jest/Enzyme. I will be tricky because tutorial involves
+// lots of direct DOM manipulation. See also "Ability to dismiss popovers, modals etc" in
+// https://github.com/metabase/metabase/issues/5527
+
+
 import {
     waitForElement,
     waitForElementRemoved,

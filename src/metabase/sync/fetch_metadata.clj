@@ -4,7 +4,8 @@
    For example, with SQL databases, these functions use the JDBC DatabaseMetaData to get this information."
   (:require [metabase.driver :as driver]
             [metabase.sync.interface :as i]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import [org.joda.time DateTime]))
 
 (s/defn ^:always-validate db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a DATABASE and its Tables. Doesn't include information about the Fields."
@@ -22,3 +23,8 @@
   (let [driver (driver/->driver database)]
     (when (driver/driver-supports? driver :foreign-keys)
       (driver/describe-table-fks driver database table))))
+
+(s/defn ^:always-validate db-timezone :- i/TimeZoneId
+  [database :- i/DatabaseInstance]
+  (let [db-time  ^DateTime (driver/current-db-time (driver/->driver database) database)]
+    (-> db-time .getChronology .getZone .getID)))

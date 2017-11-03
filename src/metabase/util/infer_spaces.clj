@@ -1,5 +1,7 @@
 (ns metabase.util.infer-spaces
-  "Logic for automatically inferring where spaces should go in table names. Ported from ported from https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687."
+  "Logic for automatically inferring where spaces should go in table names. Ported from
+   https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687."
+  ;; TODO - The code in this namespace is very hard to understand. We should clean it up and make it readable.
   (:require [clojure.java.io :as io]
             [clojure.string :as s])
   (:import java.lang.Math))

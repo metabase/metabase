@@ -1172,7 +1172,47 @@ export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, 
     }
 )
 
+export const VIEW_NEXT_OBJECT_DETAIL = 'metabase/qb/VIEW_NEXT_OBJECT_DETAIL'
+export const viewNextObjectDetail = () => {
+    return (dispatch, getState) => {
+        const question = getQuestion(getState());
+        let filter = question.query().filters()[0]
 
+
+        let newFilter = ["=", filter[1], filter[2] + 1]
+
+        dispatch.action(VIEW_NEXT_OBJECT_DETAIL)
+
+        dispatch(updateQuestion(
+            question.query().updateFilter(0, newFilter).question()
+        ))
+
+        dispatch(runQuestionQuery());
+    }
+}
+
+export const VIEW_PREVIOUS_OBJECT_DETAIL = 'metabase/qb/VIEW_PREVIOUS_OBJECT_DETAIL'
+
+export const viewPreviousObjectDetail = () => {
+    return (dispatch, getState) => {
+        const question = getQuestion(getState());
+        let filter = question.query().filters()[0]
+
+        if(filter[2] === 1) {
+            return false
+        }
+
+        let newFilter = ["=", filter[1], filter[2] - 1]
+
+        dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL)
+
+        dispatch(updateQuestion(
+            question.query().updateFilter(0, newFilter).question()
+        ))
+
+        dispatch(runQuestionQuery());
+    }
+}
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;

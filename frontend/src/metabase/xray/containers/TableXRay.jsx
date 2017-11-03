@@ -1,109 +1,128 @@
-/* @flow */
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
-import { fetchTableXray } from 'metabase/xray/xray'
+import { fetchTableXray, initialize } from 'metabase/xray/xray'
 import { XRayPageWrapper } from 'metabase/xray/components/XRayLayout'
-
-import COSTS from 'metabase/xray/costs'
 
 import CostSelect from 'metabase/xray/components/CostSelect'
 import Constituent from 'metabase/xray/components/Constituent'
 
 import {
-    getTableConstituents,
-    getTableXray
+    getConstituents,
+    getFeatures,
+    getLoadingStatus,
+    getError,
+    getComparables,
+    getIsAlreadyFetched,
 } from 'metabase/xray/selectors'
 
 import Icon from 'metabase/components/Icon'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Table } from 'metabase/meta/types/Table'
 
+import { xrayLoadingMessages } from 'metabase/xray/utils'
+import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown";
+
 type Props = {
-    constituents: [],
     fetchTableXray: () => void,
+    initialize: () => {},
+    constituents: [],
+    isLoading: boolean,
+    isAlreadyFetched: boolean,
     xray: {
         table: Table
     },
     params: {
         tableId: number,
         cost: string
-    }
+    },
+    error: {}
 }
 
 const mapStateToProps = state => ({
-    xray: getTableXray(state),
-    constituents: getTableConstituents(state)
+    features: getFeatures(state),
+    constituents: getConstituents(state),
+    comparables: getComparables(state),
+    isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
+    error: getError(state)
 })
 
 const mapDispatchToProps = {
+    initialize,
     fetchTableXray
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.table.display_name || "Table")
+@title(({ features }) => features && features.model.display_name || "Table")
 class TableXRay extends Component {
     props: Props
 
-    state = {
-        error: null
+    componentWillMount () {
+        this.props.initialize()
+        this.fetch()
     }
 
-    componentDidMount () {
-        this.fetchTableXray()
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
 
-    async fetchTableXray () {
-        const { params } = this.props
-        // TODO this should happen at the action level
-        const cost = COSTS[params.cost]
-        try {
-            await this.props.fetchTableXray(params.tableId, cost)
-        } catch (error) {
-            this.setState({ error })
-        }
+    fetch () {
+        const { params, fetchTableXray } = this.props
+        fetchTableXray(params.tableId, params.cost)
     }
 
     componentDidUpdate (prevProps: Props) {
         if(prevProps.params.cost !== this.props.params.cost) {
-            this.fetchTableXray()
+            this.fetch()
         }
     }
 
     render () {
-        const { constituents, xray, params } = this.props
-        const { error } = this.state
+        const { comparables, constituents, features, params, isLoading, isAlreadyFetched, error } = this.props
 
         return (
-            <XRayPageWrapper>
-                <LoadingAndErrorWrapper
-                    loading={!constituents}
-                    error={error}
-                    noBackground
-                >
-                    { () =>
+            <LoadingAndErrorWrapper
+                loading={isLoading || !isAlreadyFetched}
+                error={error}
+                noBackground
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
+            >
+                { () =>
+                    <XRayPageWrapper>
                         <div className="full">
                             <div className="my4 flex align-center py2">
                                 <div>
                                     <h1 className="mt2 flex align-center">
-                                        {xray.table.display_name}
+                                        {features.model.display_name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
                                         <span className="text-grey-3">XRay</span>
                                     </h1>
-                                    <p className="m0 text-paragraph text-measure">{xray.table.description}</p>
+                                    <p className="m0 text-paragraph text-measure">{features.model.description}</p>
                                 </div>
                                 <div className="ml-auto flex align-center">
-                                   <h3 className="mr2">Fidelity:</h3>
+                                    <h3 className="mr2">Fidelity:</h3>
                                     <CostSelect
                                         xrayType='table'
                                         currentCost={params.cost}
-                                        id={xray.table.id}
+                                        id={features.model.id}
                                     />
                                 </div>
                             </div>
+                            { comparables.length > 0 &&
+                                <ComparisonDropdown
+                                    models={[features.model]}
+                                    comparables={comparables}
+                                />
+                            }
                             <ol>
                                 { constituents.map((constituent, index) =>
                                     <li key={index}>
@@ -114,11 +133,12 @@ class TableXRay extends Component {
                                 )}
                             </ol>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </XRayPageWrapper>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
 }
+
 
 export default TableXRay

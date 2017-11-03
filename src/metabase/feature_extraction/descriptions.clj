@@ -75,9 +75,30 @@
                             :description "Last 7 days over previous 7 days growth"}
    :DoD                    {:label "Day over day"}})
 
-(def ^{:arglists '([features])} add-descriptions
+(def ^:private conditional-descriptions
+  {:growth-series (fn [{:keys [resolution]}]
+                    (case resolution
+                      :hour    {:label "Hourly growth"
+                                :description "Series of hour to hour changes"}
+                      :minute  {:label "Minute growth"
+                                :description "Series of minute to minute changes"}
+                      :month   {:label "Monthly growth"
+                                :description "Series of month to month changes"}
+                      :day     {:label "Daily growth"
+                                :description "Series of day to day changes"}
+                      :week    {:label "Weekly growth"
+                                :description "Series of week to week changes"}
+                      :quarter {:label "Quarterly growth"
+                                :description "Series of quarter to quarter changes"}
+                      nil      nil))})
+
+(defn add-descriptions
   "Add descriptions of features to naked values where applicable."
-  (partial m/map-kv (fn [k v]
-                      (if-let [description (descriptions k)]
-                        [k (assoc description :value v)]
-                        [k v]))))
+  [features]
+  (m/map-kv (fn [k v]
+              (if-let [description (or (descriptions k)
+                                       (when-let [f (conditional-descriptions k)]
+                                         (f features)))]
+                [k (assoc description :value v)]
+                [k v]))
+            features))

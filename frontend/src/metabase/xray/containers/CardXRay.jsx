@@ -1,190 +1,212 @@
 import React, { Component } from 'react'
-
+import cxs from 'cxs'
 import { connect } from 'react-redux'
 
-import { fetchCardXray } from 'metabase/xray/xray'
+import { saturated } from 'metabase/lib/colors'
 
+import { fetchCardXray, initialize } from 'metabase/xray/xray'
+import {
+    getLoadingStatus,
+    getError,
+    getXray,
+    getIsAlreadyFetched
+} from 'metabase/xray/selectors'
+
+import { xrayLoadingMessages } from 'metabase/xray/utils'
+
+import Icon from 'metabase/components/Icon'
+import Tooltip from 'metabase/components/Tooltip'
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
-import SimpleStat from 'metabase/xray/SimpleStat'
+import Visualization from 'metabase/visualizations/components/Visualization'
+
+import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
+import Periodicity from 'metabase/xray/components/Periodicity'
+import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
+
+const mapStateToProps = state => ({
+    xray: getXray(state),
+    isLoading: getLoadingStatus(state),
+    isAlreadyFetched: getIsAlreadyFetched(state),
+    error: getError(state)
+})
+
+const mapDispatchToProps = {
+    initialize,
+    fetchCardXray
+}
 
 type Props = {
+    initialize: () => void,
+    initialize: () => {},
     fetchCardXray: () => void,
+    isLoading: boolean,
     xray: {}
 }
 
-const XrayList = ({ xray }) =>
-    <div>
-        <ol className="full">
-            { Object.keys(xray).map(fieldName => {
-                const f = xray[fieldName]
-                return (
-                    <li key={fieldName}>
-                        <h4>{fieldName}</h4>
-                        <div>
-                            <ol className="Grid">
-                                <li className="Grid-cell">
-                                    <SimpleStat name="Min" data={f.min} />
-                                </li>
-                                <li className="Grid-cell">
-                                    <SimpleStat name="Skewness" data={f.skewness} />
-                                </li>
-                                <li className="Grid-cell">
-                                    <SimpleStat name="Mean" data={f.mean} />
-                                </li>
-                            </ol>
-                        </div>
-                    </li>
-                )
-            })}
-        </ol>
-    </div>
-
-const XrayGrid = ({ xray, fields, distribution }) =>
-    <div className="full">
-        <ol>
-            <li className="border-bottom border-dark">
-                <ol className="Grid Grid--gutters">
-                    <li className="Grid-cell">
-                        <h3>Field</h3>
-                    </li>
-                    { fields.map(field =>
-                        <li className="Grid-cell">
-                            <h3>{field}</h3>
-                        </li>
-                    )}
-                    { distribution && (
-                        <li className="Grid-cell">
-                            <h3>Distribution</h3>
-                        </li>
-                    )}
-                </ol>
-            </li>
-            { Object.keys(xray).map(key => {
-                const field = xray[key]
-                return (
-                    <li className="border-bottom">
-                        <ol className="Grid Grid--gutters">
-                            <li className="Grid-cell">
-                                <a className="link text-bold">{key}</a>
-                            </li>
-                            { fields.map(f =>
-                                <li className="Grid-cell">
-                                    { field[f] }
-                                </li>
-                            )}
-                            { /*
-                            <li className="Grid-cell">
-                                { field['has-nils?'] }
-                            </li>
-                            <li className="Grid-cell">
-                                { field['all-distinct?'] }
-                            </li>
-                            <li className="Grid-cell">
-                                { field.mean }
-                            </li>
-                            <li className="Grid-cell">
-                                { field.min }
-                            </li>
-                            <li className="Grid-cell">
-                                { field.max }
-                            </li>
-                            <li className="Grid-cell">
-                                { field.median }
-                            </li>
-                            */}
-                            { distribution && (
-                                <li className="Grid-cell">
-                                </li>
-                            )}
-                        </ol>
-                    </li>
-                )
-            })}
-        </ol>
+const GrowthRateDisplay = ({ period }) =>
+    <div className="Grid-cell">
+        <div className="p4 border-right">
+            <h4 className="flex align-center">
+                {period.label}
+                { period.description && (
+                    <Tooltip tooltip={period.description}>
+                        <Icon name="infooutlined" style={{ marginLeft: 8 }} size={14} />
+                    </Tooltip>
+                )}
+            </h4>
+            <h1
+                className={cxs({
+                    color: period.value > 0 ? saturated.green : saturated.red
+                })}
+            >
+                {period.value && (period.value * 100).toFixed(2)}%
+            </h1>
+        </div>
     </div>
 
 class CardXRay extends Component {
     props: Props
 
-    state = {
-        grid: true
+    componentWillMount () {
+        const { cardId, cost } = this.props.params
+        this.props.initialize()
+        this.props.fetchCardXray(cardId, cost)
     }
 
-    componentDidMount () {
-        this.props.fetchCardxray(this.props.params.cardId)
+    componentWillUnmount() {
+        // HACK Atte Keinänen 9/20/17: We need this for now because the structure of `state.xray.xray` isn't same
+        // for all xray types and if switching to different kind of xray (= rendering different React container)
+        // without resetting the state fails because `state.xray.xray` subproperty lookups fail
+        this.props.initialize();
     }
-
 
     render () {
-        const { xray } = this.props
-        return (
-            <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
-                <div className="my4 py4">
-                    <h1>Xray</h1>
-                </div>
-                <LoadingAndErrorWrapper loading={!xray}>
-                    { () =>
-                        <div className="full">
-                            { this.state.grid ?(
-                                <div className="mt3">
-                                    <div className="my4">
-                                        <h2 className="py3 my3">Overview</h2>
-                                        <XrayGrid
-                                            xray={xray}
-                                            fields={['count', 'min', 'max', 'mean', 'median']}
-                                            distribution={false}
-                                        />
-                                    </div>
-                                    <div className="my4">
-                                        <h2 className="py3 my3">I am a cool math wizard</h2>
-                                        <XrayGrid
-                                            xray={xray}
-                                            fields={['skewness', 'has-nils?', 'all-distinct?', 'range-vs-spread', 'sum-of-squares', 'range-vs-sd']}
-                                            distribution={true}
-                                        />
-                                    </div>
-                                    { xray['CREATED_AT'] && (
-                                        <div className="my4">
-                                            <h2 className="py3 my3">Time breakdown</h2>
-                                            <div className="my3">
-                                                <h4>Hour</h4>
-                                            </div>
-                                            <div className="my3">
-                                                <h4>Day</h4>
-                                            </div>
-                                            <div className="my3">
-                                                <h4>Month</h4>
-                                            </div>
-                                            <div className="my3">
-                                                <h4>Quarter</h4>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                            : (
-                                <XrayList xray={xray} />
-                            )}
-                            <pre>
+        const { xray, isLoading, isAlreadyFetched, error } = this.props
 
-                                <code>
-                                    { JSON.stringify(xray, null, 2) }
-                                </code>
-                            </pre>
+        return (
+            <LoadingAndErrorWrapper
+                loading={isLoading || !isAlreadyFetched}
+                error={error}
+                noBackground
+                loadingMessages={xrayLoadingMessages}
+                loadingScenes={[<LoadingAnimation />]}
+            >
+                { () =>
+                    <XRayPageWrapper>
+                        <div className="mt4 mb2">
+                            <h1 className="my3">{xray.features.model.name} X-ray</h1>
                         </div>
-                    }
-                </LoadingAndErrorWrapper>
-            </div>
+                        <Heading heading="Growth rate" />
+                        <div className="bg-white bordered rounded shadowed">
+                            <div className="Grid Grid--1of4 border-bottom">
+                                { xray.features.DoD.value && (
+                                    <GrowthRateDisplay period={xray.features.DoD} />
+                                )}
+                                { xray.features.WoW.value && (
+                                    <GrowthRateDisplay period={xray.features.WoW} />
+                                )}
+                                { xray.features.MoM.value && (
+                                    <GrowthRateDisplay period={xray.features.MoM} />
+                                )}
+                                { xray.features.YoY.value && (
+                                    <GrowthRateDisplay period={xray.features.YoY} />
+                                )}
+                            </div>
+                            <div className="full">
+                                <div className="py1 px2" style={{ height: 320}}>
+                                    <Visualization
+                                        series={[
+                                            {
+                                                card: xray.features.model,
+                                                data: xray.dataset
+                                            },
+                                            {
+                                                card: {
+                                                    display: 'line',
+                                                    name: 'Growth Trend',
+                                                    visualization_settings: {
+
+                                                    }
+                                                },
+                                                data: xray.features['linear-regression'].value
+                                            }
+                                        ]}
+                                        className="full-height"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <Heading heading={xray.features['growth-series'].label} />
+                        <div className="full">
+                            <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
+                                <Visualization
+                                    series={[
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Trend',
+                                                visualization_settings: {
+
+                                                }
+                                            },
+                                            data: {
+                                                ...xray.features['growth-series'].value,
+                                                // multiple row value by 100 to display as a %
+                                                rows: xray.features['growth-series'].value.rows.map(row =>
+                                                    [row[0], row[1]*100]
+                                                )
+                                            }
+                                        }
+                                    ]}
+                                    className="full-height"
+                                />
+                            </div>
+                        </div>
+
+                        { xray.constituents[0] && (
+                            <Periodicity xray={Object.values(xray.constituents)[0]} />
+                        )}
+
+                        <Heading heading={xray.features['seasonal-decomposition'].label} />
+                        <div className="full">
+                            <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
+                                <Visualization
+                                    series={[
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Trend',
+                                                visualization_settings: {}
+                                            },
+                                            data: xray.features['seasonal-decomposition'].value.trend
+                                        },
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Seasonal',
+                                                visualization_settings: {}
+                                            },
+                                            data: xray.features['seasonal-decomposition'].value.seasonal
+                                        },
+                                        {
+                                            card: {
+                                                display: 'line',
+                                                name: 'Residual',
+                                                visualization_settings: {}
+                                            },
+                                            data: xray.features['seasonal-decomposition'].value.residual
+                                        }
+                                    ]}
+                                    className="full-height"
+                                />
+                            </div>
+                        </div>
+                    </XRayPageWrapper>
+                }
+            </LoadingAndErrorWrapper>
         )
     }
-}
-
-const mapStateToProps = state => ({
-    xray: state.xray.tablexray,
-})
-
-const mapDispatchToProps = {
-    fetchCardxray: fetchCardXray
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(CardXRay)

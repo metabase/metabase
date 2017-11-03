@@ -164,7 +164,11 @@
   [dashboard-id dashcard-id card-id]
   (let [param-id->param (u/key-by :id (db/select-one-field :parameters Dashboard :id dashboard-id))]
     ;; throw a 404 if there's no matching DashboardCard so people can't get info about other Cards that aren't in this Dashboard
-    (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id, :dashboard_id dashboard-id, :card_id card-id))
+    ;; we don't need to check that card-id matches the DashboardCard because we might be trying to get param info for
+    ;; a series belonging to this dashcard (card-id might be for a series)
+    (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard
+                                         :id           dashcard-id
+                                         :dashboard_id dashboard-id))
           :when         (= (:card_id param-mapping) card-id)
           :let          [param (get param-id->param (:parameter_id param-mapping))]
           :when         param]

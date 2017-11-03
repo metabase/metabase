@@ -184,7 +184,7 @@ export default class EditUserForm extends Component {
                         Cancel
                     </Button>
                     <Button primary disabled={!valid}>
-                        { buttonText ? buttonText : "Save Changes" }
+                        { buttonText ? buttonText : "Save changes" }
                     </Button>
                 </ModalFooter>
             </form>

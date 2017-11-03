@@ -223,7 +223,7 @@ export default class GettingStartedGuideEditForm extends Component {
                     />
                 }
                 <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
-                { () => 
+                { () =>
                     <div className="wrapper wrapper--trim">
                         <div className="mt4 py2">
                             <h1 className="my3 text-dark">
@@ -426,7 +426,7 @@ export default class GettingStartedGuideEditForm extends Component {
                                 </div>
                             </div>
                         </GuideEditSection>
-                    </div> 
+                    </div>
                 }
                 </LoadingAndErrorWrapper>
             </form>

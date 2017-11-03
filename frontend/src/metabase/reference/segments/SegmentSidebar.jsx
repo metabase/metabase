@@ -26,27 +26,27 @@ const SegmentSidebar = ({
                     placeholder="Data Reference"
                 />
             </div>
-                <SidebarItem key={`/reference/segments/${segment.id}`} 
-                             href={`/reference/segments/${segment.id}`} 
-                             icon="document" 
+                <SidebarItem key={`/reference/segments/${segment.id}`}
+                             href={`/reference/segments/${segment.id}`}
+                             icon="document"
                              name="Details" />
-                <SidebarItem key={`/reference/segments/${segment.id}/fields`} 
-                             href={`/reference/segments/${segment.id}/fields`} 
-                             icon="fields" 
+                <SidebarItem key={`/reference/segments/${segment.id}/fields`}
+                             href={`/reference/segments/${segment.id}/fields`}
+                             icon="fields"
                              name="Fields in this segment" />
-                <SidebarItem key={`/reference/segments/${segment.id}/questions`} 
-                             href={`/reference/segments/${segment.id}/questions`} 
-                             icon="all" 
+                <SidebarItem key={`/reference/segments/${segment.id}/questions`}
+                             href={`/reference/segments/${segment.id}/questions`}
+                             icon="all"
                              name={`Questions about this segment`} />
                 <SidebarItem key={`/xray/segment/${segment.id}/approximate`}
                              href={`/xray/segment/${segment.id}/approximate`}
                              icon="all"
-                             name={`X-Ray this segment`} />
+                             name={`X-ray this segment`} />
              { user && user.is_superuser &&
 
                 <SidebarItem key={`/reference/segments/${segment.id}/revisions`}
                              href={`/reference/segments/${segment.id}/revisions`}
-                             icon="history" 
+                             icon="history"
                              name={`Revision history`} />
              }
         </ul>
@@ -60,4 +60,3 @@ SegmentSidebar.propTypes = {
 };
 
 export default pure(SegmentSidebar);
-

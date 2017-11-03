@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore,
     createSavedQuestion
 } from "__support__/integrated_tests";
@@ -8,14 +8,13 @@ import { click } from "__support__/enzyme_utils"
 import React from 'react';
 import { mount } from "enzyme";
 import {
-    orders_past_30_days_segment,
+    orders_past_300_days_segment,
     unsavedOrderCountQuestion,
     vendor_count_metric
 } from "__support__/sample_dataset_fixture";
 import { delay } from 'metabase/lib/promise';
 
 import HomepageApp from "metabase/home/containers/HomepageApp";
-import { createMetric, createSegment } from "metabase/admin/datamodel/datamodel";
 import { FETCH_ACTIVITY } from "metabase/home/actions";
 import { QUERY_COMPLETED } from "metabase/query_builder/actions";
 
@@ -23,20 +22,31 @@ import Activity from "metabase/home/components/Activity";
 import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
+import { CardApi, MetricApi, SegmentApi } from "metabase/services";
 
 describe("HomepageApp", () => {
+    let questionId = null;
+    let segmentId = null;
+    let metricId = null;
+
     beforeAll(async () => {
-        await login()
+        useSharedAdminLogin()
 
         // Create some entities that will show up in the top of activity feed
         // This test doesn't care if there already are existing items in the feed or not
         // Delays are required for having separable creation times for each entity
-        await createSavedQuestion(unsavedOrderCountQuestion)
+        questionId = (await createSavedQuestion(unsavedOrderCountQuestion)).id()
         await delay(100);
-        await createSegment(orders_past_30_days_segment);
+        segmentId = (await SegmentApi.create(orders_past_300_days_segment)).id;
         await delay(100);
-        await createMetric(vendor_count_metric);
+        metricId = (await MetricApi.create(vendor_count_metric)).id;
         await delay(100);
+    })
+
+    afterAll(async () => {
+        await MetricApi.delete({ metricId, revision_message: "Let's exterminate this metric" })
+        await SegmentApi.delete({ segmentId, revision_message: "Let's exterminate this segment" })
+        await CardApi.delete({ cardId: questionId })
     })
 
     describe("activity feed", async () => {
@@ -57,8 +67,8 @@ describe("HomepageApp", () => {
             expect(activityItems.at(0).text()).toMatch(/Vendor count/);
             expect(activityStories.at(0).text()).toMatch(/Tells how many vendors we have/);
 
-            expect(activityItems.at(1).text()).toMatch(/Past 30 days/);
-            expect(activityStories.at(1).text()).toMatch(/Past 30 days created at/);
+            expect(activityItems.at(1).text()).toMatch(/Past 300 days/);
+            expect(activityStories.at(1).text()).toMatch(/Past 300 days created at/);
 
             // eslint-disable-next-line no-irregular-whitespace
             expect(activityItems.at(2).text()).toMatch(/You saved a question about Orders/);

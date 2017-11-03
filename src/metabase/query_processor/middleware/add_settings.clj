@@ -4,10 +4,7 @@
             [metabase.driver :as driver]))
 
 (defn- add-settings* [{:keys [driver] :as query}]
-  (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
-                                     (let [report-tz (driver/report-timezone)]
-                                       (when-not (empty? report-tz)
-                                         report-tz)))}]
+  (let [settings {:report-timezone (driver/report-timezone-if-supported driver)}]
     (assoc query :settings (m/filter-vals (complement nil?) settings))))
 
 (defn add-settings

@@ -19,7 +19,7 @@ export function channelIsValid(channel, channelSpec) {
     }
     if (channelSpec.fields) {
         for (let field of channelSpec.fields) {
-            if (field.required && (channel.details[field.name] == null || channel.details[field.name] == "")) {
+            if (field.required && channel.details && (channel.details[field.name] == null || channel.details[field.name] == "")) {
                 return false;
             }
         }

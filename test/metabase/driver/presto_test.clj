@@ -7,7 +7,7 @@
              [table :refer [Table] :as table]]
             [metabase.test
              [data :as data]
-             [util :refer [resolve-private-vars]]]
+             [util :refer [resolve-private-vars] :as tu]]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
@@ -52,12 +52,14 @@
     #inst "2017-04-03T10:19:17.417000000-00:00"
     3.1416M
     "test"]]
-  (parse-presto-results [{:type "date"} {:type "timestamp with time zone"} {:type "timestamp"} {:type "decimal(10,4)"} {:type "varchar(255)"}]
+  (parse-presto-results nil
+                        [{:type "date"} {:type "timestamp with time zone"} {:type "timestamp"} {:type "decimal(10,4)"} {:type "varchar(255)"}]
                         [["2017-04-03", "2017-04-03 10:19:17.417 America/Toronto", "2017-04-03 10:19:17.417", "3.1416", "test"]]))
 
 (expect
   [[0, false, "", nil]]
-  (parse-presto-results [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}]
+  (parse-presto-results nil
+                        [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}]
                         [[0, false, "", nil]]))
 
 (expect
@@ -139,3 +141,7 @@
       (driver/can-connect-with-details? engine details :rethrow-exceptions))
        (catch Exception e
          (.getMessage e))))
+
+(datasets/expect-with-engine :presto
+  "UTC"
+  (tu/db-timezone-id))

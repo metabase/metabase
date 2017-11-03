@@ -22,7 +22,8 @@
            [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
            org.fit.cssbox.layout.BrowserCanvas
-           org.fit.cssbox.misc.Base64Coder))
+           org.fit.cssbox.misc.Base64Coder
+           org.joda.time.DateTimeZone))
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
@@ -104,24 +105,29 @@
   [n]
   (cl-format nil (if (integer? n) "~:d" "~,2f") n))
 
+(defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
+  (f/unparse (f/with-zone (f/formatter new-format-string)
+               (DateTimeZone/forTimeZone timezone))
+             (u/str->date-time old-format-timestamp timezone)))
+
 (defn- format-timestamp
   "Formats timestamps with human friendly absolute dates based on the column :unit"
-  [timestamp col]
+  [timezone timestamp col]
   (case (:unit col)
-    :hour          (f/unparse (f/formatter "h a - MMM YYYY") (c/from-long timestamp))
-    :week          (str "Week " (f/unparse (f/formatter "w - YYYY") (c/from-long timestamp)))
-    :month         (f/unparse (f/formatter "MMMM YYYY") (c/from-long timestamp))
-    :quarter       (str "Q"
-                        (inc (int (/ (t/month (c/from-long timestamp))
-                                     3)))
-                        " - "
-                        (t/year (c/from-long timestamp)))
-    :year          (str timestamp)
-    :hour-of-day   (str timestamp) ; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
-    :day-of-week   (str timestamp)
-    :week-of-year  (str timestamp)
-    :month-of-year (str timestamp)
-    (f/unparse (f/formatter "MMM d, YYYY") (c/from-long timestamp))))
+    :hour          (reformat-timestamp timezone timestamp "h a - MMM YYYY")
+    :week          (str "Week " (reformat-timestamp timezone timestamp "w - YYYY"))
+    :month         (reformat-timestamp timezone timestamp "MMMM YYYY")
+    :quarter       (let [timestamp-obj (u/str->date-time timestamp timezone)]
+                     (str "Q"
+                          (inc (int (/ (t/month timestamp-obj)
+                                       3)))
+                          " - "
+                          (t/year timestamp-obj)))
+
+    (:year :hour-of-day :day-of-week :week-of-year :month-of-year); TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    (str timestamp)
+
+    (reformat-timestamp timezone timestamp "MMM d, YYYY")))
 
 (def ^:private year  (comp t/year  t/now))
 (def ^:private month (comp t/month t/now))
@@ -138,30 +144,39 @@
 
 (defn- format-timestamp-relative
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
-  [timestamp, {:keys [unit]}]
-  (case unit
-    :day     (date->interval-name (c/from-long timestamp)     (t/date-midnight (year) (month) (day)) (t/days 1)   "Today"        "Yesterday")
-    :week    (date->interval-name (c/from-long timestamp)     (start-of-this-week)                   (t/weeks 1)  "This week"    "Last week")
-    :month   (date->interval-name (c/from-long timestamp)     (t/date-midnight (year) (month))       (t/months 1) "This month"   "Last month")
-    :quarter (date->interval-name (c/from-long timestamp)     (start-of-this-quarter)                (t/months 3) "This quarter" "Last quarter")
-    :year    (date->interval-name (t/date-midnight timestamp) (t/date-midnight (year))               (t/years 1)  "This year"    "Last year")
-    nil))
-
+  [timezone timestamp, {:keys [unit]}]
+  (let [parsed-timestamp (u/str->date-time timestamp timezone)]
+    (case unit
+      :day     (date->interval-name parsed-timestamp
+                                    (t/date-midnight (year) (month) (day))
+                                    (t/days 1) "Today" "Yesterday")
+      :week    (date->interval-name parsed-timestamp
+                                    (start-of-this-week)
+                                    (t/weeks 1) "This week" "Last week")
+      :month   (date->interval-name parsed-timestamp
+                                    (t/date-midnight (year) (month))
+                                    (t/months 1) "This month" "Last month")
+      :quarter (date->interval-name parsed-timestamp
+                                    (start-of-this-quarter)
+                                    (t/months 3) "This quarter" "Last quarter")
+      :year    (date->interval-name (t/date-midnight parsed-timestamp)
+                                    (t/date-midnight (year))
+                                    (t/years 1) "This year" "Last year")
+      nil)))
 
 (defn- format-timestamp-pair
   "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for the second, otherwise absolute timestamps for both"
-  [[a b] col]
-  (if-let [a' (format-timestamp-relative a col)]
+  [timezone [a b] col]
+  (if-let [a' (format-timestamp-relative timezone a col)]
     [a' (str "Previous " (-> col :unit name))]
-    [(format-timestamp a col) (format-timestamp b col)]))
+    [(format-timestamp timezone a col) (format-timestamp timezone b col)]))
 
 (defn- format-cell
-  [value col]
+  [timezone value col]
   (cond
-    (datetime-field? col) (format-timestamp (.getTime ^Date (u/->Timestamp value)) col)
+    (datetime-field? col) (format-timestamp timezone value col)
     (and (number? value) (not (datetime-field? col))) (format-number value)
     :else (str value)))
-
 
 (defn- render-img-data-uri
   "Takes a PNG byte array and returns a Base64 encoded URI"
@@ -278,7 +293,7 @@
 
 (defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [remapping-lookup cols rows bar-column max-value]
+  [timezone remapping-lookup cols rows bar-column max-value]
   (for [row rows]
     {:bar-width (when bar-column
                   ;; cast to double to avoid "Non-terminating decimal expansion" errors
@@ -289,17 +304,17 @@
                                        [(nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                         (nth row (get remapping-lookup (:name maybe-remapped-col)))]
                                        [maybe-remapped-col maybe-remapped-row-cell])]]
-            (format-cell row-cell col))}))
+            (format-cell timezone row-cell col))}))
 
 (defn- prep-for-html-rendering
   "Convert the query results (`COLS` and `ROWS`) into a formatted seq
   of rows (list of strings) that can be rendered as HTML"
-  [cols rows bar-column max-value column-limit]
+  [timezone cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]
     (cons
      (query-results->header-row remapping-lookup limited-cols bar-column)
-     (query-results->row-seq remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
+     (query-results->row-seq timezone remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
 
 (defn- render-truncation-warning
   [col-limit col-count row-limit row-count]
@@ -322,22 +337,22 @@
         " columns."])]))
 
 (defn- render:table
-  [card {:keys [cols rows] :as data}]
+  [timezone card {:keys [cols rows] :as data}]
   [:div
-   (render-table (prep-for-html-rendering cols rows nil nil cols-limit))
+   (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
    (render-truncation-warning cols-limit (count cols) rows-limit (count rows))])
 
 (defn- render:bar
-  [card {:keys [cols rows] :as data}]
+  [timezone card {:keys [cols rows] :as data}]
   (let [max-value (apply max (map second rows))]
     [:div
-     (render-table (prep-for-html-rendering cols rows second max-value 2))
+     (render-table (prep-for-html-rendering timezone cols rows second max-value 2))
      (render-truncation-warning 2 (count cols) rows-limit (count rows))]))
 
 (defn- render:scalar
-  [card {:keys [cols rows]}]
+  [timezone card {:keys [cols rows]}]
   [:div {:style (style scalar-style)}
-   (-> rows first first (format-cell (first cols)) h)])
+   (h (format-cell timezone (ffirst rows) (first cols)))])
 
 (defn- render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
@@ -369,7 +384,7 @@
     (.toByteArray os)))
 
 (defn- render:sparkline
-  [_ {:keys [rows cols]}]
+  [timezone card {:keys [rows cols]}]
   (let [ft-row (if (datetime-field? (first cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
@@ -391,7 +406,7 @@
         ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
-        labels (format-timestamp-pair (map first rows') (first cols))]
+        labels (format-timestamp-pair timezone (map first rows') (first cols))]
     [:div
      [:img {:style (style {:display :block
                            :width :100%})
@@ -454,7 +469,7 @@
 
 (defn render-pulse-card
   "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."
-  [card {:keys [data error]}]
+  [timezone card {:keys [data error]}]
   [:a {:href   (card-href card)
        :target "_blank"
        :style  (style section-style
@@ -474,31 +489,31 @@
            [:img {:style (style {:width :16px})
                   :width 16
                   :src   (render-image-with-filename "frontend_client/app/assets/img/external_link.png")}])]]]])
-  (try
-    (when error
-      (throw (Exception. (str "Card has errors: " error))))
-    (case (detect-pulse-card-type card data)
-      :empty     (render:empty     card data)
-      :scalar    (render:scalar    card data)
-      :sparkline (render:sparkline card data)
-      :bar       (render:bar       card data)
-      :table     (render:table     card data)
-      [:div {:style (style font-style
-                           {:color       "#F9D45C"
-                            :font-weight 700})}
-       "We were unable to display this card." [:br] "Please view this card in Metabase."])
-    (catch Throwable e
-      (log/warn "Pulse card render error:" e)
-      [:div {:style (style font-style
-                           {:color       "#EF8C8C"
-                            :font-weight 700
-                            :padding     :16px})}
-       "An error occurred while displaying this card."]))])
+   (try
+     (when error
+       (throw (Exception. (str "Card has errors: " error))))
+     (case (detect-pulse-card-type card data)
+       :empty     (render:empty     card data)
+       :scalar    (render:scalar    timezone card data)
+       :sparkline (render:sparkline timezone card data)
+       :bar       (render:bar       timezone card data)
+       :table     (render:table     timezone card data)
+       [:div {:style (style font-style
+                            {:color       "#F9D45C"
+                             :font-weight 700})}
+        "We were unable to display this card." [:br] "Please view this card in Metabase."])
+     (catch Throwable e
+       (log/warn "Pulse card render error:" e)
+       [:div {:style (style font-style
+                            {:color       "#EF8C8C"
+                             :font-weight 700
+                             :padding     :16px})}
+        "An error occurred while displaying this card."]))])
 
 
 (defn render-pulse-section
   "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
-  [{:keys [card result]}]
+  [timezone {:keys [card result]}]
   [:div {:style (style {:margin-top       :10px
                         :margin-bottom    :20px
                         :border           "1px solid #dddddd"
@@ -506,9 +521,9 @@
                         :background-color :white
                         :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
    (binding [*include-title* true]
-     (render-pulse-card card result))])
+     (render-pulse-card timezone card result))])
 
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
-  ^bytes [pulse-card result]
-  (render-html-to-png (render-pulse-card pulse-card result) card-width))
+  ^bytes [timezone pulse-card result]
+  (render-html-to-png (render-pulse-card timezone pulse-card result) card-width))

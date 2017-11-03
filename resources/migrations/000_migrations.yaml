@@ -3793,3 +3793,150 @@ databaseChangeLog:
                   defaultValue: 0
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 62
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: timezone
+                  type: VARCHAR(254)
+                  remarks: 'Timezone identifier for the database, set by the sync process'
+  - changeSet:
+      id: 63
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_on_demand
+                  type: boolean
+                  remarks: 'Whether we should do On-Demand caching of FieldValues for this DB. This means FieldValues are updated when their Field is used in a Dashboard or Card param.'
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 64
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: raw_table
+          constraintName: fk_rawtable_ref_database
+          remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'
+# Changeset 65 was accidentally released in 0.26.0.RC2. The changeset has been removed from the migrations list so that
+# users that haven't ran the migration (i.e. they didn't run 0.26.0.RC2) won't waste time running it just to have it
+# reversed. For 0.26.0.RC2 users, the below changeset will remove those tables if they are present
+  - changeSet:
+      id: 66
+      author: senior
+      comment: 'Added 0.26.0'
+      validCheckSum: '7:e494c2c90fe5c377526da7a6e5ad63a2'
+      validCheckSum: '7:76d06b44a544105c2a613603b8bdf25f'
+      changes:
+        - sql:
+            sql: drop table if exists computation_job_result cascade
+        - sql:
+            sql: drop table if exists computation_job cascade
+# NOTE Atte Keinänen 9/28/17: This was originally in changeset 65 as explained above
+  - changeSet:
+      id: 67
+      author: attekei
+      changes:
+        - createTable:
+            tableName: computation_job
+            remarks: 'Stores submitted async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_job_ref_user_id
+                    initiallyDeferred: false
+                    references: core_user(id)
+                  name: creator_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: computation_job_result
+            remarks: 'Stores results of async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_result_ref_job_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: computation_job(id)
+                  name: job_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permanence
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+  - changeSet:
+    - id: 68
+    - author: sbelak
+    - changes:
+      - addColumn:
+            tableName: computation_job
+            columns:
+              - column:
+                  name: context
+                  type: text
+              - column:
+                  name: ended_at
+                  type: DATETIME

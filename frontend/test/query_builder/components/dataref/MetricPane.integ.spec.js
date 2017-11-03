@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils"
@@ -13,20 +13,21 @@ import { delay } from "metabase/lib/promise"
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { vendor_count_metric } from "__support__/sample_dataset_fixture";
-import { createMetric } from "metabase/admin/datamodel/datamodel";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import * as Urls from "metabase/lib/urls";
+import { MetricApi } from "metabase/services";
 
 describe("MetricPane", () => {
     let store = null;
     let queryBuilder = null;
+    let metricId = null;
 
     beforeAll(async () => {
-        await login();
-        await createMetric(vendor_count_metric);
+        useSharedAdminLogin();
+        metricId = (await MetricApi.create(vendor_count_metric)).id;
         store = await createTestStore()
 
         store.pushPath(Urls.plainQuestion());
@@ -34,6 +35,9 @@ describe("MetricPane", () => {
         await store.waitForActions([INITIALIZE_QB]);
     })
 
+    afterAll(async () => {
+        await MetricApi.delete({ metricId, revision_message: "Let's exterminate this metric" })
+    })
     // NOTE: These test cases are intentionally stateful
     // (doing the whole app rendering thing in every single test case would probably slow things down)
 

@@ -4,7 +4,7 @@ import {
     metadata
 } from "__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
-import { login } from "__support__/integrated_tests";
+import { useSharedAdminLogin } from "__support__/integrated_tests";
 import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 
 // TODO Atte Keinänen 6/22/17: This could include tests that run each "question drill action" (summarize etc)
@@ -12,7 +12,7 @@ import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 
 describe("Question", () => {
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
     });
 
     describe("with SQL questions", () => {

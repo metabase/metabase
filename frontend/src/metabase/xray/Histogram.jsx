@@ -11,21 +11,24 @@ const Histogram = ({ histogram, color, showAxis }) =>
                 card: {
                     display: "bar",
                     visualization_settings: {
-                        "graph.colors": [color],
+                        "graph.colors": color,
                         "graph.x_axis.axis_enabled": showAxis,
                         "graph.x_axis.labels_enabled": showAxis,
                         "graph.y_axis.axis_enabled": showAxis,
                         "graph.y_axis.labels_enabled": showAxis
                     }
                 },
-                data: histogram
+                data: {
+                    ...histogram,
+                    rows: histogram.rows.map(row => [row[0], row[1] * 100])
+                }
             }
         ]}
         showTitle={false}
     />
 
 Histogram.defaultProps = {
-    color: normal.blue,
+    color: [normal.blue],
     showAxis: true
 }
 

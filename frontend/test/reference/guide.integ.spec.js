@@ -1,5 +1,5 @@
 import {
-    login,
+    useSharedAdminLogin,
     createTestStore
 } from "__support__/integrated_tests";
 
@@ -21,10 +21,10 @@ import GettingStartedGuideContainer from "metabase/reference/guide/GettingStarte
 describe("The Reference Section", () => {
     // Test data
     const segmentDef = {name: "A Segment", description: "I did it!", table_id: 1, show_in_getting_started: true,
-                        definition: {database: 1, query: {filter: ["abc"]}}}
+                        definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"] }}
 
     const anotherSegmentDef = {name: "Another Segment", description: "I did it again!", table_id: 1, show_in_getting_started: true,
-                               definition:{database: 1, query: {filter: ["def"]}}}
+                               definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -30, "day"] } }
     const metricDef = {name: "A Metric", description: "I did it!", table_id: 1,show_in_getting_started: true,
                         definition: {database: 1, query: {aggregation: ["count"]}}}
 
@@ -33,7 +33,7 @@ describe("The Reference Section", () => {
     
     // Scaffolding
     beforeAll(async () => {
-        await login();
+        useSharedAdminLogin();
 
     })
 

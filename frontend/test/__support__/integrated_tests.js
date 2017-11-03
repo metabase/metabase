@@ -40,24 +40,39 @@ let hasFinishedCreatingStore = false
 let loginSession = null; // Stores the current login session
 let previousLoginSession = null;
 let simulateOfflineMode = false;
+let apiRequestCompletedCallback = null;
+let skippedApiRequests = [];
 
-/**
- * Login to the Metabase test instance with default credentials
- */
-export async function login({ username = "bob@metabase.com", password = "12341234" } = {}) {
-    if (hasStartedCreatingStore) {
+const warnAboutCreatingStoreBeforeLogin = () => {
+    if (!loginSession && hasStartedCreatingStore) {
         console.warn(
-            "Warning: You have created a test store before calling login() which means that up-to-date site settings " +
+            "Warning: You have created a test store before calling logging in which means that up-to-date site settings " +
             "won't be in the store unless you call `refreshSiteSettings` action manually. Please prefer " +
             "logging in before all tests and creating the store inside an individual test or describe block."
         )
     }
+}
+/**
+ * Login to the Metabase test instance with default credentials
+ */
+export async function login({ username = "bob@metabase.com", password = "12341234" } = {}) {
+    warnAboutCreatingStoreBeforeLogin()
+    loginSession = await SessionApi.create({ username, password });
+}
 
-    if (isTestFixtureDatabase() && process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID) {
-        loginSession = { id: process.env.TEST_FIXTURE_SHARED_LOGIN_SESSION_ID }
-    } else {
-        loginSession = await SessionApi.create({ username, password });
-    }
+export function useSharedAdminLogin() {
+    warnAboutCreatingStoreBeforeLogin()
+    loginSession = { id: process.env.TEST_FIXTURE_SHARED_ADMIN_LOGIN_SESSION_ID }
+}
+export function useSharedNormalLogin() {
+    warnAboutCreatingStoreBeforeLogin()
+    loginSession = { id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID }
+}
+export const forBothAdminsAndNormalUsers = async (tests) => {
+    useSharedAdminLogin()
+    await tests()
+    useSharedNormalLogin()
+    await tests()
 }
 
 export function logout() {
@@ -324,6 +339,64 @@ export const createSavedQuestion = async (unsavedQuestion) => {
     return savedQuestion
 }
 
+/**
+ * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.
+ * Useful in those relatively rare situations where React components do API requests inline instead of using Redux actions.
+ */
+export const waitForRequestToComplete = (method, urlRegex, { timeout = 5000 } = {}) => {
+    skippedApiRequests = []
+    return new Promise((resolve, reject) => {
+        const completionTimeoutId = setTimeout(() => {
+            reject(
+                new Error(
+                    `API request ${method} ${urlRegex} wasn't completed within ${timeout}ms.\n` +
+                    `Other requests during that time period:\n${skippedApiRequests.join("\n") || "No requests"}`
+                )
+            )
+        }, timeout)
+
+        apiRequestCompletedCallback = (requestMethod, requestUrl) => {
+            if (requestMethod === method && urlRegex.test(requestUrl)) {
+                clearTimeout(completionTimeoutId)
+                resolve()
+            } else {
+                skippedApiRequests.push(`${requestMethod} ${requestUrl}`)
+            }
+        }
+    })
+}
+
+/**
+ * Lets you replace given API endpoints with mocked implementations for the lifetime of a test
+ */
+export async function withApiMocks(mocks, test) {
+    if (!mocks.every(([apiService, endpointName, mockMethod]) =>
+            _.isObject(apiService) && _.isString(endpointName) && _.isFunction(mockMethod)
+        )
+    ) {
+        throw new Error(
+            "Seems that you are calling \`withApiMocks\` with invalid parameters. " +
+            "The calls should be in format \`withApiMocks([[ApiService, endpointName, mockMethod], ...], tests)\`."
+        )
+    }
+
+    const originals = mocks.map(([apiService, endpointName]) => apiService[endpointName])
+
+    // Replace real API endpoints with mocks
+    mocks.forEach(([apiService, endpointName, mockMethod]) => {
+        apiService[endpointName] = mockMethod
+    })
+
+    try {
+        await test();
+    } finally {
+        // Restore original endpoints after tests, even in case of an exception
+        mocks.forEach(([apiService, endpointName], index) => {
+            apiService[endpointName] = originals[index]
+        })
+    }
+}
+
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
 // Needed because we are not in a real web browser environment.
 api._makeRequest = async (method, url, headers, requestBody, data, options) => {
@@ -361,6 +434,7 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         resultBody = JSON.parse(resultBody);
     } catch (e) {}
 
+    apiRequestCompletedCallback && setTimeout(() => apiRequestCompletedCallback(method, url), 0)
 
     if (result.status >= 200 && result.status <= 299) {
         if (options.transformResponse) {
@@ -376,6 +450,7 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
             console.log(`The original request: ${method} ${url}`);
             if (requestBody) console.log(`Original payload: ${requestBody}`);
         }
+
         throw error
     }
 }

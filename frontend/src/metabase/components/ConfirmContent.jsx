@@ -12,7 +12,7 @@ const ConfirmContent = ({
     onAction = nop,
     onCancel = nop,
     confirmButtonText = "Yes",
-    cancelButtonText = "No"
+    cancelButtonText = "Cancel"
 }) =>
     <ModalContent
         title={title}
@@ -24,9 +24,9 @@ const ConfirmContent = ({
             <p>{message}</p>
         </div>
 
-        <div className="Form-actions">
-            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
-            <button className="Button ml1" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
+        <div className="Form-actions ml-auto">
+            <button className="Button" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
+            <button className="Button Button--danger ml2" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
         </div>
     </ModalContent>
 
