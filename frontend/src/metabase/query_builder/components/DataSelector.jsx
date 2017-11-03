@@ -298,12 +298,11 @@ export default class DataSelector extends Component {
                         key="tablePicker"
                         className="text-brand"
                         sections={sections}
-                        searchable={true}
+                        searchable
                         onChange={this.onChangeTable}
                         itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
                         itemIsClickable={(item) => item.table && !item.disabled}
                         renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
-                        hideSingleSectionTitle={true}
                     />
                     { isSavedQuestionList && (
                         <div className="bg-slate-extra-light p2 text-centered">
@@ -356,7 +355,7 @@ export default class DataSelector extends Component {
                 key="segmentPicker"
                 className="text-brand"
                 sections={sections}
-                searchable={true}
+                searchable
                 searchPlaceholder="Find a segment"
                 onChange={this.onChangeSegment}
                 itemIsSelected={(item) => item.segment ? item.segment.id === this.getSegmentId() : false}

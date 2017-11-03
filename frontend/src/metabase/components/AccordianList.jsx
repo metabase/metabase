@@ -8,6 +8,13 @@ import { elementIsInView } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
+import { List } from 'react-virtualized';
+
+const ROW_HEIGHTS = {
+    "header": 56,
+    "search": 48,
+    "item": 36,
+};
 
 export default class AccordianList extends Component {
     constructor(props, context) {
@@ -63,11 +70,7 @@ export default class AccordianList extends Component {
     };
 
     componentDidMount() {
-        // when the component is mounted and an item is selected then scroll to it
-        const element = this.refs.selected && ReactDOM.findDOMNode(this.refs.selected);
-        if (element && element.scrollIntoView && !elementIsInView(element)) {
-            element.scrollIntoView();
-        }
+        // TODO: reimplement scrolling currently selected item into view
     }
 
     toggleSection(sectionIndex) {
@@ -164,50 +167,92 @@ export default class AccordianList extends Component {
         return this.props.getItemClasses && this.props.getItemClasses(item, itemIndex);
     }
 
+    renderSectionHeader(section, sectionIndex) {
+
+    }
+
     render() {
-        const { id, searchable, searchPlaceholder, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
+        const { id, style, searchable, searchPlaceholder, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle,  } = this.props;
         const { searchText } = this.state;
 
         const openSection = this.getOpenSection();
-        const sectionIsOpen = (sectionIndex) =>
+        const sectionIsExpanded = (sectionIndex) =>
             alwaysExpanded || openSection === sectionIndex;
         const sectionIsSearchable = (sectionIndex) =>
             searchable && (typeof searchable !== "function" || searchable(sections[sectionIndex]));
+        const sectionIsTogglable  = (sectionIndex) =>
+            alwaysTogglable || sections.length > 1;
+
+        const rows = []
+        for (const [sectionIndex, section] of sections.entries()) {
+            const isLastSection = sectionIndex === sections.length - 1;
+            if (section.name && (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)) {
+                rows.push({ type: "header", section, sectionIndex, isLastSection })
+            }
+            if (sectionIsSearchable(sectionIndex) && sectionIsExpanded(sectionIndex) && section.items && section.items.length > 0) {
+                rows.push({ type: "search", section, sectionIndex, isLastSection })
+            }
+            if (sectionIsExpanded(sectionIndex) && section.items && section.items.length > 0) {
+                for (const [itemIndex, item] of section.items.entries()) {
+                    if (!searchText || item.name.toLowerCase().includes(searchText.toLowerCase())) {
+                        const isLastItem = itemIndex === section.items.length - 1;
+                        rows.push({ type: "item", section, sectionIndex, isLastSection, item, itemIndex, isLastItem });
+                    }
+                }
+            }
+        }
+
+        const getRowHeight = ({ index }) =>
+            ROW_HEIGHTS[rows[index].type] +
+            (rows[index].isLastItem ? 10 : 0);
+
+        const width = 300;
+        const height = Math.min(500, rows.reduce((height, row, index) => height + getRowHeight({ index }), 0));
 
         return (
-            <div id={id} className={this.props.className} style={{ minWidth: '300px', ...style }}>
-                {sections.map((section, sectionIndex) =>
-                    <section key={sectionIndex} className={cx("List-section", section.className, { "List-section--open": sectionIsOpen(sectionIndex) })}>
-                        { section.name && alwaysExpanded ?
-                            (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable) &&
-                                <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
-                                    {section.name}
-                                </div>
-                        : section.name ?
-                            <div className={"p1 border-bottom"}>
-                                { !hideSingleSectionTitle || sections.length > 1 || alwaysTogglable ?
-                                    <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
-                                        { this.renderSectionIcon(section, sectionIndex) }
-                                        <h3 className="List-section-title">{section.name}</h3>
-                                        { sections.length > 1 && section.items && section.items.length > 0 &&
-                                            <span className="flex-align-right">
-                                                <Icon name={sectionIsOpen(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
-                                            </span>
-                                        }
+            <List
+                id={id}
+                className={this.props.className}
+                style={style}
+                width={width}
+                height={height}
+                rowCount={rows.length}
+                rowHeight={getRowHeight}
+                rowRenderer={({ key, index, style }) => {
+                    const { type, section, sectionIndex, item, itemIndex } = rows[index];
+                    return (
+                        <section
+                            key={key}
+                            style={style}
+                            className={cx("List-section", section.className, {
+                                "List-section--expanded": sectionIsExpanded(sectionIndex),
+                                "List-section--togglable": sectionIsTogglable(sectionIndex)
+                            })}
+                        >
+                            { type === "header" ? (
+                                alwaysExpanded ?
+                                    <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
+                                        {section.name}
                                     </div>
                                 :
-                                    <div className="px1 py1 flex align-center">
-                                        { this.renderSectionIcon(section, sectionIndex) }
-                                        <h3 className="text-default">{section.name}</h3>
+                                    <div className="p1 border-bottom">
+                                        <div
+                                            className={cx("List-section-header px1 py1 full flex align-center", {
+                                                "cursor-pointer": sectionIsTogglable(sectionIndex)
+                                            })}
+                                            onClick={sectionIsTogglable(sectionIndex) && (() => this.toggleSection(sectionIndex))}
+                                        >
+                                            { this.renderSectionIcon(section, sectionIndex) }
+                                            <h3 className="List-section-title">{section.name}</h3>
+                                            { sections.length > 1 && section.items && section.items.length > 0 &&
+                                                <span className="flex-align-right">
+                                                    <Icon name={sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
+                                                </span>
+                                            }
+                                        </div>
                                     </div>
-                                }
-                            </div>
-                        : null }
-
-                        { sectionIsSearchable(sectionIndex) &&  sectionIsOpen(sectionIndex) && section.items && section.items.length > 0 &&
-                            /* NOTE: much of this structure is here just to match strange stuff in 'List-item' below so things align properly */
-                            <div className="px1 pt1">
-                                <div style={{border: "2px solid transparent", borderRadius: "6px"}}>
+                            ) : type === "search" ?
+                                <div className="m1" style={{border: "2px solid transparent", borderRadius: "6px"}}>
                                     <ListSearchField
                                         onChange={(val) => this.setState({searchText: val})}
                                         searchText={this.state.searchText}
@@ -215,40 +260,34 @@ export default class AccordianList extends Component {
                                         autoFocus
                                     />
                                 </div>
-                            </div>
-                        }
-
-                        { sectionIsOpen(sectionIndex) && section.items && section.items.length > 0 &&
-                            <ul
-                                style={{ maxHeight: alwaysExpanded ? undefined : 400}}
-                                className={cx("p1", { "border-bottom scroll-y scroll-show": !alwaysExpanded })}
-                            >
-                                { section.items.filter((i) => searchText ? (i.name.toLowerCase().includes(searchText.toLowerCase())) : true ).map((item, itemIndex) =>
-                                    <li
-                                        key={itemIndex}
-                                        ref={this.itemIsSelected(item, itemIndex) ? "selected" : null}
-                                        className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex), 'List-item--disabled': !this.itemIsClickable(item) }, this.getItemClasses(item, itemIndex))}
+                            : type === "item" ?
+                                <div
+                                    className={cx("List-item flex mx1", {
+                                        'List-item--selected': this.itemIsSelected(item, itemIndex),
+                                        'List-item--disabled': !this.itemIsClickable(item)
+                                    }, this.getItemClasses(item, itemIndex))}
+                                >
+                                    <a
+                                        className={cx("p1 flex-full flex align-center", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
+                                        onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
                                     >
-                                        <a
-                                            className={cx("p1 flex-full flex align-center", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
-                                            onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
-                                        >
-                                            <span className="flex align-center">{ this.renderItemIcon(item, itemIndex) }</span>
-                                            <h4 className="List-item-title ml1">{item.name}</h4>
-                                        </a>
-                                        { this.renderItemExtra(item, itemIndex) }
-                                        { showItemArrows &&
-                                            <div className="List-item-arrow flex align-center px1">
-                                                <Icon name="chevronright" size={8} />
-                                            </div>
-                                        }
-                                    </li>
-                                )}
-                            </ul>
-                        }
-                    </section>
-                )}
-            </div>
+                                        <span className="flex align-center">{ this.renderItemIcon(item, itemIndex) }</span>
+                                        <h4 className="List-item-title ml1">{item.name}</h4>
+                                    </a>
+                                    { this.renderItemExtra(item, itemIndex) }
+                                    { showItemArrows &&
+                                        <div className="List-item-arrow flex align-center px1">
+                                            <Icon name="chevronright" size={8} />
+                                        </div>
+                                    }
+                                </div>
+                            :
+                                <div>UNKNOWN ROW TYPE</div>
+                            }
+                        </section>
+                    );
+                }}
+            />
         );
     }
 }
