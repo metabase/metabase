@@ -195,6 +195,7 @@ export default class DashboardGrid extends Component {
                 onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
                 navigateToNewCardFromDashboard={this.props.navigateToNewCardFromDashboard}
                 metadata={this.props.metadata}
+                dashboard={this.props.dashboard}
             />
         )
     }

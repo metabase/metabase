@@ -4,6 +4,9 @@ import ReactDOM from "react-dom";
 
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, { ERROR_MESSAGE_GENERIC, ERROR_MESSAGE_PERMISSION } from "metabase/visualizations/components/Visualization.jsx";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+
+import { getParameters, getParametersWithExtras, applyParameters } from "metabase/meta/Card";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
@@ -17,6 +20,8 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
+import { getParametersBySlug } from "metabase/meta/Parameter";
+import Utils from "metabase/lib/utils";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -62,14 +67,16 @@ export default class DashCard extends Component {
             onAddSeries,
             onRemove,
             navigateToNewCardFromDashboard,
-            metadata
+            metadata,
+            dashboard
         } = this.props;
-
         const mainCard = {
             ...dashcard.card,
             visualization_settings: { ...dashcard.card.visualization_settings, ...dashcard.visualization_settings }
         };
         const cards = [mainCard].concat(dashcard.series || []);
+        const dashboardId = dashcard.dashboard_id;
+        const isEmbed = Utils.isJWT(dashboardId);
         const series = cards
             .map(card => ({
                 ...getIn(dashcardData, [dashcard.id, card.id]),
@@ -90,7 +97,14 @@ export default class DashCard extends Component {
             .filter(parameterId => parameterValues[parameterId] !== null)
             .every(parameterId => parameterMap[parameterId]);
 
+
         const errors = series.map(s => s.error).filter(e => e);
+
+        var parametersMap = getParametersBySlug(dashboard.parameters, parameterValues);
+
+        if(!parametersMap){
+            parametersMap = {};
+        }
 
         let errorMessage, errorIcon;
         if (_.any(errors, e => e && e.status === 403)) {
@@ -130,7 +144,14 @@ export default class DashCard extends Component {
                             onRemove={onRemove}
                             onAddSeries={onAddSeries}
                             onReplaceAllVisualizationSettings={this.props.onReplaceAllVisualizationSettings}
-                        /> : undefined
+                        /> : isEmbed ? <QueryDownloadWidget
+                                             className="m1 text-grey-4-hover"
+                                             card={dashcard.card}
+                                             result={dashcardData}
+                                             dashcardId={dashcard.id}
+                                             token={dashcard.dashboard_id}
+                                             parameters = {parametersMap}
+                                         />:undefined
                     }
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
