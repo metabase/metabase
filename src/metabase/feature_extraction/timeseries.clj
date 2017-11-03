@@ -147,8 +147,10 @@
                       range  (- (apply max window) (apply min window))
                       ql     (q left)
                       qr     (q right)]
-                  {:eta (/ (reduce + (map (comp k.math/sq -) ql qr))
-                           3 (k.math/sq range))
+                  {:eta (if (zero? range)
+                          0
+                          (/ (reduce + (map (comp k.math/sq -) ql qr))
+                             3 (k.math/sq range)))
                    :x   pivot
                    :idx idx}))
               (partition half-period 1 series)
