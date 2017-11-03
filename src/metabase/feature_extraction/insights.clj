@@ -81,11 +81,10 @@
   [resolution series]
   (when resolution
     (->> series
-         (map second)
          (partition (ts/period-length resolution) 1)
          (transduce
           (map-indexed (fn [i xsi]
-                         [i (transduce identity
+                         [i (transduce (map second)
                                        (redux/post-complete
                                         (redux/juxt stats/variance
                                                     stats/mean)

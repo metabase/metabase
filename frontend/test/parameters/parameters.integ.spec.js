@@ -61,7 +61,7 @@ const getRelativeUrlWithoutHash = (url) =>
 
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "51";
-const COUNT_GADGET = "59";
+const COUNT_GADGET = "47";
 
 describe("parameters", () => {
     beforeAll(async () =>

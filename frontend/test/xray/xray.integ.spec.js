@@ -156,7 +156,7 @@ describe("xray integration tests", () => {
             expect(fieldXRay.length).toBe(1)
             expect(fieldXRay.find(CostSelect).length).toBe(1)
 
-            expect(app.find(InsightCard).length).toBe(1)
+            expect(app.find(InsightCard).length).toBe(2)
             expect(app.find(NormalRangeInsight).length).toBe(1)
         })
     })
@@ -302,7 +302,7 @@ describe("xray integration tests", () => {
             click(xrayOptionIcon);
 
 
-            await store.waitForActions([FETCH_CARD_XRAY], {timeout: 5000})
+            await store.waitForActions([FETCH_CARD_XRAY], {timeout: 20000})
             expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
