@@ -119,6 +119,20 @@
 
 (defn breaks
   "Find positions of structural breaks.
+
+   The idea is to slide a window of length 2w+1 across the time series (window
+   length is determined based on `resolution`). At each step we calculate the
+   eta statistic measuring the difference in distributions of the left [0, w+1]
+   and right [w+1, 2w+1] half-window centered at pivot. We normalize eta by the
+   range of values in the window to make it impervious to trend shifts in mean
+   and variance.
+   We then pick out all outlier etas. These are break candidates. However as we
+   are using a sliding window there will likely be several candidates for the
+   same break (even when the pivot is not perfectly positioned we still expect a
+   significant difference between left and right half-window). We select the point
+   with the highest eta among consecutive points (this also means we can only
+   detect breaks that are more than w apart).
+
    https://en.wikipedia.org/wiki/Structural_break
    http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0059279#pone.0059279.s003"
   [period series]
@@ -128,14 +142,14 @@
                           (h.impl/percentiles 0.25 0.5 0.75)
                           vals))]
     (->> (map (fn [left right idx]
-                (let [x      (ffirst right)
+                (let [pivot  (ffirst right)
                       window (map second (concat left right))
                       range  (- (apply max window) (apply min window))
                       ql     (q left)
                       qr     (q right)]
                   {:eta (/ (reduce + (map (comp k.math/sq -) ql qr))
                            3 (k.math/sq range))
-                   :x   x
+                   :x   pivot
                    :idx idx}))
               (partition half-period 1 series)
               (partition half-period 1 (drop (dec half-period) series))

@@ -1,6 +1,7 @@
 (ns metabase.feature-extraction.math
   "Math functions and utilities."
-  (:require [kixi.stats
+  (:require [distributions.core :as d]
+            [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.feature-extraction.histogram :as h]
@@ -43,8 +44,10 @@
 
 (defn autocorrelation
   "Calculate autocorrelation at lag `lag` or find the lag with the highest
-   autocorrelation up to `max-lag` if `lag` is not given.
-   https://en.wikipedia.org/wiki/Autocorrelation"
+   significant autocorrelation (if it exists) up to `max-lag` if `lag` is not
+   given.
+   https://en.wikipedia.org/wiki/Autocorrelation
+   http://sfb649.wiwi.hu-berlin.de/fedc_homepage/xplore/tutorials/xegbohtmlnode39.html"
   ([xs] (autocorrelation {:max-lag (Math/floor (/ (count xs) 2))} xs))
   ([{:keys [lag max-lag]} xs]
    {:pre [(or lag max-lag)]}
@@ -132,7 +135,8 @@
        (> D (* c (math/sqrt (/ (+ m n) (* m n)))))))))
 
 (defn outliers
-  "Find outliers using 1.5*IQR heuristic.
+  "Find outliers using Tukey's fences (1.5*IQR heuristic).
+   https://en.wikipedia.org/wiki/Outlier
    https://en.wikipedia.org/wiki/Interquartile_range"
   ([xs] (outliers identity xs))
   ([keyfn xs]
@@ -140,3 +144,10 @@
          lower-bound         (- q1 (* 1.5 iqr))
          upper-bound         (+ q3 (* 1.5 iqr))]
      (remove (comp #(< lower-bound % upper-bound) keyfn) xs))))
+
+(defn significant?
+  "Is `x` significant at `significance-level` if drawn from distribution
+   distribution."
+  ([x distribution] (significant? x distribution 0.95))
+  ([x distribution significance-level]
+   (> x (d/icdf distribution (- 1 significance-level)))))

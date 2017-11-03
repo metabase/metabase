@@ -79,3 +79,13 @@
    (autocorrelation [1 2 3]) ; not significant
    (autocorrelation [1])
    (autocorrelation [])])
+
+(expect
+  [nil
+   #{50 100 35}]
+  (let [xs (vec (repeatedly 100 rand))]
+    [(not-empty (outliers xs))
+     (set (outliers (-> xs
+                        (assoc-in [10] 10)
+                        (assoc-in [30] 100)
+                        (assoc-in [70] 35))))]))

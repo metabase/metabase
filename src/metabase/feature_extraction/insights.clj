@@ -70,50 +70,58 @@
 (definsight variation-trend
   "Is there a consistent thrend in changes of variation from one period to the
    next.
+
+   We determine the trend by fitting a linear regression and test the hypothesis
+   that slope is not significantly different from 0.
+   https://en.wikipedia.org/wiki/Simple_linear_regression
+   https://msu.edu/course/msc/317/slr-reg.htm
    https://en.wikipedia.org/wiki/Variance"
   [resolution series]
   (when resolution
     (->> series
          (map second)
          (partition (ts/period-length resolution) 1)
-         (transduce (map-indexed (fn [i xsi]
-                                   [i (transduce identity
-                                                 (redux/post-complete
-                                                  (redux/juxt stats/variance
-                                                              stats/mean)
-                                                  (fn [[var mean]]
-                                                    (/ var mean)))
-                                                 xsi)]))
-                    (redux/post-complete
-                     (redux/juxt
-                      (stats/sum-squares first second)
-                      (redux/fuse
-                       {:s-x  (redux/pre-step + first)
-                        :s-xx (redux/pre-step + #(num/expt (first %) 2))
-                        :s-y  (redux/pre-step + second)
-                        :s-yy (redux/pre-step + #(num/expt (second %) 2))}))
-                     (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
-                       (when (and (> n 2) (not-any? zero? [ss-x s-x]))
-                         (let [slope  (/ ss-xy ss-x)
-                               error  (* (/ 1
-                                            (- n 2)
-                                            (- (* n s-xx) (num/expt s-x 2)))
-                                         (- (* n s-yy)
-                                            (num/expt s-y 2)
-                                            (* (num/expt slope 2)
-                                               (- (* n s-xx) (num/expt s-x 2)))))
-                               t      (if (zero? slope)
-                                        0
-                                        (/ slope error))
-                               t-crit (-> (d/t-distribution (- n 2))
-                                          (d/icdf (- 1 (/ 0.05 2))))]
-                           (when (> t t-crit)
-                             {:mode (if (pos? slope)
-                                      :increasing
-                                      :decreasing)})))))))))
+         (transduce
+          (map-indexed (fn [i xsi]
+                         [i (transduce identity
+                                       (redux/post-complete
+                                        (redux/juxt stats/variance
+                                                    stats/mean)
+                                        (fn [[var mean]]
+                                          (/ var mean)))
+                                       xsi)]))
+          (redux/post-complete
+           (redux/juxt
+            (stats/sum-squares first second)
+            (redux/fuse
+             {:s-x  (redux/pre-step + first)
+              :s-xx (redux/pre-step + #(num/expt (first %) 2))
+              :s-y  (redux/pre-step + second)
+              :s-yy (redux/pre-step + #(num/expt (second %) 2))}))
+           (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
+             (when (and (> n 2) (not-any? zero? [ss-x s-x]))
+               (let [slope       (/ ss-xy ss-x)
+                     slope-error (* (/ 1
+                                       (- n 2)
+                                       (- (* n s-xx) (num/expt s-x 2)))
+                                    (- (* n s-yy)
+                                       (num/expt s-y 2)
+                                       (* (num/expt slope 2)
+                                          (- (* n s-xx) (num/expt s-x 2)))))]
+                 (when (math/significant? (if (zero? slope)
+                                            0
+                                            (/ slope slope-error))
+                                          (d/t-distribution (- n 2))
+                                          (/ 0.05 2))
+                   {:mode (if (pos? slope)
+                            :increasing
+                            :decreasing)})))))))))
 
 (definsight seasonality
   "Is there a seasonal component to the changes in data?
+
+   Presence and strength of seasonal component is determined based on comparison
+   with residuals from the STL decomposition.
    https://www.wessa.net/download/stl.pdf"
   [seasonal-decomposition]
   (when seasonal-decomposition
@@ -151,8 +159,8 @@
              (hash-map :breaks))))
 
 (definsight outliers
-  "Are there any outliers in the data?
-   Finds outliers using 1.5*IQR heuristic.
+  "Find outliers using Tukey's fences (1.5*IQR heuristic).
+   https://en.wikipedia.org/wiki/Outlier
    https://en.wikipedia.org/wiki/Interquartile_range"
   [histogram field min max]
   (let [{:keys [q1 q3 iqr]} (h/iqr histogram)
@@ -164,7 +172,18 @@
                 [:< [:field-id (:id field)] lower-bound]]})))
 
 (definsight stationary
-  ""
+  "Is the data stationary.
+
+   We test for stationarity by sliding a winodw  (window length is determined
+   based on `resolution`) across the time series and perform the Welch's t-test
+   on each adjacent pair of windows. If none of the pair-wise changes are
+   determined to be significant, the series is stationary.
+
+   Note: what we are doing is not entierly theoretical sound. We take population
+   size n to be equal to window length, neglecting the fact that our points are
+   already aggregations of populations of unknown size.
+   https://en.wikipedia.org/wiki/Welch%27s_t-test
+   https://en.wikipedia.org/wiki/Stationary_process"
   [series resolution]
   (when resolution
     (let [n (ts/period-length resolution)]
@@ -183,8 +202,6 @@
                              (/ (num/expt (/ (+ variance1 variance2) n) 2)
                                 (/ (+ (num/expt variance1 2)
                                       (num/expt variance2 2))
-                                   (* n (- n 1)))))
-                          t-crit (-> (d/t-distribution k)
-                                     (d/icdf (- 1 (/ 0.05 2))))]
-                      (< t t-crit)))))
+                                   (* n (- n 1)))))]
+                      (math/significant? t (d/t-distribution k) (/ 0.05 2))))))
            (every? false?)))))
