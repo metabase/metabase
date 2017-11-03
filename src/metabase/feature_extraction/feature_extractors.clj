@@ -7,7 +7,7 @@
              [costs :as costs]
              [histogram :as h]
              [insights :as insights]
-             [math :as math]
+             [math :as math :refer [safe-divide]]
              [timeseries :as ts]
              [values :as values]]
             [metabase.models.table :refer [Table]]
@@ -81,7 +81,7 @@
 (defn- histogram->dataset
   ([field histogram] (histogram->dataset identity field histogram))
   ([keyfn field histogram]
-   {:rows    (let [norm (math/safe-divide (h.impl/total-count histogram))]
+   {:rows    (let [norm (safe-divide (h.impl/total-count histogram))]
                (for [[bin count] (nice-bins histogram)]
                  [(keyfn bin) (* count norm)]))
     :columns [(:name field) "SHARE"]
@@ -168,14 +168,14 @@
   (let [nil-count   (h/nil-count histogram)
         total-count (h/total-count histogram)]
     {:histogram histogram
-     :nil%      (math/safe-divide nil-count total-count)
+     :nil%      (safe-divide nil-count total-count)
      :has-nils? (pos? nil-count)
      :count     total-count
      :entropy   (h/entropy histogram)}))
 
 (defn- cardinality-extractor
   [{:keys [cardinality histogram]}]
-  (let [uniqueness (math/safe-divide cardinality (h/total-count histogram))]
+  (let [uniqueness (safe-divide cardinality (h/total-count histogram))]
     {:uniqueness    uniqueness
      :cardinality   cardinality
      :all-distinct? (some-> uniqueness (>= (- 1 cardinality-error)))}))
@@ -208,7 +208,7 @@
     cardinality-extractor
     (field-metadata-extractor field)
     (fn [{:keys [histogram histogram-categorical kurtosis skewness sum zeros
-                 sum-of-squares]}]
+                 sum-of-squares] :as features}]
       (let [var             (h.impl/variance histogram)
             sd              (some-> var Math/sqrt)
             min             (h.impl/minimum histogram)
@@ -222,10 +222,10 @@
          :var>sd?               (some->> sd (> var))
          :0<=x<=1?              (when min (<= 0 min max 1))
          :-1<=x<=1?             (when min (<= -1 min max 1))
-         :cv                    (some-> sd (math/safe-divide mean))
-         :range-vs-sd           (some->> sd (math/safe-divide spread))
-         :mean-median-spread    (some->> spread (math/safe-divide (- mean median)))
-         :min-vs-max            (some->> max (math/safe-divide min))
+         :cv                    (some-> sd (safe-divide mean))
+         :range-vs-sd           (some->> sd (safe-divide spread))
+         :mean-median-spread    (some->> spread (safe-divide (- mean median)))
+         :min-vs-max            (some->> max (safe-divide min))
          :range                 spread
          :min                   min
          :max                   max
@@ -239,8 +239,9 @@
          :skewness              skewness
          :sum                   sum
          :sum-of-squares        sum-of-squares
-         :zero%                 (math/safe-divide zeros (h/total-count histogram))
-         :percentiles           (apply h.impl/percentiles histogram (range 0 1.1 0.1))
+         :zero%                 (safe-divide zeros (h/total-count histogram))
+         :percentiles           (->> (range 0 1.1 0.1)
+                                     (apply h.impl/percentiles histogram))
          :histogram-categorical histogram-categorical})))))
 
 (defmethod comparison-vector Num
@@ -336,9 +337,10 @@
                            (costs/unbounded-computation? max-cost))
                   (ts/decompose resolution series))
                 :autocorrelation
-                (math/autocorrelation {:max-lag (or (some-> resolution
-                                                            ts/period-length
-                                                            dec)
+                (math/autocorrelation {:max-lag (min (or (some-> resolution
+                                                                 ts/period-length
+                                                                 dec)
+                                                         Long/MAX_VALUE)
                                                     (/ (count series) 2))}
                                       (map second series))}
                (when (and (costs/allow-joins? max-cost)
@@ -527,6 +529,6 @@
     (field-metadata-extractor field)
     (fn [{:keys [total-count nil-count]}]
       {:count     total-count
-       :nil%      (math/safe-divide nil-count total-count)
+       :nil%      (safe-divide nil-count total-count)
        :has-nils? (pos? nil-count)
        :type      nil}))))

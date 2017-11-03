@@ -50,7 +50,6 @@
 (expect
   [[99]
    []]
-  [
-   (breaks 12 (map vector (range) (concat (repeat 100 10)
+  [(breaks 12 (map vector (range) (concat (repeat 100 10)
                                           (repeat 100 20))))
    (breaks 12 (map vector (range) (take 100 (cycle (range 10)))))])

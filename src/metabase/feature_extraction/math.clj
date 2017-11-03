@@ -42,6 +42,13 @@
   ([x y precision]
    (<= (* (- 1 precision) x) y (* (+ 1 precision) x))))
 
+(defn significant?
+  "Is `x` significant at `significance-level` if drawn from distribution
+   `distribution`."
+  ([x distribution] (significant? x distribution 0.95))
+  ([x distribution significance-level]
+   (> (math/abs x) (d/icdf distribution (- 1 significance-level)))))
+
 (defn autocorrelation
   "Calculate autocorrelation at lag `lag` or find the lag with the highest
    significant autocorrelation (if it exists) up to `max-lag` if `lag` is not
@@ -56,10 +63,12 @@
                           (stats/correlation first second)
                           (stats/somef #(max (min % 1.0) -1.0)))
                 (map vector xs (drop lag xs)))
-     (let [r-crit (/ 1.96 (math/sqrt (count xs)))]
+     (let [n (count xs)]
        (reduce (fn [best lag]
                  (let [r (autocorrelation {:lag lag} xs)]
-                   (if (and (some-> r math/abs (> r-crit))
+                   (if (and (some-> r
+                                    (* (math/sqrt (- n lag)))
+                                    (significant? (d/normal 0 1) (/ 0.05 2)))
                             (pos? (compare [(math/abs r) (- lag)]
                                            [(math/abs (:autocorrelation best 0))
                                             (- (:lag best 0))])))
@@ -144,10 +153,3 @@
          lower-bound         (- q1 (* 1.5 iqr))
          upper-bound         (+ q3 (* 1.5 iqr))]
      (remove (comp #(< lower-bound % upper-bound) keyfn) xs))))
-
-(defn significant?
-  "Is `x` significant at `significance-level` if drawn from distribution
-   distribution."
-  ([x distribution] (significant? x distribution 0.95))
-  ([x distribution significance-level]
-   (> x (d/icdf distribution (- 1 significance-level)))))

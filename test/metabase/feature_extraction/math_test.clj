@@ -86,6 +86,6 @@
   (let [xs (vec (repeatedly 100 rand))]
     [(not-empty (outliers xs))
      (set (outliers (-> xs
-                        (assoc-in [10] 10)
+                        (assoc-in [10] 50)
                         (assoc-in [30] 100)
                         (assoc-in [70] 35))))]))

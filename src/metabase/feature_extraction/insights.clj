@@ -4,7 +4,9 @@
             [clojure.math.numeric-tower :as num]
             [distributions.core :as d]
             [jdistlib.core :as d.tests]
-            [kixi.stats.core :as stats]
+            [kixi.stats
+             [core :as stats]
+             [math :refer [sq]]]
             [metabase.feature-extraction
              [histogram :as h]
              [math :as math]
@@ -69,7 +71,7 @@
 
 (definsight variation-trend
   "Is there a consistent thrend in changes of variation from one period to the
-   next.
+   next?
 
    We determine the trend by fitting a linear regression and test the hypothesis
    that slope is not significantly different from 0.
@@ -95,19 +97,19 @@
             (stats/sum-squares first second)
             (redux/fuse
              {:s-x  (redux/pre-step + first)
-              :s-xx (redux/pre-step + #(num/expt (first %) 2))
+              :s-xx (redux/pre-step + (comp sq first))
               :s-y  (redux/pre-step + second)
-              :s-yy (redux/pre-step + #(num/expt (second %) 2))}))
+              :s-yy (redux/pre-step + (comp sq second))}))
            (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
              (when (and (> n 2) (not-any? zero? [ss-x s-x]))
                (let [slope       (/ ss-xy ss-x)
                      slope-error (* (/ 1
                                        (- n 2)
-                                       (- (* n s-xx) (num/expt s-x 2)))
+                                       (- (* n s-xx) (sq s-x)))
                                     (- (* n s-yy)
-                                       (num/expt s-y 2)
-                                       (* (num/expt slope 2)
-                                          (- (* n s-xx) (num/expt s-x 2)))))]
+                                       (sq s-y)
+                                       (* (sq slope)
+                                          (- (* n s-xx) (sq s-x)))))]
                  (when (math/significant? (if (zero? slope)
                                             0
                                             (/ slope slope-error))
@@ -199,9 +201,9 @@
                     (let [t (/ (- mean1 mean2)
                                (num/sqrt (/ (+ variance1 variance2) n)))
                           k (num/round
-                             (/ (num/expt (/ (+ variance1 variance2) n) 2)
-                                (/ (+ (num/expt variance1 2)
-                                      (num/expt variance2 2))
+                             (/ (sq (/ (+ variance1 variance2) n))
+                                (/ (+ (sq variance1)
+                                      (sq variance2))
                                    (* n (- n 1)))))]
                       (math/significant? t (d/t-distribution k) (/ 0.05 2))))))
            (every? false?)))))
