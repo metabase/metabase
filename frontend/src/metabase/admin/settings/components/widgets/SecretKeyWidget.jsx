@@ -9,7 +9,7 @@ import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
 
 type Props = {
-    updateSetting: (value: any) => void,
+    onChange: (value: any) => void,
     setting: {}
 };
 
@@ -17,9 +17,9 @@ export default class SecretKeyWidget extends Component {
     props: Props;
 
     _generateToken = async () => {
-        const { updateSetting } = this.props;
+        const { onChange } = this.props;
         const result = await UtilApi.random_token();
-        updateSetting(result.token);
+        onChange(result.token);
     }
 
     render() {

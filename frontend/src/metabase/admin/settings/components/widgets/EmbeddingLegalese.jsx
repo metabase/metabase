@@ -1,7 +1,7 @@
 import React from 'react';
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
-const EmbeddingLegalese = ({ updateSetting }) =>
+const EmbeddingLegalese = ({ onChange }) =>
     <div className="bordered rounded text-measure p4">
         <h3 className="text-brand">Using embedding</h3>
         <p className="text-grey-4" style={{ lineHeight: 1.48 }}>
@@ -15,7 +15,7 @@ const EmbeddingLegalese = ({ updateSetting }) =>
                 className="Button Button--primary"
                 onClick={() => {
                     MetabaseAnalytics.trackEvent("Admin Embed Settings", "Embedding Enable Click");
-                    updateSetting(true);
+                    onChange(true);
                 }}
             >
                 Enable

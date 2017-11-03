@@ -311,11 +311,11 @@ const SECTIONS = [
                 description: null,
                 widget: EmbeddingLegalese,
                 getHidden: (settings) => settings["enable-embedding"],
-                onChanged: async (oldValue, newValue, settingsValues, onChange) => {
+                onChanged: async (oldValue, newValue, settingsValues, onChangeSetting) => {
                     // Generate a secret key if none already exists
                     if (!oldValue && newValue && !settingsValues["embedding-secret-key"]) {
                         let result = await UtilApi.random_token();
-                        await onChange("embedding-secret-key", result.token);
+                        await onChangeSetting("embedding-secret-key", result.token);
                     }
                 }
             },

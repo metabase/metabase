@@ -33,7 +33,6 @@ export default class CustomGeoJSONWidget extends Component {
 
     static propTypes = {
         setting: PropTypes.object.isRequired,
-        updateSetting: PropTypes.func.isRequired,
         reloadSettings: PropTypes.func.isRequired
     };
     static defaultProps = {};
