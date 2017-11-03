@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from 'classnames';
 
-import { IFRAMED } from "metabase/lib/dom";
+//import { IFRAMED } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";

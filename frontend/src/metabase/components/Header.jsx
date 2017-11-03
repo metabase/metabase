@@ -25,9 +25,6 @@ type Props = {
     // Whether or not fullscreen is active
     isFullscreen: bool,
 
-    // What is this for and why?
-    isEditingInfo: bool,
-
     // The item in question being viewed, most likely a question or dashbaord
     item: {
         name: string,
@@ -97,7 +94,6 @@ export default class Header extends Component {
         const {
             item,
             isEditing,
-            isEditingInfo,
             editingTitle,
             editingSubtitle,
             defaultActions,
