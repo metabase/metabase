@@ -53,7 +53,7 @@ export default class FilterWidget extends Component {
     }
 
     renderOperatorFilter() {
-        const { query, filter, maxDisplayValues } = this.props;
+        const { query, filter, maxDisplayValues, removeFilter, index } = this.props;
         let [op, field, ...values] = filter;
 
         const dimension = query.parseFieldReference(field);
@@ -96,7 +96,21 @@ export default class FilterWidget extends Component {
                     <div className="flex align-center flex-wrap">
                         {formattedValues.map((formattedValue, valueIndex) =>
                             <div key={valueIndex} className="Filter-section Filter-section-value">
-                                <span className="QueryOption">{formattedValue}</span>
+                                <span className="QueryOption flex align-center">
+                                    {formattedValue}
+                                    { removeFilter && (
+                                        <span onClick={event => {
+                                            // stop the event from bubbling so
+                                            // that the click
+                                            // doesn't cause the popover to open
+                                            event.stopPropagation()
+                                            // remove the filter
+                                            removeFilter(index)
+                                        }}>
+                                            <Icon name="close" size={14} />
+                                        </span>
+                                    )}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -149,7 +163,7 @@ export default class FilterWidget extends Component {
     }
 
     render() {
-        const { filter, index, removeFilter } = this.props;
+        const { filter } = this.props;
         return (
             <div className={cx("Query-filter p1 pl2", { "selected": this.state.isOpen })}>
                 <div className="flex justify-center">
@@ -160,11 +174,6 @@ export default class FilterWidget extends Component {
                     }
                     {this.renderPopover()}
                 </div>
-                { removeFilter &&
-                    <a className="text-grey-2 no-decoration px1 flex align-center" onClick={() => removeFilter(index)}>
-                        <Icon name='close' size={14} />
-                    </a>
-                }
             </div>
         );
     }

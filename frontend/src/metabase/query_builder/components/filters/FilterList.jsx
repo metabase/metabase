@@ -26,13 +26,8 @@ type State = {
 
 export default class FilterList extends Component {
     props: Props;
-    state: State;
-
-    constructor(props: Props) {
-        super(props);
-        this.state = {
-          shouldScroll: false
-        };
+    state: State = {
+        shouldScroll: false
     }
 
     componentDidUpdate () {
