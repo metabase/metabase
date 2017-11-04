@@ -20,8 +20,11 @@ type Props = {
     query: StructuredQuery,
     filter: Filter,
     index: number,
+    // TODO - why are these optionals?
     updateFilter?: (index: number, field: Filter) => void,
     removeFilter?: (index: number) => void,
+
+    // TODO - what is this for?
     maxDisplayValues?: number
 }
 type State = {
@@ -52,129 +55,140 @@ export default class FilterWidget extends Component {
         this.setState({ isOpen: false });
     }
 
-    renderOperatorFilter() {
-        const { query, filter, maxDisplayValues, removeFilter, index } = this.props;
-        let [op, field, ...values] = filter;
-
-        const dimension = query.parseFieldReference(field);
-        if (!dimension) {
-            return null;
-        }
-
-        const operator = dimension.operator(op);
-
-        let formattedValues;
-        // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
-        if (operator && operator.multi && values.length > maxDisplayValues) {
-            formattedValues = [values.length + " selections"];
-        } else if (dimension.field().isDate()) {
-            formattedValues = generateTimeFilterValuesDescriptions(filter);
-        } else {
-            // TODO Atte Keinänen 7/16/17: Move formatValue to metabase-lib
-            formattedValues = values.filter(value => value !== undefined).map(value =>
-                formatValue(value, { column: dimension.field() })
-            )
-        }
-
-        return (
-            <div
-                className="flex flex-column justify-center"
-                onClick={this.open}
-            >
-                <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
-                    <FieldName
-                        className="Filter-section Filter-section-field"
-                        field={field}
-                        tableMetadata={query.table()}
-                    />
-                    <div className="Filter-section Filter-section-operator">
-                        &nbsp;
-                        <a className="QueryOption flex align-center">{operator && operator.moreVerboseName}</a>
-                    </div>
-                </div>
-                { formattedValues.length > 0 && (
-                    <div className="flex align-center flex-wrap">
-                        {formattedValues.map((formattedValue, valueIndex) =>
-                            <div key={valueIndex} className="Filter-section Filter-section-value">
-                                <span className="QueryOption flex align-center">
-                                    {formattedValue}
-                                    { removeFilter && (
-                                        <span onClick={event => {
-                                            // stop the event from bubbling so
-                                            // that the click
-                                            // doesn't cause the popover to open
-                                            event.stopPropagation()
-                                            // remove the filter
-                                            removeFilter(index)
-                                        }}>
-                                            <Icon name="close" size={14} />
-                                        </span>
-                                    )}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        )
-    }
-
-    renderSegmentFilter() {
-        const { query, filter } = this.props;
-        const segment = _.find(query.table().segments, (s) => s.id === filter[1]);
-        return (
-            <div onClick={this.open}>
-                <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
-                    <div className="Filter-section Filter-section-field">
-                        <span className="QueryOption">Matches</span>
-                    </div>
-                </div>
-                <div className="flex align-center flex-wrap">
-                    <div className="Filter-section Filter-section-value">
-                        <span className="QueryOption">{segment && segment.name}</span>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    renderPopover() {
-        if (this.state.isOpen) {
-            const { query, filter } = this.props;
-            return (
-                <Popover
-                    id="FilterPopover"
-                    ref="filterPopover"
-                    className="FilterPopover"
-                    isInitiallyOpen={this.props.filter[1] === null}
-                    onClose={this.close}
-                    horizontalAttachments={["left"]}
-                    autoWidth
-                >
-                    <FilterPopover
-                        query={query}
-                        filter={filter}
-                        onCommitFilter={(filter) => this.props.updateFilter && this.props.updateFilter(this.props.index, filter)}
-                        onClose={this.close}
-                    />
-                </Popover>
-            );
-        }
-    }
-
     render() {
-        const { filter } = this.props;
+        const { filter, index, query, removeFilter, updateFilter } = this.props
+        const { isOpen } = this.state
+
+        const segment = _.find(query.table().segments, (s) => s.id === filter[1]);
+
+        const isSegment = filter[0] === "SEGMENT"
+
         return (
-            <div className={cx("Query-filter p1 pl2", { "selected": this.state.isOpen })}>
-                <div className="flex justify-center">
-                    {filter[0] === "SEGMENT" ?
-                        this.renderSegmentFilter()
-                    :
-                        this.renderOperatorFilter()
+            <div className={cx("Query-filter p2", { "selected": isOpen })}>
+                <div onClick={this.open}>
+                    <div>
+                    { isSegment
+                        ? "Matches"
+                        : <OperatorFieldName {...this.props} />
                     }
-                    {this.renderPopover()}
+                    </div>
+                    <FilterValue>
+                        { isSegment
+                            // TODO - having to do this check seems insane
+                            ? segment && segment.name
+                            : <OperatorValue {...this.props} />
+                        }
+
+                        { removeFilter && (
+                            <RemoveFilter onClick={event => {
+                                // stop the event from bubbling so
+                                // we don't open the popover
+                                event.stopPropagation()
+                                // remove the filter
+                                removeFilter(index)
+                            }} />
+                        )}
+                    </FilterValue>
                 </div>
+                { isOpen && (
+                    <Popover
+                        id="FilterPopover"
+                        ref="filterPopover"
+                        className="FilterPopover"
+                        isInitiallyOpen={filter[1] === null}
+                        onClose={this.close}
+                        horizontalAttachments={["left"]}
+                        autoWidth
+                    >
+                        <FilterPopover
+                            query={query}
+                            filter={filter}
+                            onCommitFilter={filter =>
+                                updateFilter && updateFilter(index, filter)
+                            }
+                            onClose={this.close}
+                        />
+                    </Popover>
+                )}
             </div>
         );
     }
+}
+
+const OperatorFieldName = ({ ...props }) => {
+    let [op, field] = props.filter;
+    const dimension = props.query.parseFieldReference(field);
+
+    if (!dimension) {
+        return null;
+    }
+
+    const operator = dimension.operator(op);
+
+    return (
+        <div className="flex align-center">
+            <FieldName
+                className="Filter-section Filter-section-field"
+                field={field}
+                tableMetadata={props.query.table()}
+            />
+            <div className="Filter-section Filter-section-operator">
+                &nbsp;
+                <a className="QueryOption flex align-center">
+                    {operator && operator.moreVerboseName}
+                </a>
+            </div>
+        </div>
+    )
+}
+
+const RemoveFilter = ({ onClick }) =>
+    <span onClick={onClick}>
+        <Icon name="close" size={14} />
+    </span>
+
+
+// This is the purple-y token bit
+const FilterValue = ({ children }) =>
+    <div className="inline-block bg-purple text-white rounded">
+        <div className="flex align-center">
+            {children}
+        </div>
+    </div>
+
+const OperatorValue = ({ ...props }) => {
+    const { filter, query, maxDisplayValues } = props;
+
+    let [op, field, ...values] = filter;
+
+    const dimension = query.parseFieldReference(field);
+
+    if (!dimension) {
+        return null;
+    }
+
+    const operator = dimension.operator(op);
+
+    let formattedValues;
+    // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
+    if (operator && operator.multi && values.length > maxDisplayValues) {
+        formattedValues = [values.length + " selections"];
+    } else if (dimension.field().isDate()) {
+        formattedValues = generateTimeFilterValuesDescriptions(filter);
+    } else {
+        // TODO Atte Keinänen 7/16/17: Move formatValue to metabase-lib
+        formattedValues = values.filter(value => value !== undefined).map(value =>
+            formatValue(value, { column: dimension.field() })
+        )
+    }
+
+    return (
+        <div>
+            { formattedValues.length > 0 && (
+                <div>
+                    {formattedValues.map(formattedValue => formattedValue )}
+                </div>
+            )}
+        </div>
+    )
 }
