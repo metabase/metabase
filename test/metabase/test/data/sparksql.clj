@@ -13,7 +13,7 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import metabase.driver.sparksql.SparkSQLDriver))
 
-(def ^:const field-base-type->sql-type
+(def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "BIGINT"
    :type/Boolean    "BOOLEAN"
    :type/Date       "DATE"
@@ -23,7 +23,7 @@
    :type/Integer    "INTEGER"
    :type/Text       "STRING"})
 
-(defn quote-name [nm]
+(defn- quote-name [nm]
   (str \` nm \`))
 
 (defn- dash-to-underscore [s]
@@ -34,7 +34,7 @@
   ([db-name table-name]            (map dash-to-underscore [db-name table-name]))
   ([db-name table-name field-name] (map dash-to-underscore [table-name field-name])))
 
-(defn database->connection-details [context {:keys [database-name]}]
+(defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host "localhost"
           :port 10000
           :user "admin"
@@ -62,13 +62,12 @@
                                                       :allow-dashed-names? false))))]
     (with-open [conn (jdbc/get-connection spec)]
       (try
-        (do
-          (.setAutoCommit conn false)
-          (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
+        (.setAutoCommit conn false)
+        (jdbc/execute! {:connection conn} sql+args {:transaction? false})
         (catch java.sql.SQLException e
           (jdbc/print-sql-exception-chain e))))))
 
-(defn make-load-data-fn
+(defn- make-load-data-fn
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
@@ -79,7 +78,7 @@
           rows       (generic/load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
-(defn create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
+(defn- create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
   (let [quot          (partial generic/quote-name driver)
         pk-field-name (quot (generic/pk-field-name driver))]
     (format "CREATE TABLE %s (%s, %s %s)"
@@ -94,27 +93,27 @@
             pk-field-name (generic/pk-sql-type driver)
             pk-field-name)))
 
-(defn drop-table-if-exists-sql [driver {:keys [database-name]} {:keys [table-name]}]
+(defn- drop-table-if-exists-sql [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s" (generic/qualify+quote-name driver database-name table-name)))
 
-(defn drop-db-if-exists-sql [driver {:keys [database-name]}]
+(defn- drop-db-if-exists-sql [driver {:keys [database-name]}]
   (format "DROP DATABASE IF EXISTS %s CASCADE" (generic/qualify+quote-name driver database-name)))
 
 (u/strict-extend SparkSQLDriver
-                 generic/IGenericSQLTestExtensions
-                 (merge generic/DefaultsMixin
-                        {:add-fk-sql                (constantly nil)
-                         :execute-sql!              generic/sequentially-execute-sql!
-                         :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-                         :create-table-sql          create-table-sql
-                         :drop-table-if-exists-sql  drop-table-if-exists-sql
-                         :drop-db-if-exists-sql     drop-db-if-exists-sql
-                         :load-data!                (make-load-data-fn generic/load-data-add-ids)
-                         :pk-sql-type               (constantly "INT")
-                         :qualified-name-components (u/drop-first-arg qualified-name-components)
-                         :quote-name                (u/drop-first-arg quote-name)})
-                 i/IDriverTestExtensions
-                 (merge generic/IDriverTestExtensionsMixin
-                        {:database->connection-details (u/drop-first-arg database->connection-details)
-                         :default-schema               (constantly "test_data")
-                         :engine                       (constantly :sparksql)}))
+  generic/IGenericSQLTestExtensions
+  (merge generic/DefaultsMixin
+         {:add-fk-sql                (constantly nil)
+          :execute-sql!              generic/sequentially-execute-sql!
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
+          :create-table-sql          create-table-sql
+          :drop-table-if-exists-sql  drop-table-if-exists-sql
+          :drop-db-if-exists-sql     drop-db-if-exists-sql
+          :load-data!                (make-load-data-fn generic/load-data-add-ids)
+          :pk-sql-type               (constantly "INT")
+          :qualified-name-components (u/drop-first-arg qualified-name-components)
+          :quote-name                (u/drop-first-arg quote-name)})
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
+         {:database->connection-details (u/drop-first-arg database->connection-details)
+          :default-schema               (constantly "test_data")
+          :engine                       (constantly :sparksql)}))

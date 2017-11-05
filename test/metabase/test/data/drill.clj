@@ -1,21 +1,20 @@
 (ns metabase.test.data.drill
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.data.csv :as csv]
+            [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
             [clojure.string :as s]
-            [clojure.data.csv :as csv]
-            [environ.core :refer [env]]
-            [medley.core :as m]
             [honeysql.core :as hsql]
-            (metabase.driver [generic-sql :as sql]
-                             [drill :as drill-driver])
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [clojure.java.io :as io])
-  (:import metabase.driver.drill.DrillDriver
-           java.sql.SQLException))
+            [medley.core :as m]
+            [metabase.driver.drill :as drill-driver]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
+            [metabase.util :as u])
+  (:import java.sql.SQLException
+           metabase.driver.drill.DrillDriver))
 
-(def ^:const field-base-type->sql-type
+(def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "BIGINT"
    :type/Boolean    "BOOLEAN"
    :type/Date       "DATE"
@@ -33,18 +32,18 @@
   ([db-name table-name]            (map dash-to-underscore [db-name table-name]))
   ([db-name table-name field-name] (map dash-to-underscore [table-name field-name])))
 
-(defn database->connection-details [context {:keys [database-name]}]
+(defn- database->connection-details [context {:keys [database-name]}]
   (merge {:drill-connect "drillbit=localhost;schema=dfs.tmp"}))
 
-(defn quote-name [nm]
+(defn- quote-name [nm]
   (str \` nm \`))
 
-(defn make-sure-file-exists! [path]
+(defn- make-sure-file-exists! [path]
   (let [file-path (clojure.java.io/file path)]
     (when-not (.exists file-path)
       (.createNewFile file-path))))
 
-(defn create-table-sql [{:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
+(defn- create-table-sql [{:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
   (let [qualified-table-name (i/db-qualified-table-name database-name table-name)
         table-path (str "/tmp/" qualified-table-name "_table.csv")]
     ;; we can't create the view unless the file exists, so create an empty one if necessary
@@ -65,51 +64,34 @@
                  ", CAST(`id` as INTEGER) AS `id` ")
             table-path)))
 
-(defn drop-table-if-exists-sql [{:keys [database-name]} {:keys [table-name]}]
+(defn- drop-table-if-exists-sql [{:keys [database-name]} {:keys [table-name]}]
   (format "DROP VIEW IF EXISTS %s" (str "dfs.tmp.`" database-name "_" table-name "`")))
+
+(def ^:dynamic ^:private *connection* nil)
 
 ;; workaround for DRILL-5136 (can't use prepared statements for DDL)
 ;; instead of prepared statements, we use plain statements.
 ;; since execute in the jdbc driver uses prepared statements by default,
 ;; we use .createStatement and .execute explicitly.
-(defn execute-without-prepared-statement! [conn driver context dbdef sql]
-  (let [sql (some-> sql s/trim)]
-    (when (and (seq sql)
-               ;; make sure SQL isn't just semicolons
-               (not (s/blank? (s/replace sql #";" ""))))
-      ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
-      (let [sql (s/replace sql #";+" ";")]
-        (try
-          (with-open [sql-statement (.createStatement conn)]
-            (.execute sql-statement sql))
-          (catch SQLException e
-            (println "Error executing SQL:" sql)
-            (printf "Caught SQLException:\n%s\n"
-                    (with-out-str (jdbc/print-sql-exception-chain e)))
-            (throw e))
-          (catch Throwable e
-            (println "Error executing SQL:" sql)
-            (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
-                    (with-out-str (.printStackTrace e)))
-            (throw e)))))))
+(defn- execute-without-prepared-statement! [driver context dbdef sql]
+  (generic/default-execute-sql! driver context dbdef sql
+                                :execute (fn [_ sql]
+                                           (with-open [sql-statement (.createStatement *connection*)]
+                                             (.execute sql-statement sql)))))
 
-(defn sequentially-execute-sql-without-prepared-statements!
-  "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
-   that don't support executing multiple statements at once.
-
-   Since there are some cases were you might want to execute compound statements without splitting, an upside-down ampersand (`⅋`) is understood as an
-   \"escaped\" semicolon in the resulting SQL statement."
+(defn- sequentially-execute-sql-without-prepared-statements!
   [driver context dbdef sql]
   (with-open [conn (jdbc/get-connection (generic/database->spec driver context dbdef))]
-    (generic/sequentially-execute-sql! driver context dbdef sql
-                                       :execute (partial execute-without-prepared-statement! conn))))
+    (binding [*connection* conn]
+      (generic/sequentially-execute-sql! driver context dbdef sql
+                                         :execute execute-without-prepared-statement!))))
 
 (defn- unprepare [x]
   (if (instance? honeysql.types.SqlRaw x)
     (s/join " " (hsql/format x))
     (drill-driver/drill-unprepare [x])))
 
-(defn make-row-formatter [field-definitions]
+(defn- make-row-formatter [field-definitions]
   (let [field-name->base-type (reduce (fn [acc {:keys [field-name base-type]}]
                                         (assoc acc field-name base-type))
                                       {}
@@ -122,7 +104,7 @@
                value))
            row))))
 
-(defn load-data! [driver
+(defn- load-data! [driver
                   {:keys [database-name], :as dbdef}
                   {:keys [table-name field-definitions], :as tabledef}]
   ;; if we have an instance of SqlRaw we'll have to use the big hammer
@@ -132,9 +114,9 @@
   ;; relative time intervals. creating timestamps is incredibly slow when
   ;; there are more than a few hundred rows, for some reason, so we just
   ;; write .csv files directly when we can.
-  (let [spec       (generic/database->spec driver :db dbdef)
-        rows       (for [[i row] (m/indexed (generic/load-data-get-rows driver dbdef tabledef))]
-                     (assoc row :id (inc i)))
+  (let [spec (generic/database->spec driver :db dbdef)
+        rows (for [[i row] (m/indexed (generic/load-data-get-rows driver dbdef tabledef))]
+               (assoc row :id (inc i)))
         qualified-table-name (i/db-qualified-table-name database-name table-name)
         full-table-name (str "dfs.tmp.`" qualified-table-name "_table`")
         table-path (str "/tmp/" qualified-table-name "_table.csv")

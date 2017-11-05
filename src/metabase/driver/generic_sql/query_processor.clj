@@ -114,9 +114,9 @@
     (formatted (expression-with-name expression-name)))
 
   Field
-  (formatted [unresolved-field]
-    ;; unresolved-field needs to be found in our table aliases
-    (let [{:keys [schema-name table-name special-type field-name] :as alias} (resolve-table-alias unresolved-field)
+  (formatted [field-before-aliasing]
+    ;; field-before-aliasing needs to be found in our table aliases
+    (let [{:keys [schema-name table-name special-type field-name] :as alias} (resolve-table-alias field-before-aliasing)
           field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
       (cond
         (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)

@@ -39,7 +39,9 @@
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
                  [com.cemerick/friend "0.2.3"                         ; auth library
-                  :exclusions [net.sourceforge.nekohtml/nekohtml
+                  :exclusions [commons-codec
+                               org.apache.httpcomponents/httpclient
+                               net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
