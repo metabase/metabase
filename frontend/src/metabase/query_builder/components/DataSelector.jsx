@@ -305,7 +305,7 @@ export default class DataSelector extends Component {
                         renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
                     />
                     { isSavedQuestionList && (
-                        <div className="bg-slate-extra-light p2 text-centered">
+                        <div className="bg-slate-extra-light p2 text-centered border-top">
                             Is a question missing?
                             <a href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data" className="block link">Learn more about nested queries</a>
                         </div>

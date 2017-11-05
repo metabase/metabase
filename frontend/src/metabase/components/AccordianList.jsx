@@ -230,27 +230,24 @@ export default class AccordianList extends Component {
                                         {section.name}
                                     </div>
                                 :
-                                    <div className={cx("p1", {
-                                        "border-top": sectionIndex !== 0,
-                                        "border-bottom": sectionIsExpanded(sectionIndex)
-                                    })}>
-                                        <div
-                                            className={cx("List-section-header px1 py1 full flex align-center", {
-                                                "cursor-pointer": sectionIsTogglable(sectionIndex)
-                                            })}
-                                            onClick={sectionIsTogglable(sectionIndex) && (() => this.toggleSection(sectionIndex))}
-                                        >
-                                            { this.renderSectionIcon(section, sectionIndex) }
-                                            <h3 className="List-section-title">{section.name}</h3>
-                                            { sections.length > 1 && section.items && section.items.length > 0 &&
-                                                <span className="flex-align-right">
-                                                    <Icon name={sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
-                                                </span>
-                                            }
-                                        </div>
+                                    <div
+                                        className={cx("List-section-header p2 flex align-center", {
+                                            "cursor-pointer": sectionIsTogglable(sectionIndex),
+                                            "border-top": sectionIndex !== 0,
+                                            "border-bottom": sectionIsExpanded(sectionIndex)
+                                        })}
+                                        onClick={sectionIsTogglable(sectionIndex) && (() => this.toggleSection(sectionIndex))}
+                                    >
+                                        { this.renderSectionIcon(section, sectionIndex) }
+                                        <h3 className="List-section-title">{section.name}</h3>
+                                        { sections.length > 1 && section.items && section.items.length > 0 &&
+                                            <span className="flex-align-right">
+                                                <Icon name={sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
+                                            </span>
+                                        }
                                     </div>
                             ) : type === "search" ?
-                                <div className="m1" style={{border: "2px solid transparent", borderRadius: "6px"}}>
+                                <div className="m1" style={{ border: "2px solid transparent" }}>
                                     <ListSearchField
                                         onChange={(val) => this.setState({searchText: val})}
                                         searchText={this.state.searchText}
