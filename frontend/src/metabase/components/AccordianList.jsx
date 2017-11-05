@@ -1,10 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import cx from "classnames";
 import _ from "underscore";
-import { elementIsInView } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
@@ -235,7 +233,10 @@ export default class AccordianList extends Component {
                                         {section.name}
                                     </div>
                                 :
-                                    <div className="p1 border-bottom">
+                                    <div className={cx("p1", {
+                                        "border-top": sectionIndex !== 0,
+                                        "border-bottom": sectionIsExpanded(sectionIndex)
+                                    })}>
                                         <div
                                             className={cx("List-section-header px1 py1 full flex align-center", {
                                                 "cursor-pointer": sectionIsTogglable(sectionIndex)
