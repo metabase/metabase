@@ -156,7 +156,7 @@ describe("xray integration tests", () => {
             expect(fieldXRay.length).toBe(1)
             expect(fieldXRay.find(CostSelect).length).toBe(1)
 
-            expect(app.find(InsightCard).length).toBe(1)
+            expect(app.find(InsightCard).length > 0).toBe(true)
             expect(app.find(NormalRangeInsight).length).toBe(1)
         })
     })
@@ -286,7 +286,7 @@ describe("xray integration tests", () => {
         })
 
         it("let you see card xray for a timeseries question", async () => {
-            await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
+            await SettingsApi.put({ key: 'xray-max-cost', value: 'exact' })
             const store = await createTestStore()
             // make sure xrays are on and at the proper cost
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
