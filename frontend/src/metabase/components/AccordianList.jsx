@@ -8,12 +8,6 @@ import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
 import { List } from 'react-virtualized';
 
-const ROW_HEIGHTS = {
-    "header": 56,
-    "search": 48,
-    "item": 36,
-};
-
 export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
@@ -201,8 +195,11 @@ export default class AccordianList extends Component {
         }
 
         const getRowHeight = ({ index }) =>
-            ROW_HEIGHTS[rows[index].type] +
-            (rows[index].isLastItem ? 10 : 0);
+            rows[index].type === "header" && alwaysExpanded ? 44 : // "alwaysExpanded" style uses shorter headers
+            rows[index].type === "header" ? 56 :
+            rows[index].type === "search" ? 56 :
+            rows[index].type === "item" ?  36 + (rows[index].isLastItem ? 8 : 0) : // add padding for last row
+            0;
 
         const width = 300;
         const height = Math.min(500, rows.reduce((height, row, index) => height + getRowHeight({ index }), 0));
