@@ -160,25 +160,19 @@ export default class LineAreaBarChart extends Component {
 
         let settings = { ...this.props.settings };
 
-        // no axis in < 1 fidelity
-        if (fidelity.x < 1) {
-            settings["graph.y_axis.axis_enabled"] = false;
-        }
-        if (fidelity.y < 1) {
-            settings["graph.x_axis.axis_enabled"] = false;
-        }
-
-        // no labels in < 2 fidelity
-        if (fidelity.x < 2) {
-            settings["graph.y_axis.labels_enabled"] = false;
-        }
-        if (fidelity.y < 2) {
-            settings["graph.x_axis.labels_enabled"] = false;
-        }
-
         // smooth interpolation at smallest x/y fidelity
         if (fidelity.x === 0 && fidelity.y === 0) {
             settings["line.interpolate"] = "cardinal";
+        }
+
+        // no axis in < 1 fidelity
+        if (fidelity.x < 1 || fidelity.y < 1) {
+            settings["graph.y_axis.axis_enabled"] = false;
+        }
+
+        // no labels in < 2 fidelity
+        if (fidelity.x < 2 || fidelity.y < 2) {
+            settings["graph.y_axis.labels_enabled"] = false;
         }
 
         return settings;
@@ -311,34 +305,35 @@ function transformSingleSeries(s, series, seriesIndex) {
                 }]
             }
         }));
-    } else {
-        const dimensionColumnIndex = dimensionColumnIndexes[0];
-        return metricColumnIndexes.map(metricColumnIndex => {
-            const col = cols[metricColumnIndex];
-            const rowColumnIndexes = [dimensionColumnIndex].concat(metricColumnIndex, extraColumnIndexes);
-            return {
-                card: {
-                    ...card,
-                    name: [
-                        // show series title if it's multiseries
-                        series.length > 1 && card.name,
-                        // show column name if there are multiple metrics
-                        metricColumnIndexes.length > 1 && getFriendlyName(col)
-                    ].filter(n => n).join(": "),
-                    _transformed: true,
-                    _seriesIndex: seriesIndex,
-                },
-                data: {
-                    rows: rows.map((row, rowIndex) => {
-                        const newRow = rowColumnIndexes.map(i => row[i]);
-                        // $FlowFixMe: _origin not typed
-                        newRow._origin = { seriesIndex, rowIndex, row, cols };
-                        return newRow;
-                    }),
-                    cols: rowColumnIndexes.map(i => cols[i]),
-                    _rawCols: cols
-                }
-            };
-        });
     }
+
+    // dimensions.length <= 1
+    const dimensionColumnIndex = dimensionColumnIndexes[0];
+    return metricColumnIndexes.map(metricColumnIndex => {
+        const col = cols[metricColumnIndex];
+        const rowColumnIndexes = [dimensionColumnIndex].concat(metricColumnIndex, extraColumnIndexes);
+        return {
+            card: {
+                ...card,
+                name: [
+                    // show series title if it's multiseries
+                    series.length > 1 && card.name,
+                    // show column name if there are multiple metrics
+                    metricColumnIndexes.length > 1 && getFriendlyName(col)
+                ].filter(n => n).join(": "),
+                _transformed: true,
+                _seriesIndex: seriesIndex,
+            },
+            data: {
+                rows: rows.map((row, rowIndex) => {
+                    const newRow = rowColumnIndexes.map(i => row[i]);
+                    // $FlowFixMe: _origin not typed
+                    newRow._origin = { seriesIndex, rowIndex, row, cols };
+                    return newRow;
+                }),
+                cols: rowColumnIndexes.map(i => cols[i]),
+                _rawCols: cols
+            }
+        };
+    });
 }
