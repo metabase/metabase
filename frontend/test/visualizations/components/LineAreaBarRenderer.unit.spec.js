@@ -16,12 +16,12 @@ describe("LineAreaBarRenderer", () => {
     let element;
 
     beforeEach(function() {
-        document.body.insertAdjacentHTML('afterbegin', '<div id="fixture" style="height: 800px; width: 1200px;">');
+        document.body.insertAdjacentHTML('afterbegin', '<div id="fixture-parent" style="height: 800px; width: 1200px;"><div id="fixture" /></div>');
         element = document.getElementById('fixture');
     });
 
     afterEach(function() {
-        document.body.removeChild(document.getElementById('fixture'));
+        document.body.removeChild(document.getElementById('fixture-parent'));
     });
 
     it("should display numeric year in X-axis and tooltip correctly", () => {
@@ -61,43 +61,44 @@ describe("LineAreaBarRenderer", () => {
 
     ["Z", ...ALL_TZS].forEach(tz =>
         it("should display hourly data (in " + tz + " timezone) in X axis and tooltip consistently", () => {
-        return new Promise((resolve, reject) => {
-            let rows = [
-                ["2016-10-03T20:00:00.000" + tz, 1],
-                ["2016-10-03T21:00:00.000" + tz, 1],
-            ];
+            return new Promise((resolve, reject) => {
+                const rows = [
+                    ["2016-10-03T20:00:00.000" + tz, 1],
+                    ["2016-10-03T21:00:00.000" + tz, 1],
+                ];
 
-            renderTimeseriesLine({
-                rowsOfSeries: [rows],
-                unit: "hour",
-                onHoverChange: (hover) => {
-                    try {
-                        let expected = rows.map(row => formatValue(row[0], {column: DateTimeColumn({unit: "hour"})}));
-                        expect(formatValue(hover.data[0].value, {column: hover.data[0].col})).toEqual(
-                            expected[0]
-                        );
-                        expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual(expected);
-                        resolve();
-                    } catch(e) {
-                        reject(e)
+                renderTimeseriesLine({
+                    rowsOfSeries: [rows],
+                    unit: "hour",
+                    onHoverChange: (hover) => {
+                        try {
+                            let expected = rows.map(row => formatValue(row[0], {column: DateTimeColumn({unit: "hour"})}));
+                            expect(formatValue(hover.data[0].value, {column: hover.data[0].col})).toEqual(
+                                expected[0]
+                            );
+                            expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual(expected);
+                            resolve();
+                        } catch(e) {
+                            reject(e)
+                        }
                     }
-                }
-            })
+                });
 
-            dispatchUIEvent(qs(".dot"), "mousemove");
+                dispatchUIEvent(qs(".dot"), "mousemove");
+            });
         })
-    })
-)
+    );
 
     it("should display hourly data (in the browser's timezone) in X axis and tooltip consistently and correctly", () => {
         return new Promise((resolve, reject) => {
-            let tz = BROWSER_TZ;
-            let rows = [
+            const tz = BROWSER_TZ;
+            const rows = [
                 ["2016-01-01T01:00:00.000" + tz, 1],
                 ["2016-01-01T02:00:00.000" + tz, 1],
                 ["2016-01-01T03:00:00.000" + tz, 1],
                 ["2016-01-01T04:00:00.000" + tz, 1]
             ];
+
             renderTimeseriesLine({
                 rowsOfSeries: [rows],
                 unit: "hour",
@@ -110,23 +111,22 @@ describe("LineAreaBarRenderer", () => {
                             '1 AM - January 1, 2016'
                         );
 
-                        // Doesn't return the correct ticks in Jest for some reason
                         expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
                             '1 AM - January 1, 2016',
-                            // '2 AM - January 1, 2016',
-                            // '3 AM - January 1, 2016',
+                            '2 AM - January 1, 2016',
+                            '3 AM - January 1, 2016',
                             '4 AM - January 1, 2016'
                         ]);
 
                         resolve();
                     } catch (e) {
-                        reject(e)
+                        reject(e);
                     }
                 }
             });
 
             dispatchUIEvent(qs(".dot"), "mousemove");
-        })
+        });
     });
 
     describe("should render correctly a compound line graph", () => {
@@ -301,4 +301,3 @@ describe("LineAreaBarRenderer", () => {
         });
     }
 });
-
