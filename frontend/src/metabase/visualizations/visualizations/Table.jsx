@@ -11,6 +11,7 @@ import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 import { columnsAreValid, getFriendlyName } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -42,8 +43,12 @@ export default class Table extends Component {
         return true;
     }
 
-    static checkRenderable([{ data: { cols, rows} }]) {
+    static checkRenderable([{ data: { cols, rows} }], settings) {
         // scalar can always be rendered, nothing needed here
+        const enabledColumns = (settings["table.columns"] || []).filter(f => f.enabled);
+        if (enabledColumns.length < 1) {
+            throw new MinColumnsError(1, enabledColumns.length);
+        }
     }
 
     static settings = {
