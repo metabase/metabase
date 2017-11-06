@@ -66,7 +66,7 @@ export default class SettingsEditorApp extends Component {
     }
 
     updateSetting = async (setting, newValue) => {
-        const { settings, settingValues, updateSetting } = this.props;
+        const { settingValues, updateSetting } = this.props;
 
         this.layout.setSaving();
 
@@ -100,7 +100,7 @@ export default class SettingsEditorApp extends Component {
     }
 
     handleChangeSetting = (key, value) => {
-        const { settings, settingValues, updateSetting } = this.props;
+        const { settings, updateSetting } = this.props;
         const setting = _.findWhere(settings, { key });
         if (!setting) {
             throw new Error("Unknown setting " + key);
