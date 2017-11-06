@@ -318,9 +318,13 @@ const SECTIONS = [
                         await onChangeSetting("embedding-secret-key", result.token);
                     }
                 }
+            }, {
+                key: "enable-embedding",
+                display_name: "Enable Embedding Metabase in other Applications",
+                type: "boolean",
+                getHidden: (settings) => !settings["enable-embedding"]
             },
             {
-                key: "enable-embedding",
                 widget: EmbeddingLevel,
                 getHidden: (settings) => !settings["enable-embedding"]
             },

@@ -1,84 +1,89 @@
 import React, { Component } from 'react'
-import cx from 'classnames'
-import Confirm from "metabase/components/Confirm";
+import ReactRetinaImage from 'react-retina-image'
 
-const PremiumExplanation = () =>
-    <div>
-        <p>Premium embedding lets you disable "Powered by Metabase" on your embeded dashboards and questions.</p>
-        <a>Learn more</a>
+import SettingsInput from "./SettingInput"
+
+const PREMIUM_EMBEDDING_STORE_URL = 'https://store.metabase.com/product/embedding'
+const PREMIUM_EMBEDDING_SETTING_KEY = 'premium-embedding-token'
+
+const PremiumTokenInput = ({ token, onChangeSetting }) =>
+    <div className="mb3">
+        <h3 className="mb1">
+            { token
+                ? `Premium embedding enabled`
+                : `Enter the token you bought from the Metabase Store`
+            }
+        </h3>
+        <SettingsInput
+            onChange={(value) =>
+                onChangeSetting(PREMIUM_EMBEDDING_SETTING_KEY, value)
+            }
+            setting={{ value: token }}
+            autoFocus={!token}
+        />
     </div>
 
-const BrandedExplanation = () =>
+const PremiumExplanation = ({ showEnterScreen }) =>
     <div>
-        <p>You can embed Questions and dashboards. They'll say "Powered by Metabase" on the bottom.</p>
+        <h2>Premium embedding</h2>
+        <p className="mt1">Premium embedding lets you disable "Powered by Metabase" on your embeded dashboards and questions.</p>
+        <div className="mt2 mb3">
+            <a className="link mx1" href={PREMIUM_EMBEDDING_STORE_URL} target="_blank">
+                Buy a token
+            </a>
+            <a className="link mx1" onClick={showEnterScreen}>
+                Enter a token
+            </a>
+        </div>
     </div>
 
-class EmbeddingLevel extends Component {
-    constructor (props) {
+class PremiumEmbedding extends Component {
+    constructor(props) {
         super(props)
-        this.state  = {
-            showPremium: props.settingValues['premium-embedding-token']
+        this.state = {
+            showEnterScreen: props.token
         }
     }
     render () {
-        const { updateSetting, settingValues } = this.props
-        const { showPremium } = this.state
-
-        const premiumToken = settingValues['premium-embedding-token']
+        const { token, onChangeSetting } = this.props
+        const { showEnterScreen } = this.state
 
         return (
-            <div className="bordered rounded full" style={{ maxWidth: 820 }}>
-                <ol className="flex border-bottom">
-                    <li
-                        className="flex-full p2 border-right text-centered text-bold cursor-pointer text-brand-hover"
-                        onClick={() => updateSetting(false) }
-                    >
-                        Off
-                    </li>
-                    <li
-                        onClick={() => {
-                            this.setState({ showPremium: false })
-                        }}
-                        className={cx(
-                            "flex-full p2 border-right text-centered text-bold cursor-pointer text-brand-hover",
-                            { "text-brand": !showPremium }
-                        )}
-                    >
-                        On (Branded)
-                    </li>
-                    <li
-                        className={cx(
-                            "p2 flex-full text-centered text-bold cursor-pointer text-brand-hover",
-                            { "text-brand": showPremium }
-                        )}
-                        onClick={() => this.setState({ showPremium: true })}
-                    >
-                        Premium (Unbranded)
-                    </li>
-                </ol>
-                <div className="p2 flex align-center justify-center">
-                    { showPremium
-                        ? (
-                            <div>
-                                { premiumToken
-                                    ? (
-                                        <div>
-                                            Premium enabled
-                                            { premiumToken }
-                                        </div>
-                                    ) : (
-                                        <PremiumExplanation />
-                                    )
-                                }
-                            </div>
-                        )
-                        : (
-                            <div>
-                                <BrandedExplanation />
-                            </div>
+            <div className="text-centered text-paragraph">
+                { showEnterScreen
+                    ? (
+                        <PremiumTokenInput
+                            onChangeSetting={onChangeSetting}
+                            token={token}
+                        />
+                    )
+                    : (
+                        <PremiumExplanation
+                            showEnterScreen={() =>
+                                this.setState({ showEnterScreen: true })
+                            }
+                        />
+                    )
+                }
+            </div>
+        )
+    }
+}
 
-                        )
-                    }
+class EmbeddingLevel extends Component {
+    render () {
+        const { onChangeSetting, settingValues } = this.props
+
+        const premiumToken = settingValues[PREMIUM_EMBEDDING_SETTING_KEY]
+
+        return (
+            <div className="bordered rounded full text-centered" style={{ maxWidth: 820 }}>
+                <ReactRetinaImage src={`app/assets/img/${ premiumToken ? 'premium_embed_added' : 'premium_embed'}.png`}/>
+                <div className="flex align-center justify-center">
+                    <PremiumEmbedding
+                        token={premiumToken}
+                        onChangeSetting={onChangeSetting}
+                    />
                 </div>
             </div>
         )
