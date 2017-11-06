@@ -280,6 +280,22 @@ export class StationaryInsight extends Component {
     }
 }
 
+export class TrendInsight extends Component {
+    static insightType = "trend"
+    static title = "Trend"
+    static icon = "insight"
+
+    render() {
+	const { mode, shape } = this.props
+
+	return(
+		<InsightText>
+		Your data seems to be { mode } { shape }.
+		</InsightText>
+	)
+    }
+}
+
 /*
 export class RegimeChangeInsight extends Component {
     static insightType = "regime-change"
@@ -321,6 +337,7 @@ const INSIGHT_COMPONENTS = [
     SeasonalityInsight,
     StructuralBreaksInsight,
     StationaryInsight,
+    TrendInsight,
     // RegimeChangeInsight
 ]
 

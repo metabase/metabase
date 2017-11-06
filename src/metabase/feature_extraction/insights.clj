@@ -209,3 +209,20 @@
                                    (* n (- n 1)))))]
                       (math/significant? t (d/t-distribution k) (/ 0.05 2)))))))
          (every? false?))))
+
+(definsight trend
+  "What is the best (simple) trend model?
+
+   We try fitting a linear, power law, and logarithmic models and pick the one
+   with the smallest sum of residual squares.
+   https://en.wikipedia.org/wiki/Residual_sum_of_squares
+   https://en.wikipedia.org/wiki/Simple_linear_regression
+   http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
+   http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html"
+  [best-fit]
+  {:mode  (if (-> best-fit :params second pos?)
+            :growing
+            :decreasing)
+   :shape ({:linear-regression     :linearly
+            :power-law-regression  :exponentally
+            :log-linear-regression :logarithmically} (:model best-fit))})

@@ -59,9 +59,7 @@
   ([{:keys [lag max-lag]} xs]
    {:pre [(or lag max-lag)]}
    (if lag
-     (transduce identity (redux/post-complete
-                          (stats/correlation first second)
-                          (stats/somef #(max (min % 1.0) -1.0)))
+     (transduce identity (stats/correlation first second)
                 (map vector xs (drop lag xs)))
      (let [n (count xs)]
        (reduce (fn [best lag]
@@ -69,19 +67,19 @@
                    (if (and (some-> r
                                     (* (math/sqrt (- n lag)))
                                     (significant? (d/normal 0 1) (/ 0.05 2)))
-                            (pos? (compare [(math/abs r) (- lag)]
-                                           [(math/abs (:autocorrelation best 0))
-                                            (- (:lag best 0))])))
+                            (> (math/abs r) (math/abs (:autocorrelation best 0))))
                      {:autocorrelation r
                       :lag             lag}
                      best)))
                nil
                (range 1 (inc max-lag)))))))
 
-(def linear-regression
-  "Transducer that calculates (simple) linear regression."
-  (redux/post-complete (stats/simple-linear-regression first second)
-                       (partial zipmap [:offset :slope])))
+(defn ssr
+  "Transducer that calculates residual sum of squares.
+   https://en.wikipedia.org/wiki/Residual_sum_of_squares"
+  [model]
+  (redux/pre-step + (fn [[x y]]
+                      (math/sq (- y (model x))))))
 
 (def magnitude
   "Transducer that claclulates magnitude (Euclidean norm) of given vector.

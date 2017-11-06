@@ -197,10 +197,10 @@
       :cardinality cardinality
       :kurtosis    (redux/pre-step stats/kurtosis (somef double))
       :skewness    (redux/pre-step stats/skewness (somef double))
-      :zeros       (redux/with-xform stats/count (filter (somef zero?)))}
+      :zeros       ((filter (somef zero?)) stats/count)}
      (when (costs/full-scan? max-cost)
-       {:sum            (redux/with-xform + (keep (somef double)))
-        :sum-of-squares (redux/with-xform + (keep (somef #(Math/pow % 2))))})
+       {:sum            ((keep (somef double)) +)
+        :sum-of-squares ((keep (somef #(Math/pow % 2))) +)})
      (when (isa? (:special_type field) :type/Category)
        {:histogram-categorical h/histogram-categorical})))
    (merge-juxt
@@ -313,20 +313,55 @@
   [{:keys [max-cost query]} field]
   (redux/post-complete
    (redux/pre-step
-    (redux/fuse {:linear-regression math/linear-regression
-                 :series            conj})
+    (redux/fuse {; y = a + b*x
+                 :linear-regression     (stats/simple-linear-regression
+                                         first second)
+                 ; y = e^a * x^b
+                 :power-law-regression  (stats/simple-linear-regression
+                                         #(Math/log (first %))
+                                         #(Math/log (second %)))
+                 ; y = a + b*ln(x)
+                 :log-linear-regression (stats/simple-linear-regression
+                                         #(Math/log (first %)) second)
+                 :series                conj})
     (fn [[^java.util.Date x y]]
       [(some-> x .getTime double) y]))
    (merge-juxt
     (field-metadata-extractor field)
-    (fn [{:keys [series linear-regression]}]
-      (let [resolution (infer-resolution query series)
+    (fn [{:keys [series linear-regression power-law-regression
+                 log-linear-regression] :as features}]
+      (let [best-fit   (transduce
+                        identity
+                        (redux/post-complete
+                         (redux/fuse
+                          {:linear-regression
+                           (let [[a b] linear-regression]
+                             (math/ssr (fn [x]
+                                         (+ a (* b x)))))
+                           :power-law-regression
+                           (let [[a b] power-law-regression]
+                             (math/ssr (fn [x]
+                                         (* (Math/exp a) (Math/pow x b)))))
+                           :log-linear-regression
+                           (let [[a b] log-linear-regression]
+                             (math/ssr (fn [x]
+                                         (+ a (* b (Math/log x))))))})
+                         (fn [fits]
+                           (println fits)
+                           (let [[model ssr] (apply min-key val fits)]
+                             {:model  model
+                              :ssr    ssr
+                              :params (features model)})))
+                        series)
+            resolution (infer-resolution query series)
             series     (if resolution
                          (ts/fill-timeseries resolution series)
                          series)]
         (merge {:resolution             resolution
                 :series                 series
-                :linear-regression      linear-regression
+                :linear-regression      (zipmap [:offset :slope]
+                                                linear-regression)
+                :best-fit               best-fit
                 :growth-series          (when resolution
                                           (->> series
                                                (partition 2 1)
@@ -341,7 +376,7 @@
                                                                  ts/period-length
                                                                  dec)
                                                          Long/MAX_VALUE)
-                                                    (/ (count series) 2))}
+                                                     (/ (count series) 2))}
                                       (map second series))}
                (when (and (costs/allow-joins? max-cost)
                           (:aggregation query))
@@ -353,7 +388,7 @@
 (defmethod comparison-vector [DateTime Num]
   [features]
   (-> features
-      (dissoc :resolution)
+      (dissoc :resolution :best-fit)
       ((get-method comparison-vector :default))))
 
 (defn- unpack-linear-regression
@@ -370,13 +405,14 @@
   [{:keys [field series] :as features}]
   (let [x-field (first field)]
     (-> features
-        (dissoc :series :autocorrelation)
+        (dissoc :series :autocorrelation :best-fit)
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
                                       insights/autocorrelation
                                       insights/seasonality
                                       insights/structural-breaks
-                                      insights/stationary)
+                                      insights/stationary
+                                      insights/trend)
                           features))
         (update :growth-series (partial series->dataset ts/from-double
                                         [x-field
@@ -524,7 +560,7 @@
   [opts field]
   (redux/post-complete
    (redux/fuse {:total-count stats/count
-                :nil-count   (redux/with-xform stats/count (filter nil?))})
+                :nil-count   ((filter nil?) stats/count)})
    (merge-juxt
     (field-metadata-extractor field)
     (fn [{:keys [total-count nil-count]}]
