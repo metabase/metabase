@@ -78,7 +78,7 @@ describe('utils', () => {
         it("should not allow all-blank strings", () => {
             expect(MetabaseUtils.isEmpty(" ")).toEqual(true);
         });
-    })
+    });
 });
 
 function shuffle(a) {
