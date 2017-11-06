@@ -286,7 +286,7 @@ describe("xray integration tests", () => {
         })
 
         it("let you see card xray for a timeseries question", async () => {
-            await SettingsApi.put({ key: 'xray-max-cost', value: 'exact' })
+            await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
             const store = await createTestStore()
             // make sure xrays are on and at the proper cost
             store.pushPath(Urls.question(timeBreakoutQuestion.id()))
@@ -310,7 +310,7 @@ describe("xray integration tests", () => {
             expect(cardXRay.text()).toMatch(/Time breakout question/);
 
             // Should contain the expected insights
-            expect(app.find(InsightCard).length).toBe(2)
+            expect(app.find(InsightCard).length > 0).toBe(true)
             expect(app.find(NoisinessInsight).length).toBe(1)
             expect(app.find(AutocorrelationInsight).length).toBe(1)
         })

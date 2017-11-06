@@ -73,8 +73,10 @@
   "Is there a consistent thrend in changes of variation from one period to the
    next?
 
-   We determine the trend by fitting a linear regression and test the hypothesis
-   that slope is not significantly different from 0.
+   We determine the trend by calculating relative variance for each period window
+   and fit a linear regression to the resulting sequence of variances. We then
+   test the hypothesis that the slope of this regression is not significantly
+   different from 0.
    https://en.wikipedia.org/wiki/Simple_linear_regression
    https://msu.edu/course/msc/317/slr-reg.htm
    https://en.wikipedia.org/wiki/Variance"
@@ -86,10 +88,10 @@
           (map-indexed (fn [i xsi]
                          [i (transduce (map second)
                                        (redux/post-complete
-                                        (redux/juxt stats/variance
-                                                    stats/mean)
-                                        (fn [[var mean]]
-                                          (/ var mean)))
+                                        h/histogram
+                                        (fn [histogram]
+                                          (/ (h.impl/variance histogram)
+                                             (h.impl/mean histogram))))
                                        xsi)]))
           (redux/post-complete
            (redux/juxt
@@ -109,11 +111,10 @@
                                        (sq s-y)
                                        (* (sq slope)
                                           (- (* n s-xx) (sq s-x)))))]
-                 (when (math/significant? (if (zero? slope)
-                                            0
-                                            (/ slope slope-error))
-                                          (d/t-distribution (- n 2))
-                                          (/ 0.05 2))
+                 (when (and (not= slope 0)
+                            (math/significant? (/ slope slope-error)
+                                               (d/t-distribution (- n 2))
+                                               (/ 0.05 2)))
                    {:mode (if (pos? slope)
                             :increasing
                             :decreasing)})))))))))
@@ -187,15 +188,16 @@
    https://en.wikipedia.org/wiki/Welch%27s_t-test
    https://en.wikipedia.org/wiki/Stationary_process"
   [series resolution]
-  (when resolution
-    (let [n (ts/period-length resolution)]
-      (->> series
-           (partition n 1)
-           (map (partial transduce (map second)
-                         (redux/fuse {:mean stats/mean
-                                      :var  stats/variance})))
-           (partition 2 1)
-           (map (fn [[{mean1 :mean variance1 :var} {mean2 :mean variance2 :var}]]
+  (when-let [n (ts/period-length resolution)]
+    (->> series
+         (partition n 1)
+         (map (partial transduce (map second) h/histogram))
+         (partition 2 1)
+         (map (fn [[h1 h2]]
+                (let [mean1     (h.impl/mean h1)
+                      mean2     (h.impl/mean h2)
+                      variance1 (h.impl/variance h1)
+                      variance2 (h.impl/variance h2)]
                   (if (= variance1 variance2 0)
                     false
                     (let [t (/ (- mean1 mean2)
@@ -205,5 +207,5 @@
                                 (/ (+ (sq variance1)
                                       (sq variance2))
                                    (* n (- n 1)))))]
-                      (math/significant? t (d/t-distribution k) (/ 0.05 2))))))
-           (every? false?)))))
+                      (math/significant? t (d/t-distribution k) (/ 0.05 2)))))))
+         (every? false?))))
