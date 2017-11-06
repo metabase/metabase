@@ -71,7 +71,13 @@ describe('utils', () => {
             shuffle(shuffled);
             shuffled.sort(MetabaseUtils.compareVersions);
             expect(shuffled).toEqual(expected);
-        })
+        });
+    });
+
+    describe("isEmpty" () => {
+        it("should not allow all-blank strings", () => {
+            expect(MetabaseUtils.isEmpty(" ")).toEqual(true);
+        });
     })
 });
 
