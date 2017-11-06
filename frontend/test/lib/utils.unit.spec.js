@@ -74,7 +74,7 @@ describe('utils', () => {
         });
     });
 
-    describe("isEmpty" () => {
+    describe("isEmpty", () => {
         it("should not allow all-blank strings", () => {
             expect(MetabaseUtils.isEmpty(" ")).toEqual(true);
         });
