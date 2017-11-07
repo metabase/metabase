@@ -6,10 +6,12 @@ import d3 from "d3";
 import { formatValue } from "metabase/lib/formatting";
 import type { ClickObject } from "metabase/meta/types/Visualization"
 
+import { isNormalized, isStacked } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
-export function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeries, onHoverChange, onVisualizationClick) {
+// series = an array of serieses (?) in the chart. There's only one thing in here unless we're dealing with a multiseries chart
+function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll("title").remove();
@@ -53,6 +55,25 @@ export function applyChartTooltips(chart, series, isStacked, isNormalized, isSca
                                  col: cols[1]
                              }
                          ];
+
+                         // now add entries to the tooltip for columns that aren't the X or Y axis. These aren't in
+                         // the normal `cols` array, which is just the cols used in the graph axes; look in `_rawCols`
+                         // for any other columns. If we find them, add them at the end of the `data` array
+                         const seriesData = series[seriesIndex].data || {};
+                         const rawCols    = seriesData._rawCols;
+                         const row        = seriesData && seriesData.rows && seriesData.rows[i];
+                         const rawRow     = row && row._origin && row._origin.row; // get the raw query result row
+                         if (rawRow) {
+                             for (let colIndex = 0; colIndex < rawCols.length; colIndex++) {
+                                 const col = rawCols[colIndex];
+                                 if (col === cols[0] || col === cols[1]) continue;
+                                 data.push({
+                                     key: getFriendlyName(col),
+                                     value: rawRow[colIndex],
+                                     col: col
+                                 });
+                             }
+                         }
                      }
 
                      if (data && series.length > 1) {
@@ -162,4 +183,18 @@ export function applyChartTooltips(chart, series, isStacked, isNormalized, isSca
                  .on("mousedown", onClick);
         }
     });
+}
+
+
+export function setupTooltips({ settings, series, isScalarSeries, onHoverChange, onVisualizationClick }, datas, parent, { isBrushing }) {
+    applyChartTooltips(parent, series, isStacked(settings, datas), isNormalized(settings, datas), isScalarSeries, (hovered) => {
+        // disable tooltips while brushing
+        if (onHoverChange && !isBrushing()) {
+            // disable tooltips on lines
+            if (hovered && hovered.element && hovered.element.classList.contains("line")) {
+                delete hovered.element;
+            }
+            onHoverChange(hovered);
+        }
+    }, onVisualizationClick);
 }
