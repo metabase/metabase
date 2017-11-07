@@ -68,3 +68,10 @@ git push -f heroku master
 ```
 
 * Wait for the deploy to finish
+
+* If there have been no new changes to the metabase-deploy repository, you will need to add an empty commit. This triggers Heroku to re-deploy the code, fetching the newest version of Metabase in the process.
+
+```bash
+git commit --allow-empty -m "empty commit"
+git push -f heroku master
+```
