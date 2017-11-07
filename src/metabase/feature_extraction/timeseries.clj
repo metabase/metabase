@@ -10,7 +10,8 @@
              [math :as k.math]]
             [metabase.feature-extraction
              [histogram :as h]
-             [math :as math]])
+             [math :as math]]
+            [redux.core :as redux])
   (:import (com.github.brandtg.stl StlDecomposition StlResult StlConfig)))
 
 (def ^{:arglists '([t])} to-double
@@ -137,10 +138,10 @@
    http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0059279#pone.0059279.s003"
   [period series]
   (let [half-period (-> period (/ 2) Math/floor int inc)
-        q           (fn [window]
-                      (-> (transduce (map second) h/histogram window)
-                          (h.impl/percentiles 0.25 0.5 0.75)
-                          vals))]
+        q           (partial transduce (map second)
+                             (redux/post-complete
+                              h/histogram
+                              #(-> % (h.impl/percentiles 0.25 0.5 0.75) vals)))]
     (->> (map (fn [left right idx]
                 (let [pivot  (ffirst right)
                       window (map second (concat left right))
