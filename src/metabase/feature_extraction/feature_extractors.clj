@@ -329,26 +329,39 @@
     (field-metadata-extractor field)
     (fn [{:keys [series linear-regression power-law-regression
                  log-linear-regression] :as features}]
-      (let [best-fit   (transduce
+      (let [; We add a small regularization penalty to more complex curves to
+            ; prevent technically correct but nonsense solutions.
+            lambda     0.1
+            regularize (fn [penalty]
+                         (fn [ssr]
+                           (if (Double/isNaN ssr)
+                             Double/MAX_VALUE
+                             (+ ssr (* lambda penalty)))))
+            best-fit   (transduce
                         identity
                         (redux/post-complete
                          (redux/fuse
                           {:linear-regression
                            (let [[a b] linear-regression]
-                             (math/ssr (fn [x]
-                                         (+ a (* b x)))))
+                             (redux/post-complete
+                              (math/ssr (fn [x]
+                                          (+ a (* b x))))
+                              (regularize 0)))
                            :power-law-regression
                            (let [[a b] power-law-regression]
-                             (math/ssr (fn [x]
-                                         (* (Math/exp a) (Math/pow x b)))))
+                             (redux/post-complete
+                              (math/ssr (fn [x]
+                                          (* (Math/exp a) (Math/pow x b))))
+                              (regularize 2)))
                            :log-linear-regression
                            (let [[a b] log-linear-regression]
-                             (math/ssr (fn [x]
-                                         (+ a (* b (Math/log x))))))})
+                             (redux/post-complete
+                              (math/ssr (fn [x]
+                                          (+ a (* b (Math/log x)))))
+                              (regularize 1)))})
                          (fn [fits]
-                           (let [[model ssr] (apply min-key val fits)]
+                           (let [model (key (apply min-key val fits))]
                              {:model  model
-                              :ssr    ssr
                               :params (features model)})))
                         series)
             resolution (infer-resolution query series)
