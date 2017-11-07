@@ -200,7 +200,7 @@ export default class Dashboard extends Component {
             <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
                 {() =>
                     <div className="full" style={{ overflowX: "hidden" }}>
-                        <header className="DashboardHeader relative z2">
+                        <header className="DashboardHeader relative z3">
                             <DashboardHeader
                                 {...this.props}
                                 onEditingChange={this.setEditing}
