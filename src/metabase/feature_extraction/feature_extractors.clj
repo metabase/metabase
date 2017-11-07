@@ -195,8 +195,8 @@
     (merge
      {:histogram   h/histogram
       :cardinality cardinality
-      :kurtosis    (redux/pre-step stats/kurtosis (somef double))
-      :skewness    (redux/pre-step stats/skewness (somef double))
+      :kurtosis    ((map (somef double)) stats/kurtosis)
+      :skewness    ((map (somef double)) stats/skewness)
       :zeros       ((filter (somef zero?)) stats/count)}
      (when (costs/full-scan? max-cost)
        {:sum            ((keep (somef double)) +)
@@ -312,7 +312,8 @@
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
   (redux/post-complete
-   (redux/pre-step
+   ((map (fn [[^java.util.Date x y]]
+           [(some-> x .getTime double) y]))
     (redux/fuse {; y = a + b*x
                  :linear-regression     (stats/simple-linear-regression
                                          first second)
@@ -323,9 +324,7 @@
                  ; y = a + b*ln(x)
                  :log-linear-regression (stats/simple-linear-regression
                                          #(Math/log (first %)) second)
-                 :series                conj})
-    (fn [[^java.util.Date x y]]
-      [(some-> x .getTime double) y]))
+                 :series                conj}))
    (merge-juxt
     (field-metadata-extractor field)
     (fn [{:keys [series linear-regression power-law-regression
@@ -347,7 +346,6 @@
                              (math/ssr (fn [x]
                                          (+ a (* b (Math/log x))))))})
                          (fn [fits]
-                           (println fits)
                            (let [[model ssr] (apply min-key val fits)]
                              {:model  model
                               :ssr    ssr
@@ -456,9 +454,8 @@
 (defmethod feature-extractor Text
   [_ field]
   (redux/post-complete
-   (redux/fuse {:histogram (redux/pre-step
-                            h/histogram
-                            (somef (comp count u/jdbc-clob->str)))})
+   (redux/fuse {:histogram ((map (somef (comp count u/jdbc-clob->str)))
+                            h/histogram)})
    (merge-juxt
     (field-metadata-extractor field)
     histogram-extractor)))
@@ -466,25 +463,19 @@
 (defmethod feature-extractor DateTime
   [_ {:keys [base_type unit] :as field}]
   (redux/post-complete
-   (redux/fuse (merge
-                {:histogram         (redux/pre-step
-                                     h/histogram
-                                     (somef (memfn ^java.util.Date getTime)))
-                 :histogram-day     (redux/pre-step
-                                     h/histogram-categorical
-                                     (somef (memfn ^java.util.Date getDay)))
-                 :histogram-month   (redux/pre-step
-                                     h/histogram-categorical
-                                     #(when %
-                                        (inc (.getMonth ^java.util.Date %))))
-                 :histogram-quarter (redux/pre-step
-                                     h/histogram-categorical
-                                     (somef ts/quarter))}
-                (when-not (or (isa? base_type :type/Date)
-                              (#{:day :month :year :quarter :week} unit))
-                  {:histogram-hour (redux/pre-step
-                                    h/histogram-categorical
-                                    (somef (memfn ^java.util.Date getHours)))})))
+   (redux/fuse
+    (merge
+     {:histogram         ((map (somef (memfn ^java.util.Date getTime)))
+                          h/histogram)
+      :histogram-day     ((map (somef (memfn ^java.util.Date getDay)))
+                          h/histogram-categorical)
+      :histogram-month   ((map #(some->> ^java.util.Date % .getMonth inc))
+                          h/histogram-categorical)
+      :histogram-quarter ((map (somef ts/quarter)) h/histogram-categorical)}
+     (when-not (or (isa? base_type :type/Date)
+                   (#{:day :month :year :quarter :week} unit))
+       {:histogram-hour ((map (somef (memfn ^java.util.Date getHours)))
+                         h/histogram-categorical)})))
    (merge-juxt
     histogram-extractor
     (field-metadata-extractor field)
@@ -552,8 +543,8 @@
                 (for [[i field] (m/indexed cols)
                       :when (not (or (:remapped_to field)
                                      (= :type/PK (:special_type field))))]
-                  [(:name field) (redux/pre-step (feature-extractor opts field)
-                                                 #(nth % i))])))
+                  [(:name field) ((map #(nth % i))
+                                  (feature-extractor opts field))])))
              rows))
 
 (defmethod feature-extractor :default

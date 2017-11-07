@@ -78,13 +78,14 @@
   "Transducer that calculates residual sum of squares.
    https://en.wikipedia.org/wiki/Residual_sum_of_squares"
   [model]
-  (redux/pre-step + (fn [[x y]]
-                      (math/sq (- y (model x))))))
+  ((map (fn [[x y]]
+          (math/sq (- y (model x)))))
+   +))
 
 (def magnitude
   "Transducer that claclulates magnitude (Euclidean norm) of given vector.
    https://en.wikipedia.org/wiki/Euclidean_distance"
-  (redux/post-complete (redux/pre-step + math/sq) math/sqrt))
+  (redux/post-complete ((map math/sq) +) math/sqrt))
 
 (defn cosine-distance
   "Cosine distance between vectors `a` and `b`.
@@ -92,9 +93,9 @@
   [a b]
   (transduce identity
              (redux/post-complete
-              (redux/fuse {:magnitude-a (redux/pre-step magnitude first)
-                           :magnitude-b (redux/pre-step magnitude second)
-                           :product     (redux/pre-step + (partial apply *))})
+              (redux/fuse {:magnitude-a ((map first) magnitude)
+                           :magnitude-b ((map second) magnitude)
+                           :product     ((map (partial apply *)) +)})
               (fn [{:keys [magnitude-a magnitude-b product]}]
                 (some->> (safe-divide product magnitude-a magnitude-b) (- 1))))
              (map (comp (partial map double) vector) a b)))

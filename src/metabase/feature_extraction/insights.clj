@@ -92,10 +92,10 @@
                                            (h.impl/mean histogram))])))
      (redux/post-complete
       (redux/juxt (stats/sum-squares first second)
-                  (redux/fuse {:s-x  (redux/pre-step + first)
-                               :s-xx (redux/pre-step + (comp sq first))
-                               :s-y  (redux/pre-step + second)
-                               :s-yy (redux/pre-step + (comp sq second))}))
+                  (redux/fuse {:s-x  ((map first) +)
+                               :s-xx ((map (comp sq first)) +)
+                               :s-y  ((map second) +)
+                               :s-yy ((map (comp sq second)) +)}))
       (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
         (when (and (> n 2) (not-any? zero? [ss-x s-x]))
           (let [slope       (/ ss-xy ss-x)
