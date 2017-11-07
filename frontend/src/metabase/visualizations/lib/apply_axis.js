@@ -119,7 +119,7 @@ export function applyChartTimeseriesXAxis(chart, settings, series, { xValues, xD
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
         tickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width());
-        chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
+        chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
     }

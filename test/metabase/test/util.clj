@@ -20,6 +20,7 @@
              [metric :refer [Metric]]
              [permissions-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [revision :refer [Revision]]
              [segment :refer [Segment]]
@@ -173,6 +174,10 @@
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
+
+(u/strict-extend (class PulseCard)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_] {:position 0})})
 
 (u/strict-extend (class PulseChannel)
   test/WithTempDefaults

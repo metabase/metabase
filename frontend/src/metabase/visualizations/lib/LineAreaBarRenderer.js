@@ -19,7 +19,7 @@ import { computeNumericDataInverval } from "./numeric";
 
 import { applyChartTimeseriesXAxis, applyChartQuantitativeXAxis, applyChartOrdinalXAxis, applyChartYAxis } from "./apply_axis";
 
-import { applyChartTooltips } from "./apply_tooltips";
+import { setupTooltips } from "./apply_tooltips";
 
 import fillMissingValuesInDatas from "./fill_data";
 
@@ -82,15 +82,12 @@ function checkSeriesIsValid({ series, maxSeries }) {
 }
 
 function getDatas({ settings, series }, warn) {
-    return series.map((s, index) =>
+    return series.map((s) =>
         s.data.rows.map(row => {
             const newRow = [
                 // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-                (isDimensionTimeseries(series) && !isQuantitative(settings)) ?
-                HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-                : isDimensionNumeric(series) ?
-                row[0]
-                :
+                (isDimensionTimeseries(series) && !isQuantitative(settings)) ? HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn) :
+                isDimensionNumeric(series) ? row[0] :
                 String(row[0])
                 , ...row.slice(1)
             ]
@@ -484,18 +481,7 @@ function doHistogramBarStuff(parent) {
     });
 }
 
-function setupTooltips({ settings, series, isScalarSeries, onHoverChange, onVisualizationClick }, datas, parent, { isBrushing }) {
-    applyChartTooltips(parent, series, isStacked(settings, datas), isNormalized(settings, datas), isScalarSeries, (hovered) => {
-        // disable tooltips while brushing
-        if (onHoverChange && !isBrushing()) {
-            // disable tooltips on lines
-            if (hovered && hovered.element && hovered.element.classList.contains("line")) {
-                delete hovered.element;
-            }
-            onHoverChange(hovered);
-        }
-    }, onVisualizationClick);
-}
+
 
 
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/

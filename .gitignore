@@ -49,3 +49,4 @@ bin/release/aws-eb/metabase-aws-eb.zip
 *.po~
 /locales/metabase-*.pot
 /stats.json
+coverage-summary.json

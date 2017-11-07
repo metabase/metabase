@@ -78,6 +78,8 @@ function dispatchUIEvent(element, eventName) {
     element.dispatchEvent(e);
 }
 
+// logic for determining the bounding shapes for showing tooltips for a given point.
+// Wikipedia has a good explanation here: https://en.wikipedia.org/wiki/Voronoi_diagram
 function onRenderVoronoiHover(chart) {
     const parent = chart.svg().select("svg > g");
     const dots = chart.svg().selectAll(".sub .dc-tooltip .dot")[0];
@@ -88,9 +90,9 @@ function onRenderVoronoiHover(chart) {
 
     const originRect = chart.svg().node().getBoundingClientRect();
     const vertices = dots.map(e => {
-        let { top, left, width, height } = e.getBoundingClientRect();
-        let px = (left + width / 2) - originRect.left;
-        let py = (top + height / 2) - originRect.top;
+        const { top, left, width, height } = e.getBoundingClientRect();
+        const px = (left + width / 2) - originRect.left;
+        const py = (top + height / 2) - originRect.top;
         return [px, py, e];
     });
 
@@ -120,6 +122,7 @@ function onRenderVoronoiHover(chart) {
           .filter((d) => d != undefined)
           .attr("d", (d) => "M" + d.join("L") + "Z")
           .attr("clip-path", (d,i) => clipPathReference("clip-" + i))
+          // in the functions below e is not an event but the circle element being hovered/clicked
           .on("mousemove", ({ point }) => {
               let e = point[2];
               dispatchUIEvent(e, "mousemove");
@@ -161,7 +164,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
             goalLine.setAttribute("d", `M0,${goalLine.getBBox().y}L${xAxisLine.getBBox().width},${goalLine.getBBox().y}`)
         }
 
-        let { x, y, width } = goalLine.getBBox ? goalLine.getBBox() : { x: 0, y: 0, width: 0 };
+        const { x, y, width } = goalLine.getBBox ? goalLine.getBBox() : { x: 0, y: 0, width: 0 };
 
         const labelOnRight = !isSplitAxis;
         chart.selectAll(".goal .stack._0")
@@ -175,7 +178,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
                  fill: "rgb(157,160,164)",
              })
              .on("mouseenter", function() { onGoalHover(this); })
-             .on("mouseleave", function() { onGoalHover(null); })
+             .on("mouseleave", function() { onGoalHover(null); });
     }
 }
 
