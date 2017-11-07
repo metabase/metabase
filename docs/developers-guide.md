@@ -113,7 +113,7 @@ All frontend tests are located in `frontend/test` directory. Run all frontend te
 ./bin/build version uberjar && yarn run test
 ```
 
-which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence. 
+which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
 
 ### Jest integration tests
 Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
@@ -152,7 +152,7 @@ describe("Query builder", () => {
     })
 
     it("should let you run a new query", async () => {
-        // Create a superpowered Redux store. 
+        // Create a superpowered Redux store.
         // Remember `await` here!
         const store = await createTestStore()
 
@@ -192,17 +192,17 @@ You can also skim through [`__support__/integrated_tests.js`](https://github.com
 
 ### Jest unit tests
 
-Unit tests are focused around isolated parts of business logic. 
+Unit tests are focused around isolated parts of business logic.
 
 Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
 
 ```
-yarn run jest-test # Run all tests at once
-yarn run jest-test-watch # Watch for file changes
+yarn run test-unit # Run all tests at once
+yarn run test-unit-watch # Watch for file changes
 ```
 
 ### Karma browser tests
-If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory. 
+If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
 
 ```
 yarn run test-karma # Run all tests once
