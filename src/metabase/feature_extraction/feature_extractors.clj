@@ -195,8 +195,8 @@
     (merge
      {:histogram   h/histogram
       :cardinality cardinality
-      :kurtosis    ((map (somef double)) stats/kurtosis)
-      :skewness    ((map (somef double)) stats/skewness)
+      :kurtosis    stats/kurtosis
+      :skewness    stats/skewness
       :zeros       ((filter (somef zero?)) stats/count)}
      (when (costs/full-scan? max-cost)
        {:sum            ((keep (somef double)) +)
