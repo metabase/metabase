@@ -10,6 +10,7 @@ import { isNormalized, isStacked } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
+// series = an array of serieses (?) in the chart. There's only one thing in here unless we're dealing with a multiseries chart
 function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
@@ -54,6 +55,25 @@ function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeri
                                  col: cols[1]
                              }
                          ];
+
+                         // now add entries to the tooltip for columns that aren't the X or Y axis. These aren't in
+                         // the normal `cols` array, which is just the cols used in the graph axes; look in `_rawCols`
+                         // for any other columns. If we find them, add them at the end of the `data` array
+                         const seriesData = series[seriesIndex].data || {};
+                         const rawCols    = seriesData._rawCols;
+                         const row        = seriesData && seriesData.rows && seriesData.rows[i];
+                         const rawRow     = row && row._origin && row._origin.row; // get the raw query result row
+                         if (rawRow) {
+                             for (let colIndex = 0; colIndex < rawCols.length; colIndex++) {
+                                 const col = rawCols[colIndex];
+                                 if (col === cols[0] || col === cols[1]) continue;
+                                 data.push({
+                                     key: getFriendlyName(col),
+                                     value: rawRow[colIndex],
+                                     col: col
+                                 });
+                             }
+                         }
                      }
 
                      if (data && series.length > 1) {
