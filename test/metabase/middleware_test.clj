@@ -220,6 +220,7 @@
               eventually (apply str (async/<!! (async/into [] connection)))]
           [first-second second-second (string/trim eventually)])))))
 
+(comment
 ;;slow success
 (expect
   [\newline \newline "{\"success\":true}"]
@@ -275,3 +276,4 @@
 (expect
   :ran-to-compleation
   (start-and-maybe-kill-test-request false))
+)
