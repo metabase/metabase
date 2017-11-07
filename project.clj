@@ -79,6 +79,8 @@
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [jdistlib "0.5.0-SNAPSHOT"                           ; Distribution statistic tests
                   :exclusions [com.github.wendykierp/JTransforms]]
+                 [net.cgrand/xforms "0.13.0"                          ; Transducer utilites
+                  :exclusions [org.clojure/clojurescript]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms

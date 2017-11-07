@@ -11,6 +11,7 @@
              [histogram :as h]
              [math :as math]
              [timeseries :as ts]]
+            [net.cgrand.xforms :as x]
             [redux.core :as redux]))
 
 (defmacro ^:private definsight
@@ -82,42 +83,36 @@
    https://en.wikipedia.org/wiki/Variance"
   [resolution series]
   (when resolution
-    (->> series
-         (partition (ts/period-length resolution) 1)
-         (transduce
-          (map-indexed (fn [i xsi]
-                         [i (transduce (map second)
-                                       (redux/post-complete
-                                        h/histogram
-                                        (fn [histogram]
-                                          (/ (h.impl/variance histogram)
-                                             (h.impl/mean histogram))))
-                                       xsi)]))
-          (redux/post-complete
-           (redux/juxt
-            (stats/sum-squares first second)
-            (redux/fuse
-             {:s-x  (redux/pre-step + first)
-              :s-xx (redux/pre-step + (comp sq first))
-              :s-y  (redux/pre-step + second)
-              :s-yy (redux/pre-step + (comp sq second))}))
-           (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
-             (when (and (> n 2) (not-any? zero? [ss-x s-x]))
-               (let [slope       (/ ss-xy ss-x)
-                     slope-error (* (/ 1
-                                       (- n 2)
-                                       (- (* n s-xx) (sq s-x)))
-                                    (- (* n s-yy)
-                                       (sq s-y)
-                                       (* (sq slope)
-                                          (- (* n s-xx) (sq s-x)))))]
-                 (when (and (not= slope 0)
-                            (math/significant? (/ slope slope-error)
-                                               (d/t-distribution (- n 2))
-                                               (/ 0.05 2)))
-                   {:mode (if (pos? slope)
-                            :increasing
-                            :decreasing)})))))))))
+    (transduce
+     (comp (x/partition (ts/period-length resolution) 1
+                        (comp (map second)
+                              (x/reduce h/histogram)))
+           (map-indexed (fn [idx histogram]
+                          [(double idx) (/ (h.impl/variance histogram)
+                                           (h.impl/mean histogram))])))
+     (redux/post-complete
+      (redux/juxt (stats/sum-squares first second)
+                  (redux/fuse {:s-x  (redux/pre-step + first)
+                               :s-xx (redux/pre-step + (comp sq first))
+                               :s-y  (redux/pre-step + second)
+                               :s-yy (redux/pre-step + (comp sq second))}))
+      (fn [[{:keys [ss-xy ss-x n]} {:keys [s-x s-xx s-y s-yy]}]]
+        (when (and (> n 2) (not-any? zero? [ss-x s-x]))
+          (let [slope       (/ ss-xy ss-x)
+                slope-error (/ (- (* n s-yy)
+                                  (sq s-y)
+                                  (* (sq slope)
+                                     (- (* n s-xx) (sq s-x))))
+                               (- n 2)
+                               (- (* n s-xx) (sq s-x)))]
+            (when (and (not= slope 0)
+                       (math/significant? (/ slope slope-error)
+                                          (d/t-distribution (- n 2))
+                                          (/ 0.05 2)))
+              {:mode (if (pos? slope)
+                       :increasing
+                       :decreasing)})))))
+     series)))
 
 (definsight seasonality
   "Is there a seasonal component to the changes in data?
@@ -189,26 +184,28 @@
    https://en.wikipedia.org/wiki/Stationary_process"
   [series resolution]
   (when-let [n (ts/period-length resolution)]
-    (->> series
-         (partition n 1)
-         (map (partial transduce (map second) h/histogram))
-         (partition 2 1)
-         (map (fn [[h1 h2]]
-                (let [mean1     (h.impl/mean h1)
-                      mean2     (h.impl/mean h2)
-                      variance1 (h.impl/variance h1)
-                      variance2 (h.impl/variance h2)]
-                  (if (= variance1 variance2 0)
-                    false
+    (transduce (comp (x/partition n 1 (comp (map second)
+                                            (x/reduce h/histogram)))
+                     (map (fn [histogram]
+                            {:mean (h.impl/mean histogram)
+                             :var  (h.impl/variance histogram)}))
+                     (x/partition 2 1 (x/into [])))
+               (fn
+                 ([] true)
+                 ([acc] acc)
+                 ([_ [{mean1 :mean var1 :var} {mean2 :mean var2 :var}]]
+                  (if (= var1 var2 0)
+                    true
                     (let [t (/ (- mean1 mean2)
-                               (num/sqrt (/ (+ variance1 variance2) n)))
-                          k (num/round
-                             (/ (sq (/ (+ variance1 variance2) n))
-                                (/ (+ (sq variance1)
-                                      (sq variance2))
-                                   (* n (- n 1)))))]
-                      (math/significant? t (d/t-distribution k) (/ 0.05 2)))))))
-         (every? false?))))
+                               (num/sqrt (/ (+ var1 var2) n)))
+                          k (num/round (/ (sq (/ (+ var1 var2) n))
+                                          (/ (+ (sq var1)
+                                                (sq var2))
+                                             (* n (- n 1)))))]
+                      (if (math/significant? t (d/t-distribution k) (/ 0.05 2))
+                        (reduced false)
+                        true)))))
+               series)))
 
 (definsight trend
   "What is the best (simple) trend model?
