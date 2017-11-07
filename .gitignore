@@ -50,3 +50,6 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /locales/metabase-*.pot
 /stats.json
 coverage-summary.json
+.DS_Store
+bin/node_modules/
+*.log
