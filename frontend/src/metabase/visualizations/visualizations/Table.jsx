@@ -11,9 +11,9 @@ import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 import { columnsAreValid, getFriendlyName } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
 import _ from "underscore";
+import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
@@ -45,10 +45,6 @@ export default class Table extends Component {
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
         // scalar can always be rendered, nothing needed here
-        const enabledColumns = (settings["table.columns"] || []).filter(f => f.enabled);
-        if (enabledColumns.length < 1) {
-            throw new MinColumnsError(1, enabledColumns.length);
-        }
     }
 
     static settings = {
@@ -130,21 +126,38 @@ export default class Table extends Component {
         const { data } = this.state;
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
+        const isColumnsDisabled = (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
         if (!data) {
             return null;
         }
 
-        return (
-            // $FlowFixMe
-            <TableComponent
-                {...this.props}
-                data={data}
-                isPivoted={isPivoted}
-                sort={sort}
-            />
-        );
+        if (isColumnsDisabled) {
+            return (
+                <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
+                    <RetinaImage
+                        width={99}
+                        src="app/assets/img/hidden-field.png"
+                        forceOriginalDimensions={false}
+                        className="mb2"
+                    />
+                    <span className="h4 text-bold">
+                        Every field is hidden right now
+                    </span>
+                </div>
+            )
+        } else {
+            return (
+                // $FlowFixMe
+                <TableComponent
+                    {...this.props}
+                    data={data}
+                    isPivoted={isPivoted}
+                    sort={sort}
+                />
+            );
+        }
     }
 }
 
