@@ -6,10 +6,11 @@ import d3 from "d3";
 import { formatValue } from "metabase/lib/formatting";
 import type { ClickObject } from "metabase/meta/types/Visualization"
 
+import { isNormalized, isStacked } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
-export function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeries, onHoverChange, onVisualizationClick) {
+function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll("title").remove();
@@ -162,4 +163,18 @@ export function applyChartTooltips(chart, series, isStacked, isNormalized, isSca
                  .on("mousedown", onClick);
         }
     });
+}
+
+
+export function setupTooltips({ settings, series, isScalarSeries, onHoverChange, onVisualizationClick }, datas, parent, { isBrushing }) {
+    applyChartTooltips(parent, series, isStacked(settings, datas), isNormalized(settings, datas), isScalarSeries, (hovered) => {
+        // disable tooltips while brushing
+        if (onHoverChange && !isBrushing()) {
+            // disable tooltips on lines
+            if (hovered && hovered.element && hovered.element.classList.contains("line")) {
+                delete hovered.element;
+            }
+            onHoverChange(hovered);
+        }
+    }, onVisualizationClick);
 }
