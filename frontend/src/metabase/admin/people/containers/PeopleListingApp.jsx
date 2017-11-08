@@ -306,7 +306,7 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={user.first_name+"'s Password Has Been Reset"}
+                title={user.first_name+"'s password has been reset"}
                 footer={<button className="Button Button--primary mr2" onClick={this.onCloseModal}>Done</button>}
                 onClose={this.onCloseModal}
             >
@@ -325,7 +325,7 @@ export default class PeopleListingApp extends Component {
         return (
             <Modal
                 small
-                title={user.first_name+"'s Password Has Been Reset"}
+                title={user.first_name+"'s password has been reset"}
                 footer={<Button primary onClick={this.onCloseModal}>Done</Button>}
                 onClose={this.onCloseModal}
             >
