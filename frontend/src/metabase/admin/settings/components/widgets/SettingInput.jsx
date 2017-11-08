@@ -3,7 +3,7 @@ import React from "react";
 import Input from "metabase/components/Input.jsx";
 import cx from "classnames";
 
-const SettingInput = ({ setting, updateSetting, disabled, autoFocus, errorMessage, fireOnChange, type = "text" }) =>
+const SettingInput = ({ setting, onChange, disabled, autoFocus, errorMessage, fireOnChange, type = "text" }) =>
     <Input
         className={cx(" AdminInput bordered rounded h3", {
             "SettingsInput": type !== "password",
@@ -13,8 +13,8 @@ const SettingInput = ({ setting, updateSetting, disabled, autoFocus, errorMessag
         type={type}
         value={setting.value || ""}
         placeholder={setting.placeholder}
-        onChange={fireOnChange ? (e) => updateSetting(e.target.value) : null }
-        onBlurChange={!fireOnChange ? (e) => updateSetting(e.target.value) : null }
+        onChange={fireOnChange ? (e) => onChange(e.target.value) : null }
+        onBlurChange={!fireOnChange ? (e) => onChange(e.target.value) : null }
         autoFocus={autoFocus}
     />
 

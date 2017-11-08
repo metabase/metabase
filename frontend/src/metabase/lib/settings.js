@@ -55,6 +55,10 @@ const MetabaseSettings = {
         return mb_settings.ldap_configured;
     },
 
+    hideEmbedBranding: () => mb_settings.hide_embed_branding,
+
+    metastoreUrl: () => mb_settings.metastore_url,
+
     newVersionAvailable: function(settings) {
         let versionInfo = _.findWhere(settings, {key: "version-info"}),
             currentVersion = MetabaseSettings.get("version").tag;
