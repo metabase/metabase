@@ -258,7 +258,7 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { actionButtons, className, showTitle, isDashboard, width, height, isSlow, expectedDuration, replacementContent } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -270,7 +270,6 @@ export default class Visualization extends Component {
         }
 
         let error = this.props.error || this.state.error;
-        let errorIcon = this.props.errorIcon || this.state.errorIcon;
         let loading = !(series && series.length > 0 && _.every(series, (s) => s.data));
         let noResults = false;
 
@@ -288,22 +287,17 @@ export default class Visualization extends Component {
                     }
                 } catch (e) {
                     error = e.message || "Could not display this chart with this data.";
-                    if (e instanceof ChartSettingsError) {
-                        if (this.props.onOpenChartSettings) {
-                            error = (
-                                <div>
-                                    <div>{error}</div>
-                                    <div className="mt2">
-                                        <button className="Button Button--primary Button--medium" onClick={this.props.onOpenChartSettings}>
-                                            {e.buttonText}
-                                        </button>
-                                    </div>
+                    if (e instanceof ChartSettingsError && this.props.onOpenChartSettings) {
+                        error = (
+                            <div>
+                                <div>{error}</div>
+                                <div className="mt2">
+                                    <button className="Button Button--primary Button--medium" onClick={this.props.onOpenChartSettings}>
+                                        {e.buttonText}
+                                    </button>
                                 </div>
-                            );
-                        }
-                        if (e.section === "Columns") {
-                            errorIcon = 'empty';
-                        }
+                            </div>
+                        );
                     } else if (e instanceof MinRowsError) {
                         noResults = true;
                     }
