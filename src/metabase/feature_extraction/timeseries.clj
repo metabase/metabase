@@ -75,18 +75,19 @@
      (when (>= (count ts) (* 2 period))
        (let [xs                           (double-array (map first ts))
              ys                           (double-array (map second ts))
-             ^StlDecomposition decomposer (StlDecomposition. period)]
-         (reduce-kv (fn [^StlConfig config k v]
-                      (when-let [setter (stl-setters k)]
-                        (setter config v))
-                      config)
-                    (.getConfig decomposer)
-                    (merge {:inner-loop-passes 100}
-                           opts))
-         (let [^StlResult decomposition (.decompose decomposer xs ys)]
-           {:trend    (map vector xs (.getTrend decomposition))
-            :seasonal (map vector xs (.getSeasonal decomposition))
-            :residual (map vector xs (.getRemainder decomposition))}))))))
+             ^StlDecomposition decomposer (StlDecomposition. period)
+             _                            (reduce-kv
+                                           (fn [^StlConfig config k v]
+                                             (when-let [setter (stl-setters k)]
+                                               (setter config v))
+                                             config)
+                                           (.getConfig decomposer)
+                                           (merge {:inner-loop-passes 100}
+                                                  opts))
+             ^StlResult decomposition     (.decompose decomposer xs ys)]
+         {:trend    (map vector xs (.getTrend decomposition))
+          :seasonal (map vector xs (.getSeasonal decomposition))
+          :residual (map vector xs (.getRemainder decomposition))})))))
 
 (def ^:private resolutions [:minute :hour :day :week :month :quarter :year])
 
