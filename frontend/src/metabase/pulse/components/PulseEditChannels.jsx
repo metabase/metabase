@@ -172,6 +172,7 @@ export default class PulseEditChannels extends Component {
 
     renderChannel(channel, index, channelSpec) {
         let isValid = this.props.pulseIsValid && channelIsValid(channel, channelSpec);
+        const chSpecName = channelSpec.name;
         return (
             <li key={index} className="py2">
                 { channelSpec.error &&
@@ -197,7 +198,7 @@ export default class PulseEditChannels extends Component {
                         schedule={_.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type") }
                         scheduleOptions={channelSpec.schedules}
                         textBeforeInterval={t`Sent`}
-                        textBeforeSendTime={`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || "Messages"} will be sent at `}
+                        textBeforeSendTime={`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`} `} + t`will be sent at`
                         onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
                     />
                 }
@@ -207,7 +208,7 @@ export default class PulseEditChannels extends Component {
                         className={cx("Button", { disabled: !isValid })}
                         normalText={channelSpec.type === "email" ?
                             {t`Send email now`} :
-                            "Send to  " + channelSpec.name + " now"}
+                            {t`Send to ${ chSpecName } now`}
                         activeText={t`Sending…`}
                         failedText={t`Sending failed`}
                         successText={ this.willPulseSkip() ?  t`Didn’t send because the pulse has no results.` : t`Pulse sent`}

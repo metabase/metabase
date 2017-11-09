@@ -81,13 +81,17 @@ export default class PulseEdit extends Component {
     }
 
     getConfirmItems() {
+        const recipientslen = <strong>{c.recipients.length} {inflect("address", c.recipients.length)}</strong>
+        const schedule_type = <strong>{c.schedule_type}</strong>
+        const channel_type = <strong>{c.channel_type}</strong>
+        const cdetails= <strong>{c.details && c.details.channel}</strong>
         return this.props.pulse.channels.map(c =>
             c.channel_type === "email" ?
-                <span>{t`This pulse will no longer be emailed to <strong>{c.recipients.length} {inflect("address", c.recipients.length)}</strong> <strong>{c.schedule_type}</strong>`}.</span>
+                <span>{t`This pulse will no longer be emailed to ${ recipientslen } ${ schedule_type }`}.</span>
             : c.channel_type === "slack" ?
-                <span>{t`Slack channel <strong>{c.details && c.details.channel}</strong> will no longer get this pulse <strong>{c.schedule_type}</strong>`}.</span>
+                <span>{t`Slack channel ${ cdetails } will no longer get this pulse ${ schedule_type }`}.</span>
             :
-                <span>{t`Channel <strong>{c.channel_type}</strong> will no longer receive this pulse <strong>{c.schedule_type}</strong>`}.</span>
+                <span>{t`Channel ${ channel_type } will no longer receive this pulse ${ schedule_type }`}.</span>
         );
     }
 
@@ -97,7 +101,7 @@ export default class PulseEdit extends Component {
         return (
             <div className="PulseEdit">
                 <div className="PulseEdit-header flex align-center border-bottom py3">
-                    <h1>{pulse && pulse.id != null ? t`Edit` : t`New`} {t`pulse`}</h1>
+                    <h1>{pulse && pulse.id != null ? t`Edit pulse` : t`New pulse`}</h1>
                     <ModalWithTrigger
                         ref="pulseInfo"
                         className="Modal WhatsAPulseModal"
