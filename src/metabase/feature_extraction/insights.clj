@@ -2,8 +2,7 @@
   "Data insights -- morsels of prepackaged analysis."
   (:require [bigml.histogram.core :as h.impl]
             [clojure.math.numeric-tower :as num]
-            [distributions.core :as d]
-            [jdistlib.core :as d.tests]
+            [jdistlib.core :as d]
             [kixi.stats
              [core :as stats]
              [math :refer [sq]]]
@@ -140,7 +139,7 @@
   [histogram]
   (-> histogram
       (h.impl/sample 1000)
-      d.tests/dip-test
+      d/dip-test
       second
       (< 0.05)))
 

@@ -1,6 +1,6 @@
 (ns metabase.feature-extraction.math
   "Math functions and utilities."
-  (:require [distributions.core :as d]
+  (:require [jdistlib.core :as d]
             [kixi.stats
              [core :as stats]
              [math :as math]]

@@ -1,8 +1,6 @@
 import React, { Component } from 'react'
 import {
-    //formatListOfItems,
     formatTimeWithUnit,
-    //inflect
 } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon";
 import { Link } from "react-router";
@@ -112,13 +110,10 @@ export class NoisinessInsight extends Component {
             <InsightText>
                 Your data is { quality }
                 <span> </span>
-                <TermWithDefinition
-                    definition={noisinessDefinition}
-                    link={noisinessLink}
-                >
+                <TermWithDefinition definition={noisinessDefinition} link={noisinessLink}>
                     noisy
-            </TermWithDefinition>.
-		{ resolution && ` You might consider looking at it by ${resolution}.` }
+                </TermWithDefinition>.
+                { resolution && ` You might consider looking at it by ${resolution}.` }
             </InsightText>
         )
     }
@@ -159,8 +154,7 @@ export class VariationTrendInsight extends Component {
         return (
             <InsightText>
                 Looks like this data has grown { mode }ly  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
-                    varied
-                </TermWithDefinition> over time.
+                    varied</TermWithDefinition> over time.
             </InsightText>
         )
     }
@@ -218,12 +212,12 @@ export class OutliersInsight extends Component {
               .getUrl()
 
         // construct the question with filter
-	return (
-		<InsightText>
-                You have some outliers.
-                <span> </span>
-                { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with outliers.</span> }
-	    </InsightText>
+        return (
+               <InsightText>
+                    You have some outliers.
+                    <span> </span>
+                    { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with outliers.</span> }
+               </InsightText>
         )
     }
 }
@@ -234,28 +228,28 @@ export class StructuralBreaksInsight extends Component {
     static icon = "insight"
 
     render() {
-	const { breaks, features: { resolution } } = this.props
+        const { breaks, features: { resolution } } = this.props
 
-	const breakPoints = breaks.map( (point, idx) => {
-	    point = formatTimeWithUnit(point, resolution);
-	    if (idx == breaks.length - 1 && breaks.length > 1) {
-		return (
-			<span>, and { point }</span>
-		)
-	    } else {
-		return (
-			<span>{ idx > 0 && <span>, </span>}{ point }</span>
-		)
-	    }
-	})
+        const breakPoints = breaks.map( (point, idx) => {
+            point = formatTimeWithUnit(point, resolution);
+            if (idx == breaks.length - 1 && breaks.length > 1) {
+                return (
+                        <span>, and { point }</span>
+                )
+            } else {
+                return (
+                        <span>{ idx > 0 && <span>, </span>}{ point }</span>
+                )
+            }
+        })
 
         return (
-            <InsightText>
-		It looks like your data has
-	    { breaks.length > 1 && <span> structural breaks </span>}
-	    { breaks.length == 1 && <span> a structural break </span>}
-	    at { breakPoints }.
-            </InsightText>
+                <InsightText>
+                It looks like your data has
+            { breaks.length > 1 && <span> structural breaks </span>}
+            { breaks.length == 1 && <span> a structural break </span>}
+            at { breakPoints }.
+                </InsightText>
         )
     }
 }
@@ -269,12 +263,10 @@ export class StationaryInsight extends Component {
     static icon = "insight"
 
     render() {
-
-	return (
-		<InsightText>
+        return (
+            <InsightText>
                 Your data looks to be <TermWithDefinition definition={stationaryDefinition} link={stationaryLink}>
-                    stationary
-                </TermWithDefinition>.
+                stationary</TermWithDefinition>.
             </InsightText>
         )
     }
@@ -286,41 +278,15 @@ export class TrendInsight extends Component {
     static icon = "insight"
 
     render() {
-	const { mode, shape } = this.props
+        const { mode, shape } = this.props
 
-	return(
-		<InsightText>
-		Your data seems to be { mode } { shape }.
-		</InsightText>
-	)
-    }
-}
-
-/*
-export class RegimeChangeInsight extends Component {
-    static insightType = "regime-change"
-    static title = "Regime change"
-    static icon = "insight"
-    getTextForBreak = ({ from, to, mode, shape }) => {
-        let { resolution } = this.props
-        resolution = resolution || "year"
-        if (from === "beginning") return `${mode} ${shape} period until ${formatTimeWithUnit(to, resolution)}`
-        if (to === "now") return `${mode} ${shape} period from ${formatTimeWithUnit(from, resolution)} until now`
-        return `${mode} ${shape} period from ${formatTimeWithUnit(from, resolution)} until now`
-    }
-    render() {
-        let { breaks } = this.props
-        return (
-            <p>
-                Your data can be split into { breaks.length } { inflect("stages", breaks.length) }:
-                <span> </span>
-                { formatListOfItems(breaks.map(this.getTextForBreak)) }.
-            </p>
+        return(
+            <InsightText>
+                Your data seems to be { mode } { shape }.
+            </InsightText>
         )
     }
 }
-*/
-
 
 const INSIGHT_COMPONENTS = [
     // any field
@@ -338,7 +304,6 @@ const INSIGHT_COMPONENTS = [
     StructuralBreaksInsight,
     StationaryInsight,
     TrendInsight,
-    // RegimeChangeInsight
 ]
 
 export const InsightCard = ({type, props, features}) => {

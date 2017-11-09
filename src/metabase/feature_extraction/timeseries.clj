@@ -73,24 +73,20 @@
   ([period opts ts]
    (when-let [period (period-length period)]
      (when (>= (count ts) (* 2 period))
-       (let [xs (double-array (map first ts))
-             ys (double-array (map second ts))]
-         (transduce
-          identity
-          (let [^StlDecomposition decomposer (StlDecomposition. period)]
-            (fn
-              ([] (.getConfig decomposer))
-              ([_]
-               (let [^StlResult decomposition (.decompose decomposer xs ys)]
-                 {:trend    (map vector xs (.getTrend decomposition))
-                  :seasonal (map vector xs (.getSeasonal decomposition))
-                  :residual (map vector xs (.getRemainder decomposition))}))
-              ([^StlConfig config [k v]]
-               (when-let [setter (stl-setters k)]
-                 (setter config v))
-               config)))
-          (merge {:inner-loop-passes 100}
-                 opts)))))))
+       (let [xs                           (double-array (map first ts))
+             ys                           (double-array (map second ts))
+             ^StlDecomposition decomposer (StlDecomposition. period)]
+         (reduce-kv (fn [^StlConfig config k v]
+                      (when-let [setter (stl-setters k)]
+                        (setter config v))
+                      config)
+                    (.getConfig decomposer)
+                    (merge {:inner-loop-passes 100}
+                           opts))
+         (let [^StlResult decomposition (.decompose decomposer xs ys)]
+           {:trend    (map vector xs (.getTrend decomposition))
+            :seasonal (map vector xs (.getSeasonal decomposition))
+            :residual (map vector xs (.getRemainder decomposition))}))))))
 
 (def ^:private resolutions [:minute :hour :day :week :month :quarter :year])
 
@@ -108,15 +104,38 @@
   "Quarter-of-year functionality"
   (quarter [dt] "Return which quarter (1-4) given date-like object falls into."))
 
-(extend-type java.util.Date
-  Quarter
+(extend-protocol Quarter
+  java.util.Date
   (quarter [dt]
-    (-> dt .getMonth inc (* 0.33) Math/ceil long)))
+    (-> dt .getMonth inc (* 0.33) Math/ceil long))
 
-(extend-type org.joda.time.DateTime
-  Quarter
+  org.joda.time.DateTime
   (quarter [dt]
     (-> dt t/month (* 0.33) Math/ceil long)))
+
+(def ^:private quartiles
+  "Transducer that calculates 1st, 2nd, and 3rd quartile.
+   https://en.wikipedia.org/wiki/Quartile"
+  (redux/post-complete
+   h/histogram
+   #(-> % (h.impl/percentiles 0.25 0.5 0.75) vals)))
+
+(def ^:private ^{:arglists '([candidates])} most-likely-breaks
+  "Pick out true breaks from among break candidates by selecting the point with
+   the highest eta from each group of consecutive points."
+  (partial reduce (fn [[head & tail :as breaks] {:keys [idx x eta]}]
+                    (if (some-> head :idx inc (= idx))
+                      (concat [(if (> (:eta head) eta)
+                                 (update head :idx inc)
+                                 {:idx idx
+                                  :x   x
+                                  :eta eta})]
+                              tail)
+                      (concat [{:idx idx
+                                :x   x
+                                :eta eta}]
+                              breaks)))
+           []))
 
 (defn breaks
   "Find positions of structural breaks.
@@ -137,38 +156,23 @@
    https://en.wikipedia.org/wiki/Structural_break
    http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0059279#pone.0059279.s003"
   [period series]
-  (let [half-period (-> period (/ 2) Math/floor int inc)
-        q           (partial transduce (map second)
-                             (redux/post-complete
-                              h/histogram
-                              #(-> % (h.impl/percentiles 0.25 0.5 0.75) vals)))]
+  (let [half-period (-> period (/ 2) Math/floor int inc)]
     (->> (map (fn [left right idx]
                 (let [pivot  (ffirst right)
                       window (map second (concat left right))
                       range  (- (apply max window) (apply min window))
-                      ql     (q left)
-                      qr     (q right)]
+                      ql     (transduce (map second) quartiles left)
+                      qr     (transduce (map second) quartiles right)]
                   {:eta (if (zero? range)
                           0
                           (/ (reduce + (map (comp k.math/sq -) ql qr))
                              3 (k.math/sq range)))
                    :x   pivot
                    :idx idx}))
+              ; We want pivot point to be in both halfs, hence the overlap.
               (partition half-period 1 series)
               (partition half-period 1 (drop (dec half-period) series))
               (range))
          (math/outliers :eta)
-         (reduce (fn [[head & tail :as breaks] {:keys [idx x eta]}]
-                   (if (some-> head :idx inc (= idx))
-                     (concat [(if (> (:eta head) eta)
-                                (update head :idx inc)
-                                {:idx idx
-                                 :x   x
-                                 :eta eta})]
-                             tail)
-                     (concat [{:idx idx
-                               :x   x
-                               :eta eta}]
-                             breaks)))
-                 [])
+         most-likely-breaks
          (map :x))))
