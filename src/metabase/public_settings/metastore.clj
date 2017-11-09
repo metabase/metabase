@@ -22,7 +22,7 @@
    ;; only enable the changing the store url during dev because we don't want people switching it out in production!
    (when config/is-dev?
      (env :metastore-dev-server-url))
-   "https://metastore-demo.herokuapp.com"))
+   "https://store.metabase.com"))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
