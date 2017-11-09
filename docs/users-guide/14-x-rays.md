@@ -48,8 +48,11 @@ The comparison report shows how many rows there are in the segment versus the pa
 An example for where this can be especially useful is a scenario where you've defined many different segments for your users or customers, like "Repeat Customers," "Users between 18 and 35," or "Female customers in Kalamazoo who dislike cheese." You can open up the x-ray for any of these segments, and then compare them to the larger Users or Customers table to see if there are any interesting patterns or differences.
 
 ## Automated insights
-Metabase hasn't quite achieved self-awareness, but it has gotten smarter recently. It will now show you relevant insights about your data at the top of time series or x-rays or x-rays on numeric fields, provided there's something insightful to say. Here's some of the things Metabase might point out to you:
+Metabase hasn't quite achieved self-awareness, but it has gotten smarter recently. It will now show you relevant insights about your data at the top of x-rays about time series or numeric fields, provided there's something insightful to say.
 
+![Insights](./images/insights.png)
+
+Here's some of the things Metabase might point out to you:
 - The normal range of values in your data.
 - Whether or not there seem to be a lot of missing values or zeros in your data.
 - Whether or not your data has an overall trend, and if so, what kind of trend.
