@@ -98,7 +98,7 @@
           (h/equidistant-bins min-value max-value bin-width histogram))))))
 
 (defn- triangle-area
-  "Return the area by triangle specified by vertices `[x1, y1]`, `[x2, y2]`, and
+  "Return the area of triangle specified by vertices `[x1, y1]`, `[x2, y2]`, and
    `[x3, y3].`
    http://mathworld.wolfram.com/TriangleArea.html"
   [[x1 y1] [x2 y2] [x3 y3]]
@@ -113,7 +113,7 @@
   "Downsample series `series` to (approximately) `target-size` data points using
    Largest-Triangle-Three-Buckets algorithm. Series needs to be at least
    2*`target-size` long for the algorithm to make sense. If it is not, the
-   original series is returned unmolested.
+   original series is returned.
 
    Note: this is true downsampling (selecting just some points), with no
    smoothing performed.
