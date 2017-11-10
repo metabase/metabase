@@ -190,6 +190,10 @@
    (#'fe/saddles nil)])
 
 (expect
+  8.0
+  (#'fe/triangle-area [-2 0] [2 0] [0 4]))
+
+(expect
   [(var-get #'fe/datapoint-target-smooth)
    (var-get #'fe/datapoint-target-noisy)]
   [(#'fe/target-size (m/indexed (range 10)))
