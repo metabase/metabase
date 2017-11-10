@@ -32,7 +32,7 @@
     "leaflet": "^1.0.1",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
-    "moment": "2.14.1",
+    "moment": "2.19.1",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",
     "number-to-locale-string": "^1.0.1",
