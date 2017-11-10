@@ -148,7 +148,8 @@
    https://en.wikipedia.org/wiki/Interquartile_range"
   ([xs] (outliers identity xs))
   ([keyfn xs]
-   (let [{:keys [q1 q3 iqr]} (->> xs (transduce (map keyfn) h/histogram) h/iqr)
-         lower-bound         (- q1 (* 1.5 iqr))
-         upper-bound         (+ q3 (* 1.5 iqr))]
-     (remove (comp #(< lower-bound % upper-bound) keyfn) xs))))
+   (when (not-empty xs)
+     (let [{:keys [q1 q3 iqr]} (->> xs (transduce (map keyfn) h/histogram) h/iqr)
+           lower-bound         (- q1 (* 1.5 iqr))
+           upper-bound         (+ q3 (* 1.5 iqr))]
+       (remove (comp #(< lower-bound % upper-bound) keyfn) xs)))))
