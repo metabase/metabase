@@ -44,8 +44,7 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
-                 [com.github.brandtg/stl-java "0.1.1"                 ; STL decomposition
-                  :exclusions [org.apache.commons/commons-math3]]
+                 [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev139-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
@@ -59,8 +58,6 @@
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
-                 [distributions "0.1.3-SNAPSHOT"                      ; Probability distribution
-                  :exclusions [org.clojure/clojure]]
                  [dk.ative/docjure "1.11.0"]                          ; Excel export
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
@@ -77,7 +74,7 @@
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
-                 [jdistlib "0.5.0-SNAPSHOT"                           ; Distribution statistic tests
+                 [jdistlib "0.5.1"                                    ; Distribution statistic tests
                   :exclusions [com.github.wendykierp/JTransforms]]
                  [net.cgrand/xforms "0.13.0"                          ; Transducer utilites
                   :exclusions [org.clojure/clojurescript]]

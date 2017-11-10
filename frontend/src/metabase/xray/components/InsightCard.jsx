@@ -108,10 +108,7 @@ export class NoisinessInsight extends Component {
             <InsightText>
                 Your data is { quality }
                 <span> </span>
-                <TermWithDefinition
-                    definition={noisinessDefinition}
-                    link={noisinessLink}
-                >
+                <TermWithDefinition definition={noisinessDefinition} link={noisinessLink}>
                     noisy
                 </TermWithDefinition>.
                 { resolution && ` You might consider looking at it by ${resolution}.` }
@@ -155,8 +152,7 @@ export class VariationTrendInsight extends Component {
         return (
             <InsightText>
                 Looks like this data has grown { mode }ly  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
-                    varied
-                </TermWithDefinition> over time.
+                    varied</TermWithDefinition> over time.
             </InsightText>
         )
     }
@@ -230,7 +226,6 @@ export class StructuralBreaksInsight extends Component {
     static icon = "insight"
 
     render() {
-
         const { breaks, features: { resolution } } = this.props
 
         const breakPoints = breaks.map( (point, idx) => {
@@ -267,12 +262,10 @@ export class StationaryInsight extends Component {
     static icon = "insight"
 
     render() {
-
         return (
             <InsightText>
                 Your data looks to be <TermWithDefinition definition={stationaryDefinition} link={stationaryLink}>
-                    stationary
-                </TermWithDefinition>.
+                stationary</TermWithDefinition>.
             </InsightText>
         )
     }
@@ -284,13 +277,13 @@ export class TrendInsight extends Component {
     static icon = "insight"
 
     render() {
-	const { mode, shape } = this.props
+        const { mode, shape } = this.props
 
-	return(
-		<InsightText>
-            { jt`Your data seems to be ${ mode } ${ shape }.` }
-		</InsightText>
-	)
+        return(
+            <InsightText>
+                { jt`Your data seems to be ${ mode } ${ shape }.` }
+            </InsightText>
+        )
     }
 }
 

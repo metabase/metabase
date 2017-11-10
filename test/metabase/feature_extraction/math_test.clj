@@ -73,19 +73,22 @@
     :lag 1}
    {:autocorrelation -1.0
     :lag 1}
-   nil nil nil]
+   nil nil nil nil]
   [(autocorrelation (range 10))
    (autocorrelation [1 -1 1 -1 1 -1])
    (autocorrelation [1 2 3]) ; not significant
    (autocorrelation [1])
-   (autocorrelation [])])
+   (autocorrelation [])
+   (autocorrelation nil)])
 
 (expect
   [nil
-   #{50 100 35}]
+   #{50 100 35}
+   nil]
   (let [xs (vec (repeatedly 100 rand))]
     [(not-empty (outliers xs))
      (set (outliers (-> xs
                         (assoc-in [10] 50)
                         (assoc-in [30] 100)
-                        (assoc-in [70] 35))))]))
+                        (assoc-in [70] 35))))
+     (outliers nil)]))

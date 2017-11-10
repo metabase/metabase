@@ -6,13 +6,13 @@
              [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
+            [jdistlib.core :as dist]
             [faker
              [address :as address]
              [company :as company]
              [internet :as internet]
              [lorem :as lorem]
              [name :as name]]
-            [distributions.core :as dist]
             [medley.core :as m]
             [metabase.db.spec :as dbspec]
             [metabase.util :as u])
@@ -69,19 +69,23 @@
   (first (company/names)))
 
 (defn- rejection-sample
-  [min max dist]
+  "Sample from distribution `dist` until `pred` is truthy for the sampled value.
+   https://en.wikipedia.org/wiki/Rejection_sampling"
+  [pred dist]
   (let [x (dist/sample dist)]
-    (if (<= min x max)
+    (if (pred x)
       x
-      (rejection-sample min max dist))))
+      (rejection-sample pred dist))))
 
 (defn- random-price [min max]
   (let [range    (- max min)
-        m1       (+ min (* range 0.3))
-        m2       (+ min (* range 0.75))
+        mean1    (+ min (* range 0.3))
+        mean2    (+ min (* range 0.75))
         variance (/ range 8)]
-    (rejection-sample min max (rand-nth [(dist/normal m1 variance)
-                                         (dist/normal m2 variance)]))))
+    ; Sample from a multi modal distribution (mix of two normal distributions
+    ; with means `mean1` and `mean2` and variance `variance`).
+    (rejection-sample #(<= min % max) (rand-nth [(dist/normal mean1 variance)
+                                                 (dist/normal mean2 variance)]))))
 
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
@@ -204,7 +208,8 @@
   (doto (Date.)
     (.setTime (apply min (map #(.getTime ^Date %) dates)))))
 
-(defn- sometimes
+(defn- with-probability
+  "Return `(f)` with probability `p`, else return nil."
   [p f]
   (when (> p (rand))
     (f)))
@@ -228,7 +233,7 @@
      :subtotal   price
      :tax        tax
      :quantity   (random-price 1 5)
-     :discount   (sometimes 0.1 #(random-price 0 10))
+     :discount   (with-probability 0.1 #(random-price 0 10))
      :total      (+ price tax)
      :created_at created-at}))
 
@@ -272,41 +277,56 @@
       (assoc person :orders (vec (repeatedly num-orders #(random-order person (rand-nth products))))))))
 
 (defn- add-autocorrelation
+  "Add autocorrelation with lag `lag` to field `k` by adding the value from `lag`
+   steps back (and dividing by 2 to retain roughly the same value range).
+   https://en.wikipedia.org/wiki/Autocorrelation"
   ([k xs] (add-autocorrelation 1 k xs))
   ([lag k xs]
    (map (fn [prev next]
-          (update prev k #(/ (+ % (k next)) 2)))
+          (update next k #(/ (+ % (k prev)) 2)))
         xs
         (drop lag xs))))
 
-(defn add-increasing-variance
+(defn- add-increasing-variance
+  "Gradually increase variance of field `k` by scaling it an (on average)
+   increasingly larger random noise.
+   https://en.wikipedia.org/wiki/Variance"
   [k xs]
   (let [n (count xs)]
     (map-indexed (fn [i x]
+                   ; Limit the noise to [0.1, 2.1].
                    (update x k * (+ 1 (* (/ i n) (- (rand 2) 0.9)))))
                  xs)))
 
-(defn add-seasonality
+(defn- add-seasonality
+  "Add seasonal component to field `k`. Seasonal variation (a multiplicative
+   factor) is described with map `seasonality-map` indexed into by `season-fn`
+   (eg. month of year of field created_at)."
   [season-fn k seasonality-map xs]
   (for [x xs]
     (update x k * (seasonality-map (season-fn x)))))
 
-(defn add-outliers
-  [mode n k xs]
-  (if (= mode :share)
-    (for [x xs]
-      (if (< (rand) n)
-        (update x k * 10)
-        x))
-    (let [candidates   (keep (fn [[idx x]]
-                               (when (k x)
-                                 idx))
-                             (m/indexed xs))
-          outlier-idx? (set (repeatedly n #(rand-nth candidates)))]
-      (for [[idx x] (m/indexed xs)]
-        (if (outlier-idx? idx)
-          (update x k * 10)
-          x)))))
+(defn- add-outliers
+  "Add `n` outliers (times `scale` value spikes) to field `k`. `n` can be either
+   percentage or count, determined by `mode`."
+  ([mode n k xs] (add-outliers mode n 10 k xs))
+  ([mode n scale k xs]
+   (if (= mode :share)
+     (for [x xs]
+       (if (< (rand) n)
+         (update x k * scale)
+         x))
+     (let [candidate-idxs (keep (fn [[idx x]]
+                                  (when (k x)
+                                    idx))
+                                (m/indexed xs))
+           ; Note: since we are sampling with replacement there is a small chance
+           ; single index gets chosen multiple times.
+           outlier-idx? (set (repeatedly n #(rand-nth candidate-idxs)))]
+       (for [[idx x] (m/indexed xs)]
+         (if (outlier-idx? idx)
+           (update x k * scale)
+           x))))))
 
 (defn create-random-data [& {:keys [people products]
                              :or   {people 2500 products 200}}]
