@@ -118,7 +118,7 @@ class CardXRay extends Component {
                                         series={[
                                             {
                                                 card: xray.features.model,
-                                                data: xray.dataset
+                                                data: xray.features.series
                                             },
                                             {
                                                 card: {

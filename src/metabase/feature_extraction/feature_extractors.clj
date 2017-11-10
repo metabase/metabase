@@ -97,10 +97,83 @@
                 :strategy  :num-bins})]
           (h/equidistant-bins min-value max-value bin-width histogram))))))
 
+(defn- triangle-area
+  "Return the area by triangle specified by vertices `[x1, y1]`, `[x2, y2]`, and
+   `[x3, y3].`
+   http://mathworld.wolfram.com/TriangleArea.html"
+  [[x1 y1] [x2 y2] [x3 y3]]
+  (* 0.5 (+ (* (- x2) y1)
+            (* x3 y1)
+            (* x1 y2)
+            (* (- x3) y2)
+            (* (- x1) y3)
+            (* x2 y3))))
+
+(defn largest-triangle-three-buckets
+  "Downsample series `series` to (approximately) `target-size` data points using
+   Largest-Triangle-Three-Buckets algorithm. Series needs to be at least
+   2*`target-size` long for the algorithm to make sense. If it is not, the
+   original series is returned unmolested.
+
+   Note: this is true downsampling (selecting just some points), with no
+   smoothing performed.
+   https://skemman.is/bitstream/1946/15343/3/SS_MSthesis.pdf"
+  [target-size series]
+  (let [current-size (count series)]
+    (if (< current-size (* 2 target-size))
+      series
+      (let [[head & body] series
+            tail          (last body)
+            body          (butlast body)
+            bucket-size   (-> (/ current-size target-size) Math/floor int)]
+        (conj (->> (conj (partition bucket-size body) [tail])
+                   (partition 2 1)
+                   (reduce
+                    (fn [points [middle right]]
+                      (let [left         (last points)
+                            right-center (transduce identity
+                                                    (redux/juxt
+                                                     ((map first) stats/mean)
+                                                     ((map second) stats/mean))
+                                                    right)]
+                        (conj points (apply max-key (partial triangle-area
+                                                             left
+                                                             right-center)
+                                            middle))))
+                    [head]))
+              tail)))))
+
+(defn saddles
+  "Returns the number of saddles in a given series."
+  [series]
+  (->> series
+       (partition 2 1)
+       (partition-by (fn [[[_ y1] [_ y2]]]
+                       (>= y2 y1)))
+       rest
+       count))
+
+; The largest dataset returned will therefore be 2*target-1 points as we need at
+; least 2 points per bucket before we can apply downsampling.
+(def ^:private ^Integer datapoint-target-smooth 100)
+(def ^:private ^Integer datapoint-target-noisy  300)
+
+(def ^:private ^Double noisiness-threshold 0.05)
+
+(defn- target-size
+  [series]
+  (if (some-> series
+              saddles
+              (safe-divide (count series))
+              (> noisiness-threshold))
+    datapoint-target-noisy
+    datapoint-target-smooth))
+
 (defn- series->dataset
   ([fields series] (series->dataset identity fields series))
   ([keyfn fields series]
-   {:rows    (for [[x y] series]
+   {:rows    (for [[x y] (largest-triangle-three-buckets (target-size series)
+                                                         series)]
                [(keyfn x) y])
     :columns (map :name fields)
     :cols    (map #(dissoc % :remapped_from) fields)}))
@@ -407,7 +480,7 @@
                                           (->> series
                                                (partition 2 1)
                                                (map (fn [[[_ y1] [x y2]]]
-                                                      [x (growth y2 y1)]))))
+                                                      [x (or (growth y2 y1) 0)]))))
                 :seasonal-decomposition
                 (when (and resolution
                            (costs/unbounded-computation? max-cost))
@@ -432,14 +505,15 @@
                     {:name         "TREND"
                      :display_name "Linear regression trend"
                      :base_type    :type/Float}]
-                   (for [[x y] series]
+                   ; 2 points fully define a line
+                   (for [[x y] [(first series) (last series)]]
                      [x (+ (* slope x) offset)])))
 
 (defmethod x-ray [DateTime Num]
   [{:keys [field series] :as features}]
   (let [x-field (first field)]
     (-> features
-        (dissoc :series)
+        (update :series (partial series->dataset from-double field))
         (update :growth-series (partial series->dataset from-double
                                         [x-field
                                          {:name         "GROWTH"

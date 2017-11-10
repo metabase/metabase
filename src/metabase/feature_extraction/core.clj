@@ -160,7 +160,6 @@
                              (ensure-aligment fields cols rows)))
                           {:model card
                            :table (Table (:table_id card))})
-     :dataset      dataset
      :sample?      (sampled? opts dataset)
      :comparables  (comparables card)}))
 
