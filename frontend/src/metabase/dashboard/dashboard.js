@@ -131,7 +131,8 @@ export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCar
             visualization_settings: {}
         };
         dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-        dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
+        // text cards don't have any data to fetch
+        card.display !== 'text' && dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
     };
 }
 
@@ -229,6 +230,8 @@ export const fetchDashboardCardData = createThunkAction(FETCH_DASHBOARD_CARD_DAT
         const dashboard = getDashboardComplete(getState());
         if (dashboard) {
             for (const dashcard of dashboard.ordered_cards) {
+                // we don't need to fetch card data for text dash cards
+                if (dashcard.card.display === "text") { continue }
                 const cards = [dashcard.card].concat(dashcard.series || []);
                 for (const card of cards) {
                     dispatch(fetchCardData(card, dashcard, options));

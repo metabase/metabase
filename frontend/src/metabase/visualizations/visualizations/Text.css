@@ -1,0 +1,34 @@
+:local .Text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1em;
+  color: #525658;
+}
+:local .Text.dashboard-is-editing {
+  padding: 2.8em 1em 1em 1em;
+}
+:local .Text .text-card-textarea {
+  padding: .75em;
+  font-size: 1.12em;
+  font-family: monospace;
+  pointer-events: all;
+  resize: none;
+  outline: none;
+}
+:local .Text .text-card-markdown {
+  overflow: scroll;
+  pointer-events: all
+}
+:local .Text .text-card-markdown h1 {
+  font-size: 1.43em;
+}
+:local .Text .text-card-markdown h2 {
+  font-size: 1.27em;
+}
+:local .Text .text-card-markdown h3 {
+  font-size: 1em;
+}
+:local .Text .text-card-markdown p {
+  font-size: .89em;
+}

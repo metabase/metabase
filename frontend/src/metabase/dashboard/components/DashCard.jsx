@@ -150,7 +150,7 @@ const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisu
         { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
-        { onReplaceAllVisualizationSettings &&
+        { onReplaceAllVisualizationSettings && !getVisualizationRaw(series).CardVisualization.disableSettingsConfig &&
             <ChartSettingsButton series={series} onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings} />
         }
         <RemoveButton onRemove={onRemove} />

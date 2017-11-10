@@ -18,7 +18,9 @@ import { getDashboardActions } from "./DashboardActions";
 import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
+import { CardApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
+import { createCard } from "metabase/lib/card";
 
 import cx from "classnames";
 
@@ -106,6 +108,15 @@ export default class DashboardHeader extends Component {
         this.props.onEditingChange(true);
     }
 
+    async onAddTextBox() {
+        const newTextCard = createCard("text");
+        newTextCard.display = "text";
+        const savedCard = await CardApi.create(newTextCard);
+        // we have to update the frontend's state of cards
+        await this.props.fetchCards();
+        this.props.addCardToDashboard({ dashId: this.props.dashboard.id, cardId: savedCard.id });
+    }
+
     onDoneEditing() {
         this.props.onEditingChange(false);
     }
@@ -188,6 +199,32 @@ export default class DashboardHeader extends Component {
             buttons.push(parametersWidget);
         }
 
+        if (!isFullscreen && canEdit) {
+            buttons.push(
+                <ModalWithTrigger
+                    full
+                    key="add"
+                    ref="addQuestionModal"
+                    triggerElement={
+                        <Tooltip tooltip="Add a question">
+                            <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
+                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
+                            </span>
+                        </Tooltip>
+                    }
+                >
+                    <AddToDashSelectQuestionModal
+                        dashboard={dashboard}
+                        cards={this.props.cards}
+                        fetchCards={this.props.fetchCards}
+                        addCardToDashboard={this.props.addCardToDashboard}
+                        onEditingChange={this.props.onEditingChange}
+                        onClose={() => this.refs.addQuestionModal.toggle()}
+                    />
+                </ModalWithTrigger>
+            );
+        }
+
         if (isEditing) {
             // Parameters
             buttons.push(
@@ -212,6 +249,15 @@ export default class DashboardHeader extends Component {
                         </Popover>
                     }
                 </span>
+            );
+
+            // Add text card button
+            buttons.push(
+                <Tooltip tooltip="Add a text box">
+                    <a data-metabase-event="Dashboard;Add Text Box" key="add-text" title="Add a text box" className="text-brand-hover cursor-pointer" onClick={() => this.onAddTextBox()}>
+                        <Icon name="string" size={16} />
+                    </a>
+                </Tooltip>
             );
 
             buttons.push(
@@ -246,32 +292,6 @@ export default class DashboardHeader extends Component {
                         <Icon name="pencil" size={16} />
                     </a>
                 </Tooltip>
-            );
-        }
-
-        if (!isFullscreen && canEdit) {
-            buttons.push(
-                <ModalWithTrigger
-                    full
-                    key="add"
-                    ref="addQuestionModal"
-                    triggerElement={
-                        <Tooltip tooltip="Add a question">
-                            <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
-                            </span>
-                        </Tooltip>
-                    }
-                >
-                    <AddToDashSelectQuestionModal
-                        dashboard={dashboard}
-                        cards={this.props.cards}
-                        fetchCards={this.props.fetchCards}
-                        addCardToDashboard={this.props.addCardToDashboard}
-                        onEditingChange={this.props.onEditingChange}
-                        onClose={() => this.refs.addQuestionModal.toggle()}
-                    />
-                </ModalWithTrigger>
             );
         }
 

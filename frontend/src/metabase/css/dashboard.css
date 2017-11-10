@@ -191,6 +191,10 @@
   transition: opacity .3s linear;
 }
 
+.DashCard .DashCard-actions-persistent {
+  pointer-events: all;
+}
+
 .Dash--editing .DashCard:hover .DashCard-actions {
   height: initial;
   opacity: 1;
