@@ -153,8 +153,8 @@
        rest
        count))
 
-; The largest dataset returned will therefore be 2*target-1 points as we need at
-; least 2 points per bucket before we can apply downsampling.
+; The largest dataset returned will be 2*target-1 points as we need at least
+; 2 points per bucket for downsampling to have any effect.
 (def ^:private ^Integer datapoint-target-smooth 100)
 (def ^:private ^Integer datapoint-target-noisy  300)
 
