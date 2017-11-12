@@ -19,6 +19,7 @@
             [metabase
              [query-processor :as qp]
              [util :as u]]
+            [net.cgrand.xforms :as x]
             [redux.core :as redux]
             [toucan.db :as db])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
@@ -109,6 +110,18 @@
             (* (- x1) y3)
             (* x2 y3))))
 
+(def ^:private centroid
+  "Calculate the centroid of given points.
+   https://en.wikipedia.org/wiki/Centroid"
+  (partial transduce identity (redux/juxt ((map first) stats/mean)
+                                          ((map second) stats/mean))))
+
+(defn- largest-triangle
+  "Find the point in `points` that frorms the largest triangle with verteices
+   `a` and `b`."
+  [a b points]
+  (apply max-key (partial triangle-area a b) points))
+
 (defn largest-triangle-three-buckets
   "Downsample series `series` to (approximately) `target-size` data points using
    Largest-Triangle-Three-Buckets algorithm. Series needs to be at least
@@ -126,22 +139,15 @@
             tail          (last body)
             body          (butlast body)
             bucket-size   (-> (/ current-size target-size) Math/floor int)]
-        (conj (->> (conj (partition bucket-size body) [tail])
-                   (partition 2 1)
-                   (reduce
-                    (fn [points [middle right]]
-                      (let [left         (last points)
-                            right-center (transduce identity
-                                                    (redux/juxt
-                                                     ((map first) stats/mean)
-                                                     ((map second) stats/mean))
-                                                    right)]
-                        (conj points (apply max-key (partial triangle-area
-                                                             left
-                                                             right-center)
-                                            middle))))
-                    [head]))
-              tail)))))
+        (transduce (x/partition 2 1 (x/into []))
+                   (fn
+                     ([] [head])
+                     ([points] (conj points tail))
+                     ([points [middle right]]
+                      (conj points (largest-triangle (last points)
+                                                     (centroid right)
+                                                     middle))))
+                   (conj (partition bucket-size body) [tail]))))))
 
 (defn saddles
   "Returns the number of saddles in a given series."
