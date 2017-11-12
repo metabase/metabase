@@ -337,10 +337,12 @@
     special-type))
 
 (defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
-  (set (for [{database-type :type_name, column-name :column_name} (jdbc/result-set-seq (.getColumns metadata nil schema table-name nil))]
+  (set (for [{database-type :type_name, column-name :column_name, remarks :remarks} (jdbc/result-set-seq (.getColumns metadata nil schema table-name nil))]
          (merge {:name          column-name
                  :database-type database-type
                  :base-type     (database-type->base-type driver database-type)}
+                (when (not (str/blank? remarks))
+                  {:description remarks})
                 (when-let [special-type (calculated-special-type driver column-name database-type)]
                   {:special-type special-type})))))
 

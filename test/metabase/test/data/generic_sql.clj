@@ -46,6 +46,9 @@
   (add-fk-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
 
+  (column-comment-sql ^String [this, ^String comment]
+    "*Optional* Return a `COMMENT` statement for a column.")
+
   (prepare-identifier [this, ^String identifier]
     "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
      This is used by drivers like H2 to transform names to upper-case.
@@ -101,10 +104,13 @@
     (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s));"
             (qualify+quote-name driver database-name table-name)
             (->> field-definitions
-                 (map (fn [{:keys [field-name base-type]}]
-                        (format "%s %s" (quot field-name) (if (map? base-type)
-                                                            (:native base-type)
-                                                            (field-base-type->sql-type driver base-type)))))
+                 (map (fn [{:keys [field-name base-type description]}]
+                        (format "%s %s %s"
+                                (quot field-name)
+                                (if (map? base-type)
+                                  (:native base-type)
+                                  (field-base-type->sql-type driver base-type))
+                                (column-comment-sql driver description))))
                  (interpose ", ")
                  (apply str))
             pk-field-name (pk-sql-type driver)
@@ -129,6 +135,10 @@
             (quot field-name)
             (qualify+quote-name driver database-name dest-table-name)
             (quot (pk-field-name driver)))))
+
+(defn- default-column-comment-sql [_ comment]
+  "Assume that COMMENT is not supported unless driver specifically overrides."
+  (""))
 
 (defn- default-qualified-name-components
   ([_ db-name]                       [db-name])
@@ -272,6 +282,7 @@
 (def DefaultsMixin
   "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
   {:add-fk-sql                default-add-fk-sql
+   :column-comment-sql        default-column-comment-sql
    :create-db-sql             default-create-db-sql
    :create-table-sql          default-create-table-sql
    :database->spec            default-database->spec

@@ -23,7 +23,8 @@
                                                              su/FieldType)
                               special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
-                              fk              :- (s/maybe s/Keyword)])
+                              fk              :- (s/maybe s/Keyword)
+                              description     :- (s/maybe su/NonBlankString)])
 
 (s/defrecord TableDefinition [table-name        :- su/NonBlankString
                               field-definitions :- [FieldDefinition]
