@@ -83,7 +83,7 @@
   [resolution series]
   (when resolution
     (transduce
-     (comp (x/partition (ts/period-length resolution) 1
+     (comp (x/partition (ts/period-length resolution)
                         (comp (map second)
                               (x/reduce h/histogram)))
            (map-indexed (fn [idx histogram]
@@ -104,7 +104,7 @@
                                      (- (* n s-xx) (sq s-x))))
                                (- n 2)
                                (- (* n s-xx) (sq s-x)))]
-            (when (and (not= slope 0)
+            (when (and (not= slope 0.0)
                        (math/significant? (/ slope slope-error)
                                           (d/t-distribution (- n 2))
                                           (/ 0.05 2)))
@@ -183,8 +183,8 @@
    https://en.wikipedia.org/wiki/Stationary_process"
   [series resolution]
   (when-let [n (ts/period-length resolution)]
-    (transduce (comp (x/partition n 1 (comp (map second)
-                                            (x/reduce h/histogram)))
+    (transduce (comp (x/partition n  (comp (map second)
+                                          (x/reduce h/histogram)))
                      (map (fn [histogram]
                             {:mean (h.impl/mean histogram)
                              :var  (h.impl/variance histogram)}))
@@ -193,7 +193,7 @@
                  ([] true)
                  ([acc] acc)
                  ([_ [{mean1 :mean var1 :var} {mean2 :mean var2 :var}]]
-                  (if (= var1 var2 0)
+                  (if (= var1 var2 0.0)
                     true
                     (let [t (/ (- mean1 mean2)
                                (num/sqrt (/ (+ var1 var2) n)))

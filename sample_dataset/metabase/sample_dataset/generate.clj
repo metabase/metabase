@@ -295,7 +295,7 @@
   (let [n (count xs)]
     (map-indexed (fn [i x]
                    ; Limit the noise to [0.1, 2.1].
-                   (update x k * (+ 1 (* (/ i n) (- (rand 2) 0.9)))))
+                   (update x k * (+ 1 (* (/ i n) (- (* 2 (rand)) 0.9)))))
                  xs)))
 
 (defn- add-seasonality
