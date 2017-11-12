@@ -31,16 +31,16 @@ export function columnsAreValid(colNames, data, filter = () => true) {
 
 // computed size properties (drop 'px' and convert string -> Number)
 function getComputedSizeProperty(prop, element) {
-    var val = document.defaultView.getComputedStyle(element, null).getPropertyValue(prop);
-    return val ? parseFloat(val.replace("px", "")) : null;
+    const val = document.defaultView.getComputedStyle(element, null).getPropertyValue(prop);
+    return val ? parseFloat(val.replace("px", "")) : 0;
 }
 
 /// height available for rendering the card
 export function getAvailableCanvasHeight(element) {
-    var parent = element.parentElement,
-        parentHeight = getComputedSizeProperty("height", parent),
-        parentPaddingTop = getComputedSizeProperty("padding-top", parent),
-        parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
+    const parent              = element.parentElement;
+    const parentHeight        = getComputedSizeProperty("height", parent);
+    const parentPaddingTop    = getComputedSizeProperty("padding-top", parent);
+    const parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
 
     // NOTE: if this magic number is not 3 we can get into infinite re-render loops
     return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
@@ -48,10 +48,10 @@ export function getAvailableCanvasHeight(element) {
 
 /// width available for rendering the card
 export function getAvailableCanvasWidth(element) {
-    var parent = element.parentElement,
-        parentWidth = getComputedSizeProperty("width", parent),
-        parentPaddingLeft = getComputedSizeProperty("padding-left", parent),
-        parentPaddingRight = getComputedSizeProperty("padding-right", parent);
+    const parent             = element.parentElement;
+    const parentWidth        = getComputedSizeProperty("width", parent);
+    const parentPaddingLeft  = getComputedSizeProperty("padding-left", parent);
+    const parentPaddingRight = getComputedSizeProperty("padding-right", parent);
 
     return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
