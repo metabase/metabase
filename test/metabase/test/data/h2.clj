@@ -49,12 +49,15 @@
    ;; Grant the GUEST account r/w permissions for this table
    (format "GRANT ALL ON %s TO GUEST;" (quote-name table-name))))
 
+(defn- column-comment-sql [_ comment]
+  (format "COMMENT '%s'" comment))
 
 (u/strict-extend H2Driver
   generic/IGenericSQLTestExtensions
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
-           {:create-db-sql             (constantly create-db-sql)
+           {:column-comment-sql        column-comment-sql
+            :create-db-sql             (constantly create-db-sql)
             :create-table-sql          create-table-sql
             :database->spec            (comp dbspec/h2 i/database->connection-details) ; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
             :drop-db-if-exists-sql     (constantly nil)

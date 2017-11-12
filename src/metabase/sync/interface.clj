@@ -27,6 +27,7 @@
    :database-type                  su/NonBlankString
    :base-type                      su/FieldType
    (s/optional-key :special-type)  (s/maybe su/FieldType)
+   (s/optional-key :description)   (s/maybe su/NonBlankString)
    (s/optional-key :pk?)           s/Bool
    (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataField)}
    (s/optional-key :custom)        {s/Any s/Any}})
@@ -35,7 +36,8 @@
   "Schema for the expected output of `describe-table`."
   {:name   su/NonBlankString
    :schema (s/maybe su/NonBlankString)
-   :fields #{TableMetadataField}})
+   :fields #{TableMetadataField}
+   (s/optional-key :description)   (s/maybe su/NonBlankString)})
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."

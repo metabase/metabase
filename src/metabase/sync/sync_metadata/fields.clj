@@ -69,7 +69,7 @@
         ;; now return the Field in question
         (Field (u/get-id matching-inactive-field)))
     ;; otherwise insert a new field
-    (let [{field-name :name, :keys [database-type base-type special-type pk? raw-column-id]} new-field-metadata]
+    (let [{field-name :name, :keys [database-type base-type special-type pk? raw-column-id description]} new-field-metadata]
       (db/insert! Field
         :table_id      (u/get-id table)
         :name          field-name
@@ -78,7 +78,8 @@
         :base_type     base-type
         :special_type  (or special-type
                            (when pk? :type/PK))
-        :parent_id     parent-id))))
+        :parent_id     parent-id
+        :description  description))))
 
 
 (s/defn ^:private create-or-reactivate-field!
