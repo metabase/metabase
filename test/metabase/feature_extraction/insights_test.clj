@@ -18,15 +18,15 @@
   (map :variation-trend
        [(variation-trend {:series (map-indexed
                                    (fn [i x]
-                                     [i (* x (+ 1 (* (/ i 100)
+                                     [i (* x (+ 1 (* (/ i 1000)
                                                      (- (* 2 (rand)) 0.9))))])
-                                   (repeatedly 100 #(rand-int 10)))
-                          :resolution :month})
+                                   (repeatedly 1000 #(rand-int 10)))
+                          :resolution :day})
         (variation-trend {:series (map-indexed
                                    (fn [i x]
-                                     [i (* x (+ 1 (* (/ (- 100 i) 100)
+                                     [i (* x (+ 1 (* (/ (- 1000 i) 1000)
                                                      (- (* 2 (rand)) 0.9))))])
-                                   (repeatedly 100 #(rand-int 10)))
-                          :resolution :month})
-        (variation-trend {:series (m/indexed (repeat 100 1))
-                          :resolution :month})]))
+                                   (repeatedly 1000 #(rand-int 10)))
+                          :resolution :day})
+        (variation-trend {:series (m/indexed (repeat 1000 1))
+                          :resolution :day})]))
