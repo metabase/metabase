@@ -94,5 +94,9 @@
      (outliers nil)]))
 
 (expect
+  [2.0 2.0]
+  (centroid [[0 1] [2 3] [4 2]]))
+
+(expect
   8.0
   (triangle-area [-2 0] [2 0] [0 4]))
