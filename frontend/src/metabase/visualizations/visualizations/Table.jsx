@@ -13,6 +13,7 @@ import { columnsAreValid, getFriendlyName } from "metabase/visualizations/lib/ut
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
 import _ from "underscore";
+import cx from "classnames";
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
@@ -135,7 +136,7 @@ export default class Table extends Component {
 
         if (isColumnsDisabled) {
             return (
-                <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
+                <div className={cx("flex-full px1 pb1 text-centered flex flex-column layout-centered", { "text-slate-light": isDashboard, "text-slate": !isDashboard })} >
                     <RetinaImage
                         width={99}
                         src="app/assets/img/hidden-field.png"
