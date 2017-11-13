@@ -13,7 +13,7 @@
 
 (expect
   [{:mode :increasing}
-   {:mode :increasing}
+   {:mode :decreasing}
    nil]
   (map :variation-trend
        [(variation-trend {:series (map-indexed
@@ -26,7 +26,7 @@
                                    (fn [i x]
                                      [i (* x (+ 1 (* (/ (- 100 i) 100)
                                                      (- (* 2 (rand)) 0.9))))])
-                                   (repeatedly 100 rand))
+                                   (repeatedly 100 #(rand-int 10)))
                           :resolution :month})
         (variation-trend {:series (m/indexed (repeat 100 1))
                           :resolution :month})]))

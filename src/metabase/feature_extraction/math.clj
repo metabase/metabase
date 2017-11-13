@@ -153,3 +153,21 @@
            lower-bound         (- q1 (* 1.5 iqr))
            upper-bound         (+ q3 (* 1.5 iqr))]
        (remove (comp #(< lower-bound % upper-bound) keyfn) xs)))))
+
+(defn triangle-area
+  "Return the area of triangle specified by vertices `[x1, y1]`, `[x2, y2]`, and
+   `[x3, y3].`
+   http://mathworld.wolfram.com/TriangleArea.html"
+  [[x1 y1] [x2 y2] [x3 y3]]
+  (* 0.5 (+ (* (- x2) y1)
+            (* x3 y1)
+            (* x1 y2)
+            (* (- x3) y2)
+            (* (- x1) y3)
+            (* x2 y3))))
+
+(def centroid
+  "Calculate the centroid of given points.
+   https://en.wikipedia.org/wiki/Centroid"
+  (partial transduce identity (redux/juxt ((map first) stats/mean)
+                                          ((map second) stats/mean))))

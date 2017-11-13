@@ -92,3 +92,7 @@
                         (assoc-in [30] 100)
                         (assoc-in [70] 35))))
      (outliers nil)]))
+
+(expect
+  8.0
+  (triangle-area [-2 0] [2 0] [0 4]))

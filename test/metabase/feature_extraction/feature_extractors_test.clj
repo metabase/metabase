@@ -7,6 +7,7 @@
              [feature-extractors :refer :all :as fe]
              [histogram :as h]
              [timeseries :as ts]]
+            [medley.core :as m]
             [redux.core :as redux]))
 
 (expect
@@ -127,3 +128,14 @@
     [(-> x-ray :zeros :quality)
      (-> x-ray :nils :quality)
      (-> x-ray :normal-range :upper)]))
+
+(expect
+  [(var-get #'fe/datapoint-target-smooth)
+   (var-get #'fe/datapoint-target-noisy)]
+  [(#'fe/target-size (m/indexed (range 10)))
+   (#'fe/target-size (m/indexed (repeatedly 1000 rand)))])
+
+(expect
+  [32 10]
+  [(count (largest-triangle-three-buckets 30 (m/indexed (repeatedly 1000 rand))))
+   (count (largest-triangle-three-buckets 30 (m/indexed (repeatedly 10 rand))))])

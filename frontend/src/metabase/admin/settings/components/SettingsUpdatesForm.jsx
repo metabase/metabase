@@ -103,7 +103,7 @@ export default class SettingsUpdatesForm extends Component {
             <SettingsSetting
                 key={setting.key}
                 setting={setting}
-                updateSetting={(value) => updateSetting(setting, value)}
+                onChange={(value) => updateSetting(setting, value)}
                 autoFocus={index === 0}
             />
         );
