@@ -32,7 +32,7 @@
 (definsight nils
   "Are there any nils in the data?"
   [nil% field count]
-  (when (pos? nil%)
+  (when (some-> nil% pos?)
     {:quality (if (< nil% (/ (Math/log (inc count))))
                 :some
                 :many)
@@ -41,7 +41,7 @@
 (definsight zeros
   "Are there any 0s in the data?"
   [zero% field count]
-  (when (pos? zero%)
+  (when (some-> zero% pos?)
     {:quality (if (< zero% (/ (Math/log (inc count))))
                 :some
                 :many)
