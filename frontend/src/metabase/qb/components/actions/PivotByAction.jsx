@@ -42,20 +42,14 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
         if (breakoutOptions.count === 0) {
             return [];
         }
-
+        const breakoutname = <span className="text-dark">{name.toLowerCase()}</span>
         return [
             {
                 name: "pivot-by-" + name.toLowerCase(),
                 section: "breakout",
                 title: clicked
                     ? name
-                    : <span>
-                          {t`Break out by`}
-                          {" "}
-                          <span className="text-dark">
-                              {name.toLowerCase()}
-                          </span>
-                      </span>,
+                    : <span>{t`Break out by ${ breakoutname }`}</span>,
                 icon: icon,
                 // eslint-disable-next-line react/display-name
                 popover: (

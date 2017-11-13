@@ -14,19 +14,13 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
     if (!(query instanceof StructuredQuery) || query.isBareRows()) {
         return [];
     }
-
+    const dname = <span className="text-dark">{query.table().display_name}</span>
     return [
         {
             name: "underlying-records",
             title: (
                 <span>
-                    {t`View the underlying`}
-                    {" "}
-                    <span className="text-dark">
-                        {query.table().display_name}
-                    </span>
-                    {" "}
-                    {t`records`}
+                    {t`View the underlying ${ dname } records`}
                 </span>
             ),
             icon: "table2",
