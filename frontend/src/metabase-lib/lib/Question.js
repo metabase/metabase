@@ -99,7 +99,7 @@ export default class Question {
             tableId?: TableId,
             metadata: Metadata,
             parameterValues?: ParameterValues
-        }
+        } = {}
     ) {
         // $FlowFixMe
         const card: Card = {

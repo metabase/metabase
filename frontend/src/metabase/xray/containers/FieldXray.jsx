@@ -33,6 +33,7 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
+import { Insights } from "metabase/xray/components/Insights";
 
 type Props = {
     fetchFieldXray: () => void,
@@ -44,7 +45,8 @@ type Props = {
         table: Table,
         histogram: {
             value: {}
-        }
+        },
+        insights: []
     },
     params: {
         cost: string,
@@ -135,6 +137,12 @@ class FieldXRay extends Component {
                                     </p>
                                 </div>
                             </div>
+                            { features["insights"] &&
+                                <div className="mt4">
+                                    <Heading heading="Takeaways" />
+                                    <Insights features={features} />
+                                </div>
+                            }
                             <div className="mt4">
                                 <Heading heading="Distribution" />
                                 <div className="bg-white bordered shadowed">

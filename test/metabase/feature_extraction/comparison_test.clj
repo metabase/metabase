@@ -5,23 +5,6 @@
              [histogram :as h]]))
 
 (expect
-  (approximately 5.5 0.1)
-  (transduce identity magnitude [1 2 3 4]))
-(expect
-  0.0
-  (transduce identity magnitude []))
-
-(expect
-  [1.0
-   0.5
-   nil
-   nil]
-  [(cosine-distance [1 0 1] [0 1 0])
-   (cosine-distance [1 0 1] [0 1 1])
-   (cosine-distance [1 0 1] [0 0 0])
-   (cosine-distance [] [])])
-
-(expect
   [0.25
    0
    nil
@@ -49,13 +32,6 @@
                              (= ka kb))
                        (#'c/unify-categories {:a 0.5 :b 0.3 :c 0.2}
                                              {:x 0.9 :y 0.1}))))
-
-(expect
-  (approximately 0.39 0.1)
-  (chi-squared-distance [0.1 0.2 0.7] [0.5 0.4 0.1]))
-(expect
-  0
-  (chi-squared-distance [] []))
 
 (expect
   [{:foo 4 :bar 5}
