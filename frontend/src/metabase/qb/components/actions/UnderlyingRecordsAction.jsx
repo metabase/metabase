@@ -3,7 +3,7 @@
 import React from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
+import { t } from 'c-3po';
 import type {
     ClickAction,
     ClickActionProps
@@ -20,13 +20,13 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
             name: "underlying-records",
             title: (
                 <span>
-                    View the underlying
+                    {t`View the underlying`}
                     {" "}
                     <span className="text-dark">
                         {query.table().display_name}
                     </span>
                     {" "}
-                    records
+                    {t`records`}
                 </span>
             ),
             icon: "table2",

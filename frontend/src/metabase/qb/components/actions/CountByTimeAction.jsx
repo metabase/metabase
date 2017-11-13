@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { t } from 'c-3po';
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
@@ -26,7 +26,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
         {
             name: "count-by-time",
             section: "sum",
-            title: <span>Count of rows by time</span>,
+            title: <span>{t`Count of rows by time`}</span>,
             icon: "line",
             question: () =>
                 question
