@@ -3,6 +3,7 @@
              [core :as t]
              [coerce :as t.coerce]]
             [expectations :refer :all]
+            [medley.core :as m]
             [metabase.feature-extraction.feature-extractors :refer :all :as fe]
             [metabase.feature-extraction.histogram :as h]
             [redux.core :as redux]))
@@ -180,3 +181,25 @@
         :type)
    (-> (->features {:base_type :type/NeverBeforeSeen} numbers)
        :type)])
+
+(expect
+  [0 1 3 0]
+  [(#'fe/saddles [[1 1] [2 2] [3 3]])
+   (#'fe/saddles [[1 1] [2 2] [3 -2]])
+   (#'fe/saddles [[1 1] [2 2] [3 -2] [4 5] [5 2]])
+   (#'fe/saddles nil)])
+
+(expect
+  8.0
+  (#'fe/triangle-area [-2 0] [2 0] [0 4]))
+
+(expect
+  [(var-get #'fe/datapoint-target-smooth)
+   (var-get #'fe/datapoint-target-noisy)]
+  [(#'fe/target-size (m/indexed (range 10)))
+   (#'fe/target-size (m/indexed (repeatedly 1000 rand)))])
+
+(expect
+  [32 10]
+  [(count (largest-triangle-three-buckets 30 (m/indexed (repeatedly 1000 rand))))
+   (count (largest-triangle-three-buckets 30 (m/indexed (repeatedly 10 rand))))])
