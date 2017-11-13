@@ -2,6 +2,7 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
+            [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [medley.core :as m]
             [metabase
@@ -281,12 +282,18 @@
    :below "when this question goes below its goal"
    :rows  "whenever this question has any results"})
 
-(defn- send-email! [user subject template-path template-context]
-  (email/send-message!
-    :recipients   [(:email user)]
-    :message-type :html
-    :subject      subject
-    :message      (stencil/render-file template-path template-context)))
+(defn- send-email!
+  "Sends an email on a background thread, returning a future."
+  [user subject template-path template-context]
+  (future
+    (try
+      (email/send-message-or-throw!
+        {:recipients   [(:email user)]
+         :message-type :html
+         :subject      subject
+         :message      (stencil/render-file template-path template-context)})
+      (catch Exception e
+        (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
 
 (defn- template-path [template-name]
   (str "metabase/email/" template-name ".mustache"))

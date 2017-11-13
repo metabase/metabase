@@ -139,7 +139,8 @@
                            :body {"the question was archived by Crowberto Corv" true}}]}
    nil]
   (et/with-fake-inbox
-    ((user->client :crowberto) :put 200 (str "collection/" collection-id)
-     {:name "My Beautiful Collection", :color "#ABCDEF", :archived true})
+    (et/with-expected-messages 2
+      ((user->client :crowberto) :put 200 (str "collection/" collection-id)
+       {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
     [(et/regex-email-bodies #"the question was archived by Crowberto Corv")
      (Pulse pulse-id)]))
