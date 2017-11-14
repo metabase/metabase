@@ -361,11 +361,6 @@ export function slugify(name: string) {
     return name && name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
 }
 
-// Adds commas and spaces between array items and replaces the comma between two last items with "and"
-export function formatListOfItems(items: []): string {
-    return [items.slice(0, -1).join(', '), items.slice(-1)[0]].join(items.length < 2 ? '' : ' and ');
-}
-
 export function assignUserColors(userIds: number[], currentUserId: number, colorClasses: string[] = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2']) {
     let assignments = {};
 
