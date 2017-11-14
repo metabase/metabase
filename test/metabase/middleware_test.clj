@@ -243,7 +243,7 @@
     (test-streaming-endpoint streaming-fast-failure)
     (catch java.io.IOException e
       (.getMessage e))))
-
+)
 ;; test that handler is killed when connection closes
 (def test-slow-handler-state (atom :unset))
 
@@ -255,7 +255,7 @@
   (resp/response {:success true}))
 
 (defn- start-and-maybe-kill-test-request [kill?]
-  (reset! test-slow-handler-state :initial-state)
+  (reset! test-slow-handler-state [:initial-state kill?])
   (let [path "test-slow-handler"]
     (with-redefs [metabase.routes/routes (compojure.core/routes
                                           (GET (str "/" path) [] (middleware/streaming-json-response
@@ -269,11 +269,10 @@
 
 ;; In this first test we will close the connection before the test handler gets to change the state
 (expect
-  :initial-state
+  [:initial-state true]
   (start-and-maybe-kill-test-request true))
 
 ;; and to make sure this test actually works, run the same test again and let it change the state.
 (expect
   :ran-to-compleation
   (start-and-maybe-kill-test-request false))
-)
