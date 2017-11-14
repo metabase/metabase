@@ -149,13 +149,13 @@
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"]
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
+             :ci {:jvm-opts ["-Xmx3g"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
                             :jvm-opts ["-Xms1024m"                    ; give JVM a decent heap size to start with
-                                       "-Xmx2048m"                    ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                                        "-Duser.timezone=UTC"
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
