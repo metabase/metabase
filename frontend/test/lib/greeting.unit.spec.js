@@ -1,59 +1,50 @@
-import { Greeting, greetingPrefixes, subheadPrefixes } from "metabase/lib/greeting";
+import { sayHello, simpleGreeting, encourageCuriosity, greetingPrefixes, subheadPrefixes } from "metabase/lib/greeting";
 
-describe('Greeting', () => {
+describe('greeting', () => {
     describe('simpleGreeting', () => {
         it('should return a quote from greetingPrefixes', () => {
-            const quote = Greeting.simpleGreeting()
+            const quote = simpleGreeting()
             expect(Object.values(greetingPrefixes)).toContain(quote)
         })
     })
 
     describe('encourageCuriosity', () => {
         it('should return a quote from subheadPrefixes', () => {
-            const quote = Greeting.encourageCuriosity()
+            const quote = encourageCuriosity()
             expect(Object.values(subheadPrefixes)).toContain(quote)
         })
     })
 
     describe('sayHello', () => {
-        const _oldSimpleGreetingFn = Greeting.simpleGreeting;
-        const myMockGreeting = jest.fn();
-
-        beforeEach(function() {
-            Greeting.simpleGreeting = myMockGreeting;
-        });
-
-         afterEach(function() {
-            Greeting.simpleGreeting = _oldSimpleGreetingFn;
-         });
-
+        let mockGreetingQuote = "REPLACE_ME";
+        const myMockGreeting = function() {
+            return mockGreetingQuote;
+        };
 
         describe("without personalization", () => {
             it('should return a simple greeting', () => {
-                myMockGreeting.mockReturnValue("My mock greeting");
+                mockGreetingQuote = "My mock greeting";
 
-                expect(Greeting.sayHello()).toEqual("My mock greeting");
+                expect(sayHello(null, myMockGreeting)).toEqual("My mock greeting");
             })
 
             it('should return the quote with a question mark if the quote is a question', () => {
-                myMockGreeting.mockReturnValue("How's it going");
-
-                expect(Greeting.sayHello()).toEqual("How's it going?");
+                mockGreetingQuote = "How's it going";
+                expect(sayHello(null, myMockGreeting)).toEqual("How's it going?");
             })
         })
 
         describe("with personalization", () => {
-
             it('should return the quote with a question mark if the quote is a question', () => {
-                myMockGreeting.mockReturnValue("How's it going");
+                mockGreetingQuote = "How's it going";
 
-                expect(Greeting.sayHello("Joseph")).toEqual("How's it going, Joseph?");
+                expect(sayHello("Joseph", myMockGreeting)).toEqual("How's it going, Joseph?");
             })
 
             it('should return the personalization concatened with a simple greeting', () => {
-                myMockGreeting.mockReturnValue("My mock greeting");
+                mockGreetingQuote = "My mock greeting";
 
-                expect(Greeting.sayHello("Joseph")).toEqual("My mock greeting, Joseph");
+                expect(sayHello("Joseph", myMockGreeting)).toEqual("My mock greeting, Joseph");
             })
         })
 

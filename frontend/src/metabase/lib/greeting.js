@@ -22,27 +22,26 @@ export const subheadPrefixes = [
 function isQuoteAQuestion(quote) {
     return _.contains(questionGreetingPrefixes, quote);
 }
-export var Greeting = {
-    simpleGreeting: function() {
-        return _.sample(greetingPrefixes);
-      },
 
-	sayHello: function(personalization) {
-        let greetingQuote = Greeting.simpleGreeting();
-        let finalGreeting = greetingQuote;
+export function simpleGreeting() {
+    return _.sample(greetingPrefixes);
+}
 
-        if(personalization) {
-            finalGreeting += ', ' + personalization;
-        }
+export function sayHello(personalization, greetingGeneratorFn = simpleGreeting) {
+    let greetingQuote = greetingGeneratorFn();
+    let finalGreeting = greetingQuote;
 
-        if(isQuoteAQuestion(greetingQuote)) {
-            finalGreeting += '?';
-        }
-
-        return finalGreeting;
-    },
-
-    encourageCuriosity: function() {
-        return _.sample(subheadPrefixes);
+    if(personalization) {
+        finalGreeting += ', ' + personalization;
     }
-};
+
+    if(isQuoteAQuestion(greetingQuote)) {
+        finalGreeting += '?';
+    }
+
+    return finalGreeting;
+}
+
+export function encourageCuriosity() {
+    return _.sample(subheadPrefixes);
+}
