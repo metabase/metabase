@@ -184,6 +184,15 @@ export const PulseApi = {
     preview_card:                GET("/api/pulse/preview_card_info/:id"),
 };
 
+export const AlertApi = {
+    list:                        GET("/api/alert"),
+    list_for_question:           GET("/api/alert/question/:questionId"),
+    create:                     POST("/api/alert"),
+    update:                      PUT("/api/alert/:id"),
+    delete:                   DELETE("/api/alert/:id"),
+    unsubscribe:                 PUT("/api/alert/:id/unsubscribe"),
+};
+
 export const SegmentApi = {
     list:                        GET("/api/segment"),
     create:                     POST("/api/segment"),

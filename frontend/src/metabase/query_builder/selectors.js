@@ -96,6 +96,7 @@ export const getDatabaseFields = createSelector(
 
 
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
+import { getAlerts } from "metabase/alert/selectors";
 
 export const getMode = createSelector(
     [getLastRunCard, getTableMetadata],
@@ -156,3 +157,8 @@ export const getQuery = createSelector(
 )
 
 export const getIsRunnable = createSelector([getQuestion], (question) => question && question.canRun())
+
+export const getQuestionAlerts = createSelector(
+    [getAlerts, getCard],
+    (alerts, card) => card && card.id && _.pick(alerts, (alert) => alert.card.id === card.id) || {}
+)

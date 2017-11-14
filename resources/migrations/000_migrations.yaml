@@ -3940,3 +3940,29 @@ databaseChangeLog:
               - column:
                   name: ended_at
                   type: DATETIME
+  - changeSet:
+      id: 69
+      author: senior
+      comment: 'Added 0.27.0'
+      remarks: 'Add columns to the pulse table for alerts'
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: alert_condition
+                  type: varchar(254)
+                  remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+              - column:
+                  name: alert_first_only
+                  type: boolean
+                  remarks: 'True if the alert should be disabled after the first notification'
+              - column:
+                  name: alert_above_goal
+                  type: boolean
+                  remarks: 'For a goal condition, alert when above the goal'
+        # There is no name for an alert, so this column is only required for pulses
+        - dropNotNullConstraint:
+            tableName: pulse
+            columnName: name
+            columnDataType: varchar(254)

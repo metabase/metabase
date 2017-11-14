@@ -1,4 +1,3 @@
-/* @flow */
 import React, { Component } from 'react'
 import { Motion, spring } from 'react-motion'
 
@@ -25,17 +24,29 @@ class EntityMenu extends Component {
     props: Props
 
     state = {
-        open: false
+        open: false,
+        freezeMenu: false,
+        menuItemContent: null
     }
 
     toggleMenu = () => {
+        if (this.state.freezeMenu) return;
+
         const open = !this.state.open
-        this.setState({ open })
+        this.setState({ open, menuItemContent: null })
+    }
+
+    setFreezeMenu = (freezeMenu: boolean) => {
+        this.setState({ freezeMenu })
+    }
+
+    replaceMenuWithItemContent = (menuItemContent: any) => {
+       this.setState({ menuItemContent })
     }
 
     render () {
         const { items, triggerIcon }  = this.props
-        const { open } = this.state
+        const { open, menuItemContent } = this.state
         return (
             <div className="relative">
                 <EntityMenuTrigger
@@ -70,20 +81,34 @@ class EntityMenu extends Component {
                                     }}
                                 >
                                     <Card>
-                                        <ol className="py1" style={{ minWidth: 210 }}>
-                                            {items.map(item => {
-                                                return (
-                                                    <li key={item.title}>
-                                                        <EntityMenuItem
-                                                            icon={item.icon}
-                                                            title={item.title}
-                                                            action={item.action}
-                                                            link={item.link}
-                                                        />
-                                                    </li>
-                                                )
-                                            })}
-                                        </ol>
+                                        { menuItemContent ||
+                                            <ol className="py1" style={{ minWidth: 210 }}>
+                                                {items.map(item => {
+                                                    if (item.content) {
+                                                        return (
+                                                            <li key={item.title}>
+                                                                <EntityMenuItem
+                                                                    icon={item.icon}
+                                                                    title={item.title}
+                                                                    action={() => this.replaceMenuWithItemContent(item.content(this.toggleMenu, this.setFreezeMenu))}
+                                                                />
+                                                            </li>
+                                                        )
+                                                    } else {
+                                                        return (
+                                                            <li key={item.title}>
+                                                                <EntityMenuItem
+                                                                    icon={item.icon}
+                                                                    title={item.title}
+                                                                    action={() => {item.action(); this.toggleMenu()}}
+                                                                    link={item.link}
+                                                                />
+                                                            </li>
+                                                        )
+                                                    }
+                                                })}
+                                            </ol>
+                                        }
                                     </Card>
                                 </div>
                             </OnClickOutsideWrapper>

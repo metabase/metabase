@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
 import Icon from "metabase/components/Icon.jsx";
 
 export default class ModalContent extends Component {
@@ -89,4 +88,3 @@ export const ModalFooter = ({ children, fullPageModal, formModal }) =>
             }
         </div>
     </div>
-

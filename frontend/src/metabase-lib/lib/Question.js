@@ -36,7 +36,8 @@ import type {
 } from "metabase/meta/types/Parameter";
 import type {
     DatasetQuery,
-    Card as CardObject
+    Card as CardObject,
+    VisualizationSettings
 } from "metabase/meta/types/Card";
 
 import { MetabaseApi, CardApi } from "metabase/services";
@@ -47,6 +48,11 @@ import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import * as Urls from "metabase/lib/urls";
 import Mode from "metabase-lib/lib/Mode";
+import {
+    ALERT_TYPE_PROGRESS_BAR_GOAL,
+    ALERT_TYPE_ROWS,
+    ALERT_TYPE_TIMESERIES_GOAL
+} from "metabase-lib/lib/Alert";
 
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
@@ -159,6 +165,10 @@ export default class Question {
         throw new Error("Unknown query type: " + datasetQuery.type);
     }
 
+    isNative(): boolean {
+        return this.query() instanceof NativeQuery;
+    }
+
     /**
      * Returns a new Question object with an updated query.
      * The query is saved to the `dataset_query` field of the Card object.
@@ -197,6 +207,15 @@ export default class Question {
         return this.setCard(assoc(this.card(), "display", display));
     }
 
+    visualizationSettings(): VisualizationSettings {
+        return this._card && this._card.visualization_settings;
+    }
+    setVisualizationSettings(settings: VisualizationSettings) {
+        return this.setCard(
+            assoc(this.card(), "visualization_settings", settings)
+        );
+    }
+
     isEmpty(): boolean {
         return this.query().isEmpty();
     }
@@ -209,6 +228,30 @@ export default class Question {
 
     canWrite(): boolean {
         return this._card && this._card.can_write;
+    }
+
+    alertType() {
+        const mode = this.mode();
+        const display = this.display();
+
+        if (!this.canRun()) {
+            return null;
+        }
+
+        if (display === "progress") {
+            return ALERT_TYPE_PROGRESS_BAR_GOAL;
+        } else if (mode && mode.name() === "timeseries") {
+            const vizSettings = this.card().visualization_settings;
+            // NOTE Atte Keinänen 11/6/17: Seems that `graph.goal_value` setting can be missing if
+            // only the "Show goal" toggle has been toggled but "Goal value" value hasn't explicitly been set
+            if (vizSettings["graph.show_goal"] === true) {
+                return ALERT_TYPE_TIMESERIES_GOAL;
+            } else {
+                return ALERT_TYPE_ROWS;
+            }
+        } else {
+            return ALERT_TYPE_ROWS;
+        }
     }
 
     /**

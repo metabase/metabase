@@ -1,4 +1,6 @@
 /*@flow weak*/
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
+
 declare var ace: any;
 
 import React from 'react'
@@ -18,7 +20,7 @@ import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, createUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent } from "metabase/meta/Card";
 
@@ -289,6 +291,9 @@ export const initializeQB = (location, params) => {
             uiControls
         });
 
+        // Fetch alerts for the current question if the question is saved
+        card && card.id && dispatch(fetchAlertsForQuestion(card.id))
+
         // Fetch the question metadata
         card && dispatch(loadMetadataForCard(card));
 
@@ -518,6 +523,7 @@ export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId,
     return { id: parameterId, value };
 });
 
+// Used after a question is successfully created in QueryHeader component code
 export const NOTIFY_CARD_CREATED = "metabase/qb/NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
@@ -529,6 +535,7 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
     }
 });
 
+// Used after a question is successfully updated in QueryHeader component code
 export const NOTIFY_CARD_UPDATED = "metabase/qb/NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction(NOTIFY_CARD_UPDATED, (card) => {
     return (dispatch, getState) => {
@@ -618,11 +625,11 @@ export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD,
  * Also shows/hides the template tag editor if the number of template tags has changed.
  */
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
-export const updateQuestion = (newQuestion) => {
+export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
     return (dispatch, getState) => {
         // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
         // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
-        if (!getIsEditing(getState()) && newQuestion.isSaved()) {
+        if (!doNotClearNameAndId && !getIsEditing(getState()) && newQuestion.isSaved()) {
             newQuestion = newQuestion.withoutNameAndId();
         }
 
@@ -1139,20 +1146,6 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
-// TODO - this is pretty much a duplicate of SET_ARCHIVED in questions/questions.js
-// unfortunately we have to do this because that action relies on its part of the store
-// for the card lookup
-// A simplified version of a similar method in questions/questions.js
-function createUndo(type, action) {
-    return {
-        type: type,
-        count: 1,
-        message: (undo) => // eslint-disable-line react/display-name
-                <div> { "Question  was " + type + "."} </div>,
-        actions: [action]
-    };
-}
-
 export const ARCHIVE_QUESTION = 'metabase/qb/ARCHIVE_QUESTION';
 export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, archived = true) =>
     async (dispatch, getState) => {
@@ -1162,10 +1155,14 @@ export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, 
         }
         let response = await CardApi.update(card)
 
-        dispatch(addUndo(createUndo(
-            archived ? "archived" : "unarchived",
-            archiveQuestion(card.id, !archived)
-        )));
+        const type = archived ? "archived" : "unarchived"
+
+        dispatch(addUndo(createUndo({
+            type,
+            // eslint-disable-next-line react/display-name
+            message: () => <div> { "Question  was " + type + "."} </div>,
+            action: archiveQuestion(card.id, !archived)
+        })));
 
         dispatch(push('/questions'))
         return response

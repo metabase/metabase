@@ -48,10 +48,12 @@ export default class UndoListing extends Component {
                             {typeof undo.message === "function" ? undo.message(undo) : undo.message}
                         </div>
 
-                        <div className={S.actions}>
-                            <a className={S.undoButton} onClick={() => performUndo(undo.id)}>Undo</a>
-                            <Icon className={S.dismissButton} name="close" onClick={() => dismissUndo(undo.id)} />
-                        </div>
+                        { undo.actions &&
+                            <div className={S.actions}>
+                                <a className={S.undoButton} onClick={() => performUndo(undo.id)}>Undo</a>
+                                <Icon className={S.dismissButton} name="close" onClick={() => dismissUndo(undo.id)} />
+                            </div>
+                        }
                     </li>
                 )}
                 </ReactCSSTransitionGroup>
