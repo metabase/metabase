@@ -5,7 +5,7 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
-            [metabase.query-processor.middleware.parameters.sql :refer :all]
+            [metabase.query-processor.middleware.parameters.sql :refer :all, :as sql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -427,7 +427,8 @@
   (generic-sql/quote-name datasets/*driver* identifier))
 
 (defn- checkins-identifier []
-  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and Presto we will just hackily return the correct identifier here
+  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and
+  ;; Presto we will just hackily return the correct identifier here
   (case datasets/*engine*
     :bigquery "[test_data.checkins]"
     :presto   "\"default\".\"checkins\""
@@ -546,3 +547,102 @@
                     :native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
                                  :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
                     :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            RELATIVE DATES & DEFAULTS IN "DIMENSION" PARAMS (#6059)                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure relative date forms like `past5days` work correctly with Field Filters
+(expect
+  {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                       "FROM CHECKINS "
+                       "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                       "GROUP BY \"DATE\"")
+   :template_tags {:checkin_date {:name         "checkin_date"
+                                  :display_name "Checkin Date"
+                                  :type         "dimension"
+                                  :dimension    ["field-id" (data/id :checkins :date)]}}
+   :params        [#inst "2017-10-31T00:00:00.000000000-00:00"
+                   #inst "2017-11-04T00:00:00.000000000-00:00"]}
+  (with-redefs [t/now (fn [] (t/date-time 2017 11 05 12 0 0))]
+    (:native (expand {:driver     (driver/engine->driver :h2)
+                      :native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                       "FROM CHECKINS "
+                                                       "WHERE {{checkin_date}} "
+                                                       "GROUP BY \"DATE\"")
+                                   :template_tags {:checkin_date {:name         "checkin_date"
+                                                                  :display_name "Checkin Date"
+                                                                  :type         "dimension"
+                                                                  :dimension    ["field-id" (data/id :checkins :date)]}}}
+                      :parameters [{:type   "date/range"
+                                    :target ["dimension" ["template-tag" "checkin_date"]]
+                                    :value  "past5days"}]}))))
+
+;; Make sure defaults values get picked up for field filter clauses
+(expect
+  {:field {:name "DATE", :parent_id nil, :table_id (data/id :checkins)}
+   :param {:type   "date/all-options"
+           :target ["dimension" ["template-tag" "checkin_date"]]
+           :value  "past5days"}}
+  (#'sql/dimension-value-for-tag {:name         "checkin_date"
+                                  :display_name "Checkin Date"
+                                  :type         "dimension"
+                                  :dimension    [:field-id (data/id :checkins :date)]
+                                  :default      "past5days"
+                                  :widget_type  "date/all-options"}
+                                 nil))
+
+;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
+;; `:widget_type` key. Check that it works correctly with relative dates...
+(expect
+  {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                       "FROM CHECKINS "
+                       "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                       "GROUP BY \"DATE\"")
+   :template_tags {:checkin_date
+                   {:name         "checkin_date"
+                    :display_name "Checkin Date"
+                    :type         "dimension"
+                    :dimension    ["field-id" (data/id :checkins :date)]
+                    :default      "past5days"
+                    :widget_type  "date/all-options"}}
+   :params        [#inst "2017-10-31T00:00:00.000000000-00:00"
+                   #inst "2017-11-04T00:00:00.000000000-00:00"]}
+  (with-redefs [t/now (fn [] (t/date-time 2017 11 05 12 0 0))]
+    (:native (expand {:driver (driver/engine->driver :h2)
+                      :native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                   "FROM CHECKINS "
+                                                   "WHERE {{checkin_date}} "
+                                                   "GROUP BY \"DATE\"")
+                               :template_tags {:checkin_date {:name         "checkin_date"
+                                                              :display_name "Checkin Date"
+                                                              :type         "dimension"
+                                                              :dimension    ["field-id" (data/id :checkins :date)]
+                                                              :default      "past5days"
+                                                              :widget_type  "date/all-options"}}}}))))
+
+;; Check that it works with absolute dates as well
+(expect
+  {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                       "FROM CHECKINS "
+                       "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
+                       "GROUP BY \"DATE\"")
+   :template_tags {:checkin_date {:name         "checkin_date"
+                                  :display_name "Checkin Date"
+                                  :type         "dimension"
+                                  :dimension    ["field-id" (data/id :checkins :date)]
+                                  :default      "2017-11-14"
+                                  :widget_type  "date/all-options"}}
+   :params        [#inst "2017-11-14T00:00:00.000000000-00:00"]}
+  (:native (expand {:driver (driver/engine->driver :h2)
+                    :native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                 "FROM CHECKINS "
+                                                 "WHERE {{checkin_date}} "
+                                                 "GROUP BY \"DATE\"")
+                             :template_tags {:checkin_date {:name         "checkin_date"
+                                                            :display_name "Checkin Date"
+                                                            :type         "dimension"
+                                                            :dimension    ["field-id" (data/id :checkins :date)]
+                                                            :default      "2017-11-14"
+                                                            :widget_type  "date/all-options"}}}})))

@@ -63,7 +63,7 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
-                 [kixi/stats "0.3.9"                                  ; Various statistic measures implemented as transducers
+                 [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
@@ -74,6 +74,10 @@
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+                 [jdistlib "0.5.1"                                    ; Distribution statistic tests
+                  :exclusions [com.github.wendykierp/JTransforms]]
+                 [net.cgrand/xforms "0.13.0"                          ; Additional transducers
+                  :exclusions [org.clojure/clojurescript]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
@@ -162,8 +166,7 @@
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
                                   "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
              ;; generate sample dataset with `lein generate-sample-dataset`
-             :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby library
-                                                      [incanter/incanter-core "1.9.1"]] ; Satistical functions like normal distibutions}})
+             :generate-sample-dataset {:dependencies [[faker "0.2.2"]]                   ; Fake data generator -- port of Perl/Ruby library
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
              ;; Profile Metabase start time with `lein profile`

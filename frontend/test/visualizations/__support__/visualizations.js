@@ -44,6 +44,18 @@ export const ScalarCard = (name, ...overrides) =>
         }
     }, ...overrides);
 
+export const TableCard = (name, ...overrides) =>
+    Card(name, {
+        card: {
+            display: "table",
+        },
+        data: {
+            cols: [NumberColumn({ name: name + "_col0" })],
+            columns: ["id"],
+            rows: [[1]]
+        }
+    }, ...overrides);
+
 export const LineCard = (name, ...overrides) =>
     Card(name, {
         card: {

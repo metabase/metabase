@@ -199,10 +199,10 @@
   "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    return a MAP with `:start` and `:end` as iso8601 string formatted dates, respecting the given timezone."
   [date-string report-timezone]
-  (let [tz (t/time-zone-for-id report-timezone)
+  (let [tz                 (t/time-zone-for-id report-timezone)
         formatter-local-tz (tf/formatter "yyyy-MM-dd" tz)
-        formatter-no-tz (tf/formatter "yyyy-MM-dd")
-        today (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
+        formatter-no-tz    (tf/formatter "yyyy-MM-dd")
+        today              (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of days
     ;; depending on the user timezone
     (or (->> (execute-decoders relative-date-string-decoders :range today date-string)

@@ -13,6 +13,8 @@ import { columnsAreValid, getFriendlyName } from "metabase/visualizations/lib/ut
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
 import _ from "underscore";
+import cx from "classnames";
+import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
@@ -125,21 +127,38 @@ export default class Table extends Component {
         const { data } = this.state;
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
+        const isColumnsDisabled = (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
         if (!data) {
             return null;
         }
 
-        return (
-            // $FlowFixMe
-            <TableComponent
-                {...this.props}
-                data={data}
-                isPivoted={isPivoted}
-                sort={sort}
-            />
-        );
+        if (isColumnsDisabled) {
+            return (
+                <div className={cx("flex-full px1 pb1 text-centered flex flex-column layout-centered", { "text-slate-light": isDashboard, "text-slate": !isDashboard })} >
+                    <RetinaImage
+                        width={99}
+                        src="app/assets/img/hidden-field.png"
+                        forceOriginalDimensions={false}
+                        className="mb2"
+                    />
+                    <span className="h4 text-bold">
+                        Every field is hidden right now
+                    </span>
+                </div>
+            )
+        } else {
+            return (
+                // $FlowFixMe
+                <TableComponent
+                    {...this.props}
+                    data={data}
+                    isPivoted={isPivoted}
+                    sort={sort}
+                />
+            );
+        }
     }
 }
 
