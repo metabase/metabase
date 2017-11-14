@@ -81,7 +81,6 @@ export default class PulseListChannel extends Component {
         if (subscribable) {
             subscribed = _.any(channel.recipients, r => r.id === user.id);
         }
-        const chType = channel.channel_type
         return (
             <div className="py2 flex align-center">
                 { this.renderChannelSchedule() }
@@ -89,13 +88,13 @@ export default class PulseListChannel extends Component {
                     <div className="flex-align-right">
                         { subscribed ?
                             <div className="flex align-center rounded bg-green text-white text-bold">
-                                <div className="pl2">{t`You get this ${ chType }`}</div>
+                                <div className="pl2">{t`You get this ${channel.channel_type}`}</div>
                                 <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" size={12} onClick={this.unsubscribe}/>
                             </div>
                         : !pulse.read_only ?
                             <div className="flex align-center rounded bordered bg-white text-default text-bold cursor-pointer" onClick={this.subscribe}>
                                 <Icon className="p2" name="add" size={12}/>
-                                <div className="pr2">{t`Get this ${ chType }`}</div>
+                                <div className="pr2">{t`Get this ${channel.channel_type}`}</div>
                             </div>
                         : null }
                     </div>
