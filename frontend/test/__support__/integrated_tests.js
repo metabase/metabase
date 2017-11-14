@@ -43,6 +43,20 @@ let simulateOfflineMode = false;
 let apiRequestCompletedCallback = null;
 let skippedApiRequests = [];
 
+
+// These i18n settings are same is beginning of app.js
+
+// make the i18n function "t" global so we don't have to import it in basically every file
+import { t, jt } from "c-3po";
+global.t = t;
+global.jt = jt;
+
+// set the locale before loading anything else
+import { setLocalization } from "metabase/lib/i18n";
+if (window.MetabaseLocalization) {
+    setLocalization(window.MetabaseLocalization)
+}
+
 const warnAboutCreatingStoreBeforeLogin = () => {
     if (!loginSession && hasStartedCreatingStore) {
         console.warn(

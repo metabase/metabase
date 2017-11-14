@@ -11,7 +11,7 @@ import {
     ORDERS_TOTAL_FIELD_ID
 } from "__support__/sample_dataset_fixture";
 
-const createFnMock = jest.fn();
+const createFnMock = jest.fn(() => Promise.resolve());
 let saveFnMock;
 
 const getSaveQuestionModal = (question, originalQuestion) =>
@@ -28,7 +28,7 @@ describe('SaveQuestionModal', () => {
     beforeEach(() => {
         // we need to create a new save mock before each test to ensure that each
         // test has its own instance
-        saveFnMock = jest.fn();
+        saveFnMock = jest.fn(() => Promise.resolve());
     })
 
     it("should call createFn correctly for a new question", async () => {
