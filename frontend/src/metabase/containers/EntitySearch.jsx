@@ -3,6 +3,7 @@ import { connect } from 'react-redux'
 import { push, replace } from "react-router-redux";
 import _ from "underscore";
 import cx from "classnames";
+import { t } from 'c-3po'
 
 import SearchHeader from "metabase/components/SearchHeader";
 import DirectionalButton from "metabase/components/DirectionalButton";
