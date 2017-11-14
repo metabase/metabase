@@ -5,6 +5,7 @@ import {connect} from "react-redux";
 import {Link} from "react-router";
 import cx from "classnames";
 import _ from "underscore"
+import { t, jt } from "c-3po";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
