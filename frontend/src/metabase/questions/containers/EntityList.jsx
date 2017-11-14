@@ -66,19 +66,19 @@ const SECTIONS = [
         id: 'fav',
         name: t`Favorites`,
         icon: 'star',
-        empty: t`You haven\'t favorited any questions yet.`,
+        empty: t`You haven't favorited any questions yet.`,
     },
     {
         id: 'recent',
         name: t`Recently viewed`,
         icon: 'recents',
-        empty: t`You haven\'t viewed any questions recently.`,
+        empty: t`You haven't viewed any questions recently.`,
     },
     {
         id: 'mine',
         name: t`Saved by me`,
         icon: 'mine',
-        empty:  t`You haven\'t saved any questions yet.`
+        empty:  t`You haven't saved any questions yet.`
     },
     {
         id: 'popular',
@@ -96,7 +96,7 @@ const SECTIONS = [
 
 const DEFAULT_SECTION = {
     icon: 'all',
-    empty: t`There aren\'t any questions matching that criteria.`
+    empty: t`There aren't any questions matching that criteria.`
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
