@@ -226,3 +226,121 @@
                        (vec (cons :div (for [result results]
                                          (render/render-pulse-section timezone result)))))]
     (render-message-body "metabase/email/pulse" (pulse-context body pulse) (seq @images))))
+
+(defn pulse->alert-condition-kwd
+  "Given an `ALERT` return a keyword representing what kind of goal needs to be met."
+  [{:keys [alert_above_goal alert_condition card creator] :as alert}]
+  (if (= "goal" alert_condition)
+    (if (true? alert_above_goal)
+      :meets
+      :below)
+    :rows))
+
+(defn- first-card
+  "Alerts only have a single card, so the alerts API accepts a `:card` key, while pulses have `:cards`. Depending on
+  whether the data comes from the alert API or pulse tasks, the card could be under `:card` or `:cards`"
+  [alert]
+  (or (:card alert)
+      (first (:cards alert))))
+
+(defn- default-alert-context
+  ([alert]
+   (default-alert-context alert nil))
+  ([alert alert-condition-map]
+   (let [{card-id :id, card-name :name} (first-card alert)]
+     (merge {:questionURL (url/card-url card-id)
+             :questionName card-name
+             :emailType    "alert"
+             :sectionStyle render/section-style
+             :colorGrey4   render/color-gray-4
+             :logoFooter   true}
+            (random-quote-context)
+            (when alert-condition-map
+              {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
+
+(defn- alert-results-condition-text [goal-value]
+  {:meets (format "reached its goal of %s" goal-value)
+   :below (format "gone below its goal of %s" goal-value)
+   :rows  "results for you to see"})
+
+(defn render-alert-email
+  "Take a pulse object and list of results, returns an array of attachment objects for an email"
+  [timezone {:keys [alert_first_only] :as alert} results goal-value]
+  (let [images       (atom {})
+        body         (binding [render/*include-title* true
+                               render/*render-img-fn* (partial render-image images)]
+                       (html (vec (cons :div (for [result results]
+                                               (render/render-pulse-section timezone result))))))
+        message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
+    (render-message-body "metabase/email/alert"
+                         (assoc message-ctx :pulse body :firstRunOnly? alert_first_only)
+                         (seq @images))))
+
+(def ^:private alert-condition-text
+  {:meets "when this question meets its goal"
+   :below "when this question goes below its goal"
+   :rows  "whenever this question has any results"})
+
+(defn- send-email! [user subject template-path template-context]
+  (email/send-message!
+    :recipients   [(:email user)]
+    :message-type :html
+    :subject      subject
+    :message      (stencil/render-file template-path template-context)))
+
+(defn- template-path [template-name]
+  (str "metabase/email/" template-name ".mustache"))
+
+;; Paths to the templates for all of the alerts emails
+(def ^:private new-alert-template (template-path "alert_new_confirmation"))
+(def ^:private you-unsubscribed-template (template-path "alert_unsubscribed"))
+(def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
+(def ^:private added-template (template-path "alert_you_were_added"))
+(def ^:private stopped-template (template-path "alert_stopped_working"))
+(def ^:private deleted-template (template-path "alert_was_deleted"))
+
+(defn send-new-alert-email!
+  "Send out the initial 'new alert' email to the `CREATOR` of the alert"
+  [{:keys [creator] :as alert}]
+  (send-email! creator "You setup an alert" new-alert-template
+               (default-alert-context alert alert-condition-text)))
+
+(defn send-you-unsubscribed-alert-email!
+  "Send an email to `WHO-UNSUBSCRIBED` letting them know they've unsubscribed themselves from `ALERT`"
+  [alert who-unsubscribed]
+  (send-email! who-unsubscribed "You unsubscribed from an alert" you-unsubscribed-template
+               (default-alert-context alert)))
+
+(defn send-admin-unsubscribed-alert-email!
+  "Send an email to `USER-ADDED` letting them know `ADMIN` has unsubscribed them from `ALERT`"
+  [alert user-added {:keys [first_name last_name] :as admin}]
+  (let [admin-name (format "%s %s" first_name last_name)]
+    (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
+                 (assoc (default-alert-context alert) :adminName admin-name))))
+
+(defn send-you-were-added-alert-email!
+  "Send an email to `USER-ADDED` letting them know `ADMIN-ADDER` has added them to `ALERT`"
+  [alert user-added {:keys [first_name last_name] :as admin-adder}]
+  (let [subject (format "%s %s added you to an alert" first_name last_name)]
+    (send-email! user-added subject added-template (default-alert-context alert alert-condition-text))))
+
+(def ^:private not-working-subject "One of your alerts has stopped working")
+
+(defn send-alert-stopped-because-archived-email!
+  "Email to notify users when a card associated to their alert has been archived"
+  [alert user {:keys [first_name last_name] :as archiver}]
+  (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
+    (send-email! user not-working-subject stopped-template (assoc (default-alert-context alert) :deletionCause deletion-text))))
+
+(defn send-alert-stopped-because-changed-email!
+  "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
+  [alert user {:keys [first_name last_name] :as archiver}]
+  (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
+    (send-email! user not-working-subject stopped-template (assoc (default-alert-context alert) :deletionCause edited-text))))
+
+(defn send-admin-deleted-your-alert!
+  "Email to notify users when an admin has deleted their alert"
+  [alert user {:keys [first_name last_name] :as deletor}]
+  (let [subject (format "%s %s deleted an alert you created" first_name last_name)
+        admin-name (format "%s %s" first_name last_name)]
+    (send-email! user subject deleted-template (assoc (default-alert-context alert) :adminName admin-name))))

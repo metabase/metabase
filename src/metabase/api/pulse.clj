@@ -33,9 +33,11 @@
                   can-write?)]
     (assoc pulse :read_only (not can-write?))))
 
-
-(defn- check-card-read-permissions [cards]
-  (doseq [{card-id :id} cards]
+(defn check-card-read-permissions
+  "Users can only create a pulse for `CARDS` they have access to"
+  [cards]
+  (doseq [card cards
+          :let [card-id (u/get-id card)]]
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 

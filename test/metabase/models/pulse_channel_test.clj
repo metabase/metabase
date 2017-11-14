@@ -5,7 +5,9 @@
              [pulse :refer :all]
              [pulse-channel :refer :all]
              [pulse-channel-recipient :refer :all]]
-            [metabase.test.data :refer :all]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
             [toucan
              [db :as db]
@@ -121,22 +123,23 @@
 
 ;; create-pulse-channel!
 (expect
-  {:enabled       true
-   :channel_type  :email
-   :schedule_type :daily
-   :schedule_hour 18
-   :schedule_day  nil
+  {:enabled        true
+   :channel_type   :email
+   :schedule_type  :daily
+   :schedule_hour  18
+   :schedule_day   nil
    :schedule_frame nil
-   :recipients    [(user-details :crowberto)
-                   {:email "foo@bar.com"}
-                   (user-details :rasta)]}
+   :recipients     [(user-details :crowberto)
+                    {:email "foo@bar.com"}
+                    (user-details :rasta)]}
   (tt/with-temp Pulse [{:keys [id]}]
-    (create-channel-then-select! {:pulse_id      id
-                                  :enabled       true
-                                  :channel_type  :email
-                                  :schedule_type :daily
-                                  :schedule_hour 18
-                                  :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
+    (tu/with-model-cleanup [Pulse]
+      (create-channel-then-select! {:pulse_id      id
+                                    :enabled       true
+                                    :channel_type  :email
+                                    :schedule_type :daily
+                                    :schedule_hour 18
+                                    :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]}))))
 
 (expect
   {:enabled       true
@@ -148,24 +151,25 @@
    :recipients    []
    :details       {:something "random"}}
   (tt/with-temp Pulse [{:keys [id]}]
-    (create-channel-then-select! {:pulse_id      id
-                                  :enabled       true
-                                  :channel_type  :slack
-                                  :schedule_type :hourly
-                                  :details       {:something "random"}
-                                  :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
+    (tu/with-model-cleanup [Pulse]
+      (create-channel-then-select! {:pulse_id      id
+                                    :enabled       true
+                                    :channel_type  :slack
+                                    :schedule_type :hourly
+                                    :details       {:something "random"}
+                                    :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]}))))
 
 
 ;; update-pulse-channel!
 ;; simple starting case where we modify the schedule hour and add a recipient
 (expect
-  {:enabled       true
-   :channel_type  :email
-   :schedule_type :daily
-   :schedule_hour 18
-   :schedule_day  nil
+  {:enabled        true
+   :channel_type   :email
+   :schedule_type  :daily
+   :schedule_hour  18
+   :schedule_day   nil
    :schedule_frame nil
-   :recipients    [{:email "foo@bar.com"}]}
+   :recipients     [{:email "foo@bar.com"}]}
   (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id, :as channel} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
@@ -284,7 +288,7 @@
    [{:schedule_type :daily,  :channel_type :email}
     {:schedule_type :hourly, :channel_type :slack}]]
   (tt/with-temp* [Pulse        [{pulse-id :id}]
-                  PulseChannel [_ {:pulse_id pulse-id}]
+                  PulseChannel [_ {:pulse_id pulse-id}] ;-> schedule_type = daily, schedule_hour = 15, channel_type = email
                   PulseChannel [_ {:pulse_id pulse-id, :channel_type :slack, :schedule_type :hourly}]
                   PulseChannel [_ {:pulse_id pulse-id, :channel_type :email, :schedule_type :hourly, :enabled false}]]
     (let [retrieve-channels (fn [hour day]
