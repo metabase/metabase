@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 
 import Toggle from "metabase/components/Toggle.jsx";
+import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
@@ -100,11 +101,11 @@ export default class TagEditorParam extends Component {
 
                 <div className="pb1">
                     <h5 className="pb1 text-normal">Filter label</h5>
-                    <input
+                    <Input
                         type="text"
                         value={tag.display_name}
                         className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded full"
-                        onChange={(e) => this.setParameterAttribute("display_name", e.target.value)}
+                        onBlurChange={(e) => this.setParameterAttribute("display_name", e.target.value)}
                     />
                 </div>
 
