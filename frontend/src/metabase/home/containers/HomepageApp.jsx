@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from 'c-3po'
 import { push } from "react-router-redux";
 
-import Greeting from "metabase/lib/greeting";
+import { Greeting } from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal";
 
 import Activity from "../components/Activity";
