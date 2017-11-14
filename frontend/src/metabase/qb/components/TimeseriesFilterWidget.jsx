@@ -103,9 +103,9 @@ export default class TimeseriesFilterWidget extends Component {
                 currentFilter
             ).join(" - ");
             if (currentFilter[0] === ">") {
-                currentDescription = t`After`+ " " + currentDescription;
+                currentDescription = t`After ${currentDescription}`;
             } else if (currentFilter[0] === "<") {
-                currentDescription = t`Before`+ " " + currentDescription;
+                currentDescription = t`Before ${currentDescription}`;
             } else if (currentFilter[0] === "IS_NULL") {
                 currentDescription = t`Is Empty`;
             } else if (currentFilter[0] === "NOT_NULL") {

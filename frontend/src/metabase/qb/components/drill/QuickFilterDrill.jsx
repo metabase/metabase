@@ -51,12 +51,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
                 section: "filter",
                 title: (
                     <span>
-                        {t`View this`}
-                        {" "}
-                        {singularize(stripId(column.display_name))}
-                        's
-                        {" "}
-                        {pluralize(query.table().display_name)}
+                        {jt`View this ${singularize(stripId(column.display_name))}'s ${pluralize(query.table().display_name)}`}
                     </span>
                 ),
                 question: () => question.filter("=", column, value)
