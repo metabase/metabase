@@ -46,6 +46,8 @@ export default class EmbedFrame extends Component {
     }
 
     componentWillMount() {
+        // Make iFrameResizer avaliable so that embed users can
+        // have their embeds autosize to their content
         if (window.iFrameResizer) {
             console.error("iFrameResizer resizer already defined.")
         } else {
@@ -57,8 +59,8 @@ export default class EmbedFrame extends Component {
                 }
             }
             // $FlowFixMe: flow doesn't know about require.ensure
-            require.ensure && require.ensure([], () => {
-                require("iframe-resizer/js/iframeResizer.contentWindow.js")
+            require.ensure([], (require) => {
+                require('iframe-resizer')
             });
         }
     }
