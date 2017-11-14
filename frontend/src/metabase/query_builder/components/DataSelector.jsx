@@ -157,7 +157,7 @@ export default class DataSelector extends Component {
         return (
             <AccordianList
                 id="DatabasePicker"
-                key="schemaPicker"
+                key="databasePicker"
                 className="text-brand"
                 sections={sections}
                 onChange={this.onChangeTable}
@@ -188,7 +188,7 @@ export default class DataSelector extends Component {
             <div>
                 <AccordianList
                     id="DatabaseSchemaPicker"
-                    key="schemaPicker"
+                    key="databaseSchemaPicker"
                     className="text-brand"
                     sections={sections}
                     onChange={this.onChangeSchema}
@@ -230,7 +230,8 @@ export default class DataSelector extends Component {
 
         return (
             <AccordianList
-                key="schemaPicker"
+                id="SegmentAndDatabasePicker"
+                key="segmentAndDatabasePicker"
                 className="text-brand"
                 sections={sections}
                 onChange={this.onChangeSchema}
@@ -352,6 +353,7 @@ export default class DataSelector extends Component {
 
         return (
             <AccordianList
+                id="SegmentPicker"
                 key="segmentPicker"
                 className="text-brand"
                 sections={sections}

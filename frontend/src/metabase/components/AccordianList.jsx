@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
-import { List } from 'react-virtualized';
+import { List, CellMeasurer, CellMeasurerCache } from 'react-virtualized';
 
 export default class AccordianList extends Component {
     constructor(props, context) {
@@ -33,6 +33,11 @@ export default class AccordianList extends Component {
             openSection,
             searchText: ""
         };
+
+        this._cache = new CellMeasurerCache({
+            fixedWidth: true,
+            minHeight: 10,
+        });
     }
 
     static propTypes = {
@@ -61,8 +66,41 @@ export default class AccordianList extends Component {
         hideSingleSectionTitle: false,
     };
 
+
+    // TODO: reimplement scrolling currently selected item into view
+
     componentDidMount() {
-        // TODO: reimplement scrolling currently selected item into view
+        this._forceUpdateList();
+    }
+    componentDidUpdate(prevProps, prevState) {
+        // if the section changed we need to reset the cached row heights
+        if (this.state.openSection !== prevState.openSection) {
+            this._clearRowHeightCache()
+        }
+    }
+    componentWillUnmount() {
+        if (this._forceUpdateTimeout != null) {
+            clearTimeout(this._forceUpdateTimeout);
+            this._forceUpdateTimeout = null;
+        }
+    }
+
+    _clearRowHeightCache() {
+        this._cache.clearAll();
+        // NOTE: unclear why this needs to be async
+        this._forceUpdateTimeout = setTimeout(() => {
+            this._forceUpdateTimeout = null;
+            this._forceUpdateList();
+        })
+    }
+    _forceUpdateList() {
+        // NOTE: unclear why this particular set of functions works, but it does
+        this._list.invalidateCellSizeAfterRender({
+            columnIndex: 0,
+            rowIndex: 0
+        });
+        // this._list.forceUpdateGrid();
+        this.forceUpdate()
     }
 
     toggleSection(sectionIndex) {
@@ -194,92 +232,106 @@ export default class AccordianList extends Component {
             }
         }
 
-        const getRowHeight = ({ index }) =>
-            rows[index].type === "header" && alwaysExpanded ? 44 : // "alwaysExpanded" style uses shorter headers
-            rows[index].type === "header" ? 56 :
-            rows[index].type === "search" ? 56 :
-            rows[index].type === "item" ?  36 + (rows[index].isLastItem ? 8 : 0) : // add padding for last row
-            0;
-
         const width = 300;
-        const height = Math.min(500, rows.reduce((height, row, index) => height + getRowHeight({ index }), 0));
+        const maxHeight = 500;
+        const height = Math.min(maxHeight, rows.reduce((height, row, index) =>
+            height + this._cache.rowHeight({ index })
+        , 0));
 
         return (
             <List
                 id={id}
+                ref={list => this._list = list}
                 className={this.props.className}
                 style={style}
                 width={width}
                 height={height}
                 rowCount={rows.length}
-                rowHeight={getRowHeight}
-                rowRenderer={({ key, index, style }) => {
-                    const { type, section, sectionIndex, item, itemIndex } = rows[index];
+
+                deferredMeasurementCache={this._cache}
+                rowHeight={this._cache.rowHeight}
+
+                // HACK: needs to be large enough to render enough rows to fill the screen since we used
+                // the CellMeasurerCache to calculate the height
+                overscanRowCount={50}
+
+                rowRenderer={({ key, index, parent, style }) => {
+                    const { type, section, sectionIndex, item, itemIndex, isLastItem } = rows[index];
                     return (
-                        <section
+                        <CellMeasurer
+                            cache={this._cache}
+                            columnIndex={0}
                             key={key}
-                            style={style}
-                            className={cx("List-section", section.className, {
-                                "List-section--expanded": sectionIsExpanded(sectionIndex),
-                                "List-section--togglable": sectionIsTogglable(sectionIndex)
-                            })}
+                            rowIndex={index}
+                            parent={parent}
                         >
-                            { type === "header" ? (
-                                alwaysExpanded ?
-                                    <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
-                                        {section.name}
-                                    </div>
-                                :
-                                    <div
-                                        className={cx("List-section-header p2 flex align-center", {
-                                            "cursor-pointer": sectionIsTogglable(sectionIndex),
-                                            "border-top": sectionIndex !== 0,
-                                            "border-bottom": sectionIsExpanded(sectionIndex)
-                                        })}
-                                        onClick={sectionIsTogglable(sectionIndex) && (() => this.toggleSection(sectionIndex))}
-                                    >
-                                        { this.renderSectionIcon(section, sectionIndex) }
-                                        <h3 className="List-section-title">{section.name}</h3>
-                                        { sections.length > 1 && section.items && section.items.length > 0 &&
-                                            <span className="flex-align-right">
-                                                <Icon name={sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
-                                            </span>
-                                        }
-                                    </div>
-                            ) : type === "search" ?
-                                <div className="m1" style={{ border: "2px solid transparent" }}>
-                                    <ListSearchField
-                                        onChange={(val) => this.setState({searchText: val})}
-                                        searchText={this.state.searchText}
-                                        placeholder={searchPlaceholder}
-                                        autoFocus
-                                    />
-                                </div>
-                            : type === "item" ?
+                            {({ measure }) =>
                                 <div
-                                    className={cx("List-item flex mx1", {
-                                        'List-item--selected': this.itemIsSelected(item, itemIndex),
-                                        'List-item--disabled': !this.itemIsClickable(item)
-                                    }, this.getItemClasses(item, itemIndex))}
+                                    style={style}
+                                    className={cx("List-section", section.className, {
+                                        "List-section--expanded": sectionIsExpanded(sectionIndex),
+                                        "List-section--togglable": sectionIsTogglable(sectionIndex)
+                                    })}
                                 >
-                                    <a
-                                        className={cx("p1 flex-full flex align-center", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
-                                        onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
-                                    >
-                                        <span className="flex align-center">{ this.renderItemIcon(item, itemIndex) }</span>
-                                        <h4 className="List-item-title ml1">{item.name}</h4>
-                                    </a>
-                                    { this.renderItemExtra(item, itemIndex) }
-                                    { showItemArrows &&
-                                        <div className="List-item-arrow flex align-center px1">
-                                            <Icon name="chevronright" size={8} />
+                                    { type === "header" ? (
+                                        alwaysExpanded ?
+                                            <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
+                                                {section.name}
+                                            </div>
+                                        :
+                                            <div
+                                                className={cx("List-section-header p2 flex align-center", {
+                                                    "cursor-pointer": sectionIsTogglable(sectionIndex),
+                                                    "border-top": sectionIndex !== 0,
+                                                    "border-bottom": sectionIsExpanded(sectionIndex)
+                                                })}
+                                                onClick={sectionIsTogglable(sectionIndex) && (() => this.toggleSection(sectionIndex))}
+                                            >
+                                                { this.renderSectionIcon(section, sectionIndex) }
+                                                <h3 className="List-section-title">{section.name}</h3>
+                                                { sections.length > 1 && section.items && section.items.length > 0 &&
+                                                    <span className="flex-align-right">
+                                                        <Icon name={sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
+                                                    </span>
+                                                }
+                                            </div>
+                                    ) : type === "search" ?
+                                        <div className="m1" style={{ border: "2px solid transparent" }}>
+                                            <ListSearchField
+                                                onChange={(val) => this.setState({searchText: val})}
+                                                searchText={this.state.searchText}
+                                                placeholder={searchPlaceholder}
+                                                autoFocus
+                                            />
                                         </div>
+                                    : type === "item" ?
+                                        <div
+                                            className={cx("List-item flex mx1", {
+                                                'List-item--selected': this.itemIsSelected(item, itemIndex),
+                                                'List-item--disabled': !this.itemIsClickable(item),
+                                                "mb1": isLastItem
+                                            }, this.getItemClasses(item, itemIndex))}
+                                        >
+                                            <a
+                                                className={cx("p1 flex-full flex align-center", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
+                                                onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
+                                            >
+                                                <span className="flex align-center">{ this.renderItemIcon(item, itemIndex) }</span>
+                                                <h4 className="List-item-title ml1">{item.name}</h4>
+                                            </a>
+                                            { this.renderItemExtra(item, itemIndex) }
+                                            { showItemArrows &&
+                                                <div className="List-item-arrow flex align-center px1">
+                                                    <Icon name="chevronright" size={8} />
+                                                </div>
+                                            }
+                                        </div>
+                                    :
+                                        null
                                     }
                                 </div>
-                            :
-                                <div>UNKNOWN ROW TYPE</div>
                             }
-                        </section>
+                        </CellMeasurer>
                     );
                 }}
             />
