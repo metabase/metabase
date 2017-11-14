@@ -48,15 +48,15 @@
     (long x)
     x))
 
-(defn- oracle?
+(defn- oracle-or-redshift?
   "We currently have a bug in how report-timezone is used in
   Oracle. The timeone is applied correctly, but the date operations
   that we use aren't using that timezone. It's written up as
   https://github.com/metabase/metabase/issues/5789. This function is
   used to differentiate Oracle from the other report-timezone
-  databases until that bug can get fixed."
+  databases until that bug can get fixed. Redshift also has this issue."
   [engine]
-  (contains? #{:oracle} engine))
+  (contains? #{:oracle :redshift} engine))
 
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `UNIT`"
@@ -148,7 +148,7 @@
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific timezone
@@ -168,7 +168,7 @@
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
@@ -194,7 +194,7 @@
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The JVM timezone should have no impact on a database that uses a report timezone
@@ -220,7 +220,7 @@
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     (supports-report-timezone? *engine*)
@@ -286,7 +286,7 @@
     (results-by-hour (source-date-formatter utc-tz)
                      result-date-formatter-without-tz)
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-hour (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     (supports-report-timezone? *engine*)
@@ -308,7 +308,7 @@
 ;; first three results of the pacific results to the last three of the
 ;; UTC results (i.e. pacific is 7 hours back of UTC at that time)
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle? *engine*))
+  (if (and (not (oracle-or-redshift? *engine*))
            (supports-report-timezone? *engine*))
     [[0 8] [1 9] [2 7] [3 10] [4 10] [5 9] [6 6] [7 5] [8 7] [9 7]]
     [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]])
@@ -415,7 +415,7 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
@@ -448,7 +448,7 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-day (tformat/with-zone date-formatter-without-time eastern-tz)
                     (result-date-formatter eastern-tz)
                     [6 10 4 9 9 8 8 9 7 9])
@@ -484,7 +484,7 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
@@ -509,7 +509,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle? *engine*))
+  (if (and (not (oracle-or-redshift? *engine*))
            (supports-report-timezone? *engine*))
     [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
     [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
@@ -526,7 +526,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle? *engine*))
+  (if (and (not (oracle-or-redshift? *engine*))
            (supports-report-timezone? *engine*))
     [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
     [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
@@ -543,7 +543,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle? *engine*))
+  (if (and (not (oracle-or-redshift? *engine*))
            (supports-report-timezone? *engine*))
     [[152 8] [153 9] [154 9] [155 4] [156 11] [157 8] [158 6] [159 10] [160 6] [161 10]]
     [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
@@ -617,7 +617,7 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
@@ -651,7 +651,7 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-week (tformat/with-zone date-formatter-without-time eastern-tz)
                      (result-date-formatter eastern-tz)
                      [46 47 40 60 7])
@@ -681,7 +681,7 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (oracle? *engine*)
+    (oracle-or-redshift? *engine*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
@@ -708,11 +708,11 @@
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
 
-    (or (oracle? *engine*)
-        (contains? #{:sqlserver :sqlite :crate} *engine*))
+    (contains? #{:sqlserver :sqlite :crate :oracle} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (supports-report-timezone? *engine*)
+    (and (supports-report-timezone? *engine*)
+         (not (= :redshift *engine*)))
     [[23 49] [24 47] [25 39] [26 58] [27 7]]
 
     :else
