@@ -4,6 +4,7 @@ import React, {Component} from 'react';
 import {connect} from "react-redux";
 import cx from "classnames";
 import _ from "underscore"
+import { t } from "c-3po";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
