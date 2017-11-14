@@ -61,19 +61,19 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     },
     {
         type: "location/zip_code",
-        name: `ZIP or Postal Code`
+        name: t`ZIP or Postal Code`
     },
     {
         type: "location/country",
-        name: `Country`
+        name: t`Country`
     },
     {
         type: "id",
-        name: `ID`
+        name: t`ID`
     },
     {
         type: "category",
-        name: `Category`
+        name: t`Category`
     },
 ];
 
