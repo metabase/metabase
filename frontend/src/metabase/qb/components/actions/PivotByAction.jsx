@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from 'c-3po';
+import { jt } from 'c-3po';
 import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 

@@ -3,7 +3,7 @@
 import React from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { t } from 'c-3po';
+import { jt } from 'c-3po';
 import type {
     ClickAction,
     ClickActionProps

@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from 'c-3po';
+import { jt } from 'c-3po';
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
