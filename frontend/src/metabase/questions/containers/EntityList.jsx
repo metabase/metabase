@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ListFilterWidget from "metabase/components/ListFilterWidget"
@@ -57,45 +57,45 @@ const mapDispatchToProps = {
 const SECTIONS = [
     {
         id: 'all',
-        name: 'All questions',
+        name: t`All questions`,
         icon: 'all',
-        empty: 'No questions have been saved yet.',
+        empty: t`No questions have been saved yet.`,
     },
     {
         id: 'fav',
-        name: 'Favorites',
+        name: t`Favorites`,
         icon: 'star',
-        empty: 'You haven\'t favorited any questions yet.',
+        empty: t`You haven't favorited any questions yet.`,
     },
     {
         id: 'recent',
-        name: 'Recently viewed',
+        name: t`Recently viewed`,
         icon: 'recents',
-        empty: 'You haven\'t viewed any questions recently.',
+        empty: t`You haven't viewed any questions recently.`,
     },
     {
         id: 'mine',
-        name: 'Saved by me',
+        name: t`Saved by me`,
         icon: 'mine',
-        empty:  'You haven\'t saved any questions yet.'
+        empty:  t`You haven't saved any questions yet.`
     },
     {
         id: 'popular',
-        name: 'Most popular',
+        name: t`Most popular`,
         icon: 'popular',
-        empty: 'The most viewed questions across your company will show up here.',
+        empty: t`The most viewed questions across your company will show up here.`,
     },
     {
         id: 'archived',
-        name: "Archive",
+        name: t`Archive`,
         icon: 'archive',
-        empty: 'If you no longer need a question, you can archive it.'
+        empty: t`If you no longer need a question, you can archive it.`
     }
 ];
 
 const DEFAULT_SECTION = {
     icon: 'all',
-    empty: 'There aren\'t any questions matching that criteria.'
+    empty: t`There aren't any questions matching that criteria.`
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
