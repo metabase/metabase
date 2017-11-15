@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import QueryButton from "metabase/components/QueryButton.jsx";
 import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
@@ -41,7 +41,7 @@ export default class TablePane extends Component {
             });
         }).catch((error) => {
             this.setState({
-                error: "An error occurred loading the table"
+                error: t`An error occurred loading the table`
             });
         });
     }
@@ -61,7 +61,7 @@ export default class TablePane extends Component {
         if (table) {
             var queryButton;
             if (table.rows != null) {
-                var text = `See the raw data for ${table.display_name}`
+                var text = t`See the raw data for ${table.display_name}`
                 queryButton = (<QueryButton className="border-bottom border-top mb3" icon="table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
@@ -108,7 +108,7 @@ export default class TablePane extends Component {
             } else
 
             var descriptionClasses = cx({ "text-grey-3": !table.description });
-            var description = (<p className={descriptionClasses}>{table.description || "No description set."}</p>);
+            var description = (<p className={descriptionClasses}>{table.description || t`No description set.`}</p>);
 
             return (
                 <div>
@@ -154,7 +154,7 @@ const ExpandableItemList = Expandable(({ name, type, show, items, isExpanded, on
                     {item.name}
                 </ListItem>
             ) }
-            { !isExpanded && <ListItem onClick={onExpand}>More...</ListItem>}
+            { !isExpanded && <ListItem onClick={onExpand}>{t`More`}...</ListItem>}
         </ul>
     </div>
 );

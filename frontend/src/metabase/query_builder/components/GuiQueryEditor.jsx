@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import AggregationWidget_LEGACY from './AggregationWidget.jsx';
 import BreakoutWidget_LEGACY from './BreakoutWidget.jsx';
 import DataSelector from './DataSelector.jsx';
@@ -138,11 +138,11 @@ export default class GuiQueryEditor extends Component {
             }
 
             if (query.canAddFilter()) {
-                addFilterButton = this.renderAdd((filterList ? null : "Add filters to narrow your answer"), null, "addFilterTarget");
+                addFilterButton = this.renderAdd((filterList ? null : t`Add filters to narrow your answer`), null, "addFilterTarget");
             }
         } else {
             enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
+            addFilterButton = this.renderAdd(t`Add filters to narrow your answer`, null, "addFilterTarget");
         }
 
         return (
@@ -207,7 +207,7 @@ export default class GuiQueryEditor extends Component {
                 );
                 if (aggregations[index + 1] != null && aggregations[index + 1].length > 0) {
                     aggregationList.push(
-                        <span key={"and"+index} className="text-bold">and</span>
+                        <span key={"and"+index} className="text-bold">{t`and`}</span>
                     );
                 }
             }
@@ -216,7 +216,7 @@ export default class GuiQueryEditor extends Component {
             // TODO: move this into AggregationWidget?
             return (
                 <div className="Query-section Query-section-aggregation disabled">
-                    <a className="QueryOption p1 flex align-center">Raw data</a>
+                    <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
                 </div>
             );
         }
@@ -254,13 +254,13 @@ export default class GuiQueryEditor extends Component {
                     breakout={breakout}
                     query={query}
                     updateQuery={setDatasetQuery}
-                    addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
+                    addButton={this.renderAdd(i === 0 ? t`Add a grouping` : null)}
                 />
             );
 
             if (breakouts[i + 1] != null) {
                 breakoutList.push(
-                    <span key={"and"+i} className="text-bold">and</span>
+                    <span key={"and"+i} className="text-bold">{t`and`}</span>
                 );
             }
         }
@@ -277,7 +277,7 @@ export default class GuiQueryEditor extends Component {
         const tableMetadata = query.tableMetadata();
         return (
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
-                <span className="GuiBuilder-section-label Query-label">Data</span>
+                <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
                 { this.props.features.data ?
                     <DataSelector
                         ref="dataSection"
@@ -305,7 +305,7 @@ export default class GuiQueryEditor extends Component {
 
         return (
             <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center" ref="filterSection">
-                <span className="GuiBuilder-section-label Query-label">Filtered by</span>
+                <span className="GuiBuilder-section-label Query-label">{t`Filtered by`}</span>
                 {this.renderFilters()}
             </div>
         );
@@ -319,7 +319,7 @@ export default class GuiQueryEditor extends Component {
 
         return (
             <div className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2" ref="viewSection">
-                <span className="GuiBuilder-section-label Query-label">View</span>
+                <span className="GuiBuilder-section-label Query-label">{t`View`}</span>
                 {this.renderAggregation()}
             </div>
         );
@@ -333,7 +333,7 @@ export default class GuiQueryEditor extends Component {
 
         return (
             <div className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1" ref="viewSection">
-                <span className="GuiBuilder-section-label Query-label">Grouped By</span>
+                <span className="GuiBuilder-section-label Query-label">{t`Grouped By`}</span>
                 {this.renderBreakouts()}
             </div>
         );

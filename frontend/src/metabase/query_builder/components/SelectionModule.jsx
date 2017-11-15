@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Popover from "metabase/components/Popover.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import SearchBar from './SearchBar.jsx';
-
+import { t } from 'c-3po';
 import _ from "underscore";
 import cx from "classnames";
 
@@ -145,7 +145,7 @@ export default class SelectionModule extends Component {
                         <Icon name="chevrondown" size={12} />
                         <div>
                             <div className="SelectionModule-display">
-                                {this.props.expandedTitle || "Advanced..."}
+                                {this.props.expandedTitle || t`Advanced...`}
                             </div>
                         </div>
                     </li>
@@ -154,7 +154,7 @@ export default class SelectionModule extends Component {
 
             return items;
         } else {
-            return "Sorry. Something went wrong.";
+            return t`Sorry. Something went wrong.`;
         }
     }
 
