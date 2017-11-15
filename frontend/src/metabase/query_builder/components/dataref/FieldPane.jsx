@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
@@ -147,15 +147,15 @@ export default class FieldPane extends Component {
 
             // current field must be a valid breakout option for this table AND cannot already be in the breakout clause of our query
             if (validBreakout && !_.some(query.breakouts(), this.isBreakoutWithCurrentField)) {
-                useForCurrentQuestion.push(<UseForButton title={"Group by " + name} onClick={this.groupBy} />);
+                useForCurrentQuestion.push(<UseForButton title={t`Group by ${name}`} onClick={this.groupBy} />);
             }
         }
 
         if (isSummable(field)) {
-            usefulQuestions.push(<QueryButton icon="number" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} />);
+            usefulQuestions.push(<QueryButton icon="number" text={t`Sum of all values of ${fieldName}`} onClick={this.setQuerySum} />);
         }
-        usefulQuestions.push(<QueryButton icon="table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} />);
-        let queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
+        usefulQuestions.push(<QueryButton icon="table" text={t`All distinct values of ${fieldName}`} onClick={this.setQueryDistinct} />);
+        let queryCountGroupedByText = t`Number of ${inflection.pluralize(tableName)} grouped by ${fieldName}`;
         if (validBreakout) {
             usefulQuestions.push(<QueryButton icon="bar" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} />);
             usefulQuestions.push(<QueryButton icon="pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} />);

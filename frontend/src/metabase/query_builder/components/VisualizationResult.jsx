@@ -5,6 +5,7 @@ import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { DatasetQuery } from "metabase/meta/types/Card";
+import { t } from 'c-3po';
 
 type Props = {
     question: Question,
@@ -20,11 +21,11 @@ const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, nav
         // successful query but there were 0 rows returned with the result
         return <VisualizationErrorMessage
                   type='noRows'
-                  title='No results!'
-                  message='This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.'
+                  title={t`No results!`}
+                  message={t`This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.`}
                   action={
                     <button className="Button" onClick={() => window.history.back() }>
-                        Back to last run
+                        {t`Back to last run`}
                     </button>
                   }
               />
