@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import { t } from 'c-3po';
 
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -170,7 +171,7 @@ export default class RecipientPicker extends Component {
                         ref="input"
                         type="text"
                         className="full h4 text-bold text-default no-focus borderless"
-                        placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
+                        placeholder={recipients.length === 0 ? t`Enter email addresses you'd like this data to go to` : null}
                         value={this.state.inputValue}
                         autoFocus={this.state.focused}
                         onKeyDown={this.onInputKeyDown}
