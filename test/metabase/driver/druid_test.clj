@@ -137,6 +137,16 @@
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(rows (druid-query ~@body)))
 
+;; Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by default will
+;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
+;; have counted for the previous week
+(expect-with-engine :druid
+  [["2015-10-04T00:00:00.000Z" 9]]
+  (druid-query-returning-rows
+    (ql/filter (ql/between (ql/datetime-field $timestamp :day) "2015-10-04" "2015-10-10"))
+    (ql/aggregation (ql/count $id))
+    (ql/breakout (ql/datetime-field $timestamp :week))))
+
 ;; sum, *
 (expect-with-engine :druid
   [["1" 110688.0]
