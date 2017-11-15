@@ -153,36 +153,38 @@
        (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
    (rasta-new-alert-email {"has any results" true})]
   (with-alert-setup
-   [((alert-client :rasta) :post 200 "alert"
-     {:card              {:id (:id card1)}
-      :alert_condition   "rows"
-      :alert_first_only  false
-      :channels          [{:enabled       true
-                           :channel_type  "email"
-                           :schedule_type "daily"
-                           :schedule_hour 12
-                           :schedule_day  nil
-                           :recipients    []}]})
-    (et/regex-email-bodies #"https://metabase.com/testmb"
-                           #"has any results"
-                           #"My question")]))
+    [(et/with-expected-messages 1
+       ((alert-client :rasta) :post 200 "alert"
+        {:card              {:id (:id card1)}
+         :alert_condition   "rows"
+         :alert_first_only  false
+         :channels          [{:enabled       true
+                              :channel_type  "email"
+                              :schedule_type "daily"
+                              :schedule_hour 12
+                              :schedule_day  nil
+                              :recipients    []}]}))
+     (et/regex-email-bodies #"https://metabase.com/testmb"
+                            #"has any results"
+                            #"My question")]))
 
 ;; Check creation of a below goal alert
 (tt/expect-with-temp [Card [card1 {:name "My question"
                                    :display "line"}]]
   (rasta-new-alert-email {"goes below its goal" true})
   (with-alert-setup
-   ((user->client :rasta) :post 200 "alert"
-    {:card              {:id (:id card1)}
-     :alert_condition   "goal"
-     :alert_above_goal  false
-     :alert_first_only  false
-     :channels          [{:enabled       true
-                          :channel_type  "email"
-                          :schedule_type "daily"
-                          :schedule_hour 12
-                          :schedule_day  nil
-                          :recipients    []}]})
+    (et/with-expected-messages 1
+      ((user->client :rasta) :post 200 "alert"
+       {:card              {:id (:id card1)}
+        :alert_condition   "goal"
+        :alert_above_goal  false
+        :alert_first_only  false
+        :channels          [{:enabled       true
+                             :channel_type  "email"
+                             :schedule_type "daily"
+                             :schedule_hour 12
+                             :schedule_day  nil
+                             :recipients    []}]}))
    (et/regex-email-bodies #"https://metabase.com/testmb"
                           #"goes below its goal"
                           #"My question")))
@@ -192,17 +194,18 @@
                                    :display "bar"}]]
   (rasta-new-alert-email {"meets its goal" true})
   (with-alert-setup
-   ((user->client :rasta) :post 200 "alert"
-    {:card              {:id (:id card1)}
-     :alert_condition   "goal"
-     :alert_above_goal  true
-     :alert_first_only  false
-     :channels          [{:enabled       true
-                          :channel_type  "email"
-                          :schedule_type "daily"
-                          :schedule_hour 12
-                          :schedule_day  nil
-                          :recipients    []}]})
+    (et/with-expected-messages 1
+      ((user->client :rasta) :post 200 "alert"
+       {:card              {:id (:id card1)}
+        :alert_condition   "goal"
+        :alert_above_goal  true
+        :alert_first_only  false
+        :channels          [{:enabled       true
+                             :channel_type  "email"
+                             :schedule_type "daily"
+                             :schedule_hour 12
+                             :schedule_day  nil
+                             :recipients    []}]}))
    (et/regex-email-bodies #"https://metabase.com/testmb"
                           #"meets its goal"
                           #"My question")))
@@ -338,10 +341,11 @@
                         :body {"https://metabase.com/testmb" true, "now getting alerts" true}})]
 
   (with-alert-setup
-    [(setify-recipient-emails
-      ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
-       (default-alert-req card pc-id {} [(fetch-user :crowberto)
-                                         (fetch-user :rasta)])))
+    [(et/with-expected-messages 1
+       (setify-recipient-emails
+        ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
+         (default-alert-req card pc-id {} [(fetch-user :crowberto)
+                                           (fetch-user :rasta)]))))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"now getting alerts")]))
 
@@ -362,8 +366,9 @@
                         :body    {"https://metabase.com/testmb" true,
                                   "letting you know that Crowberto Corv" true}})]
   (with-alert-setup
-   [((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
-     (default-alert-req card pc-id {} [(fetch-user :crowberto)]))
+    [(et/with-expected-messages 1
+       ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
+        (default-alert-req card pc-id {} [(fetch-user :crowberto)])))
     (et/regex-email-bodies #"https://metabase.com/testmb"
                            #"letting you know that Crowberto Corv")]))
 
@@ -664,8 +669,9 @@
                          :body {"Crowberto Corv deleted an alert" false
                                 "Crowberto Corv unsubscribed you from alerts" true}}))]
   (with-alert-setup
-   [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
-    ((user->client :crowberto) :delete 204 (format "alert/%d" pulse-id))
+    [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
+     (et/with-expected-messages 2
+       ((user->client :crowberto) :delete 204 (format "alert/%d" pulse-id)))
     (count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
     (et/regex-email-bodies #"Crowberto Corv deleted an alert"
                            #"Crowberto Corv unsubscribed you from alerts")]))
