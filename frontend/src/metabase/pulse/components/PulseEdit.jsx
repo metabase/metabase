@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po';
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCards from "./PulseEditCards.jsx";

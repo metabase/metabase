@@ -197,7 +197,7 @@ export default class PulseEditChannels extends Component {
                         schedule={_.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type") }
                         scheduleOptions={channelSpec.schedules}
                         textBeforeInterval={t`Sent`}
-                        textBeforeSendTime={`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`} `} + t`will be sent at`
+                        textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`} will be sent at`}
                         onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
                     />
                 }
@@ -206,8 +206,8 @@ export default class PulseEditChannels extends Component {
                         actionFn={this.onTestPulseChannel.bind(this, channel)}
                         className={cx("Button", { disabled: !isValid })}
                         normalText={channelSpec.type === "email" ?
-                            {t`Send email now`} :
-                            {t`Send to ${channelSpec.name} now`}
+                            t`Send email now` :
+                            t`Send to ${channelSpec.name} now`}
                         activeText={t`Sending…`}
                         failedText={t`Sending failed`}
                         successText={ this.willPulseSkip() ?  t`Didn’t send because the pulse has no results.` : t`Pulse sent`}
@@ -234,7 +234,7 @@ export default class PulseEditChannels extends Component {
                     <ul className="bg-grey-0 px3">{channels}</ul>
                 : channels.length > 0 && !channelSpec.configured ?
                     <div className="p4 text-centered">
-                        <h3 className="mb2">{channelSpec.name} needs to be set up by an administrator.</h3>
+                        <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
                         <SetupMessage user={user} channels={[channelSpec.name]} />
                     </div>
                 : null

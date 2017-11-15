@@ -53,12 +53,12 @@ export default class PulseListChannel extends Component {
 
         if (channel.channel_type === "email") {
             channelIcon = "mail";
-            channelVerb = {t`Emailed`};
+            channelVerb = t`Emailed`;
         } else if (channel.channel_type === "slack") {
             channelIcon = "slack";
-            channelVerb = {t`Slack'd`};
+            channelVerb = t`Slack'd`;
             // Address #5799 where `details` object is missing for some reason
-            channelTarget = channel.details ? channel.details.channel : {t`No channel`};
+            channelTarget = channel.details ? channel.details.channel : t`No channel`;
         }
 
         return (
@@ -67,7 +67,7 @@ export default class PulseListChannel extends Component {
                 <span>
                     {channelVerb + " "}
                     <strong>{channelSchedule}</strong>
-                    {channelTarget && <span>{" " + {t`to`} + " "}<strong>{channelTarget}</strong></span>}
+                    {channelTarget && <span>{" " + t`to` + " "}<strong>{channelTarget}</strong></span>}
                 </span>
             </div>
         );
