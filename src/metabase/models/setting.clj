@@ -378,7 +378,7 @@
                      clear the values of the Setting.)"
   {:style/indent 1}
   [setting-symb description & {:as options}]
-  {:pre [(symbol? setting-symb) (string? description)]}
+  {:pre [(symbol? setting-symb)]}
   `(let [setting# (register-setting! (assoc ~options
                                        :name ~(keyword setting-symb)
                                        :description ~description))]
