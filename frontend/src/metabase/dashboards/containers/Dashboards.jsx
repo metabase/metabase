@@ -5,7 +5,7 @@ import {connect} from "react-redux";
 import {Link} from "react-router";
 import cx from "classnames";
 import _ from "underscore"
-import { t } from 'c-3po'
+import { t, jt } from "c-3po";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
@@ -173,7 +173,7 @@ export class Dashboards extends Component {
                 { noDashboardsCreated ?
                     <div className="mt2 flex-full flex align-center justify-center">
                         <EmptyState
-                            message={<span>{t`Put the charts and graphs you look at`} <br/>{t`frequently in a single, handy place.`}</span>}
+                            message={<span>{jt`Put the charts and graphs you look at ${<br/>}frequently in a single, handy place.`}</span>}
                             image="/app/img/dashboard_illustration"
                             action={t`Create a dashboard`}
                             onActionClick={this.showCreateDashboard}
@@ -201,7 +201,8 @@ export class Dashboards extends Component {
                                     message={
                                         <div className="mt4">
                                             <h3 className="text-grey-5">{t`No results found`}</h3>
-                                            <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
+                                            <p className="text-grey-4">{t`Try adjusting your filter to find what you’re
+                                                looking for.`}</p>
                                         </div>
                                     }
                                     image="/app/img/empty_dashboard"

@@ -4,7 +4,7 @@ import React, {Component} from 'react';
 import {connect} from "react-redux";
 import cx from "classnames";
 import _ from "underscore"
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
@@ -83,7 +83,7 @@ export class Dashboards extends Component {
                         {headerWithBackContainer}
                         <div className="full flex justify-center" style={{marginTop: "75px"}}>
                             <EmptyState
-                                message={<span>{t`No dashboards have been`}<br />{t`archived yet`}</span>}
+                                message={<span>{jt`No dashboards have been ${<br />} archived yet`}</span>}
                                 icon="viewArchive"
                             />
                         </div>

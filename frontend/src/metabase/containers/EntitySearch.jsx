@@ -20,7 +20,7 @@ const PAGE_SIZE = 10
 const SEARCH_GROUPINGS = [
     {
         id: "name",
-        name: "Name",
+        name: t`Name`,
         icon: null,
         // Name grouping is a no-op grouping so always put all results to same group with identifier `0`
         groupBy: () => 0,
@@ -29,21 +29,21 @@ const SEARCH_GROUPINGS = [
     },
     {
         id: "table",
-        name: "Table",
+        name: t`Table`,
         icon: "table2",
         groupBy: (entity) => entity.table.id,
         getGroupName: (entity) => entity.table.display_name
     },
     {
         id: "database",
-        name: "Database",
+        name: t`Database`,
         icon: "database",
         groupBy: (entity) => entity.table.db.id,
         getGroupName: (entity) => entity.table.db.name
     },
     {
         id: "creator",
-        name: "Creator",
+        name: t`Creator`,
         icon: "mine",
         groupBy: (entity) => entity.creator.id,
         getGroupName: (entity) => entity.creator.common_name
@@ -209,9 +209,8 @@ export default class EntitySearch extends Component {
                                 <EmptyState
                                     message={
                                         <div className="mt4">
-                                            <h3 className="text-grey-5">No results found</h3>
-                                            <p className="text-grey-4">Try adjusting your filter to find what you’re
-                                                looking for.</p>
+                                            <h3 className="text-grey-5">{t`No results found`}</h3>
+                                            <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                                         </div>
                                     }
                                     image="/app/img/empty_question"
@@ -230,7 +229,7 @@ export default class EntitySearch extends Component {
 
 export const SearchGroupingOptions = ({ currentGrouping, setGrouping }) =>
     <div className="Entity-search-grouping-options">
-        <h3 className="mb3">View by</h3>
+        <h3 className="mb3">{t`View by`}</h3>
         <ul>
             { SEARCH_GROUPINGS.map((groupingOption) =>
                 <SearchGroupingOption
@@ -429,7 +428,7 @@ class SearchResultsList extends Component {
 
         return (
             <li className="py1 px3 flex justify-end align-center">
-                <span className="text-bold">{ currentEntitiesText }</span>&nbsp;of&nbsp;<span
+                <span className="text-bold">{ currentEntitiesText }</span>&nbsp;{t`of`}&nbsp;<span
                 className="text-bold">{entityCount}</span>
                 <span
                     className={cx(
