@@ -5,6 +5,7 @@
             [medley.core :as m]
             [metabase
              [email :as email]
+             [events :as events]
              [util :as u]]
             [metabase.api
              [common :as api]
@@ -173,6 +174,8 @@
           recipients (remove #(= (:id creator) (:id %)) (collect-alert-recipients alert))]
 
       (db/delete! Pulse :id id)
+
+      (events/publish-event! :alert-delete (assoc alert :actor_id api/*current-user-id*))
 
       (when (email/email-configured?)
         (doseq [recipient recipients]

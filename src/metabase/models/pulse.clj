@@ -243,15 +243,14 @@
     (doseq [[channel-type] pulse-channel/channel-types]
       (handle-channel channel-type))))
 
-(defn- create-notification [pulse card-ids channels retrieve-pulse-fn]
+(defn- create-notification [pulse card-ids channels]
   (db/transaction
     (let [{:keys [id] :as pulse} (db/insert! Pulse pulse)]
       ;; add card-ids to the Pulse
       (update-pulse-cards! pulse card-ids)
       ;; add channels to the Pulse
       (update-pulse-channels! pulse channels)
-      ;; return the full Pulse (and record our create event)
-      (events/publish-event! :pulse-create (retrieve-pulse-fn id)))))
+      id)))
 
 
 (defn create-pulse!
@@ -267,17 +266,21 @@
          (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}
-  (create-notification {:creator_id    creator-id
-                        :name          pulse-name
-                        :skip_if_empty skip-if-empty?}
-                       card-ids channels retrieve-pulse))
+  (let [id (create-notification {:creator_id    creator-id
+                                 :name          pulse-name
+                                 :skip_if_empty skip-if-empty?}
+                                card-ids channels)]
+    ;; return the full Pulse (and record our create event)
+    (events/publish-event! :pulse-create (retrieve-pulse id))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
   [alert creator-id card-id channels]
-  (-> alert
-      (assoc :skip_if_empty true :creator_id creator-id)
-      (create-notification [card-id] channels retrieve-alert)))
+  (let [id (-> alert
+               (assoc :skip_if_empty true :creator_id creator-id)
+               (create-notification [card-id] channels))]
+    ;; return the full Pulse (and record our create event)
+    (events/publish-event! :alert-create (retrieve-alert id))))
 
 (defn update-notification!
   "Updates the pulse/alert and updates the related channels"
