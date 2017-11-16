@@ -164,8 +164,8 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn task-init
-  "Automatically called during startup; start the jobs for syncing/analyzing and updating FieldValues for all Dtabases besides
-   the sample dataset."
+  "Automatically called during startup; start the jobs for syncing/analyzing and updating FieldValues for all
+   Databases."
   []
-  (doseq [database (db/select Database, :is_sample false)]
+  (doseq [database (db/select Database)]
     (schedule-tasks-for-db! database)))
