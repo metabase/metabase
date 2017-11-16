@@ -74,7 +74,7 @@ export default class EmbedFrame extends Component {
 
             // Make iframe-resizer avaliable to the embed
             // We only care about contentWindow so require that minified file
-            // $FlowFixMe: flow doesn't know about require.ensure
+
             require.ensure([], (require) => {
                 require('iframe-resizer/js/iframeResizer.contentWindow.min.js')
             });
