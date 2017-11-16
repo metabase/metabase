@@ -161,26 +161,32 @@
 (defn- collect-alert-recipients [alert]
   (set (:recipients (email-channel alert))))
 
+(defn- notify-on-delete-if-needed!
+  "When an alert is deleted, we notify the creator that their alert is being deleted and any recipieint that they are
+  no longer going to be receiving that alert"
+  [alert]
+  (when (email/email-configured?)
+    (let [{creator-id :id :as creator} (:creator alert)
+          ;; The creator might also be a recipient, no need to notify them twice
+          recipients (remove #(= (:id creator) (:id %)) (collect-alert-recipients alert))]
+
+      (doseq [recipient recipients]
+        (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))
+
+      (when-not (= creator-id api/*current-user-id*)
+        (messages/send-admin-deleted-your-alert! alert creator @api/*current-user*)))))
+
 (api/defendpoint DELETE "/:id"
   "Remove an alert"
   [id]
   (api/let-404 [alert (pulse/retrieve-alert id)]
     (api/check-superuser)
 
-    ;; When an alert is deleted, we notify the creator that their alert is being deleted and any recipieint that they
-    ;; are no longer going to be receiving that alert
-    (let [creator (:creator alert)
-          ;; The creator might also be a recipient, no need to notify them twice
-          recipients (remove #(= (:id creator) (:id %)) (collect-alert-recipients alert))]
+    (db/delete! Pulse :id id)
 
-      (db/delete! Pulse :id id)
+    (events/publish-event! :alert-delete (assoc alert :actor_id api/*current-user-id*))
 
-      (events/publish-event! :alert-delete (assoc alert :actor_id api/*current-user-id*))
-
-      (when (email/email-configured?)
-        (doseq [recipient recipients]
-          (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))
-        (messages/send-admin-deleted-your-alert! alert creator @api/*current-user*)))
+    (notify-on-delete-if-needed! alert)
 
     api/generic-204-no-content))
 

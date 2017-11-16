@@ -557,7 +557,7 @@
                       PulseChannelRecipient [_             {:user_id          (user->id :rasta)
                                                             :pulse_channel_id pc-id-1}]]
   [1
-   1                                    ;<-- Alert should not be deleted
+   1 ;;<-- Alert should not be deleted
    (rasta-unsubscribe-email {"Foo" true})]
   (with-alert-setup
    [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
@@ -675,3 +675,21 @@
     (count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
     (et/regex-email-bodies #"Crowberto Corv deleted an alert"
                            #"Crowberto Corv unsubscribed you from alerts")]))
+
+;; When an admin deletes their own alert, it should not notify them
+(tt/expect-with-temp [Card                 [{card-id :id}  (basic-alert-query)]
+                      Pulse                [{pulse-id :id} {:alert_condition   "rows"
+                                                            :alert_first_only  false
+                                                            :creator_id        (user->id :crowberto)}]
+                      PulseCard             [_             {:pulse_id pulse-id
+                                                            :card_id  card-id
+                                                            :position 0}]
+                      PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                      PulseChannelRecipient [_             {:user_id          (user->id :crowberto)
+                                                            :pulse_channel_id pc-id}]]
+  [1 nil 0 {}]
+  (with-alert-setup
+   [(count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id)))
+    ((user->client :crowberto) :delete 204 (format "alert/%d" pulse-id))
+    (count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id)))
+    (et/regex-email-bodies #".*")]))
