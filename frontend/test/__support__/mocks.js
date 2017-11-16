@@ -53,9 +53,6 @@ const testRemoveEventListener = jest.fn((event, listener) => {
     eventListeners[event] = (eventListeners[event] || []).filter(l => l !== listener)
 })
 
-global.require = () => {}
-global.require.ensure = (deps, cb) => cb(global.require);
-
 global.document.addEventListener = testAddEventListener
 global.window.addEventListener = testAddEventListener
 global.document.removeEventListener = testRemoveEventListener
