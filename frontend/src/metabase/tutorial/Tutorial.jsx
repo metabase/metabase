@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Modal from "metabase/components/Modal.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
@@ -216,8 +216,8 @@ export default class Tutorial extends Component {
                     >
                         <div className="text-centered">
                             <h2>​Whoops!</h2>
-                            <p className="my2">Sorry, it looks like something went wrong. Please try restarting the tutorial in a minute.</p>
-                            <button className="Button Button--primary" onClick={this.close}>Okay</button>
+                            <p className="my2">{t`Sorry, it looks like something went wrong. Please try restarting the tutorial in a minute.`}</p>
+                            <button className="Button Button--primary" onClick={this.close}>{t`Okay`}</button>
                         </div>
                     </TutorialModal>
                 </Modal>

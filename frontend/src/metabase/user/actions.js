@@ -1,5 +1,5 @@
 import { createAction } from "redux-actions";
-
+import { t } from 'c-3po';
 import { createThunkAction } from "metabase/lib/redux";
 
 import { UserApi } from "metabase/services";
@@ -28,7 +28,7 @@ export const updatePassword = createThunkAction(UPDATE_PASSWORD, function(user_i
             return {
                 success: true,
                 data:{
-                    message: "Password updated successfully!"
+                    message: t`Password updated successfully!`
                 }
             };
 
@@ -48,7 +48,7 @@ export const updateUser = createThunkAction(UPDATE_USER, function(user) {
             return {
                 success: true,
                 data:{
-                    message: "Account updated successfully!"
+                    message: t`Account updated successfully!`
                 }
             };
 
