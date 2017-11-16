@@ -2,6 +2,8 @@
   (:require [expectations :refer :all]
             [metabase.feature-extraction.math :refer :all]))
 
+;; `approximately` doesn't play nicely with vectors, hence spliting the `expect`
+;; in two.
 (expect
   (approximately 5.5 0.1)
   (transduce identity magnitude [1 2 3 4]))
