@@ -115,6 +115,12 @@
                                      "My question" true}
                                     body-map)}))
 
+(defn- rasta-added-to-alert-email [body-map]
+  (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
+                       :body (merge {"https://metabase.com/testmb" true,
+                                     "now getting alerts" true}
+                                    body-map)}))
+
 (defn- rasta-unsubscribe-email [body-map]
   (et/email-to :rasta {:subject "You unsubscribed from an alert",
                        :body (merge {"https://metabase.com/testmb" true}
@@ -166,6 +172,42 @@
                               :recipients    []}]}))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"has any results"
+                            #"My question")]))
+
+(defn- setify-recipient-emails [results]
+  (update results :channels (fn [channels]
+                              (map #(update % :recipients set) channels))))
+
+;; An admin created alert should notify others they've been subscribed
+(tt/expect-with-temp [Card [card1 {:name "My question"}]]
+  [(-> (default-alert card1)
+       (assoc :creator (user-details :crowberto))
+       (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients (set (map recipient-details [:rasta :crowberto]))}))
+   (merge (et/email-to :crowberto {:subject "You setup an alert",
+                                   :body {"https://metabase.com/testmb" true,
+                                          "My question" true
+                                          "now getting alerts" false
+                                          "confirmation that your alert" true}})
+          (rasta-added-to-alert-email {"My question" true
+                                       "now getting alerts" true
+                                       "confirmation that your alert" false}))]
+
+  (with-alert-setup
+    [(-> ((alert-client :crowberto) :post 200 "alert"
+          {:card              {:id (:id card1)}
+           :alert_condition   "rows"
+           :alert_first_only  false
+           :channels          [{:enabled       true
+                                :channel_type  "email"
+                                :schedule_type "daily"
+                                :schedule_hour 12
+                                :schedule_day  nil
+                                :details       {:emails nil}
+                                :recipients    (mapv fetch-user [:crowberto :rasta])}]})
+         setify-recipient-emails)
+     (et/regex-email-bodies #"https://metabase.com/testmb"
+                            #"now getting alerts"
+                            #"confirmation that your alert"
                             #"My question")]))
 
 ;; Check creation of a below goal alert
@@ -321,10 +363,6 @@
     ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
      (default-alert-req card pc-id {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
                         [(fetch-user :rasta)]))))
-
-(defn- setify-recipient-emails [results]
-  (update results :channels (fn [channels]
-                              (map #(update % :recipients set) channels))))
 
 ;; Admin users can add a recipieint, that recipient should be notified
 (tt/expect-with-temp [Pulse [{pulse-id :id}                (default-pulse-row)]
