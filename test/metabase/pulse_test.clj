@@ -262,6 +262,7 @@
    2
    true
    true
+   true
    true]
   (test-setup
    (let [[result & no-more-results] (send-pulse! (retrieve-pulse-or-alert pulse-id))]
@@ -270,7 +271,8 @@
       (count (:message result))
       (email-body? (first (:message result)))
       (attachment? (second (:message result)))
-      (goal-above-email-body? (first (:message result)))])))
+      (goal-above-email-body? (first (:message result)))
+      (boolean (re-find #"has reached its goal of 5.9" (:content (first (:message result)))))])))
 
 ;; Above goal alert, with no data above goal
 (tt/expect-with-temp [Card                 [{card-id :id}  (merge (checkins-query {:filter   ["between",["field-id" (data/id :checkins :date)],"2014-02-01" "2014-04-01"]
