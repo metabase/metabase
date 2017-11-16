@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
@@ -27,7 +27,7 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 
 const emptyStateData =  {
-    message: "There are no revisions for this metric"
+    message: t`There are no revisions for this metric`
 }
 
 const mapStateToProps = (state, props) => {
@@ -83,7 +83,7 @@ export default class MetricRevisions extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={`Revision history for ${this.props.metric.name}`}
+                    name={t`Revision history for ${this.props.metric.name}`}
                     headerIcon="ruler"
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>

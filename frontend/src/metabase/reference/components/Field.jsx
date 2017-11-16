@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-
+import { t } from 'c-3po';
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isa, isFK, TYPE } from "metabase/lib/types";
@@ -48,7 +48,7 @@ const Field = ({
                     { isEditing ?
                         <Select
                             triggerClasses={F.fieldSelect}
-                            placeholder="Select a field type"
+                            placeholder={t`Select a field type`}
                             value={
                                 MetabaseCore.field_special_types_map[formField.special_type.value] ||
                                 MetabaseCore.field_special_types_map[field.special_type]
@@ -57,8 +57,8 @@ const Field = ({
                                 MetabaseCore.field_special_types
                                     .concat({
                                         'id': null,
-                                        'name': 'No field type',
-                                        'section': 'Other'
+                                        'name': t`No field type`,
+                                        'section': t`Other`
                                     })
                                     .filter(type =>
                                         isNumericBaseType(field) || !isa(type && type.id, TYPE.UNIXTimestamp)
@@ -70,7 +70,7 @@ const Field = ({
                             { getIn(
                                     MetabaseCore.field_special_types_map,
                                     [field.special_type, 'name']
-                                ) || 'No field type'
+                                ) || t`No field type`
                             }
                         </span>
                     }
@@ -89,7 +89,7 @@ const Field = ({
                         (isFK(field.special_type) && formField.special_type.value === undefined)) &&
                         <Select
                             triggerClasses={F.fieldSelect}
-                            placeholder="Select a field type"
+                            placeholder={t`Select a field type`}
                             value={
                                 foreignKeys[formField.fk_target_field_id.value] ||
                                 foreignKeys[field.fk_target_field_id] ||

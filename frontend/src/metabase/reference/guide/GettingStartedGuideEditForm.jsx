@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 import { reduxForm } from "redux-form";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -227,28 +227,25 @@ export default class GettingStartedGuideEditForm extends Component {
                     <div className="wrapper wrapper--trim">
                         <div className="mt4 py2">
                             <h1 className="my3 text-dark">
-                                Help new Metabase users find their way around.
+                                {t`Help new Metabase users find their way around.`}
                             </h1>
                             <p className="text-paragraph text-measure">
-                                The Getting Started guide highlights the dashboard,
-                                metrics, segments, and tables that matter most,
-                                and informs your users of important things they
-                                should know before digging into the data.
+                                {t`The Getting Started guide highlights the dashboard, metrics, segments, and tables that matter most, and informs your users of important things they should know before digging into the data.`}
                             </p>
                         </div>
 
                         <GuideEditSection
                             isCollapsed={most_important_dashboard.id.value === undefined}
                             isDisabled={!dashboards || Object.keys(dashboards).length === 0}
-                            collapsedTitle="Is there an important dashboard for your team?"
+                            collapsedTitle={t`Is there an important dashboard for your team?`}
                             collapsedIcon="dashboard"
-                            linkMessage="Create a dashboard now"
+                            linkMessage={t`Create a dashboard now`}
                             action={showDashboardModal}
                             expand={() => most_important_dashboard.id.onChange(null)}
                         >
                             <div>
                                 <SectionHeader>
-                                    What is your most important dashboard?
+                                    {t`What is your most important dashboard?`}
                                 </SectionHeader>
                                 <GuideDetailEditor
                                     type="dashboard"
@@ -267,15 +264,15 @@ export default class GettingStartedGuideEditForm extends Component {
                         <GuideEditSection
                             isCollapsed={important_metrics.length === 0}
                             isDisabled={!metrics || Object.keys(metrics).length === 0}
-                            collapsedTitle="Do you have any commonly referenced metrics?"
+                            collapsedTitle={t`Do you have any commonly referenced metrics?`}
                             collapsedIcon="ruler"
-                            linkMessage="Learn how to define a metric"
+                            linkMessage={t`Learn how to define a metric`}
                             link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-metric"
                             expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
                         >
                             <div className="my2">
                                 <SectionHeader>
-                                    What are your 3-5 most commonly referenced metrics?
+                                    {t`What are your 3-5 most commonly referenced metrics?`}
                                 </SectionHeader>
                                 <div>
                                     { important_metrics.map((metricField, index, metricFields) =>
@@ -310,7 +307,7 @@ export default class GettingStartedGuideEditForm extends Component {
                                             type="button"
                                             onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
                                         >
-                                            Add another metric
+                                            {t`Add another metric`}
                                         </button>
                                 }
                             </div>
@@ -320,16 +317,15 @@ export default class GettingStartedGuideEditForm extends Component {
                             isCollapsed={important_segments_and_tables.length === 0}
                             isDisabled={(!segments || Object.keys(segments).length === 0) && (!tables || Object.keys(tables).length === 0)}
                             showLink={!segments || Object.keys(segments).length === 0}
-                            collapsedTitle="Do you have any commonly referenced segments or tables?"
+                            collapsedTitle={t`Do you have any commonly referenced segments or tables?`}
                             collapsedIcon="table2"
-                            linkMessage="Learn how to create a segment"
+                            linkMessage={t`Learn how to create a segment`}
                             link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-segment"
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
                             <div>
                                 <h2 className="text-measure text-dark">
-                                    What are 3-5 commonly referenced segments or tables
-                                    that would be useful for this audience?
+                                    {t`What are 3-5 commonly referenced segments or tables that would be useful for this audience?`}
                                 </h2>
                                 <div className="mb2">
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
@@ -362,7 +358,7 @@ export default class GettingStartedGuideEditForm extends Component {
                                             type="button"
                                             onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                                         >
-                                            Add another segment or table
+                                            {t`Add another segment or table`}
                                         </button>
                                 }
                             </div>
@@ -371,20 +367,17 @@ export default class GettingStartedGuideEditForm extends Component {
                         <GuideEditSection
                             isCollapsed={things_to_know.value === null}
                             isDisabled={false}
-                            collapsedTitle="Is there anything your users should understand or know before they start accessing the data?"
+                            collapsedTitle={t`Is there anything your users should understand or know before they start accessing the data?`}
                             collapsedIcon="reference"
                             expand={() => things_to_know.onChange('')}
                         >
                             <div className="text-measure">
                                 <SectionHeader>
-                                    What should a user of this data know before they start
-                                    accessing it?
+                                    {t`What should a user of this data know before they start accessing it?`}
                                 </SectionHeader>
                                 <textarea
                                     className={S.guideDetailEditorTextarea}
-                                    placeholder="E.g., expectations around data privacy and use,
-                                        common pitfalls or misunderstandings, information about
-                                        data warehouse performance, legal notices, etc."
+                                    placeholder={t`E.g., expectations around data privacy and use, common pitfalls or misunderstandings, information about data warehouse performance, legal notices, etc.`}
                                     {...things_to_know}
                                 />
                             </div>
@@ -393,7 +386,7 @@ export default class GettingStartedGuideEditForm extends Component {
                         <GuideEditSection
                             isCollapsed={contact.name.value === null && contact.email.value === null}
                             isDisabled={false}
-                            collapsedTitle="Is there someone your users could contact for help if they're confused about this guide?"
+                            collapsedTitle={t`Is there someone your users could contact for help if they're confused about this guide?`}
                             collapsedIcon="mail"
                             expand={() => {
                                 contact.name.onChange('');
@@ -402,11 +395,11 @@ export default class GettingStartedGuideEditForm extends Component {
                         >
                             <div>
                                 <SectionHeader>
-                                    Who should users contact for help if they're confused about this data?
+                                    {t`Who should users contact for help if they're confused about this data?`}
                                 </SectionHeader>
                                 <div className="flex">
                                     <div className="flex-full">
-                                        <h3 className="mb1">Name</h3>
+                                        <h3 className="mb1">{t`Name`}</h3>
                                         <input
                                             className="input text-paragraph"
                                             placeholder="Julie McHelpfulson"
@@ -415,7 +408,7 @@ export default class GettingStartedGuideEditForm extends Component {
                                         />
                                     </div>
                                     <div className="flex-full">
-                                        <h3 className="mb1">Email address</h3>
+                                        <h3 className="mb1">{t`Email address`}</h3>
                                         <input
                                             className="input text-paragraph"
                                             placeholder="julie.mchelpfulson@acme.com"
