@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
@@ -24,11 +24,11 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
-    title: "Metabase is no fun without any data",
-    adminMessage: "Your databases will appear here once you connect one",
-    message: "Databases will appear here once your admins have added some",
+    title: t`Metabase is no fun without any data`,
+    adminMessage: t`Your databases will appear here once you connect one`,
+    message: t`Databases will appear here once your admins have added some`,
     image: "app/assets/img/databases-list",
-    adminAction: "Connect a database",
+    adminAction: t`Connect a database`,
     adminLink: "/admin/databases/create"
 }
 
@@ -63,7 +63,7 @@ export default class DatabaseList extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name="Databases and tables"
+                    name={t`Databases and tables`}
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
