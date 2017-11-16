@@ -215,7 +215,7 @@ export default class Tutorial extends Component {
                         onClose={this.close}
                     >
                         <div className="text-centered">
-                            <h2>​Whoops!</h2>
+                            <h2>{t`​Whoops!`}</h2>
                             <p className="my2">{t`Sorry, it looks like something went wrong. Please try restarting the tutorial in a minute.`}</p>
                             <button className="Button Button--primary" onClick={this.close}>{t`Okay`}</button>
                         </div>
