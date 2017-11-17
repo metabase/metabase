@@ -5,7 +5,8 @@
             [medley.core :as m]
             [metabase.email :as email]
             [metabase.test.data.users :as user]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu])
+  (:import javax.activation.MimeType))
 
 (def inbox
   "Map of email addresses -> sequence of messages they've received."
@@ -82,10 +83,10 @@
   return map of the stringified regex as the key and a boolean as the value. True if it returns results via `re-find`
   false otherwise."
   [regex-seq]
-  (fn [message-body-seq]
-    (let [{message-body :content} (first message-body-seq)]
+  (fn [message-body]
+    (let [{:keys [content]} message-body]
       (zipmap (map str regex-seq)
-              (map #(boolean (re-find % message-body)) regex-seq)))))
+              (map #(boolean (re-find % content)) regex-seq)))))
 
 (defn regex-email-bodies
   "Will be apply each regex to each email body in the fake inbox. The body will be replaced by a map with the
@@ -94,7 +95,32 @@
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
     (m/map-vals (fn [emails-for-recipient]
                   (for [email emails-for-recipient]
-                    (update email :body email-body->regex-boolean)))
+                    (update email :body (comp email-body->regex-boolean first))))
+                @inbox)))
+
+(defn- mime-type [mime-type-str]
+  (-> mime-type-str
+      MimeType.
+      .getBaseType))
+
+(defn- summarize-attachment [email-attachment]
+  (-> email-attachment
+      (update :content-type mime-type)
+      (update :content class)
+      (update :content-id boolean)))
+
+(defn summarize-multipart-email
+  "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will
+  summarize the contents for comparison in expects"
+  [& regexes]
+  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
+    (m/map-vals (fn [emails-for-recipient]
+                  (for [email emails-for-recipient]
+                    (update email :body (fn [email-body-seq]
+                                          (for [{email-type :type :as email-part}  email-body-seq]
+                                            (if (string? email-type)
+                                              (email-body->regex-boolean email-part)
+                                              (summarize-attachment email-part)))))))
                 @inbox)))
 
 (defn email-to

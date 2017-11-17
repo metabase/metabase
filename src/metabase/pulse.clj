@@ -171,11 +171,12 @@
                                  (first-question-name pulse)
                                  (get alert-notification-condition-text condition-kwd))
         email-recipients (filterv u/is-email? (map :email recipients))
-        timezone         (-> results first :card defaulted-timezone)]
+        first-result     (first results)
+        timezone         (-> first-result :card defaulted-timezone)]
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse results (ui/find-goal-value results))}))
+     :message      (messages/render-alert-email timezone pulse results (ui/find-goal-value first-result))}))
 
 (defmethod create-notification [:alert :slack]
   [pulse results {{channel-id :channel} :details :as channel}]
