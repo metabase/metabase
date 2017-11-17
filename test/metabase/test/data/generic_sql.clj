@@ -2,29 +2,25 @@
   "Common functionality for various Generic SQL dataset drivers."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]
+             [helpers :as h]]
             [medley.core :as m]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            (metabase.test.data [datasets :as datasets]
-                                [interface :as i])
+            [metabase.test.data.interface :as i]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.SQLException
-           clojure.lang.Keyword
-           (metabase.test.data.interface DatabaseDefinition
-                                         FieldDefinition
-                                         TableDefinition)))
+  (:import clojure.lang.Keyword
+           java.sql.SQLException
+           [metabase.test.data.interface DatabaseDefinition FieldDefinition TableDefinition]))
 
 ;;; ## ------------------------------------------------------------ IGenericDatasetLoader + default impls ------------------------------------------------------------
 
-(defprotocol IGenericSQLDatasetLoader
+(defprotocol IGenericSQLTestExtensions
   "Methods for loading `DatabaseDefinition` in a SQL database.
-   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `IDatasetLoader`
-   by using the `IDatasetLoaderMixin`.
+   A type that implements `IGenericSQLTestExtensions` can be made to implement most of `IDriverTestExtensions`
+   by using the `IDriverTestExtensionsMixin`.
 
    Methods marked *Optional* below have a default implementation specified in `DefaultsMixin`."
   (field-base-type->sql-type [this, ^Keyword base-type]
@@ -228,18 +224,19 @@
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
   (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-    (let [spec       (database->spec driver :db dbdef)
-          table-name (apply hx/qualify-and-escape-dots (qualified-name-components driver database-name table-name))
-          insert!    ((apply comp wrap-insert-fns) (partial do-insert! driver spec table-name))
-          rows       (load-data-get-rows driver dbdef tabledef)]
-      (insert! rows))))
+    (jdbc/with-db-connection [conn (database->spec driver :db dbdef)]
+      (.setAutoCommit (jdbc/get-connection conn) false)
+      (let [table-name (apply hx/qualify-and-escape-dots (qualified-name-components driver database-name table-name))
+            insert!    ((apply comp wrap-insert-fns) (partial do-insert! driver conn table-name))
+            rows       (load-data-get-rows driver dbdef tabledef)]
+        (insert! rows)))))
 
 (def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
 (def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
 (def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
 (def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
 (def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
-
+;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do some profiling in order to pick the appropriate implementation
 
 (defn default-execute-sql! [driver context dbdef sql]
   (let [sql (some-> sql s/trim)]
@@ -263,7 +260,7 @@
 
 
 (def DefaultsMixin
-  "Default implementations for methods marked *Optional* in `IGenericSQLDatasetLoader`."
+  "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
   {:add-fk-sql                default-add-fk-sql
    :create-db-sql             default-create-db-sql
    :create-table-sql          default-create-table-sql
@@ -279,7 +276,7 @@
    :quote-name                default-quote-name})
 
 
-;; ## ------------------------------------------------------------ IDatasetLoader impl ------------------------------------------------------------
+;; ## ------------------------------------------------------------ IDriverTestExtensions impl ------------------------------------------------------------
 
 (defn sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
@@ -297,52 +294,54 @@
   ;; Exec SQL for creating the DB
   (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
                                           (create-db-sql driver dbdef)))
-
   ;; Build combined statement for creating tables + FKs
   (let [statements (atom [])]
-
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
       (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
              (create-table-sql driver dbdef tabledef)))
-
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
       (doseq [{:keys [fk], :as fielddef} field-definitions]
         (when fk
           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
-
     ;; exec the combined statement
     (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
-
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
-    (load-data! driver dbdef tabledef)))
+    (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
+      (load-data! driver dbdef tabledef))))
 
-(def IDatasetLoaderMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDatasetLoader`."
-  (merge i/IDatasetLoaderDefaultsMixin
+(def IDriverTestExtensionsMixin
+  "Mixin for `IGenericSQLTestExtensions` types to implement `create-db!` from `IDriverTestExtensions`."
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:create-db! create-db!}))
 
 
 ;;; ## Various Util Fns
+
+(defn- do-when-testing-engine {:style/indent 1} [engine f]
+  (require 'metabase.test.data.datasets)
+  ((resolve 'metabase.test.data.datasets/do-when-testing-engine) engine f))
 
 (defn execute-when-testing!
   "Execute a prepared SQL-AND-ARGS against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
    Useful for doing engine-specific setup or teardown."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
-  (datasets/when-testing-engine engine
-    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
-    (jdbc/execute! (get-connection-spec) sql-and-args)
-    (println (u/format-color 'blue "[OK]"))))
+  (do-when-testing-engine engine
+    (fn []
+      (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+      (jdbc/execute! (get-connection-spec) sql-and-args)
+      (println (u/format-color 'blue "[OK]")))))
 
 (defn query-when-testing!
   "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
    Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't work because the query returns results."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
-  (datasets/when-testing-engine engine
-    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
-    (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
-      (println (u/format-color 'blue "[OK] -> %s" (vec <>))))))
+  (do-when-testing-engine engine
+    (fn []
+      (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+      (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
+        (println (u/format-color 'blue "[OK] -> %s" (vec <>)))))))

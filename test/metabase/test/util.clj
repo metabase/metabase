@@ -1,56 +1,41 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [clojure.tools.logging :as log]
+  (:require [cheshire.core :as json]
+            [clj-time.core :as time]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [cheshire.core :as json]
+            [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
-            (toucan [db :as db]
-                    [models :as models])
-            [toucan.util.test :as test]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [metric :refer [Metric]]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [pulse :refer [Pulse]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment]]
-                             [setting :as setting]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+            [metabase
+             [driver :as driver]
+             [task :as task]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [permissions-group :refer [PermissionsGroup]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [revision :refer [Revision]]
+             [segment :refer [Segment]]
+             [setting :as setting]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.test.data :as data]
-            [metabase.util :as u]))
-
-(declare $->prop)
+            [metabase.test.data.datasets :refer [*driver*]]
+            [toucan.db :as db]
+            [toucan.util.test :as test])
+  (:import java.util.TimeZone
+           [org.joda.time DateTime DateTimeZone]
+           [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 ;; ## match-$
-
-(defmacro match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
-
-    {k $}     -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-    $$        -> {k SOURCE-OBJECT}
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source##    (gensym)
-        dest-object (into {} (for [[k v] dest-object]
-                               {k (condp = v
-                                    '$ `(~k ~source##)
-                                    '$$ source##
-                                        v)}))]
-    `(let [~source## ~source-obj]
-       ~(clojure.walk/prewalk (partial $->prop source##)
-                              dest-object))))
 
 (defn- $->prop
   "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
@@ -66,13 +51,43 @@
           `(~(keyword (apply str (rest (name form)))) ~source-obj)))
       form))
 
+(defmacro ^:deprecated match-$
+  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
+
+    {k $}     -> {k (k SOURCE-OBJECT)}
+    {k $symb} -> {k (:symb SOURCE-OBJECT)}
+    $$        -> {k SOURCE-OBJECT}
+
+  ex.
+
+    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
+  ;; DEPRECATED - This is an old pattern for writing tests and is probably best avoided going forward.
+  ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
+  ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
+  ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
+  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their presence;
+  ;; see the `boolean-ids-and-timestamps` function below
+  [source-obj dest-object]
+  {:pre [(map? dest-object)]}
+  (let [source##    (gensym)
+        dest-object (into {} (for [[k v] dest-object]
+                               {k (condp = v
+                                    '$ `(~k ~source##)
+                                    '$$ source##
+                                    v)}))]
+    `(let [~source## ~source-obj]
+       ~(walk/prewalk (partial $->prop source##)
+                      dest-object))))
+
 
 ;;; random-name
-(let [random-uppercase-letter (partial rand-nth (mapv char (range (int \A) (inc (int \Z)))))]
-  (defn random-name
-    "Generate a random string of 20 uppercase letters."
-    []
-    (apply str (repeatedly 20 random-uppercase-letter))))
+(def ^:private ^{:arglists '([])} random-uppercase-letter
+  (partial rand-nth (mapv char (range (int \A) (inc (int \Z))))))
+
+(defn random-name
+  "Generate a random string of 20 uppercase letters."
+  []
+  (apply str (repeatedly 20 random-uppercase-letter)))
 
 (defn random-email
   "Generate a random email address."
@@ -80,28 +95,31 @@
   (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
-  [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (boolean-ids-and-timestamps v)
-              (coll? v) (mapv boolean-ids-and-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
-               (if (or (= :id k)
-                       (.endsWith (name k) "_id")
-                       (= :created_at k)
-                       (= :updated_at k)
-                       (= :last_analyzed k))
-                 [k (not (nil? v))]
-                 [k (f v)])))))
+  "Useful for unit test comparisons. Converts map keys found in `DATA`
+  satisfying `PRED` with booleans when not nil"
+  ([data]
+   (boolean-ids-and-timestamps
+    (every-pred (some-fn keyword? string?)
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id}
+                         #(.endsWith (name %) "_id")))
+    data))
+  ([pred data]
+   (walk/prewalk (fn [maybe-map]
+                   (if (map? maybe-map)
+                     (reduce-kv (fn [acc k v]
+                                  (if (pred k)
+                                    (assoc acc k (not (nil? v)))
+                                    (assoc acc k v)))
+                                {} maybe-map)
+                     maybe-map))
+                 data)))
 
 
 (defn- user-id [username]
   (require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
-(defn- rasta-id     [] (user-id :rasta))
+(defn- rasta-id [] (user-id :rasta))
 
 
 (u/strict-extend (class Card)
@@ -129,7 +147,7 @@
 (u/strict-extend (class Database)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :yeehaw
+                                :engine    :yeehaw ; wtf?
                                 :is_sample false
                                 :name      (random-name)})})
 
@@ -157,22 +175,16 @@
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
+(u/strict-extend (class PulseCard)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_] {:position 0})})
+
 (u/strict-extend (class PulseChannel)
   test/WithTempDefaults
   {:with-temp-defaults (constantly {:channel_type  :email
                                     :details       {}
                                     :schedule_type :daily
                                     :schedule_hour 15})})
-
-(u/strict-extend (class RawColumn)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
-                                :name   (random-name)})})
-
-(u/strict-extend (class RawTable)
-  test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
-                                :name   (random-name)})})
 
 (u/strict-extend (class Revision)
   test/WithTempDefaults
@@ -211,7 +223,7 @@
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
 
-(defn resolve-private-vars* [source-namespace target-namespace symbols]
+(defn ^:deprecated resolve-private-vars* [source-namespace target-namespace symbols]
   {:pre [(namespace-or-symbol? source-namespace)
          (namespace-or-symbol? target-namespace)
          (every? symbol? symbols)]}
@@ -221,11 +233,15 @@
                          (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]
     (intern target-namespace symb varr)))
 
-(defmacro resolve-private-vars
+(defmacro ^:deprecated resolve-private-vars
   "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
 
     (resolve-private-vars metabase.driver.generic-sql.sync
-      field-avg-length field-percent-urls)"
+      field-avg-length field-percent-urls)
+
+   DEPRECATED: Just refer to vars directly using `#'` syntax instead of using this macro.
+
+     (#'some-ns/field-avg-length ...)"
   [namespc & symbols]
   `(resolve-private-vars* (quote ~namespc) *ns* (quote ~symbols)))
 
@@ -300,3 +316,154 @@
   {:style/indent 0}
   [& body]
   `(do-with-log-messages (fn [] ~@body)))
+
+
+(defn vectorize-byte-arrays
+  "Walk form X and convert any byte arrays in the results to standard Clojure vectors.
+   This is useful when writing tests that return byte arrays (such as things that work with query hashes),
+   since identical arrays are not considered equal."
+  {:style/indent 0}
+  [x]
+  (walk/postwalk (fn [form]
+                   (if (instance? (Class/forName "[B") form)
+                     (vec form)
+                     form))
+                 x))
+
+(defn- update-in-if-present
+  "If the path `KS` is found in `M`, call update-in with the original
+  arguments to this function, otherwise, return `M`"
+  [m ks f & args]
+  (if (= ::not-found (get-in m ks ::not-found))
+    m
+    (apply update-in m ks f args)))
+
+(defn- round-fingerprint-fields [fprint-type-map fields]
+  (reduce (fn [fprint field]
+            (update-in-if-present fprint [field] (fn [num]
+                                                   (if (integer? num)
+                                                     num
+                                                     (u/round-to-decimals 3 num)))))
+          fprint-type-map fields))
+
+(defn round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 4 decimal places"
+  [field]
+  (-> field
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
+      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
+
+(defn round-fingerprint-cols [query-results]
+  (let [maybe-data-cols (if (contains? query-results :data)
+                          [:data :cols]
+                          [:cols])]
+    (update-in query-results maybe-data-cols #(map round-fingerprint %))))
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                       SCHEDULER                                                        |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler in place
+;; and then check the tasks that get scheduled
+
+(defn do-with-scheduler [scheduler f]
+  (with-redefs [metabase.task/scheduler (constantly scheduler)]
+    (f)))
+
+(defmacro with-scheduler
+  "Temporarily bind the Metabase Quartzite scheduler to SCHEULDER and run BODY."
+  {:style/indent 1}
+  [scheduler & body]
+  `(do-with-scheduler ~scheduler (fn [] ~@body)))
+
+(defn do-with-temp-scheduler [f]
+  (let [temp-scheduler (qs/start (qs/initialize))]
+    (with-scheduler temp-scheduler
+      (try (f)
+           (finally
+             (qs/shutdown temp-scheduler))))))
+
+(defmacro with-temp-scheduler
+  "Execute BODY with a temporary scheduler in place.
+
+    (with-temp-scheduler
+      (do-something-to-schedule-tasks)
+      ;; verify that the right thing happened
+      (scheduler-current-tasks))"
+  {:style/indent 0}
+  [& body]
+  `(do-with-temp-scheduler (fn [] ~@body)))
+
+(defn scheduler-current-tasks
+  "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler.
+   Intended so we can test that things were scheduled correctly."
+  []
+  (when-let [^Scheduler scheduler (#'task/scheduler)]
+    (vec
+     (sort-by
+      :key
+      (for [^JobKey job-key (.getJobKeys scheduler nil)]
+        (let [^JobDetail job-detail (.getJobDetail scheduler job-key)
+              triggers              (.getTriggersOfJob scheduler job-key)]
+          {:description (.getDescription job-detail)
+           :class       (.getJobClass job-detail)
+           :key         (.getName job-key)
+           :data        (into {} (.getJobDataMap job-detail))
+           :triggers    (vec (for [^Trigger trigger triggers]
+                               (merge
+                                {:key (.getName (.getKey trigger))}
+                                (when (instance? CronTrigger trigger)
+                                  {:cron-schedule (.getCronExpression ^CronTrigger trigger)}))))}))))))
+
+(defn db-timezone-id
+  "Return the timezone id from the test database. Must be called with
+  `metabase.test.data.datasets/*driver*` bound, such as via
+  `metabase.test.data.datasets/with-engine`"
+  []
+  (assert (bound? #'*driver*))
+  (data/dataset test-data
+    (-> (driver/current-db-time *driver* (data/db))
+        .getChronology
+        .getZone
+        .getID)))
+
+(defn call-with-jvm-tz
+  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the
+  various timezone settings back the way it found it when it exits."
+  [^DateTimeZone dtz f]
+  (let [orig-tz (TimeZone/getDefault)
+        orig-dtz (time/default-time-zone)
+        orig-tz-prop (System/getProperty "user.timezone")]
+    (try
+      ;; It looks like some DB drivers cache the timezone information
+      ;; when instantiated, this clears those to force them to reread
+      ;; that timezone value
+      (reset! @#'metabase.driver.generic-sql/database-id->connection-pool {})
+      ;; Used by JDBC, and most JVM things
+      (TimeZone/setDefault (.toTimeZone dtz))
+      ;; Needed as Joda time has a different default TZ
+      (DateTimeZone/setDefault dtz)
+      ;; We read the system property directly when formatting results, so this needs to be changed
+      (System/setProperty "user.timezone" (.getID dtz))
+      (f)
+      (finally
+        ;; We need to ensure we always put the timezones back the way
+        ;; we found them as it will cause test failures
+        (TimeZone/setDefault orig-tz)
+        (DateTimeZone/setDefault orig-dtz)
+        (System/setProperty "user.timezone" orig-tz-prop)))))
+
+(defmacro with-jvm-tz
+  "Invokes `BODY` with the JVM timezone set to `DTZ`"
+  [dtz & body]
+  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
+
+(defmacro with-model-cleanup
+  "This will delete all rows found for each model in `MODEL-SEQ`. This calls `delete!`, so if the model has defined
+  any `pre-delete` behavior, that will be preserved."
+  [model-seq & body]
+  `(try
+     ~@body
+     (finally
+       (doseq [model# ~model-seq]
+         (db/delete! model#)))))

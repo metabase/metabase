@@ -76,7 +76,7 @@ export default class HistoryModal extends Component {
                 title="Revision history"
                 onClose={() => this.props.onClose()}
             >
-                <LoadingAndErrorWrapper loading={!revisions} error={this.state.error}>
+                <LoadingAndErrorWrapper className="flex flex-full flex-basis-auto" loading={!revisions} error={this.state.error}>
                 {() =>
                     <div className="pb4 flex-full">
                         <div className="border-bottom flex px4 py1 text-uppercase text-grey-3 text-bold h5">

@@ -1,12 +1,12 @@
 (ns metabase.util.stats-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.test.util :as tu]
             [metabase.util.stats :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.db :as db]))
 
 (tu/resolve-private-vars metabase.util.stats
-  bin-micro-number bin-medium-number bin-large-number)
+  bin-micro-number bin-small-number bin-medium-number bin-large-number)
 
 
 (expect "0" (bin-micro-number 0))
@@ -15,15 +15,15 @@
 (expect "3+" (bin-micro-number 3))
 (expect "3+" (bin-micro-number 100))
 
-#_(expect "0" (bin-small-number 0))
-#_(expect "1-5" (bin-small-number 1))
-#_(expect "1-5" (bin-small-number 5))
-#_(expect "6-10" (bin-small-number 6))
-#_(expect "6-10" (bin-small-number 10))
-#_(expect "11-25" (bin-small-number 11))
-#_(expect "11-25" (bin-small-number 25))
-#_(expect "25+" (bin-small-number 26))
-#_(expect "25+" (bin-small-number 500))
+(expect "0" (bin-small-number 0))
+(expect "1-5" (bin-small-number 1))
+(expect "1-5" (bin-small-number 5))
+(expect "6-10" (bin-small-number 6))
+(expect "6-10" (bin-small-number 10))
+(expect "11-25" (bin-small-number 11))
+(expect "11-25" (bin-small-number 25))
+(expect "25+" (bin-small-number 26))
+(expect "25+" (bin-small-number 500))
 
 (expect "0" (bin-medium-number 0))
 (expect "1-5" (bin-medium-number 1))
@@ -66,6 +66,13 @@
 (expect false ((anonymous-usage-stats) :slack_configured))
 (expect false ((anonymous-usage-stats) :sso_configured))
 (expect false ((anonymous-usage-stats) :has_sample_data))
+
+;;Spot checking a few system stats to ensure conversion from property
+;;names and presence in the anonymous-usage-stats
+(expect
+  #{true}
+  (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
+    (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
 
 ;;; check that the new lazy-seq version of the executions metrics works the same way the old one did
 (tu/resolve-private-vars metabase.util.stats

@@ -3,16 +3,28 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase.config :as config]
-            [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
-            (metabase.driver [generic-sql :as sql]
-                             [postgres :as postgres])
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver
+             [generic-sql :as sql]
+             [postgres :as postgres]]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
-(defn- connection-details->spec [details]
-  (dbspec/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
+(defn- connection-details->spec
+  "Create a database specification for a redshift database. Opts should include
+  keys for :db, :user, and :password. You can also optionally set host and
+  port."
+  [{:keys [host port db],
+    :as opts}]
+  (merge {:classname "com.amazon.redshift.jdbc.Driver" ; must be in classpath
+          :subprotocol "redshift"
+          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=false")
+          :ssl true}
+         (dissoc opts :host :port :db)))
 
 (defn- date-interval [unit amount]
   (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
@@ -57,39 +69,46 @@
   clojure.lang.Named
   (getName [_] "Amazon Redshift"))
 
+;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
+;; Redshift is always in UTC and doesn't return it's timezone
+(def ^:private redshift-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+(def ^:private redshift-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
+
 (u/strict-extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval            (u/drop-first-arg date-interval)
           :describe-table-fks       (u/drop-first-arg describe-table-fks)
-          :details-fields           (constantly [{:name         "host"
-                                                  :display-name "Host"
-                                                  :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
-                                                  :required     true}
-                                                 {:name         "port"
-                                                  :display-name "Port"
-                                                  :type         :integer
-                                                  :default      5439}
-                                                 {:name         "db"
-                                                  :display-name "Database name"
-                                                  :placeholder  "toucan_sightings"
-                                                  :required     true}
-                                                 {:name         "user"
-                                                  :display-name "Database username"
-                                                  :placeholder  "cam"
-                                                  :required     true}
-                                                 {:name         "password"
-                                                  :display-name "Database user password"
-                                                  :type         :password
-                                                  :placeholder  "*******"
-                                                  :required     true}])
-          :format-custom-field-name (u/drop-first-arg str/lower-case)})
+          :details-fields           (constantly (ssh/with-tunnel-config
+                                                  [{:name         "host"
+                                                    :display-name "Host"
+                                                    :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
+                                                    :required     true}
+                                                   {:name         "port"
+                                                    :display-name "Port"
+                                                    :type         :integer
+                                                    :default      5439}
+                                                   {:name         "db"
+                                                    :display-name "Database name"
+                                                    :placeholder  "toucan_sightings"
+                                                    :required     true}
+                                                   {:name         "user"
+                                                    :display-name "Database username"
+                                                    :placeholder  "cam"
+                                                    :required     true}
+                                                   {:name         "password"
+                                                    :display-name "Database user password"
+                                                    :type         :password
+                                                    :placeholder  "*******"
+                                                    :required     true}]))
+          :format-custom-field-name (u/drop-first-arg str/lower-case)
+          :current-db-time          (driver/make-current-db-time-fn redshift-date-formatter redshift-db-time-query)})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
           :current-datetime-fn       (constantly :%getdate)
-          :set-timezone-sql          (constantly nil)
+          :set-timezone-sql          (constantly "SET TIMEZONE TO %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
          ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests against a single remote host;
          ;; when running tests tell the sync process to ignore all the other schemas
@@ -103,4 +122,7 @@
                                                 (str "schema_" i))
                                               "public")))))})))
 
-(driver/register-driver! :redshift (RedshiftDriver.))
+(defn -init-driver
+  "Register the Redshift driver"
+  []
+  (driver/register-driver! :redshift (RedshiftDriver.)))

@@ -5,11 +5,14 @@ import React, { Component } from "react";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
-import LeafletMarkerPinMap from "./LeafletMarkerPinMap.jsx";
-import LeafletTilePinMap from "./LeafletTilePinMap.jsx";
+import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
+import LeafletTilePinMap from "./LeafletTilePinMap";
+import LeafletHeatMap from "./LeafletHeatMap";
+import LeafletGridHeatMap from "./LeafletGridHeatMap";
 
 import _ from "underscore";
 import cx from "classnames";
+import d3 from "d3";
 
 import L from "leaflet";
 
@@ -20,17 +23,27 @@ type Props = VisualizationProps;
 type State = {
     lat: ?number,
     lng: ?number,
+    min: ?number,
+    max: ?number,
+    binHeight: ?number,
+    binWidth: ?number,
     zoom: ?number,
     points: L.Point[],
     bounds: L.Bounds,
+    filtering: boolean,
 };
 
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,
     "tiles": LeafletTilePinMap,
+    "heat": LeafletHeatMap,
+    "grid": LeafletGridHeatMap,
 }
 
-export default class PinMap extends Component<*, Props, State> {
+export default class PinMap extends Component {
+    props: Props;
+    state: State;
+
     static uiName = "Pin Map";
     static identifier = "pin_map";
     static iconName = "pinmap";
@@ -44,6 +57,7 @@ export default class PinMap extends Component<*, Props, State> {
     }
 
     state: State;
+    _map: ?(LeafletMarkerPinMap|LeafletTilePinMap) = null;
 
     constructor(props: Props) {
         super(props);
@@ -51,12 +65,20 @@ export default class PinMap extends Component<*, Props, State> {
             lat: null,
             lng: null,
             zoom: null,
+            filtering: false,
             ...this._getPoints(props)
         };
     }
 
     componentWillReceiveProps(newProps: Props) {
-        if (newProps.series[0].data !== this.props.series[0].data) {
+        const SETTINGS_KEYS = ["map.latitude_column", "map.longitude_column", "map.metric_column"];
+        if (newProps.series[0].data !== this.props.series[0].data ||
+            !_.isEqual(
+                // $FlowFixMe
+                _.pick(newProps.settings, ...SETTINGS_KEYS),
+                // $FlowFixMe
+                _.pick(this.props.settings, ...SETTINGS_KEYS))
+        ) {
             this.setState(this._getPoints(newProps))
         }
     }
@@ -88,12 +110,30 @@ export default class PinMap extends Component<*, Props, State> {
         const { settings, series: [{ data: { cols, rows }}] } = props;
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
+        const metricIndex = _.findIndex(cols, (col) => col.name === settings["map.metric_column"]);
+
         const points = rows.map(row => [
             row[latitudeIndex],
-            row[longitudeIndex]
+            row[longitudeIndex],
+            metricIndex >= 0 ? row[metricIndex] : 1
         ]);
+
         const bounds = L.latLngBounds(points);
-        return { points, bounds };
+
+        const min = d3.min(points, point => point[2]);
+        const max = d3.max(points, point => point[2]);
+
+        const binWidth = cols[longitudeIndex] && cols[longitudeIndex].binning_info && cols[longitudeIndex].binning_info.bin_width;
+        const binHeight = cols[latitudeIndex] && cols[latitudeIndex].binning_info && cols[latitudeIndex].binning_info.bin_width;
+
+        if (binWidth != null) {
+            bounds._northEast.lng += binWidth;
+        }
+        if (binHeight != null) {
+            bounds._northEast.lat += binHeight;
+        }
+
+        return { points, bounds, min, max, binWidth, binHeight };
     }
 
     render() {
@@ -103,13 +143,14 @@ export default class PinMap extends Component<*, Props, State> {
 
         const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
 
-        const { points, bounds } = this.state;//this._getPoints(this.props);
+        const { points, bounds, min, max, binHeight, binWidth } = this.state;
 
         return (
-            <div className={cx(className, "PinMap relative")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
+            <div className={cx(className, "PinMap relative hover-parent hover--visibility")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
                 { Map ?
                     <Map
                         {...this.props}
+                        ref={map => this._map = map}
                         className="absolute top left bottom right z1"
                         onMapCenterChange={this.onMapCenterChange}
                         onMapZoomChange={this.onMapZoomChange}
@@ -118,13 +159,34 @@ export default class PinMap extends Component<*, Props, State> {
                         zoom={zoom}
                         points={points}
                         bounds={bounds}
+                        min={min}
+                        max={max}
+                        binWidth={binWidth}
+                        binHeight={binHeight}
+                        onFiltering={(filtering) => this.setState({ filtering })}
                     />
                 : null }
-                { isEditing || !isDashboard ?
-                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1 z2", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
-                        Save as default view
-                    </div>
-                : null }
+                <div className="absolute top right m1 z2 flex flex-column hover-child">
+                    { isEditing || !isDashboard ?
+                        <div className={cx("PinMapUpdateButton Button Button--small mb1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
+                            Save as default view
+                        </div>
+                    : null }
+                    { !isDashboard &&
+                        <div
+                            className={cx("PinMapUpdateButton Button Button--small mb1")}
+                            onClick={() => {
+                                if (!this.state.filtering && this._map && this._map.startFilter) {
+                                    this._map.startFilter();
+                                } else if (this.state.filtering && this._map && this._map.stopFilter) {
+                                    this._map.stopFilter();
+                                }
+                            }}
+                        >
+                            { !this.state.filtering ? "Draw box to filter" : "Cancel filter" }
+                        </div>
+                    }
+                </div>
             </div>
         );
     }

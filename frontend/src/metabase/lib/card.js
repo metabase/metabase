@@ -35,6 +35,7 @@ export async function loadCard(cardId) {
     }
 }
 
+// TODO Atte Keinänen 5/31/17 Deprecated, we should migrate existing references to this method to `question.isCardDirty`
 // predicate function that dermines if a given card is "dirty" compared to the last known version of the card
 export function isCardDirty(card, originalCard) {
     // The rules:
@@ -56,7 +57,7 @@ export function isCardDirty(card, originalCard) {
         }
     } else {
         const origCardSerialized = originalCard ? serializeCardForUrl(originalCard) : null;
-        const newCardSerialized = card ? serializeCardForUrl(card) : null;
+        const newCardSerialized = card ? serializeCardForUrl(_.omit(card, 'original_card_id')) : null;
         return (newCardSerialized !== origCardSerialized);
     }
 }
@@ -73,19 +74,23 @@ export function isCardRunnable(card, tableMetadata) {
     }
 }
 
+// TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
     var dataset_query = Utils.copy(card.dataset_query);
     if (dataset_query.query) {
         dataset_query.query = Query.cleanQuery(dataset_query.query);
     }
+
     var cardCopy = {
         name: card.name,
         description: card.description,
         dataset_query: dataset_query,
         display: card.display,
         parameters: card.parameters,
-        visualization_settings: card.visualization_settings
+        visualization_settings: card.visualization_settings,
+        original_card_id: card.original_card_id
     };
+
     return utf8_to_b64url(JSON.stringify(cardCopy));
 }
 

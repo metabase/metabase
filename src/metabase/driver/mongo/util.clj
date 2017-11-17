@@ -1,10 +1,15 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
   (:require [clojure.tools.logging :as log]
-            (monger [core :as mg]
-                    [credentials :as mcred])
-            (metabase [driver :as driver]
-                      [util :as u])))
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.util.ssh :as ssh]
+            [monger
+             [core :as mg]
+             [credentials :as mcred]])
+  (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection.
@@ -21,12 +26,45 @@
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
 
+;; the code below is done to support "additional connection options" the way some of the JDBC drivers do.
+;; For example, some people might want to specify a`readPreference` of `nearest`. The normal Java way of
+;; doing this would be to do
+;;
+;;     (.readPreference builder (ReadPreference/nearest))
+;;
+;; But the user will enter something like `readPreference=nearest`. Luckily, the Mongo Java lib can parse
+;; these options for us and return a `MongoClientOptions` like we'd prefer. Code below:
+
+(defn- client-options-for-url-params
+  "Return an instance of `MongoClientOptions` from a URL-PARAMS string, e.g.
+
+     (client-options-for-url-params \"readPreference=nearest\")
+      ;; -> #MongoClientOptions{readPreference=nearest, ...}"
+  ^MongoClientOptions [^String url-params]
+  (when (seq url-params)
+    ;; just make a fake connection string to tack the URL params on to. We can use that to have the Mongo lib
+    ;; take care of parsing the params and converting them to Java-style `MongoConnectionOptions`
+    (.getOptions (MongoClientURI. (str "mongodb://localhost/?" url-params)))))
+
+(defn- client-options->builder
+  "Return a `MongoClientOptions.Builder` for a `MongoClientOptions` CLIENT-OPTIONS.
+   If CLIENT-OPTIONS is `nil`, return a new 'default' builder."
+  ^MongoClientOptions$Builder [^MongoClientOptions client-options]
+  ;; We do it tnis way because (MongoClientOptions$Builder. nil) throws a NullPointerException
+  (if client-options
+    (MongoClientOptions$Builder. client-options)
+    (MongoClientOptions$Builder.)))
+
 (defn- build-connection-options
   "Build connection options for Mongo.
-   We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection
-   since Monger's wrapper method doesn't support `.serverSelectionTimeout` or `.sslEnabled`."
-  [& {:keys [ssl?]}]
-  (-> (com.mongodb.MongoClientOptions$Builder.)
+   We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection since Monger's wrapper method doesn't
+   support `.serverSelectionTimeout` or `.sslEnabled`. ADDITIONAL-OPTIONS, a String like `readPreference=nearest`, can be specified
+   as well; when passed, these are parsed into a `MongoClientOptions` that serves as a starting point for the changes made below."
+  ^MongoClientOptions [& {:keys [ssl? additional-options]
+                          :or   {ssl? false}}]
+  (-> (client-options-for-url-params additional-options)
+      client-options->builder
+      (.description config/mb-app-id-string)
       (.connectTimeout connection-timeout-ms)
       (.serverSelectionTimeout connection-timeout-ms)
       (.sslEnabled ssl?)
@@ -39,37 +77,45 @@
                                             [server-address options]
                                             [server-address options credentials]))
 
+(defn- database->details
+  "Make sure DATABASE is in a standard db details format. This is done so we can accept several different types of
+   values for DATABASE, such as plain strings or the usual MB details map."
+  [database]
+  (cond
+    (string? database)            {:dbname database}
+    (:dbname (:details database)) (:details database) ; entire Database obj
+    (:dbname database)            database            ; connection details map only
+    :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database))))))
+
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [{:keys [dbname host port user pass ssl authdb]
-         :or   {port 27017, pass "", ssl false}} (cond
-                                                   (string? database)            {:dbname database}
-                                                   (:dbname (:details database)) (:details database) ; entire Database obj
-                                                   (:dbname database)            database            ; connection details map only
-                                                   :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        user             (when (seq user) ; ignore empty :user and :pass strings
-                           user)
-        pass             (when (seq pass)
-                           pass)
-        authdb           (if (seq authdb)
-                           authdb
-                           dbname)
-        server-address   (mg/server-address host port)
-        credentials      (when user
-                           (mcred/create user authdb pass))
-        connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
-        conn             (if credentials
-                           (connect credentials)
-                           (connect))
-        mongo-connection (mg/get-db conn dbname)]
-    (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
-    (try
-      (binding [*mongo-connection* mongo-connection]
-        (f *mongo-connection*))
-      (finally
-        (mg/disconnect conn)))))
+  (let [details (database->details database)]
+    (ssh/with-ssh-tunnel [details-with-tunnel details]
+      (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
+             :or   {port 27017, pass "", ssl false}} details-with-tunnel
+            user             (when (seq user) ; ignore empty :user and :pass strings
+                               user)
+            pass             (when (seq pass)
+                               pass)
+            authdb           (if (seq authdb)
+                               authdb
+                               dbname)
+            server-address   (mg/server-address host port)
+            credentials      (when user
+                               (mcred/create user authdb pass))
+            connect          (partial mg/connect server-address (build-connection-options :ssl? ssl, :additional-options additional-options))
+            conn             (if credentials
+                               (connect credentials)
+                               (connect))
+            mongo-connection (mg/get-db conn dbname)]
+        (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
+        (try
+          (binding [*mongo-connection* mongo-connection]
+            (f *mongo-connection*))
+          (finally        (mg/disconnect conn)
+                          (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to DATABASE-OR-CONNECTION-STRING, bind connection to BINDING, execute BODY, and close the connection.
@@ -91,26 +137,3 @@
      (if *mongo-connection*
        (f# *mongo-connection*)
        (-with-mongo-connection f# ~database))))
-
-;; TODO - this isn't neccesarily Mongo-specific; consider moving
-(defn values->base-type
-  "Given a sequence of values, return `Field.base_type` in the most ghetto way possible.
-   This just gets counts the types of *every* value and returns the `base_type` for class whose count was highest."
-  [values-seq]
-  {:pre [(sequential? values-seq)]}
-  (or (->> values-seq
-           ;; TODO - why not do a query to return non-nil values of this column instead
-           (filter identity)
-           ;; it's probably fine just to consider the first 1,000 *non-nil* values when trying to type a column instead
-           ;; of iterating over the whole collection. (VALUES-SEQ should be up to 10,000 values, but we don't know how many are
-           ;; nil)
-           (take 1000)
-           (group-by type)
-           ;; create tuples like [Integer count].
-           (map (fn [[klass valus]]
-                  [klass (count valus)]))
-           (sort-by second)
-           last                     ; last result will be tuple with highest count
-           first                    ; keep just the type
-           driver/class->base-type) ; convert to Field base_type
-      :type/*))

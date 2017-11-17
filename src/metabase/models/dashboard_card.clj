@@ -1,14 +1,17 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.db :as mdb]
-            [metabase.events :as events]
-            (metabase.models  [card :refer [Card]]
-                              [dashboard-card-series :refer [DashboardCardSeries]]
-                              [interface :as i])
-            [metabase.util :as u]))
+            [metabase
+             [db :as mdb]
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [interface :as i]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 (models/defmodel DashboardCard :report_dashboardcard)
 
@@ -112,9 +115,17 @@
     (db/transaction
       ;; update the dashcard itself (positional attributes)
       (when (and sizeX sizeY row col)
-        (db/update-non-nil-keys! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col, :parameter_mappings parameter_mappings, :visualization_settings visualization_settings))
+        (db/update-non-nil-keys! DashboardCard id
+          :sizeX                  sizeX
+          :sizeY                  sizeY
+          :row                    row
+          :col                    col
+          :parameter_mappings     parameter_mappings
+          :visualization_settings visualization_settings))
       ;; update series (only if they changed)
-      (when (not= series (map :card_id (db/select [DashboardCardSeries :card_id], :dashboardcard_id id, {:order-by [[:position :asc]]})))
+      (when (not= series (map :card_id (db/select [DashboardCardSeries :card_id]
+                                         :dashboardcard_id id
+                                         {:order-by [[:position :asc]]})))
         (update-dashboard-card-series! dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)
@@ -126,7 +137,6 @@
   [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings] :as dashboard-card}]
   {:pre [(integer? dashboard_id)
          (integer? card_id)
-         (integer? creator_id)
          (u/maybe? u/sequence-of-maps? parameter_mappings)
          (u/maybe? map? visualization_settings)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
@@ -144,10 +154,10 @@
         ;; add series to the DashboardCard
         (update-dashboard-card-series! dashboard-card series)
         ;; return the full DashboardCard (and record our create event)
-        (-> (retrieve-dashboard-card id)
-            (assoc :actor_id creator_id)
-            (->> (events/publish-event! :dashboard-card-create))
-            (dissoc :actor_id))))))
+        (as-> (retrieve-dashboard-card id) dashcard
+          (assoc dashcard :actor_id creator_id)
+          (events/publish-event! :dashboard-card-create dashcard)
+          (dissoc dashcard :actor_id))))))
 
 (defn delete-dashboard-card!
   "Delete a `DashboardCard`."

@@ -1,6 +1,7 @@
 /* @flow */
 
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api from "metabase/lib/api";
+const { GET, PUT, POST, DELETE } = api;
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
@@ -45,6 +46,8 @@ export const DashboardApi = {
     addcard:                    POST("/api/dashboard/:dashId/cards"),
     removecard:               DELETE("/api/dashboard/:dashId/cards"),
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
+    favorite:                   POST("/api/dashboard/:dashId/favorite"),
+    unfavorite:               DELETE("/api/dashboard/:dashId/favorite"),
 
     listPublic:                  GET("/api/dashboard/public"),
     listEmbeddable:              GET("/api/dashboard/embeddable"),
@@ -85,10 +88,16 @@ export const SlackApi = {
     updateSettings:              PUT("/api/slack/settings"),
 };
 
+export const LdapApi = {
+    updateSettings:              PUT("/api/ldap/settings")
+};
+
 export const MetabaseApi = {
     db_list:                     GET("/api/database"),
-    db_list_with_tables:         GET("/api/database?include_tables=true"),
+    db_list_with_tables:         GET("/api/database?include_tables=true&include_cards=true"),
+    db_real_list_with_tables:    GET("/api/database?include_tables=true&include_cards=false"),
     db_create:                  POST("/api/database"),
+    db_validate:                POST("/api/database/validate"),
     db_add_sample_dataset:      POST("/api/database/sample_dataset"),
     db_get:                      GET("/api/database/:dbId"),
     db_update:                   PUT("/api/database/:id"),
@@ -98,7 +107,9 @@ export const MetabaseApi = {
     db_fields:                   GET("/api/database/:dbId/fields"),
     db_idfields:                 GET("/api/database/:dbId/idfields"),
     db_autocomplete_suggestions: GET("/api/database/:dbId/autocomplete_suggestions?prefix=:prefix"),
-    db_sync_metadata:           POST("/api/database/:dbId/sync"),
+    db_sync_schema:             POST("/api/database/:dbId/sync_schema"),
+    db_rescan_values:           POST("/api/database/:dbId/rescan_values"),
+    db_discard_values:          POST("/api/database/:dbId/discard_values"),
     table_list:                  GET("/api/table"),
     // table_get:                   GET("/api/table/:tableId"),
     table_update:                PUT("/api/table/:id"),
@@ -113,16 +124,53 @@ export const MetabaseApi = {
                                         table.metrics.push(...GA.metrics);
                                         table.segments.push(...GA.segments);
                                     }
+
+                                    if (table && table.fields) {
+                                        // replace dimension_options IDs with objects
+                                        for (const field of table.fields) {
+                                            if (field.dimension_options) {
+                                                field.dimension_options = field.dimension_options.map(id => table.dimension_options[id])
+                                            }
+                                            if (field.default_dimension_option) {
+                                                field.default_dimension_option = table.dimension_options[field.default_dimension_option];
+                                            }
+                                        }
+                                    }
+
                                     return table;
                                  }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
+    table_rescan_values:       POST("/api/table/:tableId/rescan_values"),
+    table_discard_values:      POST("/api/table/:tableId/discard_values"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
-    // field_values:                GET("/api/field/:fieldId/values"),
-    // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
+    field_values:                GET("/api/field/:fieldId/values"),
+    field_values_update:        POST("/api/field/:fieldId/values"),
     field_update:                PUT("/api/field/:id"),
+    field_dimension_update:     POST("/api/field/:fieldId/dimension"),
+    field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
+    field_rescan_values:        POST("/api/field/:fieldId/rescan_values"),
+    field_discard_values:       POST("/api/field/:fieldId/discard_values"),
     dataset:                    POST("/api/dataset"),
-    dataset_duration:           POST("/api/dataset/duration"),
+    dataset_duration:           POST("/api/dataset/duration")
+};
+
+export const AsyncApi = {
+    status:                     GET("/api/async/:jobId"),
+    // endpoints:                  GET("/api/async/running-jobs")
+}
+
+export const XRayApi = {
+    // X-Rays
+    // NOTE Atte Keinänen 9/28/17: All xrays endpoints are asynchronous.
+    // You should use BackgroundJobRequest in `metabase/lib/promise` for invoking them.
+    field_xray:                  GET("/api/x-ray/field/:fieldId"),
+    table_xray:                  GET("/api/x-ray/table/:tableId"),
+    segment_xray:                GET("/api/x-ray/segment/:segmentId"),
+    card_xray:                   GET("/api/x-ray/card/:cardId"),
+
+    compare_shared_type:         GET("/api/x-ray/compare/:modelTypePlural/:modelId1/:modelId2"),
+    compare_two_types:           GET("/api/x-ray/compare/:modelType1/:modelId1/:modelType2/:modelId2"),
 };
 
 export const PulseApi = {
@@ -134,6 +182,15 @@ export const PulseApi = {
     test:                       POST("/api/pulse/test"),
     form_input:                  GET("/api/pulse/form_input"),
     preview_card:                GET("/api/pulse/preview_card_info/:id"),
+};
+
+export const AlertApi = {
+    list:                        GET("/api/alert"),
+    list_for_question:           GET("/api/alert/question/:questionId"),
+    create:                     POST("/api/alert"),
+    update:                      PUT("/api/alert/:id"),
+    delete:                   DELETE("/api/alert/:id"),
+    unsubscribe:                 PUT("/api/alert/:id/unsubscribe"),
 };
 
 export const SegmentApi = {
@@ -206,6 +263,7 @@ export const GettingStartedApi = {
 export const SetupApi = {
     create:                     POST("/api/setup"),
     validate_db:                POST("/api/setup/validate"),
+    admin_checklist:             GET("/api/setup/admin_checklist"),
 };
 
 export const UserApi = {
@@ -223,6 +281,15 @@ export const UserApi = {
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
     random_token:                GET("/api/util/random_token"),
+    logs:                        GET("/api/util/logs"),
 };
+
+export const GeoJSONApi = {
+    get:                         GET("/api/geojson/:id"),
+};
+
+export const I18NApi = {
+    locale:                      GET("/app/locales/:locale.json"),
+}
 
 global.services = exports;

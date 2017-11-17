@@ -8,6 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { KEYCODE_ESCAPE, KEYCODE_COMMA, KEYCODE_TAB, KEYCODE_UP, KEYCODE_DOWN, KEYCODE_BACKSPACE } from "metabase/lib/keyboard";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -80,11 +81,11 @@ export default class RecipientPicker extends Component {
 
     onInputKeyDown(e) {
         // enter, tab, comma
-        if (e.keyCode === 13 || e.keyCode === 9 || e.keyCode === 188) {
+        if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_TAB || e.keyCode === KEYCODE_COMMA) {
             this.addCurrentRecipient();
         }
         // up arrow
-        else if (e.keyCode === 38) {
+        else if (e.keyCode === KEYCODE_UP) {
             e.preventDefault();
             let index = _.findIndex(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
             if (index > 0) {
@@ -92,7 +93,7 @@ export default class RecipientPicker extends Component {
             }
         }
         // down arrow
-        else if (e.keyCode === 40) {
+        else if (e.keyCode === KEYCODE_DOWN) {
             e.preventDefault();
             let index = _.findIndex(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
             if (index >= 0 && index < this.state.filteredUsers.length - 1) {
@@ -100,7 +101,7 @@ export default class RecipientPicker extends Component {
             }
         }
         // backspace
-        else if (e.keyCode === 8) {
+        else if (e.keyCode === KEYCODE_BACKSPACE) {
             let { recipients } = this.props;
             if (!this.state.inputValue && recipients.length > 0) {
                 this.removeRecipient(recipients[recipients.length - 1])

@@ -23,9 +23,7 @@ export default class MetadataTable extends Component {
         tableMetadata: PropTypes.object,
         idfields: PropTypes.array.isRequired,
         updateTable: PropTypes.func.isRequired,
-        updateField: PropTypes.func.isRequired,
-        updateFieldSpecialType: PropTypes.func.isRequired,
-        updateFieldTarget: PropTypes.func.isRequired
+        updateField: PropTypes.func.isRequired
     };
 
     isHidden() {
@@ -111,8 +109,6 @@ export default class MetadataTable extends Component {
                         tableMetadata={tableMetadata}
                         idfields={this.props.idfields}
                         updateField={this.props.updateField}
-                        updateFieldSpecialType={this.props.updateFieldSpecialType}
-                        updateFieldTarget={this.props.updateFieldTarget}
                     />
                 </div>
             </div>

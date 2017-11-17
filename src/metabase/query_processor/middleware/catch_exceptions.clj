@@ -1,10 +1,13 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require schema.utils
+  (:require [metabase.query-processor.middleware
+             [expand :as expand]
+             [resolve :as resolve]
+             [source-table :as source-table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.query-processor.middleware.expand-resolve :as expand-resolve]
-            [metabase.util :as u])
-  (:import (schema.utils NamedError ValidationError)))
+            [metabase.util :as u]
+            schema.utils)
+  (:import [schema.utils NamedError ValidationError]))
 
 (defn- fail [query, ^Throwable e, & [additional-info]]
   (merge {:status         :failed
@@ -13,10 +16,14 @@
           :stacktrace     (u/filtered-stacktrace e)
           :query          (dissoc query :database :driver)
           :expanded-query (when (qputil/mbql-query? query)
-                            (u/ignore-exceptions
-                              (dissoc (expand-resolve/expand-and-resolve query) :database :driver)))}
+                            (-> query
+                                expand/expand
+                                source-table/resolve-source-table-middleware
+                                resolve/resolve
+                                (dissoc :database :driver)
+                                u/ignore-exceptions))}
          (when-let [data (ex-data e)]
-           {:ex-data data})
+           {:ex-data (dissoc data :schema)})
          additional-info))
 
 (defn- explain-schema-validation-error

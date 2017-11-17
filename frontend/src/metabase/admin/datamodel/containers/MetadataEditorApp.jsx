@@ -57,9 +57,7 @@ export default class MetadataEditor extends Component {
         idfields: PropTypes.array.isRequired,
         editingTable: PropTypes.number,
         updateTable: PropTypes.func.isRequired,
-        updateField: PropTypes.func.isRequired,
-        updateFieldSpecialType: PropTypes.func.isRequired,
-        updateFieldTarget: PropTypes.func.isRequired
+        updateField: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -85,8 +83,6 @@ export default class MetadataEditor extends Component {
                         idfields={this.props.idfields}
                         updateTable={(table) => this.props.updateTable(table)}
                         updateField={(field) => this.props.updateField(field)}
-                        updateFieldSpecialType={(field) => this.props.updateFieldSpecialType(field)}
-                        updateFieldTarget={(field) => this.props.updateFieldTarget(field)}
                         onRetireSegment={this.props.onRetireSegment}
                         onRetireMetric={this.props.onRetireMetric}
                     />

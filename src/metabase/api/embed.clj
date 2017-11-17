@@ -14,25 +14,26 @@
       {:resource {:question  <card-id>
                   :dashboard <dashboard-id>}
        :params   <params>}"
-  ;; TODO - switch resource.question back to resource.card
-  (:require (clojure [set :as set]
-                     [string :as str])
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [medley.core :as m]
-            [schema.core :as s]
-            [toucan.db :as db]
-            (metabase.api [common :as api]
-                          [dataset :as dataset-api]
-                          [public :as public-api])
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])
-            [metabase.models.setting :as setting]
+            [metabase.api
+             [common :as api]
+             [dataset :as dataset-api]
+             [public :as public-api]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]]
             [metabase.util :as u]
-            (metabase.util [embed :as eu]
-                           [schema :as su])))
-
+            [metabase.util
+             [embed :as eu]
+             [schema :as su]]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------------------ Param Checking ------------------------------------------------------------
 
@@ -107,13 +108,13 @@
   "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the EMBEDDING-PARAMS whitelist,
    or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user can't set."
   [dashboard-or-card, embedding-params :- su/EmbeddingParams]
-  (let [params-to-remove (into #{} (concat (for [[param status] embedding-params
-                                                 :when          (not= status "enabled")]
-                                             param)
-                                           (for [{slug :slug} (:parameters dashboard-or-card)
-                                                 :let         [param (keyword slug)]
-                                                 :when        (not (contains? embedding-params param))]
-                                             param)))]
+  (let [params-to-remove (set (concat (for [[param status] embedding-params
+                                            :when          (not= status "enabled")]
+                                        param)
+                                      (for [{slug :slug} (:parameters dashboard-or-card)
+                                            :let         [param (keyword slug)]
+                                            :when        (not (contains? embedding-params param))]
+                                        param)))]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters
@@ -163,7 +164,11 @@
   [dashboard-id dashcard-id card-id]
   (let [param-id->param (u/key-by :id (db/select-one-field :parameters Dashboard :id dashboard-id))]
     ;; throw a 404 if there's no matching DashboardCard so people can't get info about other Cards that aren't in this Dashboard
-    (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id, :dashboard_id dashboard-id, :card_id card-id))
+    ;; we don't need to check that card-id matches the DashboardCard because we might be trying to get param info for
+    ;; a series belonging to this dashcard (card-id might be for a series)
+    (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard
+                                         :id           dashcard-id
+                                         :dashboard_id dashboard-id))
           :when         (= (:card_id param-mapping) card-id)
           :let          [param (get param-id->param (:parameter_id param-mapping))]
           :when         param]
@@ -229,6 +234,7 @@
   ([object]
    (api/check-embedding-enabled)
    (api/check-404 object)
+   (api/check-not-archived object)
    (api/check (:enable_embedding object)
      [400 "Embedding is not enabled for this object."])))
 
@@ -274,16 +280,12 @@
   (run-query-for-unsigned-token (eu/unsign token) query-params))
 
 
-(api/defendpoint GET "/card/:token/query/csv"
-  "Like `GET /api/embed/card/query`, but returns the results as CSV."
-  [token & query-params]
-  (dataset-api/as-csv (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
-
-
-(api/defendpoint GET "/card/:token/query/json"
-  "Like `GET /api/embed/card/query`, but returns the results as JSOn."
-  [token & query-params]
-  (dataset-api/as-json (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+(api/defendpoint GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
+  "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
+  [token export-format & query-params]
+  {export-format dataset-api/ExportFormat}
+  (dataset-api/as-format export-format
+    (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
 
 ;;; ------------------------------------------------------------ /api/embed/dashboard endpoints ------------------------------------------------------------

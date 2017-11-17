@@ -2,10 +2,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.crate.util :as crate-util]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u])
+            [metabase.driver.generic-sql :as sql])
   (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type
@@ -47,7 +48,8 @@
     :as   details}]
   (merge {:classname   "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
-          :subname     (str "//" hosts "/")}
+          :subname     (str "//" hosts)
+          :user        "crate"}
          (dissoc details :hosts)))
 
 (defn- can-connect? [details]
@@ -95,16 +97,20 @@
   clojure.lang.Named
   (getName [_] "Crate"))
 
+(def ^:private crate-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSSZ"))
+(def ^:private crate-db-time-query "select DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%fZ')")
+
 (u/strict-extend CrateDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:can-connect?   (u/drop-first-arg can-connect?)
-          :date-interval  crate-util/date-interval
-          :describe-table describe-table
-          :details-fields (constantly [{:name         "hosts"
-                                        :display-name "Hosts"
-                                        :default      "localhost:5432"}])
-          :features       (comp (u/rpartial disj :foreign-keys) sql/features)})
+         {:can-connect?    (u/drop-first-arg can-connect?)
+          :date-interval   crate-util/date-interval
+          :describe-table  describe-table
+          :details-fields  (constantly [{:name         "hosts"
+                                         :display-name "Hosts"
+                                         :default      "localhost:5432/"}])
+          :features        (comp (u/rpartial disj :foreign-keys) sql/features)
+          :current-db-time (driver/make-current-db-time-fn crate-date-formatter crate-db-time-query)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
@@ -116,5 +122,7 @@
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp
           :current-datetime-fn       (constantly now)}))
 
-
-(driver/register-driver! :crate (CrateDriver.))
+(defn -init-driver
+  "Register the Crate driver"
+  []
+  (driver/register-driver! :crate (CrateDriver.)))

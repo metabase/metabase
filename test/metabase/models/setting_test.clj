@@ -1,10 +1,9 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
-            [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.models.setting :refer [defsetting Setting], :as setting]
-            (metabase.test [data :refer :all]
-                           [util :refer :all])))
+            [metabase.models.setting :as setting :refer [defsetting Setting]]
+            [metabase.test.util :refer :all]
+            [puppetlabs.i18n.core :refer [tru]]
+            [toucan.db :as db]))
 
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched
@@ -18,11 +17,11 @@
   "Test setting - this only shows up in dev (2)"
   :default "[Default Value]")
 
-(defsetting test-boolean-setting
+(defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
   :type :boolean)
 
-(defsetting test-json-setting
+(defsetting ^:private test-json-setting
   "Test setting - this only shows up in dev (4)"
   :type :json)
 
@@ -127,47 +126,47 @@
 
 ;; user-facing-info w/ no db value, no env var value, no default value
 (expect
-  {:value nil, :default nil}
+  {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 nil nil))
 
 ;; user-facing-info w/ no db value, no env var value, default value
 (expect
-  {:value nil, :default "[Default Value]"}
+  {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 nil nil))
 
 ;; user-facing-info w/ no db value, env var value, no default value -- shouldn't leak env var value
 (expect
-  {:value nil, :default "Using $MB_TEST_SETTING_1"}
+  {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using $MB_TEST_SETTING_1"}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 nil "TOUCANS"))
 
 ;; user-facing-info w/ no db value, env var value, default value
 (expect
-  {:value nil, :default "Using $MB_TEST_SETTING_2"}
+  {:value nil,  :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using $MB_TEST_SETTING_2"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 nil "TOUCANS"))
 
 ;; user-facing-info w/ db value, no env var value, no default value
 (expect
-  {:value "WOW", :default nil}
+  {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" nil))
 
 ;; user-facing-info w/ db value, no env var value, default value
 (expect
-  {:value "WOW", :default "[Default Value]"}
+  {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))
 
 ;; user-facing-info w/ db value, env var value, no default value -- the DB value should take precedence over the env var
 (expect
-  {:value "WOW", :default "Using $MB_TEST_SETTING_1"}
+  {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using $MB_TEST_SETTING_1"}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))
 
 ;; user-facing-info w/ db value, env var value, default value -- env var should take precedence over default value
 (expect
-  {:value "WOW", :default "Using $MB_TEST_SETTING_2"}
+  {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using $MB_TEST_SETTING_2"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR"))
 
 ;; all
 (expect
-  {:key :test-setting-2, :value "TOUCANS", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}
+  {:key :test-setting-2, :value "TOUCANS", :description "Test setting - this only shows up in dev (2)",  :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
   (do (set-settings! nil "TOUCANS")
       (some (fn [setting]
               (when (re-find #"^test-setting-2$" (name (:key setting)))
@@ -176,23 +175,33 @@
 
 ;; all
 (expect
-  [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
-   {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
+  [{:key :test-setting-1, :value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
+   {:key :test-setting-2, :value "S2", :is_env_setting false, :env_name "MB_TEST_SETTING_2",  :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
   (do (set-settings! nil "S2")
       (for [setting (setting/all)
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
         setting)))
 
+(defsetting ^:private test-i18n-setting
+  (tru "Test setting - with i18n"))
+
+;; Validate setting description with i18n string
+(expect
+  ["Test setting - with i18n"]
+  (for [{:keys [key description]} (setting/all)
+        :when (= :test-i18n-setting key)]
+    description))
+
 
 ;;; ------------------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------------------
 
 (expect
-  {:value nil, :default nil}
+  {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))
 
 ;; boolean settings shouldn't be obfuscated when set by env var
 (expect
-  {:value true, :default "Using $MB_TEST_BOOLEAN_SETTING"}
+  {:value true, :is_env_setting true, :env_name "MB_TEST_BOOLEAN_SETTING", :default "Using $MB_TEST_BOOLEAN_SETTING"}
   (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "true"))
 
 ;; env var values should be case-insensitive

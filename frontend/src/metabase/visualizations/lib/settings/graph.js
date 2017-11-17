@@ -1,15 +1,19 @@
 import { capitalize } from "metabase/lib/formatting";
 import { isDimension, isMetric, isNumeric, isAny } from "metabase/lib/schema_metadata";
 
-import { columnsAreValid, getDefaultColumns, getOptionFromColumn } from "metabase/visualizations/lib/settings";
-import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getDefaultColumns, getOptionFromColumn } from "metabase/visualizations/lib/settings";
+import { columnsAreValid, getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
 import _ from "underscore";
 
-function getSeriesTitles(series, vizSettings) {
+function getSeriesDefaultTitles(series, vizSettings) {
     return series.map(s => s.card.name);
+}
+
+function getSeriesTitles(series, vizSettings) {
+    return vizSettings["graph.series_labels"] || getSeriesDefaultTitles(series, vizSettings);
 }
 
 export const GRAPH_DATA_SETTINGS = {
@@ -173,8 +177,8 @@ export const GRAPH_COLORS_SETTINGS = {
       getTitle: ([{ card: { display } }]) =>
           capitalize(display === "scatter" ? "bubble" : display) + " colors",
       widget: "colors",
-      readDependencies: ["graph.dimensions", "graph.metrics"],
-      getDefault: ([{ card, data }], vizSettings) => {
+      readDependencies: ["graph.dimensions", "graph.metrics", "graph.series_labels"],
+      getDefault: ([{ card }], vizSettings) => {
           return getCardColors(card);
       },
       getProps: (series, vizSettings) => {
@@ -194,13 +198,22 @@ export const GRAPH_AXIS_SETTINGS = {
       getDefault: ([{ data }], vizSettings) =>
           dimensionIsNumeric(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"].filter(d => d)[0]))
   },
+  "graph.x_axis._is_histogram": {
+      getDefault: ([{ data: { cols } }], vizSettings) =>
+        cols[0].binning_info != null
+  },
   "graph.x_axis.scale": {
       section: "Axes",
       title: "X-axis scale",
       widget: "select",
       default: "ordinal",
-      readDependencies: ["graph.x_axis._is_timeseries", "graph.x_axis._is_numeric"],
+      readDependencies: [
+          "graph.x_axis._is_timeseries",
+          "graph.x_axis._is_numeric",
+          "graph.x_axis._is_histogram"
+      ],
       getDefault: (series, vizSettings) =>
+          vizSettings["graph.x_axis._is_histogram"] ? "histogram" :
           vizSettings["graph.x_axis._is_timeseries"] ? "timeseries" :
           vizSettings["graph.x_axis._is_numeric"] ? "linear" :
           "ordinal",
@@ -211,8 +224,11 @@ export const GRAPH_AXIS_SETTINGS = {
           }
           if (vizSettings["graph.x_axis._is_numeric"]) {
               options.push({ name: "Linear", value: "linear" });
-              options.push({ name: "Power", value: "pow" });
-              options.push({ name: "Log", value: "log" });
+              if (!vizSettings["graph.x_axis._is_histogram"]) {
+                  options.push({ name: "Power", value: "pow" });
+                  options.push({ name: "Log", value: "log" });
+              }
+              options.push({ name: "Histogram", value: "histogram" });
           }
           options.push({ name: "Ordinal", value: "ordinal" });
           return { options };
@@ -322,4 +338,12 @@ export const GRAPH_AXIS_SETTINGS = {
       getDefault: (series, vizSettings) =>
           series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null
   },
+    "graph.series_labels": {
+        section: "Labels",
+        title: "Series labels",
+        widget: "inputGroup",
+        readDependencies: ["graph.dimensions", "graph.metrics"],
+        getHidden: (series) => series.length < 2,
+        getDefault: (series, vizSettings) => getSeriesDefaultTitles(series, vizSettings)
+    },
 }

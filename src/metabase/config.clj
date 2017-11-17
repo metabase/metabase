@@ -5,32 +5,28 @@
             [environ.core :as environ])
   (:import clojure.lang.Keyword))
 
-(def ^:private ^:const app-defaults
+(def ^Boolean is-windows?
+  "Are we running on a Windows machine?"
+  (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
+
+(def ^:private app-defaults
   "Global application defaults"
-  {;; Database Configuration  (general options?  dburl?)
-   :mb-run-mode "prod"
-   :mb-db-type "h2"
-   ;:mb-db-dbname "postgres"
-   ;:mb-db-host "localhost"
-   ;:mb-db-port "5432"
-   ;:mb-db-user "metabase"
-   ;:mb-db-pass "metabase"
-   :mb-db-file "metabase.db"
-   :mb-db-automigrate "true"
-   :mb-db-logging "true"
-   ;; Embedded Jetty Webserver
-   ;; check here for all available options:
-   ;; https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj
-   :mb-jetty-port "3000"
-   :mb-jetty-join "true"
-   ;; Other Application Settings
+  {:mb-run-mode            "prod"
+   ;; DB Settings
+   :mb-db-type             "h2"
+   :mb-db-file             "metabase.db"
+   :mb-db-automigrate      "true"
+   :mb-db-logging          "true"
+   ;; Jetty Settings. Full list of options is available here: https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj
+   :mb-jetty-port          "3000"
+   :mb-jetty-join          "true"
+   ;; other application settings
    :mb-password-complexity "normal"
-   ;:mb-password-length "8"
-   :mb-version-info-url "http://static.metabase.com/version-info.json"
-   :max-session-age "20160"                     ; session length in minutes (14 days)
-   :mb-colorize-logs "true"
-   :mb-emoji-in-logs "true"
-   :mb-qp-cache-backend "db"})
+   :mb-version-info-url    "http://static.metabase.com/version-info.json"
+   :max-session-age        "20160"                                        ; session length in minutes (14 days)
+   :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
+   :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
+   :mb-qp-cache-backend    "db"})
 
 
 (defn config-str
@@ -86,7 +82,14 @@
     (version-info-from-properties-file)
     (version-info-from-shell-script)))
 
-(def ^:const mb-version-string
-  "A formatted version string representing the currently running application."
+(def ^:const ^String mb-version-string
+  "A formatted version string representing the currently running application.
+   Looks something like `v0.25.0-snapshot (1de6f3f nested-queries-icon)`."
   (let [{:keys [tag hash branch]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))
+
+(def ^:const ^String mb-app-id-string
+  "A formatted version string including the word 'Metabase' appropriate for passing along
+   with database connections so admins can identify them as Metabase ones.
+   Looks something like `Metabase v0.25.0.RC1`."
+  (str "Metabase " (mb-version-info :tag)))

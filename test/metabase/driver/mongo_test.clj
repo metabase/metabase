@@ -1,23 +1,24 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
-  (:require [clojure.walk :as walk]
-            [expectations :refer :all]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [table :refer [Table] :as table])
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [rows]]
+  (:require [expectations :refer :all]
+            [medley.core :as m]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [query-processor-test :refer [rows]]]
+            [metabase.driver.mongo.query-processor :as mongo-qp]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table :refer [Table]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.data.interface :as i]
-            [metabase.test.util :as tu])
-  (:import org.bson.types.ObjectId
-           org.joda.time.DateTime
-           metabase.driver.mongo.MongoDriver))
+            [metabase.test.data
+             [datasets :as datasets]
+             [interface :as i]]
+            [toucan.db :as db])
+  (:import metabase.driver.mongo.MongoDriver
+           org.bson.types.ObjectId
+           org.joda.time.DateTime))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -75,13 +76,15 @@
    :row_count 1
    :data      {:rows        [[1]]
                :columns     ["count"]
-               :cols        [{:name "count", :base_type :type/Integer}]
+               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer
+                              :remapped_to nil, :remapped_from nil}]
                :native_form {:collection "venues"
                              :query      native-query}}}
-  (qp/process-query {:native   {:query      native-query
-                                :collection "venues"}
-                     :type     :native
-                     :database (data/id)}))
+  (-> (qp/process-query {:native   {:query      native-query
+                                    :collection "venues"}
+                         :type     :native
+                         :database (data/id)})
+      (m/dissoc-in [:data :results_metadata])))
 
 ;; ## Tests for individual syncing functions
 
@@ -112,14 +115,20 @@
               :pk? true}}}
   (driver/describe-table (MongoDriver.) (data/db) (Table (data/id :venues))))
 
-;; ANALYZE-TABLE
+
+;;; table-rows-sample
 (datasets/expect-with-engine :mongo
-  {:row_count 100
-   :fields    [{:id (data/id :venues :category_id) :values [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]}
-               {:id (data/id :venues :name),       :values (db/select-one-field :values FieldValues, :field_id (data/id :venues :name))}
-               {:id (data/id :venues :price),      :values [1 2 3 4]}]}
-  (let [venues-table (Table (data/id :venues))]
-    (driver/analyze-table (MongoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
+  [[1 "Red Medicine"]
+   [2 "Stout Burgers & Beers"]
+   [3 "The Apple Pan"]
+   [4 "Wurstküche"]
+   [5 "Brite Spot Family Restaurant"]]
+  (driver/sync-in-context (MongoDriver.) (data/db)
+    (fn []
+      (vec (take 5 (driver/table-rows-sample (Table (data/id :venues))
+                     [(Field (data/id :venues :id))
+                      (Field (data/id :venues :name))]))))))
+
 
 ;; ## Big-picture tests for the way data should look post-sync
 
@@ -175,33 +184,38 @@
             (ql/filter (ql/= $bird_id "abcdefabcdefabcdefabcdef"))))))
 
 
-;;; ------------------------------------------------------------ Test that we can handle native queries with "ISODate(...)" and "ObjectId(...) forms (#3741, #4448) ------------------------------------------------------------
-(tu/resolve-private-vars metabase.driver.mongo.query-processor
-  maybe-decode-fncall decode-fncalls encode-fncalls)
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                             ISODate(...) AND ObjectId(...) HANDLING (#3741, #4448)                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect
   "[{\"$match\":{\"date\":{\"$gte\":[\"___ISODate\", \"2012-01-01\"]}}}]"
-  (encode-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]"))
+  (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]"))
 
 (expect
   "[{\"$match\":{\"entityId\":{\"$eq\":[\"___ObjectId\", \"583327789137b2700a1621fb\"]}}}]"
-  (encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]"))
+  (#'mongo-qp/encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]"))
+
+;; make sure fn calls with no arguments work as well (#4996)
+(expect
+  "[{\"$match\":{\"date\":{\"$eq\":[\"___ISODate\"]}}}]"
+  (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$eq\":ISODate()}}}]"))
 
 (expect
   (DateTime. "2012-01-01")
-  (maybe-decode-fncall ["___ISODate" "2012-01-01"]))
+  (#'mongo-qp/maybe-decode-fncall ["___ISODate" "2012-01-01"]))
 
 (expect
   (ObjectId. "583327789137b2700a1621fb")
-  (maybe-decode-fncall ["___ObjectId" "583327789137b2700a1621fb"]))
+  (#'mongo-qp/maybe-decode-fncall ["___ObjectId" "583327789137b2700a1621fb"]))
 
 (expect
   [{:$match {:date {:$gte (DateTime. "2012-01-01")}}}]
-  (decode-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))
+  (#'mongo-qp/decode-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))
 
 (expect
   [{:$match {:entityId {:$eq (ObjectId. "583327789137b2700a1621fb")}}}]
-  (decode-fncalls [{:$match {:entityId {:$eq ["___ObjectId" "583327789137b2700a1621fb"]}}}]))
+  (#'mongo-qp/decode-fncalls [{:$match {:entityId {:$eq ["___ObjectId" "583327789137b2700a1621fb"]}}}]))
 
 (datasets/expect-with-engine :mongo
   5

@@ -1,13 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { connect } from "react-redux";
 
 import QueryModeButton from "./QueryModeButton.jsx";
 
 import ActionButton from 'metabase/components/ActionButton.jsx';
-import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
+import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
-import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -16,8 +16,11 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
 import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal"
 
 import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
+
+import { clearRequestState } from "metabase/redux/requests";
 
 import { CardApi, RevisionApi } from "metabase/services";
 
@@ -28,7 +31,27 @@ import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Utils from "metabase/lib/utils";
+import EntityMenu from "metabase/components/EntityMenu";
+import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
+import { AlertListPopoverContent } from "metabase/query_builder/components/AlertListPopoverContent";
+import { getQuestionAlerts } from "metabase/query_builder/selectors";
+import { getUser } from "metabase/home/selectors";
+import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
+const mapStateToProps = (state, props) => ({
+    questionAlerts: getQuestionAlerts(state),
+    user: getUser(state)
+})
+
+const mapDispatchToProps = {
+    fetchAlertsForQuestion,
+    clearRequestState
+};
+const ICON_SIZE = 16
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class QueryHeader extends Component {
     constructor(props, context) {
         super(props, context);
@@ -47,6 +70,7 @@ export default class QueryHeader extends Component {
     }
 
     static propTypes = {
+        question: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         originalCard: PropTypes.object,
         isEditing: PropTypes.bool.isRequired,
@@ -62,8 +86,8 @@ export default class QueryHeader extends Component {
 
     componentWillUnmount() {
         clearTimeout(this.timeout);
-        if (this.requesetPromise) {
-            this.requesetPromise.cancel();
+        if (this.requestPromise) {
+            this.requestPromise.cancel();
         }
     }
 
@@ -75,7 +99,40 @@ export default class QueryHeader extends Component {
         , 5000);
     }
 
-    onCreate(card, addToDash) {
+    _getCleanedCard(card) {
+        if (card.dataset_query.query) {
+            const query = Utils.copy(card.dataset_query.query);
+            return {
+                ...card,
+                dataset_query: {
+                    ...card.dataset_query,
+                    query: Query.cleanQuery(query)
+                }
+            }
+        } else {
+            return card
+        }
+    }
+
+    /// Add result_metadata and metadata_checksum columns to card as expected by the endpoints used for saving
+    /// and updating Cards. These values are returned as part of Query Processor results and fetched from there
+    addResultMetadata(card) {
+        let metadata = this.props.result && this.props.result.data && this.props.result.data.results_metadata;
+        let metadataChecksum = metadata && metadata.checksum;
+        let metadataColumns = metadata && metadata.columns;
+
+        card.result_metadata = metadataColumns;
+        card.metadata_checksum = metadataChecksum;
+    }
+
+    /// remove the databases in the store that are used to populate the QB databases list.
+    /// This is done when saving a Card because the newly saved card will be elligable for use as a source query
+    /// so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
+    clearQBDatabases() {
+        this.props.clearRequestState({ statePath: ["metadata", "databases"] });
+    }
+
+    onCreate(card, showSavedModal = true) {
         // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
         // if (card.dataset_query.type === "native" && card.dataset_query.query) {
@@ -84,23 +141,24 @@ export default class QueryHeader extends Component {
         //     delete card.dataset_query.native;
         // }
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
-        }
+        const cleanedCard = this._getCleanedCard(card);
+        this.addResultMetadata(cleanedCard);
 
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.create(card));
-        return this.requesetPromise.then(newCard => {
+        this.requestPromise = cancelable(CardApi.create(cleanedCard));
+        return this.requestPromise.then(newCard => {
+            this.clearQBDatabases();
+
             this.props.notifyCardCreatedFn(newCard);
 
             this.setState({
                 recentlySaved: "created",
-                modal: addToDash ? "add-to-dashboard" : "saved"
+                ...(showSavedModal ? { modal: "saved" } : {})
             }, this.resetStateOnTimeout);
         });
     }
 
-    onSave(card, addToDash) {
+    onSave = async (card, showSavedModal = true) => {
         // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
         // if (card.dataset_query.type === "native" && card.dataset_query.query) {
@@ -108,14 +166,20 @@ export default class QueryHeader extends Component {
         // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
         //     delete card.dataset_query.native;
         // }
+        const { fetchAlertsForQuestion } = this.props
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
-        }
+        const cleanedCard = this._getCleanedCard(card);
+        this.addResultMetadata(cleanedCard);
 
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.update(card));
-        return this.requesetPromise.then(updatedCard => {
+        this.requestPromise = cancelable(CardApi.update(cleanedCard));
+        return this.requestPromise.then(async updatedCard => {
+            // reload the question alerts for the current question
+            // (some of the old alerts might be removed during update)
+            await fetchAlertsForQuestion(updatedCard.id)
+
+            this.clearQBDatabases();
+
             if (this.props.fromUrl) {
                 this.onGoBack();
                 return;
@@ -125,7 +189,7 @@ export default class QueryHeader extends Component {
 
             this.setState({
                 recentlySaved: "updated",
-                modal: addToDash ? "add-to-dashboard" : null
+                ...(showSavedModal ? { modal: "saved" } : {})
             }, this.resetStateOnTimeout);
         });
     }
@@ -178,7 +242,7 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { question, questionAlerts, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
         var buttonSections = [];
@@ -187,7 +251,6 @@ export default class QueryHeader extends Component {
         if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
-                    full
                     form
                     key="save"
                     ref="saveModal"
@@ -198,7 +261,6 @@ export default class QueryHeader extends Component {
                         card={this.props.card}
                         originalCard={this.props.originalCard}
                         tableMetadata={this.props.tableMetadata}
-                        addToDashboard={false}
                         saveFn={this.onSave}
                         createFn={this.onCreate}
                         onClose={() => this.refs.saveModal.toggle()}
@@ -215,7 +277,7 @@ export default class QueryHeader extends Component {
                     buttonSections.push([
                         <button
                             key="recentlySaved"
-                            className="cursor-pointer bg-white text-success text-strong text-uppercase"
+                            className="cursor-pointer bg-white text-success text-bold text-uppercase"
                         >
                             <span>
                                 <Icon name='check' size={12} />
@@ -257,22 +319,7 @@ export default class QueryHeader extends Component {
 
                 // delete button
                 buttonSections.push([
-                    <Tooltip key="delete" tooltip="Delete">
-                        <ModalWithTrigger
-                            ref="deleteModal"
-                            triggerElement={
-                                <span className="text-brand-hover">
-                                    <Icon name="trash" size={16} />
-                                </span>
-                            }
-                        >
-                            <DeleteQuestionModal
-                                card={this.props.card}
-                                deleteCardFn={this.onDelete}
-                                onClose={() => this.refs.deleteModal.toggle()}
-                            />
-                        </ModalWithTrigger>
-                    </Tooltip>
+                    <ArchiveQuestionModal questionId={this.props.card.id} />
                 ]);
 
                 buttonSections.push([
@@ -289,6 +336,10 @@ export default class QueryHeader extends Component {
                         <MoveToCollection
                             questionId={this.props.card.id}
                             initialCollectionId={this.props.card && this.props.card.collection_id}
+                            setCollection={(questionId, collection) => {
+                                this.props.onSetCardAttribute('collection', collection)
+                                this.props.onSetCardAttribute('collection_id', collection.id)
+                            }}
                         />
                     </ModalWithTrigger>
                 ]);
@@ -296,7 +347,7 @@ export default class QueryHeader extends Component {
         }
 
         // parameters
-        if (Query.isNative(card && card.dataset_query) && database && _.contains(database.features, "native-parameters")) {
+        if (question.query() instanceof NativeQuery && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
@@ -316,7 +367,7 @@ export default class QueryHeader extends Component {
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
                     <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
-                        <Icon name="addtodash" size={16} />
+                        <Icon name="addtodash" size={ICON_SIZE} />
                     </span>
                 </Tooltip>
             ]);
@@ -327,16 +378,22 @@ export default class QueryHeader extends Component {
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
                         triggerClasses="h4 text-brand-hover text-uppercase"
-                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={16} /></span>}
+                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={ICON_SIZE} /></span>}
                     >
                         <SaveQuestionModal
                             card={this.props.card}
                             originalCard={this.props.originalCard}
                             tableMetadata={this.props.tableMetadata}
-                            addToDashboard={true}
-                            saveFn={this.onSave}
-                            createFn={this.onCreate}
+                            saveFn={async (card) => {
+                                await this.onSave(card, false);
+                                this.setState({ modal: "add-to-dashboard"})
+                            }}
+                            createFn={async (card) => {
+                                await this.onCreate(card, false);
+                                this.setState({ modal: "add-to-dashboard"})
+                            }}
                             onClose={() => this.refs.addToDashSaveModal.toggle()}
+                            multiStep
                         />
                     </ModalWithTrigger>
                 </Tooltip>
@@ -384,17 +441,49 @@ export default class QueryHeader extends Component {
         ]);
 
         // data reference button
-        var dataReferenceButtonClasses = cx('mr1 transition-color', {
+        var dataReferenceButtonClasses = cx('transition-color', {
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
         buttonSections.push([
             <Tooltip key="dataReference" tooltip="Learn about your data">
                 <a className={dataReferenceButtonClasses}>
-                    <Icon name='reference' size={16} onClick={this.onToggleDataReference}></Icon>
+                    <Icon name='reference' size={ICON_SIZE} onClick={this.onToggleDataReference}></Icon>
                 </a>
             </Tooltip>
         ]);
+
+        if (!isEditing && card && question.alertType() !== null) {
+            const createAlertItem = {
+                title: t`Get alerts about this`,
+                icon: "alert",
+                action: () => this.setState({ modal: "create-alert" })
+            }
+            const createAlertAfterSavingQuestionItem = {
+                title: t`Get alerts about this`,
+                icon: "alert",
+                action: () => this.setState({ modal: "save-question-before-alert" })
+            }
+
+            const updateAlertItem = {
+                title: t`Alerts are on`,
+                icon: "alert",
+                content: (toggleMenu, setMenuFreeze) => <AlertListPopoverContent closeMenu={toggleMenu} setMenuFreeze={setMenuFreeze} />
+            }
+
+            buttonSections.push([
+                <div className="mr1" style={{ marginLeft: "-15px" }}>
+                    <EntityMenu
+                        triggerIcon='burger'
+                        items={[
+                            (!isNew && Object.values(questionAlerts).length > 0)
+                                ? updateAlertItem
+                                : (isNew ? createAlertAfterSavingQuestionItem : createAlertItem)
+                        ]}
+                    />
+                </div>
+            ]);
+        }
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection borderless" />
@@ -403,6 +492,21 @@ export default class QueryHeader extends Component {
 
     onCloseModal = () => {
         this.setState({ modal: null });
+    }
+
+    showAlertsAfterQuestionSaved = () => {
+        const { questionAlerts, user } = this.props
+
+        const hasAlertsCreatedByCurrentUser =
+            Object.values(questionAlerts).some((alert) => alert.creator.id === user.id)
+
+        if (hasAlertsCreatedByCurrentUser) {
+            // TODO Atte Keinänen 11/10/17: The question was replaced and there is already an alert created by current user.
+            // Should we show pop up the alerts list in this case or do nothing (as we do currently)?
+            this.setState({ modal: null })
+        } else {
+            this.setState({ modal: "create-alert" })
+        }
     }
 
     render() {
@@ -434,11 +538,36 @@ export default class QueryHeader extends Component {
                     />
                 </Modal>
 
+
                 <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
                         onClose={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
+                    />
+                </Modal>
+
+                <Modal full isOpen={this.state.modal === "create-alert"} onClose={this.onCloseModal}>
+                    <CreateAlertModalContent onCancel={this.onCloseModal} onAlertCreated={this.onCloseModal} />
+                </Modal>
+
+                <Modal isOpen={this.state.modal === "save-question-before-alert"} onClose={this.onCloseModal}>
+                    <SaveQuestionModal
+                        card={this.props.card}
+                        originalCard={this.props.originalCard}
+                        tableMetadata={this.props.tableMetadata}
+                        saveFn={async (card) => {
+                            await this.onSave(card, false);
+                            this.showAlertsAfterQuestionSaved()
+                        }}
+                        createFn={async (card) => {
+                            await this.onCreate(card, false);
+                            this.showAlertsAfterQuestionSaved()
+                        }}
+                        // only close the modal if we are closing the dialog without saving
+                        // otherwise we are in some alerts modal already
+                        onClose={() => this.state.modal === "save-question-before-alert" && this.setState({ modal: null }) }
+                        multiStep
                     />
                 </Modal>
             </div>

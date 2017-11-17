@@ -1,8 +1,9 @@
 (ns metabase.models.permissions-group-membership
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.models.permissions-group :as group]
-            [metabase.util :as u]))
+  (:require [metabase.models.permissions-group :as group]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 

@@ -28,7 +28,7 @@ export default class LeafletTilePinMap extends LeafletMap {
     _getTileUrl = (coord, zoom) => {
         const [{ card: { dataset_query }, data: { cols }}] = this.props.series;
 
-        const { latitudeIndex, longitudeIndex } = this._getLatLongIndexes();
+        const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
         const latitudeField = cols[latitudeIndex];
         const longitudeField = cols[longitudeIndex];
 
@@ -36,7 +36,7 @@ export default class LeafletTilePinMap extends LeafletMap {
             return;
         }
 
-        return '/api/tiles/' + zoom + '/' + coord.x + '/' + coord.y + '/' +
+        return 'api/tiles/' + zoom + '/' + coord.x + '/' + coord.y + '/' +
             latitudeField.id + '/' + longitudeField.id + '/' +
             latitudeIndex + '/' + longitudeIndex + '/' +
             '?query=' + encodeURIComponent(JSON.stringify(dataset_query))

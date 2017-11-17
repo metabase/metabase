@@ -15,8 +15,12 @@ export function createThunkAction(actionType, actionThunkCreator) {
         var thunk = actionThunkCreator(...actionArgs);
         return async function(dispatch, getState) {
             try {
+
                 let payload = await thunk(dispatch, getState);
-                dispatch({ type: actionType, payload });
+                let dispatchValue = { type: actionType, payload };
+                dispatch(dispatchValue);
+
+                return dispatchValue;
             } catch (error) {
                 dispatch({ type: actionType, payload: error, error: true });
                 throw error;
@@ -61,11 +65,15 @@ export const fetchData = async ({
     const existingData = getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['fetch']);
     try {
-        const requestState = getIn(getState(), ["requests", ...statePath]);
+        const requestState = getIn(getState(), ["requests", "states", ...statePath]);
         if (!requestState || requestState.error || reload) {
             dispatch(setRequestState({ statePath, state: "LOADING" }));
             const data = await getData();
-            dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+            // NOTE Atte Keinänen 8/23/17:
+            // Dispatch `setRequestState` after clearing the call stack because we want to the actual data to be updated
+            // before we notify components via `state.requests.fetches` that fetching the data is completed
+            setTimeout(() => dispatch(setRequestState({ statePath, state: "LOADED" })), 0);
 
             return data;
         }
@@ -104,6 +112,36 @@ export const updateData = async ({
         dispatch(setRequestState({ statePath, error }));
         console.error(error);
         return existingData;
+    }
+}
+
+// helper for working with normalizr
+// merge each entity from newEntities with existing entity, if any
+// this ensures partial entities don't overwrite existing entities with more properties
+export function mergeEntities(entities, newEntities) {
+    entities = { ...entities };
+    for (const id in newEntities) {
+        if (id in entities) {
+            entities[id] = { ...entities[id], ...newEntities[id] };
+        } else {
+            entities[id] = newEntities[id];
+        }
+    }
+    return entities;
+}
+
+// helper for working with normalizr
+// reducer that merges payload.entities
+export function handleEntities(actionPattern, entityType, reducer) {
+    return (state, action) => {
+        if (state === undefined) {
+            state = {};
+        }
+        let entities = getIn(action, ["payload", "entities", entityType]);
+        if (actionPattern.test(action.type) && entities) {
+            state = mergeEntities(state, entities);
+        }
+        return reducer(state, action);
     }
 }
 

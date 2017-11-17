@@ -1,16 +1,19 @@
 (ns metabase.sample-dataset.generate
   "Logic for generating the sample dataset.
    Run this with `lein generate-sample-dataset`."
-  (:require (clojure.java [io :as io]
-                          [jdbc :as jdbc])
+  (:require [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
-            (faker [address :as address]
-                   [company :as company]
-                   [lorem :as lorem]
-                   [internet :as internet]
-                   [name :as name])
-            [incanter.distributions :as dist]
+            [faker
+             [address :as address]
+             [company :as company]
+             [internet :as internet]
+             [lorem :as lorem]
+             [name :as name]]
+            [jdistlib.core :as dist]
+            [medley.core :as m]
             [metabase.db.spec :as dbspec]
             [metabase.util :as u])
   (:import java.util.Date))
@@ -19,7 +22,7 @@
   (str (System/getProperty "user.dir") "/resources/sample-dataset.db"))
 
 (defn- normal-distribution-rand [mean median]
-  (dist/draw (dist/normal-distribution mean median)))
+  (dist/sample (dist/normal mean median)))
 
 (defn- normal-distribution-rand-int [mean median]
   (math/round (normal-distribution-rand mean median)))
@@ -58,18 +61,31 @@
      :latitude   (random-latitude)
      :longitude  (random-longitude)
      :source     (rand-nth ["Google" "Twitter" "Facebook" "Organic" "Affiliate"])
-     :created_at (random-date-between (u/relative-date :year -1) (u/relative-date :year 1))}))
+     :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))}))
 
 ;;; ## PRODUCTS
 
 (defn- random-company-name []
   (first (company/names)))
 
+(defn- rejection-sample
+  "Sample from distribution `dist` until `pred` is truthy for the sampled value.
+   https://en.wikipedia.org/wiki/Rejection_sampling"
+  [pred dist]
+  (let [x (dist/sample dist)]
+    (if (pred x)
+      x
+      (rejection-sample pred dist))))
+
 (defn- random-price [min max]
-  (let [range (- max min)]
-    (-> (rand-int (* range 100))
-        (/ 100.0)
-        (+ min))))
+  (let [range    (- max min)
+        mean1    (+ min (* range 0.3))
+        mean2    (+ min (* range 0.75))
+        variance (/ range 8)]
+    ; Sample from a multi modal distribution (mix of two normal distributions
+    ; with means `mean1` and `mean2` and variance `variance`).
+    (rejection-sample #(<= min % max) (rand-nth [(dist/normal mean1 variance)
+                                                 (dist/normal mean2 variance)]))))
 
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
@@ -108,7 +124,7 @@
    :category   (rand-nth ["Widget" "Gizmo" "Gadget" "Doohickey"])
    :vendor     (random-company-name)
    :price      (random-price 12 100)
-   :created_at (random-date-between (u/relative-date :year -1) (u/relative-date :year 1))})
+   :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))})
 
 
 ;;; ## ORDERS
@@ -192,20 +208,34 @@
   (doto (Date.)
     (.setTime (apply min (map #(.getTime ^Date %) dates)))))
 
+(defn- with-probability
+  "Return `(f)` with probability `p`, else return nil."
+  [p f]
+  (when (> p (rand))
+    (f)))
+
 (defn random-order [{:keys [state], :as ^Person person} {:keys [price], :as product}]
   {:pre [(string? state)
          (number? price)]
    :post [(map? %)]}
-  (let [tax-rate (state->tax-rate state)
-        _        (assert tax-rate
-                   (format "No tax rate found for state '%s'." state))
-        tax      (u/round-to-decimals 2 (* price tax-rate))]
+  (let [tax-rate   (state->tax-rate state)
+        _          (assert tax-rate
+                     (format "No tax rate found for state '%s'." state))
+        created-at (random-date-between (min-date (:created_at person)
+                                                  (:created_at product))
+                                        (u/relative-date :year 2))
+        price      (if (> (.getTime created-at) (.getTime (Date. 118 0 1)))
+                     (* 1.5 price)
+                     price)
+        tax        (u/round-to-decimals 2 (* price tax-rate))]
     {:user_id    (:id person)
      :product_id (:id product)
      :subtotal   price
      :tax        tax
+     :quantity   (random-price 1 5)
+     :discount   (with-probability 0.1 #(random-price 0 10))
      :total      (+ price tax)
-     :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 1))}))
+     :created_at created-at}))
 
 
 ;;; ## REVIEWS
@@ -219,7 +249,7 @@
                           4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4
                           5 5 5 5 5 5 5 5 5 5 5 5 5])
    :body       (first (lorem/paragraphs))
-   :created_at (random-date-between (:created_at product) (u/relative-date :year 1))})
+   :created_at (random-date-between (:created_at product) (u/relative-date :year 2))})
 
 (defn- create-randoms [n f]
   (vec (map-indexed (fn [id obj]
@@ -246,6 +276,58 @@
       person
       (assoc person :orders (vec (repeatedly num-orders #(random-order person (rand-nth products))))))))
 
+(defn- add-autocorrelation
+  "Add autocorrelation with lag `lag` to field `k` by adding the value from `lag`
+   steps back (and dividing by 2 to retain roughly the same value range).
+   https://en.wikipedia.org/wiki/Autocorrelation"
+  ([k xs] (add-autocorrelation 1 k xs))
+  ([lag k xs]
+   (map (fn [prev next]
+          (update next k #(/ (+ % (k prev)) 2)))
+        xs
+        (drop lag xs))))
+
+(defn- add-increasing-variance
+  "Gradually increase variance of field `k` by scaling it an (on average)
+   increasingly larger random noise.
+   https://en.wikipedia.org/wiki/Variance"
+  [k xs]
+  (let [n (count xs)]
+    (map-indexed (fn [i x]
+                   ; Limit the noise to [0.1, 2.1].
+                   (update x k * (+ 1 (* (/ i n) (- (* 2 (rand)) 0.9)))))
+                 xs)))
+
+(defn- add-seasonality
+  "Add seasonal component to field `k`. Seasonal variation (a multiplicative
+   factor) is described with map `seasonality-map` indexed into by `season-fn`
+   (eg. month of year of field created_at)."
+  [season-fn k seasonality-map xs]
+  (for [x xs]
+    (update x k * (seasonality-map (season-fn x)))))
+
+(defn- add-outliers
+  "Add `n` outliers (times `scale` value spikes) to field `k`. `n` can be either
+   percentage or count, determined by `mode`."
+  ([mode n k xs] (add-outliers mode n 10 k xs))
+  ([mode n scale k xs]
+   (if (= mode :share)
+     (for [x xs]
+       (if (< (rand) n)
+         (update x k * scale)
+         x))
+     (let [candidate-idxs (keep (fn [[idx x]]
+                                  (when (k x)
+                                    idx))
+                                (m/indexed xs))
+           ; Note: since we are sampling with replacement there is a small chance
+           ; single index gets chosen multiple times.
+           outlier-idx? (set (repeatedly n #(rand-nth candidate-idxs)))]
+       (for [[idx x] (m/indexed xs)]
+         (if (outlier-idx? idx)
+           (update x k * scale)
+           x))))))
+
 (defn create-random-data [& {:keys [people products]
                              :or   {people 2500 products 200}}]
   {:post [(map? %)
@@ -259,7 +341,26 @@
     {:people   (mapv #(dissoc % :orders) people)
      :products (mapv #(dissoc % :reviews) products)
      :reviews  (vec (mapcat :reviews products))
-     :orders   (vec (mapcat :orders people))}))
+     :orders   (->> people
+                    (mapcat :orders)
+                    (add-autocorrelation :quantity)
+                    (add-outliers :share 0.01 :quantity)
+                    (add-outliers :count 5 :discount)
+                    (add-increasing-variance :total)
+                    (add-seasonality #(.getMonth ^java.util.Date (:created_at %))
+                                     :quantity {0 0.6
+                                                1 0.5
+                                                2 0.3
+                                                3 0.9
+                                                4 1.3
+                                                5 1.9
+                                                6 1.5
+                                                7 2.1
+                                                8 1.5
+                                                9 1.7
+                                                10 0.9
+                                                11 0.6})
+                    vec)}))
 
 ;;; # LOADING THE DATA
 
@@ -272,7 +373,7 @@
   (format "CREATE TABLE \"%s\" (\"ID\" BIGINT AUTO_INCREMENT, %s, PRIMARY KEY (\"ID\"));"
           (s/upper-case (name table-name))
           (apply str (->> (for [[field type] (seq field->type)]
-                            (format "\"%s\" %s NOT NULL" (s/upper-case (name field)) type))
+                            (format "\"%s\" %s" (s/upper-case (name field)) type))
                           (interpose ", ")))))
 
 (def ^:private ^:const tables
@@ -300,7 +401,9 @@
             :subtotal   "FLOAT"
             :tax        "FLOAT"
             :total      "FLOAT"
-            :created_at "DATETIME"}
+            :discount   "FLOAT"
+            :created_at "DATETIME"
+            :quantity   "INTEGER"}
    :reviews {:product_id "INTEGER"
              :reviewer   "VARCHAR(255)"
              :rating     "SMALLINT"
@@ -328,7 +431,9 @@
                                                            "on some products are not included here, but instead are accounted for in the subtotal.")}
                             :total      {:description "The total billed amount."}
                             :user_id    {:description (str "The id of the user who made this order. Note that in some cases where an order was created on behalf "
-                                                           "of a customer who phoned the order in, this might be the employee who handled the request.")}}}
+                                                           "of a customer who phoned the order in, this might be the employee who handled the request.")}
+                            :quantity   {:description "Number of products bought."}
+                            :discount   {:description "Discount amount."}}}
    :people {:description "This is a user account. Note that employees and customer support staff will have accounts."
             :columns     {:address    {:description "The street address of the account’s billing address"}
                           :birth_date {:description "The date of birth of the user"}

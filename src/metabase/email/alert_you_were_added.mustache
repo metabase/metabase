@@ -1,0 +1,7 @@
+{{> metabase/email/_header }}
+  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);">
+    <p>You’re now getting alerts about <a href="{{questionURL}}">{{questionName}}</a>.</p>
+    <p>We’ll send you an email {{alertCondition}}</p>
+    <p>If you don’t want to receive these alerts, you can <a href="{{questionURL}}">go to this question</a> and unsubscribe from the menu in the top-right.</p>
+  </div>
+{{> metabase/email/_footer}}

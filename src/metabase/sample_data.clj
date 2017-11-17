@@ -2,10 +2,11 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
+            [metabase
+             [sync :as sync]
+             [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database :as sync-database]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (def ^:private ^:const ^String sample-dataset-name     "Sample Dataset")
 (def ^:private ^:const ^String sample-dataset-filename "sample-dataset.db.mv.db")
@@ -26,11 +27,11 @@
   (when-not (db/exists? Database :is_sample true)
     (try
       (log/info "Loading sample dataset...")
-      (sync-database/sync-database! (db/insert! Database
-                                      :name      sample-dataset-name
-                                      :details   (db-details)
-                                      :engine    :h2
-                                      :is_sample true))
+      (sync/sync-database! (db/insert! Database
+                             :name      sample-dataset-name
+                             :details   (db-details)
+                             :engine    :h2
+                             :is_sample true))
       (catch Throwable e
         (log/error (u/format-color 'red "Failed to load sample dataset: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))))))
 

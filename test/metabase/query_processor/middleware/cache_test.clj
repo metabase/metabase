@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [toucan.db :as db]))
 
 (tu/resolve-private-vars metabase.query-processor.middleware.cache
   is-cacheable?

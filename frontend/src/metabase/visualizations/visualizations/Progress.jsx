@@ -17,7 +17,9 @@ const MAX_BAR_HEIGHT = 65;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-export default class Progress extends Component<*, VisualizationProps, *> {
+export default class Progress extends Component {
+    props: VisualizationProps;
+
     static uiName = "Progress";
     static identifier = "progress";
     static iconName = "progress";

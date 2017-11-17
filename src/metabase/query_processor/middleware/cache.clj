@@ -13,11 +13,12 @@
 
     Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache backends themselves."
   (:require [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.public-settings :as public-settings]
+            [metabase
+             [config :as config]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]))
+            [metabase.query-processor.util :as qputil]))
 
 (def ^:dynamic ^Boolean *ignore-cached-results*
   "Should we force the query to run, ignoring cached results even if they're available?
@@ -57,10 +58,10 @@
   ([]
    (set-backend! (config/config-kw :mb-qp-cache-backend)))
   ([backend]
-   (let [backend-ns (symbol (str "metabase.query-processor.middleware.cache-backend." (munge (name backend))))]
-     (require backend-ns)
+   (let [backend-ns-symb (symbol (str "metabase.query-processor.middleware.cache-backend." (munge (name backend))))]
+     (require backend-ns-symb)
      (log/info "Using query processor cache backend:" (u/format-color 'blue backend) (u/emoji "💾"))
-     (reset! backend-instance (get-backend-instance-in-namespace backend-ns)))))
+     (reset! backend-instance (get-backend-instance-in-namespace backend-ns-symb)))))
 
 
 

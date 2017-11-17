@@ -1,9 +1,7 @@
 (ns metabase.api.email-test
   (:require [expectations :refer :all]
-            [metabase.email-test :refer [with-fake-inbox inbox]]
             [metabase.models.setting :as setting]
-            [metabase.test.data.users :refer :all]))
-
+            [metabase.test.data.users :refer [user->client]]))
 
 (defn- email-settings
   []

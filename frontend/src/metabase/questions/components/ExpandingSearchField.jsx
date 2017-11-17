@@ -9,9 +9,7 @@ import { Motion, spring } from "react-motion";
 
 import Icon from "metabase/components/Icon";
 
-const KEYCODE_FORWARD_SLASH = 191; // focus search
-const KEYCODE_ESCAPE = 27; // blur search
-const KEYCODE_ENTER = 13; // execute search
+import { KEYCODE_FORWARD_SLASH, KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export default class ExpandingSearchField extends Component {
     constructor (props, context) {
@@ -73,14 +71,14 @@ export default class ExpandingSearchField extends Component {
             <div
                 className={cx(
                     className,
-                    'bordered border-dark flex align-center pr2 transition-border',
+                    'bordered border-grey-1 flex align-center pr2 transition-border',
                     { 'border-brand' : active }
                 )}
                 onClick={this.setActive}
                 style={{borderRadius: 99}}
             >
                 <Icon
-                    className={cx('ml2', { 'text-brand': active })}
+                    className={cx('ml2 text-grey-3', { 'text-brand': active })}
                     name="search"
                 />
                 <Motion
@@ -89,8 +87,8 @@ export default class ExpandingSearchField extends Component {
                     { interpolatingStyle =>
                         <input
                             ref={(search) => this.searchInput = search}
-                            className="input text-bold borderless"
-                            placeholder="Search for a question..."
+                            className="input borderless text-bold"
+                            placeholder="Search for a question"
                             style={Object.assign({}, interpolatingStyle, { fontSize: '1em'})}
                             onFocus={() => this.setState({ active: true })}
                             onBlur={() => this.setState({ active: false })}

@@ -1,10 +1,23 @@
-/* @flow */
+// TODO: Re-enable Flow after updating it, we maybe hit this with our dataset query types:
+// https://github.com/facebook/flow/issues/1663
 
 import type { DatabaseId } from "./Database";
 import type { StructuredQuery, NativeQuery } from "./Query";
-import type { Parameter, ParameterInstance } from "./Dashboard";
+import type { Parameter, ParameterInstance } from "./Parameter";
 
 export type CardId = number;
+
+export type VisualizationSettings = {
+    [key: string]: any
+}
+
+export type UnsavedCard = {
+    dataset_query: DatasetQuery,
+    display: string,
+    visualization_settings: VisualizationSettings,
+    parameters?: Array<Parameter>,
+    original_card_id?: CardId
+}
 
 export type Card = {
     id: CardId,
@@ -13,7 +26,12 @@ export type Card = {
     dataset_query: DatasetQuery,
     display: string,
     visualization_settings: VisualizationSettings,
-    parameters?: Array<Parameter>
+    parameters?: Array<Parameter>,
+    can_write: boolean,
+    public_uuid: string,
+
+    // Not part of the card API contract, a field used by query builder for showing lineage
+    original_card_id?: CardId,
 };
 
 export type StructuredDatasetQuery = {
@@ -30,8 +48,7 @@ export type NativeDatasetQuery = {
     parameters?: Array<ParameterInstance>
 };
 
-export type VisualizationSettings = {
-    [key: string]: any
-}
-
+/**
+ * All possible formats for `dataset_query`
+ */
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;

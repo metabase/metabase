@@ -1,12 +1,14 @@
 :root {
   --brand-color: #509EE3;
   --brand-light-color: #CDE3F8;
+  --brand-saturated-color: #2D86D4;
 
   --base-grey: #f8f8f8;
   --grey-1: color(var(--base-grey) shade(10%));
   --grey-2: color(var(--base-grey) shade(20%));
   --grey-3: color(var(--base-grey) shade(30%));
   --grey-4: color(var(--base-grey) shade(40%));
+  --grey-5: color(var(--base-grey) shade(50%));
 
   --grey-text-color: #797979;
   --alt-color: #F5F7F9;
@@ -19,16 +21,21 @@
   --gold-color: #F9D45C;
   --orange-color: #F9A354;
   --purple-color: #A989C5;
-  --purple-light-color: #C5ABDB;
   --green-color: #9CC177;
+  --green-saturated-color: #84BB4C;
   --dark-color: #4C545B;
   --error-color: #EF8C8C;
   --slate-color: #9BA5B1;
   --slate-light-color: #DFE8EA;
+  --slate-almost-extra-light-color: #EDF2F5;
   --slate-extra-light-color: #F9FBFC;
 }
 
 .text-default, :local(.text-default) {
+    color: var(--default-font-color);
+}
+
+.text-default-hover:hover {
     color: var(--default-font-color);
 }
 
@@ -54,6 +61,10 @@
 .bg-brand-hover:hover,
 .bg-brand-active:active { background-color: var(--brand-color); }
 
+@media screen and (--breakpoint-min-md) {
+  .md-bg-brand { background-color: var(--brand-color) !important; }
+}
+
 
 /* success */
 
@@ -73,16 +84,6 @@
 }
 .bg-error-input {
   background-color: #FCE8E8
-}
-
-/* heads up */
-
-.text-headsup {
-  color: var(--headsup-color);
-}
-
-.bg-headsup {
-  background-color: var(--headsup-color);
 }
 
 /* warning */
@@ -106,17 +107,18 @@
     color: var(--purple-color);
 }
 
-.text-purple-light,
-.text-purple-light-hover:hover {
-    color: var(--purple-light-color);
-}
-
 .text-green,
 .text-green-hover:hover {
     color: var(--green-color);
 }
 
-.text-orange {
+.text-green-saturated,
+.text-green-saturated-hover:hover {
+    color: var(--green-saturated-color);
+}
+
+.text-orange,
+.text-orange-hover:hover {
     color: var(--orange-color);
 }
 
@@ -126,7 +128,6 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
-.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */
@@ -145,16 +146,22 @@
 .text-grey-4,
 .text-grey-4-hover:hover { color: var(--grey-4) }
 
+.text-grey-5,
+.text-grey-5-hover:hover { color: var(--grey-5) }
+
 .bg-grey-0,
 .bg-grey-0-hover:hover { background-color: var(--base-grey) }
 .bg-grey-1 { background-color: var(--grey-1) }
 .bg-grey-2 { background-color: var(--grey-2) }
 .bg-grey-3 { background-color: var(--grey-3) }
 .bg-grey-4 { background-color: var(--grey-4) }
+.bg-grey-5 { background-color: var(--grey-5) }
 
 .bg-slate { background-color: var(--slate-color); }
 .bg-slate-light { background-color: var(--slate-light-color); }
+.bg-slate-almost-extra-light { background-color: var(--slate-almost-extra-light-color);}
 .bg-slate-extra-light { background-color: var(--slate-extra-light-color); }
+.bg-slate-extra-light-hover:hover { background-color: var(--slate-extra-light-color); }
 
 .text-dark, :local(.text-dark) {
     color: var(--dark-color);
@@ -163,6 +170,10 @@
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white, :local(.text-white),
 .text-white-hover:hover { color: #fff; }
+
+@media screen and (--breakpoint-min-md) {
+  .md-text-white { color: #fff; }
+}
 
 /* common pattern, background brand, text white when hovering or selected */
 .brand-hover:hover {
@@ -186,3 +197,5 @@
   color: #CFE4F5
 }
 .text-slate { color: #606E7B; }
+
+.bg-transparent { background-color: transparent }

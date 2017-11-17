@@ -1,16 +1,12 @@
 (ns metabase.events.view-log-test
-  (:require [expectations :refer :all]
+  (:require [metabase.events.view-log :refer :all]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [user :refer [User]]
+             [view-log :refer [ViewLog]]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.events.view-log :refer :all]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [user :refer [User]]
-                             [view-log :refer [ViewLog]])
-            [metabase.test.data :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.test-setup :refer :all]))
-
+            [toucan.util.test :as tt]))
 
 ;; `:card-create` event
 (tt/expect-with-temp [User [user]

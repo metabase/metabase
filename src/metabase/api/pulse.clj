@@ -1,27 +1,29 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
+  (:require [compojure.core :refer [DELETE GET POST PUT]]
             [hiccup.core :refer [html]]
-            [schema.core :as s]
-            [metabase.api.common :refer :all]
-            [toucan.db :as db]
-            [metabase.email :as email]
-            [metabase.events :as events]
+            [metabase
+             [driver :as driver]
+             [email :as email]
+             [events :as events]
+             [pulse :as p]
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.api.common :as api]
             [metabase.integrations.slack :as slack]
-            (metabase.models [card :refer [Card]]
-                             [database :refer [Database]]
-                             [interface :as mi]
-                             [pulse :refer [Pulse retrieve-pulse] :as pulse]
-                             [pulse-channel :refer [channel-types]])
-            [metabase.query-processor :as qp]
-            [metabase.pulse :as p]
+            [metabase.models
+             [card :refer [Card]]
+             [interface :as mi]
+             [pulse :as pulse :refer [Pulse]]
+             [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
-            [metabase.util :as u]
-            [metabase.util.schema :as su])
-  (:import java.io.ByteArrayInputStream))
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import java.io.ByteArrayInputStream
+           java.util.TimeZone))
 
-
-(defendpoint GET "/"
+(api/defendpoint GET "/"
   "Fetch all `Pulses`"
   []
   (for [pulse (pulse/retrieve-pulses)
@@ -31,13 +33,15 @@
                   can-write?)]
     (assoc pulse :read_only (not can-write?))))
 
-
-(defn- check-card-read-permissions [cards]
-  (doseq [{card-id :id} cards]
+(defn check-card-read-permissions
+  "Users can only create a pulse for `CARDS` they have access to"
+  [cards]
+  (doseq [card cards
+          :let [card-id (u/get-id card)]]
     (assert (integer? card-id))
-    (read-check Card card-id)))
+    (api/read-check Card card-id)))
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty]} :body}]
   {name          su/NonBlankString
@@ -45,24 +49,24 @@
    channels      (su/non-empty [su/Map])
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)
-  (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels skip_if_empty)))
+  (api/check-500 (pulse/create-pulse! name api/*current-user-id* (map u/get-id cards) channels skip_if_empty)))
 
 
-(defendpoint GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
-  (read-check (pulse/retrieve-pulse id)))
+  (api/read-check (pulse/retrieve-pulse id)))
 
 
 
-(defendpoint PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Pulse` with ID."
   [id :as {{:keys [name cards channels skip_if_empty]} :body}]
   {name          su/NonBlankString
    cards         (su/non-empty [su/Map])
    channels      (su/non-empty [su/Map])
    skip_if_empty s/Bool}
-  (write-check Pulse id)
+  (api/write-check Pulse id)
   (check-card-read-permissions cards)
   (pulse/update-pulse! {:id             id
                         :name           name
@@ -72,16 +76,17 @@
   (pulse/retrieve-pulse id))
 
 
-(defendpoint DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a `Pulse`."
   [id]
-  (let-404 [pulse (Pulse id)]
+  (api/let-404 [pulse (Pulse id)]
+    (api/write-check Pulse id)
     (db/delete! Pulse :id id)
-    (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))
-  generic-204-no-content)
+    (events/publish-event! :pulse-delete (assoc pulse :actor_id api/*current-user-id*)))
+  api/generic-204-no-content)
 
 
-(defendpoint GET "/form_input"
+(api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating `Pulses`."
   []
   (let [chan-types (-> channel-types
@@ -100,39 +105,43 @@
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
-(defendpoint GET "/preview_card/:id"
+(api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a `Card` with ID."
   [id]
-  (let [card   (read-check Card id)
-        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*, :context :pulse, :card-id id})]
-    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
+  (let [card   (api/read-check Card id)
+        result (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
+                                                                            :context     :pulse
+                                                                            :card-id     id})]
+    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title*   true
                                                                             render/*include-buttons* true]
-                                                                    (render/render-pulse-card card result))]])}))
+                                                                    (render/render-pulse-card (p/defaulted-timezone card) card result))]])}))
 
-(defendpoint GET "/preview_card_info/:id"
+(api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
-  (let [card      (read-check Card id)
-        result    (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*, :context :pulse, :card-id id})
+  (let [card      (api/read-check Card id)
+        result    (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
+                                                                               :context     :pulse
+                                                                               :card-id     id})
         data      (:data result)
         card-type (render/detect-pulse-card-type card data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card card result)))]
+                          (render/render-pulse-card (p/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
      :row_count       (:row_count result)}))
 
-(defendpoint GET "/preview_card_png/:id"
+(api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."
   [id]
-  (let [card   (read-check Card id)
-        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*, :context :pulse, :card-id id})
+  (let [card   (api/read-check Card id)
+        result (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*, :context :pulse, :card-id id})
         ba     (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png card result))]
+                 (render/render-pulse-card-to-png (p/defaulted-timezone card) card result))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
-(defendpoint POST "/test"
+(api/defendpoint POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty] :as body} :body}]
   {name          su/NonBlankString
@@ -143,4 +152,4 @@
   (p/send-pulse! body)
   {:ok true})
 
-(define-routes)
+(api/define-routes)

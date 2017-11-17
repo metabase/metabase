@@ -10,18 +10,13 @@ import Query from "metabase/lib/query";
 import _ from "underscore";
 
 export default class CardPicker extends Component {
-    constructor(props, context) {
-        super(props, context);
+    state = {
+        isOpen: false,
+        inputValue: "",
+        inputWidth: 300,
+        collectionId: undefined,
+    };
 
-        this.state = {
-            isOpen: false,
-            inputValue: "",
-            inputWidth: 300,
-            collectionId: undefined,
-        };
-
-        _.bindAll(this, "onChange", "onInputChange", "onInputFocus", "onInputBlur");
-    }
 
     static propTypes = {
         cardList: PropTypes.array.isRequired,
@@ -32,15 +27,15 @@ export default class CardPicker extends Component {
         clearTimeout(this._timer);
     }
 
-    onInputChange(e) {
-        this.setState({ inputValue: e.target.value });
+    onInputChange = ({target}) => {
+        this.setState({ inputValue: target.value });
     }
 
-    onInputFocus() {
+    onInputFocus = () => {
         this.setState({ isOpen: true });
     }
 
-    onInputBlur() {
+    onInputBlur = () => {
         // Without a timeout here isOpen gets set to false when an item is clicked
         // which causes the click handler to not fire. For some reason this even
         // happens with a 100ms delay, but not 200ms?
@@ -54,7 +49,7 @@ export default class CardPicker extends Component {
         }, 250);
     }
 
-    onChange(id) {
+    onChange = (id) => {
         this.props.onChange(id);
         ReactDOM.findDOMNode(this.refs.input).blur();
     }
@@ -107,9 +102,10 @@ export default class CardPicker extends Component {
             .uniq(c => c && c.id)
             .filter(c => c)
             .sortBy("name")
+            // add "Everything else" as the last option for cards without a
+            // collection
+            .concat([{ id: null, name: "Everything else"}])
             .value();
-
-        collections.unshift({ id: null, name: "None" });
 
         let visibleCardList;
         if (inputValue) {
@@ -162,11 +158,11 @@ export default class CardPicker extends Component {
                         </ul>
                     : collections ?
                         <CollectionList>
-                        {collections.map(collection =>
-                            <CollectionListItem collection={collection} onClick={(e) => {
-                                this.setState({ collectionId: collection.id, isClicking: true });
-                            }}/>
-                        )}
+                            {collections.map(collection =>
+                                <CollectionListItem collection={collection} onClick={(e) => {
+                                    this.setState({ collectionId: collection.id, isClicking: true });
+                                }}/>
+                            )}
                         </CollectionList>
                     : null }
                     </div>

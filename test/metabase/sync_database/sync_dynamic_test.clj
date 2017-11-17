@@ -1,201 +1,145 @@
 (ns metabase.sync-database.sync-dynamic-test
+  "Tests for databases with a so-called 'dynamic' schema, i.e. one that is not hard-coded somewhere.
+   A Mongo database is an example of such a DB. "
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table]])
-            (metabase.sync-database [introspect :as introspect]
-                                    [sync-dynamic :refer :all])
+            [metabase
+             [sync :as sync]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test.mock.toucanery :as toucanery]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
-(tu/resolve-private-vars metabase.sync-database.sync-dynamic
-  save-table-fields!)
+(defn- remove-nonsense
+  "Remove fields that aren't really relevant in the output for TABLES and their FIELDS.
+   Done for the sake of making debugging some of the tests below easier."
+  [tables]
+  (for [table tables]
+    (-> (u/select-non-nil-keys table [:schema :name :fields])
+        (update :fields (fn [fields]
+                          (for [field fields]
+                            (u/select-non-nil-keys field [:table_id :name :fk_target_field_id :parent_id :base_type
+                                                          :special_type])))))))
 
-(defn- get-tables [database-id]
-  (->> (hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
+(defn- get-tables [database-or-id]
+  (->> (hydrate (db/select Table, :db_id (u/get-id database-or-id), {:order-by [:id]}) :fields)
        (mapv tu/boolean-ids-and-timestamps)))
 
-(def ^:private ^:const field-defaults
-  {:id                 true
-   :table_id           true
-   :raw_column_id      false
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil
-   :visibility_type    :normal
-   :special_type       nil
-   :parent_id          false
-   :fk_target_field_id false
-   :last_analyzed      false
-   :created_at         true
-   :updated_at         true})
-
-;; save-table-fields!  (also covers save-nested-fields!)
+;; basic test to make sure syncing nested fields works. This is sort of a higher-level test.
 (expect
-  [[]
-   ;; initial sync
-   [(merge field-defaults {:base_type    :type/Integer
-                           :special_type :type/PK
-                           :name         "First"
-                           :display_name "First"})
-    (merge field-defaults {:base_type    :type/Text
-                           :name         "Second"
-                           :display_name "Second"})
-    (merge field-defaults {:base_type    :type/Boolean
-                           :special_type nil
-                           :name         "Third"
-                           :display_name "Third"})]
-   ;; add column, modify first column, add some nested fields
-   [(merge field-defaults {:base_type    :type/Decimal
-                           :special_type :type/PK
-                           :name         "First"
-                           :display_name "First"})
-    (merge field-defaults {:base_type    :type/Text
-                           :name         "Second"
-                           :display_name "Second"})
-    (merge field-defaults {:base_type    :type/Boolean
-                           :name         "Third"
-                           :display_name "Third"})
-    (merge field-defaults {:base_type    :type/Integer
-                           :special_type :type/Category
-                           :name         "rating"
-                           :display_name "Rating"})
-    (merge field-defaults {:base_type    :type/Text
-                           :special_type :type/City
-                           :name         "city"
-                           :display_name "City"
-                           :parent_id    true})
-    (merge field-defaults {:base_type    :type/Text
-                           :special_type :type/Category
-                           :name         "type"
-                           :display_name "Type"
-                           :parent_id    true})]
-   ;; first column retired, 3rd column now a pk, another nested field
-   [(merge field-defaults {:base_type    :type/Decimal
-                           :special_type :type/PK
-                           :name         "First"
-                           :display_name "First"})
-    (merge field-defaults {:base_type    :type/Text
-                           :name         "Second"
-                           :display_name "Second"})
-    (merge field-defaults {:base_type    :type/Boolean
-                           :special_type :type/PK
-                           :name         "Third"
-                           :display_name "Third"})
-    (merge field-defaults {:name         "rating"
-                           :display_name "Rating"
-                           :base_type    :type/Integer
-                           :special_type :type/Category})
-    (merge field-defaults {:base_type    :type/Text
-                           :special_type :type/City
-                           :name         "city"
-                           :display_name "City"
-                           :parent_id    true})
-    (merge field-defaults {:base_type    :type/Text
-                           :special_type :type/Category
-                           :name         "type"
-                           :display_name "Type"
-                           :parent_id    true})
-    (merge field-defaults {:base_type    :type/Boolean
-                           :name         "new"
-                           :display_name "New"
-                           :parent_id    true})]]
-  (tt/with-temp* [Database  [{database-id :id}]
-                  RawTable  [{raw-table-id :id}       {:database_id database-id}]
-                  Table     [{table-id :id, :as table} {:db_id database-id, :raw_table_id raw-table-id}]]
-    (let [get-fields   (fn []
-                         (for [field (db/select Field, :table_id table-id, {:order-by [:id]})]
-                           (dissoc (tu/boolean-ids-and-timestamps field)
-                                   :active :position :preview_display)))
-          save-fields! (fn [& fields]
-                         (save-table-fields! table fields)
-                         (get-fields))]
-      ;; start with no fields
-      [(get-fields)
-       ;; first sync will add all the fields
-       (save-fields! {:name "First", :base-type :type/Integer, :pk? true}
-                     {:name "Second", :base-type :type/Text}
-                     {:name "Third", :base-type :type/Boolean})
-       ;; now add another column (with nested-fields!) and modify the first
-       (save-fields! {:name "First", :base-type :type/Decimal, :pk? false}
-                     {:name "Second", :base-type :type/Text}
-                     {:name "Third", :base-type :type/Boolean}
-                     {:name "rating", :base-type :type/Integer, :nested-fields [{:name "city", :base-type :type/Text}
-                                                                                {:name "type", :base-type :type/Text}]})
-       ;; now remove the first column (should have no effect), and make tweaks to the nested columns
-       (save-fields! {:name "Second", :base-type :type/Text}
-                     {:name "Third", :base-type :type/Boolean, :pk? true}
-                     {:name "rating", :base-type :type/Integer, :nested-fields [{:name "new", :base-type :type/Boolean}]})])))
+  (remove-nonsense toucanery/toucanery-tables-and-fields)
+  (tt/with-temp* [Database [db {:engine :toucanery}]]
+    (sync/sync-database! db)
+    (remove-nonsense (get-tables db))))
 
 
-;; scan-table-and-update-data-model!
+;;; ------------------------------------------------------------ Tests for sync-metadata ------------------------------------------------------------
+
+;; TODO - At some point these tests should be moved into a `sync-metadata-test` or `sync-metadata.fields-test` namespace
+
+;; make sure nested fields get resynced correctly if their parent field didn't change
 (expect
-  [[(last toucanery/toucanery-tables-and-fields)]
-   [(last toucanery/toucanery-tables-and-fields)]
-   [(assoc (last toucanery/toucanery-tables-and-fields)
-      :active false
-      :fields [])]]
-  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :toucanery}]]
-    (let [driver (toucanery/->ToucaneryDriver)]
-      ;; do a quick introspection to add the RawTables to the db
-      (introspect/introspect-database-and-update-raw-tables! driver db)
-      ;; stub out the Table we are going to sync for real below
-      (let [raw-table-id (db/select-one-id RawTable, :database_id database-id, :name "transactions")
-            tbl          (db/insert! Table
-                           :db_id        database-id
-                           :raw_table_id raw-table-id
-                           :name         "transactions"
-                           :active       true)]
-        [ ;; now lets run a sync and check what we got
-         (do
-           (scan-table-and-update-data-model! driver db tbl)
-           (get-tables database-id))
-         ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
-         (do
-           (scan-table-and-update-data-model! driver db tbl)
-           (get-tables database-id))
-         ;; one more time, but lets disable the table this time and ensure that's handled properly
-         (do
-           (db/update-where! RawTable {:database_id database-id
-                                       :name        "transactions"}
-             :active false)
-           (scan-table-and-update-data-model! driver db tbl)
-           (get-tables database-id))]))))
+  #{"weight" "age"}
+  (tt/with-temp* [Database [db {:engine :toucanery}]]
+    ;; do the initial sync
+    (sync-metadata/sync-db-metadata! db)
+    ;; delete our entry for the `transactions.toucan.details.age` field
+    (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
+          toucan-field-id       (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
+          details-field-id      (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+          age-field-id          (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+      (db/delete! Field :id age-field-id)
+      ;; now sync again.
+      (sync-metadata/sync-db-metadata! db)
+      ;; field should be added back
+      (db/select-field :name Field :table_id transactions-table-id, :parent_id details-field-id, :active true))))
 
-
-;; scan-database-and-update-data-model!
+;; Now do the exact same test where we make the Field inactive. Should get reactivated
 (expect
-  [toucanery/toucanery-raw-tables-and-columns
-   toucanery/toucanery-tables-and-fields
-   toucanery/toucanery-tables-and-fields
-   (conj (vec (drop-last toucanery/toucanery-tables-and-fields))
-         (assoc (last toucanery/toucanery-tables-and-fields)
-           :active false
-           :fields []))]
-  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :toucanery}]]
-    (let [driver (toucanery/->ToucaneryDriver)]
-      ;; do a quick introspection to add the RawTables to the db
-      (introspect/introspect-database-and-update-raw-tables! driver db)
+  (tt/with-temp* [Database [db {:engine :toucanery}]]
+    ;; do the initial sync
+    (sync-metadata/sync-db-metadata! db)
+    ;; delete our entry for the `transactions.toucan.details.age` field
+    (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
+          toucan-field-id       (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
+          details-field-id      (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+          age-field-id          (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+      (db/update! Field age-field-id :active false)
+      ;; now sync again.
+      (sync-metadata/sync-db-metadata! db)
+      ;; field should be reactivated
+      (db/select-field :active Field :id age-field-id))))
 
-      [ ;; first check that the raw tables stack up as expected, especially that fields were skipped because this is a :dynamic-schema db
-       (->> (hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
-            (mapv tu/boolean-ids-and-timestamps))
-       ;; now lets run a sync and check what we got
-       (do
-         (scan-database-and-update-data-model! driver db)
-         (get-tables database-id))
-       ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
-       (do
-         (scan-database-and-update-data-model! driver db)
-         (get-tables database-id))
-       ;; one more time, but lets disable a table this time and ensure that's handled properly
-       (do
-         (db/update-where! RawTable {:database_id database-id
-                                     :name        "transactions"}
-           :active false)
-         (scan-database-and-update-data-model! driver db)
-         (get-tables database-id))])))
+;; nested fields should also get reactivated if the parent field gets reactivated
+(expect
+  (tt/with-temp* [Database [db {:engine :toucanery}]]
+    ;; do the initial sync
+    (sync-metadata/sync-db-metadata! db)
+    ;; delete our entry for the `transactions.toucan.details.age` field
+    (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
+          toucan-field-id       (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
+          details-field-id      (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+          age-field-id          (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+      (db/update! Field details-field-id :active false)
+      ;; now sync again.
+      (sync-metadata/sync-db-metadata! db)
+      ;; field should be reactivated
+      (db/select-field :active Field :id age-field-id))))
+
+
+;; make sure nested fields can get marked inactive
+(expect
+  false
+  (tt/with-temp* [Database [db {:engine :toucanery}]]
+    ;; do the initial sync
+    (sync-metadata/sync-db-metadata! db)
+    ;; Add an entry for a `transactions.toucan.details.gender` field
+    (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
+          toucan-field-id       (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
+          details-field-id      (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+          gender-field-id       (u/get-id (db/insert! Field
+                                            :name     "gender"
+                                            :base_type "type/Text"
+                                            :table_id transactions-table-id
+                                            :parent_id details-field-id
+                                            :active true))]
+
+      ;; now sync again.
+      (sync-metadata/sync-db-metadata! db)
+      ;; field should become inactive
+      (db/select-one-field :active Field :id gender-field-id))))
+
+;; make sure when a nested field gets marked inactive, so does it's children
+(expect
+  false
+  (tt/with-temp* [Database [db {:engine :toucanery}]]
+    ;; do the initial sync
+    (sync-metadata/sync-db-metadata! db)
+    ;; Add an entry for a `transactions.toucan.details.gender` field
+    (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))
+          toucan-field-id       (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "toucan"))
+          details-field-id      (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+          food-likes-field-id   (u/get-id (db/insert! Field
+                                            :name     "food-likes"
+                                            :base_type "type/Dictionary"
+                                            :table_id transactions-table-id
+                                            :parent_id details-field-id
+                                            :active true))
+          blueberries-field-id (u/get-id (db/insert! Field
+                                           :name "blueberries"
+                                           :base_type "type/Boolean"
+                                           :table_id transactions-table-id
+                                           :parent_id food-likes-field-id
+                                           :active true))]
+
+      ;; now sync again.
+      (sync-metadata/sync-db-metadata! db)
+      ;; field should become inactive
+      (db/select-one-field :active Field :id blueberries-field-id))))

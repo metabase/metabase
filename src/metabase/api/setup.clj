@@ -1,22 +1,24 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
-            [medley.core :as m]
-            [schema.core :as s]
-            [toucan.db :as db]
-            (metabase.api [common :refer :all]
-                          [database :refer [DBEngine]])
-            (metabase [driver :as driver]
-                      [email :as email]
-                      [events :as events])
+            [metabase
+             [driver :as driver]
+             [email :as email]
+             [events :as events]
+             [public-settings :as public-settings]
+             [setup :as setup]
+             [util :as u]]
+            [metabase.api
+             [common :as api]
+             [database :as database-api :refer [DBEngineString]]]
             [metabase.integrations.slack :as slack]
-            (metabase.models [database :refer [Database]]
-                             [session :refer [Session]]
-                             [setting :as setting]
-                             [user :refer [User], :as user])
-            [metabase.public-settings :as public-settings]
-            [metabase.setup :as setup]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.models
+             [database :refer [Database]]
+             [session :refer [Session]]
+             [user :as user :refer [User]]]
+            [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
@@ -24,16 +26,21 @@
     "Token does not match the setup token."))
 
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body}]
-  {token      SetupToken
-   site_name  su/NonBlankString
-   first_name su/NonBlankString
-   last_name  su/NonBlankString
-   email      su/Email
-   password   su/ComplexPassword}
+  [:as {{:keys [token]
+         {:keys [name engine details is_full_sync is_on_demand schedules]} :database
+         {:keys [first_name last_name email password]}                     :user
+         {:keys [allow_tracking site_name]}                                :prefs} :body}]
+  {token          SetupToken
+   site_name      su/NonBlankString
+   first_name     su/NonBlankString
+   last_name      su/NonBlankString
+   email          su/Email
+   password       su/ComplexPassword
+   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))
+   schedules      (s/maybe database-api/ExpandedSchedulesMap)}
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -47,19 +54,21 @@
     ;; set a couple preferences
     (public-settings/site-name site_name)
     (public-settings/admin-email email)
-    (public-settings/anon-tracking-enabled (if (m/boolean? allow_tracking)
-                                             allow_tracking
-                                             true)) ; default to `true` if allow_tracking isn't specified
+    (public-settings/anon-tracking-enabled (or (nil? allow_tracking) ; default to `true` if allow_tracking isn't specified
+                                               allow_tracking))      ; the setting will set itself correctly whether a boolean or boolean string is specified
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
-      (->> (db/insert! Database
-             :name         name
-             :engine       engine
-             :details      details
-             :is_full_sync (if-not (nil? is_full_sync)
-                             is_full_sync
-                             true))
-           (events/publish-event! :database-create)))
+      (let [db (db/insert! Database
+                 (merge
+                  {:name         name
+                   :engine       engine
+                   :details      details
+                   :is_on_demand (boolean is_on_demand)
+                   :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
+                                     is_full_sync)}
+                  (when schedules
+                    (database-api/schedule-map->cron-strings schedules))))]
+        (events/publish-event! :database-create db)))
     ;; clear the setup token now, it's no longer needed
     (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
@@ -72,16 +81,18 @@
     {:id session-id}))
 
 
-(defendpoint POST "/validate"
+(api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
   {token  SetupToken
-   engine DBEngine}
+   engine DBEngineString}
   (let [engine           (keyword engine)
         details          (assoc details :engine engine)
         response-invalid (fn [field m] {:status 400 :body (if (= :general field)
                                                             {:message m}
                                                             {:errors {field m}})})]
+    ;; TODO - as @atte mentioned this should just use the same logic as we use in POST /api/database/, which tries with
+    ;; both SSL and non-SSL.
     (try
       (cond
         (driver/can-connect-with-details? engine details :rethrow-exceptions) {:valid true}
@@ -106,9 +117,9 @@
         num-tables         (db/count 'Table)
         num-cards          (db/count 'Card)
         num-users          (db/count 'User)]
-    [{:title       "Add a database"
-      :group       "Get connected"
-      :description "Connect to your data so your whole team can start to explore."
+    [{:title       (tru "Add a database")
+      :group       (tru "Get connected")
+      :description (tru "Connect to your data so your whole team can start to explore.")
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
@@ -138,9 +149,9 @@
       :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
-     {:title       "Organize questions"
-      :group       "Curate your data"
-      :description "Have a lot of saved questions in Metabase? Create collections to help manage them and add context."
+     {:title       (tru "Organize questions")
+      :group       (tru "Curate your data")
+      :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
       :link        "/questions/"
       :completed   has-collections?
       :triggered   (>= num-cards 30)}
@@ -152,7 +163,7 @@
       :triggered   (>= num-cards 30)}
      {:title       "Create segments"
       :group       "Curate your data"
-      :description "Keep everyone on the same page by creating canonnical sets of filters anyone can use while asking questions."
+      :description "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions."
       :link        "/admin/datamodel/database"
       :completed   has-segments?
       :triggered   (>= num-cards 30)}]))
@@ -183,11 +194,11 @@
 (defn- admin-checklist []
   (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
 
-(defendpoint GET "/admin_checklist"
+(api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
-  (check-superuser)
+  (api/check-superuser)
   (admin-checklist))
 
 
-(define-routes)
+(api/define-routes)

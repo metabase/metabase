@@ -1,38 +1,29 @@
 (ns metabase.driver
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [clj-time.format :as tformat]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [toucan.db :as db]
             [metabase.config :as config]
-            (metabase.models [database :refer [Database]]
-                             field
-                             [query-execution :refer [QueryExecution]]
-                             [setting :refer [defsetting]])
-            [metabase.util :as u])
+            [metabase.models
+             [database :refer [Database]]
+             [setting :refer [defsetting]]]
+            [metabase.sync.interface :as si]
+            [metabase.util :as u]
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance))
-
+           metabase.models.field.FieldInstance
+           metabase.models.table.TableInstance
+           org.joda.time.DateTime
+           org.joda.time.format.DateTimeFormatter))
 
 ;;; ## INTERFACE + CONSTANTS
 
-(def ^:const max-sync-lazy-seq-results
-  "The maximum number of values we should return when using `field-values-lazy-seq`.
-   This many is probably fine for inferring special types and what-not; we don't want
-   to scan millions of values at any rate."
-  10000)
-
-(def ^:const field-values-lazy-seq-chunk-size
-  "How many Field values should be fetched at a time for a chunked implementation of `field-values-lazy-seq`?"
-  ;; Hopefully this is a good balance between
-  ;; 1. Not doing too many DB calls
-  ;; 2. Not running out of mem
-  ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
-  500)
-
-(def ^:const connection-error-messages
+(def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct."
+  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+   :ssh-tunnel-auth-fail               "We couldn't connect to the ssh tunnel host. Check the username, password"
+   :ssh-tunnel-connection-fail         "We couldn't connect to the ssh tunnel host. Check the hostname and port"
    :database-name-incorrect            "Looks like the database name is incorrect."
    :invalid-hostname                   "It looks like your host is invalid. Please double-check it and try again."
    :password-incorrect                 "Looks like your password is incorrect."
@@ -41,46 +32,44 @@
    :username-or-password-incorrect     "Looks like the username or password is incorrect."})
 
 (defprotocol IDriver
-  "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in `IDriverDefaultsMixin`.
-   Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on them:
+  "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in
+   `IDriverDefaultsMixin`. Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on
+    them:
 
      (name (PostgresDriver.)) -> \"PostgreSQL\"
 
    This name should be a \"nice-name\" that we'll display to the user."
 
-  (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
-    "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
-     Output should match the `AnalyzeTable` schema.")
-
   (can-connect? ^Boolean [this, ^java.util.Map details-map]
-    "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
-     try running a query like `SELECT 1;`. This function should return `true` or `false`.")
+    "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL
+     database might try running a query like `SELECT 1;`. This function should return `true` or `false`.")
 
   (date-interval [this, ^Keyword unit, ^Number amount]
-    "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
-     `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
-     return a HoneySQL form to call the appropriate SQL fns:
+    "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By
+     default, this returns an `Timestamp` by calling `metabase.util/relative-date`; but when possible drivers should
+     return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a
+     HoneySQL form to call the appropriate SQL fns:
 
        (date-interval (PostgresDriver.) :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))")
 
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
-    "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
-     It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-     Results should match the `DescribeDatabase` schema.")
+    "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of
+     tables. It is expected that this function will be peformant and avoid draining meaningful resources of the
+     database. Results should match the `DatabaseMetadata` schema.")
 
-  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^java.util.Map table]
+  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^TableInstance table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-     Results should match the `DescribeTable` schema.")
+     Results should match the `TableMetadata` schema.")
 
-  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^java.util.Map table]
+  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^TableInstance table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
-     Results should match the `DescribeTableFKs` schema.")
+     Results should match the `FKMetadata` schema.")
 
   (details-fields ^clojure.lang.Sequential [this]
     "A vector of maps that contain information about connection properties that should
-     be exposed to the user for databases that will use this driver. This information is used to build the UI for editing
-     a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
+     be exposed to the user for databases that will use this driver. This information is used to build the UI for
+     editing a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
      `port`, and other driver-specific parameters. Each field information map should have the following properties:
 
    *  `:name`
@@ -97,13 +86,14 @@
 
    *  `:default` *(OPTIONAL)*
 
-       A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
+       A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
+       placeholder.
 
    *  `:placeholder` *(OPTIONAL)*
 
-      Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
-      *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
-      cannot specify both `:default` and `:placeholder`.
+      Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
+      is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
+      placeholders, you cannot specify both `:default` and `:placeholder`.
 
    *  `:required` *(OPTIONAL)*
 
@@ -126,43 +116,44 @@
                     [2 \"Rasta Can\"]]}")
 
   (features ^java.util.Set [this]
-    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
+    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid
+     features are:
 
   *  `:foreign-keys` - Does this database support foreign key relationships?
   *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
-  *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently, everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
-  *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
-  *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
+  *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently,
+      everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
+  *  `:standard-deviation-aggregations` - Does this driver support standard deviation aggregations?
+  *  `:expressions` - Does this driver support expressions (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
-  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
-
-  (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
-    "Return a lazy sequence of all values of FIELD.
-     This is used to implement some methods of the database sync process which require rows of data during execution.
-
-  The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
-  For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
+  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like
+      \"sum(x) + count(y)\" or \"avg(x + y)\"
+  *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
+      are CTEs or subselects in SQL queries.")
 
   (format-custom-field-name ^String [this, ^String custom-field-name]
-    "*OPTIONAL*. Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the results.
-     This is used by the post-processing annotation stage to find the correct metadata to include with fields in the results.
-     The default implementation is `identity`, meaning the resulting field will have exactly the same name as passed to the `:named` clause.
-     Certain drivers like Redshift always lowercase these names, so this method is provided for those situations.")
+    "*OPTIONAL*. Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the
+     results. This is used by the post-processing annotation stage to find the correct metadata to include with fields
+     in the results. The default implementation is `identity`, meaning the resulting field will have exactly the same
+     name as passed to the `:named` clause. Certain drivers like Redshift always lowercase these names, so this method
+     is provided for those situations.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
-     Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
+     Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever
+     possible.")
 
   (mbql->native ^java.util.Map [this, ^java.util.Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
-  The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
-  all the necessary pieces of information to build a properly formatted native query for the given database.
+  The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries)
+  with all the necessary pieces of information to build a properly formatted native query for the given database.
 
-  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an appropriate message and include that in an appropriate place;
-  alternatively a driver might directly include the query's `:info` dictionary if the underlying language is JSON-based.
+  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an
+  appropriate message and include that in an appropriate place; alternatively a driver might directly include the
+  query's `:info` dictionary if the underlying language is JSON-based.
 
   The result of this function will be passed directly into calls to `execute-query`.
 
@@ -176,70 +167,39 @@
      the event that the driver was doing some caching or connection pooling.")
 
   (process-query-in-context [this, ^clojure.lang.IFn qp]
-    "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
-     that need to remain open for the duration of post-processing. This function follows a middleware pattern and is injected into the QP
-     middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
-     See the Mongo and H2 drivers for examples of how this is intended to be used.
+    "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do
+     things like open DB connections that need to remain open for the duration of post-processing. This function
+     follows a middleware pattern and is injected into the QP middleware stack immediately after the Query Expander;
+     in other words, it will receive the expanded query. See the Mongo and H2 drivers for examples of how this is
+     intended to be used.
 
        (defn process-query-in-context [driver qp]
          (fn [query]
            (qp query)))")
 
   (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
-    "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
-     operation itself is encapsulated as the lambda F, which must be called with no arguments.
+    "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
+     `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
+     arguments.
 
        (defn sync-in-context [driver database f]
          (with-connection [_ database]
            (f)))")
 
   (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
-    "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema` keys.
-     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
-     There is no expectation that the results be returned in any given order."))
+    "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name`
+     and `:schema` keys. (It is guaranteed too satisfy the `DatabaseMetadataTable` schema in
+     `metabase.sync.interface`.) Currently, this is only used for iterating over the values in a `_metabase_metadata`
 
+     table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
+     returned in any given order.")
 
-(defn- percent-valid-urls
-  "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
-  [vs]
-  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
-    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
-                             (float (/ valid-count non-nil-count)))
-          (nil? v)       (recur valid-count non-nil-count more)
-          :else          (let [valid? (and (string? v)
-                                           (u/is-url? v))]
-                           (recur (if valid? (inc valid-count) valid-count)
-                                  (inc non-nil-count)
-                                  more)))))
-
-(defn default-field-percent-urls
-  "Default implementation for optional driver fn `field-percent-urls` that calculates percentage in Clojure-land."
-  [driver field]
-  (->> (field-values-lazy-seq driver field)
-       (filter identity)
-       (take max-sync-lazy-seq-results)
-       percent-valid-urls))
-
-(defn default-field-avg-length
-  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
-  [driver field]
-  (let [field-values        (->> (field-values-lazy-seq driver field)
-                                 (filter identity)
-                                 (take max-sync-lazy-seq-results))
-        field-values-count (count field-values)]
-    (if (zero? field-values-count)
-      0
-      (int (math/round (/ (->> field-values
-                               (map str)
-                               (map count)
-                               (reduce +))
-                          field-values-count))))))
-
+  (current-db-time ^DateTime [this ^DatabaseInstance database]
+    "Returns the current time and timezone from the perspective of `DATABASE`."))
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:analyze-table                     (constantly nil)
-   :date-interval                     (u/drop-first-arg u/relative-date)
+  {:date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
@@ -247,7 +207,11 @@
    :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)
    :sync-in-context                   (fn [_ _ f] (f))
-   :table-rows-seq                    (constantly nil)})
+   :table-rows-seq                    (fn [driver & _]
+                                        (throw
+                                         (NoSuchMethodException.
+                                          (str (name driver) " does not implement table-rows-seq."))))
+   :current-db-time                   (constantly nil)})
 
 
 ;;; ## CONFIG
@@ -275,13 +239,19 @@
                  :features       (features driver)})
               @registered-drivers))
 
+(defn- init-driver-in-namespace! [ns-symb]
+  (require ns-symb)
+  (if-let [register-driver-fn (ns-resolve ns-symb '-init-driver)]
+    (register-driver-fn)
+    (log/warn (format "No -init-driver function found for '%s'" (name ns-symb)))))
+
 (defn find-and-load-drivers!
-  "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
-   function which provides a uniform way for Driver initialization to be done."
+  "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the
+   `driver-init` function which provides a uniform way for Driver initialization to be done."
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
-    (require ns-symb)))
+    (init-driver-in-namespace! ns-symb)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
@@ -292,6 +262,48 @@
   "Tests if a driver supports a given feature."
   [driver feature]
   (contains? (features driver) feature))
+
+(defn report-timezone-if-supported
+  "Returns the report-timezone if `DRIVER` supports setting it's
+  timezone and a report-timezone has been specified by the user"
+  [driver]
+  (when (driver-supports? driver :set-timezone)
+    (let [report-tz (report-timezone)]
+      (when-not (empty? report-tz)
+        report-tz))))
+
+(defn create-db-time-formatter
+  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
+  the offset/timezone information. Results of this are threadsafe and
+  can safely be def'd"
+  [date-format-str]
+  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
+
+(defn make-current-db-time-fn
+  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
+  for the current time. Returns a function that executes the query and
+  parses the date returned preserving it's timezone"
+  [date-formatter native-query]
+  (fn [driver database]
+    (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
+                     {:settings {:report-timezone report-tz}})
+          time-str (try
+                     (->> (merge settings {:database database, :native {:query native-query}})
+                          (execute-query driver)
+                          :rows
+                          ffirst)
+                     (catch Exception e
+                       (throw
+                        (Exception.
+                         (format "Error querying database '%s' for current time" (:name database)) e))))]
+      (try
+        (when time-str
+          (tformat/parse date-formatter time-str))
+        (catch Exception e
+          (throw
+           (Exception.
+            (format "Unable to parse date string '%s' for database engine '%s'"
+                    time-str (-> database :engine name)) e)))))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
@@ -321,6 +333,17 @@
       (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
+(defn values->base-type
+  "Given a sequence of VALUES, return the most common base type."
+  [values]
+  (->> values
+       (take 100)                                   ; take up to 100 values
+       (filter (complement nil?))                   ; filter out `nil` values
+       (group-by (comp class->base-type class))     ; now group by their base-type
+       (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
+       ffirst))                                     ; take the base-type from the first pair
+
+
 ;; ## Driver Lookup
 
 (defn engine->driver
@@ -334,8 +357,9 @@
   [engine]
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
-      (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
-        (u/ignore-exceptions (require namespce))
+      (let [namespace-symb (symbol (format "metabase.driver.%s" (name engine)))]
+        ;; TODO - Maybe this should throw the Exception instead of swallowing it?
+        (u/ignore-exceptions (init-driver-in-namespace! namespace-symb))
         ((keyword engine) @registered-drivers))))
 
 
@@ -347,15 +371,25 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
-      {:pre [db-id]}
-      (engine->driver (db-id->engine db-id)))))
+      (when-let [engine (db-id->engine (u/get-id db-id))]
+        (engine->driver engine)))))
+
+(defn ->driver
+  "Return an appropraiate driver for ENGINE-OR-DATABASE-OR-DB-ID.
+   Offered since this is somewhat more flexible in the arguments it accepts."
+  ;; TODO - we should make `engine->driver` and `database-id->driver` private and just use this for everything
+  [engine-or-database-or-db-id]
+  (if (keyword? engine-or-database-or-db-id)
+    (engine->driver engine-or-database-or-db-id)
+    (database-id->driver (u/get-id engine-or-database-or-db-id))))
 
 
 ;; ## Implementation-Agnostic Driver API
-
-(def ^:private ^:const can-connect-timeout-ms
-  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds."
-  5000)
+(def ^:private can-connect-timeout-ms
+  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
+   By default, this is 5 seconds. You can configure this value by setting the env var `MB_DB_CONNECTION_TIMEOUT_MS`."
+  (or (config/config-int :mb-db-connection-timeout-ms)
+      5000))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query
@@ -363,7 +397,7 @@
    thrown yourself (e.g., so you can pass the exception message along to the user).
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
-  [engine details-map & [rethrow-exceptions]]
+  ^Boolean [engine details-map & [rethrow-exceptions]]
   {:pre [(keyword? engine) (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try
@@ -374,3 +408,23 @@
         (when rethrow-exceptions
           (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
+
+
+(def ^:const max-sample-rows
+  "The maximum number of values we should return when using `table-rows-sample`.
+   This many is probably fine for inferring special types and what-not; we don't want
+   to scan millions of values at any rate."
+  10000)
+
+;; TODO - move this to the metadata-queries namespace or something like that instead
+(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+  [table :- si/TableInstance, fields :- [si/FieldInstance]]
+  (let [results ((resolve 'metabase.query-processor/process-query)
+                 {:database (:db_id table)
+                  :type     :query
+                  :query    {:source-table (u/get-id table)
+                             :fields       (vec (for [field fields]
+                                                  [:field-id (u/get-id field)]))
+                             :limit        max-sample-rows}})]
+    (get-in results [:data :rows])))

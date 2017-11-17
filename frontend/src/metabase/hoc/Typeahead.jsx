@@ -3,9 +3,7 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 
-const KEYCODE_ENTER = 13;
-const KEYCODE_UP    = 38;
-const KEYCODE_DOWN  = 40;
+import { KEYCODE_ENTER, KEYCODE_UP, KEYCODE_DOWN } from "metabase/lib/keyboard";
 
 const DEFAULT_FILTER_OPTIONS = (value, option) => {
     try {

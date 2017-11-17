@@ -1,12 +1,8 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [expectations :refer :all]
-            (metabase.query-processor [expand :as ql]
-                                      [interface :as qpi])
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.test.data :as data]))
 
 ;;; ------------------------------------------------------------ "FILTER" CLAUSE ------------------------------------------------------------
 
@@ -219,131 +215,186 @@
 ;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all these extra queries?
 
 ;;; =
-(expect-with-non-timeseries-dbs [99] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/= $id 1)))))))
+(expect-with-non-timeseries-dbs
+  [99]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/= $id 1)))))))
 
 ;;; !=
-(expect-with-non-timeseries-dbs [1] (first-row
-                                      (format-rows-by [int]
-                                        (data/run-query venues
-                                          (ql/aggregation (ql/count))
-                                          (ql/filter (ql/not (ql/!= $id 1)))))))
+(expect-with-non-timeseries-dbs
+  [1]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/!= $id 1)))))))
 ;;; <
-(expect-with-non-timeseries-dbs [61] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/< $id 40)))))))
+(expect-with-non-timeseries-dbs
+  [61]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/< $id 40)))))))
 
 ;;; >
-(expect-with-non-timeseries-dbs [40] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/> $id 40)))))))
+(expect-with-non-timeseries-dbs
+  [40]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/> $id 40)))))))
 
 ;;; <=
-(expect-with-non-timeseries-dbs [60] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/<= $id 40)))))))
+(expect-with-non-timeseries-dbs
+  [60]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/<= $id 40)))))))
 
 ;;; >=
-(expect-with-non-timeseries-dbs [39] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/>= $id 40)))))))
+(expect-with-non-timeseries-dbs
+  [39]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/>= $id 40)))))))
 
 ;;; is-null
-(expect-with-non-timeseries-dbs [100] (first-row
-                                        (format-rows-by [int]
-                                          (data/run-query venues
-                                            (ql/aggregation (ql/count))
-                                            (ql/filter (ql/not (ql/is-null $id)))))))
+(expect-with-non-timeseries-dbs
+  [100]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/is-null $id)))))))
 
 ;;; between
-(expect-with-non-timeseries-dbs [89] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/between $id 30 40)))))))
+(expect-with-non-timeseries-dbs
+  [89]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/between $id 30 40)))))))
 
 ;;; inside
-(expect-with-non-timeseries-dbs [39] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/inside $latitude $longitude 40 -120 30 -110)))))))
+(expect-with-non-timeseries-dbs
+  [39]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/inside $latitude $longitude 40 -120 30 -110)))))))
 
 ;;; starts-with
-(expect-with-non-timeseries-dbs [80] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/starts-with $name "T")))))))
+(expect-with-non-timeseries-dbs
+  [80]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/starts-with $name "T")))))))
 
 ;;; contains
-(expect-with-non-timeseries-dbs [97] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/contains $name "BBQ")))))))
+(expect-with-non-timeseries-dbs
+  [97]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/contains $name "BBQ")))))))
 
 ;;; does-not-contain
 ;; This should literally be the exact same query as the one above by the time it leaves the Query eXpander, so this is more of a QX test than anything else
-(expect-with-non-timeseries-dbs [97] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/does-not-contain $name "BBQ"))))))
+(expect-with-non-timeseries-dbs
+  [97]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/does-not-contain $name "BBQ"))))))
 
 ;;; ends-with
-(expect-with-non-timeseries-dbs [87] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/ends-with $name "a")))))))
+(expect-with-non-timeseries-dbs
+  [87]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/ends-with $name "a")))))))
 
 ;;; and
-(expect-with-non-timeseries-dbs [98] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/and (ql/> $id 32)
-                                                                      (ql/contains $name "BBQ"))))))))
+(expect-with-non-timeseries-dbs
+  [98]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/and (ql/> $id 32)
+                                   (ql/contains $name "BBQ"))))))))
 ;;; or
-(expect-with-non-timeseries-dbs [31] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/or (ql/> $id 32)
-                                                                     (ql/contains $name "BBQ"))))))))
+(expect-with-non-timeseries-dbs
+  [31]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/or (ql/> $id 32)
+                                  (ql/contains $name "BBQ"))))))))
 
 ;;; nested and/or
-(expect-with-non-timeseries-dbs [96] (first-row
-                                       (format-rows-by [int]
-                                         (data/run-query venues
-                                           (ql/aggregation (ql/count))
-                                           (ql/filter (ql/not (ql/or (ql/and (ql/> $id 32)
-                                                                             (ql/< $id 35))
-                                                                     (ql/contains $name "BBQ"))))))))
+(expect-with-non-timeseries-dbs
+  [96]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/or (ql/and (ql/> $id 32)
+                                          (ql/< $id 35))
+                                  (ql/contains $name "BBQ"))))))))
 
 ;;; nested not
-(expect-with-non-timeseries-dbs [3] (first-row
-                                      (format-rows-by [int]
-                                        (data/run-query venues
-                                          (ql/aggregation (ql/count))
-                                          (ql/filter (ql/not (ql/not (ql/contains $name "BBQ"))))))))
+(expect-with-non-timeseries-dbs
+  [3]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/not (ql/not (ql/contains $name "BBQ"))))))))
 
 ;;; not nested inside and/or
-(expect-with-non-timeseries-dbs [1] (first-row
-                                      (format-rows-by [int]
-                                        (data/run-query venues
-                                          (ql/aggregation (ql/count))
-                                          (ql/filter (ql/and (ql/not (ql/> $id 32))
-                                                             (ql/contains $name "BBQ")))))))
+(expect-with-non-timeseries-dbs
+  [1]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query venues
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/and (ql/not (ql/> $id 32))
+                           (ql/contains $name "BBQ")))))))
+
+
+;; make sure that filtering with dates truncating to minutes works (#4632)
+(expect-with-non-timeseries-dbs
+  [107]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query checkins
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/between (ql/datetime-field $date :minute) "2015-01-01T12:30:00" "2015-05-31"))))))
+
+;; make sure that filtering with dates bucketing by weeks works (#4956)
+(expect-with-non-timeseries-dbs
+  [7]
+  (first-row
+    (format-rows-by [int]
+      (data/run-query checkins
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/= (ql/datetime-field $date :week) "2015-06-21T07:00:00.000000000-00:00"))))))

@@ -56,7 +56,8 @@ export default class PulseListChannel extends Component {
         } else if (channel.channel_type === "slack") {
             channelIcon = "slack";
             channelVerb = "Slack'd";
-            channelTarget = channel.details.channel;
+            // Address #5799 where `details` object is missing for some reason
+            channelTarget = channel.details ? channel.details.channel : "No channel";
         }
 
         return (

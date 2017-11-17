@@ -7,8 +7,6 @@ import type {
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
-    return PivotByLocationAction({ card, tableMetadata, clicked });
+export default (props: ClickActionProps): ClickAction[] => {
+    return PivotByLocationAction(props);
 };

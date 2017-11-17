@@ -1,18 +1,21 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
   (:require [expectations :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [database :refer [Database]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment], :as segment]
-                             [table :refer [Table]])
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [revision :refer [Revision]]
+             [segment :as segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.data :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]))
 
 ;; ## Helper Fns
 
@@ -369,10 +372,11 @@
 
 
 ;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
-(tt/expect-with-temp [Segment [segment]]
-  :ok
-  (do ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
-       {:name             "Cool name"
-        :revision_message "WOW HOW COOL"
-        :definition       {}})
-      :ok))
+(expect
+  (tt/with-temp Segment [segment]
+    ;; just make sure API call doesn't barf
+    ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
+     {:name             "Cool name"
+      :revision_message "WOW HOW COOL"
+      :definition       {}})
+    true))

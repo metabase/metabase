@@ -1,16 +1,15 @@
 (ns metabase.models.permissions-group-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :refer [PermissionsGroup], :as perm-group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+            [metabase.models
+             [database :refer [Database]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [user :refer [User]]]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.models.permissions_group.PermissionsGroupInstance))
 
 ;;; ---------------------------------------- Check that the root entry for Admin was created ----------------------------------------

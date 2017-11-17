@@ -33,7 +33,7 @@ class EditBar extends Component {
                         {subtitle}
                     </span>
                 )}
-                <span className="flex-align-right">
+                <span className="flex-align-right flex">
                     {buttons}
                 </span>
             </div>

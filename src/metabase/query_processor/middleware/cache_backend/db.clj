@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.cache-backend.db
-  (:require [toucan.db :as db]
-            (metabase.models [interface :as models]
-                             [query-cache :refer [QueryCache]])
-            [metabase.public-settings :as public-settings]
+  (:require [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.models
+             [interface :as models]
+             [query-cache :refer [QueryCache]]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (defn- cached-results
   "Return cached results for QUERY-HASH if they exist and are newer than MAX-AGE-SECONDS."

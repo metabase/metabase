@@ -1,6 +1,5 @@
 (ns metabase.db-test
   (:require [expectations :refer :all]
-            metabase.db
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-vars metabase.db parse-connection-string)

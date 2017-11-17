@@ -21,10 +21,12 @@ import cx from "classnames";
 import { getIn } from "icepick";
 
 import type { Card } from "metabase/meta/types/Card";
-import type { DashCard, Parameter, ParameterId, ParameterMappingUIOption, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
+import type { DashCard } from "metabase/meta/types/Dashboard";
+import type { Parameter, ParameterId, ParameterMappingUIOption, ParameterTarget } from "metabase/meta/types/Parameter";
 import type { DatabaseId } from "metabase/meta/types/Database";
 
 import type { MappingsByParameter } from "../selectors";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 const makeMapStateToProps = () => {
     const getParameterMappingOptions = makeGetParameterMappingOptions()
@@ -50,12 +52,12 @@ export default class DashCardCardParameterMapper extends Component {
         card: Card,
         dashcard: DashCard,
         parameter: Parameter,
-        target: ParameterMappingTarget,
+        target: ParameterTarget,
         mappingOptions: Array<ParameterMappingUIOption>,
         mappingOptionSections: Array<Array<ParameterMappingUIOption>>,
         mappingsByParameter: MappingsByParameter,
         fetchDatabaseMetadata: (id: ?DatabaseId) => void,
-        setParameterMapping: (parameter_id: ParameterId, dashcard_id: number, card_id: number, target: ?ParameterMappingTarget) => void,
+        setParameterMapping: (parameter_id: ParameterId, dashcard_id: number, card_id: number, target: ?ParameterTarget) => void,
     };
 
     static propTypes = {
@@ -66,7 +68,9 @@ export default class DashCardCardParameterMapper extends Component {
 
     componentDidMount() {
         const { card } = this.props;
-        this.props.fetchDatabaseMetadata(card.dataset_query.database);
+        // Type check for Flow
+
+        card.dataset_query instanceof AtomicQuery && this.props.fetchDatabaseMetadata(card.dataset_query.database);
     }
 
     onChange = (option: ?ParameterMappingUIOption) => {
@@ -107,6 +111,7 @@ export default class DashCardCardParameterMapper extends Component {
                 <PopoverWithTrigger
                     ref="popover"
                     triggerClasses={cx({ "disabled": disabled })}
+                    sizeToFit
                     triggerElement={
                         <Tooltip tooltip={tooltipText} verticalAttachments={["bottom", "top"]}>
                             {/* using div instead of button due to

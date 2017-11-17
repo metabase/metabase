@@ -31,9 +31,9 @@ const PERCENT_REGEX = /percent/i;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-type Props = VisualizationProps;
+export default class PieChart extends Component {
+    props: VisualizationProps;
 
-export default class PieChart extends Component<*, Props, *> {
     static uiName = "Pie";
     static identifier = "pie";
     static iconName = "pie";
@@ -46,7 +46,7 @@ export default class PieChart extends Component<*, Props, *> {
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
-            throw new ChartSettingsError("Which columns do want to use?", "Data");
+            throw new ChartSettingsError("Which columns do you want to use?", "Data");
         }
     }
 
@@ -90,7 +90,7 @@ export default class PieChart extends Component<*, Props, *> {
     }
 
     render() {
-        const { series, hovered, onHoverChange, onVisualizationClick, className, gridSize, settings } = this.props;
+        const { series, hovered, onHoverChange, visualizationIsClickable, onVisualizationClick, className, gridSize, settings } = this.props;
 
         const [{ data: { cols, rows }}] = series;
         const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["pie.dimension"]);
@@ -168,20 +168,6 @@ export default class PieChart extends Component<*, Props, *> {
             ].concat(showPercentInTooltip ? [{ key: "Percentage", value: formatPercent(slices[index].percentage) }] : [])
         });
 
-        const onClickSlice = ({ index, event }) => {
-            if (onVisualizationClick && slices[index] !== otherSlice) {
-                onVisualizationClick({
-                    value:  slices[index].value,
-                    column: cols[metricIndex],
-                    dimensions: [{
-                        value: slices[index].key,
-                        column: cols[dimensionIndex],
-                    }],
-                    event:        event
-                })
-            }
-        }
-
         let value, title;
         if (hovered && hovered.index != null && slices[hovered.index] !== otherSlice) {
             title = formatDimension(slices[hovered.index].key);
@@ -190,6 +176,18 @@ export default class PieChart extends Component<*, Props, *> {
             title = "Total";
             value = formatMetric(total);
         }
+
+        const getSliceClickObject = (index) => ({
+            value:      slices[index].value,
+            column:     cols[metricIndex],
+            dimensions: [{
+                value: slices[index].key,
+                column: cols[dimensionIndex],
+            }]
+        })
+
+        const isClickable = onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));
+        const getSliceIsClickable = (index) => isClickable && slices[index] !== otherSlice;
 
         return (
             <ChartWithLegend
@@ -215,10 +213,13 @@ export default class PieChart extends Component<*, Props, *> {
                                         opacity={(hovered && hovered.index != null && hovered.index !== index) ? 0.3 : 1}
                                         onMouseMove={(e) => onHoverChange && onHoverChange(hoverForIndex(index, e))}
                                         onMouseLeave={() => onHoverChange && onHoverChange(null)}
-                                        onClick={(e) => onClickSlice({
-                                            index: index,
-                                            event: e.nativeEvent
-                                        })}
+                                        className={cx({ "cursor-pointer": getSliceIsClickable(index) })}
+                                        onClick={getSliceIsClickable(index) && ((e) =>
+                                            onVisualizationClick({
+                                                ...getSliceClickObject(index),
+                                                event: e.nativeEvent
+                                            })
+                                        )}
                                     />
                                 )}
                             </g>

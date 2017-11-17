@@ -1,10 +1,8 @@
 (ns metabase.query-processor-test.page-test
   "Tests for the `:page` clause."
-  (:require [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.util :as u]))
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.test.data :as data]))
 
 ;; Test that we can get "pages" of results.
 

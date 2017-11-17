@@ -15,12 +15,15 @@ import App from "metabase/App.jsx";
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
+import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
-import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
+import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
+import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
+import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
@@ -38,6 +41,9 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
+// new question
+import { NewQuestionStart, NewQuestionMetricSearch } from "metabase/new_query/router_wrappers";
+
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
@@ -47,18 +53,45 @@ import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp.jsx";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp.jsx";
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
+import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx"
+import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
-import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
-import ReferenceEntity from "metabase/reference/containers/ReferenceEntity.jsx";
-import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
-import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsList.jsx";
-import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
-import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
+// Reference Guide
+import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
+// Reference Metrics
+import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
+import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
+import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
+import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer.jsx";
+// Reference Segments
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer.jsx";
+import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer.jsx";
+import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer.jsx";
+import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer.jsx";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer.jsx";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer.jsx";
+// Reference Databases
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer.jsx";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer.jsx";
+import TableListContainer from "metabase/reference/databases/TableListContainer.jsx";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer.jsx";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer.jsx";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
+
+
+/* XRay */
+import FieldXRay from "metabase/xray/containers/FieldXray.jsx";
+import TableXRay from "metabase/xray/containers/TableXRay.jsx";
+import SegmentXRay from "metabase/xray/containers/SegmentXRay.jsx";
+import CardXRay from "metabase/xray/containers/CardXRay.jsx";
+import { SharedTypeComparisonXRay, TwoTypesComparisonXRay } from "metabase/xray/containers/TableLikeComparison";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
+
 
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
@@ -151,11 +184,22 @@ export const getRoutes = (store) =>
                 {/* HOME */}
                 <Route path="/" component={HomepageApp} />
 
-                {/* DASHBOARD */}
+                {/* DASHBOARD LIST */}
+                <Route path="/dashboards" title="Dashboards" component={Dashboards} />
+                <Route path="/dashboards/archive" title="Dashboards" component={DashboardsArchive} />
+
+                {/* INDIVIDUAL DASHBOARDS */}
                 <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
-                <Route path="/question" component={QueryBuilder} />
+                <Route path="/question">
+                    <IndexRoute component={QueryBuilder} />
+                    { /* NEW QUESTION FLOW */ }
+                    <Route path="new" title="New Question">
+                        <IndexRoute component={NewQuestionStart} />
+                        <Route path="metric" title="Metrics" component={NewQuestionMetricSearch} />
+                    </Route>
+                </Route>
                 <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
@@ -183,26 +227,36 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* REFERENCE */}
-                <Route path="/reference" title="Data Reference" component={ReferenceApp}>
+                <Route path="/reference" title="Data Reference">
                     <IndexRedirect to="/reference/guide" />
-                    <Route path="guide" title="Getting Started" component={ReferenceGettingStartedGuide} />
-                    <Route path="metrics" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId" component={ReferenceEntity} />
-                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="segments" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
-                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="databases" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                    <Route path="guide" title="Getting Started" component={GettingStartedGuideContainer} />
+                    <Route path="metrics" component={MetricListContainer} />
+                    <Route path="metrics/:metricId" component={MetricDetailContainer} />
+                    <Route path="metrics/:metricId/questions" component={MetricQuestionsContainer} />
+                    <Route path="metrics/:metricId/revisions" component={MetricRevisionsContainer} />
+                    <Route path="segments" component={SegmentListContainer} />
+                    <Route path="segments/:segmentId" component={SegmentDetailContainer} />
+                    <Route path="segments/:segmentId/fields" component={SegmentFieldListContainer} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={SegmentFieldDetailContainer} />
+                    <Route path="segments/:segmentId/questions" component={SegmentQuestionsContainer} />
+                    <Route path="segments/:segmentId/revisions" component={SegmentRevisionsContainer} />
+                    <Route path="databases" component={DatabaseListContainer} />
+                    <Route path="databases/:databaseId" component={DatabaseDetailContainer} />
+                    <Route path="databases/:databaseId/tables" component={TableListContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={TableDetailContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={FieldListContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetailContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
+                </Route>
+
+                {/* XRAY */}
+                <Route path="/xray" title="XRay">
+                    <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
+                    <Route path="table/:tableId/:cost" component={TableXRay} />
+                    <Route path="field/:fieldId/:cost" component={FieldXRay} />
+                    <Route path="card/:cardId/:cost" component={CardXRay} />
+                    <Route path="compare/:modelTypePlural/:modelId1/:modelId2/:cost" component={SharedTypeComparisonXRay} />
+                    <Route path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost" component={TwoTypesComparisonXRay} />
                 </Route>
 
                 {/* PULSE */}
@@ -232,6 +286,8 @@ export const getRoutes = (store) =>
                     <Route path="database/:databaseId" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode/:tableId" component={MetadataEditorApp} />
+                    <Route path="database/:databaseId/:mode/:tableId/settings" component={TableSettingsApp} />
+                    <Route path="database/:databaseId/:mode/:tableId/:fieldId" component={FieldApp} />
                     <Route path="metric/create" component={MetricApp} />
                     <Route path="metric/:id" component={MetricApp} />
                     <Route path="segment/create" component={SegmentApp} />
@@ -252,6 +308,7 @@ export const getRoutes = (store) =>
                 <Route path="settings" title="Settings">
                     <IndexRedirect to="/admin/settings/setup" />
                     {/* <IndexRoute component={SettingsEditorApp} /> */}
+                    <Route path=":section/:authType" component={SettingsEditorApp} />
                     <Route path=":section" component={SettingsEditorApp} />
                 </Route>
 
@@ -271,8 +328,9 @@ export const getRoutes = (store) =>
             </Route>
 
             {/* DEPRECATED */}
-            <Redirect from="/q" to="/question" />
-            <Redirect from="/card/:cardId" to="/question/:cardId" />
+            {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+            <Route path="/q" onEnter={({ location }, replace) => replace({ pathname: "/question", hash: location.hash })} />
+            <Route path="/card/:cardId" onEnter={({ location, params }, replace) => replace({ pathname: `/question/${params.cardId}`, hash: location.hash })} />
             <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 
             {/* MISC */}

@@ -1,14 +1,15 @@
 (ns metabase.util.embed
   "Utility functions for public links and embedding."
-  (:require [clojure.string :as str]
-            [buddy.core.codecs :as codecs]
-            (buddy.sign [jwt :as jwt]
-                        [util :as buddy-util])
+  (:require [buddy.core.codecs :as codecs]
+            [buddy.sign
+             [jwt :as jwt]
+             [util :as buddy-util]]
             [cheshire.core :as json]
-            [ring.util.codec :as codec]
+            [clojure.string :as str]
             [hiccup.core :refer [html]]
             [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]))
+            [metabase.public-settings :as public-settings]
+            [ring.util.codec :as codec]))
 
 ;;; ------------------------------------------------------------ PUBLIC LINKS UTIL FNS ------------------------------------------------------------
 

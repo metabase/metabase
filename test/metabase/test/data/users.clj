@@ -1,15 +1,13 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [http-client :as http]
+             [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.http-client :as http]
-            (metabase.models [permissions-group :as perms-group]
-                             [user :refer [User]])
-            [metabase.util :as u]
-            [metabase.test.util :refer [random-name]])
+            [metabase.models.user :refer [User]]
+            [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo))
 
 ;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------
@@ -72,7 +70,6 @@
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (wait-for-initiailization)
   (or (User :email email)
-      (println "Creating test user:" email) ; DEBUG
       (db/insert! User
         :email        email
         :first_name   first
@@ -110,12 +107,14 @@
      (:id (fetch-user username)))))
 
 (defn user->credentials
-  "Return a map with `:email` and `:password` for User with USERNAME.
+  "Return a map with `:username` and `:password` for User with USERNAME.
 
-    (user->credentials :rasta) -> {:email \"rasta@metabase.com\", :password \"blueberries\"}"
+    (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
   [username]
   {:pre [(contains? usernames username)]}
-  (select-keys (user->info username) [:email :password]))
+  (let [{:keys [email password]} (user->info username)]
+    {:username email
+     :password password}))
 
 (def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.
@@ -141,7 +140,6 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        (printf "Got 401 (Unauthenticated) for %s. Clearing cached auth tokens and retrying request.\n" username) ; DEBUG
         (reset! tokens {})
         (apply client-fn username args)))))
 

@@ -1,16 +1,16 @@
 (ns metabase.api.tiles
   "`/api/tiles` endpoints."
-  (:require [clojure.core.match :refer [match]]
-            [clojure.java.io :as io]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
+            [clojure.core.match :refer [match]]
             [compojure.core :refer [GET]]
-            [metabase.api.common :refer :all]
-            [metabase.query-processor :as qp]
-            [metabase.util :as u]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.api.common :as api]
             [metabase.util.schema :as su])
   (:import java.awt.Color
            java.awt.image.BufferedImage
-           (java.io ByteArrayOutputStream IOException)
+           java.io.ByteArrayOutputStream
            javax.imageio.ImageIO))
 
 ;;; # ------------------------------------------------------------ CONSTANTS ------------------------------------------------------------
@@ -109,7 +109,7 @@
 
 ;;; # ------------------------------------------------------------ ENDPOINT ------------------------------------------------------------
 
-(defendpoint GET "/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
+(api/defendpoint GET "/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
   "This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query string param).
    We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
    It's expected that to render a full map view several calls will be made to this endpoint in parallel."
@@ -129,7 +129,7 @@
         lon-col-idx   (Integer/parseInt lon-col-idx)
         query         (json/parse-string query keyword)
         updated-query (update query :query (u/rpartial query-with-inside-filter lat-field-id lon-field-id x y zoom))
-        result        (qp/dataset-query updated-query {:executed-by *current-user-id*, :context :map-tiles})
+        result        (qp/process-query-and-save-execution! updated-query {:executed-by api/*current-user-id*, :context :map-tiles})
         points        (for [row (-> result :data :rows)]
                         [(nth row lat-col-idx) (nth row lon-col-idx)])]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
@@ -138,4 +138,4 @@
      :body    (java.io.ByteArrayInputStream. (tile->byte-array (create-tile zoom points)))}))
 
 
-(define-routes)
+(api/define-routes)

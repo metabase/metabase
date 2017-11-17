@@ -3,10 +3,16 @@ Before filing an issue we'd appreciate it if you could take a moment to ensure
 there isn't already an open issue or pull-request.
 -----
 
+If there's an existing issue, please add a :+1: reaction to the description of
+the issue. One way we prioritize issues is by the number of :+1: reactions on
+their descriptions. Please DO NOT add `+1` or :+1: comments.
+
 ### Database support
-If there's an exisiting issue, please add a +1 in the comments as we
-prioritize drivers by the level of support. Otherwise, please include the name
-of the database and the version.
+
+For requests for new database drivers, please include the name
+of the database and the version. Additionally, giving us a sense of how and what
+you use it for, and other high-level details about the database, can help us get
+a better picture of what would need to done to support it.
 
 ### Feature requests and proposals
 We're excited to hear how we can make Metabase better. Please add as much detail

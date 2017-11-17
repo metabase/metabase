@@ -1,42 +1,94 @@
+/* @flow */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import MetabaseAnalytics from "metabase/lib/analytics";
 
-import Parameters from "../containers/Parameters.jsx";
+import Parameters from "metabase/parameters/components/Parameters.jsx";
 
-import screenfull from "screenfull";
+import DashboardControls from "../hoc/DashboardControls";
 
 import _ from "underscore";
 import cx from "classnames";
-import querystring from "querystring";
 
-const TICK_PERIOD = 0.25; // seconds
+import type { LocationDescriptor, ApiError, QueryParams } from "metabase/meta/types"
 
+import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Card";
+import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
+import type { Revision, RevisionId } from "metabase/meta/types/Revision";
+import type { Parameter, ParameterId, ParameterValues, ParameterOption } from "metabase/meta/types/Parameter";
+
+type Props = {
+    location:               LocationDescriptor,
+
+    dashboardId:            DashboardId,
+    dashboard:              DashboardWithCards,
+    cards:                  Card[],
+    revisions:              { [key: string]: Revision[] },
+
+    isAdmin:                boolean,
+    isEditable:             boolean,
+    isEditing:              boolean,
+    isEditingParameter:     boolean,
+
+    parameters:             Parameter[],
+    parameterValues:        ParameterValues,
+
+    addCardOnLoad:          DashboardId,
+
+    initialize:             () => Promise<void>,
+    addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
+    archiveDashboard:        (dashboardId: DashboardId) => void,
+    fetchCards:             (filterMode?: string) => void,
+    fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
+    fetchRevisions:         ({ entity: string, id: number }) => void,
+    revertToRevision:       ({ entity: string, id: number, revision_id: RevisionId }) => void,
+    saveDashboardAndCards:  () => Promise<void>,
+    setDashboardAttributes: ({ [attribute: string]: any }) => void,
+    fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
+
+    setEditingParameter:    (parameterId: ?ParameterId) => void,
+    setEditingDashboard:    (isEditing: boolean) => void,
+
+    addParameter:               (option: ParameterOption) => Promise<Parameter>,
+    removeParameter:            (parameterId: ParameterId) => void,
+    setParameterName:           (parameterId: ParameterId, name: string) => void,
+    setParameterValue:          (parameterId: ParameterId, value: string) => void,
+    setParameterDefaultValue:   (parameterId: ParameterId, defaultValue: string) => void,
+
+    editingParameter:       ?Parameter,
+
+    refreshPeriod:          number,
+    refreshElapsed:         number,
+    isFullscreen:           boolean,
+    isNightMode:            boolean,
+
+    onRefreshPeriodChange:  (?number) => void,
+    onNightModeChange:      (boolean) => void,
+    onFullscreenChange:     (boolean) => void,
+
+    loadDashboardParams:    () => void,
+
+    onReplaceAllDashCardVisualizationSettings: (dashcardId: DashCardId, settings: VisualizationSettings) => void,
+    onUpdateDashCardVisualizationSettings: (dashcardId: DashCardId, settings: VisualizationSettings) => void,
+
+    onChangeLocation:       (string) => void,
+    setErrorPage:           (error: ApiError) => void,
+}
+
+type State = {
+    error: ?ApiError
+}
+
+@DashboardControls
 export default class Dashboard extends Component {
-
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            error: null,
-
-            isFullscreen: false,
-            isNightMode: false,
-
-            refreshPeriod: null,
-            refreshElapsed: null
-        };
-
-        _.bindAll(this,
-            "setRefreshPeriod", "tickRefreshClock",
-            "setFullscreen", "setNightMode", "fullScreenChanged",
-            "setEditing", "setDashboardAttribute",
-        );
-    }
+    props: Props;
+    state: State = {
+        error: null,
+    };
 
     static propTypes = {
         isEditable: PropTypes.bool,
@@ -45,14 +97,15 @@ export default class Dashboard extends Component {
 
         dashboard: PropTypes.object,
         cards: PropTypes.array,
+        parameters: PropTypes.array,
 
         addCardToDashboard: PropTypes.func.isRequired,
-        deleteDashboard: PropTypes.func.isRequired,
+        archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
-        saveDashboard: PropTypes.func.isRequired,
+        saveDashboardAndCards: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
 
@@ -66,50 +119,22 @@ export default class Dashboard extends Component {
         isEditable: true
     };
 
-    async componentDidMount() {
-        this.loadDashboard(this.props.params.dashboardId);
+    componentDidMount() {
+        this.loadDashboard(this.props.dashboardId);
     }
 
-    componentDidUpdate() {
-        this.updateParams();
-        this._showNav(!this.state.isFullscreen);
-    }
-
-    componentWillReceiveProps(nextProps) {
-        if (this.props.params.dashboardId !== nextProps.params.dashboardId) {
-            this.loadDashboard(nextProps.params.dashboardId);
+    componentWillReceiveProps(nextProps: Props) {
+        if (this.props.dashboardId !== nextProps.dashboardId) {
+            this.loadDashboard(nextProps.dashboardId);
         } else if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
             this.props.fetchDashboardCardData({ reload: false, clear: true });
         }
     }
 
-    componentWillMount() {
-        if (screenfull.enabled) {
-            document.addEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
-        }
-    }
-
-    componentWillUnmount() {
-        this._showNav(true);
-        this._clearRefreshInterval();
-        if (screenfull.enabled) {
-            document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
-        }
-    }
-
-    _showNav(show) {
-        const nav = document.querySelector(".Nav");
-        if (show && nav) {
-            nav.classList.remove("hide");
-        } else if (!show && nav) {
-            nav.classList.add("hide");
-        }
-    }
-
-    async loadDashboard(dashboardId) {
+    async loadDashboard(dashboardId: DashboardId) {
         this.props.initialize();
 
-        this.loadParams();
+        this.props.loadDashboardParams();
         const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, setErrorPage, location } = this.props;
 
         try {
@@ -122,7 +147,7 @@ export default class Dashboard extends Component {
             }
         } catch (error) {
             if (error.status === 404) {
-                setErrorPage(error);
+                setErrorPage({ ...error, context: "dashboard" });
             } else {
                 console.error(error);
                 this.setState({ error });
@@ -130,103 +155,26 @@ export default class Dashboard extends Component {
         }
     }
 
-    loadParams() {
-        let params = querystring.parse(window.location.hash.substring(1));
-        let refresh = parseInt(params.refresh);
-        this.setRefreshPeriod(Number.isNaN(refresh) || refresh === 0 ? null : refresh);
-        this.setNightMode("night" in params);
-        this.setFullscreen("fullscreen" in params);
-    }
-
-    updateParams() {
-        let hashParams = {};
-        if (this.state.refreshPeriod) {
-            hashParams.refresh = this.state.refreshPeriod;
-        }
-        if (this.state.isFullscreen) {
-            hashParams.fullscreen = true;
-        }
-        if (this.state.isNightMode) {
-            hashParams.night = true;
-        }
-        let hash = querystring.stringify(hashParams).replace(/=true\b/g, "");
-        hash = (hash ? "#" + hash : "");
-
-        // setting window.location.hash = "" causes the page to reload for some reasonc
-        if (hash !== window.location.hash) {
-            history.replaceState(null, document.title, window.location.pathname + window.location.search + hash);
-        }
-    }
-
-    _clearRefreshInterval() {
-        if (this._interval != null) {
-            clearInterval(this._interval);
-        }
-    }
-
-    setRefreshPeriod(refreshPeriod) {
-        this._clearRefreshInterval();
-        if (refreshPeriod != null) {
-            this._interval = setInterval(this.tickRefreshClock, TICK_PERIOD * 1000);
-            this.setState({ refreshPeriod, refreshElapsed: 0 });
-            MetabaseAnalytics.trackEvent("Dashboard", "Set Refresh", refreshPeriod);
-        } else {
-            this.setState({ refreshPeriod: null, refreshElapsed: null });
-        }
-    }
-
-    setNightMode(isNightMode) {
-        this.setState({ isNightMode });
-    }
-
-    setFullscreen(isFullscreen, browserFullscreen = true) {
-        if (isFullscreen !== this.state.isFullscreen) {
-            if (screenfull.enabled && browserFullscreen) {
-                if (isFullscreen) {
-                    screenfull.request();
-                } else {
-                    screenfull.exit();
-                }
-            }
-            this.setState({ isFullscreen });
-        }
-    }
-
-    fullScreenChanged() {
-        this.setState({ isFullscreen: screenfull.isFullscreen });
-    }
-
-    setEditing(isEditing) {
-        this.setRefreshPeriod(null);
+    setEditing = (isEditing: boolean) => {
+        this.props.onRefreshPeriodChange(null);
         this.props.setEditingDashboard(isEditing);
     }
 
-    setDashboardAttribute(attribute, value) {
+    setDashboardAttribute = (attribute: string, value: any) => {
         this.props.setDashboardAttributes({
             id: this.props.dashboard.id,
             attributes: { [attribute]: value }
         });
     }
 
-    async tickRefreshClock() {
-        let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
-        if (refreshElapsed >= this.state.refreshPeriod) {
-            refreshElapsed = 0;
-
-            await this.props.fetchDashboard(this.props.params.dashboardId, this.props.location.query);
-            this.props.fetchDashboardCardData({ reload: true, clear: false });
-        }
-        this.setState({ refreshElapsed });
-    }
-
     render() {
-        let { dashboard, isEditing, editingParameter, parameterValues, location } = this.props;
-        let { error, isFullscreen, isNightMode } = this.state;
+        let { dashboard, isEditing, editingParameter, parameters, parameterValues, location, isFullscreen, isNightMode } = this.props;
+        let { error } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
-        let parameters;
-        if (dashboard && dashboard.parameters && dashboard.parameters.length) {
-            parameters = (
+        let parametersWidget;
+        if (parameters && parameters.length > 0) {
+            parametersWidget = (
                 <Parameters
                     syncQueryString
 
@@ -234,7 +182,7 @@ export default class Dashboard extends Component {
                     isFullscreen={isFullscreen}
                     isNightMode={isNightMode}
 
-                    parameters={dashboard.parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
+                    parameters={parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
                     query={location.query}
 
                     editingParameter={editingParameter}
@@ -249,48 +197,40 @@ export default class Dashboard extends Component {
         }
 
         return (
-            <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
-            {() =>
-                <div className="full" style={{ overflowX: "hidden" }}>
-                    <header className="DashboardHeader relative z2">
-                        <DashboardHeader
-                            {...this.props}
-                            isFullscreen={this.state.isFullscreen}
-                            isNightMode={this.state.isNightMode}
-                            refreshPeriod={this.state.refreshPeriod}
-                            refreshElapsed={this.state.refreshElapsed}
-                            setRefreshPeriod={this.setRefreshPeriod}
-                            onFullscreenChange={this.setFullscreen}
-                            onNightModeChange={this.setNightMode}
-                            onEditingChange={this.setEditing}
-                            setDashboardAttribute={this.setDashboardAttribute}
-                            addParameter={this.props.addParameter}
-                            parameters={parameters}
-                        />
-                    </header>
-                    {!isFullscreen && parameters &&
-                        <div className="wrapper flex flex-column align-start mt2 relative z2">
-                            {parameters}
-                        </div>
-                    }
-                    <div className="wrapper">
-
-                        { dashboard.ordered_cards.length === 0 ?
-                            <div className="absolute z1 top bottom left right flex flex-column layout-centered">
-                                <span className="QuestionCircle">?</span>
-                                <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
-                                <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
-                            </div>
-                        :
-                            <DashboardGrid
+            <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
+                {() =>
+                    <div className="full" style={{ overflowX: "hidden" }}>
+                        <header className="DashboardHeader relative z2">
+                            <DashboardHeader
                                 {...this.props}
-                                isFullscreen={this.state.isFullscreen}
                                 onEditingChange={this.setEditing}
+                                setDashboardAttribute={this.setDashboardAttribute}
+                                addParameter={this.props.addParameter}
+                                parametersWidget={parametersWidget}
                             />
+                        </header>
+                        {!isFullscreen && parametersWidget &&
+                        <div className="wrapper flex flex-column align-start mt2 relative z2">
+                            {parametersWidget}
+                        </div>
                         }
+                        <div className="wrapper">
+
+                            { dashboard.ordered_cards.length === 0 ?
+                                <div className="absolute z1 top bottom left right flex flex-column layout-centered">
+                                    <span className="QuestionCircle">?</span>
+                                    <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
+                                    <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
+                                </div>
+                                :
+                                <DashboardGrid
+                                    {...this.props}
+                                    onEditingChange={this.setEditing}
+                                />
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
             </LoadingAndErrorWrapper>
         );
     }

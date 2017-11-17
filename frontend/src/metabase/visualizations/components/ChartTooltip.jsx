@@ -7,57 +7,77 @@ import Value from "metabase/components/Value.jsx";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 export default class ChartTooltip extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
-
     static propTypes = {
         series: PropTypes.array.isRequired,
         hovered: PropTypes.object
     };
-    static defaultProps = {
-    };
 
-    componentWillReceiveProps({ hovered }) {
-        if (hovered && hovered.data && !Array.isArray(hovered.data)) {
-            console.warn("hovered.data should be an array of { key, value, col }", hovered.data);
+    _getRows() {
+        const { series, hovered } = this.props;
+        if (!hovered) {
+            return [];
         }
+        // Array of key, value, col: { data: [{ key, value, col }], element, event }
+        if (Array.isArray(hovered.data)) {
+            return hovered.data;
+        }
+        // ClickObject: { value, column, dimensions: [{ value, column }], element, event }
+        else if (hovered.value !== undefined || hovered.dimensions) {
+            const dimensions = [];
+            if (hovered.value !== undefined) {
+                dimensions.push({ value: hovered.value, column: hovered.column });
+            }
+            if (hovered.dimensions) {
+                dimensions.push(...hovered.dimensions);
+            }
+            return dimensions.map(({ value, column }) => ({
+                key: getFriendlyName(column),
+                value: value,
+                col: column
+            }))
+        }
+        // DEPRECATED: { key, value }
+        else if (hovered.data) {
+            console.warn("hovered should be a ClickObject or hovered.data should be an array of { key, value, col }", hovered.data);
+            let s = series[hovered.index] || series[0];
+            return [
+                {
+                    key: getFriendlyName(s.data.cols[0]),
+                    value: hovered.data.key,
+                    col: s.data.cols[0]
+                },
+                {
+                    key: getFriendlyName(s.data.cols[1]),
+                    value: hovered.data.value,
+                    col: s.data.cols[1]
+                },
+            ]
+        }
+        return [];
     }
 
     render() {
-        const { series, hovered } = this.props;
-        if (!(hovered && hovered.data && ((hovered.element && document.contains(hovered.element)) || hovered.event))) {
-            return <span className="hidden" />;
-        }
-        let s = series[hovered.index] || series[0];
+        const { hovered } = this.props;
+        const rows = this._getRows();
+        const hasEventOrElement = hovered && ((hovered.element && document.contains(hovered.element)) || hovered.event);
+        const isOpen = rows.length > 0 && !!hasEventOrElement;
         return (
             <TooltipPopover
-                target={hovered.element}
-                targetEvent={hovered.event}
+                target={hovered && hovered.element}
+                targetEvent={hovered && hovered.event}
                 verticalAttachments={["bottom", "top"]}
+                isOpen={isOpen}
             >
                 <table className="py1 px2">
                     <tbody>
-                        { Array.isArray(hovered.data)  ?
-                            hovered.data.map(({ key, value, col }, index) =>
-                                <TooltipRow
-                                    key={index}
-                                    name={key}
-                                    value={value}
-                                    column={col}
-                                />
-                            )
-                        :
-                            [["key", 0], ["value", 1]].map(([propName, colIndex]) =>
-                                <TooltipRow
-                                    key={propName}
-                                    name={getFriendlyName(s.data.cols[colIndex])}
-                                    value={hovered.data[propName]}
-                                    column={s.data.cols[colIndex]}
-                                />
-                            )
-                        }
+                        { rows.map(({ key, value, col }, index) =>
+                            <TooltipRow
+                                key={index}
+                                name={key}
+                                value={value}
+                                column={col}
+                            />
+                        ) }
                     </tbody>
                 </table>
             </TooltipPopover>
@@ -72,7 +92,12 @@ const TooltipRow = ({ name, value, column }) =>
             { React.isValidElement(value) ?
                 value
             :
-                <Value value={value} column={column} majorWidth={0} />
+                <Value
+                    type="tooltip"
+                    value={value}
+                    column={column}
+                    majorWidth={0}
+                />
             }
         </td>
     </tr>

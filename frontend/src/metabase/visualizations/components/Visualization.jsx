@@ -11,14 +11,14 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { duration, formatNumber } from "metabase/lib/formatting";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { getVisualizationTransformed } from "metabase/visualizations";
+import { getVisualizationTransformed, extractRemappings } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { getModeDrills } from "metabase/qb/lib/modes"
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -29,9 +29,10 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { HoverObject, ClickObject, Series, QueryMode } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import Question from "metabase-lib/lib/Question";
+import type { Card as CardObject, VisualizationSettings } from "metabase/meta/types/Card";
+import type { HoverObject, ClickObject, Series, OnChangeCardAndRun } from "metabase/meta/types/Visualization";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
     series: Series,
@@ -60,16 +61,11 @@ type Props = {
     settings: VisualizationSettings,
 
     // for click actions
-    mode?: QueryMode,
-    tableMetadata: TableMetadata,
-    onChangeCardAndRun: (card: Card) => void,
+    metadata: Metadata,
+    onChangeCardAndRun: OnChangeCardAndRun,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
-
-    // used by TableInteractive
-    cellIsClickableFn: (number, number) => boolean,
-    cellClickedFn: (number, number) => void,
 
     // misc
     onUpdateWarnings: (string[]) => void,
@@ -79,13 +75,11 @@ type Props = {
     gridSize?: { width: number, height: number },
     // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
     gridUnit?: number,
-
-    linkToCard?: bool,
 }
 
 type State = {
     series: ?Series,
-    CardVisualization: ?(Component<*, VisualizationSettings, *> & {
+    CardVisualization: ?(Component<void, VisualizationSettings, void> & {
         checkRenderable: (any, any) => void,
         noHeader: boolean
     }),
@@ -99,9 +93,11 @@ type State = {
 }
 
 @ExplicitSize
-export default class Visualization extends Component<*, Props, State> {
+export default class Visualization extends Component {
     state: State;
     props: Props;
+
+    _resetHoverTimer: ?number;
 
     constructor(props: Props) {
         super(props);
@@ -121,7 +117,6 @@ export default class Visualization extends Component<*, Props, State> {
         showTitle: false,
         isDashboard: false,
         isEditing: false,
-        linkToCard: true,
         onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
@@ -170,25 +165,46 @@ export default class Visualization extends Component<*, Props, State> {
             error: null,
             warnings: [],
             yAxisSplit: null,
-            ...getVisualizationTransformed(newProps.series)
+            ...getVisualizationTransformed(extractRemappings(newProps.series))
         });
     }
 
     handleHoverChange = (hovered) => {
-        const { yAxisSplit } = this.state;
         if (hovered) {
+            const { yAxisSplit } = this.state;
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (yAxisSplit) {
                 const axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
                 hovered = assoc(hovered, "axisIndex", axisIndex);
             }
+            this.setState({ hovered });
+            // If we previously set a timeout for clearing the hover clear it now since we received
+            // a new hover.
+            if (this._resetHoverTimer !== null) {
+                clearTimeout(this._resetHoverTimer);
+                this._resetHoverTimer = null;
+            }
+        } else {
+            // When reseting the hover wait in case we're simply transitioning from one
+            // element to another. This allows visualizations to use mouseleave events etc.
+            this._resetHoverTimer = setTimeout(() => {
+                this.setState({ hovered: null });
+                this._resetHoverTimer = null;
+            }, 0);
         }
-        this.setState({ hovered });
     }
 
     getClickActions(clicked: ?ClickObject) {
-        const { mode, series: [{ card }], tableMetadata } = this.props;
-        return getModeDrills(mode, card, tableMetadata, clicked);
+        if (!clicked) {
+            return [];
+        }
+        // TODO: push this logic into Question?
+        const { series, metadata } = this.props;
+        const seriesIndex = clicked.seriesIndex || 0;
+        const card = series[seriesIndex].card;
+        const question = new Question(metadata, card);
+        const mode = question.mode();
+        return mode ? mode.actionsForClick(clicked, {}) : [];
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
@@ -199,22 +215,34 @@ export default class Visualization extends Component<*, Props, State> {
         try {
             return this.getClickActions(clicked).length > 0;
         } catch (e) {
+            console.warn(e);
             return false;
         }
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
+        if (clicked) {
+            MetabaseAnalytics.trackEvent(
+                "Actions",
+                "Clicked",
+                `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""}`
+            );
+        }
+
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
-            const { onChangeCardAndRun } = this.props;
-            let clickActions = this.getClickActions(clicked);
-            // if there's a single drill action (without a popover) execute it immediately
-            if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
-                onChangeCardAndRun(clickActions[0].card());
-            } else {
-                this.setState({ clicked });
-            }
-        }, 100)
+            this.setState({ clicked });
+        }, 100);
+    };
+
+    // Add the underlying card of current series to onChangeCardAndRun if available
+    handleOnChangeCardAndRun = ({ nextCard, seriesIndex }: { nextCard: CardObject, seriesIndex: number }) => {
+        const { series, clicked } = this.state;
+
+        const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
+        const previousCard: ?CardObject = series && series[index] && series[index].card;
+
+        this.props.onChangeCardAndRun({ nextCard, previousCard });
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -225,8 +253,12 @@ export default class Visualization extends Component<*, Props, State> {
         this.setState({ error })
     }
 
+    hideActions = () => {
+        this.setState({ clicked: null })
+    }
+
     render() {
-        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -275,7 +307,7 @@ export default class Visualization extends Component<*, Props, State> {
 
         if (!error) {
             // $FlowFixMe
-            noResults = series[0] && series[0].data && datasetContainsNoResults(series[0].data);
+            noResults = _.every(series, s => s && s.data && datasetContainsNoResults(s.data));
         }
 
         let extra = (
@@ -311,7 +343,7 @@ export default class Visualization extends Component<*, Props, State> {
                             actionButtons={extra}
                             description={settings["card.description"]}
                             settings={settings}
-                            linkToCard={linkToCard}
+                            onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                         />
                     </div>
                 : null
@@ -322,7 +354,7 @@ export default class Visualization extends Component<*, Props, State> {
                 : isDashboard && noResults ?
                     <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
-                            <img src="/app/img/no_results.svg" />
+                            <img src="../app/assets/img/no_results.svg" />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
@@ -370,29 +402,32 @@ export default class Visualization extends Component<*, Props, State> {
                         series={series}
                         settings={settings}
                         // $FlowFixMe
-                        card={series[0].card} // convienence for single-series visualizations
+                        card={series[0].card} // convenience for single-series visualizations
                         // $FlowFixMe
-                        data={series[0].data} // convienence for single-series visualizations
+                        data={series[0].data} // convenience for single-series visualizations
                         hovered={hovered}
                         onHoverChange={this.handleHoverChange}
                         onVisualizationClick={this.handleVisualizationClick}
                         visualizationIsClickable={this.visualizationIsClickable}
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
+                        onActionDismissal={this.hideActions}
                         gridSize={gridSize}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                     />
                 }
                 <ChartTooltip
                     series={series}
                     hovered={hovered}
                 />
-                <ChartClickActions
-                    clicked={clicked}
-                    clickActions={clickActions}
-                    onChangeCardAndRun={this.props.onChangeCardAndRun}
-                    onClose={() => this.setState({ clicked: null })}
-                />
+                { this.props.onChangeCardAndRun &&
+                    <ChartClickActions
+                        clicked={clicked}
+                        clickActions={clickActions}
+                        onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                        onClose={this.hideActions}
+                    />
+                }
             </div>
         );
     }

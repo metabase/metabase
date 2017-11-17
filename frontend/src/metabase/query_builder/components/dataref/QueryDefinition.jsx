@@ -11,7 +11,7 @@ const QueryDefinition = ({ className, object, tableMetadata }) => {
         <div className={className} style={{ pointerEvents: "none" }}>
             { object.definition.aggregation &&
                 <AggregationWidget
-                    aggregation={object.definition.aggregation}
+                    aggregation={object.definition.aggregation[0]}
                     tableMetadata={tableMetadata}
                 />
             }

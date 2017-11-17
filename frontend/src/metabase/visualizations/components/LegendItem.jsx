@@ -26,10 +26,9 @@ export default class LegendItem extends Component {
     };
 
     render() {
-        const { title, href, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className, description, onClick } = this.props;
+        const { title, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className, description, onClick } = this.props;
         return (
             <LegendLink
-                href={href}
                 className={cx(className, "LegendItem", "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text", {
                     mr1: showTitle,
                     muted: isMuted,

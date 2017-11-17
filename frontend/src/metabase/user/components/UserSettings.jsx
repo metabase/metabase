@@ -31,7 +31,7 @@ export default class UserSettings extends Component {
 
     render() {
         let { tab } = this.props;
-        const nonSSOManagedAccount = !this.props.user.google_auth
+        const nonSSOManagedAccount = !this.props.user.google_auth && !this.props.user.ldap_auth;
 
         let allClasses = "Grid-cell md-no-flex md-mt1 text-brand-hover bordered border-brand-hover rounded p1 md-p3 block cursor-pointer text-centered md-text-left",
             tabClasses = {};

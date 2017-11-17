@@ -2,29 +2,28 @@
   "A test suite around permissions. Nice!"
   (:require [clojure.string :as s]
             [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [metric :refer [Metric]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :refer [PermissionsGroup], :as group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [pulse :refer [Pulse]]
-                             [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]])
-            [metabase.query-processor.expand :as ql]
-            [metabase.sync-database :as sync]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [permissions :as perms]
+             [permissions-group :as group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; 3 users:
 ;; crowberto, member of Admin, All Users
@@ -130,7 +129,7 @@
      :table_id      (u/get-id table)
      :dataset_query {:database (u/get-id db)
                      :type     "native"
-                     :query    (format "SELECT count(*) FROM \"%s\";" (:name table))}}))
+                     :native   {:query (format "SELECT count(*) FROM \"%s\";" (:name table))}}}))
 
 
 (def ^:dynamic *card:db1-count-of-venues*)

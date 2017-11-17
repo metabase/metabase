@@ -1,20 +1,20 @@
 (ns metabase.events.revision-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
             [metabase.events.revision :refer [process-revision-event!]]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [metric :refer [Metric]]
-                             [revision :refer [Revision revisions]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]])
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [database :refer [Database]]
+             [metric :refer [Metric]]
+             [revision :refer [Revision]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
@@ -44,7 +44,8 @@
    :cache_ttl              nil
    :query_type             "query"
    :table_id               (id :categories)
-   :visualization_settings {}})
+   :visualization_settings {}
+   :result_metadata        nil})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil

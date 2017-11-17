@@ -115,20 +115,20 @@ export default class TablePane extends Component {
                     <h1>{table.display_name}</h1>
                     {description}
                     {queryButton}
-                    { table.metrics.length > 0 &&
+                    { table.metrics && (table.metrics.length > 0) &&
                         <ExpandableItemList
                             name="Metrics"
                             type="metrics"
                             show={this.props.show.bind(null, "metric")}
-                            items={table.metrics}
+                            items={table.metrics.filter((metric) => metric.is_active === true)}
                         />
                     }
-                    { table.segments.length > 0 &&
+                    { table.segments && (table.segments.length > 0) &&
                         <ExpandableItemList
                             name="Segments"
                             type="segments"
                             show={this.props.show.bind(null, "segment")}
-                            items={table.segments}
+                            items={table.segments.filter((segment) => segment.is_active === true)}
                         />
                     }
                     <div className="Button-group Button-group--brand text-uppercase">

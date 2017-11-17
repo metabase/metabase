@@ -1,8 +1,8 @@
 /*eslint-disable react/no-danger */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import RetinaImage from "react-retina-image";
+import cx from "classnames";
 
 import { loadIcon } from 'metabase/icon_paths';
 
@@ -10,16 +10,14 @@ import Tooltipify from "metabase/hoc/Tooltipify";
 
 @Tooltipify
 export default class Icon extends Component {
-    static propTypes = {
-      name: PropTypes.string.isRequired,
-      width: PropTypes.oneOfType([
-        PropTypes.string,
-        PropTypes.number,
-      ]),
-      height: PropTypes.oneOfType([
-        PropTypes.string,
-        PropTypes.number,
-      ]),
+    static props: {
+        name: string,
+        size?: string | number,
+        width?: string | number,
+        height?: string | number,
+        scale?: string | number,
+        tooltip?: string, // using Tooltipify
+        className?: string
     }
 
     render() {
@@ -27,8 +25,8 @@ export default class Icon extends Component {
         if (!icon) {
             return null;
         }
-
-        const props = { ...icon.attrs, ...this.props };
+        const className = cx(icon.attrs && icon.attrs.className, this.props.className)
+        const props = { ...icon.attrs, ...this.props, className };
         for (const prop of ["width", "height", "size", "scale"]) {
             if (typeof props[prop] === "string") {
                 props[prop] = parseInt(props[prop], 10);

@@ -88,7 +88,7 @@ export default class AggregationWidget extends Component {
     }
 
     renderPopover() {
-        const { aggregation, tableMetadata } = this.props;
+        const { query, aggregation, tableMetadata } = this.props;
 
         if (this.state.isOpen) {
             return (
@@ -101,6 +101,7 @@ export default class AggregationWidget extends Component {
                     dismissOnEscape={false} // disable for expression editor
                 >
                     <AggregationPopover
+                        query={query}
                         aggregation={aggregation}
                         availableAggregations={tableMetadata.aggregation_options}
                         tableMetadata={tableMetadata}

@@ -1,24 +1,27 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.tools.logging :as log]
-            [cemerick.friend.credentials :as creds]
+  (:require [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
-            [compojure.core :refer [defroutes GET POST DELETE]]
+            [clojure.tools.logging :as log]
+            [compojure.core :refer [DELETE GET POST]]
+            [metabase
+             [events :as events]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.api.common :as api]
+            [metabase.email.messages :as email]
+            [metabase.integrations.ldap :as ldap]
+            [metabase.models
+             [session :refer [Session]]
+             [setting :refer [defsetting]]
+             [user :as user :refer [User]]]
+            [metabase.util
+             [password :as pass]
+             [schema :as su]]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [toucan.db :as db]
-            [metabase.api.common :refer :all]
-            [metabase.email.messages :as email]
-            [metabase.events :as events]
-            (metabase.models [user :refer [User], :as user]
-                             [session :refer [Session]]
-                             [setting :refer [defsetting]])
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            (metabase.util [password :as pass]
-                           [schema :as su])))
-
+            [toucan.db :as db]))
 
 (defn- create-session!
   "Generate a new `Session` for a given `User`. Returns the newly generated session ID."
@@ -31,36 +34,57 @@
       :user_id (:id user))
     (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
-
 ;;; ## API Endpoints
 
 (def ^:private login-throttlers
-  {:email      (throttle/make-throttler :email)
-   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
+  {:username   (throttle/make-throttler :username)
+   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by username
 
-(defendpoint POST "/"
+(defn- ldap-login
+  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password]
+  (when (ldap/ldap-configured?)
+    (try
+      (when-let [user-info (ldap/find-user username)]
+        (when-not (ldap/verify-password user-info password)
+          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly outdated password
+          (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                     :errors      {:password "did not match stored password"}})))
+        ;; password is ok, return new session
+        {:id (create-session! (ldap/fetch-or-create-user! user-info password))})
+      (catch com.unboundid.util.LDAPSDKException e
+        (log/error (u/format-color 'red "Problem connecting to LDAP server, will fallback to local authentication") (.getMessage e))))))
+
+(defn- email-login
+  "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+    (when (pass/verify-password password (:password_salt user) (:password user))
+      {:id (create-session! user)})))
+
+(api/defendpoint POST "/"
   "Login."
-  [:as {{:keys [email password]} :body, remote-address :remote-addr}]
-  {email    su/Email
+  [:as {{:keys [username password]} :body, remote-address :remote-addr}]
+  {username su/NonBlankString
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :email)      email)
-  (let [user (db/select-one [User :id :password_salt :password :last_login], :email email, :is_active true)]
-    ;; Don't leak whether the account doesn't exist or the password was incorrect
-    (when-not (and user
-                   (pass/verify-password password (:password_salt user) (:password user)))
+  (throttle/check (login-throttlers :username)   username)
+  ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
+  (or (ldap-login username password)  ; First try LDAP if it's enabled
+      (email-login username password) ; Then try local authentication
+      ;; If nothing succeeded complain about it
+      ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                 :errors      {:password "did not match stored password"}})))
-    {:id (create-session! user)}))
+                                                                 :errors      {:password "did not match stored password"}}))))
 
 
-(defendpoint DELETE "/"
+(api/defendpoint DELETE "/"
   "Logout."
   [session_id]
   {session_id su/NonBlankString}
-  (check-exists? Session session_id)
+  (api/check-exists? Session session_id)
   (db/delete! Session :id session_id)
-  generic-204-no-content)
+  api/generic-204-no-content)
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
@@ -73,7 +97,7 @@
   {:email      (throttle/make-throttler :email)
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
 
-(defendpoint POST "/forgot_password"
+(api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
   {email su/Email}
@@ -105,7 +129,7 @@
             (when (< token-age reset-token-ttl-ms)
               user)))))))
 
-(defendpoint POST "/reset_password"
+(api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
   {token    su/NonBlankString
@@ -119,17 +143,17 @@
         ;; after a successful password update go ahead and offer the client a new session that they can use
         {:success    true
          :session_id (create-session! user)})
-      (throw-invalid-param-exception :password "Invalid reset token")))
+      (api/throw-invalid-param-exception :password "Invalid reset token")))
 
 
-(defendpoint GET "/password_reset_token_valid"
+(api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
 
 
-(defendpoint GET "/properties"
+(api/defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
   (public-settings/public-settings))
@@ -183,15 +207,15 @@
                     (google-auth-create-new-user! first-name last-name email))]
     {:id (create-session! user)}))
 
-(defendpoint POST "/google_auth"
+(api/defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, remote-address :remote-addr}]
   {token su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-    (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
+    (log/info "Successfully authenticated Google Auth token for:" given_name family_name)
     (google-auth-fetch-or-create-user! given_name family_name email)))
 
 
-(define-routes)
+(api/define-routes)

@@ -6,6 +6,7 @@ import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
+import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
 import { PermissionsApi } from "metabase/services";
 
@@ -32,10 +33,10 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
                 <AddRow
                     value={text}
                     isValid={textIsValid}
-                    placeholder="Justice League"
+                    placeholder='Something like "Marketing"'
                     onChange={(e) => onTextChange(e.target.value)}
                     onKeyDown={(e) => {
-                        if (e.keyCode === 13) {
+                        if (e.keyCode === KEYCODE_ENTER) {
                             onCreateClicked();
                         }
                     }}

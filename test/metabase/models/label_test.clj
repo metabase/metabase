@@ -1,8 +1,8 @@
 (ns metabase.models.label-test
   (:require [expectations :refer :all]
+            [metabase.models.label :refer [Label]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.models.label :refer [Label]]))
+            [toucan.util.test :as tt]))
 
 ;; Check that we can create a label with the name "Cam" (slug "cam")
 ;; and update the name to something that will produce the same slug ("cam") without getting a "name already taken" exception

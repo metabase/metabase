@@ -12,7 +12,7 @@ import ChartWithLegend from "./ChartWithLegend.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
 import LeafletChoropleth from "./LeafletChoropleth.jsx";
 
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import { computeMinimalBounds, getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
 
 import d3 from "d3";
 import ss from "simple-statistics";
@@ -92,7 +92,7 @@ export default class ChoroplethMap extends Component {
             if (details.builtin) {
                 geoJsonPath = details.url;
             } else {
-                geoJsonPath = "/api/geojson/" + nextProps.settings["map.region"]
+                geoJsonPath = "api/geojson/" + nextProps.settings["map.region"]
             }
             if (this.state.geoJsonPath !== geoJsonPath) {
                 this.setState({
@@ -118,7 +118,7 @@ export default class ChoroplethMap extends Component {
             );
         }
 
-        const { series, className, gridSize, hovered, onHoverChange, onVisualizationClick, settings } = this.props;
+        const { series, className, gridSize, hovered, onHoverChange, visualizationIsClickable, onVisualizationClick, settings } = this.props;
         let { geoJson, minimalBounds } = this.state;
 
         // special case builtin maps to use legacy choropleth map
@@ -146,7 +146,7 @@ export default class ChoroplethMap extends Component {
         const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["map.dimension"]);
         const metricIndex = _.findIndex(cols, (col) => col.name === settings["map.metric"]);
 
-        const getRowKey       = (row) => String(row[dimensionIndex]).toLowerCase();
+        const getRowKey       = (row) => getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
         const getRowValue     = (row) => row[metricIndex] || 0;
         const getFeatureName  = (feature) => String(feature.properties[nameProperty]);
         const getFeatureKey   = (feature) => String(feature.properties[keyProperty]).toLowerCase();
@@ -161,21 +161,28 @@ export default class ChoroplethMap extends Component {
                 data: { key: getFeatureName(hover.feature), value: getFeatureValue(hover.feature)
             } })
         }
-        const onClickFeature = (click) => {
+
+        const getFeatureClickObject = (row) => ({
+            value: row[metricIndex],
+            column: cols[metricIndex],
+            dimensions: [{
+                value: row[dimensionIndex],
+                column: cols[dimensionIndex]
+            }]
+        })
+
+        const isClickable = onVisualizationClick && visualizationIsClickable(getFeatureClickObject(rows[0]))
+
+        const onClickFeature = isClickable && ((click) => {
             const featureKey = getFeatureKey(click.feature);
             const row = _.find(rows, row => getRowKey(row) === featureKey);
             if (onVisualizationClick && row !== undefined) {
                 onVisualizationClick({
-                    value: row[metricIndex],
-                    column: cols[metricIndex],
-                    dimensions: [{
-                        value: row[dimensionIndex],
-                        column: cols[dimensionIndex]
-                    }],
+                    ...getFeatureClickObject(row),
                     event: click.event
                 });
             }
-        }
+        })
 
         const valuesMap = {};
         const domain = []

@@ -1,11 +1,11 @@
 (ns metabase.events.sync-database
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
-            [metabase.events :as events]
+            [metabase
+             [events :as events]
+             [sync :as sync]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database :as sync-database]))
-
+            [metabase.sync.sync-metadata :as sync-metadata]))
 
 (def ^:const sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
@@ -29,7 +29,10 @@
       (when-let [database (Database (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
         (future (try
-                  (sync-database/sync-database! database)
+                  ;; only do the 'full' sync if this is a "full sync" database. Otherwise just do metadata sync only
+                  (if (:is_full_sync database)
+                    (sync/sync-database! database)
+                    (sync-metadata/sync-db-metadata! database))
                   (catch Throwable t
                     (log/error (format "Error syncing Database: %d" (:id database)) t))))))
     (catch Throwable e

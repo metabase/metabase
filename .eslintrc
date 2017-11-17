@@ -29,6 +29,7 @@
         "global-strict": 0,
         "new-cap": 0,
         "no-fallthrough": 0,
+        "no-useless-escape": 0,
         "no-case-declarations": 0,
         "react/no-is-mounted": 2,
         "react/prefer-es6-class": 2,
@@ -41,6 +42,9 @@
         "flowtype/use-flow-type": 1
     },
     "globals": {
+        "pending": false,
+        "t": false,
+        "jt": false
     },
     "env": {
         "browser": true,

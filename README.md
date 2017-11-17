@@ -6,20 +6,16 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
-[![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.svg)](https://jarkeeper.com/metabase/metabase)
-[![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
-[![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/pr)](http://issuestats.com/github/metabase/metabase)
-[![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/issue)](http://issuestats.com/github/metabase/metabase)
 
 # Features
-- 5 minute [setup](http://www.metabase.com/docs/latest/setting-up-metabase) (We're not kidding)
-- Let anyone on your team [ask questions](http://www.metabase.com/docs/latest/users-guide/03-asking-questions) without knowing SQL
-- Rich beautiful [dashboards](http://www.metabase.com/docs/latest/users-guide/05-sharing-answers) with auto refresh and fullscreen
+- 5 minute [setup](http://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
+- Let anyone on your team [ask questions](http://metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL
+- Rich beautiful [dashboards](http://metabase.com/docs/latest/users-guide/06-sharing-answers.html) with auto refresh and fullscreen
 - SQL Mode for analysts and data pros
-- Create canonical [segments and metrics](http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics) for your team to use
-- Send data to Slack or email on a schedule with [Pulses](http://www.metabase.com/docs/latest/users-guide/09-pulses)
-- View data in Slack anytime with [MetaBot](http://www.metabase.com/docs/latest/users-guide/10-metabot)
-- [Humanize data](http://www.metabase.com/docs/latest/administration-guide/03-metadata-editing) for your team by renaming, annotating and hiding fields
+- Create canonical [segments and metrics](http://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use
+- Send data to Slack or email on a schedule with [Pulses](http://metabase.com/docs/latest/users-guide/10-pulses.html)
+- View data in Slack anytime with [MetaBot](http://metabase.com/docs/latest/users-guide/11-metabot.html)
+- [Humanize data](http://metabase.com/docs/latest/administration-guide/03-metadata-editing.html) for your team by renaming, annotating and hiding fields
 
 For more information check out [metabase.com](http://www.metabase.com)
 
@@ -120,4 +116,4 @@ Unless otherwise noted, all Metabase source files are made available under the t
 
 See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
 
-Unless otherwise noted, all files © 2016 Metabase, Inc.
+Unless otherwise noted, all files © 2017 Metabase, Inc.

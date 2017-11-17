@@ -2,23 +2,24 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase [db :as mdb]
-                      [driver :as driver])
+            [metabase
+             [db :as mdb]
+             [driver :as driver]
+             [sync :refer :all]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table]])
-            [metabase.sync-database :refer :all]
-            metabase.sync-database.analyze
-            [metabase.test.data :refer :all]
-            [metabase.test.data.interface :as i]
-            [metabase.test.util :refer [resolve-private-vars] :as tu]
-            [metabase.util :as u]))
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [field-values :as field-values :refer [FieldValues]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
+            [metabase.test.mock.util :as mock-util]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
+
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -37,43 +38,55 @@
                        {:name      "name"
                         :base-type :type/Text}}}})
 
+
+;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
 (defrecord SyncTestDriver []
   clojure.lang.Named
   (getName [_] "SyncTestDriver"))
 
+
+(defn- describe-database [& _]
+  {:tables (set (for [table (vals sync-test-tables)]
+                  (dissoc table :fields)))})
+
+(defn- describe-table [_ _ table]
+  (get sync-test-tables (:name table)))
+
+(defn- describe-table-fks [_ _ table]
+  (set (when (= "movie" (:name table))
+         #{{:fk-column-name   "studio"
+            :dest-table       {:name   "studio"
+                               :schema nil}
+            :dest-column-name "studio"}})))
+
 (extend SyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table      (constantly nil)
-          :describe-database  (constantly {:tables (set (for [table (vals sync-test-tables)]
-                                                          (dissoc table :fields)))})
-          :describe-table     (fn [_ _ table]
-                                (get sync-test-tables (:name table)))
-          :describe-table-fks (fn [_ _ table]
-                                (if (= "movie" (:name table))
-                                  #{{:fk-column-name   "studio"
-                                     :dest-table       {:name "studio"
-                                                        :schema nil}
-                                     :dest-column-name "studio"}}
-                                  #{}))
-          :features           (constantly #{:foreign-keys})
-          :details-fields     (constantly [])}))
+         {:describe-database        describe-database
+          :describe-table           describe-table
+          :describe-table-fks       describe-table-fks
+          :features                 (constantly #{:foreign-keys})
+          :details-fields           (constantly [])
+          :process-query-in-context mock-util/process-query-in-context}))
+
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
 
 
-(def ^:private venues-table (delay (Table (id :venues))))
-
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
                (assoc :fields (for [field (db/select Field, :table_id (:id table), {:order-by [:name]})]
-                                (into {} (dissoc field :table :db :children :qualified-name :qualified-name-components :values :target))))
+                                (into {} (-> (dissoc field
+                                                     :table :db :children :qualified-name :qualified-name-components
+                                                     :values :target)
+                                             (update :fingerprint map?)
+                                             (update :fingerprint_version (complement zero?))))))
                tu/boolean-ids-and-timestamps)))
 
-(def ^:private ^:const table-defaults
+(def ^:private table-defaults
   {:id                      true
    :db_id                   true
-   :raw_table_id            true
+   :raw_table_id            false
    :schema                  nil
    :description             nil
    :caveats                 nil
@@ -82,28 +95,29 @@
    :entity_type             nil
    :entity_name             nil
    :visibility_type         nil
-   :rows                    nil
+   :rows                    1000
    :active                  true
    :created_at              true
    :updated_at              true})
 
-(def ^:private ^:const field-defaults
-  {:id                 true
-   :table_id           true
-   :raw_column_id      true
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil
-   :active             true
-   :parent_id          false
-   :position           0
-   :preview_display    true
-   :visibility_type    :normal
-   :fk_target_field_id false
-   :created_at         true
-   :updated_at         true
-   :last_analyzed      true})
-
+(def ^:private field-defaults
+  {:id                  true
+   :table_id            true
+   :raw_column_id       false
+   :description         nil
+   :caveats             nil
+   :points_of_interest  nil
+   :active              true
+   :parent_id           false
+   :position            0
+   :preview_display     true
+   :visibility_type     :normal
+   :fk_target_field_id  false
+   :created_at          true
+   :updated_at          true
+   :last_analyzed       true
+   :fingerprint         true
+   :fingerprint_version true})
 
 ;; ## SYNC DATABASE
 (expect
@@ -170,19 +184,17 @@
                                  :name         "title"
                                  :display_name "Title"
                                  :base_type    :type/Text})]})
-  (tt/with-temp* [Database [db        {:engine :sync-test}]
-                  RawTable [raw-table {:database_id (u/get-id db), :name "movie", :schema "default"}]
-                  Table    [table     {:raw_table_id (u/get-id raw-table)
-                                       :name         "movie"
-                                       :schema       "default"
-                                       :db_id        (u/get-id db)}]]
+  (tt/with-temp* [Database [db    {:engine :sync-test}]
+                  Table    [table {:name   "movie"
+                                   :schema "default"
+                                   :db_id  (u/get-id db)}]]
     (sync-table! table)
     (table-details (Table (:id table)))))
 
 
 ;; test that we prevent running simultaneous syncs on the same database
 
-(defonce ^:private sync-count (atom 0))
+(defonce ^:private calls-to-describe-database (atom 0))
 
 (defrecord ConcurrentSyncTestDriver []
   clojure.lang.Named
@@ -191,9 +203,8 @@
 (extend ConcurrentSyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table     (constantly nil)
-          :describe-database (fn [_ _]
-                               (swap! sync-count inc)
+         {:describe-database (fn [_ _]
+                               (swap! calls-to-describe-database inc)
                                (Thread/sleep 1000)
                                {:tables #{}})
           :describe-table    (constantly nil)
@@ -203,33 +214,38 @@
 
 ;; only one sync should be going on at a time
 (expect
-  1
-  (tt/with-temp* [Database [db {:engine :concurrent-sync-test}]]
-    (reset! sync-count 0)
-    ;; start a sync processes in the background. It should take 1000 ms to finish
-    (future (sync-database! db))
-    ;; wait 200 ms to make sure everything is going
-    (Thread/sleep 200)
-    ;; Start another in the background. Nothing should happen here because the first is already running
-    (future (sync-database! db))
-    ;; Start another in the foreground. Again, nothing should happen here because the original should still be running
-    (sync-database! db)
-    ;; Check the number of syncs that took place. Should be 1 (just the first)
-    @sync-count))
+ ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for syncing the _metabase_metadata table
+ 2
+ (tt/with-temp* [Database [db {:engine :concurrent-sync-test}]]
+   (reset! calls-to-describe-database 0)
+   ;; start a sync processes in the background. It should take 1000 ms to finish
+   (let [f1 (future (sync-database! db))
+         f2 (do
+              ;; wait 200 ms to make sure everything is going
+              (Thread/sleep 200)
+              ;; Start another in the background. Nothing should happen here because the first is already running
+              (future (sync-database! db)))]
+     ;; Start another in the foreground. Again, nothing should happen here because the original should still be running
+     (sync-database! db)
+     ;; make sure both of the futures have finished
+     (deref f1)
+     (deref f2)
+     ;; Check the number of syncs that took place. Should be 2 (just the first)
+     @calls-to-describe-database)))
 
 
-;;; Test that we will remove field-values when they aren't appropriate
+;; Test that we will remove field-values when they aren't appropriate.
+;; Calling `sync-database!` below should cause them to get removed since the Field doesn't have an appropriate special type
 (expect
   [[1 2 3]
-   [1 2 3]]
-  (tt/with-temp* [Database [db    {:engine :sync-test}]
-                  RawTable [table {:database_id (u/get-id db), :name "movie", :schema "default"}]]
+   nil]
+  (tt/with-temp* [Database [db {:engine :sync-test}]]
     (sync-database! db)
-    (let [table-id (db/select-one-id Table, :raw_table_id (:id table))
+    (let [table-id (db/select-one-id Table, :schema "default", :name "movie")
           field-id (db/select-one-id Field, :table_id table-id, :name "title")]
       (tt/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
-        (let [initial-field-values (db/select-one-field  :values FieldValues, :field_id field-id)]
+        (let [initial-field-values (db/select-one-field :values FieldValues, :field_id field-id)]
           (sync-database! db)
           [initial-field-values
            (db/select-one-field :values FieldValues, :field_id field-id)])))))
@@ -250,14 +266,14 @@
      (do (db/update! Field (id :venues :id), :special_type nil)
          (get-special-type))
      ;; Calling sync-table! should set the special type again
-     (do (sync-table! @venues-table)
+     (do (sync-table! (Table (id :venues)))
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
      (do (db/update! Field (id :venues :id), :special_type :type/Latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
      (do (db/update! Field (id :venues :id), :special_type nil)
-         (sync-table! @venues-table)
+         (sync-table! (Table (id :venues)))
          (get-special-type))]))
 
 ;; ## FK SYNCING
@@ -307,7 +323,7 @@
      (do (db/delete! FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
-     (do (sync-table! @venues-table)
+     (do (sync-table! (Table (id :venues)))
          (get-field-values))])
 
   ;; Test that syncing will cause FieldValues to be updated
@@ -321,11 +337,11 @@
      (do (db/update! FieldValues (get-field-values-id), :values [1 2 3])
          (get-field-values))
      ;; 3. Now re-sync the table and make sure the value is back
-     (do (sync-table! @venues-table)
+     (do (sync-table! (Table (id :venues)))
          (get-field-values))]))
 
-
-;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.analyze/low-cardinality-threshold` (currently 300) (#3215) --------------------
+;; Make sure that if a Field's cardinality passes `low-cardinality-threshold` (currently 300)
+;; the corresponding FieldValues entry will be deleted (#3215)
 (defn- insert-range-sql [rang]
   (str "INSERT INTO blueberries_consumed (num) VALUES "
        (str/join ", " (for [n rang]
@@ -336,20 +352,36 @@
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
       (tt/with-temp Database [db {:engine :h2, :details details}]
-        (let [driver (driver/engine->driver :h2)
-              spec   (sql/connection-details->spec driver details)
-              exec!  #(doseq [statement %]
-                        (jdbc/execute! spec [statement]))]
-          ;; create the `blueberries_consumed` table and insert a 100 values
-          (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
-                  (insert-range-sql (range 100))])
-          (sync-database! db, :full-sync? true)
-          (let [table-id (db/select-one-id Table :db_id (u/get-id db))
-                field-id (db/select-one-id Field :table_id table-id)]
-            ;; field values should exist...
-            (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
-                       100))
-            ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
-            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
-            (sync-database! db, :full-sync? true)
-            (db/exists? FieldValues :field_id field-id)))))))
+        (jdbc/with-db-connection [conn (sql/connection-details->spec (driver/engine->driver :h2) details)]
+          (let [exec! #(doseq [statement %]
+                         (jdbc/execute! conn [statement]))]
+            ;; create the `blueberries_consumed` table and insert a 100 values
+            (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
+                    (insert-range-sql (range 100))])
+            (sync-database! db)
+            (let [table-id (db/select-one-id Table :db_id (u/get-id db))
+                  field-id (db/select-one-id Field :table_id table-id)]
+              ;; field values should exist...
+              (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
+                         100))
+              ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
+              (exec! [(insert-range-sql (range 100 (+ 100 field-values/low-cardinality-threshold)))])
+              (sync-database! db)
+              (db/exists? FieldValues :field_id field-id))))))))
+
+(defn- narrow-to-min-max [row]
+  (-> row
+      (get-in [:type :type/Number])
+      (select-keys [:min :max])
+      (update :min #(u/round-to-decimals 4 %))
+      (update :max #(u/round-to-decimals 4 %))))
+
+(expect
+  [{:min -165.374 :max -73.9533}
+   {:min 10.0646 :max 40.7794}]
+  (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
+                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
+    (sync-table! table)
+    (map narrow-to-min-max
+         [(db/select-one-field :fingerprint Field, :id (id :venues :longitude))
+          (db/select-one-field :fingerprint Field, :id (id :venues :latitude))])))

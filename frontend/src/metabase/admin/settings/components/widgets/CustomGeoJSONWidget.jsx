@@ -11,8 +11,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 
 import SettingHeader from "../SettingHeader.jsx";
 
+import { SettingsApi, GeoJSONApi } from "metabase/services";
+
 import cx from "classnames";
-import fetch from 'isomorphic-fetch';
 
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth.jsx";
 
@@ -32,7 +33,6 @@ export default class CustomGeoJSONWidget extends Component {
 
     static propTypes = {
         setting: PropTypes.object.isRequired,
-        updateSetting: PropTypes.func.isRequired,
         reloadSettings: PropTypes.func.isRequired
     };
     static defaultProps = {};
@@ -52,11 +52,9 @@ export default class CustomGeoJSONWidget extends Component {
             delete value[id];
         }
 
-        await fetch("/api/setting/custom-geojson", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ value }),
-            credentials: "same-origin",
+        await SettingsApi.put({
+            key: "custom-geojson",
+            value: value
         });
 
         await this.props.reloadSettings();
@@ -88,11 +86,9 @@ export default class CustomGeoJSONWidget extends Component {
                 geoJsonError: null,
             });
             await this._saveMap(map.id, map);
-            let geoJsonResponse = await fetch("/api/geojson/" + map.id, {
-                credentials: "same-origin"
-            });
+            let geoJson = await GeoJSONApi.get({ id: map.id });
             this.setState({
-                geoJson: await geoJsonResponse.json(),
+                geoJson: geoJson,
                 geoJsonLoading: false,
                 geoJsonError: null,
             });
@@ -237,6 +233,7 @@ const SettingContainer = ({ name, description, className="py1", children }) =>
     </div>
 
 const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJsonError, onLoadGeoJson, onCancel, onSave }) =>
+    <div>
     <div className="flex">
         <div className="flex-no-shrink">
             <h2>{ !originalMap ? "Add a new map" : "Edit map" }</h2>
@@ -279,12 +276,6 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                     />
                 </SettingContainer>
             </div>
-            <div className="py1">
-                <button className={cx("Button Button--borderless")} onClick={onCancel}>Cancel</button>
-                <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
-                    {originalMap ? "Save map" : "Add map"}
-                </button>
-            </div>
         </div>
         <div className="flex-full ml4 relative bordered rounded flex my4">
         { geoJson ||  geoJsonLoading || geoJsonError ?
@@ -301,6 +292,15 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
             </div>
         }
         </div>
+      </div>
+      <div className="py1 flex">
+        <div className="ml-auto">
+          <button className={cx("Button Button")} onClick={onCancel}>Cancel</button>
+          <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
+              {originalMap ? "Save map" : "Add map"}
+          </button>
+        </div>
+      </div>
     </div>
 
 const ChoroplethPreview = pure(({ geoJson }) =>

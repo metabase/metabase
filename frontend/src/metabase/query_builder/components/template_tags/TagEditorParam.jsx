@@ -1,29 +1,28 @@
-/* eslint "react/prop-types": "warn" */
+/* @flow weak */
+
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import Toggle from "metabase/components/Toggle.jsx";
+import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
-import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
+import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
-import Field from "metabase/meta/metadata/Field";
 
 import _ from "underscore";
 
+import type { TemplateTag } from "metabase/meta/types/Query"
+
+import Field from "metabase-lib/lib/metadata/Field";
+
+type Props = {
+    tag: TemplateTag,
+    onUpdate: (tag: TemplateTag) => void,
+    databaseFields: Field[]
+}
+
 export default class TagEditorParam extends Component {
-
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {};
-    }
-
-    static propTypes = {
-        tag: PropTypes.object.isRequired,
-        onUpdate: PropTypes.func.isRequired,
-        databaseFields: PropTypes.array
-    };
+    props: Props;
 
     setParameterAttribute(attr, val) {
         // only register an update if the value actually changes
@@ -61,6 +60,9 @@ export default class TagEditorParam extends Component {
         const dimension = ["field-id", fieldId];
         if (!_.isEqual(tag.dimension !== dimension)) {
             const field = _.findWhere(databaseFields, { id: fieldId });
+            if (!field) {
+                return;
+            }
             const options = parameterOptionsForField(new Field(field));
             let widget_type;
             if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
@@ -86,7 +88,7 @@ export default class TagEditorParam extends Component {
         }
 
         let widgetOptions;
-        if (tag.type === "dimension" && tag.dimension) {
+        if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
             if (field) {
                 widgetOptions = parameterOptionsForField(new Field(field));
@@ -99,11 +101,11 @@ export default class TagEditorParam extends Component {
 
                 <div className="pb1">
                     <h5 className="pb1 text-normal">Filter label</h5>
-                    <input
+                    <Input
                         type="text"
                         value={tag.display_name}
                         className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded full"
-                        onChange={(e) => this.setParameterAttribute("display_name", e.target.value)}
+                        onBlurChange={(e) => this.setParameterAttribute("display_name", e.target.value)}
                     />
                 </div>
 
@@ -115,6 +117,7 @@ export default class TagEditorParam extends Component {
                         onChange={(e) => this.setType(e.target.value)}
                         isInitiallyOpen={!tag.type}
                         placeholder="Select…"
+                        height={300}
                     >
                         <Option value="text">Text</Option>
                         <Option value="number">Number</Option>
@@ -125,7 +128,7 @@ export default class TagEditorParam extends Component {
 
                 { tag.type === "dimension" &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Field</h5>
+                        <h5 className="pb1 text-normal">Field to map to</h5>
                         <Select
                             className="border-med bg-white block"
                             value={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
@@ -134,6 +137,8 @@ export default class TagEditorParam extends Component {
                             searchCaseInsensitive
                             isInitiallyOpen={!tag.dimension}
                             placeholder="Select…"
+                            rowHeight={60}
+                            width={280}
                         >
                             {databaseFields && databaseFields.map(field =>
                                 <Option key={field.id} value={field.id} name={field.name}>
@@ -150,7 +155,7 @@ export default class TagEditorParam extends Component {
 
                 { widgetOptions && widgetOptions.length > 0 &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Widget</h5>
+                        <h5 className="pb1 text-normal">Filter widget type</h5>
                         <Select
                             className="border-med bg-white block"
                             value={tag.widget_type}
@@ -176,7 +181,7 @@ export default class TagEditorParam extends Component {
 
                 { ((tag.type !== "dimension" && tag.required) || (tag.type === "dimension" || tag.widget_type)) &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Default value</h5>
+                        <h5 className="pb1 text-normal">Default filter widget value</h5>
                         <ParameterValueWidget
                             parameter={{
                                 type: tag.widget_type || (tag.type === "date" ? "date/single" : null)

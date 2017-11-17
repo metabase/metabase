@@ -67,10 +67,12 @@
     display: none; /* Safari and Chrome */
 }
 
-.scroll-hide-all, .scroll-hide-all * {
+.scroll-hide-all,
+.scroll-hide-all * {
     -ms-overflow-style: none;  /* IE 10+ */
     overflow: -moz-scrollbars-none;  /* Firefox */
 }
+.scroll-hide-all::-webkit-scrollbar,
 .scroll-hide-all *::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }

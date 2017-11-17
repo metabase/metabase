@@ -4,7 +4,7 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import Parameters from "metabase/dashboard/containers/Parameters";
+import Parameters from "metabase/parameters/components/Parameters";
 import Select, { Option } from "metabase/components/Select";
 
 import DisplayOptionsPane from "./DisplayOptionsPane";
@@ -16,8 +16,9 @@ const getIconForParameter = (parameter) =>
     parameter.type.indexOf("date/") === 0 ? "calendar" :
     "unknown";
 
-import type { EmbedType, EmbeddableResource, EmbeddingParams, DisplayOptions } from "./EmbedModalContent";
-import type { Parameter, ParameterId } from "metabase/meta/types/Dashboard";
+import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
+import type { EmbeddableResource, EmbeddingParams } from "metabase/public/lib/types";
+import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
 
 type Props = {
     className?: string,

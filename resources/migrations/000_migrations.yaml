@@ -3021,7 +3021,7 @@ databaseChangeLog:
             columnNames: group_id, object
         ############################################################ Tweaks to metabase_table ############################################################
         # Modify the length of metabase_table.schema from 256 -> 254
-        # It turns out MySQL InnoDB indecies have to be 767 bytes or less (at least for older versions of MySQL)
+        # It turns out MySQL InnoDB indices have to be 767 bytes or less (at least for older versions of MySQL)
         # and 'utf8' text columns can use up to 3 bytes per character in MySQL -- see http://stackoverflow.com/a/22515986/1198455
         # So 256 * 3 = 768 bytes (too large to index / add unique constraints)
         # Drop this to 254; 254 * 3 = 762, which should give us room to index it along with a 4-byte integer as well if need be
@@ -3323,7 +3323,7 @@ databaseChangeLog:
       id: 49
       author: camsaul
       changes:
-        ######################################## Card public_uuid & indecies ########################################
+        ######################################## Card public_uuid & indices ########################################
         - addColumn:
             tableName: report_card
             columns:
@@ -3346,7 +3346,7 @@ databaseChangeLog:
             columns:
               column:
                 name: public_uuid
-        ######################################## Dashboard public_uuid & indecies ########################################
+        ######################################## Dashboard public_uuid & indices ########################################
         - addColumn:
             tableName: report_dashboard
             columns:
@@ -3570,14 +3570,399 @@ databaseChangeLog:
   - changeSet:
       id: 54
       author: tlrobinson
+      validCheckSum: '7:695b12a78e897c62c21d41bfb04ab44b'
+      validCheckSum: '7:0857800db71a4757e7202aad4eaed48d'
       changes:
         - addColumn:
             tableName: pulse
-            remarks: 'Skip a scheduled Pulse if none of its questions have any results'
             columns:
               - column:
                   name: skip_if_empty
                   type: boolean
+                  remarks: 'Skip a scheduled Pulse if none of its questions have any results'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 55
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  remarks: 'Is this Dashboard archived (effectively treated as deleted?)'
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: integer
+                  remarks: 'The position this Dashboard should appear in the Dashboards list, lower-numbered positions appearing before higher numbered ones.'
+        - createTable:
+            tableName: dashboard_favorite
+            remarks: 'Presence of a row here indicates a given User has favorited a given Dashboard.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who favorited the Dashboard.'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_dashboard_favorite_user_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: 'ID of the Dashboard favorited by the User.'
+                  constraints:
+                    nullable: false
+                    references: report_dashboard(id)
+                    foreignKeyName: fk_dashboard_favorite_dashboard_id
+                    deleteCascade: true
+        - addUniqueConstraint:
+            tableName: dashboard_favorite
+            columnNames: user_id, dashboard_id
+            constraintName: unique_dashboard_favorite_user_id_dashboard_id
+        - createIndex:
+            tableName: dashboard_favorite
+            indexName: idx_dashboard_favorite_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: dashboard_favorite
+            indexName: idx_dashboard_favorite_dashboard_id
+            columns:
+              - column:
+                  name: dashboard_id
+  - changeSet:
+      id: 56
+      author: wwwiiilll
+      comment: 'Added 0.25.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 57
+      author: camsaul
+      comment: 'Added 0.25.0'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: result_metadata
+                  type: text
+                  remarks: 'Serialized JSON containing metadata about the result columns from running the query.'
+  - changeSet:
+      id: 58
+      author: senior
+      comment: 'Added 0.25.0'
+      changes:
+        - createTable:
+            tableName: dimension
+            remarks: 'Stores references to alternate views of existing fields, such as remapping an integer to a description, like an enum'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: 'ID of the field this dimension row applies to'
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_dimension_ref_field_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: metabase_field(id)
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  remarks: 'Short description used as the display name of this new column'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  remarks: 'Either internal for a user defined remapping or external for a foreign key based remapping'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: human_readable_field_id
+                  type: int
+                  remarks: 'Only used with external type remappings. Indicates which field on the FK related table to use for display'
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_dimension_displayfk_ref_field_id
+                    initiallyDeferred: false
+                    nullable: true
+                    references: metabase_field(id)
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  remarks: 'The timestamp of when the dimension was created.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  remarks: 'The timestamp of when these dimension was last updated.'
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dimension
+            columnNames: field_id, name
+            constraintName: unique_dimension_field_id_name
+        - createIndex:
+            tableName: dimension
+            indexName: idx_dimension_field_id
+            columns:
+              - column:
+                  name: field_id
+  - changeSet:
+      id: 59
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint
+                  type: text
+                  remarks: 'Serialized JSON containing non-identifying information about this Field, such as min, max, and percent JSON. Used for classification.'
+  - changeSet:
+      id: 60
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: metadata_sync_schedule
+                  type: varchar(254)
+                  remarks: 'The cron schedule string for when this database should undergo the metadata sync process (and analysis for new fields).'
+                  defaultValue: '0 50 * * * ? *' # run at the end of every hour
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cache_field_values_schedule
+                  type: varchar(254)
+                  remarks: 'The cron schedule string for when FieldValues for eligible Fields should be updated.'
+                  defaultValue: '0 50 0 * * ? *' # run at 12:50 AM
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 61
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint_version
+                  type: int
+                  remarks: 'The version of the fingerprint for this Field. Used so we can keep track of which Fields need to be analyzed again when new things are added to fingerprints.'
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 62
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: timezone
+                  type: VARCHAR(254)
+                  remarks: 'Timezone identifier for the database, set by the sync process'
+  - changeSet:
+      id: 63
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_on_demand
+                  type: boolean
+                  remarks: 'Whether we should do On-Demand caching of FieldValues for this DB. This means FieldValues are updated when their Field is used in a Dashboard or Card param.'
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 64
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: raw_table
+          constraintName: fk_rawtable_ref_database
+          remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'
+# Changeset 65 was accidentally released in 0.26.0.RC2. The changeset has been removed from the migrations list so that
+# users that haven't ran the migration (i.e. they didn't run 0.26.0.RC2) won't waste time running it just to have it
+# reversed. For 0.26.0.RC2 users, the below changeset will remove those tables if they are present
+  - changeSet:
+      id: 66
+      author: senior
+      comment: 'Added 0.26.0'
+      validCheckSum: '7:e494c2c90fe5c377526da7a6e5ad63a2'
+      validCheckSum: '7:76d06b44a544105c2a613603b8bdf25f'
+      changes:
+        - sql:
+            sql: drop table if exists computation_job_result cascade
+        - sql:
+            sql: drop table if exists computation_job cascade
+# NOTE Atte Keinänen 9/28/17: This was originally in changeset 65 as explained above
+  - changeSet:
+      id: 67
+      author: attekei
+      changes:
+        - createTable:
+            tableName: computation_job
+            remarks: 'Stores submitted async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_job_ref_user_id
+                    initiallyDeferred: false
+                    references: core_user(id)
+                  name: creator_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: computation_job_result
+            remarks: 'Stores results of async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_result_ref_job_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: computation_job(id)
+                  name: job_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permanence
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+  - changeSet:
+    - id: 68
+    - author: sbelak
+    - changes:
+      - addColumn:
+            tableName: computation_job
+            columns:
+              - column:
+                  name: context
+                  type: text
+              - column:
+                  name: ended_at
+                  type: DATETIME
+  - changeSet:
+      id: 69
+      author: senior
+      comment: 'Added 0.27.0'
+      remarks: 'Add columns to the pulse table for alerts'
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: alert_condition
+                  type: varchar(254)
+                  remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+              - column:
+                  name: alert_first_only
+                  type: boolean
+                  remarks: 'True if the alert should be disabled after the first notification'
+              - column:
+                  name: alert_above_goal
+                  type: boolean
+                  remarks: 'For a goal condition, alert when above the goal'
+        # There is no name for an alert, so this column is only required for pulses
+        - dropNotNullConstraint:
+            tableName: pulse
+            columnName: name
+            columnDataType: varchar(254)

@@ -2,8 +2,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
-import SearchHeader from "../components/SearchHeader";
-import ArchivedItem from "../components/ArchivedItem";
+import SearchHeader from "metabase/components/SearchHeader";
+import ArchivedItem from "../../components/ArchivedItem";
 
 import { loadEntities, setArchived, setSearchText } from "../questions";
 import { setCollectionArchived } from "../collections";

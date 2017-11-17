@@ -1,31 +1,25 @@
 (ns metabase.db
   "Database definition and helper functions for interacting with the database."
-  (:require (clojure.java [io :as io]
-                          [jdbc :as jdbc])
+  (:require [clojure
+             [string :as s]
+             [walk :as walk]]
+            [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
             [clojure.tools.logging :as log]
-            (clojure [set :as set]
-                     [string :as s]
-                     [walk :as walk])
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h])
-            [medley.core :as m]
-            [ring.util.codec :as codec]
-            [toucan.db :as db]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.models.interface :as models]
-            [metabase.util :as u]
-            metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
-  (:import java.io.StringWriter
-           java.sql.Connection
+            [ring.util.codec :as codec]
+            [toucan.db :as db])
+  (:import com.mchange.v2.c3p0.ComboPooledDataSource
+           java.io.StringWriter
            java.util.Properties
-           com.mchange.v2.c3p0.ComboPooledDataSource
-           liquibase.Liquibase
-           (liquibase.database DatabaseFactory Database)
+           [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
+           liquibase.Liquibase
            liquibase.resource.ClassLoaderResourceAccessor))
-
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DB FILE & CONNECTION DETAILS                                              |
@@ -40,7 +34,7 @@
            ;; File-based DB
            (let [db-file-name (config/config-str :mb-db-file)
                  db-file      (io/file db-file-name)
-                 options      ";AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"]
+                 options      ";DB_CLOSE_DELAY=-1"]
              (apply str "file:" (if (.isAbsolute db-file)
                                   ;; when an absolute path is given for the db file then don't mess with it
                                   [db-file-name options]
@@ -212,7 +206,7 @@
 
    see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [liquibases-table-name (if (= (db-type) :h2)
+  (let [liquibases-table-name (if (#{:h2 :mysql} (db-type))
                                 "DATABASECHANGELOG"
                                 "databasechangelog")
         fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
@@ -403,8 +397,8 @@
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
 
-     (db/select-ids Table
-       (mdb/join [Table :raw_table_id] [RawTable :id])
+     (db/select-ids FieldValues
+       (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(db/resolve-model dest-entity) [:= (db/qualify source-entity fk)

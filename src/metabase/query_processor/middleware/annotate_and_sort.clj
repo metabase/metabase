@@ -1,23 +1,20 @@
 (ns metabase.query-processor.middleware.annotate-and-sort
   "Middleware for annotating (adding type information to) the results of a query and sorting the columns in the results."
+  ;; TODO - `annotate` and `sort` are technically two seperate steps. We should decouple everything so we get a namespace
+  ;; structure looking more like:
+  ;; `metabase.query-processor.middleware.sort`
+  ;; `metabase.query-processor.middleware.annotate`
+  ;; `metabase.query-processor.middleware.mbql`
+  ;; `metabase.query-processor.middleware.sql`
   (:require [metabase.driver :as driver]
-            (metabase.query-processor [annotate :as annotate]
-                                      [util :as qputil])))
+            [metabase.models.humanization :as humanization]
+            [metabase.query-processor
+             [annotate :as annotate]
+             [util :as qputil]]))
 
-(def ^:private ^:const ^Integer max-rows-to-scan-for-column-type-inference
-  "Maximum number of rows to scan to look for a non-`nil` value to determine type information.
-   This number is meant to be a good balance between not giving up prematurely and not scanning the entire set of results returned
-   (which can be millions of rows in some cases)."
-  100)
-
-(defn- vals->base-type
-  "Given a sequence of VALS, return the Field base type of the first non-`nil` value, scanning up to `max-rows-to-scan-for-column-type-inference` results."
-  [vs]
-  (or (some (fn [v]
-              (when-not (nil? v)
-                (driver/class->base-type (class v))))
-            (take max-rows-to-scan-for-column-type-inference vs))
-      :type/*))
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                NATIVE QUERY ANNOTATION                                                 |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn- infer-column-types
   "Infer the types of columns by looking at the first value for each in the results, and add the relevant information in `:cols`.
@@ -25,10 +22,17 @@
   [{:keys [columns rows], :as results}]
   (assoc results
     :columns (mapv name columns)
-    :cols    (vec (for [i (range (count columns))]
-                    {:name      (name (nth columns i))
-                     :base_type (vals->base-type (for [row rows]
-                                                   (nth row i)))}))))
+    :cols    (vec (for [i    (range (count columns))
+                        :let [col (nth columns i)]]
+                    {:name         (name col)
+                     :display_name (humanization/name->human-readable-name (name col))
+                     :base_type    (driver/values->base-type (for [row rows]
+                                                               (nth row i)))}))))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                   GENERAL MIDDLEWARE                                                   |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn annotate-and-sort
   "Middleware for adding type information to columns returned by running a query, and sorting the columns in the results."

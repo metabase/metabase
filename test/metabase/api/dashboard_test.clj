@@ -2,24 +2,22 @@
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
             [metabase.api.card-test :as card-api-test]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [revision :refer [Revision]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [revision :refer [Revision]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import java.util.UUID))
-
 
 ;; ## Helper Fns
 
@@ -87,7 +85,8 @@
                                                     :parameters "abc"}))
 
 (def ^:private ^:const dashboard-defaults
-  {:caveats                 nil
+  {:archived                false
+   :caveats                 nil
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -95,6 +94,7 @@
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
+   :position                nil
    :public_uuid             nil
    :show_in_getting_started false
    :updated_at              true})
@@ -132,7 +132,9 @@
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
-                                                           :visualization_settings {}})
+                                                           :visualization_settings {}
+                                                           :query_average_duration nil
+                                                           :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
@@ -547,3 +549,63 @@
     (tt/with-temp Dashboard [dashboard {:enable_embedding true}]
       (for [dash ((user->client :crowberto) :get 200 "dashboard/embeddable")]
         (m/map-vals boolean (select-keys dash [:name :id]))))))
+
+
+;;; ------------------------------------------------------------ Tests for including query average duration info ------------------------------------------------------------
+
+(tu/resolve-private-vars metabase.api.dashboard
+  dashcard->query-hashes
+  dashcards->query-hashes
+  add-query-average-duration-to-dashcards)
+
+(expect
+  [[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27]
+   [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]]
+  (tu/vectorize-byte-arrays
+    (dashcard->query-hashes {:card {:dataset_query {:database 1}}})))
+
+(expect
+  [[89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]
+   [55 56 16 11 -121 -29 71 -99 -89 -92 41 25 87 -78 34 100 54 -3 53 -9 38 41 -75 -121 63 -119 43 23 57 11 63 32]
+   [-90 55 65 61 72 22 -99 -75 111 49 -3 21 -80 68 -14 120 30 -84 -103 16 -68 73 -121 -93 -55 54 72 84 -8 118 -101 114]
+   [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]
+   [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]
+   [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]]
+  (tu/vectorize-byte-arrays
+    (dashcard->query-hashes {:card   {:dataset_query {:database 2}}
+                             :series [{:dataset_query {:database 3}}
+                                      {:dataset_query {:database 4}}]})))
+
+(expect
+  [[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27]
+   [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]
+   [89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]
+   [55 56 16 11 -121 -29 71 -99 -89 -92 41 25 87 -78 34 100 54 -3 53 -9 38 41 -75 -121 63 -119 43 23 57 11 63 32]
+   [-90 55 65 61 72 22 -99 -75 111 49 -3 21 -80 68 -14 120 30 -84 -103 16 -68 73 -121 -93 -55 54 72 84 -8 118 -101 114]
+   [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]
+   [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]
+   [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]]
+  (tu/vectorize-byte-arrays (dashcards->query-hashes [{:card   {:dataset_query {:database 1}}}
+                                                      {:card   {:dataset_query {:database 2}}
+                                                       :series [{:dataset_query {:database 3}}
+                                                                {:dataset_query {:database 4}}]}])))
+
+(expect
+  [{:card   {:dataset_query {:database 1}, :query_average_duration 111}
+    :series []}
+   {:card   {:dataset_query {:database 2}, :query_average_duration 333}
+    :series [{:dataset_query {:database 3}, :query_average_duration 555}
+             {:dataset_query {:database 4}, :query_average_duration 777}]}]
+  (add-query-average-duration-to-dashcards
+   [{:card   {:dataset_query {:database 1}}}
+    {:card   {:dataset_query {:database 2}}
+     :series [{:dataset_query {:database 3}}
+              {:dataset_query {:database 4}}]}]
+   {[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27] 111
+    [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]     222
+    [89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]       333
+    [55 56 16 11 -121 -29 71 -99 -89 -92 41 25 87 -78 34 100 54 -3 53 -9 38 41 -75 -121 63 -119 43 23 57 11 63 32]               444
+    [-90 55 65 61 72 22 -99 -75 111 49 -3 21 -80 68 -14 120 30 -84 -103 16 -68 73 -121 -93 -55 54 72 84 -8 118 -101 114]         555
+    [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]            666
+    [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]          777
+    [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]   888}))

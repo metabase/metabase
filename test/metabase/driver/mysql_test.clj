@@ -1,16 +1,18 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.driver [generic-sql :as sql]
-                             mysql)
+            [metabase
+             [sync :as sync]
+             [util :as u]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database :as sync-db]
-            [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :refer [def-database-definition]])
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [datasets :refer [expect-with-engine]]
+             [interface :refer [def-database-definition]]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.driver.mysql.MySQLDriver))
 
 ;; MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL when returning them like we asked
@@ -29,7 +31,9 @@
 
 ;; make sure connection details w/ extra params work as expected
 (expect
-  "//localhost:3306/cool?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8&characterSetResults=UTF8&useSSL=false&tinyInt1isBit=false"
+  (str "//localhost:3306/cool?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8"
+       "&characterSetResults=UTF8&useLegacyDatetimeCode=true&useJDBCCompliantTimezoneShift=true"
+       "&useSSL=false&tinyInt1isBit=false")
   (:subname (sql/connection-details->spec (MySQLDriver.) {:host               "localhost"
                                                           :port               "3306"
                                                           :dbname             "cool"
@@ -67,5 +71,9 @@
     (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]
-      (sync-db/sync-database! db)
+      (sync/sync-database! db)
       (db->fields db))))
+
+(expect-with-engine :mysql
+  "America/Los_Angeles"
+  (tu/db-timezone-id))

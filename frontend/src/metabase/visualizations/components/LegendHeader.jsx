@@ -6,8 +6,6 @@ import styles from "./Legend.css";
 import Icon from "metabase/components/Icon.jsx";
 import LegendItem from "./LegendItem.jsx";
 
-import * as Urls from "metabase/lib/urls";
-
 import cx from "classnames";
 
 import { normal } from "metabase/lib/colors";
@@ -27,8 +25,8 @@ export default class LegendHeader extends Component {
         hovered: PropTypes.object,
         onHoverChange: PropTypes.func,
         onRemoveSeries: PropTypes.func,
+        onChangeCardAndRun: PropTypes.func,
         actionButtons: PropTypes.node,
-        linkToCard: PropTypes.bool,
         description: PropTypes.string
     };
 
@@ -50,32 +48,32 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings, description, onVisualizationClick, visualizationIsClickable } = this.props;
-        const showDots = series.length > 1;
-        const isNarrow = this.state.width < 150;
-        const showTitles = !showDots || !isNarrow;
-
-        let colors = settings["graph.colors"] || DEFAULT_COLORS;
-
-        const isClickable = series.length > 0 && series[0].clicked && visualizationIsClickable(series[0].clicked);
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, onChangeCardAndRun, settings, description, onVisualizationClick, visualizationIsClickable } = this.props;
+        const showDots     = series.length > 1;
+        const isNarrow     = this.state.width < 150;
+        const showTitles   = !showDots || !isNarrow;
+        const colors       = settings["graph.colors"] || DEFAULT_COLORS;
+        const customTitles = settings["graph.series_labels"];
+        const titles       = (customTitles && customTitles.length === series.length) ? customTitles : series.map((thisSeries) => thisSeries.card.name);
 
         return (
             <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
                     <LegendItem
                         key={index}
-                        title={s.card.name}
+                        title={titles[index]}
                         description={description}
-                        href={linkToCard && s.card.id && Urls.question(s.card.id)}
                         color={colors[index % colors.length]}
                         showDot={showDots}
                         showTitle={showTitles}
                         isMuted={hovered && hovered.index != null && index !== hovered.index}
                         onMouseEnter={() => onHoverChange && onHoverChange({ index })}
                         onMouseLeave={() => onHoverChange && onHoverChange(null) }
-                        onClick={isClickable && ((e) =>
-                            onVisualizationClick({ ...s.clicked, element: e.currentTarget })
-                        )}
+                        onClick={s.clicked && visualizationIsClickable(s.clicked) ?
+                            ((e) => onVisualizationClick({ ...s.clicked, element: e.currentTarget }))
+                        : onChangeCardAndRun ?
+                            (() => onChangeCardAndRun({ nextCard: s.card, seriesIndex: index }))
+                        : null }
                     />,
                     onRemoveSeries && index > 0 &&
                       <Icon

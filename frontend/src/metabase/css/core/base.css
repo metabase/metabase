@@ -6,18 +6,22 @@
 
 html {
     height: 100%; /* ensure the entire page will fill the window */
+    width: 100%;
 }
 
 body {
-    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
+    font-family: var(--default-font-family), sans-serif;
     font-size: var(--default-font-size);
+    font-weight: 400;
+    font-style: normal;
     color: var(--default-font-color);
     margin: 0;
     height: 100%; /* ensure the entire page will fill the window */
     display: flex;
     flex-direction: column;
-    text-rendering: optimizeLegibility;
+
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /*
@@ -74,3 +78,12 @@ textarea {
 .undefined {
     border: 1px solid red !important;
 }
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  100% { transform: rotate(-360deg); }
+}
+

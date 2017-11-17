@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.dev
   "Middleware that's only active in dev and test scenarios. These middleware functions do additional checks
    of query processor behavior that are undesirable in normal production use."
-  (:require [schema.core :as s]
-            (metabase [config :as config]
-                      [util :as u])))
+  (:require [metabase
+             [config :as config]
+             [util :as u]]
+            [schema.core :as s]))
 
 ;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod because at best they
 ;; just waste CPU cycles and at worst cause a query to fail when it would otherwise succeed.

@@ -5,22 +5,20 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
+import {caseInsensitiveSearch} from "metabase/lib/string"
 
-function caseInsensitiveSearch(haystack, needle) {
-    return !needle || (haystack != null && haystack.toLowerCase().indexOf(needle.toLowerCase()) >= 0);
-}
+export const getEntityType             = (state, props) => props && props.entityType ? props.entityType : state.questions.lastEntityType;
+export const getEntityQuery            = (state, props) => props && props.entityQuery ? JSON.stringify(props.entityQuery) : state.questions.lastEntityQuery;
 
-export const getEntityType          = (state, props) => props && props.entityType ? props.entityType : state.questions.lastEntityType;
-export const getEntityQuery         = (state, props) => props && props.entityQuery ? JSON.stringify(props.entityQuery) : state.questions.lastEntityQuery;
+export const getSection                = (state, props) => props.entityQuery && JSON.stringify(props.entityQuery);
+export const getLoadingInitialEntities = (state, props) => state.questions.loadingInitialEntities
+export const getEntities               = (state, props) => state.questions.entities
+export const getItemsBySection         = (state, props) => state.questions.itemsBySection
 
-export const getSection             = (state, props) => props.entityQuery && JSON.stringify(props.entityQuery);
-export const getEntities            = (state, props) => state.questions.entities
-export const getItemsBySection      = (state, props) => state.questions.itemsBySection
+export const getSearchText             = (state, props) => state.questions.searchText;
+export const getSelectedIds            = (state, props) => state.questions.selectedIds;
 
-export const getSearchText          = (state, props) => state.questions.searchText;
-export const getSelectedIds         = (state, props) => state.questions.selectedIds;
-
-export const getAllCollections      = (state, props) => state.collections.collections;
+export const getAllCollections         = (state, props) => state.collections.collections;
 
 export const getWritableCollections = createSelector(
     [getAllCollections],

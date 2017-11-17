@@ -12,7 +12,7 @@
 
 .ml-auto, :local(.ml-auto) { margin-left: auto; }
 .mr-auto, :local(.mr-auto) { margin-right: auto; }
-.mt-auto, { margin-top: auto; }
+.mt-auto { margin-top: auto; }
 
 /* padding */
 
@@ -186,6 +186,11 @@
 .ml4, :local(.ml4) { margin-left:   var(--margin-4); }
 .mr4, :local(.mr4) { margin-right:  var(--margin-4); }
 
+/* negative margin (mainly for correction of horizontal positioning) */
+.mln1 { margin-left: -var(--margin-1) }
+.mln2 { margin-left: -var(--margin-2) }
+.mln3 { margin-left: -var(--margin-3) }
+.mln4 { margin-left: -var(--margin-4) }
 
 /* responsive spacing */
 

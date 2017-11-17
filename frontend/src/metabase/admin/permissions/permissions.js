@@ -3,7 +3,7 @@ import { createAction, createThunkAction, handleActions, combineReducers } from 
 import { canEditPermissions } from "metabase/lib/groups";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { MetabaseApi, PermissionsApi, CollectionsApi } from "metabase/services";
+import { PermissionsApi, CollectionsApi } from "metabase/services";
 
 const RESET = "metabase/admin/permissions/RESET";
 export const reset = createAction(RESET);
@@ -18,10 +18,6 @@ export const initialize = createThunkAction(INITIALIZE, (load, save) =>
         ]);
     }
 );
-
-// TODO: move these to their respective ducks
-const LOAD_METADATA = "metabase/admin/permissions/LOAD_METADATA";
-export const loadMetadata = createAction(LOAD_METADATA, () => MetabaseApi.db_list_with_tables());
 
 // TODO: move these to their respective ducks
 const LOAD_COLLECTIONS = "metabase/admin/permissions/LOAD_COLLECTIONS";
@@ -100,10 +96,6 @@ const groups = handleActions({
     },
 }, null);
 
-const databases = handleActions({
-    [LOAD_METADATA]: { next: (state, { payload }) => payload },
-}, null);
-
 const collections = handleActions({
     [LOAD_COLLECTIONS]: { next: (state, { payload }) => payload },
 }, null);
@@ -129,6 +121,5 @@ export default combineReducers({
     revision,
     groups,
 
-    databases,
     collections
 });

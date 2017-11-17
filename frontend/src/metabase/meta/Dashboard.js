@@ -1,12 +1,13 @@
 /* @flow */
 
-import type Metadata from "./metadata/Metadata";
-import type Table from "./metadata/Table";
-import type Field from "./metadata/Field";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
+
 import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
-import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, DimensionTarget, VariableTarget } from "./types/Parameter";
 
 import { getTemplateTags } from "./Card";
 
@@ -75,7 +76,7 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     },
 ];
 
-type ParameterSection = {
+export type ParameterSection = {
     id: string,
     name: string,
     description: string,
@@ -122,7 +123,7 @@ export function getFieldDimension(field: Field): Dimension {
     return {
         name: field.display_name,
         field_id: field.id,
-        parentName: field.table().display_name,
+        parentName: field.table.display_name,
         target: ["field-id", field.id],
         depth: 0
     };
@@ -140,7 +141,7 @@ export function getTagDimension(tag: TemplateTag, dimension: Dimension): Dimensi
 
 export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldFilter = () => true): Array<Dimension> {
     if (card.dataset_query.type === "query") {
-        const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
+        const table = card.dataset_query.query.source_table != null ? metadata.tables[card.dataset_query.query.source_table] : null;
         if (table) {
             return getTableDimensions(table, 1, filter);
         }
@@ -148,7 +149,7 @@ export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldF
         let dimensions = [];
         for (const tag of getTemplateTags(card)) {
             if (tag.type === "dimension" && Array.isArray(tag.dimension) && mbqlEq(tag.dimension[0], "field-id")) {
-                const field = metadata.field(tag.dimension[1]);
+                const field = metadata.fields[tag.dimension[1]];
                 if (field && filter(field)) {
                     let fieldDimension = getFieldDimension(field);
                     dimensions.push(getTagDimension(tag, fieldDimension));
@@ -169,11 +170,11 @@ function getDimensionTargetFieldId(target: DimensionTarget): ?FieldId {
 }
 
 export function getTableDimensions(table: Table, depth: number, filter: FieldFilter = () => true): Array<Dimension> {
-    return _.chain(table.fields())
+    return _.chain(table.fields)
         .map(field => {
-            let targetField = field.target();
+            let targetField = field.target;
             if (targetField && depth > 0) {
-                let targetTable = targetField.table();
+                let targetTable = targetField.table;
                 return getTableDimensions(targetTable, depth - 1, filter).map((dimension: Dimension) => ({
                     ...dimension,
                     parentName: stripId(field.display_name),
@@ -206,23 +207,6 @@ export function getCardVariables(metadata: Metadata, card: Card, filter: Templat
     return [];
 }
 
-export function getParameterMappingTargetField(metadata: Metadata, card: Card, target: ParameterMappingTarget): ?Field {
-    if (target[0] === "dimension") {
-        let dimension = target[1];
-        if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
-            if (card.dataset_query.type === "native") {
-                let templateTag = card.dataset_query.native.template_tags[String(dimension[1])];
-                if (templateTag && templateTag.type === "dimension") {
-                    return metadata.field(Query.getFieldTargetId(templateTag.dimension));
-                }
-            }
-        } else {
-            return metadata.field(Query.getFieldTargetId(dimension));
-        }
-    }
-    return null;
-}
-
 function fieldFilterForParameter(parameter: Parameter) {
     return fieldFilterForParameterType(parameter.type);
 }
@@ -234,6 +218,7 @@ export function fieldFilterForParameterType(parameterType: ParameterType): Field
         case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
     }
+
     switch (parameterType) {
         case "location/city":     return (field: Field) => isa(field.special_type, TYPE.City);
         case "location/state":    return (field: Field) => isa(field.special_type, TYPE.State);
@@ -271,7 +256,7 @@ export function getParameterMappingOptions(metadata: Metadata, parameter: Parame
     options.push(
         ...getCardDimensions(metadata, card, fieldFilterForParameter(parameter))
             .map((dimension: Dimension) => {
-                const field = metadata.field(dimension.field_id);
+                const field = metadata.fields[dimension.field_id];
                 return {
                     name: dimension.name,
                     target: ["dimension", dimension.target],

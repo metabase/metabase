@@ -219,7 +219,7 @@ const AccessOptionList = ({ value, options, onChange }) =>
         )}
     </ul>
 
-const EntityRowHeader = ({ entity, type }) =>
+const EntityRowHeader = ({ entity, icon }) =>
     <div
         className="flex flex-column justify-center px1 pl4 ml2"
         style={{
@@ -227,7 +227,7 @@ const EntityRowHeader = ({ entity, type }) =>
         }}
     >
         <div className="relative flex align-center">
-            <Icon name={type} className="absolute" style={{ left: -28 }} />
+            <Icon name={icon} className="absolute" style={{ left: -28 }} />
             <h4>{entity.name}</h4>
         </div>
         { entity.subtitle &&
@@ -292,7 +292,7 @@ const PermissionsGrid = ({ className, grid, onUpdatePermission, entityId, groupI
                         }
                         renderRowHeader={({ rowIndex }) =>
                             <EntityRowHeader
-                                type={grid.type}
+                                icon={grid.icon}
                                 entity={grid.entities[rowIndex]}
                                 isFirstRow={rowIndex === 0}
                                 isLastRow={rowIndex === grid.entities.length - 1}

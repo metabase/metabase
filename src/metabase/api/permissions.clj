@@ -1,17 +1,18 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [compojure.core :refer [GET POST PUT DELETE]]
-            [metabase.api.common :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [metabase.metabot :as metabot]
-            (metabase.models [database :as database]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :refer [PermissionsGroup], :as group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [table :refer [Table]])
-            [metabase.util :as u]
-            [metabase.util.schema :as su]))
+  (:require [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase
+             [metabot :as metabot]
+             [util :as u]]
+            [metabase.api.common :as api]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :as group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]]
+            [metabase.util.schema :as su]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                             PERMISSIONS GRAPH ENDPOINTS                                                              |
@@ -50,14 +51,14 @@
 
 ;;; ---------------------------------------- Endpoints ----------------------------------------
 
-(defendpoint GET "/graph"
+(api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
   []
-  (check-superuser)
+  (api/check-superuser)
   (perms/graph))
 
 
-(defendpoint PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph,
    in the same format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever neccesary.
    This modified graph must correspond to the `PermissionsGraph` schema.
@@ -68,7 +69,7 @@
    and make desired changes to that."
   [:as {body :body}]
   {body su/Map}
-  (check-superuser)
+  (api/check-superuser)
   (perms/update-graph! (dejsonify-graph body))
   (perms/graph))
 
@@ -97,80 +98,80 @@
                  [:not= :id (u/get-id (group/metabot))])
      :order-by [:%lower.name]}))
 
-(defendpoint GET "/group"
+(api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
-  (check-superuser)
+  (api/check-superuser)
   (let [group-id->members (group-id->num-members)]
     (for [group (ordered-groups)]
       (assoc group :members (or (group-id->members (u/get-id group))
                                 0)))))
 
-(defendpoint GET "/group/:id"
+(api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
   [id]
-  (check-superuser)
+  (api/check-superuser)
   (-> (PermissionsGroup id)
       (hydrate :members)))
 
-(defendpoint POST "/group"
+(api/defendpoint POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
   {name su/NonBlankString}
-  (check-superuser)
+  (api/check-superuser)
   (db/insert! PermissionsGroup
     :name name))
 
-(defendpoint PUT "/group/:group-id"
+(api/defendpoint PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
   {name su/NonBlankString}
-  (check-superuser)
-  (check-404 (db/exists? PermissionsGroup :id group-id))
+  (api/check-superuser)
+  (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
     :name name)
   ;; return the updated group
   (PermissionsGroup group-id))
 
-(defendpoint DELETE "/group/:group-id"
+(api/defendpoint DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [group-id]
-  (check-superuser)
+  (api/check-superuser)
   (db/delete! PermissionsGroup :id group-id)
-  generic-204-no-content)
+  api/generic-204-no-content)
 
 
 ;;; ---------------------------------------- Group Membership Endpoints ----------------------------------------
 
-(defendpoint GET "/membership"
+(api/defendpoint GET "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
 
     {<user-id> [{:membership_id <id>
                  :group_id      <id>}]}"
   []
-  (check-superuser)
+  (api/check-superuser)
   (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id])))
 
-(defendpoint POST "/membership"
+(api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id]} :body}]
   {group_id su/IntGreaterThanZero
    user_id  su/IntGreaterThanZero}
-  (check-superuser)
+  (api/check-superuser)
   (db/insert! PermissionsGroupMembership
     :group_id group_id
     :user_id  user_id)
   ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and let the frontend add it ass appropriate
   (group/members {:id group_id}))
 
-(defendpoint DELETE "/membership/:id"
+(api/defendpoint DELETE "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [id]
-  (check-superuser)
-  (check-404 (db/exists? PermissionsGroupMembership :id id))
+  (api/check-superuser)
+  (api/check-404 (db/exists? PermissionsGroupMembership :id id))
   (db/delete! PermissionsGroupMembership :id id)
-  generic-204-no-content)
+  api/generic-204-no-content)
 
 
-(define-routes)
+(api/define-routes)

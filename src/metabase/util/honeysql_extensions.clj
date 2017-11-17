@@ -84,6 +84,7 @@
                  (rest sql-string-or-vector))))))
 
 
+;; Single-quoted string literal
 (defrecord Literal [literal]
   ToSql
   (to-sql [_]

@@ -1,15 +1,16 @@
 (ns metabase.models.dashboard-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer :all]
-                             [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [dashboard-card-series :refer [DashboardCardSeries]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer :all]
+             [dashboard-card :as dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; ## Dashboard Revisions
 

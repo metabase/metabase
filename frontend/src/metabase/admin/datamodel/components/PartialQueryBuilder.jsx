@@ -8,6 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 
 import * as Query from "metabase/lib/query/query";
+import Question from "metabase-lib/lib/Question";
 
 export default class PartialQueryBuilder extends Component {
     static propTypes = {
@@ -35,7 +36,7 @@ export default class PartialQueryBuilder extends Component {
     }
 
     render() {
-        let { features, value, tableMetadata, previewSummary } = this.props;
+        let { features, value, metadata, tableMetadata, previewSummary } = this.props;
 
         let datasetQuery = {
             type: "query",
@@ -45,6 +46,8 @@ export default class PartialQueryBuilder extends Component {
                 source_table: tableMetadata.id
             }
         };
+
+        const query = new Question(metadata, { dataset_query: datasetQuery }).query();
 
         let previewCard = {
             dataset_query: {
@@ -68,11 +71,12 @@ export default class PartialQueryBuilder extends Component {
             <div className="py1">
                 <GuiQueryEditor
                     features={features}
+                    query={query}
                     datasetQuery={datasetQuery}
-                    tableMetadata={tableMetadata}
                     databases={tableMetadata && [tableMetadata.db]}
                     setDatasetQuery={this.setDatasetQuery}
                     isShowingDataReference={false}
+                    supportMultipleAggregations={false}
                     setDatabaseFn={null}
                     setSourceTableFn={null}
                     addQueryFilter={(filter) => onChange(Query.addFilter(datasetQuery.query, filter))}

@@ -1,7 +1,8 @@
 (ns metabase.models.collection-revision
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.util :as u]))
+  (:require [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel CollectionRevision :collection_revision)
 

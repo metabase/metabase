@@ -1,12 +1,10 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
   (:require [clojure.math.numeric-tower :as math]
-            [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets, :refer [*engine*]]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
 
 (expect-with-non-timeseries-dbs
   [[1 12 375]

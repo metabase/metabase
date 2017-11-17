@@ -37,8 +37,7 @@
 
 .List-item {
     display: flex;
-    border-radius: 6px;
-    border: 2px solid transparent;
+    border-radius: 4px;
     margin-top: 2px;
     margin-bottom: 2px;
 }

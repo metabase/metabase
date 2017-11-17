@@ -1,33 +1,37 @@
 (ns metabase.models.permissions
-  (:require [clojure.core.match :refer [match]]
-            [clojure.data :as data]
-            [clojure.string :as str]
+  (:require [clojure
+             [data :as data]
+             [string :as str]]
+            [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [models :as models])
             [metabase.api.common :refer [*current-user-id*]]
-            (metabase.models [permissions-group :as group]
-                             [permissions-revision :refer [PermissionsRevision] :as perms-revision])
+            [metabase.models
+             [permissions-group :as group]
+             [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.util :as u]
-            (metabase.util [honeysql-extensions :as hx]
-                           [schema :as su])))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [schema :as su]]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
-
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                      UTIL FNS                                                                        |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    UTIL FNS                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; ---------------------------------------- Dynamic Vars ----------------------------------------
 
 (def ^:dynamic ^Boolean *allow-root-entries*
-  "Show we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here when creating the default entry for `Admin`."
+  "Show we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
+   when creating the default entry for `Admin`."
   false)
 
 (def ^:dynamic ^Boolean *allow-admin-permissions-changes*
-  "Show we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to prevent accidental tragedy, but you can enable it here
-   when creating the default entry for `Admin`."
+  "Show we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
+   prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
 
@@ -72,7 +76,8 @@
              {:status-code 400}))))
 
 (defn- assert-valid
-  "Check to make sure this PERMISSIONS entry is something that's allowed to be saved (i.e. it has a valid `:object` path and it's not for the admin group)."
+  "Check to make sure this PERMISSIONS entry is something that's allowed to be saved (i.e. it has a valid `:object`
+   path and it's not for the admin group)."
   [permissions]
   (assert-not-admin-group permissions)
   (assert-valid-object permissions))
@@ -93,8 +98,8 @@
 
 (defn ^:deprecated native-read-path
   "Return the native query *read* permissions path for a database.
-   This grants you permissions to view the results of an *existing* native query, i.e. view native Cards created by others.
-   (Deprecated because native read permissions are being phased out in favor of Collections.)"
+   This grants you permissions to view the results of an *existing* native query, i.e. view native Cards created by
+   others. (Deprecated because native read permissions are being phased out in favor of Collections.)"
   ^String [database-id]
   (str (object-path database-id) "native/read/"))
 
@@ -165,9 +170,9 @@
           object-paths-set))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                 ENTITY + LIFECYCLE                                                                   |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               ENTITY + LIFECYCLE                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (models/defmodel Permissions :permissions)
 
@@ -191,9 +196,9 @@
                     :pre-delete pre-delete}))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                     GRAPH SCHEMA                                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  GRAPH SCHEMA                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private TablePermissionsGraph
   (s/enum :none :all))
@@ -245,12 +250,13 @@
    :groups   {su/IntGreaterThanZero StrictGroupPermissionsGraph}})
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                     GRAPH FETCH                                                                      |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  GRAPH FETCH                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- permissions-for-path
-  "Given a PERMISSIONS-SET of all allowed permissions paths for a Group, return the corresponding permissions status for an object with PATH."
+  "Given a PERMISSIONS-SET of all allowed permissions paths for a Group, return the corresponding permissions status
+   for an object with PATH."
   [permissions-set path]
   (u/prog1 (cond
              (set-has-full-permissions? permissions-set path)    :all
@@ -301,16 +307,17 @@
 
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                     GRAPH UPDATE                                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  GRAPH UPDATE                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; ---------------------------------------- Helper Fns ----------------------------------------
 
 ;; TODO - why does this take a PATH when everything else takes PATH-COMPONENTS or IDs?
 (defn delete-related-permissions!
   "Delete all permissions for GROUP-OR-ID for ancestors or descendant objects of object with PATH.
-   You can optionally include OTHER-CONDITIONS, which are anded into the filter clause, to further restrict what is deleted."
+   You can optionally include OTHER-CONDITIONS, which are anded into the filter clause, to further restrict what is
+   deleted."
   {:style/indent 2}
   [group-or-id path & other-conditions]
   {:pre [(integer? (u/get-id group-or-id)) (valid-object-path? path)]}
@@ -336,7 +343,6 @@
    (grant-permissions! group-or-id (apply object-path db-id schema more)))
   ([group-or-id path]
    (try
-     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (u/get-id group-or-id) path))
      (db/insert! Permissions
        :group_id (u/get-id group-or-id)
        :object   path)
@@ -400,12 +406,14 @@
 
 ;;; ---------------------------------------- Graph Updating Fns ----------------------------------------
 
-(s/defn ^:private ^:always-validate update-table-perms! [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, table-id :- su/IntGreaterThanZero, new-table-perms :- SchemaPermissionsGraph]
+(s/defn ^:private ^:always-validate update-table-perms!
+  [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, table-id :- su/IntGreaterThanZero, new-table-perms :- SchemaPermissionsGraph]
   (case new-table-perms
     :all  (grant-permissions! group-id db-id schema table-id)
     :none (revoke-permissions! group-id db-id schema table-id)))
 
-(s/defn ^:private ^:always-validate update-schema-perms! [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, new-schema-perms :- SchemaPermissionsGraph]
+(s/defn ^:private ^:always-validate update-schema-perms!
+  [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, new-schema-perms :- SchemaPermissionsGraph]
   (cond
     (= new-schema-perms :all)  (do (revoke-permissions! group-id db-id schema) ; clear out any existing related permissions
                                    (grant-permissions! group-id db-id schema)) ; then grant full perms for the schema
@@ -413,7 +421,8 @@
     (map? new-schema-perms)    (doseq [[table-id table-perms] new-schema-perms]
                                  (update-table-perms! group-id db-id schema table-id table-perms))))
 
-(s/defn ^:private ^:always-validate update-native-permissions! [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, new-native-perms :- NativePermissionsGraph]
+(s/defn ^:private ^:always-validate update-native-permissions!
+  [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, new-native-perms :- NativePermissionsGraph]
   ;; revoke-native-permissions! will delete all entires that would give permissions for native access.
   ;; Thus if you had a root DB entry like `/db/11/` this will delete that too.
   ;; In that case we want to create a new full schemas entry so you don't lose access to all schemas when we modify native access.
@@ -427,7 +436,8 @@
     :none  nil))
 
 
-(s/defn ^:private ^:always-validate update-db-permissions! [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, new-db-perms :- StrictDBPermissionsGraph]
+(s/defn ^:private ^:always-validate update-db-permissions!
+  [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, new-db-perms :- StrictDBPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -438,7 +448,8 @@
       (map? schemas)    (doseq [schema (keys schemas)]
                           (update-schema-perms! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))
 
-(s/defn ^:private ^:always-validate update-group-permissions! [group-id :- su/IntGreaterThanZero, new-group-perms :- StrictGroupPermissionsGraph]
+(s/defn ^:private ^:always-validate update-group-permissions!
+  [group-id :- su/IntGreaterThanZero, new-group-perms :- StrictGroupPermissionsGraph]
   (doseq [[db-id new-db-perms] new-group-perms]
     (update-db-permissions! group-id db-id new-db-perms)))
 
@@ -473,9 +484,10 @@
 
 (s/defn ^:always-validate update-graph!
   "Update the permissions graph, making any changes neccesary to make it match NEW-GRAPH.
-   This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as needed. The graph is revisioned,
-   so if it has been updated by a third party since you fetched it this function will fail and return a 409 (Conflict) exception.
-   If nothing needs to be done, this function returns `nil`; otherwise it returns the newly created `PermissionsRevision` entry."
+   This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
+   needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
+   fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it
+   returns the newly created `PermissionsRevision` entry."
   ([new-graph :- StrictPermissionsGraph]
    (let [old-graph (graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))]

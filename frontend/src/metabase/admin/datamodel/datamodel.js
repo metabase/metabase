@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { isFK } from "metabase/lib/types";
 
 import { MetabaseApi, SegmentApi, MetricApi, RevisionsApi } from "metabase/services";
 
@@ -124,7 +123,7 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
         try {
             // make sure we don't send all the computed metadata
             let slimField = { ...field };
-            slimField = _.omit(slimField, "operators_lookup", "valid_operators", "values");
+            slimField = _.omit(slimField, "operators_lookup", "operators", "values");
 
             // update the field
             let updatedField = await MetabaseApi.field_update(slimField);
@@ -142,37 +141,6 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
             console.log("error updating field", error);
             //MetabaseAnalytics.trackEvent("Databases", database.id ? "Update Failed" : "Create Failed", database.engine);
         }
-    };
-});
-
-// updateFieldSpecialType
-export const UPDATE_FIELD_SPECIAL_TYPE = "metabase/admin/datamodel/UPDATE_FIELD_SPECIAL_TYPE";
-export const updateFieldSpecialType = createThunkAction(UPDATE_FIELD_SPECIAL_TYPE, function(field) {
-    return function(dispatch, getState) {
-
-        // If we are changing the field from a FK to something else, we should delete any FKs present
-        if (field.target && field.target.id != null && isFK(field.special_type)) {
-            // we have something that used to be an FK and is now not an FK
-            // clean up after ourselves
-            field.target = null;
-            field.fk_target_field_id = null;
-        }
-
-        // save the field
-        dispatch(updateField(field));
-
-        MetabaseAnalytics.trackEvent("Data Model", "Update Field Special-Type", field.special_type);
-    };
-});
-
-// updateFieldTarget
-export const UPDATE_FIELD_TARGET = "metabase/admin/datamodel/UPDATE_FIELD_TARGET";
-export const updateFieldTarget = createThunkAction(UPDATE_FIELD_TARGET, function(field) {
-    return function(dispatch, getState) {
-        // This function notes a change in the target of the target of a foreign key
-        dispatch(updateField(field));
-
-        MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
     };
 });
 

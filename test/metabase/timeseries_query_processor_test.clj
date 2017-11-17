@@ -1,14 +1,15 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  (:require [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [format-rows-by rows first-row]]
+  (:require [metabase
+             [query-processor-test :refer [first-row format-rows-by rows]]
+             [util :as u]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [interface :as i])
-            [metabase.util :as u]))
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]
+             [interface :as i]]))
 
 (def ^:private ^:const event-based-dbs
   #{:druid})
@@ -593,6 +594,23 @@
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :month))
           (ql/limit 5))))
+
+;; This test is similar to the above query but doesn't use a limit
+;; clause which causes the query to be a grouped timeseries query
+;; rather than a topN query. The dates below are formatted incorrectly
+;; due to https://github.com/metabase/metabase/issues/5969.
+(expect-with-timeseries-dbs
+  {:columns ["timestamp" "count"]
+   :rows [["2013-01-01T00:00:00.000Z" 8]
+          ["2013-02-01T00:00:00.000Z" 11]
+          ["2013-03-01T00:00:00.000Z" 21]
+          ["2013-04-01T00:00:00.000Z" 26]
+          ["2013-05-01T00:00:00.000Z" 23]]}
+  (-> (data/run-query checkins
+        (ql/aggregation (ql/count))
+        (ql/breakout (ql/datetime-field $timestamp :month)))
+      data
+      (update :rows #(take 5 %))))
 
 ;;; date bucketing - month-of-year
 (expect-with-timeseries-dbs

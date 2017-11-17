@@ -1,8 +1,8 @@
 
-import { createAction, createThunkAction, momentifyArraysTimestamps } from "metabase/lib/redux";
+import {createAction, createThunkAction, mergeEntities, momentifyArraysTimestamps} from "metabase/lib/redux";
 
 import { normalize, schema } from "normalizr";
-import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
+import { getIn, assocIn, updateIn, chain } from "icepick";
 import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
@@ -26,7 +26,7 @@ const card = new schema.Entity('cards', {
 
 import { CardApi, CollectionsApi } from "metabase/services";
 
-const LOAD_ENTITIES = 'metabase/questions/LOAD_ENTITIES';
+export const LOAD_ENTITIES = 'metabase/questions/LOAD_ENTITIES';
 const SET_SEARCH_TEXT = 'metabase/questions/SET_SEARCH_TEXT';
 const SET_ITEM_SELECTED = 'metabase/questions/SET_ITEM_SELECTED';
 const SET_ALL_SELECTED = 'metabase/questions/SET_ALL_SELECTED';
@@ -162,9 +162,10 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
 
 const getCardCollectionId = (state, cardId) => getIn(state, ["questions", "entities", "cards", cardId, "collection_id"])
 
-export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collectionId, undoable = false) => {
+export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collection, undoable = false) => {
     return async (dispatch, getState) => {
         const state = getState();
+        const collectionId = collection.id;
         if (cardId == null) {
             // bulk move
             let selected = getSelectedEntities(getState());
@@ -175,9 +176,10 @@ export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collecti
                 )));
                 MetabaseAnalytics.trackEvent("Questions", "Bulk Move to Collection");
             }
-            selected.map(item => dispatch(setCollection(item.id, collectionId)));
+            selected.map(item => dispatch(setCollection(item.id, { id: collectionId })));
         } else {
             const collection = _.findWhere(state.collections.collections, { id: collectionId });
+
             if (undoable) {
                 dispatch(addUndo(createUndo(
                     "moved",
@@ -215,6 +217,7 @@ const initialState = {
     lastEntityType: null,
     lastEntityQuery: null,
     entities: {},
+    loadingInitialEntities: true,
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
@@ -222,10 +225,6 @@ const initialState = {
 };
 
 export default function(state = initialState, { type, payload, error }) {
-    if (payload && payload.entities) {
-        state = assoc(state, "entities", merge(state.entities, payload.entities));
-    }
-
     switch (type) {
         case SET_SEARCH_TEXT:
             return { ...state, searchText: payload };
@@ -238,6 +237,8 @@ export default function(state = initialState, { type, payload, error }) {
                 return assocIn(state, ["itemsBySection", payload.entityType, payload.entityQuery, "error"], payload.error);
             } else {
                 return (chain(state)
+                    .assoc("loadingInitialEntities", false)
+                    .assoc("entities", mergeEntities(state.entities, payload.entities))
                     .assoc("lastEntityType", payload.entityType)
                     .assoc("lastEntityQuery", payload.entityQuery)
                     .assoc("selectedIds", {})

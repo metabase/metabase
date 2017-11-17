@@ -1,34 +1,38 @@
 (ns metabase.util.stats
   "Functions which summarize the usage of an instance"
-  (:require [clojure.tools.logging :as log]
-            [clj-http.client :as client]
+  (:require [clj-http.client :as client]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
-            [toucan.db :as db]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [email :as email]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.api.session :as session-api]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.email :as email]
             [metabase.integrations.slack :as slack]
-            (metabase.models [card :refer [Card]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [humanization :as humanization]
-                             [label :refer [Label]]
-                             [metric :refer [Metric]]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [pulse :refer [Pulse]]
-                             [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [query-execution :refer [QueryExecution]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u])
+            [metabase.models
+             [card :refer [Card]]
+             [card-label :refer [CardLabel]]
+             [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [humanization :as humanization]
+             [label :refer [Label]]
+             [metric :refer [Metric]]
+             [permissions-group :refer [PermissionsGroup]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [query-cache :refer [QueryCache]]
+             [query-execution :refer [QueryExecution]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]
+             [user :refer [User]]]
+            [toucan.db :as db])
   (:import java.util.Date))
 
 (defn- merge-count-maps
@@ -60,7 +64,7 @@
     2 "2"
     "3+"))
 
-#_(defn- bin-small-number
+(defn- bin-small-number
   "Return small bin number. Assumes positive inputs."
   [x]
   (cond
@@ -335,24 +339,57 @@
       (update :num_per_user summarize-executions-per-user)))
 
 
+;;; Cache Metrics
+
+(defn- cache-metrics
+  "Metrics based on use of the QueryCache."
+  []
+  (let [{:keys [length count]} (db/select-one [QueryCache [:%avg.%length.results :length] [:%count.* :count]])]
+    {:average_entry_size (int (or length 0))
+     :num_queries_cached (bin-small-number count)}))
+
+;;; System Metrics
+
+(defn- bytes->megabytes [b]
+  (Math/round (double (/ b 1024 1024))))
+
+(def ^:private system-property-names
+  ["java.version" "java.vm.specification.version"  "java.runtime.name"
+   "user.timezone" "user.language" "user.country" "file.encoding"
+   "os.name" "os.version"])
+
+(defn- system-metrics
+  "Metadata about the environment Metabase is running in"
+  []
+  (let [runtime (Runtime/getRuntime)]
+    (merge
+     {:max_memory (bytes->megabytes (.maxMemory runtime))
+      :processors (.availableProcessors runtime)}
+     (zipmap (map #(keyword (str/replace % \. \_)) system-property-names)
+             (map #(System/getProperty %) system-property-names)))))
+
+;;; Combined Stats & Logic for sending them in
+
 (defn anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
          {:uuid anonymous-id, :timestamp (Date.)}
-         {:stats {:user       (user-metrics)
-                  :question   (question-metrics)
+         {:stats {:cache      (cache-metrics)
+                  :collection (collection-metrics)
                   :dashboard  (dashboard-metrics)
                   :database   (database-metrics)
-                  :table      (table-metrics)
+                  :execution  (execution-metrics)
                   :field      (field-metrics)
-                  :pulse      (pulse-metrics)
-                  :segment    (segment-metrics)
-                  :metric     (metric-metrics)
                   :group      (group-metrics)
                   :label      (label-metrics)
-                  :collection (collection-metrics)
-                  :execution  (execution-metrics)}}))
+                  :metric     (metric-metrics)
+                  :pulse      (pulse-metrics)
+                  :question   (question-metrics)
+                  :segment    (segment-metrics)
+                  :system     (system-metrics)
+                  :table      (table-metrics)
+                  :user       (user-metrics)}}))
 
 
 (defn- send-stats!

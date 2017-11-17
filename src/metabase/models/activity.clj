@@ -1,15 +1,17 @@
 (ns metabase.models.activity
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [interface :as i]
-                             [metric :refer [Metric]]
-                             [pulse :refer [Pulse]]
-                             [segment :refer [Segment]])
-            [metabase.util :as u]))
-
+  (:require [metabase
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [interface :as i]
+             [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
+             [segment :refer [Segment]]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
 

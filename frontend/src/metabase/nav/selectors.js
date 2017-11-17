@@ -19,5 +19,3 @@ export const getContext = createSelector(
         :
             'main'
 );
-
-export const getDashboards = (state) => state.dashboard.dashboardListing;

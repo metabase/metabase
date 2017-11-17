@@ -11,18 +11,36 @@ import * as colors from "metabase/lib/colors";
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
+// NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
+// are able to avoid circular dependency errors in integrated tests
+export function columnsAreValid(colNames, data, filter = () => true) {
+    if (typeof colNames === "string") {
+        colNames = [colNames]
+    }
+    if (!data || !Array.isArray(colNames)) {
+        return false;
+    }
+    const colsByName = {};
+    for (const col of data.cols) {
+        colsByName[col.name] = col;
+    }
+    return colNames.reduce((acc, name) =>
+        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
+        , true);
+}
+
 // computed size properties (drop 'px' and convert string -> Number)
 function getComputedSizeProperty(prop, element) {
-    var val = document.defaultView.getComputedStyle(element, null).getPropertyValue(prop);
-    return val ? parseFloat(val.replace("px", "")) : null;
+    const val = document.defaultView.getComputedStyle(element, null).getPropertyValue(prop);
+    return val ? parseFloat(val.replace("px", "")) : 0;
 }
 
 /// height available for rendering the card
 export function getAvailableCanvasHeight(element) {
-    var parent = element.parentElement,
-        parentHeight = getComputedSizeProperty("height", parent),
-        parentPaddingTop = getComputedSizeProperty("padding-top", parent),
-        parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
+    const parent              = element.parentElement;
+    const parentHeight        = getComputedSizeProperty("height", parent);
+    const parentPaddingTop    = getComputedSizeProperty("padding-top", parent);
+    const parentPaddingBottom = getComputedSizeProperty("padding-bottom", parent);
 
     // NOTE: if this magic number is not 3 we can get into infinite re-render loops
     return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
@@ -30,10 +48,10 @@ export function getAvailableCanvasHeight(element) {
 
 /// width available for rendering the card
 export function getAvailableCanvasWidth(element) {
-    var parent = element.parentElement,
-        parentWidth = getComputedSizeProperty("width", parent),
-        parentPaddingLeft = getComputedSizeProperty("padding-left", parent),
-        parentPaddingRight = getComputedSizeProperty("padding-right", parent);
+    const parent             = element.parentElement;
+    const parentWidth        = getComputedSizeProperty("width", parent);
+    const parentPaddingLeft  = getComputedSizeProperty("padding-left", parent);
+    const parentPaddingRight = getComputedSizeProperty("padding-right", parent);
 
     return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
@@ -116,10 +134,15 @@ export function getXValues(datas, chartType) {
     return xValues;
 }
 
-export function getFriendlyName(col) {
-    let name = col.display_name || col.name;
-    let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];
-    return friendlyName || name;
+export function getFriendlyName(column) {
+    if (column.display_name && column.display_name !== column.name) {
+        return column.display_name
+    } else {
+        // NOTE Atte Keinänen 8/7/17:
+        // Values `display_name` and `name` are same for breakout columns so check FRIENDLY_NAME_MAP
+        // before returning either `display_name` or `name`
+        return FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] || column.display_name || column.name;
+    }
 }
 
 export function getCardColors(card) {
@@ -168,7 +191,8 @@ export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
 export const DIMENSION_DIMENSION_METRIC = "DIMENSION_DIMENSION_METRIC";
 
-const MAX_SERIES = 10;
+// NOTE Atte Keinänen 7/31/17 Commented MAX_SERIES out as it wasn't being used
+// const MAX_SERIES = 10;
 
 export const isDimensionMetric = (cols, strict = true) =>
     (!strict || cols.length === 2) &&
@@ -203,9 +227,9 @@ export function getChartTypeFromData(cols, rows, strict = true) {
     if (isDimensionMetricMetric(cols, strict)) {
         return DIMENSION_METRIC_METRIC;
     } else if (isDimensionDimensionMetric(cols, strict)) {
-        if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
+        // if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
             return DIMENSION_DIMENSION_METRIC;
-        }
+        // }
     } else if (isDimensionMetric(cols, strict)) {
         return DIMENSION_METRIC;
     }
@@ -247,5 +271,33 @@ function wrapMethod(object, name, method) {
         if (typeof method_original === "function") {
             return method_original.apply(this, arguments);
         }
+    }
+}
+// TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
+export const cardHasBecomeDirty = (nextCard, previousCard) =>
+    !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) || previousCard.display !== nextCard.display;
+
+export function getCardAfterVisualizationClick(nextCard, previousCard) {
+    if (cardHasBecomeDirty(nextCard, previousCard)) {
+        const isMultiseriesQuestion = !nextCard.id;
+        const alreadyHadLineage = !!previousCard.original_card_id;
+
+        return {
+            ...nextCard,
+            // Original card id is needed for showing the "started from" lineage in dirty cards.
+            original_card_id: alreadyHadLineage
+                // Just recycle the original card id of previous card if there was one
+                ? previousCard.original_card_id
+                // A multi-aggregation or multi-breakout series legend / drill-through action
+                // should always use the id of underlying/previous card
+                : (isMultiseriesQuestion ? previousCard.id : nextCard.id)
+        }
+    } else {
+        // Even though the card is currently clean, we might still apply dashboard parameters to it,
+        // so add the original_card_id to ensure a correct behavior in that context
+        return {
+            ...nextCard,
+            original_card_id: nextCard.id
+        };
     }
 }

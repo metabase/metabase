@@ -1,9 +1,11 @@
 (ns metabase.driver.h2-test
   (:require [expectations :refer :all]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
+            [metabase
+             [db :as mdb]
+             [driver :as driver]]
             [metabase.driver.h2 :refer :all]
-            [metabase.test.util :refer [resolve-private-vars]])
+            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [metabase.test.util :as tu :refer [resolve-private-vars]])
   (:import metabase.driver.h2.H2Driver))
 
 (resolve-private-vars metabase.driver.h2 connection-string->file+options file+options->connection-string connection-string-set-safe-options)
@@ -37,3 +39,7 @@
 (expect true
   (binding [mdb/*allow-potentailly-unsafe-connections* true]
     (driver/can-connect? (H2Driver.) {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))
+
+(expect-with-engine :h2
+  "UTC"
+  (tu/db-timezone-id))

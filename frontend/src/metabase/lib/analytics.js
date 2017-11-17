@@ -1,4 +1,5 @@
 /*global ga*/
+/* @flow */
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -8,13 +9,14 @@ import { DEBUG } from "metabase/lib/debug";
 // Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
 const MetabaseAnalytics = {
     // track a pageview (a.k.a. route change)
-    trackPageView: function(url) {
+    trackPageView: function(url: string) {
         if (url) {
             // scrub query builder urls to remove serialized json queries from path
             url = (url.lastIndexOf('/q/', 0) === 0) ? '/q/' : url;
 
             const { tag } = MetabaseSettings.get('version');
 
+            // $FlowFixMe
             ga('set', 'dimension1', tag);
             ga('set', 'page', url);
             ga('send', 'pageview', url);
@@ -22,11 +24,12 @@ const MetabaseAnalytics = {
     },
 
     // track an event
-    trackEvent: function(category, action, label, value) {
+    trackEvent: function(category: string, action?: string, label?: string|number|boolean, value?: number) {
         const { tag } = MetabaseSettings.get('version');
 
         // category & action are required, rest are optional
         if (category && action) {
+            // $FlowFixMe
             ga('set', 'dimension1', tag);
             ga('send', 'event', category, action, label, value);
         }
@@ -40,6 +43,7 @@ export default MetabaseAnalytics;
 
 
 export function registerAnalyticsClickListener() {
+    // $FlowFixMe
     document.body.addEventListener("click", function(e) {
         var node = e.target;
 

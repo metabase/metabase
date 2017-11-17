@@ -36,19 +36,18 @@ const Item = ({
                     />
                 }
                 { setItemSelected &&
-                    <CheckBox
-                        className={cx(
-                            "cursor-pointer absolute top left",
-                            { "visible text-brand": selected },
-                            { "hover-child text-brand-hover text-light-blue transition-color": !selected }
-                        )}
-                        checked={selected}
-                        onChange={(e) => setItemSelected({ [id]: e.target.checked })}
-                        size={ITEM_ICON_SIZE}
-                        padding={3}
-                        borderColor="currentColor"
-                        invertChecked
-                    />
+                    <span className={cx(
+                        "absolute top left",
+                        { "visible": selected },
+                        { "hover-child": !selected }
+                    )}>
+                        <CheckBox
+                            checked={selected}
+                            onChange={e => setItemSelected({ [id]: e.target.checked })}
+                            size={ITEM_ICON_SIZE}
+                            padding={3}
+                        />
+                    </span>
                 }
             </div>
             <ItemBody
@@ -113,9 +112,9 @@ Item.propTypes = {
     favorite:           PropTypes.bool.isRequired,
     archived:           PropTypes.bool.isRequired,
     icon:               PropTypes.string.isRequired,
-    setItemSelected:    PropTypes.func.isRequired,
-    setFavorited:       PropTypes.func.isRequired,
-    setArchived:        PropTypes.func.isRequired,
+    setItemSelected:    PropTypes.func,
+    setFavorited:       PropTypes.func,
+    setArchived:        PropTypes.func,
     onEntityClick:      PropTypes.func,
     showCollectionName: PropTypes.bool,
 };
@@ -133,9 +132,9 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
                 <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
                     <Icon
                         className={cx(
-                            "flex cursor-pointer text-brand-hover transition-color",
-                            {"hover-child text-light-blue": !favorite},
-                            {"visible text-brand": favorite}
+                            "flex cursor-pointer",
+                            {"hover-child text-light-blue text-brand-hover": !favorite},
+                            {"visible text-gold": favorite}
                         )}
                         name={favorite ? "star" : "staroutline"}
                         size={ITEM_ICON_SIZE}
@@ -156,7 +155,7 @@ ItemBody.propTypes = {
     favorite:           PropTypes.bool.isRequired,
     id:                 PropTypes.number.isRequired,
     name:               PropTypes.string.isRequired,
-    setFavorited:       PropTypes.func.isRequired,
+    setFavorited:       PropTypes.func,
 };
 
 const ItemCreated = pure(({ created, by }) =>

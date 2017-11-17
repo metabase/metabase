@@ -77,11 +77,13 @@ export default class ProfileLink extends Component {
                     <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
                         <div className="NavDropdown-content right">
                             <ul className="NavDropdown-content-layer">
-                                <li>
-                                    <Link to="/user/edit_current" data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
-                                        Account Settings
-                                    </Link>
-                                </li>
+                                { !user.google_auth && !user.ldap_auth ?
+                                    <li>
+                                        <Link to="/user/edit_current" data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
+                                            Account Settings
+                                        </Link>
+                                    </li>
+                                : null }
 
                                 { user.is_superuser && context !== 'admin' ?
                                     <li>

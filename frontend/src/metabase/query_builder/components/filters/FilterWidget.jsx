@@ -1,36 +1,35 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';
 import Popover from "metabase/components/Popover.jsx";
 import FilterPopover from "./FilterPopover.jsx";
 
-import Query from "metabase/lib/query";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { isDate } from "metabase/lib/schema_metadata";
+import { formatValue } from "metabase/lib/formatting";
 
 import cx from "classnames";
 import _ from "underscore";
 
-import type { FieldFilter } from "metabase/meta/types/Query";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type { Filter } from "metabase/meta/types/Query";
 
 type Props = {
-    filter: FieldFilter,
-    tableMetadata: TableMetadata,
+    query: StructuredQuery,
+    filter: Filter,
     index: number,
-    updateFilter: (index: number, field: FieldFilter) => void,
-    removeFilter: (index: number) => void,
+    updateFilter?: (index: number, field: Filter) => void,
+    removeFilter?: (index: number) => void,
     maxDisplayValues?: number
 }
 type State = {
     isOpen: bool
 }
 
-export default class FilterWidget extends Component<*, Props, State> {
+export default class FilterWidget extends Component {
+    props: Props;
     state: State;
 
     constructor(props: Props) {
@@ -40,14 +39,6 @@ export default class FilterWidget extends Component<*, Props, State> {
             isOpen: this.props.filter[0] == undefined
         };
     }
-
-    static propTypes = {
-        filter: PropTypes.array.isRequired,
-        tableMetadata: PropTypes.object.isRequired,
-        index: PropTypes.number.isRequired,
-        updateFilter: PropTypes.func,
-        removeFilter: PropTypes.func
-    };
 
     static defaultProps = {
         maxDisplayValues: 1
@@ -62,20 +53,27 @@ export default class FilterWidget extends Component<*, Props, State> {
     }
 
     renderOperatorFilter() {
-        const { filter, tableMetadata, maxDisplayValues } = this.props;
-        let [operator, field, ...values] = filter;
+        const { query, filter, maxDisplayValues } = this.props;
+        let [op, field, ...values] = filter;
 
-        let target = Query.getFieldTarget(field, tableMetadata);
-        let fieldDef = target && target.field;
-        let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
-
-        // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
-        if (operatorDef && operatorDef.multi && values.length > maxDisplayValues) {
-            values = [values.length + " selections"];
+        const dimension = query.parseFieldReference(field);
+        if (!dimension) {
+            return null;
         }
 
-        if (isDate(fieldDef)) {
-            values = generateTimeFilterValuesDescriptions(this.props.filter);
+        const operator = dimension.operator(op);
+
+        let formattedValues;
+        // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
+        if (operator && operator.multi && values.length > maxDisplayValues) {
+            formattedValues = [values.length + " selections"];
+        } else if (dimension.field().isDate()) {
+            formattedValues = generateTimeFilterValuesDescriptions(filter);
+        } else {
+            // TODO Atte Keinänen 7/16/17: Move formatValue to metabase-lib
+            formattedValues = values.filter(value => value !== undefined).map(value =>
+                formatValue(value, { column: dimension.field() })
+            )
         }
 
         return (
@@ -86,25 +84,21 @@ export default class FilterWidget extends Component<*, Props, State> {
                 <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
                     <FieldName
                         className="Filter-section Filter-section-field"
-                        tableMetadata={this.props.tableMetadata}
                         field={field}
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
+                        tableMetadata={query.table()}
                     />
                     <div className="Filter-section Filter-section-operator">
                         &nbsp;
-                        <a className="QueryOption flex align-center">{operatorDef && operatorDef.moreVerboseName}</a>
+                        <a className="QueryOption flex align-center">{operator && operator.moreVerboseName}</a>
                     </div>
                 </div>
-                { values.length > 0 && (
+                { formattedValues.length > 0 && (
                     <div className="flex align-center flex-wrap">
-                        {values.map((value, valueIndex) => {
-                            var valueString = value != null ? value.toString() : null;
-                            return value != undefined && (
-                                <div key={valueIndex} className="Filter-section Filter-section-value">
-                                    <span className="QueryOption">{valueString}</span>
-                                </div>
-                            );
-                        })}
+                        {formattedValues.map((formattedValue, valueIndex) =>
+                            <div key={valueIndex} className="Filter-section Filter-section-value">
+                                <span className="QueryOption">{formattedValue}</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -112,8 +106,8 @@ export default class FilterWidget extends Component<*, Props, State> {
     }
 
     renderSegmentFilter() {
-        const { filter, tableMetadata } = this.props;
-        const segment = _.find(tableMetadata.segments, (s) => s.id === filter[1]);
+        const { query, filter } = this.props;
+        const segment = _.find(query.table().segments, (s) => s.id === filter[1]);
         return (
             <div onClick={this.open}>
                 <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
@@ -132,6 +126,7 @@ export default class FilterWidget extends Component<*, Props, State> {
 
     renderPopover() {
         if (this.state.isOpen) {
+            const { query, filter } = this.props;
             return (
                 <Popover
                     id="FilterPopover"
@@ -140,11 +135,12 @@ export default class FilterWidget extends Component<*, Props, State> {
                     isInitiallyOpen={this.props.filter[1] === null}
                     onClose={this.close}
                     horizontalAttachments={["left"]}
+                    autoWidth
                 >
                     <FilterPopover
-                        filter={this.props.filter}
-                        tableMetadata={this.props.tableMetadata}
-                        onCommitFilter={(filter) => this.props.updateFilter(this.props.index, filter)}
+                        query={query}
+                        filter={filter}
+                        onCommitFilter={(filter) => this.props.updateFilter && this.props.updateFilter(this.props.index, filter)}
                         onClose={this.close}
                     />
                 </Popover>

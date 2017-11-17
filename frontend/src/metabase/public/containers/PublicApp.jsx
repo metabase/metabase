@@ -16,7 +16,9 @@ const mapStateToProps = (state, props) => ({
 });
 
 @connect(mapStateToProps)
-export default class PublicApp extends Component<*, Props, *> {
+export default class PublicApp extends Component {
+    props: Props;
+
     render() {
         const { children, errorPage } = this.props;
         if (errorPage) {

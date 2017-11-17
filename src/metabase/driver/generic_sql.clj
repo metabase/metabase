@@ -1,26 +1,30 @@
 (ns metabase.driver.generic-sql
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            (clojure [set :as set]
-                     [string :as str])
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat])
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [field :as field]
-                             raw-table
-                             [table :as table])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
+            [metabase
+             [db :as db]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             metabase.query-processor.interface
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import (java.sql DatabaseMetaData ResultSet)
-           java.util.Map
-           (clojure.lang Keyword PersistentVector)
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
+           [java.sql DatabaseMetaData ResultSet]
+           java.util.Map
            metabase.models.field.FieldInstance
-           (metabase.query_processor.interface Field Value)))
+           [metabase.query_processor.interface Field Value]))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -71,11 +75,6 @@
      Other drivers like BigQuery need to do additional qualification, e.g. the dataset name as well.
      (At the time of this writing, this is only used by the SQL parameters implementation; in the future it will probably be used in more places as well.)")
 
-  (field-percent-urls [this field]
-    "*OPTIONAL*. Implementation of the `:field-percent-urls-fn` to be passed to `make-analyze-table`.
-     The default implementation is `fast-field-percent-urls`, which avoids a full table scan. Substitue this with `slow-field-percent-urls` for databases
-     where this doesn't work, such as SQL Server.")
-
   (field->alias ^String [this, ^Field field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
      returns the *unqualified* name of `Field`.
@@ -106,9 +105,10 @@
         (hsql/format ... :quoting (quote-style driver))")
 
   (set-timezone-sql ^String [this]
-    "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+    "*OPTIONAL*. This should be a format string containing a SQL statement to be used to set the timezone for the current transaction.
+     The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific`.
 
-       \"SET @@session.timezone = ?;\"")
+       \"SET @@session.timezone = %s;\"")
 
   (stddev-fn ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
@@ -137,14 +137,16 @@
 (defn- create-connection-pool
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
   [{:keys [id engine details]}]
-  (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
-  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (db/connection-pool (assoc spec
-                          :minimum-pool-size           1
-                          ;; prevent broken connections closed by dbs by testing them every 3 mins
-                          :idle-connection-test-period (* 3 60)
-                          ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                          :excess-timeout              (* 15 60)))))
+  (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
+        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
+    (assoc (db/connection-pool (assoc spec
+                                 :minimum-pool-size           1
+                                 ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                 :idle-connection-test-period (* 3 60)
+                                 ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                 :excess-timeout              (* 15 60)))
+      :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
@@ -155,7 +157,9 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
-    (.close ^ComboPooledDataSource (:datasource pool))))
+    (.close ^ComboPooledDataSource (:datasource pool))
+    (when-let [ssh-tunnel (:ssh-tunnel pool)]
+      (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
@@ -175,13 +179,26 @@
 
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
-   (Some drivers like MySQL provide this details field to allow special behavior where needed)."
-  {:arglists '([connection-spec details])}
-  [{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
-  (-> (dissoc connection-spec :additional-options)
-      (assoc :subname (str connection-string (when (seq additional-options)
-                                               (str (if (str/includes? connection-string "?") "&" "?")
-                                                    additional-options))))))
+   (Some drivers like MySQL provide this details field to allow special behavior where needed).
+
+   Optionally specify SEPERATOR-STYLE, which defaults to `:url` (e.g. `?a=1&b=2`). You may instead set it to `:semicolon`,
+   which will separate different options with semicolons instead (e.g. `;a=1;b=2`). (While most drivers require the former
+   style, some require the latter.)"
+  {:arglists '([connection-spec] [connection-spec details & {:keys [seperator-style]}])}
+  ;; single arity provided for cases when `connection-spec` is built by applying simple transformations to `details`
+  ([connection-spec]
+   (handle-additional-options connection-spec connection-spec))
+  ;; two-arity+options version provided for when `connection-spec` is being built up separately from `details` source
+  ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details} & {:keys [seperator-style]
+                                                                                                               :or   {seperator-style :url}}]
+   (-> (dissoc connection-spec :additional-options)
+       (assoc :subname (str connection-string (when (seq additional-options)
+                                                (str (case seperator-style
+                                                       :semicolon ";"
+                                                       :url       (if (str/includes? connection-string "?")
+                                                                    "&"
+                                                                    "?"))
+                                                     additional-options)))))))
 
 
 (defn escape-field-name
@@ -189,9 +206,9 @@
   ^clojure.lang.Keyword [k]
   (keyword (hx/escape-dots (name k))))
 
-
 (defn- can-connect? [driver details]
-  (let [connection (connection-details->spec driver details)]
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details)
+        connection (connection-details->spec driver details-with-tunnel)]
     (= 1 (first (vals (first (jdbc/query connection ["SELECT 1"])))))))
 
 (defn pattern-based-column->base-type
@@ -207,6 +224,7 @@
 
 (defn honeysql-form->sql+args
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
+  {:style/indent 1}
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
   (let [[sql & args] (try (binding [hformat/*subquery?* false]
@@ -223,97 +241,21 @@
   ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
 
 
+(def ^:private ^:dynamic *jdbc-options* {})
+
 (defn- query
   "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
   ([driver database honeysql-form]
    (jdbc/query (db->jdbc-connection-spec database)
-               (honeysql-form->sql+args driver honeysql-form)))
+               (honeysql-form->sql+args driver honeysql-form)
+               *jdbc-options*))
   ([driver database table honeysql-form]
    (query driver database (merge {:from [(qualify+escape table)]}
                                  honeysql-form))))
 
 
-(defn- field-values-lazy-seq [driver field]
-  (let [table          (field/table field)
-        db             (table/database table)
-        field-k        (qualify+escape table field)
-        pk-field       (field/Field (table/pk-field-id table))
-        pk-field-k     (when pk-field
-                         (qualify+escape table pk-field))
-        transform-fn   (if (isa? (:base_type field) :type/Text)
-                         u/jdbc-clob->str
-                         identity)
-        select*        {:select   [[field-k :field]]
-                        :from     [(qualify+escape table)]          ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
-                        :order-by [[(or pk-field-k field-k) :asc]]} ; try to order by the table's Primary Key to avoid doing full table scans
-        fetch-one-page (fn [page-num]
-                         (for [{v :field} (query driver db (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
-                                                                                              :page  (inc page-num)}}))]
-                           (transform-fn v)))
-
-        ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
-        ;; with a recursive call to (lazily) fetch the next chunk of results, until we run out of results or hit the limit.
-        fetch-page     (fn -fetch-page [page-num]
-                         (lazy-seq
-                          (let [results             (fetch-one-page page-num)
-                                total-items-fetched (* (inc page-num) driver/field-values-lazy-seq-chunk-size)]
-                            (concat results (when (and (seq results)
-                                                       (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                                       (= (count results) driver/field-values-lazy-seq-chunk-size))
-                                              (-fetch-page (inc page-num)))))))]
-    (fetch-page 0)))
-
-
 (defn- table-rows-seq [driver database table]
   (query driver database table {:select [:*]}))
-
-(defn- field-avg-length [driver field]
-  (let [table (field/table field)
-        db    (table/database table)]
-    (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
-                first
-                :len
-                math/round
-                int)
-        0)))
-
-(defn- url-percentage [url-count total-count]
-  (double (if (and total-count (pos? total-count) url-count)
-            ;; make sure to coerce to Double before dividing because if it's a BigDecimal division can fail for non-terminating floating-point numbers
-            (/ (double url-count)
-               (double total-count))
-            0.0)))
-
-;; TODO - Full table scan!?! Maybe just fetch first N non-nil values and do in Clojure-land instead
-(defn slow-field-percent-urls
-  "Slow implementation of `field-percent-urls` that (probably) requires a full table scan.
-   Only use this for DBs where `fast-field-percent-urls` doesn't work correctly, like SQLServer."
-  [driver field]
-  (let [table       (field/table field)
-        db          (table/database table)
-        field-k     (qualify+escape table field)
-        total-count (:count (first (query driver db table {:select [[:%count.* :count]]
-                                                           :where  [:not= field-k nil]})))
-        url-count   (:count (first (query driver db table {:select [[:%count.* :count]]
-                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
-    (url-percentage url-count total-count)))
-
-
-(defn fast-field-percent-urls
-  "Fast, default implementation of `field-percent-urls` that avoids a full table scan."
-  [driver field]
-  (let [table       (field/table field)
-        db          (table/database table)
-        field-k     (qualify+escape table field)
-        pk-field    (field/Field (table/pk-field-id table))
-        results     (map :is_url (query driver db table (merge {:select [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
-                                                                :where  [:not= field-k nil]
-                                                                :limit  driver/max-sync-lazy-seq-results}
-                                                               (when pk-field
-                                                                 {:order-by [[(qualify+escape table pk-field) :asc]]}))))
-        total-count (count results)
-        url-count   (count (filter #(or (true? %) (= % 1)) results))]
-    (url-percentage url-count total-count)))
 
 
 (defn features
@@ -324,7 +266,9 @@
             :foreign-keys
             :expressions
             :expression-aggregations
-            :native-parameters}
+            :native-parameters
+            :nested-queries
+            :binning}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 
@@ -412,17 +356,6 @@
             :dest-column-name (:pkcolumn_name result)}))))
 
 
-(defn analyze-table
-  "Default implementation of `analyze-table` for SQL drivers."
-  [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
-     :field-avg-length-fn   (partial field-avg-length driver)
-     :field-percent-urls-fn (partial field-percent-urls driver))
-   driver
-   table
-   new-table-ids))
-
-
 (defn ISQLDriverDefaultsMixin
   "Default implementations for methods in `ISQLDriver`."
   []
@@ -441,7 +374,6 @@
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
-   :field-percent-urls   fast-field-percent-urls
    :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
@@ -454,14 +386,12 @@
   []
   (require 'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table           analyze-table
-          :can-connect?            can-connect?
+         {:can-connect?            can-connect?
           :describe-database       describe-database
           :describe-table          describe-table
           :describe-table-fks      describe-table-fks
           :execute-query           (resolve 'metabase.driver.generic-sql.query-processor/execute-query)
           :features                features
-          :field-values-lazy-seq   field-values-lazy-seq
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
           :notify-database-updated notify-database-updated
           :table-rows-seq          table-rows-seq}))

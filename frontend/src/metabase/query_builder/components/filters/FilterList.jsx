@@ -5,22 +5,26 @@ import { findDOMNode } from 'react-dom';
 
 import FilterWidget from './FilterWidget.jsx';
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter } from "metabase/meta/types/Query";
-import type { Table } from "metabase/meta/types/Table";
+import Dimension from "metabase-lib/lib/Dimension";
+
+import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
+    query: StructuredQuery,
     filters: Array<Filter>,
-    tableMetadata: Table,
-    removeFilter: (index: number) => void,
-    updateFilter: (index: number, filter: Filter) => void,
-    maxDisplayValues?: bool
+    removeFilter?: (index: number) => void,
+    updateFilter?: (index: number, filter: Filter) => void,
+    maxDisplayValues?: number,
+    tableMetadata?: TableMetadata // legacy parameter
 };
 
 type State = {
     shouldScroll: bool
 };
 
-export default class FilterList extends Component<*, Props, State> {
+export default class FilterList extends Component {
     props: Props;
     state: State;
 
@@ -49,15 +53,19 @@ export default class FilterList extends Component<*, Props, State> {
     }
 
     render() {
-        const { filters, tableMetadata } = this.props;
+        const { query, filters, tableMetadata } = this.props;
         return (
             <div className="Query-filterList scroll-x scroll-show scroll-show--horizontal">
                 {filters.map((filter, index) =>
                     <FilterWidget
                         key={index}
                         placeholder="Item"
+                        // TODO: update widgets that are still passing tableMetadata instead of query
+                        query={query || {
+                            table: () => tableMetadata,
+                            parseFieldReference: (fieldRef) => Dimension.parseMBQL(fieldRef, tableMetadata)
+                        }}
                         filter={filter}
-                        tableMetadata={tableMetadata}
                         index={index}
                         removeFilter={this.props.removeFilter}
                         updateFilter={this.props.updateFilter}

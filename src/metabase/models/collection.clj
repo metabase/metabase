@@ -1,15 +1,18 @@
 (ns metabase.models.collection
-  (:require (clojure [data :as data]
-                     [string :as str])
-            [schema.core :as s]
+  (:require [clojure
+             [data :as data]
+             [string :as str]]
             [metabase.api.common :refer [*current-user-id*]]
-            (toucan [db :as db]
-                    [models :as models])
-            (metabase.models [collection-revision :refer [CollectionRevision], :as collection-revision]
-                             [interface :as i]
-                             [permissions :as perms])
+            [metabase.models
+             [collection-revision :as collection-revision :refer [CollectionRevision]]
+             [interface :as i]
+             [permissions :as perms]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."

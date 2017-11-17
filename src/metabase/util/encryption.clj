@@ -1,13 +1,14 @@
 (ns metabase.util.encryption
   "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the `MB_ENCRYPTION_SECRET_KEY` env var."
-  (:require (buddy.core [codecs :as codecs]
-                        [crypto :as crypto]
-                        [kdf :as kdf]
-                        [nonce :as nonce])
+  (:require [buddy.core
+             [codecs :as codecs]
+             [crypto :as crypto]
+             [kdf :as kdf]
+             [nonce :as nonce]]
             [clojure.tools.logging :as log]
             [environ.core :as env]
-            [ring.util.codec :as codec]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [ring.util.codec :as codec]))
 
 (defn secret-key->hash
   "Generate a 64-byte byte array hash of SECRET-KEY using 100,000 iterations of PBKDF2+SHA512."
@@ -26,9 +27,13 @@
       (secret-key->hash secret-key))))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
-(log/info (format "DB details encryption is %s for this Metabase instance. %s"
-                  (if default-secret-key "ENABLED" "DISABLED")
-                  (u/emoji (if default-secret-key "🔐" "🔓"))))
+(log/info
+ (format "DB details encryption is %s for this Metabase instance. %s"
+         (if default-secret-key "ENABLED" "DISABLED")
+         (u/emoji (if default-secret-key "🔐" "🔓")))
+ "\nSee"
+ "http://www.metabase.com/docs/latest/operations-guide/start.html#encrypting-your-database-connection-details-at-rest"
+ "for more information.")
 
 (defn encrypt
   "Encrypt string S as hex bytes using a SECRET-KEY (a 64-byte byte array), by default the hashed value of `MB_ENCRYPTION_SECRET_KEY`."

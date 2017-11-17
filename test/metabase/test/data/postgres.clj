@@ -1,10 +1,8 @@
 (ns metabase.test.data.postgres
   "Code for creating / destroying a Postgres database from a `DatabaseDefinition`."
-  (:require [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             postgres)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+  (:require [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
@@ -22,11 +20,13 @@
    :type/UUID       "UUID"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host     "localhost"
-          :port     5432
+  (merge {:host     (i/db-test-env-var-or-throw :postgresql :host "localhost")
+          :port     (i/db-test-env-var-or-throw :postgresql :port 5432)
           :timezone :America/Los_Angeles}
-         (when (env :circleci)
-           {:user "ubuntu"})
+         (when-let [user (i/db-test-env-var :postgresql :user)]
+           {:user user})
+         (when-let [password (i/db-test-env-var :postgresql :password)]
+           {:password password})
          (when (= context :db)
            {:db database-name})))
 
@@ -47,15 +47,15 @@
 
 
 (u/strict-extend PostgresDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     drop-db-if-exists-sql
           :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :load-data!                generic/load-data-all-at-once!
           :pk-sql-type               (constantly "SERIAL")})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
           :default-schema                     (constantly "public")
           :engine                             (constantly :postgres)

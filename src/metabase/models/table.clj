@@ -1,18 +1,19 @@
 (ns metabase.models.table
-  (:require [metabase.api.common :refer [*current-user-permissions-set*]]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.db :as mdb]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [humanization :as humanization]
-                             [interface :as i]
-                             [metric :refer [Metric retrieve-metrics]]
-                             [permissions :refer [Permissions], :as perms]
-                             [segment :refer [Segment retrieve-segments]])
-            [metabase.util :as u]))
-
+  (:require [metabase
+             [db :as mdb]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [humanization :as humanization]
+             [interface :as i]
+             [metric :refer [Metric retrieve-metrics]]
+             [permissions :as perms :refer [Permissions]]
+             [segment :refer [retrieve-segments Segment]]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Constants + Entity ------------------------------------------------------------
 
@@ -22,7 +23,8 @@
   #{:person :event :photo :place})
 
 (def ^:const visibility-types
-  "Valid values for `Table.visibility_type` (field may also be `nil`)."
+  "Valid values for `Table.visibility_type` (field may also be `nil`).
+   (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
 
@@ -149,48 +151,3 @@
   [table-id]
   {:pre [(integer? table-id)]}
   (db/select-one-field :db_id Table, :id table-id))
-
-
-;;; ------------------------------------------------------------ Persistence Functions ------------------------------------------------------------
-
-(defn retire-tables!
-  "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
-  [table-ids]
-  {:pre [(u/maybe? set? table-ids) (every? integer? table-ids)]}
-  (when (seq table-ids)
-    ;; retire the tables
-    (db/update-where! Table {:id [:in table-ids]}
-      :active false)
-    ;; retire the fields of retired tables
-    (db/update-where! Field {:table_id [:in table-ids]}
-      :visibility_type "retired")))
-
-(defn update-table-from-tabledef!
-  "Update `Table` with the data from TABLE-DEF."
-  [{:keys [id display_name], :as existing-table} {table-name :name}]
-  {:pre [(integer? id)]}
-  (let [updated-table (assoc existing-table
-                        :display_name (or display_name (humanization/name->human-readable-name table-name)))]
-    ;; the only thing we need to update on a table is the :display_name, if it never got set
-    (when (nil? display_name)
-      (db/update! Table id
-        :display_name (:display_name updated-table)))
-    ;; always return the table when we are done
-    updated-table))
-
-(defn create-table-from-tabledef!
-  "Create `Table` with the data from TABLE-DEF."
-  [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
-  (if-let [existing-id (db/select-one-id Table :db_id database-id, :raw_table_id raw-table-id, :schema schema-name, :name table-name, :active false)]
-    ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (db/update! Table existing-id
-      :active true)
-    ;; otherwise create a new Table
-    (db/insert! Table
-      :db_id           database-id
-      :raw_table_id    raw-table-id
-      :schema          schema-name
-      :name            table-name
-      :visibility_type visibility-type
-      :display_name    (humanization/name->human-readable-name table-name)
-      :active          true)))

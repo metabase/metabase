@@ -1,9 +1,9 @@
 **This guide will teach you:**
 
-> * How to compile your own copy of Metabase
-> * How to set up a development environment
-> * How to run the Metabase Server
-> * How to contribute back to the Metabase project
+*  [How to compile your own copy of Metabase](#build-metabase)
+*  [How to set up a development environment](#development-environment)
+*  [How to run the Metabase Server](#development-server-quick-start)
+*  [How to contribute back to the Metabase project](#contributing)
 
 
 # Contributing
@@ -14,6 +14,11 @@ For significant feature additions, it is expected that discussion will have take
 
 We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a Contributor License Agreement [here](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform)
 
+# Development on Windows
+
+The development scripts are designed for Linux/Mac environment, so we recommend using the latest Windows 10 version with [WSL (Windows Subsystem for Linux)](https://msdn.microsoft.com/en-us/commandline/wsl/about) and [Ubuntu on Windows](https://www.microsoft.com/store/p/ubuntu/9nblggh4msv6). The Ubuntu Bash shell works well for both backend and frontend development.
+
+If you have problems with your development environment, make sure that you are not using any development commands outside the Bash shell. As an example, Node dependencies installed in normal Windows environment will not work inside Ubuntu Bash environment.
 
 # Install Prerequisites
 
@@ -24,6 +29,7 @@ These are the set of tools which are required in order to complete any build of 
 3. [Yarn package manager for Node.js](https://yarnpkg.com/)
 3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
+If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
 # Build Metabase
 
@@ -70,9 +76,6 @@ Start the frontend build process with
 
     yarn run build-hot
 
-This will get you a full development server running on port :3000 by default.
-
-
 ## Frontend development
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
@@ -102,29 +105,109 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn run build-watch
 ```
 
-#### Unit Tests / Linting
+### Frontend testing
 
-Run unit tests with
+All frontend tests are located in `frontend/test` directory. Run all frontend tests with
 
-    yarn run jest             # Jest
-    yarn run test             # Karma
+```
+./bin/build version uberjar && yarn run test
+```
 
-Run the linters and type checker with
+which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
 
-    yarn run lint
-    yarn run flow
+### Jest integration tests
+Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
 
-#### End-to-end tests
+Integration tests use an enforced file naming convention `<test-suite-name>.integ.js` to separate them from unit tests.
 
-End-to-end tests are written with [webschauffeur](https://github.com/metabase/webchauffeur) which is a wrapper around [`selenium-webdriver`](https://www.npmjs.com/package/selenium-webdriver).
+Useful commands:
+```bash
+./bin/build version uberjar # Builds the JAR without frontend assets; run this every time you need to update the backend
+yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
+yarn run test-integrated-watch -- TestFileName # Watches the files in paths that match the given (regex) string
+```
 
-Run E2E tests once with
+The way integration tests are written is a little unconventional so here is an example that hopefully helps in getting up to speed:
 
-    yarn run test-e2e
+```
+import {
+    useSharedAdminLogin,
+    createTestStore,
+} from "__support__/integrated_tests";
+import {
+    click
+} from "__support__/enzyme_utils"
 
-or use a persistent browser session with
+import { mount } from "enzyme"
 
-    yarn run test-e2e-dev
+import { FETCH_DATABASES } from "metabase/redux/metadata";
+import { INITIALIZE_QB } from "metabase/query_builder/actions";
+import RunButton from "metabase/query_builder/components/RunButton";
+
+describe("Query builder", () => {
+    beforeAll(async () => {
+        // Usually you want to test stuff where user is already logged in
+        // so it is convenient to login before any test case.
+        useSharedAdminLogin()
+    })
+
+    it("should let you run a new query", async () => {
+        // Create a superpowered Redux store.
+        // Remember `await` here!
+        const store = await createTestStore()
+
+        // Go to a desired path in the app. This is safest to do before mounting the app.
+        store.pushPath('/question')
+
+        // Get React container for the whole app and mount it using Enzyme
+        const app = mount(store.getAppContainer())
+
+        // Usually you want to wait until the page has completely loaded, and our way to do that is to
+        // wait until the completion of specified Redux actions. `waitForActions` is also useful for verifying that
+        // specific operations are properly executed after user interactions.
+        // Remember `await` here!
+        await store.waitForActions([FETCH_DATABASES, INITIALIZE_QB])
+
+        // You can use `enzymeWrapper.debug()` to see what is the state of DOM tree at the moment
+        console.log(app.debug())
+
+        // You can use `testStore.debug()` method to see which Redux actions have been dispatched so far.
+        // Note that as opposed to Enzyme's debugging method, you don't need to wrap the call to `console.log()`.
+        store.debug();
+
+        // For simulating user interactions like clicks and input events you should use methods defined
+        // in `enzyme_utils.js` as they abstract away some React/Redux complexities.
+        click(app.find(RunButton))
+
+        // Note: In pretty rare cases where rendering the whole app is problematic or slow, you can just render a single
+        // React container instead with `testStore.connectContainer(container)`. In that case you are not able
+        // to click links that lead to other router paths.
+    });
+})
+
+```
+
+You can also skim through [`__support__/integrated_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/integrated_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
+
+
+### Jest unit tests
+
+Unit tests are focused around isolated parts of business logic.
+
+Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
+
+```
+yarn run test-unit # Run all tests at once
+yarn run test-unit-watch # Watch for file changes
+```
+
+### Karma browser tests
+If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
+
+```
+yarn run test-karma # Run all tests once
+yarn run test-karma-watch # Watch for file changes
+```
 
 ## Backend development
 Leiningen and your REPL are the main development tools for the backend.  There are some directions below on how to setup your REPL for easier development.
@@ -148,10 +231,12 @@ By default, the tests only run against the `h2` driver. You can specify which dr
 
     ENGINES=h2,postgres,mysql,mongo lein test
 
-At the time of this writing, the valid engines are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, `sqlite`, `druid`, `bigquery`, and `redshift`. Some of these engines require additional parameters
+At the time of this writing, the valid engines are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, `sqlite`, `druid`, `bigquery`, `oracle`, `vertica`, and `redshift`. Some of these engines require additional parameters
 when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
-Run the linters:
+Due to some issues with the way we've structured our test setup code, you currently always need to include `h2` in the `ENGINES` list. Thus to test something like `bigquery` you should specify `ENGINES=h2,bigquery`. Fortunately the H2 tests are fast so this should not make a noticeable difference.
+
+##### Run the linters:
 
     lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter
 
@@ -178,9 +263,8 @@ Start up an instant cheatsheet for the project + dependencies by running
 
     lein instant-cheatsheet
 
-
 ## License
 
-Copyright © 2016 Metabase, Inc
+Copyright © 2017 Metabase, Inc
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.

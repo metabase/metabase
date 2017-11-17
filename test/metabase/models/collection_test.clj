@@ -1,11 +1,11 @@
 (ns metabase.models.collection-test
   (:require [expectations :refer :all]
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]]
+            [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection]])
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [toucan.util.test :as tt]))
 
 ;; test that we can create a new Collection with valid inputs
 (expect

@@ -90,7 +90,8 @@ export function getSelectionPosition(element) {
     else {
         try {
             const selection = window.getSelection();
-            const range = selection.getRangeAt(0);
+            // Clone the Range otherwise setStart/setEnd will mutate the actual selection in Chrome 58+ and Firefox!
+            const range = selection.getRangeAt(0).cloneRange();
             const { startContainer, startOffset } = range;
             range.setStart(element, 0);
             const end = range.toString().length;
@@ -206,4 +207,37 @@ export function constrainToScreen(element, direction, padding) {
         throw new Error("Direction " + direction + " not implemented");
     }
     return false;
+}
+
+// Used for tackling Safari rendering issues
+// http://stackoverflow.com/a/3485654
+export function forceRedraw(domNode) {
+    domNode.style.display='none';
+    domNode.offsetHeight;
+    domNode.style.display='';
+}
+
+export function moveToBack(element) {
+    if (element && element.parentNode) {
+        element.parentNode.insertBefore(
+            element,
+            element.parentNode.firstChild
+        );
+    }
+}
+
+export function moveToFront(element) {
+    if (element && element.parentNode) {
+        element.parentNode.appendChild(element);
+    }
+}
+
+/**
+ * @returns the clip-path CSS property referencing the clip path in the current document, taking into account the <base> tag.
+ */
+export function clipPathReference(id: string): string {
+    // add the current page URL (with fragment removed) to support pages with <base> tag.
+    // https://stackoverflow.com/questions/18259032/using-base-tag-on-a-page-that-contains-svg-marker-elements-fails-to-render-marke
+    const url = window.location.href.replace(/#.*$/, "") + "#" + id;
+    return `url(${url})`;
 }

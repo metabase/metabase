@@ -1,11 +1,9 @@
 (ns metabase.query-processor-test.joins-test
   "Test for JOIN behavior."
-  (:require [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)

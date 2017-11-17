@@ -1,15 +1,20 @@
 /* @flow */
 
-import { toUnderlyingData } from "metabase/qb/lib/actions";
+import type {
+    ClickAction,
+    ClickActionProps
+} from "metabase/meta/types/Visualization";
 
-import type { ClickActionProps } from "metabase/meta/types/Visualization";
-
-export default ({ card, tableMetadata }: ClickActionProps) => {
-    if (card.display !== "table" && card.display !== "scalar") {
-        return {
-            title: "View the underlying data",
-            icon: "table",
-            card: () => toUnderlyingData(card)
-        };
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    if (question.display() !== "table" && question.display() !== "scalar") {
+        return [
+            {
+                name: "underlying-data",
+                title: "View this as a table",
+                icon: "table",
+                question: () => question.toUnderlyingData()
+            }
+        ];
     }
+    return [];
 };

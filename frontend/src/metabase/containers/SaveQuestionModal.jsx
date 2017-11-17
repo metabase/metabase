@@ -14,6 +14,7 @@ import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
 import "./SaveQuestionModal.css";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 export default class SaveQuestionModal extends Component {
 
@@ -40,7 +41,8 @@ export default class SaveQuestionModal extends Component {
         tableMetadata: PropTypes.object, // can't be required, sometimes null
         createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
-        onClose: PropTypes.func.isRequired
+        onClose: PropTypes.func.isRequired,
+        multiStep: PropTypes.bool
     }
 
     componentDidMount() {
@@ -83,7 +85,7 @@ export default class SaveQuestionModal extends Component {
             }
 
             let { details } = this.state;
-            let { card, originalCard, addToDashboard, createFn, saveFn } = this.props;
+            let { card, originalCard, createFn, saveFn } = this.props;
 
             card = {
                 ...card,
@@ -94,22 +96,28 @@ export default class SaveQuestionModal extends Component {
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
                     details.description ? details.description.trim() : null,
-                collection_id: details.collection_id
+                collection_id: details.saveType === "overwrite" ?
+                    originalCard.collection_id :
+                    details.collection_id
             };
 
             if (details.saveType === "create") {
-                this.requestPromise = cancelable(createFn(card, addToDashboard));
+                this.requestPromise = cancelable(createFn(card));
             } else if (details.saveType === "overwrite") {
                 card.id = this.props.originalCard.id;
-                this.requestPromise = cancelable(saveFn(card, addToDashboard));
+                this.requestPromise = cancelable(saveFn(card));
             }
 
             await this.requestPromise;
+            this.requestPromise = null;
             this.props.onClose();
         } catch (error) {
             if (error && !error.isCanceled) {
                 this.setState({ error: error });
             }
+
+            // Throw error for ButtonWithStatus
+            throw error;
         }
     }
 
@@ -158,7 +166,7 @@ export default class SaveQuestionModal extends Component {
             );
         }
 
-        let title = this.props.addToDashboard ? "First, save your question" : "Save question";
+        let title = this.props.multiStep ? "First, save your question" : "Save question";
 
         return (
             <ModalContent
@@ -169,9 +177,10 @@ export default class SaveQuestionModal extends Component {
                         <Button onClick={this.props.onClose}>
                             Cancel
                         </Button>,
-                        <Button primary={this.state.valid} disabled={!this.state.valid} onClick={this.formSubmitted}>
-                            Save
-                        </Button>
+                        <ButtonWithStatus
+                            disabled={!this.state.valid}
+                            onClickOperation={this.formSubmitted}
+                        />
                 ]}
                 onClose={this.props.onClose}
             >

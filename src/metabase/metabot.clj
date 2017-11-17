@@ -1,26 +1,29 @@
 (ns metabase.metabot
   (:refer-clojure :exclude [list +])
-  (:require (clojure [edn :as edn]
-                     [string :as str])
+  (:require [aleph.http :as aleph]
+            [cheshire.core :as json]
+            [clojure
+             [edn :as edn]
+             [string :as str]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [aleph.http :as aleph]
-            [cheshire.core :as json]
-            (manifold [bus :as bus]
-                      [deferred :as d]
-                      [stream :as s])
-            [throttle.core :as throttle]
+            [manifold
+             [deferred :as d]
+             [stream :as s]]
+            [metabase
+             [pulse :as pulse]
+             [util :as u]]
             [metabase.api.common :refer [*current-user-permissions-set* read-check]]
-            [toucan.db :as db]
             [metabase.integrations.slack :as slack]
-            (metabase.models [card :refer [Card]]
-                             [interface :as mi]
-                             [permissions :refer [Permissions]]
-                             [permissions-group :as perms-group]
-                             [setting :refer [defsetting], :as setting])
-            (metabase [pulse :as pulse]
-                      [util :as u])
-            [metabase.util.urls :as urls]))
+            [metabase.models
+             [card :refer [Card]]
+             [interface :as mi]
+             [permissions :refer [Permissions]]
+             [permissions-group :as perms-group]
+             [setting :as setting :refer [defsetting]]]
+            [metabase.util.urls :as urls]
+            [throttle.core :as throttle]
+            [toucan.db :as db]))
 
 (defsetting metabot-enabled
   "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
@@ -126,7 +129,7 @@
      (do
        (with-metabot-permissions
          (read-check Card card-id))
-       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id, :context :metabot)])]
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! (pulse/create-slack-attachment-data [(pulse/execute-card card-id, :context :metabot)]))]
                    (slack/post-chat-message! *channel-id*
                                              nil
                                              attachments)))

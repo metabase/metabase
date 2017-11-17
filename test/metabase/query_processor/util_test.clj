@@ -105,3 +105,53 @@
     (qputil/query-hash {:database    2
                         :type        "native"
                         :native      {:query "SELECT pg_sleep(15), 2 AS two"}})))
+
+
+;;; ------------------------------------------------------------ Tests for get-normalized and get-in-normalized ------------------------------------------------------------
+
+(expect 2 (qputil/get-normalized {"num_toucans" 2} :num-toucans))
+(expect 2 (qputil/get-normalized {"NUM_TOUCANS" 2} :num-toucans))
+(expect 2 (qputil/get-normalized {"num-toucans" 2} :num-toucans))
+(expect 2 (qputil/get-normalized {:num_toucans 2}  :num-toucans))
+(expect 2 (qputil/get-normalized {:NUM_TOUCANS 2}  :num-toucans))
+(expect 2 (qputil/get-normalized {:num-toucans 2}  :num-toucans))
+
+(expect
+  nil
+  (qputil/get-normalized nil :num-toucans))
+
+(expect 2 (qputil/get-in-normalized {"BIRDS" {"NUM_TOUCANS" 2}} [:birds :num-toucans]))
+(expect 2 (qputil/get-in-normalized {"birds" {"num_toucans" 2}} [:birds :num-toucans]))
+(expect 2 (qputil/get-in-normalized {"birds" {"num-toucans" 2}} [:birds :num-toucans]))
+(expect 2 (qputil/get-in-normalized {:BIRDS  {:NUM_TOUCANS 2}}  [:birds :num-toucans]))
+(expect 2 (qputil/get-in-normalized {:birds  {:num_toucans 2}}  [:birds :num-toucans]))
+(expect 2 (qputil/get-in-normalized {:birds  {:num-toucans 2}}  [:birds :num-toucans]))
+
+(expect
+  2
+  (qputil/get-in-normalized {:num-toucans 2} [:num-toucans]))
+
+(expect
+  nil
+  (qputil/get-in-normalized nil [:birds :num-toucans]))
+
+(expect
+  10
+  (qputil/get-in-normalized
+   {"dataset_query" {"query" {"source_table" 10}}}
+   [:dataset-query :query :source-table]))
+
+(expect {} (qputil/dissoc-normalized {"NUM_TOUCANS" 3} :num-toucans))
+(expect {} (qputil/dissoc-normalized {"num_toucans" 3} :num-toucans))
+(expect {} (qputil/dissoc-normalized {"num-toucans" 3} :num-toucans))
+(expect {} (qputil/dissoc-normalized {:NUM_TOUCANS 3}  :num-toucans))
+(expect {} (qputil/dissoc-normalized {:num_toucans 3}  :num-toucans))
+(expect {} (qputil/dissoc-normalized {:num-toucans 3}  :num-toucans))
+
+(expect
+  {}
+  (qputil/dissoc-normalized {:num-toucans 3, "NUM_TOUCANS" 3, "num_toucans" 3} :num-toucans))
+
+(expect
+  nil
+  (qputil/dissoc-normalized nil :num-toucans))

@@ -1,12 +1,17 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
-            [toucan.db :as db]
-            [metabase.config :as config]
-            (metabase.models [common :as common]
-                             [setting :refer [defsetting], :as setting])
-            [metabase.types :as types]
-            [metabase.util.password :as password])
-  (:import java.util.TimeZone))
+            [metabase
+             [config :as config]
+             [types :as types]]
+            [metabase.models
+             [common :as common]
+             [setting :as setting :refer [defsetting]]]
+            [metabase.public-settings.metastore :as metastore]
+            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
+            [metabase.util.password :as password]
+            [toucan.db :as db])
+  (:import java.util.Locale
+           java.util.TimeZone))
 
 (defsetting check-for-updates
   "Identify when new versions of Metabase are available."
@@ -31,6 +36,15 @@
                                              (cond->> (s/replace new-value #"/$" "")
                                                (not (s/starts-with? new-value "http")) (str "http://"))))))
 
+(defsetting site-locale
+  "The default language for this Metabase instance. This only applies to emails, Pulses, etc. Users' browsers will
+   specify the language used in the user interface."
+  :type    :string
+  :setter  (fn [new-value]
+             (setting/set-string! :site-locale new-value)
+             (set-locale new-value))
+  :default "en")
+
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
 
@@ -53,6 +67,11 @@
   :type    :boolean
   :default false)
 
+(defsetting enable-nested-queries
+  "Allow using a saved question as the source for other queries?"
+  :type    :boolean
+  :default true)
+
 
 (defsetting enable-query-caching
   "Enabling caching will save the results of queries that take a long time to run."
@@ -60,7 +79,7 @@
   :default false)
 
 (defsetting query-caching-max-kb
-  "The maximum size of the cache per card, in kilobytes:"
+  "The maximum size of the cache, per saved question, in kilobytes:"
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
@@ -86,10 +105,22 @@
   :type    :integer
   :default 10)
 
+(defsetting breakout-bins-num
+  "When using the default binning strategy and a number of bins is not
+  provided, this number will be used as the default."
+  :type :integer
+  :default 8)
+
+(defsetting breakout-bin-width
+  "When using the default binning strategy for a field of type
+  Coordinate (such as Latitude and Longitude), this number will be used
+  as the default bin width (in degrees)."
+  :type :double
+  :default 10.0)
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).
-   Intended for use as part of a `post-select` implementation for Cards and Dashboards."
+  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
+   won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
   [object]
   (if (and (:public_uuid object)
            (not (enable-public-sharing)))
@@ -109,25 +140,35 @@
 
 
 (defn public-settings
-  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end application."
+  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
+   application."
   []
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
    :email_configured      ((resolve 'metabase.email/email-configured?))
+   :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
+   :enable_nested_queries (enable-nested-queries)
+   :enable_xrays          (setting/get :enable-xrays)
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :hide_embed_branding   (metastore/hide-embed-branding?)
+   :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
+   :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
+   :metastore_url         metastore/store-url
    :password_complexity   password/active-password-complexity
+   :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
-   :embedding             (enable-embedding)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
    :site_name             (site-name)
+   :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents)
-   :version               config/mb-version-info})
+   :version               config/mb-version-info
+   :xray_max_cost         (setting/get :xray-max-cost)})

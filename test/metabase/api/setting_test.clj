@@ -1,11 +1,6 @@
 (ns metabase.api.setting-test
   (:require [expectations :refer :all]
-            (metabase.models [setting :as setting]
-                             [setting-test :refer [set-settings!
-                                                   setting-exists-in-db?
-                                                   test-setting-1
-                                                   test-setting-2]])
-            [metabase.test.data :refer :all]
+            [metabase.models.setting-test :refer [set-settings! test-setting-1 test-setting-2]]
             [metabase.test.data.users :refer :all]))
 
 ;; ## Helper Fns
@@ -20,8 +15,8 @@
 ;; ## GET /api/setting
 ;; Check that we can fetch all Settings for Org
 (expect
- [{:key "test-setting-1", :value nil,     :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
-  {:key "test-setting-2", :value "FANCY", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
+ [{:key "test-setting-1", :value nil,     :is_env_setting true,  :env_name "MB_TEST_SETTING_1", :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
+  {:key "test-setting-2", :value "FANCY", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
  (do (set-settings! nil "FANCY")
      (fetch-test-settings)))
 

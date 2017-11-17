@@ -56,6 +56,11 @@ cd metabase-deploy
 git remote add heroku https://git.heroku.com/your-metabase-app.git
 ```
 
+* If you are upgrading from a version that is lower than 0.25, add the Metabase buildpack to your Heroku app:
+```
+heroku buildpacks:add https://github.com/metabase/metabase-buildpack
+```
+
 * Force push the new version to Heroku:
 
 ```bash

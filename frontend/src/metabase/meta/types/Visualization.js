@@ -3,8 +3,10 @@
 import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { Field, FieldId } from "metabase/meta/types/Field";
+import Question from "metabase-lib/lib/Question";
 
-export type ActionCreator = (props: ClickActionProps) => ?ClickAction
+export type ActionCreator = (props: ClickActionProps) => ClickAction[]
 
 export type QueryMode = {
     name: string,
@@ -29,34 +31,41 @@ export type DimensionValue = {
 
 export type ClickObject = {
     value?: Value,
-    column: Column,
+    column?: Column,
     dimensions?: DimensionValue[],
     event?: MouseEvent,
     element?: HTMLElement,
+    seriesIndex?: number,
 }
 
 export type ClickAction = {
     title: any, // React Element
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card
+    question?: () => ?Question,
+    url?: () => string,
+    section?: string,
+    name?: string,
 }
 
 export type ClickActionProps = {
-    card: Card,
-    tableMetadata: TableMetadata,
-    clicked?: ClickObject
+    question: Question,
+    clicked?: ClickObject,
+    settings: {
+        'enable_xrays': boolean,
+        'xray_max_cost': string
+    }
 }
 
+export type OnChangeCardAndRun = ({ nextCard: Card, previousCard?: ?Card }) => void
+
 export type ClickActionPopoverProps = {
-    onChangeCardAndRun: (card: ?Card) => void,
+    onChangeCardAndRun: OnChangeCardAndRun,
     onClose: () => void,
 }
 
-// type Visualization = Component<*, VisualizationProps, *>;
-
-// $FlowFixMe
-export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
+export type SingleSeries = { card: Card, data: DatasetData };
+export type Series = SingleSeries[] & { _raw: Series }
 
 export type VisualizationProps = {
     series: Series,
@@ -74,12 +83,39 @@ export type VisualizationProps = {
     isDashboard: boolean,
     isEditing: boolean,
     actionButtons: Node,
-    linkToCard?: bool,
+
+    onRender: ({
+        yAxisSplit?: number[][],
+        warnings?: string[]
+    }) => void,
 
     hovered: ?HoverObject,
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
+    onChangeCardAndRun: OnChangeCardAndRun,
 
-    onUpdateVisualizationSettings: ({ [key: string]: any }) => void
+    onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
+
+    // object detail
+    tableMetadata: ?TableMetadata,
+    tableForeignKeys: ?ForeignKey[],
+    tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
+    loadObjectDetailFKReferences: () => void,
+    followForeignKey: (fk: any) => void,
 }
+
+type ForeignKeyId = number;
+type ForeignKey = {
+    id: ForeignKeyId,
+    relationship: string,
+    origin: Field,
+    origin_id: FieldId,
+    destination: Field,
+    destination_id: FieldId,
+}
+
+type ForeignKeyCountInfo = {
+    status: number,
+    value: number,
+};

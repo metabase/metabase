@@ -1,14 +1,12 @@
 (ns metabase.models.dependency-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [models :as models])
-            [toucan.util.test :as tt]
-            (metabase.models [dependency :refer :all]
-                             [interface :as i])
+            [metabase.models.dependency :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]
+            [toucan.util.test :as tt]))
 
 (models/defmodel Mock :mock)
 

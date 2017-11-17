@@ -2,7 +2,7 @@
   "Tests for `/api/tiles` endpoints."
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]))
 

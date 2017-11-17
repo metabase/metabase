@@ -1,16 +1,13 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [permissions :as perms]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [table :refer [Table]])
+            [metabase.models
+             [database :refer [Database]]
+             [permissions :as perms]
+             [permissions-group :refer [PermissionsGroup]]
+             [table :refer [Table]]]
             [metabase.test.data :as data]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
-
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 ;;; ------------------------------------------------------------ valid-object-path? ------------------------------------------------------------
 

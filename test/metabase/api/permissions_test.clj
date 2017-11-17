@@ -1,11 +1,10 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.models.permissions-group :refer [PermissionsGroup], :as group]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.test.data.users :as test-users]
-            [metabase.util :as u]))
-
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 ;; GET /permissions/group
 ;; Should *not* include inactive users in the counts.

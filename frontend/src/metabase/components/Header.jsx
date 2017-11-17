@@ -25,16 +25,24 @@ export default class Header extends Component {
         };
     }
 
-    componentDidMount() {
-        this.componentDidUpdate();
+   componentDidMount() {
+        this.updateHeaderHeight();
+   }
+
+    componentWillUpdate() {
+        const modalIsOpen = !!this.props.headerModalMessage;
+        if (modalIsOpen) {
+            this.updateHeaderHeight()
+        }
     }
-    componentDidUpdate() {
-        if (this.refs.header) {
-            const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
-            const headerHeight = rect.top + getScrollY();
-            if (this.state.headerHeight !== headerHeight) {
-                this.setState({ headerHeight });
-            }
+
+    updateHeaderHeight() {
+        if (!this.refs.header) return;
+
+        const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+        const headerHeight = rect.top + getScrollY();
+        if (this.state.headerHeight !== headerHeight) {
+            this.setState({ headerHeight });
         }
     }
 

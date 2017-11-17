@@ -1,18 +1,33 @@
 /* @flow */
 
 import type { Card, CardId, VisualizationSettings } from "./Card";
-
-import type { ConcreteField } from "./Query";
+import type { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;
 
 export type Dashboard = {
     id: DashboardId,
     name: string,
+    favorite: boolean,
+    archived: boolean,
+    created_at: ?string,
+    creator_id: number,
+    description: ?string,
+    caveats?: string,
+    points_of_interest?: string,
+    show_in_getting_started?: boolean,
+    // incomplete
+    parameters: Array<Parameter>
+}
+
+// TODO Atte Keinänen 4/5/16: After upgrading Flow, use spread operator `...Dashboard`
+export type DashboardWithCards = {
+    id: DashboardId,
+    name: string,
     description: ?string,
     ordered_cards: Array<DashCard>,
     // incomplete
-    parameters: Array<Parameter>
+    parameters: Array<Parameter>,
 };
 
 export type DashCardId = number;
@@ -27,7 +42,6 @@ export type DashCard = {
     series: Array<Card>,
 
     // incomplete
-
     parameter_mappings: Array<ParameterMapping>,
     visualization_settings: VisualizationSettings,
 
@@ -36,54 +50,3 @@ export type DashCard = {
     sizeY: number,
     sizeX: number
 };
-
-export type ParameterId = string;
-
-export type ParameterType = string;
-
-export type Parameter = {
-    id: ParameterId,
-    name: string,
-    type: ParameterType,
-    slug: string,
-    default?: string
-};
-
-export type VariableTarget = ["template-tag", string];
-export type DimensionTarget = ["template-tag", string] | ConcreteField
-
-export type ParameterMappingTarget =
-    ["variable", VariableTarget] |
-    ["dimension", DimensionTarget];
-
-export type ParameterMappingOption = {
-    name: string,
-    target: ParameterMappingTarget,
-};
-
-export type ParameterMapping = {
-    card_id: CardId,
-    parameter_id: ParameterId,
-    target: ParameterMappingTarget
-};
-
-export type ParameterOption = {
-    name: string,
-    description?: string,
-    type: ParameterType
-};
-
-export type ParameterInstance = {
-    type: ParameterType,
-    target: ParameterMappingTarget,
-    value: string
-};
-
-
-
-export type ParameterMappingUIOption = ParameterMappingOption & {
-    icon: ?string,
-    sectionName: string,
-    isFk?: boolean,
-    isVariable?: boolean,
-}

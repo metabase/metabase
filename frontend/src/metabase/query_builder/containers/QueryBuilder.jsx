@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
@@ -6,7 +8,6 @@ import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { isPK, isFK } from "metabase/lib/types";
 
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
@@ -25,8 +26,8 @@ import {
     getCard,
     getOriginalCard,
     getLastRunCard,
-    getDatabases,
     getQueryResult,
+    getQueryResults,
     getParameterValues,
     getIsDirty,
     getIsNew,
@@ -36,15 +37,20 @@ import {
     getTableForeignKeys,
     getTableForeignKeyReferences,
     getUiControls,
-    getParametersWithValues,
+    getParameters,
     getDatabaseFields,
     getSampleDatasetId,
     getNativeDatabases,
     getIsRunnable,
     getIsResultDirty,
     getMode,
+    getQuery,
+    getQuestion,
+    getOriginalQuestion,
+    getSettings
 } from "../selectors";
 
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -52,16 +58,8 @@ import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
 
-function cellIsClickable(queryResult, rowIndex, columnIndex) {
-    if (!queryResult) return false;
-
-    // lookup the coldef and cell value of the cell we are curious about
-    var coldef = queryResult.data.cols[columnIndex];
-
-    if (!coldef || !coldef.special_type) return false;
-
-    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
-}
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
@@ -77,29 +75,36 @@ const mapStateToProps = (state, props) => {
         isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
 
+        question:                  getQuestion(state),
+        query:                     getQuery(state),
+
         mode:                      getMode(state),
 
         card:                      getCard(state),
         originalCard:              getOriginalCard(state),
+        originalQuestion:          getOriginalQuestion(state),
         lastRunCard:               getLastRunCard(state),
 
         parameterValues:           getParameterValues(state),
 
-        databases:                 getDatabases(state),
+        databases:                 getDatabasesList(state),
         nativeDatabases:           getNativeDatabases(state),
         tables:                    getTables(state),
         tableMetadata:             getTableMetadata(state),
+        metadata:                  getMetadata(state),
+
         tableForeignKeys:          getTableForeignKeys(state),
         tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
         result:                    getQueryResult(state),
+        results:                   getQueryResults(state),
 
         isDirty:                   getIsDirty(state),
         isNew:                     getIsNew(state),
         isObjectDetail:            getIsObjectDetail(state),
 
         uiControls:                getUiControls(state),
-        parameters:                getParametersWithValues(state),
+        parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
 
@@ -112,7 +117,7 @@ const mapStateToProps = (state, props) => {
 
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
-        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
+        instanceSettings:          getSettings(state)
     }
 }
 
@@ -125,19 +130,18 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
+
+
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || "Question")
 export default class QueryBuilder extends Component {
+    forceUpdateDebounced: () => void;
 
     constructor(props, context) {
         super(props, context);
 
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
-
-        this.state = {
-            legacy: true
-        }
     }
 
     componentWillMount() {
@@ -200,7 +204,7 @@ export default class QueryBuilder extends Component {
 
 class LegacyQueryBuilder extends Component {
     render() {
-        const { card, isDirty, databases, uiControls, mode } = this.props;
+        const { query, card, isDirty, databases, uiControls, mode, } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -220,24 +224,25 @@ class LegacyQueryBuilder extends Component {
                     </div>
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
-                        { card && card.dataset_query && card.dataset_query.type === "native" ?
+                        { query instanceof NativeQuery ?
                             <NativeQueryEditor
                                 {...this.props}
                                 isOpen={!card.dataset_query.native.query || isDirty}
                                 datasetQuery={card && card.dataset_query}
                             />
-                        :
+                        : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
                                 <GuiQueryEditor
                                     {...this.props}
                                     datasetQuery={card && card.dataset_query}
                                 />
                             </div>
-                        }
+                        : null }
                     </div>
 
-                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
+                    <div ref="viz" id="react_qb_viz" className="flex z1"
+                         style={{"transition": "opacity 0.25s ease-in-out"}}>
+                        <QueryVisualization {...this.props} className="full wrapper mb2 z1"/>
                     </div>
 
                     { ModeFooter &&
@@ -250,7 +255,7 @@ class LegacyQueryBuilder extends Component {
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
-                    { uiControls.isShowingTemplateTagsEditor &&
+                    { uiControls.isShowingTemplateTagsEditor && query instanceof NativeQuery &&
                         <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>

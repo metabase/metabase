@@ -35,7 +35,7 @@ export function augmentDatabase(database) {
         table.fields_lookup = createLookupByProperty(table.fields, "id");
         for (let field of table.fields) {
             addFkTargets(field, database.tables_lookup);
-            field.operators_lookup = createLookupByProperty(field.valid_operators, "name");
+            field.operators_lookup = createLookupByProperty(field.operators, "name");
         }
     }
     return database;
@@ -58,7 +58,7 @@ function populateQueryOptions(table) {
     _.each(table.fields, function(field) {
         table.fields_lookup[field.id] = field;
         field.operators_lookup = {};
-        _.each(field.valid_operators, function(operator) {
+        _.each(field.operators, function(operator) {
             field.operators_lookup[operator.name] = operator;
         });
     });

@@ -3,9 +3,7 @@
             [metabase.api.common :refer :all]
             [metabase.api.common.internal :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.test.util :refer :all]
             [metabase.util.schema :as su]))
-
 
 ;;; TESTS FOR CHECK (ETC)
 

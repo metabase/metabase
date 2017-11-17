@@ -24,24 +24,32 @@ import type {
 } from "metabase/meta/types/Query";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange, hideTimeSelectors }) =>
-    <SpecificDatePicker
-        value={value}
-        onChange={(value) => onFilterChange([op, field, value])}
-        hideTimeSelectors={hideTimeSelectors}
-        calendar />
+    <div className="mx2">
+        <SpecificDatePicker
+            value={value}
+            onChange={(value) => onFilterChange([op, field, value])}
+            hideTimeSelectors={hideTimeSelectors}
+            calendar
+        />
+    </div>
 
 const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange , hideTimeSelectors}) =>
     <div className="mx2 mb1">
-        <div className="flex">
-            <SpecificDatePicker
-                value={startValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, value, endValue])}  />
-            <span className="mx2 mt2">&ndash;</span>
-            <SpecificDatePicker
-                value={endValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, startValue, value])} />
+        <div className="Grid Grid--1of2 Grid--gutters">
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={startValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, value, endValue])}
+                />
+            </div>
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={endValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, startValue, value])}
+                />
+            </div>
         </div>
         <div className="Calendar--noContext">
             <Calendar
@@ -69,7 +77,7 @@ type CurrentPickerState = {
     showUnits: boolean
 };
 
-class CurrentPicker extends Component<*, CurrentPickerProps, CurrentPickerState> {
+class CurrentPicker extends Component {
     props: CurrentPickerProps;
     state: CurrentPickerState;
 
@@ -141,14 +149,19 @@ function getDateTimeFieldAndValues(filter: FieldFilter, count: number): [Concret
 }
 
 
-export type OperatorName =
-    ("Previous"|"Next"|"Current"|"Before"|"After"|"On"|"Between"|"Is Empty"|"Not Empty");
+export type OperatorName = string;
 
 export type Operator = {
     name: OperatorName,
     widget?: any,
     init: (filter: FieldFilter) => any,
     test: (filter: FieldFilter) => boolean
+}
+
+const ALL_TIME_OPERATOR = {
+    name: "All Time",
+    init: () => null,
+    test: (op) => op === null
 }
 
 export const DATE_OPERATORS: Operator[] = [
@@ -218,12 +231,21 @@ type Props = {
     className?: string,
     filter: FieldFilter,
     onFilterChange: (filter: FieldFilter) => void,
-    className: ?string,
-    hideEmptinessOperators: boolean, // Don't show is empty / not empty dialog
-    hideTimeSelectors?: boolean
+    hideEmptinessOperators?: boolean, // Don't show is empty / not empty dialog
+    hideTimeSelectors?: boolean,
+    includeAllTime?: boolean,
 }
 
-export default class DatePicker extends Component<*, Props, *> {
+type State = {
+    operators: Operator[]
+}
+
+export default class DatePicker extends Component {
+    props: Props;
+    state: State = {
+        operators: []
+    };
+
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
@@ -238,7 +260,7 @@ export default class DatePicker extends Component<*, Props, *> {
         const operator = this._getOperator(operators) || operators[0];
         this.props.onFilterChange(operator.init(this.props.filter));
 
-        this.setState({operators})
+        this.setState({ operators })
     }
 
     _getOperator(operators: Operator[]) {
@@ -246,15 +268,20 @@ export default class DatePicker extends Component<*, Props, *> {
     }
 
     render() {
-        let { filter, onFilterChange, className} = this.props;
-        const operator = this._getOperator(this.state.operators);
+        let { filter, onFilterChange, className, includeAllTime } = this.props;
+        let { operators } = this.state;
+        if (includeAllTime) {
+            operators = [ALL_TIME_OPERATOR, ...operators];
+        }
+
+        const operator = this._getOperator(operators);
         const Widget = operator && operator.widget;
 
         return (
             <div className={cx("pt2", className)}>
                 <DateOperatorSelector
                     operator={operator && operator.name}
-                    operators={this.state.operators}
+                    operators={operators}
                     onOperatorChange={operator => onFilterChange(operator.init(filter))}
                 />
                 { Widget &&

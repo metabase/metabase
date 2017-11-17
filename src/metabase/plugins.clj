@@ -1,9 +1,11 @@
 (ns metabase.plugins
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.util :as u])
-  (:import (java.net URL URLClassLoader)))
+            [dynapath.util :as dynapath]
+            [metabase
+             [config :as config]
+             [util :as u]])
+  (:import [java.net URL URLClassLoader]))
 
 (defn- plugins-dir
   "The Metabase plugins directory. This defaults to `plugins/` in the same directory as `metabase.jar`, but can be configured via the env var `MB_PLUGINS_DIR`."
@@ -19,10 +21,8 @@
   "Dynamically add a JAR file to the classpath.
    See also [this SO post](http://stackoverflow.com/questions/60764/how-should-i-load-jars-dynamically-at-runtime/60766#60766)"
   [^java.io.File jar-file]
-  (let [sysloader (ClassLoader/getSystemClassLoader)
-        method    (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))]
-    (.setAccessible method true)
-    (.invoke method sysloader (into-array URL [(.toURL (.toURI jar-file))]))))
+  (let [sysloader (ClassLoader/getSystemClassLoader)]
+    (dynapath/add-classpath-url sysloader (.toURL (.toURI jar-file)))))
 
 (defn load-plugins!
   "Dynamically add any JARs in the `plugins-dir` to the classpath.

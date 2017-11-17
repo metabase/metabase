@@ -1,23 +1,26 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.http-client :as http]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [field-values :refer [FieldValues]])
-            metabase.public-settings ; for `enable-public-sharing
-            [metabase.query-processor-test :as qp-test]
-            [metabase.test.data :as data]
+            [metabase
+             [http-client :as http]
+             [query-processor-test :as qp-test]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [field-values :refer [FieldValues]]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
-  (:import java.util.UUID))
-
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
+  (:import java.io.ByteArrayInputStream
+           java.util.UUID))
 
 ;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 
@@ -83,13 +86,32 @@
 
 ;; Check that we can fetch a PublicCard
 (expect
-  #{:dataset_query :description :display :id :name :visualization_settings}
+  #{:dataset_query :description :display :id :name :visualization_settings :param_values}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
+(tu/resolve-private-vars metabase.api.public public-card)
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON and CSV versions)  ------------------------------------------------------------
+;; make sure :param_values get returned as expected
+(expect
+  {(data/id :categories :name) {:values                75
+                                :human_readable_values {}
+                                :field_id              (data/id :categories :name)}}
+  (tt/with-temp Card [card {:dataset_query {:type   :native
+                                            :native {:query         "SELECT COUNT(*) FROM venues LEFT JOIN categories ON venues.category_id = categories.id WHERE {{category}}"
+                                                     :collection    "CATEGORIES"
+                                                     :template_tags {:category {:name         "category"
+                                                                                :display_name "Category"
+                                                                                :type         "dimension"
+                                                                                :dimension    ["field-id" (data/id :categories :name)]
+                                                                                :widget_type  "category"
+                                                                                :required     true}}}}}]
+    (-> (:param_values (public-card :id (u/get-id card)))
+        (update-in [(data/id :categories :name) :values] count))))
+
+
+;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
 
 ;; Check that we *cannot* execute a PublicCard if the setting is disabled
 (expect
@@ -131,6 +153,17 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
+
+;; Check that we can exec a PublicCard and get results as XLSX
+(expect
+  [{:col "count"} {:col 100.0}]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid}]
+      (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
+           ByteArrayInputStream.
+           spreadsheet/load-workbook
+           (spreadsheet/select-sheet "Query result")
+           (spreadsheet/select-columns {:A :col})))))
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect

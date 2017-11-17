@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import _ from "underscore";
 
+import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import Input from "metabase/components/Input.jsx";
 
 export default class SettingsSingleSignOnForm extends Component {
@@ -100,8 +101,17 @@ export default class SettingsSingleSignOnForm extends Component {
 
         return (
             <form noValidate>
-                <div className="px2"
-                     style={{maxWidth: "585px"}}>
+                <div
+                    className="px2"
+                    style={{maxWidth: "585px"}}
+                >
+                    <Breadcrumbs
+                        crumbs={[
+                            ["Authentication", "/admin/settings/authentication"],
+                            ["Google Sign-In"]
+                        ]}
+                        className="mb2"
+                    />
                     <h2>Sign in with Google</h2>
                     <p className="text-grey-4">
                         Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.

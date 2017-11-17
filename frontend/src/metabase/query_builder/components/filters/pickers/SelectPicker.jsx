@@ -19,7 +19,7 @@ type SelectOption = {
 type Props = {
     options: Array<SelectOption>,
     values: Array<string>,
-    onValuesChange: (values: any) => void,
+    onValuesChange: (values: any[]) => void,
     placeholder?: string,
     multi?: bool
 }
@@ -29,7 +29,7 @@ type State = {
     searchRegex: ?RegExp,
 }
 
-export default class SelectPicker extends Component<*, Props, State> {
+export default class SelectPicker extends Component {
     state: State;
     props: Props;
 
@@ -91,10 +91,7 @@ export default class SelectPicker extends Component<*, Props, State> {
     render() {
         let { values, options, placeholder, multi } = this.props;
 
-        let checked = {};
-        for (let value of values) {
-            checked[value] = true;
-        }
+        let checked = new Set(values);
 
         let validOptions = [];
         let regex = this.state.searchRegex;
@@ -130,8 +127,11 @@ export default class SelectPicker extends Component<*, Props, State> {
                        <ul>
                            {validOptions.map((option, index) =>
                                <li key={index}>
-                                   <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked[option.key])}>
-                                       <CheckBox checked={checked[option.key]} />
+                                   <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked.has(option.key))}>
+                                       <CheckBox
+                                           checked={checked.has(option.key)}
+                                           color='purple'
+                                       />
                                        <h4 className="ml1">{this.nameForOption(option)}</h4>
                                    </label>
                                </li>
@@ -145,7 +145,7 @@ export default class SelectPicker extends Component<*, Props, State> {
                                        style={{ height: "95px" }}
                                        className={cx("full rounded bordered border-purple text-centered text-bold", {
                                                "text-purple bg-white": values[0] !== option.key,
-                                               "text-white bg-purple-light": values[0] === option.key
+                                               "text-white bg-purple": values[0] === option.key
                                            })}
                                        onClick={() => this.selectValue(option.key, true)}
                                    >

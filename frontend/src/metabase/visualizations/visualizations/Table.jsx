@@ -9,11 +9,12 @@ import * as DataGrid from "metabase/lib/data_grid";
 
 import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
-import { columnsAreValid } from "metabase/visualizations/lib/settings";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { columnsAreValid, getFriendlyName } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
 import _ from "underscore";
+import cx from "classnames";
+import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
@@ -29,14 +30,15 @@ type State = {
     data: ?DatasetData
 }
 
-export default class Table extends Component<*, Props, State> {
+export default class Table extends Component {
+    props: Props;
     state: State;
 
     static uiName = "Table";
     static identifier = "table";
     static iconName = "table";
 
-    static minSize = { width: 4, height: 4 };
+    static minSize = { width: 4, height: 3 };
 
     static isSensible(cols, rows) {
         return true;
@@ -125,14 +127,49 @@ export default class Table extends Component<*, Props, State> {
         const { data } = this.state;
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
+        const isColumnsDisabled = (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
-        return (
-            <TableComponent
-                {...this.props}
-                data={data}
-                isPivoted={isPivoted}
-                sort={sort}
-            />
-        );
+
+        if (!data) {
+            return null;
+        }
+
+        if (isColumnsDisabled) {
+            return (
+                <div className={cx("flex-full px1 pb1 text-centered flex flex-column layout-centered", { "text-slate-light": isDashboard, "text-slate": !isDashboard })} >
+                    <RetinaImage
+                        width={99}
+                        src="app/assets/img/hidden-field.png"
+                        forceOriginalDimensions={false}
+                        className="mb2"
+                    />
+                    <span className="h4 text-bold">
+                        Every field is hidden right now
+                    </span>
+                </div>
+            )
+        } else {
+            return (
+                // $FlowFixMe
+                <TableComponent
+                    {...this.props}
+                    data={data}
+                    isPivoted={isPivoted}
+                    sort={sort}
+                />
+            );
+        }
     }
 }
+
+/**
+ * A modified version of TestPopover for Jest/Enzyme tests.
+ * It always uses TableSimple which Enzyme is able to render correctly.
+ * TableInteractive uses react-virtualized library which requires a real browser viewport.
+ */
+export const TestTable = (props: Props) => <Table {...props} isDashboard={true} />
+TestTable.uiName = Table.uiName;
+TestTable.identifier = Table.identifier;
+TestTable.iconName = Table.iconName;
+TestTable.minSize = Table.minSize;
+TestTable.settings = Table.settings;

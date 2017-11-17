@@ -1,14 +1,15 @@
 (ns metabase.models.segment-test
   (:require [expectations :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [segment :refer :all, :as segment]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [database :refer [Database]]
+             [segment :as segment :refer :all]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 (defn- user-details
   [username]

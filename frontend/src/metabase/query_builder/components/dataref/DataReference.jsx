@@ -27,7 +27,7 @@ export default class DataReference extends Component {
     static propTypes = {
         query: PropTypes.object.isRequired,
         onClose: PropTypes.func.isRequired,
-        runQuery: PropTypes.func.isRequired,
+        runQuestionQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func.isRequired,

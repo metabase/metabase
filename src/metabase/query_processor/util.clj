@@ -1,9 +1,13 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
-  (:require (buddy.core [codecs :as codecs]
-                        [hash :as hash])
+  (:require [buddy.core
+             [codecs :as codecs]
+             [hash :as hash]]
             [cheshire.core :as json]
-            [toucan.db :as db]))
+            [clojure.string :as str]
+            [metabase.util :as u]
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (defn mbql-query?
   "Is the given query an MBQL query?"
@@ -31,6 +35,69 @@
   (str "Metabase" (when info
                     (assert (instance? (Class/forName "[B") query-hash))
                     (format ":: userID: %s queryType: %s queryHash: %s" executed-by query-type (codecs/bytes->hex query-hash)))))
+
+
+;;; ------------------------------------------------------------ Normalization ------------------------------------------------------------
+
+;; The following functions make it easier to deal with MBQL queries, which are case-insensitive, string/keyword insensitive, and underscore/hyphen insensitive.
+;; These should be preferred instead of assuming the frontend will always pass in clauses the same way, since different variation are all legal under MBQL '98.
+
+;; TODO - In the future it might make sense to simply walk the entire query and normalize the whole thing when it comes in. I've tried implementing middleware
+;; to do that but it ended up breaking a few things that wrongly assume different clauses will always use a certain case (e.g. SQL `:template_tags`). Fixing
+;; all of that is out-of-scope for the nested queries PR but should possibly be revisited in the future.
+
+(s/defn ^:always-validate normalize-token :- s/Keyword
+  "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased keyword."
+  [token :- su/KeywordOrString]
+  (-> (name token)
+      str/lower-case
+      (str/replace #"_" "-")
+      keyword))
+
+(defn get-normalized
+  "Get the value for normalized key K in map M, regardless of how the key was specified in M,
+   whether string or keyword, lisp-case, snake_case, or SCREAMING_SNAKE_CASE.
+
+     (get-normalized {\"NUM_TOUCANS\" 2} :num-toucans) ; -> 2"
+  ([m k]
+   {:pre [(or (u/maybe? map? m)
+              (println "Not a map:" m))]}
+   (let [k (normalize-token k)]
+     (some (fn [[map-k v]]
+             (when (= k (normalize-token map-k))
+               v))
+           m)))
+  ([m k not-found]
+   (or (get-normalized m k)
+       not-found)))
+
+(defn get-in-normalized
+  "Like `get-normalized`, but accepts a sequence of keys KS, like `get-in`.
+
+    (get-in-normalized {\"NUM_BIRDS\" {\"TOUCANS\" 2}} [:num-birds :toucans]) ; -> 2"
+  ([m ks]
+   {:pre [(u/maybe? sequential? ks)]}
+   (loop [m m, [k & more] ks]
+     (if-not k
+       m
+       (recur (get-normalized m k) more))))
+  ([m ks not-found]
+   (or (get-in-normalized m ks)
+       not-found)))
+
+(defn dissoc-normalized
+  "Remove all matching keys from map M regardless of case, string/keyword, or hypens/underscores.
+
+     (dissoc-normalized {\"NUM_TOUCANS\" 3} :num-toucans) ; -> {}"
+  [m k]
+  {:pre [(or (u/maybe? map? m)
+             (println "Not a map:" m))]}
+  (let [k (normalize-token k)]
+    (loop [m m, [map-k & more, :as ks] (keys m)]
+      (cond
+        (not (seq ks)) m
+        (= k (normalize-token map-k)) (recur (dissoc m map-k) more)
+        :else                         (recur m                more)))))
 
 
 ;;; ------------------------------------------------------------ Hashing ------------------------------------------------------------

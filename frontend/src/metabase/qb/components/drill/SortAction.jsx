@@ -1,73 +1,64 @@
 /* @flow */
 
-import React from "react";
-
-import { assocIn } from "icepick";
 import Query from "metabase/lib/query";
-import * as Card from "metabase/meta/Card";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
-    const query = Card.getQuery(card);
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery)) {
+        return [];
+    }
 
     if (
-        !query ||
         !clicked ||
         !clicked.column ||
         clicked.value !== undefined ||
         !clicked.column.source
     ) {
-        return;
+        return [];
     }
     const { column } = clicked;
 
-    return {
-        title: (
-            <span>
-                Sort by {column.display_name}
-            </span>
-        ),
-        default: true,
-        card: () => {
-            let field = null;
-            if (column.id == null) {
-                // ICK.  this is hacky for dealing with aggregations.  need something better
-                // DOUBLE ICK.  we also need to deal with custom fields now as well
-                const expressions = Query.getExpressions(query);
-                if (column.display_name in expressions) {
-                    field = ["expression", column.display_name];
-                } else {
-                    field = ["aggregation", 0];
-                }
-            } else {
-                field = column.id;
-            }
+    const fieldRef = query.fieldReferenceForColumn(column);
+    if (!fieldRef) {
+        return [];
+    }
 
-            let sortClause = [field, "ascending"];
+    const [sortFieldRef, sortDirection] = query.sorts()[0] || [];
+    const isAlreadySorted = sortFieldRef != null &&
+        Query.isSameField(sortFieldRef, fieldRef);
 
-            if (
-                query.order_by &&
-                query.order_by.length > 0 &&
-                query.order_by[0].length > 0 &&
-                query.order_by[0][1] === "ascending" &&
-                Query.isSameField(query.order_by[0][0], field)
-            ) {
-                // someone triggered another sort on the same column, so flip the sort direction
-                sortClause = [field, "descending"];
-            }
-
-            // set clause
-            return assocIn(
-                card,
-                ["dataset_query", "query", "order_by"],
-                [sortClause]
-            );
-        }
-    };
+    const actions = [];
+    if (
+        !isAlreadySorted ||
+        sortDirection === "descending" ||
+        sortDirection === "desc"
+    ) {
+        actions.push({
+            name: "sort-ascending",
+            section: "sort",
+            title: "Ascending",
+            question: () =>
+                query.replaceSort([fieldRef, "ascending"]).question()
+        });
+    }
+    if (
+        !isAlreadySorted ||
+        sortDirection === "ascending" ||
+        sortDirection === "asc"
+    ) {
+        actions.push({
+            name: "sort-descending",
+            section: "sort",
+            title: "Descending",
+            question: () =>
+                query.replaceSort([fieldRef, "descending"]).question()
+        });
+    }
+    return actions;
 };

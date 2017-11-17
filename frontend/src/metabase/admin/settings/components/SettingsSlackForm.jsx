@@ -166,7 +166,7 @@ export default class SettingsSlackForm extends Component {
                     <SettingsSetting
                         key={element.key}
                         setting={{ ...element, value }}
-                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        onChange={(value) => this.handleChangeEvent(element, value)}
                         errorMessage={errorMessage}
                         fireOnChange
                     />
@@ -176,7 +176,7 @@ export default class SettingsSlackForm extends Component {
                     <SettingsSetting
                         key={element.key}
                         setting={{ ...element, value }}
-                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        onChange={(value) => this.handleChangeEvent(element, value)}
                         errorMessage={errorMessage}
                         disabled={!this.state.formData["slack-token"]}
                     />
@@ -200,7 +200,7 @@ export default class SettingsSlackForm extends Component {
                         Metabase
                         <RetinaImage
                             className="mx1"
-                            src="/app/img/slack_emoji.png"
+                            src="app/assets/img/slack_emoji.png"
                             width={79}
                             forceOriginalDimensions={false /* broken in React v0.13 */}
                         />

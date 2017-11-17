@@ -1,21 +1,24 @@
 (ns metabase.task.follow-up-emails
   "Tasks which follow up with Metabase users."
-  (:require [clojure.tools.logging :as log]
-            (clj-time [coerce :as c]
-                      [core :as t])
-            [clojurewerkz.quartzite.jobs :as jobs]
+  (:require [clj-time
+             [coerce :as c]
+             [core :as t]]
+            [clojure.tools.logging :as log]
+            [clojurewerkz.quartzite
+             [jobs :as jobs]
+             [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            [toucan.db :as db]
-            [metabase.email :as email]
+            [metabase
+             [email :as email]
+             [public-settings :as public-settings]
+             [task :as task]]
             [metabase.email.messages :as messages]
-            (metabase.models [activity :refer [Activity]]
-                             [setting :as setting]
-                             [user :as user, :refer [User]]
-                             [view-log :refer [ViewLog]])
-            [metabase.public-settings :as public-settings]
-            [metabase.task :as task]))
-
+            [metabase.models
+             [activity :refer [Activity]]
+             [setting :as setting]
+             [user :as user :refer [User]]
+             [view-log :refer [ViewLog]]]
+            [toucan.db :as db]))
 
 (declare send-follow-up-email! send-abandonment-email!)
 

@@ -1,14 +1,13 @@
+/* @flow */
 /*global ace*/
-/* eslint "react/prop-types": "warn" */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import "./NativeQueryEditor.css";
 
+// $FlowFixMe react-resizable causes Flow errors
 import { ResizableBox } from 'react-resizable';
-import { countLines } from "metabase/lib/string";
 
 import 'ace/ace';
 import 'ace/ext-language_tools';
@@ -25,34 +24,14 @@ import 'ace/snippets/pgsql';
 import 'ace/snippets/sqlserver';
 import 'ace/snippets/json';
 
-import { getEngineNativeAceMode, getEngineNativeType, getEngineNativeRequiresTable } from "metabase/lib/engine";
 
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
-import { assocIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
-import Parameters from "metabase/dashboard/containers/Parameters";
-
-// This should return an object with information about the mode the ACE Editor should use to edit the query.
-// This object should have 2 properties:
-// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
-// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
-// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
-function getModeInfo(datasetQuery, databases) {
-    let databaseID = datasetQuery ? datasetQuery.database : null,
-        database   = _.findWhere(databases, { id: databaseID }),
-        engine     = database ? database.engine : null;
-
-    return {
-        mode: getEngineNativeAceMode(engine),
-        description: getEngineNativeType(engine).toUpperCase(),
-        requiresTable: getEngineNativeRequiresTable(engine),
-        database: database
-    };
-}
+import Parameters from "metabase/parameters/components/Parameters";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
@@ -62,44 +41,60 @@ const MAX_AUTO_SIZE_LINES = 12;
 
 const getEditorLineHeight = (lines) => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
-export default class NativeQueryEditor extends Component {
-    constructor(props, context) {
-        super(props, context);
+import Question from "metabase-lib/lib/Question";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-        const lines = props.datasetQuery.native.query ?
-            Math.min(MAX_AUTO_SIZE_LINES, countLines(props.datasetQuery.native.query)) :
-            MAX_AUTO_SIZE_LINES;
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { TableId } from "metabase/meta/types/Table";
+import type { ParameterId } from "metabase/meta/types/Parameter";
+import type { LocationDescriptor } from "metabase/meta/types";
+import type { RunQueryParams } from "metabase/query_builder/actions";
+
+type AutoCompleteResult = [string, string, string];
+type AceEditor = any; // TODO;
+
+type Props = {
+    location:               LocationDescriptor,
+
+    question:               Question,
+    query:                  NativeQuery,
+
+    runQuestionQuery:       (options?: RunQueryParams) => void,
+    setDatasetQuery:        (datasetQuery: DatasetQuery) => void,
+
+    setDatabaseFn:          (databaseId: DatabaseId) => void,
+    setParameterValue:      (parameterId: ParameterId, value: string) => void,
+
+    autocompleteResultsFn:  (input: string) => Promise<AutoCompleteResult[]>
+};
+type State = {
+    showEditor: boolean,
+    initialHeight: number
+};
+
+export default class NativeQueryEditor extends Component {
+    props: Props;
+    state: State;
+
+    _editor: AceEditor;
+    _localUpdate: boolean = false;
+
+    constructor(props: Props) {
+        super(props);
+
+        const lines = Math.min(MAX_AUTO_SIZE_LINES, props.query && props.query.lineCount() || MAX_AUTO_SIZE_LINES);
 
         this.state = {
-            showEditor: !(props.card && props.card.id),
-            modeInfo: getModeInfo(props.datasetQuery, props.databases),
+            showEditor: !props.question || !props.question.isSaved(),
             initialHeight: getEditorLineHeight(lines)
         };
 
-        this.localUpdate = false;
-
-        _.bindAll(this, 'toggleEditor', 'setDatabaseID', 'setTableID');
-
         // Ace sometimes fires mutliple "change" events in rapid succession
         // e.x. https://github.com/metabase/metabase/issues/2801
+        // $FlowFixMe
         this.onChange = _.debounce(this.onChange.bind(this), 1);
     }
-
-    static propTypes = {
-        card: PropTypes.object.isRequired,
-        databases: PropTypes.array.isRequired,
-        nativeDatabases: PropTypes.array.isRequired,
-        datasetQuery: PropTypes.object.isRequired,
-        setDatasetQuery: PropTypes.func.isRequired,
-        runQuery: PropTypes.func.isRequired,
-        setDatabaseFn: PropTypes.func.isRequired,
-        autocompleteResultsFn: PropTypes.func.isRequired,
-        isOpen: PropTypes.bool,
-        parameters: PropTypes.array.isRequired,
-        setParameterValue: PropTypes.func,
-        location: PropTypes.object.isRequired,
-        isRunnable: PropTypes.bool.isRequired,
-    };
 
     static defaultProps = {
         isOpen: false
@@ -110,43 +105,36 @@ export default class NativeQueryEditor extends Component {
         document.addEventListener("keydown", this.handleKeyDown);
     }
 
-    componentWillReceiveProps(nextProps) {
-        if (this.props.datasetQuery.database !== nextProps.datasetQuery.database) {
-            this.setState({
-                modeInfo: getModeInfo(nextProps.datasetQuery, nextProps.databases)
-            });
-        }
-    }
-
     componentDidUpdate() {
-        const { modeInfo } = this.state;
+        const { query } = this.props;
+        if (!query || !this._editor) {
+            return;
+        }
 
-        if (this._editor.getValue() !== this.props.datasetQuery.native.query) {
+        if (this._editor.getValue() !== query.queryText()) {
             // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
             // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
             // we need a way to update the editor without causing the onChange event to go through as well
-            this.localUpdate = true;
-            this._editor.setValue(this.props.datasetQuery.native.query);
+            this._localUpdate = true;
+            this._editor.setValue(query.queryText());
             this._editor.clearSelection();
-            this.localUpdate = false;
+            this._localUpdate = false;
         }
 
-        if (modeInfo) {
-            let editorElement = ReactDOM.findDOMNode(this.refs.editor);
-            if (!modeInfo.database || modeInfo.database.native_permissions !== "write") {
-                this._editor.setReadOnly(true);
-                editorElement.classList.add("read-only");
-            } else {
-                this._editor.setReadOnly(false);
-                editorElement.classList.remove("read-only");
-
-            }
-            if (this._editor.getSession().$modeId !== modeInfo.mode) {
-                this._editor.getSession().setMode(modeInfo.mode);
-                // monkey patch the mode to add our bracket/paren/braces-matching behavior
-                if (this.state.modeInfo.mode.indexOf("sql") >= 0) {
-                    this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
-                }
+        let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+        if (query.hasWritePermission()) {
+            this._editor.setReadOnly(false);
+            editorElement.classList.remove("read-only");
+        } else {
+            this._editor.setReadOnly(true);
+            editorElement.classList.add("read-only");
+        }
+        const aceMode = query.aceMode();
+        if (this._editor.getSession().$modeId !== aceMode) {
+            this._editor.getSession().setMode(aceMode);
+            // monkey patch the mode to add our bracket/paren/braces-matching behavior
+            if (aceMode.indexOf("sql") >= 0) {
+                this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
             }
         }
     }
@@ -155,33 +143,37 @@ export default class NativeQueryEditor extends Component {
         document.removeEventListener("keydown", this.handleKeyDown);
     }
 
-    handleKeyDown = (e) => {
+    handleKeyDown = (e: KeyboardEvent) => {
+        const { query, runQuestionQuery } = this.props;
+
         const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && this.props.isRunnable) {
-            const { card } = this.props;
+        if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && query.canRun()) {
+            const { query } = this.props;
             if (e.altKey) {
                 // run just the selected text, if any
                 const selectedText = this._editor.getSelectedText();
                 if (selectedText) {
-                    const temporaryCard = assocIn(card, ["dataset_query", "native", "query"], selectedText);
-                    this.props.runQuery(temporaryCard, { shouldUpdateUrl: false });
+                    const temporaryCard = query.updateQueryText(selectedText).question().card();
+                    runQuestionQuery({ overrideWithCard: temporaryCard, shouldUpdateUrl: false });
                 }
             } else {
-                this.props.runQuery();
+                runQuestionQuery();
             }
         }
     }
 
     loadAceEditor() {
+        const { query } = this.props;
+
         let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+        // $FlowFixMe
         this._editor = ace.edit(editorElement);
 
         // listen to onChange events
         this._editor.getSession().on('change', this.onChange);
 
         // initialize the content
-        const querySource = this.props.datasetQuery.native.query;
-        this._editor.setValue(querySource);
+        this._editor.setValue(query ? query.queryText() : "");
 
         this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
 
@@ -204,12 +196,8 @@ export default class NativeQueryEditor extends Component {
 
         aceLanguageTools.addCompleter({
             getCompletions: async (editor, session, pos, prefix, callback) => {
-                if (prefix.length < 2) {
-                    callback(null, []);
-                    return;
-                }
                 try {
-                    // HACK: call this.props.autocompleteResultsFn rathern than caching the prop since it might change
+                    // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
                     let results = await this.props.autocompleteResultsFn(prefix);
                     // transform results of the API call into what ACE expects
                     let js_results = results.map(function(result) {
@@ -238,68 +226,64 @@ export default class NativeQueryEditor extends Component {
          }
      }
 
-    onChange(event) {
-        if (this._editor && !this.localUpdate) {
+    onChange() {
+        const { query } = this.props;
+        if (this._editor && !this._localUpdate) {
             this._updateSize();
-            const { datasetQuery } = this.props;
-            if (datasetQuery.native.query !== this._editor.getValue()) {
-                this.props.setDatasetQuery(assocIn(datasetQuery, ["native", "query"], this._editor.getValue()));
+            if (query.queryText() !== this._editor.getValue()) {
+                query.updateQueryText(this._editor.getValue()).update(this.props.setDatasetQuery);
             }
         }
     }
 
-    toggleEditor() {
+    toggleEditor = () => {
         this.setState({ showEditor: !this.state.showEditor })
     }
 
     /// Change the Database we're currently editing a query for.
-    setDatabaseID(databaseID) {
-        this.props.setDatabaseFn(databaseID);
+    setDatabaseId = (databaseId: DatabaseId) => {
+        // TODO: use metabase-lib
+        this.props.setDatabaseFn(databaseId);
     }
 
-    setTableID(tableID) {
-        // translate the table id into the table name
-        let database = this.props.databases ? _.findWhere(this.props.databases, { id: this.props.datasetQuery.database }) : null,
-            table = database ? _.findWhere(database.tables, { id: tableID }) : null;
-
-        if (table) {
-            const { datasetQuery } = this.props;
-            if (datasetQuery.native.collection !== table.name) {
-                this.props.setDatasetQuery(assocIn(datasetQuery, ["native", "collection"], table.name));
-            }
+    setTableId = (tableId: TableId) => {
+        // TODO: push more of this into metabase-lib?
+        const { query } = this.props;
+        const table = query._metadata.tables[tableId];
+        if (table && table.name !== query.collection()) {
+            query.updateCollection(table.name).update(this.props.setDatasetQuery);
         }
     }
 
     render() {
-        const { parameters, setParameterValue, location } = this.props;
-
-        let modeInfo = getModeInfo(this.props.datasetQuery, this.props.databases);
+        const { query, setParameterValue, location } = this.props;
+        const database = query.database();
+        const databases = query.databases();
+        const parameters = query.question().parameters();
 
         let dataSelectors = [];
-        if (this.state.showEditor && this.props.nativeDatabases) {
+        if (this.state.showEditor && databases.length > 0) {
             // we only render a db selector if there are actually multiple to choose from
-            if (this.props.nativeDatabases.length > 1 && (this.props.datasetQuery.database === null || _.any(this.props.nativeDatabases, (db) => db.id === this.props.datasetQuery.database))) {
+            if (databases.length > 1 && (database == null || _.any(databases, (db) => db.id === database.id))) {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
-                            databases={this.props.nativeDatabases}
-                            datasetQuery={this.props.datasetQuery}
-                            setDatabaseFn={this.setDatabaseID}
+                            databases={databases}
+                            datasetQuery={query.datasetQuery()}
+                            setDatabaseFn={this.setDatabaseId}
+                            isInitiallyOpen={database == null}
                         />
                     </div>
                 )
-            } else if (modeInfo.database) {
+            } else if (database) {
                 dataSelectors.push(
-                    <span key="db" className="p2 text-bold text-grey">{modeInfo.database.name}</span>
+                    <span key="db" className="p2 text-bold text-grey">{database.name}</span>
                 );
             }
-            if (modeInfo.requiresTable) {
-                let databases = this.props.nativeDatabases,
-                    dbId      = this.props.datasetQuery.database,
-                    database  = databases ? _.findWhere(databases, { id: dbId }) : null,
-                    tables    = database ? database.tables : [],
-                    selectedTable = this.props.datasetQuery.native.collection ? _.findWhere(tables, { name: this.props.datasetQuery.native.collection }) : null;
+            if (query.requiresTable()) {
+                const selectedTable    = query.table();
+                const tables           = query.tables() || [];
 
                 dataSelectors.push(
                     <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
@@ -310,30 +294,29 @@ export default class NativeQueryEditor extends Component {
                             datasetQuery={{
                                 type: "query",
                                 query: { source_table: selectedTable ? selectedTable.id : null },
-                                database: dbId
+                                database: database && database.id
                             }}
                             databases={[database]}
                             tables={tables}
-                            setDatabaseFn={this.setDatabaseID}
-                            setSourceTableFn={this.setTableID}
+                            setDatabaseFn={this.setDatabaseId}
+                            setSourceTableFn={this.setTableId}
                             isInitiallyOpen={false}
                         />
                     </div>
                 );
             }
         } else {
-            dataSelectors = <span className="p2 text-grey-4">{'This question is written in ' + modeInfo.description + '.'}</span>;
+            dataSelectors = <span className="p2 text-grey-4">{`This question is written in ${query.nativeQueryLanguage()}.`}</span>;
         }
 
         let editorClasses, toggleEditorText, toggleEditorIcon;
-        const hasWritePermission = modeInfo.database && modeInfo.database.native_permissions === "write";
         if (this.state.showEditor) {
             editorClasses = "";
-            toggleEditorText = hasWritePermission ? "Hide Editor" : "Hide Query";
+            toggleEditorText = query.hasWritePermission() ? "Hide Editor" : "Hide Query";
             toggleEditorIcon = "contract";
         } else {
             editorClasses = "hide";
-            toggleEditorText = hasWritePermission ? "Open Editor" : "Show Query";
+            toggleEditorText = query.hasWritePermission() ? "Open Editor" : "Show Query";
             toggleEditorIcon = "expand";
         }
 

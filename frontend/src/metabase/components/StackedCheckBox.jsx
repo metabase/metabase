@@ -1,11 +1,21 @@
 import React from "react";
-
 import CheckBox from "metabase/components/CheckBox.jsx";
 
+const OFFSET = 4;
+
 const StackedCheckBox = (props) =>
-    <span className={props.className} style={{ ...props.style, position: "relative" }}>
-        <CheckBox {...props} className={null} style={{ position: "absolute", top: -3, left: 3, zIndex: -1 }} />
-        <CheckBox {...props} className={null} style={{}} />
-    </span>
+    <div className="relative">
+        <span
+            className="absolute"
+            style={{
+                top: -OFFSET,
+                left: OFFSET,
+                zIndex: -1
+            }}
+        >
+            <CheckBox {...props} />
+        </span>
+        <CheckBox {...props} />
+    </div>
 
 export default StackedCheckBox;

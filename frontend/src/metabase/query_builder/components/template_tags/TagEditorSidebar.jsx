@@ -1,4 +1,5 @@
-/* eslint "react/prop-types": "warn" */
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
@@ -7,15 +8,32 @@ import TagEditorHelp from "./TagEditorHelp.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
-import { getTemplateTags } from "metabase/meta/Card";
+
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type { DatasetQuery } from "metabase/meta/types/Card"
+import type { TableId } from "metabase/meta/types/Table"
+import type { TemplateTag } from "metabase/meta/types/Query"
+import type { Field as FieldObject } from "metabase/meta/types/Field"
+
+type Props = {
+    query: NativeQuery,
+
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+    updateTemplateTag: (tag: TemplateTag) => void,
+
+    databaseFields: FieldObject[],
+    sampleDatasetId: TableId,
+
+    onClose: () => void,
+}
+type State = {
+    section: "help"|"settings";
+}
 
 export default class TagEditorSidebar extends Component {
-
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            section: null
-        };
+    props: Props;
+    state: State = {
+        section: "settings"
     }
 
     static propTypes = {
@@ -33,15 +51,12 @@ export default class TagEditorSidebar extends Component {
     }
 
     render() {
-
-        const { card } = this.props;
-        const tags = getTemplateTags(card);
+        const { query } = this.props;
+        const tags = query.templateTags()
 
         let section;
         if (tags.length === 0) {
             section = "help";
-        } else if (this.state.section == null) {
-            section = "settings";
         } else {
             section = this.state.section;
         }

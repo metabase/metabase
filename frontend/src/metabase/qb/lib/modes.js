@@ -1,10 +1,16 @@
 /* @flow weak */
 
-import Q from "metabase/lib/query"; // legacy query lib
-import { isDate, isAddress, isCategory } from "metabase/lib/schema_metadata";
+import Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
+import {
+    isDate,
+    isAddress,
+    isCategory,
+    isPK
+} from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 
+import ObjectMode from "../components/modes/ObjectMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
 import TimeseriesMode from "../components/modes/TimeseriesMode";
@@ -15,12 +21,9 @@ import DefaultMode from "../components/modes/DefaultMode";
 
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type {
-    QueryMode,
-    ClickAction,
-    ClickActionProps,
-    ClickObject
-} from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase/meta/types/Visualization";
+
+import _ from "underscore";
 
 export function getMode(
     card: CardObject,
@@ -42,9 +45,30 @@ export function getMode(
 
         const aggregations = Query.getAggregations(query);
         const breakouts = Query.getBreakouts(query);
+        const filters = Query.getFilters(query);
 
         if (aggregations.length === 0 && breakouts.length === 0) {
-            return SegmentMode;
+            const isPKFilter = filter => {
+                if (
+                    tableMetadata && Array.isArray(filter) && filter[0] === "="
+                ) {
+                    const fieldId = Q_DEPRECATED.getFieldTargetId(filter[1]);
+                    const field = tableMetadata.fields_lookup[fieldId];
+                    if (
+                        field &&
+                        field.table.id === query.source_table &&
+                        isPK(field)
+                    ) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            if (_.any(filters, isPKFilter)) {
+                return ObjectMode;
+            } else {
+                return SegmentMode;
+            }
         }
         if (aggregations.length > 0 && breakouts.length === 0) {
             return MetricMode;
@@ -52,7 +76,8 @@ export function getMode(
         if (aggregations.length > 0 && breakouts.length > 0) {
             let breakoutFields = breakouts.map(
                 breakout =>
-                    (Q.getFieldTarget(breakout, tableMetadata) || {}).field
+                    (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {
+                    }).field
             );
             if (
                 (breakoutFields.length === 1 && isDate(breakoutFields[0])) ||
@@ -79,32 +104,3 @@ export function getMode(
 
     return DefaultMode;
 }
-
-export const getModeActions = (
-    mode: ?QueryMode,
-    card: ?CardObject,
-    tableMetadata: ?TableMetadata
-): ClickAction[] => {
-    if (mode && card && tableMetadata) {
-        const props: ClickActionProps = { card, tableMetadata };
-        return mode.actions
-            .map(actionCreator => actionCreator(props))
-            .filter(action => action);
-    }
-    return [];
-};
-
-export const getModeDrills = (
-    mode: ?QueryMode,
-    card: ?CardObject,
-    tableMetadata: ?TableMetadata,
-    clicked: ?ClickObject
-): ClickAction[] => {
-    if (mode && card && tableMetadata && clicked) {
-        const props: ClickActionProps = { card, tableMetadata, clicked };
-        return mode.drills
-            .map(actionCreator => actionCreator(props))
-            .filter(action => action);
-    }
-    return [];
-};

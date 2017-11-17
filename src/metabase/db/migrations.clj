@@ -9,33 +9,29 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [models :as models])
-            (metabase [config :as config]
-                      [driver :as driver]
-                      types)
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.events.activity-feed :refer [activity-feed-topics]]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection], :as collection]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [label :refer [Label]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :as perm-group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
-                             [query-execution :refer [QueryExecution], :as query-execution]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table] :as table]
-                             [setting :refer [Setting], :as setting]
-                             [user :refer [User]])
-            [metabase.public-settings :as public-settings]
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard-card :refer [DashboardCard]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as perm-group]
+             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+             [query-execution :as query-execution :refer [QueryExecution]]
+             [setting :as setting :refer [Setting]]
+             [table :as table :refer [Table]]
+             [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]))
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; # Migration Helpers
 
@@ -152,60 +148,6 @@
     (db/update-where! Field {:visibility_type "unset"
                              :active          true}
       :visibility_type "normal")))
-
-
-;; populate RawTable and RawColumn information
-;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
-;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
-(defmigration ^{:author "agilliland",:added "0.17.0"} create-raw-tables
-  (when (zero? (db/count RawTable))
-    (binding [db/*disable-db-logging* true]
-      (db/transaction
-       (doseq [{database-id :id, :keys [name engine]} (db/select Database)]
-         (when-let [tables (not-empty (db/select Table, :db_id database-id, :active true))]
-           (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
-           (let [processed-tables (atom #{})]
-             (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
-               ;; this check gaurds against any table that appears in the schema multiple times
-               (if (contains? @processed-tables {:schema table-schema, :name table-name})
-                 ;; this is a dupe of this table, retire it and it's fields
-                 (table/retire-tables! #{table-id})
-                 ;; this is the first time we are encountering this table, so migrate it
-                 (do
-                   ;; add this table to the set of tables we've processed
-                   (swap! processed-tables conj {:schema table-schema, :name table-name})
-                   ;; create the RawTable
-                   (let [{raw-table-id :id} (db/insert! RawTable
-                                              :database_id database-id
-                                              :schema      table-schema
-                                              :name        table-name
-                                              :details     {}
-                                              :active      true)]
-                     ;; update the Table and link it with the RawTable
-                     (db/update! Table table-id
-                       :raw_table_id raw-table-id)
-                     ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
-                     (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
-                       (let [processed-fields (atom #{})]
-                         (doseq [{field-id :id, column-name :name, :as field} (db/select Field, :table_id table-id, :visibility_type [:not= "retired"])]
-                           ;; guard against duplicate fields with the same name
-                           (if (contains? @processed-fields column-name)
-                             ;; this is a dupe, disable it
-                             (db/update! Field field-id
-                               :visibility_type "retired")
-                             ;; normal unmigrated field, so lets use it
-                             (let [{raw-column-id :id} (db/insert! RawColumn
-                                                         :raw_table_id raw-table-id
-                                                         :name         column-name
-                                                         :is_pk        (= :id (:special_type field))
-                                                         :details      {:base-type (:base_type field)}
-                                                         :active       true)]
-                               ;; update the Field and link it with the RawColumn
-                               (db/update! Field field-id
-                                 :raw_column_id raw-column-id
-                                 :last_analyzed (u/new-sql-timestamp))
-                               ;; add this column to the set we've processed already
-                               (swap! processed-fields conj column-name)))))))))))))))))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -371,3 +313,24 @@
 (defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
   ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
   (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))
+
+;; There's a window on in the 0.23.0 and 0.23.1 releases that the
+;; site-url could be persisted without a protocol specified. Other
+;; areas of the application expect that site-url will always include
+;; http/https. This migration ensures that if we have a site-url
+;; stored it has the current defaulting logic applied to it
+(defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
+  (let [stored-site-url (db/select-one-field :value Setting :key "site-url")
+        defaulted-site-url (public-settings/site-url stored-site-url)]
+    (when (and stored-site-url
+               (not= stored-site-url defaulted-site-url))
+      (setting/set! "site-url" stored-site-url))))
+
+;; There was a bug (#5998) preventing database_id from being persisted with
+;; native query type cards. This migration populates all of the Cards
+;; missing those database ids
+(defmigration ^{:author "senior", :added "0.26.1"} populate-card-database-id
+  (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
+                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))]
+    (db/update-where! Card {:id [:in (map :id cards)]}
+      :database_id db-id)))

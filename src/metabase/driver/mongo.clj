@@ -1,22 +1,27 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.string :as s]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            (monger [collection :as mc]
-                    [command :as cmd]
-                    [conversion :as conv]
-                    [db :as mdb]
-                    [query :as mq])
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u])
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.mongo
+             [query-processor :as qp]
+             [util :refer [*mongo-connection* with-mongo-connection]]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field]]
+            [metabase.sync.interface :as si]
+            [metabase.util.ssh :as ssh]
+            [monger
+             [collection :as mc]
+             [command :as cmd]
+             [conversion :as conv]
+             [db :as mdb]
+             [query :as mq]]
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver
@@ -38,6 +43,12 @@
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
     (driver/connection-error-messages :password-required)
+
+    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    (driver/connection-error-messages :ssh-tunnel-auth-fail)
+
+    #".*JSchException: java.net.ConnectException: Connection refused.*"
+    (driver/connection-error-messages :ssh-tunnel-connection-fail)
 
     #".*"                               ; default
     message))
@@ -120,7 +131,7 @@
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
     (let [parsed-rows (try
                         (->> (mc/find-maps conn (:name table))
-                             (take driver/max-sync-lazy-seq-results)
+                             (take driver/max-sample-rows)
                              (reduce
                                (fn [field-defs row]
                                  (loop [[k & more-keys] (keys row)
@@ -136,28 +147,6 @@
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
-(defn- analyze-table [table new-field-ids]
-  ;; We only care about 1) table counts and 2) field values
-  {:row_count (analyze/table-row-count table)
-   :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (analyze/test:cardinality-and-extract-field-values field {:id id}))})
-
-(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
-  (assert (and (map? field)
-               (delay? qualified-name-components)
-               (delay? table))
-    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
-  (lazy-seq
-   (assert *mongo-connection*
-     "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
-   (let [table           (field/table field)
-         name-components (rest (field/qualified-name-components field))]
-     (assert (seq name-components))
-     (for [row (mq/with-collection *mongo-connection* (:name table)
-                 (mq/fields [(s/join \. name-components)]))]
-       (get-in row (map keyword name-components))))))
-
 
 (defrecord MongoDriver []
   clojure.lang.Named
@@ -166,42 +155,46 @@
 (u/strict-extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table                     (u/drop-first-arg analyze-table)
-          :can-connect?                      (u/drop-first-arg can-connect?)
+         {:can-connect?                      (u/drop-first-arg can-connect?)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      27017}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "carrierPigeonDeliveries"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"}
-                                                          {:name         "pass"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "******"}
-                                                          {:name         "authdb"
-                                                           :display-name "Authentication Database"
-                                                           :placeholder  "Optional database to use when authenticating"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      27017}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "carrierPigeonDeliveries"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"}
+                                                            {:name         "pass"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "******"}
+                                                            {:name         "authdb"
+                                                             :display-name "Authentication Database"
+                                                             :placeholder  "Optional database to use when authenticating"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional Mongo connection string options"
+                                                             :placeholder  "readPreference=nearest&replicaSet=test"}]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :sync-in-context                   (u/drop-first-arg sync-in-context)}))
 
-
-(driver/register-driver! :mongo (MongoDriver.))
+(defn -init-driver
+  "Register the MongoDB driver"
+  []
+  (driver/register-driver! :mongo (MongoDriver.)))

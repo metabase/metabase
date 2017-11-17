@@ -1,11 +1,9 @@
 (ns metabase.query-processor-test.nested-field-test
   "Tests for nested field access."
-  (:require [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"

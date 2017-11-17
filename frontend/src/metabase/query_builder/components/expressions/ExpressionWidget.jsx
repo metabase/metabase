@@ -53,10 +53,10 @@ export default class ExpressionWidget extends Component {
                             onChange={(parsedExpression) => this.setState({expression: parsedExpression, error: null})}
                             onError={(errorMessage) => this.setState({error: errorMessage})}
                         />
-                        <p className="h5 text-grey-2">
+                      <p className="h5 text-grey-5">
                             Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table,
-                            mathematical symbols like +, and some functions.  So you could type, Subtotal - Cost.
-                            <a className="link" href="http://www.metabase.com/docs/latest/users-guide/03-asking-questions.html#creating-a-custom-field">Learn more</a>
+                            mathematical symbols like +, and some functions.  So you could type something like Subtotal &minus; Cost.
+                            &nbsp;<a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#creating-a-custom-field">Learn more</a>
                         </p>
                     </div>
 
@@ -73,12 +73,14 @@ export default class ExpressionWidget extends Component {
                 </div>
 
                 <div className="mt2 p2 border-top flex flex-row align-center justify-between">
-                    <div>
-                        <button
-                            className={cx("Button", {"Button--primary": this.isValid()})}
-                            onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
-                            disabled={!this.isValid()}>{this.props.expression ? "Update" : "Done"}</button>
-                        <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
+                    <div className="ml-auto">
+                        <button className="Button" onClick={() => this.props.onCancel()}>Cancel</button>
+                          <button
+                              className={cx("Button ml2", {"Button--primary": this.isValid()})}
+                              onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
+                              disabled={!this.isValid()}>
+                                {this.props.expression ? "Update" : "Done"}
+                          </button>
                     </div>
                     <div>
                         {this.props.expression ?

@@ -40,7 +40,7 @@ export default class PulseEditName extends Component {
                         style={{"width":"400px"}}
                         value={pulse.name || ""}
                         onChange={this.setName}
-                        onBlur={this.validate}
+                        onBlur={this.refs.name && this.validate}
                         placeholder="Important metrics"
                         autoFocus
                     />

@@ -1,15 +1,19 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { updateIn, setIn } from "icepick";
+import { setIn } from "icepick";
 
 import { createSelector } from 'reselect';
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import * as Dashboard from "metabase/meta/Dashboard";
-import Metadata from "metabase/meta/metadata/Metadata";
+
+import { getParameterTargetFieldId } from "metabase/meta/Parameter";
 
 import type { CardId, Card } from "metabase/meta/types/Card";
-import type { ParameterId, DashCardId, ParameterMappingUIOption, Parameter, ParameterMapping } from "metabase/meta/types/Dashboard";
+import type { DashCardId } from "metabase/meta/types/Dashboard";
+import type { ParameterId, Parameter, ParameterMapping, ParameterMappingUIOption } from "metabase/meta/types/Parameter";
 
 export type AugmentedParameterMapping = ParameterMapping & {
     dashcard_id: DashCardId,
@@ -32,17 +36,10 @@ export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;
 export const getDashcards         = state => state.dashboard.dashcards;
 export const getCardData          = state => state.dashboard.dashcardData;
-export const getCardDurations     = state => state.dashboard.cardDurations;
+export const getSlowCards         = state => state.dashboard.slowCards;
 export const getCardIdList        = state => state.dashboard.cardList;
 export const getRevisions         = state => state.dashboard.revisions;
 export const getParameterValues   = state => state.dashboard.parameterValues;
-
-export const getDatabases         = state => state.metadata.databases;
-
-export const getMetadata = createSelector(
-    [state => state.metadata],
-    (metadata) => Metadata.fromEntities(metadata)
-)
 
 export const getDashboard = createSelector(
     [getDashboardId, getDashboards],
@@ -108,17 +105,23 @@ export const getMappingsByParameter = createSelector(
         for (const dashcard of dashboard.ordered_cards) {
             const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
             for (let mapping: ParameterMapping of (dashcard.parameter_mappings || [])) {
-                let card = _.findWhere(cards, { id: mapping.card_id });
-                let field = card && card.dataset_query && Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
-                let values = field && field.values() || [];
-                for (const value of values) {
-                    countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
+                const card = _.findWhere(cards, { id: mapping.card_id });
+                const fieldId = card && getParameterTargetFieldId(mapping.target, card.dataset_query);
+                const field = metadata.fields[fieldId];
+                const values = field && field.fieldValues() || [];
+                if (values.length) {
+                    countsByParameter[mapping.parameter_id] = countsByParameter[mapping.parameter_id] || {};
                 }
+                for (const value of values) {
+                    countsByParameter[mapping.parameter_id][value] = (countsByParameter[mapping.parameter_id][value] || 0) + 1
+                }
+
                 let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
                     dashcard_id: dashcard.id,
                     card_id: mapping.card_id,
+                    field_id: fieldId,
                     values
                 };
                 mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], augmentedMapping);
@@ -131,7 +134,7 @@ export const getMappingsByParameter = createSelector(
             if (mapping.values && mapping.values.length > 0) {
                 let overlapMax = Math.max(...mapping.values.map(value => countsByParameter[mapping.parameter_id][value]))
                 mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, mapping.dashcard_id, mapping.card_id, "overlapMax"], overlapMax);
-                mappingsWithValuesByParameter = updateIn(mappingsWithValuesByParameter, [mapping.parameter_id], (count = 0) => count + 1);
+                mappingsWithValuesByParameter[mapping.parameter_id] = (mappingsWithValuesByParameter[mapping.parameter_id] || 0) + 1;
             }
         }
         // update count of mappings with values
@@ -142,6 +145,26 @@ export const getMappingsByParameter = createSelector(
         return mappingsByParameter;
     }
 );
+
+/** Returns the dashboard's parameters objects, with field_id added, if appropriate */
+export const getParameters = createSelector(
+    [getDashboard, getMappingsByParameter],
+    (dashboard, mappingsByParameter) =>
+        (dashboard && dashboard.parameters || []).map(parameter => {
+            // get the unique list of field IDs these mappings reference
+            const fieldIds = _.chain(mappingsByParameter[parameter.id])
+                .map(_.values)
+                .flatten()
+                .map(m => m.field_id)
+                .uniq()
+                .filter(fieldId => fieldId != null)
+                .value();
+            return {
+                ...parameter,
+                field_ids: fieldIds
+            }
+        })
+)
 
 export const makeGetParameterMappingOptions = () => {
     const getParameterMappingOptions = createSelector(

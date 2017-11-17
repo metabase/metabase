@@ -68,10 +68,11 @@
 }
 .text-lowercase { text-transform: lowercase; }
 
+.text-capitalize { text-transform: capitalize; }
+
 /* text weight */
 .text-light  { font-weight: 300; }
 .text-normal { font-weight: 400; }
-.text-strong { font-weight: 570; }
 .text-bold, :local(.text-bold)   { font-weight: 700; }
 
 /* text style */
@@ -92,6 +93,10 @@
 
 .text-small {
     font-size: 0.875em;
+}
+
+.text-smaller {
+    font-size: 0.8em;
 }
 
 .text-current {

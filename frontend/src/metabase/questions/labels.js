@@ -1,5 +1,5 @@
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import {createAction, createThunkAction, mergeEntities} from "metabase/lib/redux";
 import { reset } from 'redux-form';
 import { normalize, schema } from "normalizr";
 
@@ -8,7 +8,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 const label = new schema.Entity('labels');
 import { LabelApi } from "metabase/services";
 
-import { assoc, merge } from "icepick";
 import _ from "underscore";
 
 const LOAD_LABELS = 'metabase/labels/LOAD_LABELS';
@@ -76,19 +75,17 @@ const initialState = {
 };
 
 export default function(state = initialState, { type, payload, error }) {
-    if (payload && payload.entities) {
-        state = assoc(state, "entities", merge(state.entities, payload.entities));
-    }
-    if (payload && payload.message) {
-        state = assoc(state, "message", payload.message);
-    }
-
     switch (type) {
         case LOAD_LABELS:
             if (error) {
                 return { ...state, error: payload };
             } else {
-                return { ...state, labelIds: payload.result, error: null };
+                return {
+                    ...state,
+                    entities: mergeEntities(state.entities, payload.entities),
+                    labelIds: payload.result,
+                    error: null
+                };
             }
         case SAVE_LABEL:
             if (error || payload == null) {

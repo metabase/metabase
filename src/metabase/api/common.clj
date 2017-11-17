@@ -1,16 +1,15 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.tools.logging :as log]
-            (clojure [string :as s]
-                     [walk :as walk])
-            [cheshire.core :as json]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes]]
             [medley.core :as m]
-            [toucan.db :as db]
+            [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (declare check-403 check-404)
 
@@ -41,6 +40,8 @@
   "Assertion mechanism for use inside API functions.
    Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
 
+   MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional details, such as an `:error_code`.
+
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
 
   `check` can be called with the form
@@ -60,7 +61,9 @@
                                       [code-or-code-message-pair rest-args]
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
      (when-not tst
-       (throw (ex-info message {:status-code code})))
+       (throw (if (map? message)
+                (ex-info (:message message) (assoc message :status-code code))
+                (ex-info message            {:status-code code}))))
      (if (empty? rest-args) tst
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
@@ -265,7 +268,7 @@
                                                            (s/replace #"^metabase\." "")
                                                            (s/replace #"\." "/"))
                                                        (u/pprint-to-str (concat api-routes additional-routes))))
-       ~@api-routes ~@additional-routes)))
+       ~@additional-routes ~@api-routes)))
 
 
 ;;; ------------------------------------------------------------ PERMISSIONS CHECKING HELPER FNS ------------------------------------------------------------
@@ -314,7 +317,9 @@
     [400 "Embedding is not enabled."]))
 
 (defn check-not-archived
-  "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
   [object]
   (u/prog1 object
-    (check-404 (not (:archived object)))))
+    (check-404 object)
+    (check (not (:archived object))
+      [404 {:message "The object has been archived.", :error_code "archived"}])))

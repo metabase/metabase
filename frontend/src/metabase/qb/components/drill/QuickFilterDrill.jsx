@@ -4,8 +4,7 @@ import React from "react";
 
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
-
-import { filter } from "metabase/qb/lib/actions";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,
@@ -28,69 +27,48 @@ function getFiltersForColumn(column) {
     }
 }
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
     if (
+        !(query instanceof StructuredQuery) ||
         !clicked ||
         !clicked.column ||
         clicked.column.id == null ||
         clicked.value == undefined
     ) {
-        return;
+        return [];
     }
 
     const { value, column } = clicked;
 
     if (isPK(column.special_type)) {
-        return null;
-    } else if (isFK(column.special_type)) {
-        return {
-            title: (
-                <span>
-                    View this
-                    {" "}
-                    {singularize(stripId(column.display_name))}
-                    's
-                    {" "}
-                    {pluralize(tableMetadata.display_name)}
-                </span>
-            ),
-            card: () => filter(card, "=", column, value)
-        };
+        return [];
+    }
+    if (isFK(column.special_type)) {
+        return [
+            {
+                name: "view-fks",
+                section: "filter",
+                title: (
+                    <span>
+                        View this
+                        {" "}
+                        {singularize(stripId(column.display_name))}
+                        's
+                        {" "}
+                        {pluralize(query.table().display_name)}
+                    </span>
+                ),
+                question: () => question.filter("=", column, value)
+            }
+        ];
     }
 
-    let operators = getFiltersForColumn(column);
-    if (!operators || operators.length === 0) {
-        return;
-    }
-
-    return {
-        title: (
-            <span>
-                Filter by this value
-            </span>
-        ),
-        default: true,
-        popover({ onChangeCardAndRun, onClose }) {
-            return (
-                <ul className="h1 flex align-center px1">
-                    {operators &&
-                        operators.map(({ name, operator }) => (
-                            <li
-                                key={operator}
-                                className="p2 text-brand-hover cursor-pointer"
-                                onClick={() => {
-                                    onChangeCardAndRun(
-                                        filter(card, operator, column, value)
-                                    );
-                                }}
-                            >
-                                {name}
-                            </li>
-                        ))}
-                </ul>
-            );
-        }
-    };
+    let operators = getFiltersForColumn(column) || [];
+    return operators.map(({ name, operator }) => ({
+        name: operator,
+        section: "filter",
+        title: <span className="h2">{name}</span>,
+        question: () => question.filter(operator, column, value)
+    }));
 };

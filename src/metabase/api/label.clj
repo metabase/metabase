@@ -1,13 +1,13 @@
 (ns ^:deprecated metabase.api.label
   "`/api/label` endpoints."
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST DELETE PUT]]
-            [schema.core :as s]
-            [metabase.api.common :refer [defendpoint define-routes write-check], :as api]
-            [toucan.db :as db]
+            [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase.api.common :as api :refer [defendpoint define-routes write-check]]
             [metabase.models.label :refer [Label]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (defn warn-about-labels-being-deprecated
   "Print a warning message about Labels-related endpoints being deprecated."

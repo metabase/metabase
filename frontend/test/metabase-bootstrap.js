@@ -15,6 +15,9 @@ window.MetabaseBootstrap = {
         "US\/Pacific",
         "America\/Costa_Rica"
     ],
+    available_locales: [
+        ["en", "English"]
+    ],
     types: {
         "type/Address":                   ["type/*"],
         "type/Array":                     ["type/Collection"],
@@ -31,6 +34,7 @@ window.MetabaseBootstrap = {
         "type/Decimal":                   ["type/Float"],
         "type/Description":               ["type/Text"],
         "type/Dictionary":                ["type/Collection"],
+        "type/Email":                     ["type/Text"],
         "type/FK":                        ["type/Special"],
         "type/Float":                     ["type/Number"],
         "type/IPAddress":                 ["type/TextLike"],

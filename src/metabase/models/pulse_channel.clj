@@ -1,14 +1,15 @@
 (ns metabase.models.pulse-channel
-  (:require [clojure.set :as set]
-            [cheshire.generate :refer [add-encoder encode-map]]
+  (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [clojure.set :as set]
             [medley.core :as m]
-            (toucan [db :as db]
-                    [models :as models])
-            (metabase.models [pulse-channel-recipient :refer [PulseChannelRecipient]]
-                             [interface :as i]
-                             [user :refer [User]])
-            [metabase.util :as u]))
-
+            [metabase.models
+             [interface :as i]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
+             [user :refer [User]]]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;; ## Static Definitions
 

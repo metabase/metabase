@@ -1,11 +1,11 @@
 (ns metabase.events.last-login
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
-            [metabase.events :as events]
+            [metabase
+             [events :as events]
+             [util :as u]]
             [metabase.models.user :refer [User]]
-            [metabase.util :as u]))
-
+            [toucan.db :as db]))
 
 (def ^:const last-login-topics
   "The `Set` of event topics which are subscribed to for use in last login tracking."

@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import fetch from 'isomorphic-fetch';
+
+import { UtilApi } from "metabase/services";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -10,8 +11,8 @@ import "react-ansi-style/inject-css";
 import _ from "underscore";
 
 export default class Logs extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor() {
+        super();
         this.state = {
             logs: [],
             scrollToBottom: true
@@ -30,12 +31,13 @@ export default class Logs extends Component {
         }, 500);
     }
 
+    async fetchLogs() {
+        let logs = await UtilApi.logs();
+        this.setState({ logs: logs.reverse() })
+    }
+
     componentWillMount() {
-        this.timer = setInterval(async () => {
-            let response = await fetch("/api/util/logs", { credentials: 'same-origin' });
-            let logs = await response.json()
-            this.setState({ logs: logs.reverse() })
-        }, 1000);
+        this.timer = setInterval(this.fetchLogs.bind(this), 1000);
     }
 
     componentDidMount() {

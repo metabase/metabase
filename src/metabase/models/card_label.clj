@@ -1,7 +1,7 @@
 (ns ^:deprecated metabase.models.card-label
-  (:require [toucan.models :as models]
-            [metabase.models.interface :as i]
-            [metabase.util :as u]))
+  (:require [metabase.models.interface :as i]
+            [metabase.util :as u]
+            [toucan.models :as models]))
 
 (models/defmodel ^:deprecated CardLabel :card_label)
 

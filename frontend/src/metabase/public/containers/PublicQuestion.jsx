@@ -9,40 +9,43 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
 
-import { getParametersBySlug } from "metabase/meta/Parameter";
-
 import type { Card } from "metabase/meta/types/Card";
 import type { Dataset } from "metabase/meta/types/Dataset";
+import type { ParameterValues } from "metabase/meta/types/Parameter";
 
-import { getParameters, applyParameters } from "metabase/meta/Card";
+import { getParametersBySlug } from "metabase/meta/Parameter";
+import { getParameters, getParametersWithExtras, applyParameters } from "metabase/meta/Card";
 
 import { PublicApi, EmbedApi } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
+import { addParamValues } from "metabase/redux/metadata";
 
 import { updateIn } from "icepick";
 
 type Props = {
-    params:       { uuid?: string, token?: string },
-    location:     { query: { [key:string]: string }},
-    width:        number,
-    height:       number,
-    setErrorPage: (error: { status: number }) => void,
+    params:         { uuid?: string, token?: string },
+    location:       { query: { [key:string]: string }},
+    width:          number,
+    height:         number,
+    setErrorPage:   (error: { status: number }) => void,
+    addParamValues: (any) => void
 };
 
 type State = {
     card:               ?Card,
     result:             ?Dataset,
-    parameterValues:    {[key:string]: string}
+    parameterValues:    ParameterValues
 };
 
 const mapDispatchToProps = {
-    setErrorPage
+    setErrorPage,
+    addParamValues
 };
 
 @connect(null, mapDispatchToProps)
 @ExplicitSize
-export default class PublicQuestion extends Component<*, Props, State> {
+export default class PublicQuestion extends Component {
     props: Props;
     state: State;
 
@@ -68,9 +71,13 @@ export default class PublicQuestion extends Component<*, Props, State> {
                 throw { status: 404 }
             }
 
-            let parameterValues = {};
+            if (card.param_values) {
+                this.props.addParamValues(card.param_values);
+            }
+
+            let parameterValues: ParameterValues = {};
             for (let parameter of getParameters(card)) {
-                parameterValues[parameter.id] = query[parameter.slug];
+                parameterValues[String(parameter.id)] = query[parameter.slug];
             }
 
             this.setState({ card, parameterValues }, this.run);
@@ -143,7 +150,7 @@ export default class PublicQuestion extends Component<*, Props, State> {
             <EmbedFrame
                 name={card && card.name}
                 description={card && card.description}
-                parameters={card && card.parameters}
+                parameters={card && getParametersWithExtras(card)}
                 actionButtons={actionButtons}
                 parameterValues={parameterValues}
                 setParameterValue={this.setParameterValue}
@@ -160,7 +167,6 @@ export default class PublicQuestion extends Component<*, Props, State> {
                             })
                         }
                         gridUnit={12}
-                        linkToCard={false}
                         showTitle={false}
                         isDashboard
                     />

@@ -15,7 +15,7 @@ type State = {
     copied: boolean
 };
 
-export default class CopyWidget extends Component<*, Props, State> {
+export default class CopyWidget extends Component {
     props: Props;
     state: State;
 

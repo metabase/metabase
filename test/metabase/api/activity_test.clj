@@ -1,16 +1,16 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [view-log :refer [ViewLog]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [view-log :refer [ViewLog]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ resolve-private-vars], :as tu]
-            [metabase.util :as u]))
+            [metabase.test.util :as tu :refer [match-$ resolve-private-vars]]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; GET /
 

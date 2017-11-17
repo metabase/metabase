@@ -1,7 +1,7 @@
 (ns metabase.models.query-cache
   "A model used to cache query results in the database."
-  (:require [toucan.models :as models]
-            [metabase.util :as u]))
+  (:require [metabase.util :as u]
+            [toucan.models :as models]))
 
 (models/defmodel QueryCache :query_cache)
 

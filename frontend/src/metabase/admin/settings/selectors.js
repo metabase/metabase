@@ -12,6 +12,8 @@ import {
 } from "./components/widgets/PublicLinksListing.jsx";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
+import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
 
 import { UtilApi } from "metabase/services";
 
@@ -47,7 +49,16 @@ const SECTIONS = [
                     ...MetabaseSettings.get('timezones')
                 ],
                 placeholder: "Select a timezone",
-                note: "Not all databases support timezones, in which case this setting won't take effect."
+                note: "Not all databases support timezones, in which case this setting won't take effect.",
+                allowValueCollection: true
+            },
+            {
+                key: "site-locale",
+                display_name: "Language",
+                type: "select",
+                options:  (MetabaseSettings.get("available_locales") || []).map(([value, name]) => ({ name, value })),
+                placeholder: "Select a language",
+                getHidden: () => MetabaseSettings.get("available_locales").length < 2
             },
             {
                 key: "anon-tracking-enabled",
@@ -57,6 +68,11 @@ const SECTIONS = [
             {
                 key: "enable-advanced-humanization",
                 display_name: "Friendly Table and Field Names",
+                type: "boolean"
+            },
+            {
+                key: "enable-nested-queries",
+                display_name: "Enable Nested Queries",
                 type: "boolean"
             }
         ]
@@ -147,12 +163,103 @@ const SECTIONS = [
     },
     {
         name: "Single Sign-On",
+        sidebar: false,
         settings: [
             {
                 key: "google-auth-client-id"
             },
             {
                 key: "google-auth-auto-create-accounts-domain"
+            }
+        ]
+    },
+    {
+        name: "Authentication",
+        settings: []
+    },
+    {
+        name: "LDAP",
+        sidebar: false,
+        settings: [
+            {
+                key: "ldap-enabled",
+                display_name: "LDAP Authentication",
+                description: null,
+                type: "boolean"
+            },
+            {
+                key: "ldap-host",
+                display_name: "LDAP Host",
+                placeholder: "ldap.yourdomain.org",
+                type: "string",
+                required: true,
+                autoFocus: true
+            },
+            {
+                key: "ldap-port",
+                display_name: "LDAP Port",
+                placeholder: "389",
+                type: "string",
+                validations: [["integer", "That's not a valid port number"]]
+            },
+            {
+                key: "ldap-security",
+                display_name: "LDAP Security",
+                description: null,
+                type: "radio",
+                options: { none: "None", ssl: "SSL", starttls: "StartTLS" },
+                defaultValue: "none"
+            },
+            {
+                key: "ldap-bind-dn",
+                display_name: "Username or DN",
+                type: "string"
+            },
+            {
+                key: "ldap-password",
+                display_name: "Password",
+                type: "password"
+            },
+            {
+                key: "ldap-user-base",
+                display_name: "User search base",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-user-filter",
+                display_name: "User filter",
+                type: "string",
+                validations: [["ldap_filter", "Check your parentheses"]]
+            },
+            {
+                key: "ldap-attribute-email",
+                display_name: "Email attribute",
+                type: "string"
+            },
+            {
+                key: "ldap-attribute-firstname",
+                display_name: "First name attribute",
+                type: "string"
+            },
+            {
+                key: "ldap-attribute-lastname",
+                display_name: "Last name attribute",
+                type: "string"
+            },
+            {
+                key: "ldap-group-sync",
+                display_name: "Synchronize group memberships",
+                description: null,
+                widget: LdapGroupMappingsWidget
+            },
+            {
+                key: "ldap-group-base",
+                display_name: "Group search base",
+                type: "string"
+            },
+            {
+                key: "ldap-group-mappings"
             }
         ]
     },
@@ -204,17 +311,21 @@ const SECTIONS = [
                 description: null,
                 widget: EmbeddingLegalese,
                 getHidden: (settings) => settings["enable-embedding"],
-                onChanged: async (oldValue, newValue, settingsValues, onChange) => {
+                onChanged: async (oldValue, newValue, settingsValues, onChangeSetting) => {
+                    // Generate a secret key if none already exists
                     if (!oldValue && newValue && !settingsValues["embedding-secret-key"]) {
                         let result = await UtilApi.random_token();
-                        await onChange("embedding-secret-key", result.token);
+                        await onChangeSetting("embedding-secret-key", result.token);
                     }
                 }
-            },
-            {
+            }, {
                 key: "enable-embedding",
                 display_name: "Enable Embedding Metabase in other Applications",
                 type: "boolean",
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                widget: EmbeddingLevel,
                 getHidden: (settings) => !settings["enable-embedding"]
             },
             {
@@ -249,22 +360,54 @@ const SECTIONS = [
                 key: "query-caching-min-ttl",
                 display_name: "Minimum Query Duration",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             },
             {
                 key: "query-caching-ttl-ratio",
-                display_name: "Cache Time-To-Live (TTL)",
+                display_name: "Cache Time-To-Live (TTL) multiplier",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             },
             {
                 key: "query-caching-max-kb",
                 display_name: "Max Cache Entry Size",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
+            }
+        ]
+    },
+    {
+        name: "X-Rays",
+        settings: [
+            {
+                key: "enable-xrays",
+                display_name: "Enable X-Rays",
+                type: "boolean",
+                allowValueCollection: true
+            },
+            {
+                key: "xray-max-cost",
+                type: "string",
+                allowValueCollection: true
+
+            }
+        ]
+    },
+    /*
+    {
+        name: "Premium Embedding",
+        settings: [
+            {
+                key: "premium-embedding-token",
+                display_name: "Premium Embedding Token",
+                widget: PremiumEmbeddingWidget
             }
         ]
     }
+    */
 ];
 for (const section of SECTIONS) {
     section.slug = slugify(section.name);

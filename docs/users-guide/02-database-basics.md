@@ -74,4 +74,4 @@ To do this, we’d open up the Reservation table, add a filter to only look at r
 ---
 
 ## Next: Asking questions
-Now that we have a shared vocabulary and a basic understanding of databases, let's learn more about [asking questions](03-asking-questions.md)
+Now that we have a shared vocabulary and a basic understanding of databases, let's learn more about [exploring in Metabase](03-basic-exploration.md)

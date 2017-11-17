@@ -1,17 +1,24 @@
 (ns metabase.api.embed-test
   (:require [buddy.sign.jwt :as jwt]
             [crypto.random :as crypto-random]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.http-client :as http]
-            [metabase.api.public-test :as public-test]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])
-            (metabase.test [data :as data]
-                           [util :as tu])
-            [metabase.util :as u]
-            [metabase.util.embed :as eu]))
+            [metabase
+             [http-client :as http]
+             [util :as u]]
+            [metabase.api
+             [embed :as embed-api]
+             [public-test :as public-test]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [toucan.util.test :as tt])
+  (:import java.io.ByteArrayInputStream))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
@@ -53,7 +60,8 @@
   ([]
    {:data       {:columns ["count"]
                  :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count", :source "aggregation",
-                            :extra_info {}, :id nil, :target nil, :display_name "count", :base_type "type/Integer"}]
+                            :extra_info {}, :id nil, :target nil, :display_name "count", :base_type "type/Integer"
+                            :remapped_from nil, :remapped_to nil}]
                  :rows    [[100]]}
     :json_query {:parameters []}
     :status     "completed"})
@@ -61,7 +69,13 @@
    (case results-format
      ""      (successful-query-results)
      "/json" [{:count 100}]
-     "/csv"  "count\n100\n")))
+     "/csv"  "count\n100\n"
+     "/xlsx" (fn [body]
+               (->> (ByteArrayInputStream. body)
+                    spreadsheet/load-workbook
+                    (spreadsheet/select-sheet "Query result")
+                    (spreadsheet/select-columns {:A :col})
+                    (= [{:col "count"} {:col 100.0}]))))))
 
 (defn dissoc-id-and-name {:style/indent 0} [obj]
   (dissoc obj :id :name))
@@ -74,7 +88,8 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:type "query"}
-   :parameters             ()})
+   :parameters             ()
+   :param_values           nil})
 
 (def successful-dashboard-info
   {:description nil, :parameters (), :ordered_cards (), :param_values nil})
@@ -127,7 +142,7 @@
       (:parameters (http/client :get 200 (card-url card {:params {:c 100}}))))))
 
 
-;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON and CSV variants)  ------------------------------------------------------------
+;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants)  ------------------------------------------------------------
 
 (defn- card-query-url [card response-format & [additional-token-params]]
   (str "embed/card/"
@@ -135,21 +150,23 @@
        "/query"
        response-format))
 
-(defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding] expected actual]
+(defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding request-options-binding] expected actual]
   `(do
-     ~@(for [response-format ["" "/json" "/csv"]]
+     ~@(for [[response-format request-options] [[""] ["/json"] ["/csv"] ["/xlsx" {:as :byte-array}]]]
          `(expect
-            (let [~response-format-binding ~response-format]
+            (let [~response-format-binding         ~response-format
+                  ~(or request-options-binding '_) {:request-options ~request-options}]
               ~expected)
-            (let [~response-format-binding ~response-format]
+            (let [~response-format-binding         ~response-format
+                  ~(or request-options-binding '_) {:request-options ~request-options}]
               ~actual)))))
 
 ;; it should be possible to run a Card successfully if you jump through the right hoops...
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
-      (http/client :get 200 (card-query-url card response-format)))))
+      (http/client :get 200 (card-query-url card response-format) request-options))))
 
 ;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking query info)
 (expect-for-response-formats [response-format]
@@ -190,11 +207,11 @@
       (http/client :get 400 (card-query-url card response-format)))))
 
 ;; if `:locked` param is present, request should succeed
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "locked"}}]
-      (http/client :get 200 (card-query-url card response-format {:params {:abc 100}})))))
+      (http/client :get 200 (card-query-url card response-format {:params {:abc 100}}) request-options))))
 
 ;; If `:locked` parameter is present in URL params, request should fail
 (expect-for-response-formats [response-format]
@@ -229,18 +246,18 @@
       (http/client :get 400 (str (card-query-url card response-format {:params {:abc 100}}) "?abc=200")))))
 
 ;; If an `:enabled` param is present in the JWT, that's ok
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "enabled"}}]
-      (http/client :get 200 (card-query-url card response-format {:params {:abc "enabled"}})))))
+      (http/client :get 200 (card-query-url card response-format {:params {:abc "enabled"}}) request-options))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "enabled"}}]
-      (http/client :get 200 (str (card-query-url card response-format) "?abc=200")))))
+      (http/client :get 200 (str (card-query-url card response-format) "?abc=200") request-options))))
 
 
 ;; ------------------------------------------------------------ GET /api/embed/dashboard/:token ------------------------------------------------------------
@@ -399,10 +416,20 @@
 
 ;;; ------------------------------------------------------------ Other Tests ------------------------------------------------------------
 
-(tu/resolve-private-vars metabase.api.embed
-  remove-locked-and-disabled-params)
-
 ;; parameters that are not in the `embedding-params` map at all should get removed by `remove-locked-and-disabled-params`
 (expect
   {:parameters []}
-  (remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))
+  (#'embed-api/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))
+
+;; make sure that multiline series word as expected (#4768)
+(expect
+  "completed"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [series-card {:dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}}}]
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (tt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/get-id dashcard)
+                                                   :card_id          (u/get-id series-card)
+                                                   :position         0}]
+          (:status (http/client :get 200 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card)))))))))))

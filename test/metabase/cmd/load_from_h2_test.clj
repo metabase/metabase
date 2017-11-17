@@ -1,9 +1,8 @@
 (ns metabase.cmd.load-from-h2-test
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.tools.namespace.find :as ns-find]
-            [expectations :refer :all]
-            [toucan.models :as models]
-            metabase.cmd.load-from-h2))
+  (:require [expectations :refer :all]
+            metabase.cmd.load-from-h2
+            [metabase.util :as u]
+            [toucan.models :as models]))
 
 ;; Check to make sure we're migrating all of our entities.
 ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
@@ -19,7 +18,7 @@
     "QueryExecution"})
 
 (defn- all-model-names []
-  (set (for [ns       (ns-find/find-namespaces (classpath/classpath))
+  (set (for [ns       @u/metabase-namespace-symbols
              :when    (or (re-find #"^metabase\.models\." (name ns))
                           (= (name ns) "metabase.db.migrations"))
              :when    (not (re-find #"test" (name ns)))

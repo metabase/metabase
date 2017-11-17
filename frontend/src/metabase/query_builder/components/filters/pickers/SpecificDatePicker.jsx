@@ -27,7 +27,7 @@ type State = {
     showCalendar: bool
 }
 
-export default class SpecificDatePicker extends Component<*, Props, State> {
+export default class SpecificDatePicker extends Component {
     props: Props;
     state: State;
 
@@ -82,7 +82,7 @@ export default class SpecificDatePicker extends Component<*, Props, State> {
         }
 
         return (
-            <div className="px1">
+            <div>
                 <div className="flex align-center mb1">
                     <div className={cx('border-top border-bottom full border-left', { 'border-right': !calendar })}>
                         <Input

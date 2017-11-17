@@ -69,7 +69,7 @@ export default class VisualizationSettings extends React.Component {
                                 key={index}
                                 className={cx('p2 flex align-center cursor-pointer bg-brand-hover text-white-hover', {
                                     'ChartType--selected': vizType === card.display,
-                                    'ChartType--notSensible': !(result && result.data && viz.isSensible(result.data.cols, result.data.rows)),
+                                    'ChartType--notSensible': !(result && result.data && viz.isSensible && viz.isSensible(result.data.cols, result.data.rows)),
                                     'hide': viz.hidden
                                 })}
                                 onClick={this.setDisplay.bind(null, vizType)}

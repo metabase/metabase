@@ -2,8 +2,8 @@
 
 import React from "react";
 
-import TimeseriesGroupingWidget
-    from "metabase/qb/components/TimeseriesGroupingWidget";
+// import TimeseriesGroupingWidget
+//     from "metabase/qb/components/TimeseriesGroupingWidget";
 import TimeseriesFilterWidget
     from "metabase/qb/components/TimeseriesFilterWidget";
 
@@ -12,11 +12,10 @@ import { DEFAULT_DRILLS } from "../drill";
 
 import PivotByCategoryAction from "../actions/PivotByCategoryAction";
 import PivotByLocationAction from "../actions/PivotByLocationAction";
+import XRayCard from "../actions/XRayCard";
 
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
-
-import TimeseriesPivotDrill from "../drill/TimeseriesPivotDrill";
 
 import type { QueryMode } from "metabase/meta/types/Visualization";
 import type {
@@ -24,12 +23,14 @@ import type {
     DatasetQuery
 } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
+import TimeseriesGroupingWidget
+    from "metabase/qb/components/TimeseriesGroupingWidget";
 
 type Props = {
     lastRunCard: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQuery: () => void
+    runQuestionQuery: () => void
 };
 
 export const TimeseriesModeFooter = (props: Props) => {
@@ -45,13 +46,13 @@ export const TimeseriesModeFooter = (props: Props) => {
 
 const TimeseriesMode: QueryMode = {
     name: "timeseries",
-    actions: [...DEFAULT_ACTIONS, PivotByCategoryAction, PivotByLocationAction],
-    drills: [
-        ...DEFAULT_DRILLS,
-        TimeseriesPivotDrill,
-        PivotByCategoryDrill,
-        PivotByLocationDrill
+    actions: [
+        PivotByCategoryAction,
+        PivotByLocationAction,
+        XRayCard,
+        ...DEFAULT_ACTIONS
     ],
+    drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DEFAULT_DRILLS],
     ModeFooter: TimeseriesModeFooter
 };
 

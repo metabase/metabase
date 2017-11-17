@@ -1,8 +1,7 @@
 (ns metabase.models.query-execution
-  (:require [schema.core :as s]
-            [toucan.models :as models]
-            [metabase.util :as u]))
-
+  (:require [metabase.util :as u]
+            [schema.core :as s]
+            [toucan.models :as models]))
 
 (models/defmodel QueryExecution :query_execution)
 
@@ -25,7 +24,8 @@
           :public-dashboard
           :public-question
           :pulse
-          :question))
+          :question
+          :xlsx-download))
 
 (defn- pre-insert [{context :context, :as query-execution}]
   (u/prog1 query-execution

@@ -18,15 +18,13 @@ use constant JRE_HOME => trim(`/usr/libexec/java_home`) . '/jre';
 use constant UBERJAR_SRC => getcwd() . '/target/uberjar/metabase.jar';
 use constant UBERJAR_DEST => getcwd() . '/OSX/Resources/metabase.jar';
 
-use constant RESET_PW_SRC => getcwd() . '/reset-password-artifacts/reset-password/reset-password.jar';
-use constant RESET_PW_DEST => getcwd() . '/OSX/Resources/reset-password.jar';
+use constant BUILD_SCRIPT => getcwd() . '/bin/build';
 
 # Copy the JRE if needed
 (rcopy(JRE_HOME, JRE_DEST) or die $!) unless -d JRE_DEST;
 
 # Build jars if needed
-(system('./bin/build') or die $!) unless -f UBERJAR_SRC;
-(system('lein', 'with-profile', 'reset-password', 'jar') or die $!) unless -f RESET_PW_SRC;
+(system(BUILD_SCRIPT) or die $!) unless -f UBERJAR_SRC;
 
 # Copy jars over
 sub copy_jar {
@@ -35,6 +33,5 @@ sub copy_jar {
   copy(get_file_or_die($src), $dest) or die $!;
 }
 copy_jar(UBERJAR_SRC, UBERJAR_DEST);
-copy_jar(RESET_PW_SRC, RESET_PW_DEST);
 
 print_giant_success_banner();

@@ -14,13 +14,14 @@ import LabelPopover from "../containers/LabelPopover.jsx";
 const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsArchive, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
         <Tooltip tooltip={"Select all " + visibleCount} isEnabled={!allAreSelected}>
-            <StackedCheckBox
-                checked={allAreSelected}
-                className="ml1"
-                onChange={(e) => setAllSelected(e.target.checked)}
-                size={20} padding={3} borderColor="currentColor"
-                invertChecked
-            />
+            <span className="ml1">
+                <StackedCheckBox
+                    checked={allAreSelected}
+                    onChange={e => setAllSelected(e.target.checked)}
+                    size={20}
+                    padding={3}
+                />
+            </span>
         </Tooltip>
         <span className={S.selectedCount}>
             {selectedCount} selected

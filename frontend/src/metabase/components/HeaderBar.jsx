@@ -42,12 +42,13 @@ export default class Header extends Component {
         }
 
         return (
-            <div className={cx("QueryBuilder-section pt2 sm-pt0 flex align-center", className)}>
-                <div className={cx("px2 sm-px0 pt2 relative flex-full")}>
-                    { badge &&
-                        <div className="absolute top left ml2 sm-ml0">{badge}</div>
-                    }
+            // TODO Atte Keinänen 5/16/17 Take care of the mobile layout with the multimetrics UI
+            <div className={cx("QueryBuilder-section pt2 sm-pt2 flex align-center", className)}>
+                <div className={cx("relative flex-full")}>
                     {titleAndDescription}
+                    { badge &&
+                    <div>{badge}</div>
+                    }
                 </div>
 
                 <div className="flex-align-right hide sm-show">

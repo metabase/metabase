@@ -45,6 +45,11 @@ export default ComposedComponent => class extends Component {
         if (e && e.target && ReactDOM.findDOMNode(this.refs.trigger).contains(e.target)) {
             return;
         }
+
+        if (this.props.onClose) {
+            this.props.onClose(e)
+        }
+
         this.close();
     }
 
@@ -109,7 +114,10 @@ export default ComposedComponent => class extends Component {
             <a
                 id={triggerId}
                 ref="trigger"
-                onClick={!this.props.disabled && (() => this.toggle())}
+                onClick={(event) => {
+                    event.preventDefault()
+                    !this.props.disabled && this.toggle()
+                }}
                 className={cx(triggerClasses, isOpen && triggerClassesOpen, "no-decoration", {
                     'cursor-default': this.props.disabled
                 })}

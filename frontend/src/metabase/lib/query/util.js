@@ -8,6 +8,27 @@ export const mbql = (a: string):string =>
 export const mbqlEq = (a: string, b: string): boolean =>
     mbql(a) === mbql(b);
 
+// determines whether 2 field IDs are equal. This is needed rather than
+// doing a simple comparison because field IDs are not guaranteed to be numeric:
+// the might be FieldLiterals, e.g. [field-literal <name> <unit>], instead.
+export const fieldIdsEq = (a: any, b: any): boolean => {
+    if (typeof a !== typeof b) return false;
+
+    if (typeof a === "number") return a === b;
+
+    if (a == null && b == null) return true;
+
+    // field literals
+    if (Array.isArray(a) && Array.isArray(b) &&
+        a.length === 3 && b.length === 3 &&
+        a[0] === "field-literal" && b[0] === "field-literal") {
+        return a[1] === b[1];
+    }
+
+    console.warn("Don't know how to compare these IDs:", a, b);
+    return false;
+}
+
 export const noNullValues = (clause: any[]): boolean =>
     _.all(clause, c => c != null);
 
