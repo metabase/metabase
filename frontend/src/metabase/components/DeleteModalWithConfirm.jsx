@@ -18,7 +18,7 @@ export default class DeleteModalWithConfirm extends Component {
     }
 
     static propTypes = {
-        objectName: PropTypes.string.isRequired,
+        title: PropTypes.string.isRequired,
         objectType: PropTypes.string.isRequired,
         confirmItems: PropTypes.array.isRequired,
         onClose: PropTypes.func.isRequired,
@@ -31,12 +31,12 @@ export default class DeleteModalWithConfirm extends Component {
     }
 
     render() {
-        const { objectName, objectType, confirmItems } = this.props;
+        const { title, objectType, confirmItems } = this.props;
         const { checked } = this.state;
         let confirmed = confirmItems.reduce((acc, item, index) => acc && checked[index], true);
         return (
             <ModalContent
-                title={"Delete \"" + objectName + "\"?"}
+                title={title}
                 onClose={this.props.onClose}
             >
             <div className="px4">

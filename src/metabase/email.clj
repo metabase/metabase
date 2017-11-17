@@ -4,7 +4,8 @@
             [metabase.util :as u]
             [postal
              [core :as postal]
-             [support :refer [make-props]]])
+             [support :refer [make-props]]]
+            [schema.core :as s])
   (:import javax.mail.Session))
 
 ;;; CONFIG
@@ -50,9 +51,34 @@
        :port (Integer/parseInt (email-smtp-port))}
       (add-ssl-settings (email-smtp-security))))
 
+(def ^:private EmailMessage
+  {:subject      s/Str
+   :recipients   [(s/pred u/is-email?)]
+   :message-type (s/enum :text :html :attachments)
+   :message      s/Str})
+
+(s/defn send-message-or-throw!
+  "Send an email to one or more RECIPIENTS. Upon success, this returns the MESSAGE that was just sent. This function
+  does not catch and swallow thrown exceptions, it will bubble up."
+  {:style/indent 0}
+  [{:keys [subject recipients message-type message]} :- EmailMessage]
+  {:pre [(if (= message-type :attachments) (sequential? message) (string? message))]}
+  (when-not (email-smtp-host)
+    (throw (Exception. "SMTP host is not set.")))
+  ;; Now send the email
+  (send-email! (smtp-settings)
+    {:from    (email-from-address)
+     :to      recipients
+     :subject subject
+     :body    (case message-type
+                :attachments message
+                :text        message
+                :html        [{:type    "text/html; charset=utf-8"
+                               :content message}])}))
+
 (defn send-message!
   "Send an email to one or more RECIPIENTS.
-   RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
+   RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html` or `:attachments`.
 
      (email/send-message!
        :subject      \"[Metabase] Password Reset Request\"
@@ -60,31 +86,14 @@
        :message-type :text
        :message      \"How are you today?\")
 
-   Upon success, this returns the MESSAGE that was just sent."
+   Upon success, this returns the MESSAGE that was just sent. This function will catch and log any exception,
+  returning a map with a description of the error"
   {:style/indent 0}
-  [& {:keys [subject recipients message-type message]}]
-  ;; TODO - should just use a schema to validate this
-  {:pre [(string? subject)
-         (sequential? recipients)
-         (or (every? u/is-email? recipients)
-             (log/error "recipients contains an invalid email:" recipients))
-         (contains? #{:text :html :attachments} message-type)
-         (if (= message-type :attachments) (sequential? message) (string? message))]}
+  [& {:keys [subject recipients message-type message] :as msg-args}]
   (try
-    (when-not (email-smtp-host)
-      (throw (Exception. "SMTP host is not set.")))
-    ;; Now send the email
-    (send-email! (smtp-settings)
-      {:from    (email-from-address)
-       :to      recipients
-       :subject subject
-       :body    (case message-type
-                  :attachments message
-                  :text        message
-                  :html        [{:type    "text/html; charset=utf-8"
-                                 :content message}])})
+    (send-message-or-throw! msg-args)
     (catch Throwable e
-      (log/warn "Failed to send email: " (.getMessage e))
+      (log/warn e "Failed to send email")
       {:error   :ERROR
        :message (.getMessage e)})))
 

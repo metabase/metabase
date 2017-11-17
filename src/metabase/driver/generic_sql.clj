@@ -15,6 +15,7 @@
             [metabase.models
              [field :as field]
              [table :as table]]
+            metabase.query-processor.interface
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])

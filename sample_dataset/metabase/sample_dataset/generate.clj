@@ -6,13 +6,13 @@
              [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
-            [jdistlib.core :as dist]
             [faker
              [address :as address]
              [company :as company]
              [internet :as internet]
              [lorem :as lorem]
              [name :as name]]
+            [jdistlib.core :as dist]
             [medley.core :as m]
             [metabase.db.spec :as dbspec]
             [metabase.util :as u])

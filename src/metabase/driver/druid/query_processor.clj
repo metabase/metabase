@@ -370,16 +370,22 @@
     :year            (extract:timeFormat "yyyy")))
 
 (defn- unit->granularity [unit]
-  {:type     "period"
-   :period   (case unit
-               :minute  "PT1M"
-               :hour    "PT1H"
-               :day     "P1D"
-               :week    "P1W"
-               :month   "P1M"
-               :quarter "P3M"
-               :year    "P1Y")
-   :timeZone (get-timezone-id)})
+  (conj {:type     "period"
+         :period   (case unit
+                     :minute  "PT1M"
+                     :hour    "PT1H"
+                     :day     "P1D"
+                     :week    "P1W"
+                     :month   "P1M"
+                     :quarter "P3M"
+                     :year    "P1Y")
+         :timeZone (get-timezone-id)}
+        ;; Druid uses Monday for the start of its weekly calculations. Metabase uses Sundays. When grouping by week,
+        ;; the origin keypair will use the date specified as it's start of the week. The below date is the first
+        ;; Sunday after Epoch. The date itself isn't significant, it just uses it to figure out what day it should
+        ;; start from.
+        (when (= :week unit)
+          {:origin "1970-01-04T00:00:00Z"})))
 
 (def ^:private ^:const units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.

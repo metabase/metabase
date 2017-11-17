@@ -14,6 +14,7 @@
              [pulse-card :refer [PulseCard]]
              [table :refer [Table]]]
             [metabase.test.data.users :refer :all]
+            [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -100,24 +101,23 @@
    :created_at    true
    :updated_at    true
    :cards         (mapv pulse-card-details [card1 card2])
-   :channels      [{:enabled        true
-                    :channel_type   "email"
-                    :schedule_type  "daily"
-                    :schedule_hour  12
-                    :schedule_day   nil
-                    :schedule_frame nil
-                    :recipients     []}]
+   :channels      [(merge pulse-channel-defaults
+                          {:channel_type   "email"
+                           :schedule_type  "daily"
+                           :schedule_hour  12
+                           :recipients     []})]
    :skip_if_empty false}
-  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                                :cards         [{:id (:id card1)} {:id (:id card2)}]
-                                                                :channels      [{:enabled       true
-                                                                                 :channel_type  "email"
-                                                                                 :schedule_type "daily"
-                                                                                 :schedule_hour 12
-                                                                                 :schedule_day  nil
-                                                                                 :recipients    []}]
-                                                                :skip_if_empty false}))
-      (update :channels remove-extra-channels-fields)))
+  (tu/with-model-cleanup [Pulse]
+    (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                  :cards         [{:id (:id card1)} {:id (:id card2)}]
+                                                                  :channels      [{:enabled       true
+                                                                                   :channel_type  "email"
+                                                                                   :schedule_type "daily"
+                                                                                   :schedule_hour 12
+                                                                                   :schedule_day  nil
+                                                                                   :recipients    []}]
+                                                                  :skip_if_empty false}))
+        (update :channels remove-extra-channels-fields))))
 
 
 ;; ## PUT /api/pulse
@@ -158,14 +158,11 @@
    :created_at    true
    :updated_at    true
    :cards         [(pulse-card-details card)]
-   :channels      [{:enabled       true
-                    :channel_type  "slack"
-                    :schedule_type "hourly"
-                    :schedule_hour nil
-                    :schedule_day  nil
-                    :schedule_frame nil
-                    :details       {:channels "#general"}
-                    :recipients    []}]
+   :channels      [(merge pulse-channel-defaults
+                          {:channel_type  "slack"
+                           :schedule_type "hourly"
+                           :details       {:channels "#general"}
+                           :recipients    []})]
    :skip_if_empty false}
   (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse))
                        {:name          "Updated Pulse"
@@ -217,8 +214,21 @@
                                      (:id pulse2)}])
     ((user->client :rasta) :get 200 "pulse")))
 
+;; ## GET /api/pulse -- should not return alerts
+(tt/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
+                      Pulse [pulse2 {:name "GHIJKL"}]
+                      Pulse [pulse3 {:name            "AAAAAA"
+                                     :alert_condition "rows"}]]
+  [(assoc (pulse-details pulse1) :read_only false)
+   (assoc (pulse-details pulse2) :read_only false)]
+  ((user->client :rasta) :get 200 "pulse"))
 
 ;; ## GET /api/pulse/:id
 (tt/expect-with-temp [Pulse [pulse]]
   (pulse-details pulse)
   ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))
+
+;; ## GET /api/pulse/:id on an alert should 404
+(tt/expect-with-temp [Pulse [{pulse-id :id} {:alert_condition "rows"}]]
+  "Not found."
+  ((user->client :rasta) :get 404 (str "pulse/" pulse-id)))

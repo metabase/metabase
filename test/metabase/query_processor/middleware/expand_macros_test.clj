@@ -179,3 +179,8 @@
                :query    {:source-table (data/id :venues)
                           :aggregation  [["METRIC" (u/get-id metric)]]
                           :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
+
+;; make sure that we don't try to expand GA "metrics" (#6104)
+(expect
+  {:query {:aggregation [[:metric :ga:users]]}}
+  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :ga:users]]}}))

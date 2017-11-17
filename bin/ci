@@ -11,7 +11,7 @@ node-0() {
     MB_MYSQL_TEST_USER=ubuntu run_step lein-test
 }
 node-1() {
-    run_step lein docstring-checker
+    run_step lein with-profile +ci docstring-checker
 
     is_enabled "drivers" && export ENGINES="h2,sqlserver,oracle" || export ENGINES="h2"
     if is_engine_enabled "oracle"; then
@@ -21,7 +21,7 @@ node-1() {
         run_step lein-test
 }
 node-2() {
-    run_step lein bikeshed
+    run_step lein with-profile +ci bikeshed
 
     is_enabled "drivers" && export ENGINES="h2,postgres,sqlite,presto" || export ENGINES="h2"
     if is_engine_enabled "crate"; then
@@ -55,7 +55,7 @@ node-4() {
     report-uberjar-size
 }
 node-5() {
-    run_step lein eastwood
+    run_step lein with-profile +ci eastwood
 
     run_step yarn run test-karma
     run_step yarn run test-unit
@@ -125,7 +125,7 @@ install-presto() {
 }
 
 lein-test() {
-    lein test
+    lein with-profile +ci test
 }
 
 if [ -z ${CIRCLE_BRANCH_REGEX+x} ]; then
