@@ -60,6 +60,7 @@ export default class AccordianList extends Component {
 
     static defaultProps = {
         style: {},
+        width: 300,
         searchable: (section) => section.items && section.items.length > 10,
         alwaysTogglable: false,
         alwaysExpanded: false,
@@ -234,8 +235,11 @@ export default class AccordianList extends Component {
             }
         }
 
-        const width = 300;
-        const maxHeight = 500;
+        const maxHeight = (this.props.maxHeight > 0 && this.props.maxHeight < Infinity) ?
+            this.props.maxHeight :
+            window.innerHeight;
+
+        const width = this.props.width;
         const height = Math.min(maxHeight, rows.reduce((height, row, index) =>
             height + this._cache.rowHeight({ index })
         , 0));

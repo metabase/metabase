@@ -146,7 +146,7 @@ export default class DataSelector extends Component {
         return this.props.datasetQuery.query && this.props.datasetQuery.query.source_table;
     }
 
-    renderDatabasePicker() {
+    renderDatabasePicker = ({ maxHeight }) => {
         let sections = [{
             items: this.state.databases.map(database => ({
                 name: database.name,
@@ -159,6 +159,7 @@ export default class DataSelector extends Component {
                 id="DatabasePicker"
                 key="databasePicker"
                 className="text-brand"
+                maxHeight={maxHeight}
                 sections={sections}
                 onChange={this.onChangeTable}
                 itemIsSelected={(item) => this.getDatabaseId() === item.database.id}
@@ -168,7 +169,7 @@ export default class DataSelector extends Component {
         );
     }
 
-    renderDatabaseSchemaPicker() {
+    renderDatabaseSchemaPicker = ({ maxHeight }) => {
         const { databases, selectedSchema } = this.state;
 
         let sections = databases
@@ -190,6 +191,7 @@ export default class DataSelector extends Component {
                     id="DatabaseSchemaPicker"
                     key="databaseSchemaPicker"
                     className="text-brand"
+                    maxHeight={maxHeight}
                     sections={sections}
                     onChange={this.onChangeSchema}
                     onChangeSection={this.onChangeDatabase}
@@ -210,7 +212,7 @@ export default class DataSelector extends Component {
         );
     }
 
-    renderSegmentAndDatabasePicker() {
+    renderSegmentAndDatabasePicker = ({ maxHeight }) => {
         const { selectedSchema } = this.state;
 
         const segmentItem = [{ name: 'Segments', items: [], icon: 'segment'}];
@@ -233,6 +235,7 @@ export default class DataSelector extends Component {
                 id="SegmentAndDatabasePicker"
                 key="segmentAndDatabasePicker"
                 className="text-brand"
+                maxHeight={maxHeight}
                 sections={sections}
                 onChange={this.onChangeSchema}
                 onChangeSection={(index) => index === 0 ?
@@ -249,7 +252,7 @@ export default class DataSelector extends Component {
         );
     }
 
-    renderTablePicker() {
+    renderTablePicker = ({ maxHeight }) => {
         const schema = this.state.selectedSchema;
 
         const isSavedQuestionList = schema.database.is_saved_questions;
@@ -298,6 +301,7 @@ export default class DataSelector extends Component {
                         id="TablePicker"
                         key="tablePicker"
                         className="text-brand"
+                        maxHeight={maxHeight}
                         sections={sections}
                         searchable
                         onChange={this.onChangeTable}
@@ -316,8 +320,8 @@ export default class DataSelector extends Component {
         }
     }
 
-    //TODO: refactor this. lots of shared code with renderTablePicker()
-    renderSegmentPicker() {
+    //TODO: refactor this. lots of shared code with renderTablePicker = () =>
+    renderSegmentPicker = ({ maxHeight }) => {
         const { segments } = this.props;
         const header = (
             <span className="flex align-center">
@@ -356,6 +360,7 @@ export default class DataSelector extends Component {
                 id="SegmentPicker"
                 key="segmentPicker"
                 className="text-brand"
+                maxHeight={maxHeight}
                 sections={sections}
                 searchable
                 searchPlaceholder="Find a segment"
@@ -419,14 +424,14 @@ export default class DataSelector extends Component {
                 horizontalAttachments={this.props.segments ? ["center", "left", "right"] : ["left"]}
             >
                 { !this.props.includeTables ?
-                    this.renderDatabasePicker() :
+                    this.renderDatabasePicker :
                     this.state.selectedSchema && this.state.showTablePicker ?
-                        this.renderTablePicker() :
+                        this.renderTablePicker :
                         this.props.segments ?
                             this.state.showSegmentPicker ?
-                                this.renderSegmentPicker() :
-                                this.renderSegmentAndDatabasePicker() :
-                            this.renderDatabaseSchemaPicker()
+                                this.renderSegmentPicker :
+                                this.renderSegmentAndDatabasePicker :
+                            this.renderDatabaseSchemaPicker
                 }
             </PopoverWithTrigger>
         );
