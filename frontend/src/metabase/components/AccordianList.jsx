@@ -73,8 +73,8 @@ export default class AccordianList extends Component {
         this._forceUpdateList();
     }
     componentDidUpdate(prevProps, prevState) {
-        // if the section changed we need to reset the cached row heights
-        if (this.state.openSection !== prevState.openSection) {
+        // if anything changes that affects the selected rows we need to clear the row height cache
+        if (this.state.openSection !== prevState.openSection || this.state.searchText !== prevState.searchText) {
             this._clearRowHeightCache()
         }
     }
@@ -99,7 +99,7 @@ export default class AccordianList extends Component {
             columnIndex: 0,
             rowIndex: 0
         });
-        // this._list.forceUpdateGrid();
+        this._list.forceUpdateGrid();
         this.forceUpdate()
     }
 
@@ -218,6 +218,8 @@ export default class AccordianList extends Component {
             const isLastSection = sectionIndex === sections.length - 1;
             if (section.name && (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)) {
                 rows.push({ type: "header", section, sectionIndex, isLastSection })
+            } else {
+                rows.push({ type: "header-hidden", section, sectionIndex, isLastSection })
             }
             if (sectionIsSearchable(sectionIndex) && sectionIsExpanded(sectionIndex) && section.items && section.items.length > 0) {
                 rows.push({ type: "search", section, sectionIndex, isLastSection })
@@ -275,7 +277,7 @@ export default class AccordianList extends Component {
                                 >
                                     { type === "header" ? (
                                         alwaysExpanded ?
-                                            <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
+                                            <div className="px2 pt2 pb1 h6 text-grey-2 text-uppercase text-bold">
                                                 {section.name}
                                             </div>
                                         :
@@ -295,7 +297,9 @@ export default class AccordianList extends Component {
                                                     </span>
                                                 }
                                             </div>
-                                    ) : type === "search" ?
+                                    ) : type === "header-hidden" ?
+                                        <div className="my1" />
+                                    : type === "search" ?
                                         <div className="m1" style={{ border: "2px solid transparent" }}>
                                             <ListSearchField
                                                 onChange={(val) => this.setState({searchText: val})}
