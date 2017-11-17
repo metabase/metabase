@@ -356,7 +356,7 @@ export const TestPopover = (props) =>
                 // to care about clicks that happen inside the popover
                 onClick={ (e) => { e.stopPropagation(); } }
             >
-                { typeof props.children === "function" ? props.children({}) : props.children}
+                { typeof props.children === "function" ? props.children({ maxHeight: 500 }) : props.children}
             </div>
         </OnClickOutsideWrapper>
         : null
