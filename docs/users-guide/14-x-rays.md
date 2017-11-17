@@ -52,19 +52,7 @@ Metabase hasn't quite achieved self-awareness, but it has gotten smarter recentl
 
 ![Insights](./images/insights.png)
 
-Here's some of the things Metabase might point out to you:
-- The normal range of values in your data.
-- Whether or not there seem to be a lot of missing values or zeros in your data.
-- Whether or not your data has an overall trend, and if so, what kind of trend.
-- Whether or not your data can be broken up into different distinct stages of growth or decline.
-- Whether or not your data is stationary.
-- Whether or not your data has a strong or mild autocorrelation [@sb, I don't totally understand this one. Something to do with lagged repeating patterns?]
-- Whether the range of variation in your data is contracting or expanding.
-- Whether or not your data contains uncharacteristic spikes or valleys, and if so, where.
-- Whether or not there seem to be structural breaks in your data. [@sb, don't know what this one means either]
-- Whether or not your data is noisy.
-- Whether or not your data has a seasonal component, meaning that it tends to follow a similar shape at regular intervals.
-- Whether or not your data seems to be multi-modal, with two or more distinct sections that are very different from each other.
+Insights include things like whether or not your data has an overall trend, has uncharacteristic spikes or dips, or if it follows a similar pattern at regular intervals.
 
 ## Need help?
 If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!
