@@ -13,6 +13,9 @@ const DemoPopover = ({ children }) =>
 
 export const component = AccordianList;
 
+// disable snapshot testing due to issue with Popover
+export const noSnapshotTest = true;
+
 export const description = `
 An expandable and searchable list of sections and items.
 `;
