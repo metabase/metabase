@@ -322,7 +322,7 @@
    So this is where dynamic variables come to the rescue. We'll make this one `true` when we use `can-connect?` for the
    Metabase DB, in which case we'll allow connection to non-existent H2 (etc.) files, and leave it `false` happily and
    forever after, making all other connnections \"safe\"."
-  false)
+  true)
 
 (defn- verify-db-connection
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
@@ -342,7 +342,7 @@
   "Should we skip running data migrations when setting up the DB? (Default is `false`).
    There are certain places where we don't want to do this; for example, none of the migrations should be ran when Metabase is launched via `load-from-h2`.
    That's because they will end up doing things like creating duplicate entries for the \"magic\" groups and permissions entries. "
-  false)
+  true)
 
 (defn- print-migrations-and-quit!
   "If we are not doing auto migrations then print out migration SQL for user to run manually.
