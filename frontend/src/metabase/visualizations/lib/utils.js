@@ -3,7 +3,7 @@
 import React from "react";
 import _ from "underscore";
 import d3 from "d3";
-
+import { t } from 'c-3po';
 import crossfilter from "crossfilter";
 
 import * as colors from "metabase/lib/colors";
@@ -97,11 +97,11 @@ export function computeSplit(extents) {
 }
 
 const FRIENDLY_NAME_MAP = {
-    "avg": "Average",
-    "count": "Count",
-    "sum": "Sum",
-    "distinct": "Distinct",
-    "stddev": "Standard Deviation"
+    "avg": t`Average`,
+    "count": t`Count`,
+    "sum": t`Sum`,
+    "distinct": t`Distinct`,
+    "stddev": t`Standard Deviation`
 };
 
 export function getXValues(datas, chartType) {
