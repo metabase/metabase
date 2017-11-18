@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
@@ -121,7 +121,7 @@ class ChartSettings extends Component {
 
         return (
             <div className="flex flex-column spread p4">
-                <h2 className="my2">Customize this {this.getChartTypeName()}</h2>
+                <h2 className="my2">{t`Customize this ${this.getChartTypeName()}`}</h2>
 
                 { tabNames.length > 1 &&
                     <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
@@ -152,12 +152,12 @@ class ChartSettings extends Component {
                 </div>
                 <div className="pt1">
                     { !_.isEqual(this.state.settings, {}) &&
-                        <a className="Button Button--danger float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
+                        <a className="Button Button--danger float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">{t`Reset to defaults`}</a>
                     }
 
                     <div className="float-left">
-                      <a className="Button Button--primary ml2" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
-                      <a className="Button ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
+                      <a className="Button Button--primary ml2" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">{t`Done`}</a>
+                      <a className="Button ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">{t`Cancel`}</a>
                     </div>
                 </div>
             </div>

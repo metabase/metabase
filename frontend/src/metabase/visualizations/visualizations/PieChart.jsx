@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
-
+import { t } from 'c-3po';
 import ChartTooltip from "../components/ChartTooltip.jsx";
 import ChartWithLegend from "../components/ChartWithLegend.jsx";
 
@@ -34,7 +34,7 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 export default class PieChart extends Component {
     props: VisualizationProps;
 
-    static uiName = "Pie";
+    static uiName = t`Pie`;
     static identifier = "pie";
     static iconName = "pie";
 
@@ -46,35 +46,35 @@ export default class PieChart extends Component {
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
-            throw new ChartSettingsError("Which columns do you want to use?", "Data");
+            throw new ChartSettingsError(t`Which columns do you want to use?`, t`Data`);
         }
     }
 
     static settings = {
         "pie.dimension": {
             section: "Data",
-            title: "Dimension",
+            title: t`Dimension`,
             ...dimensionSetting("pie.dimension")
         },
         "pie.metric": {
             section: "Data",
-            title: "Measure",
+            title: t`Measure`,
             ...metricSetting("pie.metric")
         },
         "pie.show_legend": {
             section: "Display",
-            title: "Show legend",
+            title: t`Show legend`,
             widget: "toggle"
         },
         "pie.show_legend_perecent": {
             section: "Display",
-            title: "Show percentages in legend",
+            title: t`Show percentages in legend`,
             widget: "toggle",
             default: true
         },
         "pie.slice_threshold": {
             section: "Display",
-            title: "Minimum slice percentage",
+            title: t`Minimum slice percentage`,
             widget: "number"
         },
     }
@@ -173,7 +173,7 @@ export default class PieChart extends Component {
             title = formatDimension(slices[hovered.index].key);
             value = formatMetric(slices[hovered.index].value);
         } else {
-            title = "Total";
+            title = t`Total`;
             value = formatMetric(total);
         }
 

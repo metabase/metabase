@@ -6,6 +6,7 @@ import dc from "dc";
 import moment from "moment";
 import _ from "underscore";
 import { updateIn, getIn } from "icepick";
+import { t } from 'c-3po';
 
 import {
     getAvailableCanvasWidth,
@@ -70,8 +71,8 @@ const Y_AXIS_PADDING = 8;
 const X_LABEL_PADDING = 10;
 const Y_LABEL_PADDING = 22;
 
-const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
-const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
+const UNAGGREGATED_DATA_WARNING = (col) => t`"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
+const NULL_DIMENSION_WARNING = t`Data includes missing dimension values.`;
 
 type CrossfilterGroup = {
     top: (n: number) => { key: any, value: any },
@@ -199,7 +200,7 @@ function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, 
     } else if (settings["graph.x_axis.scale"] === "log") {
         scale = d3.scale.log().base(Math.E);
         if (!((xDomain[0] < 0 && xDomain[1] < 0) || (xDomain[0] > 0 && xDomain[1] > 0))) {
-            throw "X-axis must not cross 0 when using log scale.";
+            throw t`X-axis must not cross 0 when using log scale.`;
         }
     } else {
         scale = d3.scale.linear();
@@ -310,7 +311,7 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
             chart.elasticY(true);
         } else {
             if (!((yExtent[0] < 0 && yExtent[1] < 0) || (yExtent[0] > 0 && yExtent[1] > 0))) {
-                throw "Y-axis must not cross 0 when using log scale.";
+                throw t`Y-axis must not cross 0 when using log scale.`;
             }
             scale.domain(yExtent);
         }
@@ -320,7 +321,7 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
             (axis.setting("min") < 0 && axis.setting("max") < 0) ||
             (axis.setting("min") > 0 && axis.setting("max") > 0)
         )) {
-            throw "Y-axis must not cross 0 when using log scale.";
+            throw t`Y-axis must not cross 0 when using log scale.`;
         }
         axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]))
     }
@@ -715,7 +716,7 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
             const labelOnRight = !isSplitAxis;
             chart.selectAll(".goal .stack._0")
                 .append("text")
-                .text("Goal")
+                .text(t`Goal`)
                 .attr({
                     x: labelOnRight ? x + width : x,
                     y: y - 5,
@@ -940,11 +941,11 @@ export default function lineAreaBar(element: Element, {
     const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card) && !isRemappedToString);
 
     if (firstSeries.data.cols.length < 2) {
-        throw new Error("This chart type requires at least 2 columns.");
+        throw new Error(t`This chart type requires at least 2 columns.`);
     }
 
     if (series.length > maxSeries) {
-        throw new Error(`This chart type doesn't support more than ${maxSeries} series of data.`);
+        throw new Error(t`This chart type doesn't support more than ${maxSeries} series of data.`);
     }
 
     const warnings = {};
@@ -1363,7 +1364,7 @@ export function rowRenderer(
   const { cols } = series[0].data;
 
   if (series.length > 1) {
-    throw new Error("Row chart does not support multiple series");
+    throw new Error(t`Row chart does not support multiple series`);
   }
 
   const chart = dc.rowChart(element);
