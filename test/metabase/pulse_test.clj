@@ -102,7 +102,7 @@
                                                             :pulse_channel_id pc-id}]]
   (into {} (map (fn [user-kwd]
                   (et/email-to user-kwd {:subject "Pulse: Pulse Name",
-                                         :to ["rasta@metabase.com" "crowberto@metabase.com"]
+                                         :to #{"rasta@metabase.com" "crowberto@metabase.com"}
                                          :body [{"Pulse Name" true}
                                                 png-attachment]}))
                 [:rasta :crowberto]))
