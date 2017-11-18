@@ -1,15 +1,16 @@
 // takes a distance float and uses it to return a human readable phrase
 // indicating how similar two items in a comparison are
+import { t } from 'c-3po';
 
 export const distanceToPhrase = (distance) => {
     if(distance >= 0.75) {
-        return  'Very different'
+        return t`Very different`
     } else if (distance < 0.75 && distance >= 0.5) {
-        return 'Somewhat different'
+        return t`Somewhat different`
     } else if (distance < 0.5 && distance >= 0.25) {
-        return 'Somewhat similar'
+        return t`Somewhat similar`
     } else {
-        return 'Very similar'
+        return t`Very similar`
     }
 }
 
@@ -23,11 +24,11 @@ export const hasXray = has
 export const hasComparison = has
 
 export const xrayLoadingMessages = [
-    'Generating your x-ray...',
-    'Still working...',
+    t`Generating your x-ray...`,
+    t`Still working...`,
 ]
 
 export const comparisonLoadingMessages = [
-    'Generating your comparison...',
-    'Still working...',
+    t`Generating your comparison...`,
+    t`Still working...`,
 ]
