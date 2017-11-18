@@ -2,7 +2,7 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
-
+import { t } from 'c-3po';
 import { Link } from 'react-router'
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper'
@@ -56,7 +56,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.segment.name || "Segment" )
+@title(({ xray }) => xray && xray.segment.name || t`Segment` )
 class SegmentXRay extends Component {
 
     props: Props
@@ -110,14 +110,14 @@ class SegmentXRay extends Component {
                                     <h1 className="mt2 flex align-center">
                                         {xray.segment.name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">X-ray</span>
+                                        <span className="text-grey-3">{t`X-ray`}</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
                                         {xray.segment.description}
                                     </p>
                                 </div>
                                 <div className="ml-auto flex align-center">
-                                   <h3 className="mr2 text-grey-3">Fidelity</h3>
+                                   <h3 className="mr2 text-grey-3">{t`Fidelity`}</h3>
                                     <CostSelect
                                         currentCost={params.cost}
                                         xrayType='segment'
@@ -131,11 +131,11 @@ class SegmentXRay extends Component {
                                     className="Button bg-white text-brand-hover no-decoration"
                                 >
                                     <Icon name="compare" className="mr1" />
-                                    {`Compare with all ${xray.table.display_name}`}
+                                    {t`Compare with all ${xray.table.display_name}`}
                                 </Link>
                             </div>
                             <div className="mt2">
-                                <Heading heading="Fields in this segment" />
+                                <Heading heading={t`Fields in this segment`} />
                                 <ol>
                                     { constituents.map((c, i) => {
                                         return (

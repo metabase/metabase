@@ -4,7 +4,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
-
+import { t } from 'c-3po';
 import { isDate } from 'metabase/lib/schema_metadata'
 import { fetchXray, initialize } from 'metabase/xray/xray'
 import {
@@ -64,7 +64,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ xray }) => xray && xray.field.display_name || "Field")
+@title(({ xray }) => xray && xray.field.display_name || t`Field`)
 class FieldXRay extends Component {
     props: Props
 
@@ -117,10 +117,10 @@ class FieldXRay extends Component {
                                         <h1 className="flex align-center">
                                             {xray.field.display_name}
                                             <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                            <span className="text-grey-3">X-ray</span>
+                                            <span className="text-grey-3">{t`X-ray`}</span>
                                         </h1>
                                         <div className="ml-auto flex align-center">
-                                            <h3 className="mr2 text-grey-3">Fidelity</h3>
+                                            <h3 className="mr2 text-grey-3">{t`Fidelity`}</h3>
                                             <CostSelect
                                                 xrayType='field'
                                                 id={xray.field.id}
@@ -134,7 +134,7 @@ class FieldXRay extends Component {
                                 </div>
                             </div>
                             <div className="mt4">
-                                <Heading heading="Distribution" />
+                                <Heading heading={t`Distribution`} />
                                 <div className="bg-white bordered shadowed">
                                     <div className="lg-p4">
                                         <div style={{ height: 300 }}>
@@ -149,20 +149,20 @@ class FieldXRay extends Component {
                             { isDate(xray.field) && <Periodicity xray={xray} /> }
 
                             <StatGroup
-                                heading="Values overview"
+                                heading={t`Values overview`}
                                 xray={xray}
                                 stats={VALUES_OVERVIEW}
                             />
 
                             <StatGroup
-                                heading="Statistical overview"
+                                heading={t`Statistical overview`}
                                 xray={xray}
                                 showDescriptions
                                 stats={STATS_OVERVIEW}
                             />
 
                             <StatGroup
-                                heading="Robots"
+                                heading={t`Robots`}
                                 xray={xray}
                                 showDescriptions
                                 stats={ROBOTS}

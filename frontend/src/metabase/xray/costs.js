@@ -2,10 +2,11 @@
  * human understandable groupings.
  * for more info on the actual values see src/metabase/fingerprints/costs.clj
  */
+import { t } from 'c-3po';
 
 const approximate = {
-    display_name: "Approximate",
-    description: `
+    display_name: t`Approximate`,
+    description: t`
         Get a sense for this data by looking at a sample.
         This is faster but less precise.
     `,
@@ -17,8 +18,8 @@ const approximate = {
 }
 
 const exact = {
-    display_name: "Exact",
-    description: `
+    display_name: t`Exact`,
+    description: t`
         Go deeper into this data by performing a full scan.
         This is more precise but slower.
     `,
@@ -30,8 +31,8 @@ const exact = {
 }
 
 const extended = {
-    display_name: "Extended",
-    description: `
+    display_name: t`Extended`,
+    description: t`
         Adds additional info about this entity by including related objects.
         This is the slowest but highest fidelity method.
     `,

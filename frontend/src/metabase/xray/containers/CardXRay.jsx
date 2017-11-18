@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import cxs from 'cxs'
 import { connect } from 'react-redux'
-
+import { t } from 'c-3po';
 import { saturated } from 'metabase/lib/colors'
 
 import { fetchXray, initialize } from 'metabase/xray/xray'
@@ -121,7 +121,7 @@ class CardXRay extends Component {
                                             {
                                                 card: {
                                                     display: 'line',
-                                                    name: 'Growth Trend',
+                                                    name: t`Growth Trend`,
                                                     visualization_settings: {
 
                                                     }
@@ -143,7 +143,7 @@ class CardXRay extends Component {
                                         {
                                             card: {
                                                 display: 'line',
-                                                name: 'Trend',
+                                                name: t`Trend`,
                                                 visualization_settings: {
 
                                                 }
@@ -174,7 +174,7 @@ class CardXRay extends Component {
                                         {
                                             card: {
                                                 display: 'line',
-                                                name: 'Trend',
+                                                name: t`Trend`,
                                                 visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.trend
@@ -182,7 +182,7 @@ class CardXRay extends Component {
                                         {
                                             card: {
                                                 display: 'line',
-                                                name: 'Seasonal',
+                                                name: t`Seasonal`,
                                                 visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.seasonal
@@ -190,7 +190,7 @@ class CardXRay extends Component {
                                         {
                                             card: {
                                                 display: 'line',
-                                                name: 'Residual',
+                                                name: t`Residual`,
                                                 visualization_settings: {}
                                             },
                                             data: xray.features['seasonal-decomposition'].value.residual

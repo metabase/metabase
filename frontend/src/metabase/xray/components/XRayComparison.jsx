@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router'
 import Color from 'color'
 import Visualization from 'metabase/visualizations/components/Visualization'
-
+import { t } from 'c-3po';
 import Icon from 'metabase/components/Icon'
 import Tooltip from 'metabase/components/Tooltip'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
@@ -169,9 +169,9 @@ const XRayComparison = ({
             </div>
         </div>
 
-        <Heading heading="Overview" />
+        <Heading heading={t`Overview`} />
         <div className="bordered rounded bg-white shadowed p4">
-            <h3 className="text-grey-3">Count</h3>
+            <h3 className="text-grey-3">{t`Count`}</h3>
             <div className="flex my1">
                 <h1
                     className="mr1"
@@ -188,7 +188,7 @@ const XRayComparison = ({
 
         { contributors && (
             <div>
-                <Heading heading="Potentially interesting differences" />
+                <Heading heading={t`Potentially interesting differences`} />
                 <ol className="Grid Grid--gutters Grid--1of3">
                     { contributors.map(contributor =>
                         <li className="Grid-cell" key={contributor.field.id}>
@@ -203,7 +203,7 @@ const XRayComparison = ({
             </div>
         )}
 
-        <Heading heading="Full breakdown" />
+        <Heading heading={t`Full breakdown`} />
         <div className="bordered rounded bg-white shadowed">
 
             <div className="flex p2">
@@ -218,7 +218,7 @@ const XRayComparison = ({
             <table className="ComparisonTable full">
                 <thead className="full border-bottom">
                     <tr>
-                        <th className="px2">Field</th>
+                        <th className="px2">{t`Field`}</th>
                         {comparisonFields.map(c =>
                             <th
                                 key={c}
