@@ -34,8 +34,8 @@ export default class App extends Component {
     }
 
     componentDidCatch(error, info) {
+        console.error("Error caught in <App>", error, info);
         this.setState({ hasError: true });
-        console.error(error, info);
     }
 
     render() {
