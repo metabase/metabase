@@ -84,7 +84,11 @@ export default class DashCard extends Component {
                 isSlow: slowCards[card.id],
                 isUsuallyFast: card.query_average_duration && (card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD)
             }));
-
+        var cardIds = [dashcard.card.id];
+        const seriesCards = dashcard.series || [];
+        for(var index=0;index<seriesCards.length;index++){
+            cardIds.push(seriesCards[index].id);
+        }
         const loading = !(series.length > 0 && _.every(series, (s) => s.data));
         const expectedDuration = Math.max(...series.map((s) => s.card.query_average_duration || 0));
         const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
@@ -105,7 +109,7 @@ export default class DashCard extends Component {
         if(!parametersMap){
             parametersMap = {};
         }
-
+        parametersMap["card-ids"] = cardIds;
         let errorMessage, errorIcon;
         if (_.any(errors, e => e && e.status === 403)) {
             errorMessage = ERROR_MESSAGE_PERMISSION;

@@ -95,7 +95,7 @@ const DashboardEmbedQueryButton = ({ className, type, dashcardId, token, card, p
     <DownloadButton
         className={className}
         method="GET"
-        url={`/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${card.id}/${type}`}
+        url={`/api/embed/dashboard/${token}/dashcard/${dashcardId}/cards/${type}`}
         extensions={[type]}
         params={parameters}
     >

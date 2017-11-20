@@ -33,7 +33,8 @@
              [embed :as eu]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [clojure.data.csv :as csv]))
 
 ;;; ------------------------------------------------------------ Param Checking ------------------------------------------------------------
 
@@ -173,6 +174,98 @@
           :let          [param (get param-id->param (:parameter_id param-mapping))]
           :when         param]
       (assoc param :target (:target param-mapping)))))
+
+(defn- mapify-row [row columns mergeKeysSet]
+  (loop [len 0  index 0 rowkey (str "") array [] ]
+    (if (not ( = (count row) (count columns)))
+      (println "error ambiguous mapping col count not equal to row count" row columns)
+      (if (= len (count columns))
+        (assoc {} rowkey array)
+        (let [colValue (nth row index)
+              colName (nth columns index)]
+          (if (not (contains? mergeKeysSet colName))
+            (recur (inc len) (inc index) rowkey (conj array colValue))
+            (recur (inc len) (inc index) (str rowkey colValue) array)
+            ))))))
+
+(defn- mapify-rows [rows columns mergeKeysSet]
+  (into (sorted-map)
+        (for [row rows
+              :let [rowMap (mapify-row row columns mergeKeysSet)]
+              :when (== 1 1)] rowMap)))
+
+(defn- merge-columns [data1 data2 mergeKeysSet allColumns]
+  {:columns (into [] allColumns) } )
+
+(defn- merge-query-params [data1 data2]
+  {:json_query (data1 :json_query),
+   :status (data1 :status)} )
+
+(defn- merge-cols [data1 data2 mergeKeysSet allColumns]
+  (let [cols (concat (data1 :cols)
+                     (for [col (data2 :cols)
+                           :when (not (contains? mergeKeysSet (col :name)))]
+                       col)) ]
+    {:cols (into []  cols)}) )
+
+
+(defn- merge-rows [data1 data2 mergeKeysSet allColumns]
+  (let [card2RowsMap (mapify-rows (data2 :rows) (data2 :columns) mergeKeysSet)
+        card1RowsMap (mapify-rows (data1 :rows) (data1 :columns) mergeKeysSet)
+        data2rowcount (- (count (data2 :columns)) (count mergeKeysSet))
+        data2nullrow (vec (replicate data2rowcount nil))
+        data1rowcount (- (count (data1 :columns)) (count mergeKeysSet))
+        data1nullrow (vec (replicate data1rowcount nil))
+        cols (for [row (data1 :rows)
+                   :let [rowMap (mapify-row row (data1 :columns) mergeKeysSet)
+                         rowMapKey (first (keys rowMap))
+                         card2row (card2RowsMap rowMapKey)
+                         mergedRow (concat (into [] row) (if (nil? card2row) data2nullrow card2row)  )]
+
+                   :when (== 1 1)] {:row mergedRow :mapkey rowMapKey} )
+        rowsCard1 (into [] (map (fn [col] (col :row)) cols ))
+        rowsProcessed (set (map (fn [col] (col :mapkey)) cols ))
+        rowsCard2 (for [row (data2 :rows)
+                        :let [rowMap (mapify-row row (data2 :columns) mergeKeysSet)
+                              rowMapKey (first (keys rowMap))
+                              card2row (rowMap rowMapKey)
+                              card1row (card1RowsMap rowMapKey)
+                              finalRow [rowMapKey]
+                              mergedRow (concat finalRow (if (nil? card1row) data1nullrow card1row ) (if (nil? card2row) data2nullrow card2row ) )]
+
+                        :when (nil? (rowsProcessed rowMapKey))] mergedRow)]
+
+    {:rows (into [] (concat rowsCard1 rowsCard2)) }) )
+
+(defn-  handle-start-date
+  [data1 data2]
+  (let [
+        columns (assoc (data2 :columns) 0 ((data1 :columns) 0))
+        cols (assoc (data2 :cols) 0 ((data1 :cols) 0))]
+    {:cols cols :columns columns :rows (data2 :rows)}))
+
+(defn- combine-cards-data
+  "Combine the data of two cards"
+  [card1 card2]
+  (if (nil? card2) card1
+  (let [data1 (card1 :data)
+        data2Temp (card2 :data)
+        prnt (println "before change data" data2Temp)
+        data2 (if (and (= ((first (data1 :cols)) :base_type) :type/DateTime) (= ((first (data2Temp :cols)) :base_type) :type/DateTime))
+                       (handle-start-date data1 data2Temp) data2Temp)
+        prnt (println "changed data" data2)
+        mergeKey (clojure.set/intersection (set (data1 :columns))  (set (data2 :columns)))
+        allColumns (distinct (concat (into [] (data1 :columns)) (into [] (data2 :columns)))  )]
+    (loop [data {}, [f & more] [
+                                merge-cols
+                                merge-rows
+                                merge-columns]]
+      (let [out      (f data1 data2 mergeKey allColumns)
+            data (if
+                   (nil? out)        data (merge data out))]
+        (if-not (seq more)
+          (merge {:data data } (merge-query-params card1 card2))
+          (recur data more)))))))
 
 
 ;;; ------------------------------------------------------------ Card Fns used by both /api/embed and /api/preview_embed ------------------------------------------------------------
@@ -315,6 +408,7 @@
    Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence."
   {:style/indent 1}
   [token dashcard-id card-id query-params]
+  (println token dashcard-id card-id query-params)
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -335,6 +429,26 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id & query-params]
    {export-format dataset-api/ExportFormat} (dataset-api/as-format export-format (card-for-signed-token token dashcard-id card-id query-params )))
+
+
+(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/cards/:export-format" , :export-format dataset-api/export-format-regex]
+   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key` return the data in one of the export formats"
+   [token export-format dashcard-id & query-params]
+    {export-format dataset-api/ExportFormat}
+      (dataset-api/as-format export-format
+      (let [cards-id (first (csv/read-csv  (query-params :card-ids)))
+            prnt (println cards-id query-params)
+            abc (map (fn [n] n) cards-id)
+            abc2 (map (fn [n] (string? n) ) cards-id)
+            prnt (println abc abc2  )
+            query-params (dissoc query-params :card-ids)
+        cards-data (into [] (map (fn [card-id] (card-for-signed-token token dashcard-id (Integer/parseInt card-id) query-params)) cards-id))
+            prnt (println cards-data  )
+            combined (reduce combine-cards-data cards-data)
+            prnt (println combined  )
+        ]
+        combined
+    )))
 
 
 (api/define-routes)
