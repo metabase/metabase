@@ -67,6 +67,9 @@
 
 ;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a
 ;; "FieldFilter" clause like Dimensions
+;;
+;; Since 'Dimension' (Field Filters) are considered their own `:type`, to *actually* store the type of a Dimension
+;; look at the key `:widget_type`. This applies to things like the default value for a Dimension as well.
 (def ^:private TagParam
   "Schema for values passed in as part of the `:template_tags` list."
   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
@@ -74,7 +77,7 @@
    :display_name                 su/NonBlankString
    :type                         (s/enum "number" "dimension" "text" "date")
    (s/optional-key :dimension)   [s/Any]
-   (s/optional-key :widget_type) su/NonBlankString
+   (s/optional-key :widget_type) su/NonBlankString ; type of the [default] value if `:type` itself is `dimension`
    (s/optional-key :required)    s/Bool
    (s/optional-key :default)     s/Any})
 
@@ -109,7 +112,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; These functions build a map of information about the types and values of the params used in a query.
-;; (These functions don't pare the query itself, but instead look atthe values of `:template_tags` and `:parameters`
+;; (These functions don't parse the query itself, but instead look at the values of `:template_tags` and `:parameters`
 ;; passed along with the query.)
 ;;
 ;;     (query->params-map some-query)
@@ -119,7 +122,10 @@
 ;;                                   :value  "\2015-01-01~2016-09-01"\}}}
 
 (s/defn ^:private ^:always-validate param-with-target
-  "Return the param in PARAMS with a matching TARGET."
+  "Return the param in PARAMS with a matching TARGET. TARGET is something like:
+
+     [:dimension [:template-tag <param-name>]] ; for Dimensions (Field Filters)
+     [:variable  [:template-tag <param-name>]] ; for other types of params"
   [params :- (s/maybe [DimensionValue]), target]
   (when-let [matching-params (seq (for [param params
                                         :when (= (:target param) target)]
@@ -129,25 +135,52 @@
        first
        vec) matching-params)))
 
-(s/defn ^:private ^:always-validate param-value-for-tag [tag :- TagParam, params :- (s/maybe [DimensionValue])]
-  (when (not= (:type tag) "dimension")
-    (:value (param-with-target params ["variable" ["template-tag" (:name tag)]]))))
+
+;;; Dimension Params (Field Filters) (e.g. WHERE {{x}})
+
+(s/defn ^:private ^:always-validate default-value-for-dimension :- (s/maybe DimensionValue)
+  "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
+  [tag :- TagParam]
+  (when-let [default (:default tag)]
+    {:type   (:widget_type tag "dimension")             ; widget_type is the actual type of the default value if set
+     :target ["dimension" ["template-tag" (:name tag)]]
+     :value  default}))
 
 (s/defn ^:private ^:always-validate dimension->field-id :- su/IntGreaterThanZero
   [dimension]
   (:field-id (ql/expand-ql-sexpr dimension)))
 
 (s/defn ^:private ^:always-validate dimension-value-for-tag :- (s/maybe Dimension)
+  "Return the \"Dimension\" value of a param, if applicable. \"Dimension\" here means what is called a \"Field
+  Filter\" in the Native Query Editor."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (when-let [dimension (:dimension tag)]
     (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id], :id (dimension->field-id dimension))
                                 (throw (Exception. (str "Can't find field with ID: " (dimension->field-id dimension)))))
-                     :param (param-with-target params ["dimension" ["template-tag" (:name tag)]])})))
+                     :param (or
+                             ;; look in the sequence of params we were passed to see if there's anything that matches
+                             (param-with-target params ["dimension" ["template-tag" (:name tag)]])
+                             ;; if not, check and see if we have a default param
+                             (default-value-for-dimension tag))})))
 
-(s/defn ^:private ^:always-validate default-value-for-tag [{:keys [default display_name required]} :- TagParam]
+
+;;; Non-Dimension Params (e.g. WHERE x = {{x}})
+
+(s/defn ^:private ^:always-validate param-value-for-tag [tag :- TagParam, params :- (s/maybe [DimensionValue])]
+  (when (not= (:type tag) "dimension")
+    (:value (param-with-target params ["variable" ["template-tag" (:name tag)]]))))
+
+(s/defn ^:private ^:always-validate default-value-for-tag
+  "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-Dimension
+   (non-Field Filter) params. Default values for Dimension (Field Filter) params are handled above in
+   `default-value-for-dimension`."
+  [{:keys [default display_name required]} :- TagParam]
   (or default
       (when required
         (throw (Exception. (format "'%s' is a required param." display_name))))))
+
+
+;;; Parsing Values
 
 (s/defn ^:private ^:always-validate parse-number :- s/Num
   "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in

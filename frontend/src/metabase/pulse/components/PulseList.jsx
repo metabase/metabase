@@ -2,9 +2,9 @@ import React, { Component } from "react";
 
 import PulseListItem from "./PulseListItem.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
-import SetupModal from "./SetupModal.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import Modal from "metabase/components/Modal.jsx";
 
 import _ from "underscore";
@@ -29,8 +29,7 @@ export default class PulseList extends Component {
     }
 
     create() {
-        let hasConfiguredChannel = !this.props.formInput.channels || _.some(Object.values(this.props.formInput.channels), (c) => c.configured);
-        if (hasConfiguredChannel) {
+        if (this.props.hasConfiguredAnyChannel) {
             this.props.onChangeLocation("/pulse/create");
         } else {
             this.setState({ showSetupModal: true });
@@ -71,10 +70,11 @@ export default class PulseList extends Component {
                 }
                 </LoadingAndErrorWrapper>
                 <Modal isOpen={this.state.showSetupModal}>
-                    <SetupModal
+                    <ChannelSetupModal
                         user={user}
                         onClose={() => this.setState({ showSetupModal: false })}
                         onChangeLocation={this.props.onChangeLocation}
+                        entityNamePlural={t`pulses`}
                     />
                 </Modal>
             </div>

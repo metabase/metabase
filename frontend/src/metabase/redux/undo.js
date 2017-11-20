@@ -1,16 +1,25 @@
 /* @flow weak */
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-
 import _ from "underscore";
+
+import { createAction, createThunkAction } from "metabase/lib/redux";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 const ADD_UNDO = 'metabase/questions/ADD_UNDO';
 const DISMISS_UNDO = 'metabase/questions/DISMISS_UNDO';
 const PERFORM_UNDO = 'metabase/questions/PERFORM_UNDO';
 
 let nextUndoId = 0;
+
+// A convenience shorthand for creating single undos
+export function createUndo({ type, message, action }) {
+    return {
+        type: type,
+        count: 1,
+        message,
+        actions: action ? [action] : null
+    };
+}
 
 export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
     return (dispatch, getState) => {

@@ -126,7 +126,12 @@ class BrowserSelect extends Component {
                     }
                     <List
                         width={width}
-                        height={height}
+                        height={
+                            // check to see if the height of the number of rows is less than the provided (or default)
+                            // height. if so, set the height to the number of rows * the row height so that
+                            // large blank spaces at the bottom are prevented
+                            children.length * rowHeight < height ? children.length * rowHeight : height
+                        }
                         rowHeight={rowHeight}
                         rowCount={children.length}
                         rowRenderer={({index, key, style}) => {

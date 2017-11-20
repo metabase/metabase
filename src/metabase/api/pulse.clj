@@ -33,9 +33,11 @@
                   can-write?)]
     (assoc pulse :read_only (not can-write?))))
 
-
-(defn- check-card-read-permissions [cards]
-  (doseq [{card-id :id} cards]
+(defn check-card-read-permissions
+  "Users can only create a pulse for `CARDS` they have access to"
+  [cards]
+  (doseq [card cards
+          :let [card-id (u/get-id card)]]
     (assert (integer? card-id))
     (api/read-check Card card-id)))
 
@@ -78,6 +80,7 @@
   "Delete a `Pulse`."
   [id]
   (api/let-404 [pulse (Pulse id)]
+    (api/write-check Pulse id)
     (db/delete! Pulse :id id)
     (events/publish-event! :pulse-delete (assoc pulse :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
@@ -106,8 +109,10 @@
   "Get HTML rendering of a `Card` with ID."
   [id]
   (let [card   (api/read-check Card id)
-        result (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*, :context :pulse, :card-id id})]
-    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
+        result (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
+                                                                            :context     :pulse
+                                                                            :card-id     id})]
+    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title*   true
                                                                             render/*include-buttons* true]
                                                                     (render/render-pulse-card (p/defaulted-timezone card) card result))]])}))
 
@@ -115,7 +120,9 @@
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
   (let [card      (api/read-check Card id)
-        result    (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*, :context :pulse, :card-id id})
+        result    (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
+                                                                               :context     :pulse
+                                                                               :card-id     id})
         data      (:data result)
         card-type (render/detect-pulse-card-type card data)
         card-html (html (binding [render/*include-title* true]

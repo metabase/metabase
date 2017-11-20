@@ -166,7 +166,7 @@ export default class SettingsSlackForm extends Component {
                     <SettingsSetting
                         key={element.key}
                         setting={{ ...element, value }}
-                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        onChange={(value) => this.handleChangeEvent(element, value)}
                         errorMessage={errorMessage}
                         fireOnChange
                     />
@@ -176,7 +176,7 @@ export default class SettingsSlackForm extends Component {
                     <SettingsSetting
                         key={element.key}
                         setting={{ ...element, value }}
-                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        onChange={(value) => this.handleChangeEvent(element, value)}
                         errorMessage={errorMessage}
                         disabled={!this.state.formData["slack-token"]}
                     />

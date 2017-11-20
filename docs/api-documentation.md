@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.24.0-snapshot
+# API Documentation for Metabase v0.27.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -8,6 +8,92 @@ Get recent activity.
 ## `GET /api/activity/recent_views`
 
 Get the list of 10 things the current user has been viewing most recently.
+
+
+## `DELETE /api/alert/:id`
+
+Remove an alert
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `GET /api/alert/`
+
+Fetch all alerts
+
+
+## `GET /api/alert/question/:id`
+
+Fetch all questions for the given question (`Card`) id
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/alert/`
+
+Create a new alert (`Pulse`)
+
+##### PARAMS:
+
+*  **`alert_condition`** value must be one of: `goal`, `rows`.
+
+*  **`card`** value must be a map.
+
+*  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+
+*  **`alert_first_only`** value must be a boolean.
+
+*  **`alert_above_goal`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`req`** 
+
+
+## `PUT /api/alert/:id`
+
+Update a `Alert` with ID.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`alert_condition`** value must be one of: `goal`, `rows`.
+
+*  **`card`** value must be a map.
+
+*  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+
+*  **`alert_first_only`** value must be a boolean.
+
+*  **`alert_above_goal`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`req`** 
+
+
+## `PUT /api/alert/:id/unsubscribe`
+
+Unsubscribes a user from the given alert
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `GET /api/async/:id`
+
+Get result of async computation job with ID.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `GET /api/async/running-jobs`
+
+Get all running jobs belonging to the current user.
 
 
 ## `DELETE /api/card/:card-id/favorite`
@@ -105,6 +191,10 @@ Create a new `Card`.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+*  **`result_metadata`** value may be nil, or if non-nil, value must be an array of valid results column metadata maps.
+
+*  **`metadata_checksum`** value may be nil, or if non-nil, value must be a non-blank string.
+
 
 ## `POST /api/card/:card-id/favorite`
 
@@ -189,6 +279,10 @@ Update a `Card`.
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`result_metadata`** value may be nil, or if non-nil, value must be an array of valid results column metadata maps.
+
+*  **`metadata_checksum`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
 
@@ -372,6 +466,8 @@ Create a new `Dashboard`.
 
 *  **`name`** value must be a non-blank string.
 
+*  **`description`** value may be nil, or if non-nil, value must be a string.
+
 *  **`parameters`** value must be an array. Each value must be a map.
 
 *  **`dashboard`** 
@@ -495,7 +591,9 @@ Fetch all `Databases`.
 
 ##### PARAMS:
 
-*  **`include_tables`** 
+*  **`include_tables`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`include_cards`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 
 ## `GET /api/database/:id`
@@ -551,6 +649,12 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`.
 *  **`id`** 
 
 
+## `GET /api/database/:virtual-db/metadata`
+
+Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
+   and allowing it to treat the Saved Questions virtual DB just like any other database.
+
+
 ## `POST /api/database/`
 
 Add a new `Database`.
@@ -565,12 +669,49 @@ You must be a superuser to do this.
 
 *  **`details`** value must be a map.
 
-*  **`is_full_sync`** 
+*  **`is_full_sync`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`is_on_demand`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
+
+
+## `POST /api/database/:id/discard_values`
+
+Discards all saved field values for this `Database`.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/database/:id/rescan_values`
+
+Trigger a manual scan of the field values for this `Database`.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`** 
 
 
 ## `POST /api/database/:id/sync`
 
-Update the metadata for this `Database`.
+Update the metadata for this `Database`. This happens asynchronously.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/database/:id/sync_schema`
+
+Trigger a manual update of the schema metadata for this `Database`.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -584,6 +725,19 @@ Add the sample dataset as a new `Database`.
 You must be a superuser to do this.
 
 
+## `POST /api/database/validate`
+
+Validate that we can connect to a database given a set of details.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`engine`** value must be a valid database engine.
+
+*  **`details`** value must be a map.
+
+
 ## `PUT /api/database/:id`
 
 Update a `Database`.
@@ -592,21 +746,25 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`** 
+*  **`engine`** value may be nil, or if non-nil, value must be a valid database engine.
 
-*  **`name`** value must be a non-blank string.
+*  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
 
-*  **`engine`** value must be a valid database engine.
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
-*  **`details`** value must be a map.
+*  **`description`** value may be nil, or if non-nil, value must be a string.
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`caveats`** value may be nil, or if non-nil, value must be a string.
 
 *  **`is_full_sync`** 
 
-*  **`description`** 
+*  **`details`** value may be nil, or if non-nil, value must be a map.
 
-*  **`caveats`** 
+*  **`id`** 
 
-*  **`points_of_interest`** 
+*  **`is_on_demand`** 
 
 
 ## `POST /api/dataset/`
@@ -615,7 +773,9 @@ Execute a query and retrieve the results in the usual format.
 
 ##### PARAMS:
 
-*  **`database`** 
+*  **`database`** value must be an integer.
+
+*  **`query`** 
 
 
 ## `POST /api/dataset/:export-format`
@@ -741,6 +901,15 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 *  **`query-params`** 
 
 
+## `DELETE /api/field/:id/dimension`
+
+Remove the dimension associated to field at ID
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `GET /api/field/:id`
 
 Get `Field` with ID.
@@ -769,16 +938,66 @@ If `Field`'s special type derives from `type/Category`, or its base type is `typ
 *  **`id`** 
 
 
-## `POST /api/field/:id/value_map_update`
+## `GET /api/field/field-literal%2C:field-name%2Ctype%2F:field-type/values`
 
-Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
-   or whose base type is `type/Boolean`.
+Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB.
+   This endpoint is just a convenience to simplify the frontend code. It just returns the standard
+   'empty' field values response.
+
+##### PARAMS:
+
+*  **`_`** 
+
+
+## `POST /api/field/:id/dimension`
+
+Sets the dimension for the given field at ID
 
 ##### PARAMS:
 
 *  **`id`** 
 
-*  **`values_map`** value must be a map.
+*  **`type`** value must be one of: `external`, `internal`.
+
+*  **`name`** value must be a non-blank string.
+
+*  **`human_readable_field_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+
+## `POST /api/field/:id/discard_values`
+
+Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
+   Database is set up to automatically sync FieldValues, they will be recreated during the next cycle.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/field/:id/rescan_values`
+
+Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
+   FieldValues.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/field/:id/values`
+
+Update the fields values and human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
+   or whose base type is `type/Boolean`. The human-readable values are optional.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`value-pairs`** value must be an array.
 
 
 ## `PUT /api/field/:id`
@@ -795,7 +1014,7 @@ Update `Field` with ID.
 
 *  **`display_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`fk_target_field_id`** value may be nil, or if non-nil, value must be an integer.
+*  **`fk_target_field_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -854,6 +1073,17 @@ Fetch basic info for the Getting Started guide.
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`icon`** value may be nil, or if non-nil, value must be a non-blank string.
+
+
+## `PUT /api/ldap/settings`
+
+Update LDAP related settings. You must be a superuser to do this.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`settings`** value must be a map.
 
 
 ## `DELETE /api/metric/:id`
@@ -1138,7 +1368,8 @@ Fetch the results of running a Card belonging to a Dashboard you're considering 
 
 ## `GET /api/public/card/:uuid`
 
-Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth
+   credentials. Public sharing must be enabled.
 
 ##### PARAMS:
 
@@ -1147,7 +1378,8 @@ Fetch a publically-accessible Card an return query results as well as `:card` in
 
 ## `GET /api/public/card/:uuid/query`
 
-Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth
+   credentials. Public sharing must be enabled.
 
 ##### PARAMS:
 
@@ -1158,7 +1390,8 @@ Fetch a publically-accessible Card an return query results as well as `:card` in
 
 ## `GET /api/public/card/:uuid/query/:export-format`
 
-Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled.
+Fetch a publically-accessible Card and return query results in the specified format. Does not require auth
+   credentials. Public sharing must be enabled.
 
 ##### PARAMS:
 
@@ -1180,7 +1413,8 @@ Fetch a publically-accessible Dashboard. Does not require auth credentials. Publ
 
 ## `GET /api/public/dashboard/:uuid/card/:card-id`
 
-Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public
+   sharing must be enabled.
 
 ##### PARAMS:
 
@@ -1193,7 +1427,7 @@ Fetch the results for a Card in a publically-accessible Dashboard. Does not requ
 
 ## `GET /api/public/oembed`
 
-oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL.
+oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL.
 
 ##### PARAMS:
 
@@ -1448,7 +1682,7 @@ Login.
 
 ##### PARAMS:
 
-*  **`email`** value must be a valid email address.
+*  **`username`** value must be a non-blank string.
 
 *  **`password`** value must be a non-blank string.
 
@@ -1538,6 +1772,8 @@ Special endpoint for creating the first user during setup.
 
 *  **`engine`** 
 
+*  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
+
 *  **`allow_tracking`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
 
 *  **`email`** value must be a valid email address.
@@ -1555,6 +1791,8 @@ Special endpoint for creating the first user during setup.
 *  **`token`** Token does not match the setup token.
 
 *  **`details`** 
+
+*  **`is_on_demand`** 
 
 *  **`last_name`** value must be a non-blank string.
 
@@ -1629,6 +1867,45 @@ Get metadata about a `Table` useful for running queries.
 *  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 
+## `GET /api/table/card__:id/fks`
+
+Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
+   serves mainly as a placeholder to avoid having to change anything on the frontend.
+
+
+## `GET /api/table/card__:id/query_metadata`
+
+Return metadata for the 'virtual' table for a Card.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/table/:id/discard_values`
+
+Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
+   this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `POST /api/table/:id/rescan_values`
+
+Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
+   are eligible for FieldValues.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `PUT /api/table/:id`
 
 Update `Table` with ID.
@@ -1643,13 +1920,13 @@ Update `Table` with ID.
 
 *  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `cruft`, `hidden`, `technical`.
 
-*  **`description`** 
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`caveats`** 
+*  **`caveats`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`points_of_interest`** 
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`show_in_getting_started`** 
+*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
 
 
 ## `GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/`
@@ -1709,7 +1986,7 @@ Fetch the current `User`.
 
 ## `POST /api/user/`
 
-Create a new `User`, or or reactivate an existing one.
+Create a new `User`, or or reäctivate an existing one.
 
 You must be a superuser to do this.
 
@@ -1783,7 +2060,7 @@ You must be a superuser to do this.
 
 ## `GET /api/util/random_token`
 
-Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
+Return a cryptographically secure random 32-byte token, encoded as a hexidecimal string.
    Intended for use when creating a value for `embedding-secret-key`.
 
 
@@ -1802,3 +2079,276 @@ Endpoint that checks if the supplied password meets the currently configured pas
 ##### PARAMS:
 
 *  **`password`** Insufficient password strength
+
+
+## `GET /api/x-ray/card/:id`
+
+X-ray a card.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/card/:card-id/segment/:segment-id`
+
+Get comparison x-ray of a card and a segment.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+*  **`segment-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/card/:card-id/table/:table-id`
+
+Get comparison x-ray of a table and a card.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+*  **`table-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/cards/:card1-id/:card2-id`
+
+Get comparison x-ray of two cards.
+
+##### PARAMS:
+
+*  **`card1-id`** 
+
+*  **`card2-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/fields/:field1-id/:field2-id`
+
+Get comparison x-ray of two fields.
+
+##### PARAMS:
+
+*  **`field1-id`** 
+
+*  **`field2-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/segment/:segment-id/card/:card-id`
+
+Get comparison x-ray of a card and a segment.
+
+##### PARAMS:
+
+*  **`segment-id`** 
+
+*  **`card-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/segment/:segment-id/table/:table-id`
+
+Get comparison x-ray of a table and a segment.
+
+##### PARAMS:
+
+*  **`segment-id`** 
+
+*  **`table-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/segments/:segment1-id/:segment2-id`
+
+Get comparison x-ray of two segments.
+
+##### PARAMS:
+
+*  **`segment1-id`** 
+
+*  **`segment2-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/table/:table-id/card/:card-id`
+
+Get comparison x-ray of a table and a card.
+
+##### PARAMS:
+
+*  **`table-id`** 
+
+*  **`card-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/table/:table-id/segment/:segment-id`
+
+Get comparison x-ray of a table and a segment.
+
+##### PARAMS:
+
+*  **`table-id`** 
+
+*  **`segment-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/compare/tables/:table1-id/:table2-id`
+
+Get comparison x-ray of two tables.
+
+##### PARAMS:
+
+*  **`table1-id`** 
+
+*  **`table2-id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/field/:id`
+
+X-ray a field.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/metric/:id`
+
+X-ray a metric.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/segment/:id`
+
+X-ray a segment.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `GET /api/x-ray/table/:id`
+
+X-ray a table.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+
+## `POST /api/x-ray/compare/card/:id/query`
+
+Get comparison x-ray of card and ad-hoc query.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+*  **`query`** 
+
+
+## `POST /api/x-ray/compare/segment/:id/query`
+
+Get comparison x-ray of segment and ad-hoc query.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+*  **`query`** 
+
+
+## `POST /api/x-ray/compare/table/:id/query`
+
+Get comparison x-ray of table and ad-hoc query.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+*  **`query`** 
+
+
+## `POST /api/x-ray/query`
+
+X-ray a query.
+
+##### PARAMS:
+
+*  **`max_query_cost`** value may be nil, or if non-nil, value must be one of: `cache`, `full-scan`, `joins`, `sample`.
+
+*  **`max_computation_cost`** value may be nil, or if non-nil, value must be one of: `linear`, `unbounded`, `yolo`.
+
+*  **`query`** 

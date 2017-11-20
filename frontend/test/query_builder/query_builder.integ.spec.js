@@ -110,7 +110,7 @@ describe("QueryBuilder", () => {
             expect(doneButton.length).toBe(1)
 
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
-            expect(fieldsToIncludeCheckboxes.length).toBe(6)
+            expect(fieldsToIncludeCheckboxes.length).toBe(7)
 
             click(fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parent().find("span").text() === "Created At"))
 
@@ -451,7 +451,7 @@ describe("QueryBuilder", () => {
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 // We can use the visible row count as we have a low number of result rows
-                expect(qb.find(".ShownRowCount").text()).toBe("Showing 6 rows");
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 14 rows");
 
                 // Get the binning
                 const results = getQueryResults(store.getState())[0]
@@ -478,7 +478,7 @@ describe("QueryBuilder", () => {
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
-                expect(qb.find(".ShownRowCount").text()).toBe("Showing 95 rows");
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 253 rows");
                 const results = getQueryResults(store.getState())[0]
                 const breakoutBinningInfo = results.data.cols[0].binning_info;
                 expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
@@ -602,10 +602,10 @@ describe("QueryBuilder", () => {
                 const firstRowCells = table.find("tbody tr").first().find("td");
                 expect(firstRowCells.length).toBe(2);
 
-                expect(firstRowCells.first().text()).toBe("12  –  14");
+                expect(firstRowCells.first().text()).toBe("4  –  6");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("387");
+                expect(countCell.text()).toBe("2");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -646,7 +646,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("AA");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("417");
+                expect(countCell.text()).toBe("233");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -690,7 +690,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("1,079");
+                expect(countCell.text()).toBe("701");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -796,7 +796,7 @@ describe("QueryBuilder", () => {
 
                 expect(firstRowCells.length).toBe(6);
 
-                expect(firstRowCells.at(4).text()).toBe("Enjoyable");
+                expect(firstRowCells.at(4).text()).toBe("Perfecto");
             })
         });
 
@@ -816,7 +816,7 @@ describe("QueryBuilder", () => {
 
                 expect(firstRowCells.length).toBe(6);
 
-                expect(firstRowCells.at(3).text()).toBe("Ergonomic Leather Pants");
+                expect(firstRowCells.at(3).text()).toBe("Awesome Wooden Pants");
             })
         });
 

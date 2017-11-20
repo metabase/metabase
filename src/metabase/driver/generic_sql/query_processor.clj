@@ -19,7 +19,8 @@
   (:import clojure.lang.Keyword
            [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar TimeZone]
-           [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
+           [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
+            ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."

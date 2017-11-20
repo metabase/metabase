@@ -25,7 +25,7 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
                 <SettingsSetting
                     key={enabled.key}
                     setting={enabled}
-                    updateSetting={(value) => updateSetting(enabled, value)}
+                    onChange={(value) => updateSetting(enabled, value)}
                 />
             </ol>
 

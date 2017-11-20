@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.test.util :refer :all]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 ;; ## TEST SETTINGS DEFINITIONS
@@ -16,11 +17,11 @@
   "Test setting - this only shows up in dev (2)"
   :default "[Default Value]")
 
-(defsetting test-boolean-setting
+(defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
   :type :boolean)
 
-(defsetting test-json-setting
+(defsetting ^:private test-json-setting
   "Test setting - this only shows up in dev (4)"
   :type :json)
 
@@ -180,6 +181,16 @@
       (for [setting (setting/all)
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
         setting)))
+
+(defsetting ^:private test-i18n-setting
+  (tru "Test setting - with i18n"))
+
+;; Validate setting description with i18n string
+(expect
+  ["Test setting - with i18n"]
+  (for [{:keys [key description]} (setting/all)
+        :when (= :test-i18n-setting key)]
+    description))
 
 
 ;;; ------------------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------------------

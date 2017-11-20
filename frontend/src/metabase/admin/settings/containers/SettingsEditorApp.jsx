@@ -66,7 +66,7 @@ export default class SettingsEditorApp extends Component {
     }
 
     updateSetting = async (setting, newValue) => {
-        const { settings, settingValues, updateSetting } = this.props;
+        const { settingValues, updateSetting } = this.props;
 
         this.layout.setSaving();
 
@@ -78,14 +78,7 @@ export default class SettingsEditorApp extends Component {
             await updateSetting(setting);
 
             if (setting.onChanged) {
-                await setting.onChanged(oldValue, newValue, settingValues, (key, value) => {
-                    let setting = _.findWhere(settings, { key });
-                    if (!setting) {
-                        throw new Error("Unknown setting " + key);
-                    }
-                    setting.value = value;
-                    return updateSetting(setting);
-                })
+                await setting.onChanged(oldValue, newValue, settingValues, this.handleChangeSetting)
             }
 
             this.layout.setSaved();
@@ -104,6 +97,15 @@ export default class SettingsEditorApp extends Component {
             this.layout.setSaveError(message);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         }
+    }
+
+    handleChangeSetting = (key, value) => {
+        const { settings, updateSetting } = this.props;
+        const setting = _.findWhere(settings, { key });
+        if (!setting) {
+            throw new Error("Unknown setting " + key);
+        }
+        return updateSetting({ ...setting, value });
     }
 
     renderSettingsPane() {
@@ -187,7 +189,8 @@ export default class SettingsEditorApp extends Component {
                         <SettingsSetting
                             key={setting.key}
                             setting={setting}
-                            updateSetting={this.updateSetting.bind(this, setting)}
+                            onChange={this.updateSetting.bind(this, setting)}
+                            onChangeSetting={this.handleChangeSetting}
                             reloadSettings={this.props.reloadSettings}
                             autoFocus={index === 0}
                             settingValues={settingValues}

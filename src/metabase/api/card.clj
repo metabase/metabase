@@ -3,6 +3,7 @@
             [clojure.data :as data]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [medley.core :as m]
             [metabase
              [events :as events]
              [middleware :as middleware]
@@ -14,6 +15,7 @@
              [dataset :as dataset-api]
              [label :as label-api]]
             [metabase.api.common.internal :refer [route-fn-name]]
+            [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -23,6 +25,7 @@
              [interface :as mi]
              [label :refer [Label]]
              [permissions :as perms]
+             [pulse :as pulse :refer [Pulse]]
              [query :as query]
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
@@ -334,6 +337,86 @@
                 :else                        :card-update)]
     (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
 
+(defn- card-archived? [old-card new-card]
+  (and (not (:archived old-card))
+       (:archived new-card)))
+
+(defn- line-area-bar? [display]
+  (contains? #{:line :area :bar} display))
+
+(defn- progress? [display]
+  (= :progress display))
+
+(defn- allows-rows-alert? [display]
+  (not (contains? #{:line :bar :area :progress} display)))
+
+(defn- display-change-broke-alert?
+  "Alerts no longer make sense when the kind of question being alerted on significantly changes. Setting up an alert
+  when a time series query reaches 10 is no longer valid if the question switches from a line graph to a table. This
+  function goes through various scenarios that render an alert no longer valid"
+  [{old-display :display} {new-display :display}]
+  (when-not (= old-display new-display)
+    (or
+     ;; Did the alert switch from a table type to a line/bar/area/progress graph type?
+     (and (allows-rows-alert? old-display)
+          (or (line-area-bar? new-display)
+              (progress? new-display)))
+     ;; Switching from a line/bar/area to another type that is not those three invalidates the alert
+     (and (line-area-bar? old-display)
+          (not (line-area-bar? new-display)))
+     ;; Switching from a progress graph to anything else invalidates the alert
+     (and (progress? old-display)
+          (not (progress? new-display))))))
+
+(defn- goal-missing?
+  "If we had a goal before, and now it's gone, the alert is no longer valid"
+  [old-card new-card]
+  (and
+   (get-in old-card [:visualization_settings :graph.goal_value])
+   (not (get-in new-card [:visualization_settings :graph.goal_value]))))
+
+(defn- multiple-breakouts?
+  "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
+  the alert"
+  [{:keys [display] :as new-card}]
+  (and (or (line-area-bar? display)
+           (progress? display))
+       (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
+
+(defn- delete-alert-and-notify!
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
+  [notify-fn! alerts]
+  (db/delete! Pulse :id [:in (map :id alerts)])
+  (doseq [{:keys [channels] :as alert} alerts
+          :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
+    (doseq [recipient (:recipients email-channel)]
+      (notify-fn! alert recipient @api/*current-user*))))
+
+(defn delete-alert-and-notify-archived!
+  "Removes all alerts and will email each recipient letting them know"
+  [alerts]
+  (delete-alert-and-notify! messages/send-alert-stopped-because-archived-email! alerts))
+
+(defn- delete-alert-and-notify-changed! [alerts]
+  (delete-alert-and-notify! messages/send-alert-stopped-because-changed-email! alerts))
+
+(defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
+  ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
+  (when-let [alerts (seq (pulse/retrieve-alerts-for-card card-id))]
+    (cond
+
+      (card-archived? old-card new-card)
+      (delete-alert-and-notify-archived! alerts)
+
+      (or (display-change-broke-alert? old-card new-card)
+          (goal-missing? old-card new-card)
+          (multiple-breakouts? new-card))
+      (delete-alert-and-notify-changed! alerts)
+
+      ;; The change doesn't invalidate the alert, do nothing
+      :else
+      nil)))
+
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params result_metadata metadata_checksum], :as body} :body}]
@@ -348,14 +431,14 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe results-metadata/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
-  (let [card (api/write-check Card id)]
+  (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
-    (check-allowed-to-change-collection card collection_id)
-    (check-allowed-to-modify-query card dataset_query)
-    (check-allowed-to-unarchive card archived)
-    (check-allowed-to-change-embedding card enable_embedding embedding_params)
+    (check-allowed-to-change-collection card-before-update collection_id)
+    (check-allowed-to-modify-query card-before-update dataset_query)
+    (check-allowed-to-unarchive card-before-update archived)
+    (check-allowed-to-change-embedding card-before-update enable_embedding embedding_params)
     ;; make sure we have the correct `result_metadata`
-    (let [body (assoc body :result_metadata (result-metadata-for-updating card dataset_query result_metadata metadata_checksum))]
+    (let [body (assoc body :result_metadata (result-metadata-for-updating card-before-update dataset_query result_metadata metadata_checksum))]
       ;; ok, now save the Card
       (db/update! Card id
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
@@ -364,6 +447,9 @@
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
+
+      (delete-alerts-if-needed! card-before-update card)
+
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with returned one -- See #4142
       (hydrate card :creator :dashboard_count :labels :can_write :collection))))

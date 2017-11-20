@@ -30,9 +30,9 @@ You can also see all questions and dashboards that have been marked as "Embeddab
 
 Once you've enabled the embedding feature on your Metabase instance, you should then go to the individual questions and dashboards you wish to embed to set them up for embedding.
 
-### Embedding Charts and Dashboards
+### Embedding charts and dashboards
 
-To mark a given question or dashboard, click on the sharing icon
+To make a question or dashboard embeddable, click the sharing icon on it:
 
 ![Share icon](images/embedding/02-share-icon.png)
 
@@ -51,12 +51,12 @@ Importantly, you will need to hit "Publish" when you first set up a  chart or da
 We provide code samples for common front end template languages as well as some common back-end web frameworks and languages. You may also use these as starting points for writing your own versions in other platforms.
 
 
-### Embedding Charts and Dashboards with locked parameters
+### Embedding charts and dashboards with locked parameters
 If you wish to have a parameter locked down to prevent your embedding application's end users from seeing other users' data, you can mark parameters as "Locked."Once a parameter is marked as Locked, it is not displayed as a filter widget, and must be set by the embedding application's server code.
 
 ![Locked parameters](images/embedding/06-locked.png)
 
-### Resizing Dashboards to fit their content
+### Resizing dashboards to fit their content
 Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
 ```
 <script src="http://metabase.example.com/app/iframeResizer.js"></script>
@@ -65,3 +65,7 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 ### Reference applications
 To see concrete examples of how to embed Metabase in applications under a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
+
+
+## Premium embedding
+If you'd like to embed Metabase dashboards or charts in your application without the "Powered by Metabase" attribution, you can purchase premium embedding from the Metabase store. [Find out more here](https://store.metabase.com/product/embedding).

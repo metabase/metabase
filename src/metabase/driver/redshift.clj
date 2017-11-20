@@ -71,8 +71,8 @@
 
 ;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
 ;; Redshift is always in UTC and doesn't return it's timezone
-(def ^:private redshift-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS"))
-(def ^:private redshift-db-time-query "select to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS.MS')")
+(def ^:private redshift-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+(def ^:private redshift-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
 (u/strict-extend RedshiftDriver
   driver/IDriver
@@ -108,7 +108,7 @@
   (merge postgres/PostgresISQLDriverMixin
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
           :current-datetime-fn       (constantly :%getdate)
-          :set-timezone-sql          (constantly nil)
+          :set-timezone-sql          (constantly "SET TIMEZONE TO %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
          ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests against a single remote host;
          ;; when running tests tell the sync process to ignore all the other schemas

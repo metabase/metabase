@@ -22,6 +22,7 @@ import Visualization from 'metabase/visualizations/components/Visualization'
 import { XRayPageWrapper, Heading } from 'metabase/xray/components/XRayLayout'
 import Periodicity from 'metabase/xray/components/Periodicity'
 import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
+import { Insights } from "metabase/xray/components/Insights";
 
 const mapStateToProps = state => ({
     xray: getXray(state),
@@ -96,6 +97,12 @@ class CardXRay extends Component {
                         <div className="mt4 mb2">
                             <h1 className="my3">{xray.features.model.name} X-ray</h1>
                         </div>
+                        { xray.features["insights"] &&
+                            <div className="mt4">
+                                <Heading heading="Takeaways" />
+                                <Insights features={xray.features} />
+                            </div>
+                        }
                         <Heading heading="Growth rate" />
                         <div className="bg-white bordered rounded shadowed">
                             <div className="Grid Grid--1of4 border-bottom">
@@ -118,7 +125,7 @@ class CardXRay extends Component {
                                         series={[
                                             {
                                                 card: xray.features.model,
-                                                data: xray.dataset
+                                                data: xray.features.series
                                             },
                                             {
                                                 card: {
