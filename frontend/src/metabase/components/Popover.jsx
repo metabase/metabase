@@ -131,8 +131,9 @@ export default class Popover extends Component {
                 >
                     { typeof this.props.children === "function" ?
                         this.props.children(childProps)
+                    : React.Children.count(this.props.children) === 1 ?
+                        React.cloneElement(React.Children.only(this.props.children), childProps)
                     :
-                        // TOOD: cloneElement and inject `childProps`?
                         this.props.children
                     }
                 </div>
@@ -157,11 +158,6 @@ export default class Popover extends Component {
     }
 
     _getMaxHeight() {
-        // if we don't sizeToFit the popover can be unlimited height
-        if (!this.props.sizeToFit) {
-            return Infinity;
-        }
-
         const { top, bottom } = this._getTarget().getBoundingClientRect();
 
         let attachments;

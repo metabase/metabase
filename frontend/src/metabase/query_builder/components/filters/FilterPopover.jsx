@@ -23,6 +23,7 @@ import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Que
 import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
+    maxHeight?: number,
     query: StructuredQuery,
     filter?: Filter,
     onCommitFilter: (filter: Filter) => void,
@@ -246,6 +247,7 @@ export default class FilterPopover extends Component {
                 <div className="FilterPopover">
                     <FieldList
                         className="text-purple"
+                        maxHeight={this.props.maxHeight}
                         field={fieldRef}
                         fieldOptions={query.filterFieldOptions(filter)}
                         segmentOptions={query.filterSegmentOptions(filter)}

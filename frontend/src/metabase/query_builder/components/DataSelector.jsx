@@ -417,7 +417,6 @@ export default class DataSelector extends Component {
             <PopoverWithTrigger
                 id="DataPopover"
                 ref="popover"
-                sizeToFit
                 isInitiallyOpen={this.props.isInitiallyOpen}
                 triggerElement={triggerElement}
                 triggerClasses="flex align-center"
