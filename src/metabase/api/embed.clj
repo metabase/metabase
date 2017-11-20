@@ -250,10 +250,8 @@
   (if (nil? card2) card1
   (let [data1 (card1 :data)
         data2Temp (card2 :data)
-        prnt (println "before change data" data2Temp)
         data2 (if (and (= ((first (data1 :cols)) :base_type) :type/DateTime) (= ((first (data2Temp :cols)) :base_type) :type/DateTime))
                        (handle-start-date data1 data2Temp) data2Temp)
-        prnt (println "changed data" data2)
         mergeKey (clojure.set/intersection (set (data1 :columns))  (set (data2 :columns)))
         allColumns (distinct (concat (into [] (data1 :columns)) (into [] (data2 :columns)))  )]
     (loop [data {}, [f & more] [
@@ -437,10 +435,6 @@
     {export-format dataset-api/ExportFormat}
       (dataset-api/as-format export-format
       (let [cards-id (first (csv/read-csv  (query-params :card-ids)))
-            prnt (println cards-id query-params)
-            abc (map (fn [n] n) cards-id)
-            abc2 (map (fn [n] (string? n) ) cards-id)
-            prnt (println abc abc2  )
             query-params (dissoc query-params :card-ids)
         cards-data (into [] (map (fn [card-id] (card-for-signed-token token dashcard-id (Integer/parseInt card-id) query-params)) cards-id))
             prnt (println cards-data  )
