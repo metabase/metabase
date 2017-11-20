@@ -189,7 +189,8 @@
 ;;
 ;; The exclusions here are databases that give incorrect answers when
 ;; the JVM timezone doesn't match the databases timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :mongo}
+;; TODO improve comment: session attributes like Timezone MUST NOT BE CHANGED according to spec 
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :mongo :teradata}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
@@ -477,7 +478,7 @@
 ;;
 ;; The exclusions here are databases that give incorrect answers when
 ;; the JVM timezone doesn't match the databases timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :mongo}
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :mongo :teradata}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (results-by-day date-formatter-without-time
@@ -674,7 +675,7 @@
 ;;
 ;; The exclusions here are databases that give incorrect answers when
 ;; the JVM timezone doesn't match the databases timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :mongo}
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :mongo :teradata}
   (cond
     (contains? #{:sqlite :crate} *engine*)
     (results-by-week date-formatter-without-time
@@ -708,7 +709,7 @@
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
 
-    (contains? #{:sqlserver :sqlite :crate :oracle} *engine*)
+    (contains? #{:sqlserver :sqlite :crate :oracle :teradata} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
     (and (supports-report-timezone? *engine*)
