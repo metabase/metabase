@@ -5,6 +5,7 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
 
+import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
 import Icon from "metabase/components/Icon";
 import Input from "metabase/components/Input";
 import Popover from "metabase/components/Popover";
@@ -207,57 +208,61 @@ export default class RecipientPicker extends Component {
         const { recipients } = this.props;
 
         return (
-            <ul className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
-                {recipients.map((recipient, index) =>
-                    <li key={recipient.id} className="mr1 py1 pl1 mt1 rounded bg-grey-1">
-                        <span className="h4 text-bold">{recipient.common_name || recipient.email}</span>
-                        <a
-                            className="text-grey-2 text-grey-4-hover px1"
-                            onClick={() => this.removeRecipient(recipient)}
+            <OnClickOutsideWrapper handleDismissal={() => {
+                this.setState({ focused: false });
+            }}>
+                <ul className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
+                    {recipients.map((recipient, index) =>
+                        <li key={recipient.id} className="mr1 py1 pl1 mt1 rounded bg-grey-1">
+                            <span className="h4 text-bold">{recipient.common_name || recipient.email}</span>
+                            <a
+                                className="text-grey-2 text-grey-4-hover px1"
+                                onClick={() => this.removeRecipient(recipient)}
+                            >
+                                <Icon name="close" className="" size={12} />
+                            </a>
+                        </li>
+                    )}
+                    <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": " 100px" }}>
+                        <Input
+                            ref="input"
+                            className="full h4 text-bold text-default no-focus borderless"
+                            placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
+                            value={inputValue}
+                            autoFocus={focused}
+                            onKeyDown={this.onInputKeyDown}
+                            onChange={this.onInputChange}
+                            onFocus={this.onInputFocus}
+                            onBlurChange={this.onInputBlur}
+                        />
+                        <Popover
+                            isOpen={filteredUsers.length > 0}
+                            hasArrow={false}
+                            tetherOptions={{
+                                attachment: "top left",
+                                targetAttachment: "bottom left",
+                                targetOffset: "10 0"
+                            }}
                         >
-                            <Icon name="close" className="" size={12} />
-                        </a>
+                            <ul className="py1">
+                                {filteredUsers.map(user =>
+                                    <li
+                                        key={user.id}
+                                        className={cx(
+                                            "py1 px2 flex align-center text-bold bg-brand-hover text-white-hover", {
+                                            "bg-grey-1": user.id === selectedUserID
+                                        })}
+                                        onClick={() => this.addRecipient(user)}
+                                    >
+                                        <span className="text-white"><UserAvatar user={user} /></span>
+                                        <span className="ml1 h4">{user.common_name}</span>
+                                    </li>
+                                )}
+                            </ul>
+                        </Popover>
                     </li>
-                )}
-                <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": " 100px" }}>
-                    <Input
-                        ref="input"
-                        className="full h4 text-bold text-default no-focus borderless"
-                        placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
-                        value={inputValue}
-                        autoFocus={focused}
-                        onKeyDown={this.onInputKeyDown}
-                        onChange={this.onInputChange}
-                        onFocus={this.onInputFocus}
-                        onBlur={this.onInputBlur}
-                    />
-                    <Popover
-                        isOpen={filteredUsers.length > 0}
-                        hasArrow={false}
-                        tetherOptions={{
-                            attachment: "top left",
-                            targetAttachment: "bottom left",
-                            targetOffset: "10 0"
-                        }}
-                    >
-                        <ul className="py1">
-                            {filteredUsers.map(user =>
-                                <li
-                                    key={user.id}
-                                    className={cx(
-                                        "py1 px2 flex align-center text-bold bg-brand-hover text-white-hover", {
-                                        "bg-grey-1": user.id === selectedUserID
-                                    })}
-                                    onClick={() => this.addRecipient(user)}
-                                >
-                                    <span className="text-white"><UserAvatar user={user} /></span>
-                                    <span className="ml1 h4">{user.common_name}</span>
-                                </li>
-                            )}
-                        </ul>
-                    </Popover>
-                </li>
-            </ul>
+                </ul>
+            </OnClickOutsideWrapper>
         );
     }
 }

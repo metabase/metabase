@@ -148,7 +148,6 @@ describe('recipient picker', () => {
 
                     expect(spy).toHaveBeenCalledTimes(1)
                     expect(spy).toHaveBeenCalledWith([TEST_USERS[1]])
-
                 })
             )
         })
