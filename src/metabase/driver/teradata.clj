@@ -1,28 +1,20 @@
 (ns metabase.driver.teradata
-  (:require [metabase.driver :as driver]
-    [clojure.java.jdbc :as jdbc]
-    [clojure [set :refer [rename-keys], :as set]
-     [string :as s]]
-    [honeysql [core :as hsql]
-     [format :as hformat]
-     [helpers :as h]
-     types]
-    [metabase.models [field :as field]]
-    [clojure.tools.logging :as log]
-    [honeysql.core :as hsql]
-    [metabase.driver.generic-sql :as sql]
-    [metabase.driver.generic-sql.query-processor :as sqlqp]
-    [metabase.query-processor
-     [annotate :as annotate]
-     [interface :as i]
-     [util :as qputil]]
-    [metabase.util :as u]
-    [metabase.util
-     [honeysql-extensions :as hx]
-     [ssh :as ssh]])
-  (:import [java.sql DatabaseMetaData ResultSet SQLException]
-    [java.util Calendar TimeZone]
-    [java.util.concurrent TimeUnit]))
+  (:require [clojure
+             [set :as set]
+             [string :as s]]
+            [clojure.java.jdbc :as jdbc]
+            [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.models.field :as field]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import [java.sql DatabaseMetaData ResultSet]))
 
 (defrecord TeradataDriver []
   clojure.lang.Named
@@ -188,7 +180,7 @@
   (hsql/call :char_length (hx/cast "VARCHAR(2048)" field-key)))
 
 ;; Teradata uses ByteInt with values `1`/`0` for boolean `TRUE`/`FALSE`.
-(defmethod sqlqp/->honeysql [OracleDriver Boolean]
+(defmethod sqlqp/->honeysql [TeradataDriver Boolean]
   [_ bool]
   (if bool 1 0))
 
@@ -241,22 +233,6 @@
         (let [db-connection (sql/db->jdbc-connection-spec database)]
           (run-query-without-timezone driver settings db-connection query))))))
 
-(def TeradataISQLDriverMixin
-  "Implementations of `ISQLDriver` methods for `TeradataDriver`."
-  (merge (sql/ISQLDriverDefaultsMixin)
-    {:column->base-type        (u/drop-first-arg column->base-type)
-     :connection-details->spec  (u/drop-first-arg connection-details->spec)
-     :date                      (u/drop-first-arg date)
-     :current-datetime-fn       (constantly now)
-     :prepare-value             (u/drop-first-arg prepare-value)
-     :string-length-fn          (u/drop-first-arg string-length-fn)
-     :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
-     :apply-limit               (u/drop-first-arg apply-limit)
-     :apply-page                (u/drop-first-arg apply-page)
-     :stddev-fn                 (constantly :STDDEV_SAMP)
-     :field->identifier         (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
-     :set-timezone-sql          (constantly nil)}))
-
 (u/strict-extend TeradataDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -292,9 +268,20 @@
                                      {:name         "additional-options"
                                       :display-name "Additional JDBC connection string options"
                                       :placeholder  "e.g. COPLAST=OFF"}]))
-     :execute-query            execute-query
-     })
-  sql/ISQLDriver TeradataISQLDriverMixin)
+     :execute-query            execute-query})
+  sql/ISQLDriver 
+  (merge (sql/ISQLDriverDefaultsMixin)
+    {:column->base-type        (u/drop-first-arg column->base-type)
+     :connection-details->spec  (u/drop-first-arg connection-details->spec)
+     :date                      (u/drop-first-arg date)
+     :current-datetime-fn       (constantly now)
+     :string-length-fn          (u/drop-first-arg string-length-fn)
+     :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
+     :apply-limit               (u/drop-first-arg apply-limit)
+     :apply-page                (u/drop-first-arg apply-page)
+     :stddev-fn                 (constantly :STDDEV_SAMP)
+     :field->identifier         (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
+     :set-timezone-sql          (constantly nil)}))
 
 (defn -init-driver
   "Register the teradata driver when the required jar is found on the classpath"

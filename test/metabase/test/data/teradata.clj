@@ -1,12 +1,12 @@
 (ns metabase.test.data.teradata
   "Code for creating / destroying a Teradata database from a `DatabaseDefinition`."
-  (:require [metabase.test.data
-             [generic-sql :as generic]
-             [interface :as i]]
+  (:require [clojure.java.jdbc :as jdbc]
+    [clojure.string :as s]
     [metabase.driver.generic-sql :as sql]
-    [metabase.util :as u]
-    [clojure.java.jdbc :as jdbc]
-    [clojure.string :as s])
+    [metabase.test.data
+     [generic-sql :as generic]
+     [interface :as i]]
+    [metabase.util :as u])
   (:import metabase.driver.teradata.TeradataDriver
     java.sql.SQLException))
 
@@ -48,8 +48,8 @@
 (defn- execute-sql! [driver context dbdef sql]
   (let [sql (some-> sql s/trim)]
     (when (and (seq sql)
-               ;; make sure SQL isn't just semicolons
-               (not (s/blank? (s/replace sql #";" ""))))
+            ;; make sure SQL isn't just semicolons
+            (not (s/blank? (s/replace sql #";" ""))))
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
         (try
@@ -57,7 +57,7 @@
           (catch SQLException e
             (println "Error executing SQL:" sql)
             (printf "Caught SQLException:\n%s\n"
-                    (with-out-str (jdbc/print-sql-exception-chain e)))
+              (with-out-str (jdbc/print-sql-exception-chain e)))
             ;; TODO Ignoring "drop if exists" errors. Remove as soon as we have a better solution.
             (if (not (or (s/includes? (.getMessage e) "Error 3807")
                        (s/includes? (.getMessage e) "Error 3802")))
@@ -65,7 +65,7 @@
           (catch Throwable e
             (println "Error executing SQL:" sql)
             (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
-                    (with-out-str (.printStackTrace e)))
+              (with-out-str (.printStackTrace e)))
             (throw e)))))))
 
 (defn- sequentially-execute-sql!

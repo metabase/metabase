@@ -1,18 +1,6 @@
 (ns metabase.driver.teradata-test
   (:require [expectations :refer :all]
-    [metabase
-     [sync :as sync]
-     [util :as u]]
-    [metabase.driver.generic-sql :as sql]
-    [metabase.models.database :refer [Database]]
-    [metabase.test
-     [data :as data]
-     [util :as tu]]
-    [metabase.test.data
-     [datasets :refer [expect-with-engine]]
-     [interface :refer [def-database-definition]]]
-    [toucan.db :as db]
-    [toucan.util.test :as tt])
+    [metabase.driver.generic-sql :as sql])
   (:import metabase.driver.teradata.TeradataDriver))
 
 (def ^:private ^TeradataDriver teradata-driver (TeradataDriver.))
