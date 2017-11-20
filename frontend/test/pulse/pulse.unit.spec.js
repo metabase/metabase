@@ -4,6 +4,8 @@ import { shallow } from 'enzyme'
 import {
     KEYCODE_DOWN,
     KEYCODE_TAB,
+    KEYCODE_ENTER,
+    KEYCODE_COMMA
 } from "metabase/lib/keyboard"
 
 import Input from "metabase/components/Input"
@@ -108,42 +110,47 @@ describe('recipient picker', () => {
             expect(spy).toHaveBeenCalled()
         })
 
-        it('should allow the user to use arrow keys to select a recipient', () => {
-            const spy = jest.fn()
+        describe('key selection', () => {
+            [KEYCODE_TAB, KEYCODE_ENTER, KEYCODE_COMMA].map(key =>
+                it(`should allow the user to use arrow keys and then ${key} to select a recipient`, () => {
+                    const spy = jest.fn()
 
-            const wrapper = shallow(
-                <RecipientPicker
-                    recipients={[]}
-                    users={TEST_USERS}
-                    isNewPulse={true}
-                    onRecipientsChange={spy}
-                />
+                    const wrapper = shallow(
+                        <RecipientPicker
+                            recipients={[]}
+                            users={TEST_USERS}
+                            isNewPulse={true}
+                            onRecipientsChange={spy}
+                        />
+                    )
+
+                    const input = wrapper.find(Input)
+
+
+                    // limit our options to  user by typing
+                    input.simulate('change', { target: { value: 'w' }})
+
+                    // the initially selected user should be the first user
+                    expect(wrapper.state().selectedUserID).toBe(TEST_USERS[0].id)
+
+                    input.simulate('keyDown', {
+                        keyCode: KEYCODE_DOWN,
+                        preventDefault: jest.fn()
+                    })
+
+                    // the next possible user should be selected now
+                    expect(wrapper.state().selectedUserID).toBe(TEST_USERS[1].id)
+
+                    input.simulate('keydown', {
+                        keyCode: key,
+                        preventDefalut: jest.fn()
+                    })
+
+                    expect(spy).toHaveBeenCalledTimes(1)
+                    expect(spy).toHaveBeenCalledWith([TEST_USERS[1]])
+
+                })
             )
-
-            const input = wrapper.find(Input)
-
-
-            // limit our options to  user by typing
-            input.simulate('change', { target: { value: 'w' }})
-
-            // the initially selected user should be the first user
-            expect(wrapper.state().selectedUserID).toBe(TEST_USERS[0].id)
-
-            input.simulate('keyDown', {
-                keyCode: KEYCODE_DOWN,
-                preventDefault: jest.fn()
-            })
-
-            // the next possible user should be selected now
-            expect(wrapper.state().selectedUserID).toBe(TEST_USERS[1].id)
-
-            input.simulate('keydown', {
-                keyCode: KEYCODE_TAB,
-                preventDefalut: jest.fn()
-            })
-
-            expect(spy).toHaveBeenCalledTimes(1)
-            expect(spy).toHaveBeenCalledWith([TEST_USERS[1]])
         })
 
         describe('usage', () => {

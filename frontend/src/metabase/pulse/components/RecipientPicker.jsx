@@ -14,6 +14,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import {
     KEYCODE_ESCAPE,
+    KEYCODE_ENTER,
     KEYCODE_COMMA,
     KEYCODE_TAB,
     KEYCODE_UP,
@@ -107,7 +108,7 @@ export default class RecipientPicker extends Component {
         const { filteredUsers, selectedUserID } = this.state
 
         // enter, tab, comma
-        if (keyCode === KEYCODE_ESCAPE || keyCode === KEYCODE_TAB || keyCode === KEYCODE_COMMA) {
+        if (keyCode === KEYCODE_ESCAPE || keyCode === KEYCODE_TAB || keyCode === KEYCODE_COMMA || keyCode === KEYCODE_ENTER) {
             this.addCurrentRecipient();
         }
 
@@ -168,6 +169,7 @@ export default class RecipientPicker extends Component {
 
     addRecipient = (recipient) => {
         const { recipients } = this.props
+
         // recipient is a user object, or plain object containing "email" key
         this.props.onRecipientsChange(
             // return the list of recipients with the new user added
