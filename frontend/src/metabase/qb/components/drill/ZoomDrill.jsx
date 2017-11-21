@@ -6,6 +6,7 @@ import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
+import { t } from 'c-3po';
 
 export default (
     { question, clicked, settings }: ClickActionProps
@@ -20,7 +21,7 @@ export default (
         {
             name: "timeseries-zoom",
             section: "zoom",
-            title: "Zoom in",
+            title: t`Zoom in`,
             question: () => question.pivot(drilldown.breakouts, dimensions)
         }
     ];

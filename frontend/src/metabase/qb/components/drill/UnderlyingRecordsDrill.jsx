@@ -3,7 +3,7 @@
 import { inflect } from "metabase/lib/formatting";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
+import { t } from 'c-3po';
 import type {
     ClickAction,
     ClickActionProps
@@ -27,10 +27,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         {
             name: "underlying-records",
             section: "records",
-            title: "View " +
-                inflect("these", count, "this", "these") +
-                " " +
-                inflect(query.table().display_name, count),
+            title: t`View ${inflect(t`these`, count, t`this`, t`these`)} ${inflect(query.table().display_name, count)}`,
             question: () => question.drillUnderlyingRecords(dimensions)
         }
     ];
