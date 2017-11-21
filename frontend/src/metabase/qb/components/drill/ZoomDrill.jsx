@@ -6,7 +6,7 @@ import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 
 export default (
     { question, clicked, settings }: ClickActionProps

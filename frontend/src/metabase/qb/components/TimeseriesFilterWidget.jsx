@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 import DatePicker
     from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

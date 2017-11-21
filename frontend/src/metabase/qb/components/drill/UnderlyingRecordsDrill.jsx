@@ -3,7 +3,7 @@
 import { inflect } from "metabase/lib/formatting";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 import type {
     ClickAction,
     ClickActionProps

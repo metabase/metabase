@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { jt } from 'c-3po';
+import { jt } from "c-3po";
 import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -48,7 +48,13 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                 section: "breakout",
                 title: clicked
                     ? name
-                    : <span>{jt`Break out by ${<span className="text-dark">{name.toLowerCase()}</span>}`}</span>,
+                    : <span>
+                          {
+                              jt`Break out by ${<span className="text-dark">
+                                      {name.toLowerCase()}
+                                  </span>}`
+                          }
+                      </span>,
                 icon: icon,
                 // eslint-disable-next-line react/display-name
                 popover: (

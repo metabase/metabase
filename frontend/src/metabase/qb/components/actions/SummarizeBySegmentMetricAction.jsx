@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
 

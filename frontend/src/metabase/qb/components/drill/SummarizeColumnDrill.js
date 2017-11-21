@@ -5,7 +5,7 @@ import {
     getAggregator,
     isCompatibleAggregatorForField
 } from "metabase/lib/schema_metadata";
-import { t } from 'c-3po';
+import { t } from "c-3po";
 import type {
     ClickAction,
     ClickActionProps

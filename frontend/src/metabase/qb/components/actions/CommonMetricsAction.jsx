@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { jt } from 'c-3po';
+import { jt } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
