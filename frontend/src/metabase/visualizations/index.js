@@ -12,7 +12,7 @@ import MapViz      from "./visualizations/Map.jsx";
 import ScatterPlot from "./visualizations/ScatterPlot.jsx";
 import Funnel      from "./visualizations/Funnel.jsx";
 import ObjectDetail from "./visualizations/ObjectDetail.jsx";
-
+import { t } from 'c-3po';
 import _ from "underscore";
 
 import type { Series } from "metabase/meta/types/Visualization";
@@ -27,10 +27,10 @@ visualizations.get = function(key) {
 export function registerVisualization(visualization) {
     let identifier = visualization.identifier;
     if (identifier == null) {
-        throw new Error("Visualization must define an 'identifier' static variable: " + visualization.name);
+        throw new Error(t`Visualization must define an 'identifier' static variable: ` + visualization.name);
     }
     if (visualizations.has(identifier)) {
-        throw new Error("Visualization with that identifier is already registered: " + visualization.name);
+        throw new Error(t`Visualization with that identifier is already registered: ` + visualization.name);
     }
     visualizations.set(identifier, visualization);
     for (let alias of visualization.aliases || []) {
@@ -56,7 +56,7 @@ export function getVisualizationTransformed(series: Series) {
     do {
         CardVisualization = visualizations.get(series[0].card.display);
         if (!CardVisualization) {
-            throw new Error("No visualization for " + series[0].card.display);
+            throw new Error(t`No visualization for ${series[0].card.display}`);
         }
         lastSeries = series;
         if (typeof CardVisualization.transformSeries === "function") {
