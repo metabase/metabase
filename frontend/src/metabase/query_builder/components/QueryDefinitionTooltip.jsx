@@ -6,7 +6,7 @@ import AggregationWidget from "./AggregationWidget.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 
 import Query from "metabase/lib/query";
-
+import { t } from 'c-3po';
 
 export default class QueryDefinitionTooltip extends Component {
 
@@ -23,14 +23,14 @@ export default class QueryDefinitionTooltip extends Component {
             <div className="p2" style={{width: 250}}>
                 <div>
                     { type && type === "metric" && !object.is_active ?
-                        "This metric has been retired.  It's no longer available for use."
+                        t`This metric has been retired.  It's no longer available for use.`
                     :
                         object.description
                     }
                 </div>
                 { object.definition &&
                     <div className="mt2">
-                        <FieldSet legend="Definition" className="border-light">
+                        <FieldSet legend={t`Definition`} className="border-light">
                             <div className="TooltipFilterList">
                                 { Query.getAggregations(object.definition).map(aggregation =>
                                     <AggregationWidget
