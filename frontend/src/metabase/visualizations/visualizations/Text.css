@@ -21,14 +21,17 @@
   pointer-events: all
 }
 :local .Text .text-card-markdown h1 {
-  font-size: 1.43em;
+  font-size: 1.831em;
 }
 :local .Text .text-card-markdown h2 {
-  font-size: 1.27em;
+  font-size: 1.627em;
 }
 :local .Text .text-card-markdown h3 {
-  font-size: 1em;
+  font-size: 1.447em;
 }
 :local .Text .text-card-markdown p {
-  font-size: .89em;
+  font-size: 1.143em;
+  line-height: 1.602em;
+  padding-bottom: 0;
+  margin-bottom: 0;
 }
