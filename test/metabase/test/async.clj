@@ -6,5 +6,9 @@
 (defn result!
   "Blocking version of async/result."
   [job-id]
-  @((deref (deref #'async/running-jobs)) job-id)
+  (-> #'async/running-jobs
+      deref          ; var
+      deref          ; atom
+      (get job-id)
+      deref)         ; future
   (async/result (ComputationJob job-id)))
