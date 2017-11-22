@@ -1,0 +1,23 @@
+automagicDashboards:
+  - dashboard
+      name: ...
+      description: ...
+      cards:
+        - card:
+            title: Retention
+            description: ....
+            visualization: line
+            rules:
+              - field: &timestamp
+                  - and:
+                      - or:
+                          endsWith: _at
+                          name: [timestamp, date]
+                      type: timestamp
+              - field: &income
+                  - and:
+                      type: number
+                      name: [income, price, revenue, total]
+            definition:
+              - aggregation [sum [field-id *income]]
+              - breakout    [field-id [field-id *timestamp]]
