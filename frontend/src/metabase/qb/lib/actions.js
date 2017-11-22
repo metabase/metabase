@@ -370,15 +370,19 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
+// TODO - the logic here is a better version of the `getDisplayTypeForCard` function in `query_builder/actions`.
+// Why do we need two functions that do different versions of the same thing?
 const guessVisualization = (card: CardObject, tableMetadata: Table) => {
     const query = Card.getQuery(card);
     if (!query) {
         return;
     }
     const aggregations = Query.getAggregations(query);
+    // TODO - why can't we just use Query.getBreakoutFields() ???? We do it above
     const breakoutFields = Query.getBreakouts(query).map(
         breakout => (Q.getFieldTarget(breakout, tableMetadata) || {}).field
     );
+
     if (aggregations.length === 0 && breakoutFields.length === 0) {
         card.display = "table";
     } else if (aggregations.length === 1 && breakoutFields.length === 0) {

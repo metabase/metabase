@@ -15,7 +15,9 @@ import { setErrorPage } from "metabase/redux/app";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
-import Query, { createQuery } from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query"; // legacy query lib
+import * as Query2 from "metabase/lib/query/query";
+import { isDate } from "metabase/lib/schema_metadata";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
@@ -995,35 +997,42 @@ export const runQuestionQuery = ({
     };
 };
 
-export const getDisplayTypeForCard = (card, queryResults) => {
-    // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
-    // This method seems to has been a candidate for a rewrite anyway
-    const queryResult = queryResults[0];
+// TODO - the logic here is a worse version of the `guessVisualization` function in `qb/lib/actions`.
+// Why do we need two functions that do different versions of the same thing?
+//
+// try a little logic to pick a smart display for the data
+// TODO: less hard-coded rules for picking chart type
+//
+// TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
+// This method seems to has been a candidate for a rewrite anyway
+const getDisplayTypeForCard = (card, queryResults, getState) => {
+    const queryResult            = queryResults[0];
+    const state                  = getState();
+    const displayAlreadyInferred = card.visualization_settings.has_inferred_display;
+    const tableMetadata          = getTableMetadata(state);
+    const innerQuery             = card.dataset_query.query;
+    const numAgs                 = (Query2.getAggregations(innerQuery) || []).length;
+    const breakoutFields         = Query2.getBreakoutFields(innerQuery, tableMetadata);
+    const numBreakouts           = (breakoutFields || []).length;
+    const isScalarViz            = card.display === "scalar" || card.display === "progress";
+    const numRows                = (queryResult.data.rows || []).length;
+    const numCols                = (queryResult.data.cols || []).length;
 
-    let cardDisplay = card.display;
+    // if we have a 1x1 data result then this should always be viewed as a scalar
+    if (!isScalarViz && numRows === 1 && numCols === 1) return "scalar";
 
-    // try a little logic to pick a smart display for the data
-    // TODO: less hard-coded rules for picking chart type
-    const isScalarVisualization = card.display === "scalar" || card.display === "progress";
-    if (!isScalarVisualization &&
-        queryResult.data.rows &&
-        queryResult.data.rows.length === 1 &&
-        queryResult.data.cols.length === 1) {
-        // if we have a 1x1 data result then this should always be viewed as a scalar
-        cardDisplay = "scalar";
-
-    } else if (isScalarVisualization &&
-        queryResult.data.rows &&
-        (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)) {
-        // any time we were a scalar and now have more than 1x1 data switch to table view
-        cardDisplay = "table";
-
-    } else if (!card.display) {
-        // if our query aggregation is "rows" then ALWAYS set the display to "table"
-        cardDisplay = "table";
+    // timeseries. If this is the very first run and it's something that's a timeseries then switch it to line display.
+    // Otherwise if the user hits 'refresh' (displayAlreadyInferred == true) we don't want to override any changes they make to display
+    if (!displayAlreadyInferred && !isScalarViz && numAgs === 1 && numBreakouts === 1 && isDate(breakoutFields[0])) {
+        card.visualization_settings.has_inferred_display = true;
+        return "line";
     }
 
-    return cardDisplay;
+    // any time we were a scalar and now have more than 1x1 data switch to table view
+    if (isScalarViz && (numRows > 1 || numCols > 1)) return "table";
+
+    // otherwise return the existing value of display, or failing that, fall back to "table"
+    return card.display || "table";
 };
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
@@ -1031,9 +1040,9 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
     return async (dispatch, getState) => {
         return {
             card,
-            cardDisplay: getDisplayTypeForCard(card, queryResults),
+            cardDisplay: getDisplayTypeForCard(card, queryResults, getState),
             queryResults
-        }
+        };
     };
 });
 

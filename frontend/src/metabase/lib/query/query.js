@@ -18,7 +18,7 @@ import * as L from "./limit";
 import * as O from "./order_by";
 import * as E from "./expression";
 
-import Query from "metabase/lib/query";
+import Query from "metabase/lib/query"; // legacy query lib. Why does the *new* query lib depend on the legacy query lib?
 import _ from "underscore";
 
 // AGGREGATION
