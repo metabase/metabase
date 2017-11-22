@@ -21,14 +21,15 @@
 
 (defn- save-result
   [{:keys [id]} payload]
-  (db/transaction
-    (db/insert! ComputationJobResult
-      :job_id     id
-      :permanence :temporary
-      :payload    payload)
-    (db/update! ComputationJob id
-      :status   :done
-      :ended_at (u/new-sql-timestamp)))
+  (when-not (future-cancelled? (@running-jobs id))
+    (db/transaction
+      (db/insert! ComputationJobResult
+        :job_id     id
+        :permanence :temporary
+        :payload    payload)
+      (db/update! ComputationJob id
+        :status   :done
+        :ended_at (u/new-sql-timestamp))))
   (swap! running-jobs dissoc id)
   (log/info (format "Async job %s done." id)))
 
@@ -50,9 +51,9 @@
   "Cancel computation job (if still running)."
   [{:keys [id] :as job}]
   (when (running? job)
+    (db/update! ComputationJob id :status :canceled)
     (future-cancel (@running-jobs id))
     (swap! running-jobs dissoc id)
-    (db/update! ComputationJob id :status :canceled)
     (log/info (format "Async job %s canceled." id))))
 
 (defn- time-delta-seconds
