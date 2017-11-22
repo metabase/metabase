@@ -4,8 +4,8 @@ automagicDashboards:
       description: ...
       cards:
         - card:
-            title: Retention
-            description: ....
+            title: MRR
+            description: ...
             visualization: line
             rules:
               - field: &timestamp
@@ -13,11 +13,14 @@ automagicDashboards:
                       - or:
                           endsWith: _at
                           name: [timestamp, date]
+                          usedAsTimeKey: true
                       type: timestamp
               - field: &income
                   - and:
                       type: number
                       name: [income, price, revenue, total]
+                      - value:
+                          notNull: true
             definition:
               - aggregation [sum [field-id *income]]
               - breakout    [field-id [field-id *timestamp]]
