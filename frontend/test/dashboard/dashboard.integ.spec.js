@@ -114,6 +114,7 @@ describe("Dashboard", () => {
 
             // Test dashboard renaming
             click(app.find(".Icon.Icon-pencil"));
+            click(app.find(".Icon.Icon-editdocument"));
             await store.waitForActions([SET_EDITING_DASHBOARD]);
 
             const headerInputs = app.find(".Header-title input")
@@ -138,6 +139,7 @@ describe("Dashboard", () => {
 
             // Test parameter filter creation
             click(app.find(".Icon.Icon-pencil"));
+            click(app.find(".Icon.Icon-editdocument"));
             await store.waitForActions([SET_EDITING_DASHBOARD]);
             click(app.find(".Icon.Icon-funneladd"));
             // Choose Time filter type

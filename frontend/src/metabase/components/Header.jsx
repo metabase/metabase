@@ -1,28 +1,68 @@
+/* @flow */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import { findDOMNode } from "react-dom";
 
-import Input from "metabase/components/Input.jsx";
-import HeaderModal from "metabase/components/HeaderModal.jsx";
-import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
-import EditBar from "metabase/components/EditBar.jsx";
+import Input from "metabase/components/Input";
+import HeaderModal from "metabase/components/HeaderModal";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
+import EditBar from "metabase/components/EditBar";
 
 import { getScrollY } from "metabase/lib/dom";
 
+type Props = {
+    // Buttons to be displayed in the header in default mode
+    defaultActions: [],
+
+    // Actions to be displayed in the header in edit mode
+    editingActions: [],
+
+    // Actions to be displayed in the header if in fullscreen mode
+    fullscreenActions: [],
+
+    // Whether or not editing is taking place
+    isEditing: bool,
+
+    // Whether or not fullscreen is active
+    isFullscreen: bool,
+
+    // The item in question being viewed, most likely a question or dashbaord
+    item: {
+        name: string,
+        description: ?string,
+        creator: {
+            common_name: string
+        }
+    },
+
+    // The kind of thing being edited, again, probably a dashboard or question
+    objectType: string,
+
+    // the function that gets called when you edit the title or description
+    setItemAttributeFn: (attribute: string, value: string) => void,
+
+    headerModalMessage: ?string,
+    onHeaderModalDone?: () => void,
+    onHeaderModalCancel?: () => void,
+    editingTitle: string,
+    editingSubtitle: string,
+    editBarButtons: [],
+}
+
 export default class Header extends Component {
+    props: Props
+
+    state = {
+        headerHeight: 0
+    }
+
     static defaultProps = {
-        headerButtons: [],
+        defaultActions: [],
+        editingActions: [],
+        fullscreenActions: [],
         editingTitle: "",
         editingSubtitle: "",
-        editingButtons: [],
-        headerClassName: "py1 lg-py2 xl-py3 wrapper"
-    };
-
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            headerHeight: 0
-        };
+        isEditing: false,
+        isFullscreen: false,
     }
 
    componentDidMount() {
@@ -39,104 +79,123 @@ export default class Header extends Component {
     updateHeaderHeight() {
         if (!this.refs.header) return;
 
-        const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+        const rect = findDOMNode(this.refs.header).getBoundingClientRect();
         const headerHeight = rect.top + getScrollY();
         if (this.state.headerHeight !== headerHeight) {
             this.setState({ headerHeight });
         }
     }
 
-    setItemAttribute(attribute, event) {
-        this.props.setItemAttributeFn(attribute, event.target.value);
-    }
-
-    renderEditHeader() {
-        if (this.props.isEditing) {
-            return (
-                <EditBar
-                    title={this.props.editingTitle}
-                    subtitle={this.props.editingSubtitle}
-                    buttons={this.props.editingButtons}
-                />
-            )
-        }
-    }
-
-    renderHeaderModal() {
-        return (
-            <HeaderModal
-                isOpen={!!this.props.headerModalMessage}
-                height={this.state.headerHeight}
-                title={this.props.headerModalMessage}
-                onDone={this.props.onHeaderModalDone}
-                onCancel={this.props.onHeaderModalCancel}
-            />
-        );
+    setItemAttribute(attribute: string, { target }: SyntheticInputEvent) {
+        this.props.setItemAttributeFn(attribute, target.value);
     }
 
     render() {
-        var titleAndDescription;
-        if (this.props.isEditingInfo) {
-            titleAndDescription = (
-                <div className="Header-title flex flex-column flex-full bordered rounded my1">
-                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.item.name || ""} onChange={this.setItemAttribute.bind(this, "name")}/>
-                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.item.description || ""} onChange={this.setItemAttribute.bind(this, "description")} placeholder="No description yet" />
-                </div>
-            );
-        } else {
-            if (this.props.item && this.props.item.id != null) {
-                titleAndDescription = (
-                    <TitleAndDescription
-                        title={this.props.item.name}
-                        description={this.props.item.description}
-                    />
-                );
-            } else {
-                titleAndDescription = (
-                    <TitleAndDescription
-                        title={`New ${this.props.objectType}`}
-                        description={this.props.item.description}
-                    />
-                );
-            }
-        }
-
-        var attribution;
-        if (this.props.item && this.props.item.creator) {
-            attribution = (
-                <div className="Header-attribution">
-                    Asked by {this.props.item.creator.common_name}
-                </div>
-            );
-        }
-
-        var headerButtons = this.props.headerButtons.map((section, sectionIndex) => {
-            return section && section.length > 0 && (
-                <span key={sectionIndex} className="Header-buttonSection flex align-center">
-                    {section.map((button, buttonIndex) =>
-                        <span key={buttonIndex} className="Header-button">
-                            {button}
-                        </span>
-                    )}
-                </span>
-            );
-        });
+        const {
+            item,
+            isEditing,
+            editingTitle,
+            editingSubtitle,
+            defaultActions,
+            editingActions,
+            fullscreenActions,
+            objectType,
+            isFullscreen,
+            editBarButtons
+        } = this.props
 
         return (
             <div>
-                {this.renderEditHeader()}
-                {this.renderHeaderModal()}
-                <div className={"QueryBuilder-section flex align-center " + this.props.headerClassName} ref="header">
+                { isEditing && (
+                    <EditBar
+                        title={editingTitle}
+                        subtitle={editingSubtitle}
+                        // TODO - @kdoh - shouldnt bars have standard buttons?
+                        buttons={editBarButtons}
+                    />
+                )}
+                {
+                    // TODO - @kdoh - this is highly specific to the dashbaord
+                    // header and should be refactored out
+                }
+                <HeaderModal
+                    isOpen={!!this.props.headerModalMessage}
+                    height={this.state.headerHeight}
+                    title={this.props.headerModalMessage}
+                    onDone={this.props.onHeaderModalDone}
+                    onCancel={this.props.onHeaderModalCancel}
+                />
+                <div className="py1 lg-py2 xl-py3 wrapper flex align-center" ref="header">
                     <div className="Entity py3">
-                        {titleAndDescription}
-                        {attribution}
+                        {isEditing
+                                ? (
+                                    <div className="Header-title flex flex-column flex-full bordered rounded my1">
+                                        <Input
+                                            className="AdminInput text-bold border-bottom rounded-top h3"
+                                            type="text"
+                                            value={item.name || ""}
+                                            onChange={this.setItemAttribute.bind(this, "name")}
+                                        />
+                                        <Input
+                                            className="AdminInput rounded-bottom h4"
+                                            type="text"
+                                            value={item.description || ""}
+                                            onChange={this.setItemAttribute.bind(this, "description")}
+                                            placeholder="No description yet"
+                                        />
+                                    </div>
+                                )
+                                : (
+                                    <TitleAndDescription
+                                        title={item && item.id
+                                                ? item.name
+                                                : `New ${objectType}`
+                                        }
+                                        description={item.description}
+                                    />
+                                )
+                        }
                     </div>
 
-                    <div className="flex align-center flex-align-right">
-                        {headerButtons}
+                    { /* TODO - this should get cleaned up */ }
+                    <div className="flex align-center ml-auto">
+                        {!isEditing && !isFullscreen && defaultActions.map((section, sectionIndex) => {
+                            return section && section.length > 0 && (
+                                <span key={sectionIndex} className="flex align-center">
+                                    {section.map((button, buttonIndex) =>
+                                        <span key={buttonIndex}>
+                                            {button}
+                                        </span>
+                                    )}
+                                </span>
+                            );
+                        })}
+                        { isEditing && !isFullscreen && editingActions.map((section, sectionIndex) => {
+                            return section && section.length > 0 && (
+                                <span key={sectionIndex} className="flex align-center">
+                                    {section.map((button, buttonIndex) =>
+                                        <span key={buttonIndex}>
+                                            {button}
+                                        </span>
+                                    )}
+                                </span>
+                            );
+
+                        })}
+
+                        { isFullscreen && fullscreenActions.map((section, sectionIndex) => {
+                            return section && section.length > 0 && (
+                                <span key={sectionIndex} className="flex align-center">
+                                    {section.map((button, buttonIndex) =>
+                                        <span key={buttonIndex}>
+                                            {button}
+                                        </span>
+                                    )}
+                                </span>
+                            );
+                        })}
                     </div>
                 </div>
-                {this.props.children}
             </div>
         );
     }

@@ -8,12 +8,6 @@
     color: var(--grey-text-color);
 }
 
-.Header-attribution {
-    display: none; /* disabled */
-    color: #ADADAD;
-    margin-bottom: 0.5em;
-}
-
 .Header-buttonSection {
     padding-right: 1em;
     margin-right: 1em;

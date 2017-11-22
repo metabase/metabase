@@ -436,6 +436,107 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
 </div>
 `;
 
+exports[`Header should render "A new item with buttons" correctly 1`] = `
+<div>
+  <div
+    className="py1 lg-py2 xl-py3 wrapper flex align-center"
+  >
+    <div
+      className="Entity py3"
+    >
+      <div
+        className="flex align-center"
+      >
+        <h2
+          className="mr1"
+        >
+          New dashboard
+        </h2>
+      </div>
+    </div>
+    <div
+      className="flex align-center ml-auto"
+    >
+      <span
+        className="flex align-center"
+      >
+        <span>
+          <div
+            className="relative"
+          >
+            <div
+              className="x0 x1 xj xk xl xm x2 xn xo xp xa xq xr"
+              onClick={[Function]}
+            >
+              <svg
+                className="Icon Icon-pencil m1"
+                fill="currentcolor"
+                height={16}
+                name="pencil"
+                viewBox="0 0 32 32"
+                width={16}
+              >
+                <path
+                  d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+                />
+              </svg>
+            </div>
+          </div>
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Header should render "Editing" correctly 1`] = `
+<div>
+  <div
+    className="EditHeader wrapper py1 flex align-center"
+  >
+    <span
+      className="EditHeader-title"
+    >
+      It's edit time
+    </span>
+    
+    <span
+      className="flex-align-right flex"
+    />
+  </div>
+  <div
+    className="py1 lg-py2 xl-py3 wrapper flex align-center"
+  >
+    <div
+      className="Entity py3"
+    >
+      <div
+        className="Header-title flex flex-column flex-full bordered rounded my1"
+      >
+        <input
+          className="AdminInput text-bold border-bottom rounded-top h3"
+          onBlur={[Function]}
+          onChange={[Function]}
+          type="text"
+          value="Cool thing"
+        />
+        <input
+          className="AdminInput rounded-bottom h4"
+          onBlur={[Function]}
+          onChange={[Function]}
+          placeholder="No description yet"
+          type="text"
+          value="This is a cool thing"
+        />
+      </div>
+    </div>
+    <div
+      className="flex align-center ml-auto"
+    />
+  </div>
+</div>
+`;
+
 exports[`Select should render "Default" correctly 1`] = `
 <a
   className="no-decoration"
