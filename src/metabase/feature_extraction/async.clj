@@ -35,16 +35,17 @@
 
 (defn- save-error
   [{:keys [id]} error]
-  (let [error (Throwable->map error)]
-    (log/warn (format "Async job %s encountered an error:\n%s." id error))
-    (db/transaction
-      (db/insert! ComputationJobResult
-        :job_id     id
-        :permanence :temporary
-        :payload    error)
-      (db/update! ComputationJob id
-        :status :error
-        :ended_at (u/new-sql-timestamp))))
+  (when-not (future-cancelled? (@running-jobs id))
+    (let [error (Throwable->map error)]
+      (log/warn (format "Async job %s encountered an error:\n%s." id error))
+      (db/transaction
+        (db/insert! ComputationJobResult
+          :job_id     id
+          :permanence :temporary
+          :payload    error)
+        (db/update! ComputationJob id
+          :status :error
+          :ended_at (u/new-sql-timestamp)))))
   (swap! running-jobs dissoc id))
 
 (defn cancel
