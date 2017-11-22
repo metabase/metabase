@@ -26,6 +26,7 @@
    :bytea         :type/*    ; byte array
    :cidr          :type/Text ; IPv4/IPv6 network address
    :circle        :type/*
+   :citext        :type/Text ; case-insensitive text
    :date          :type/Date
    :decimal       :type/Decimal
    :float4        :type/Float
