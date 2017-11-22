@@ -14,8 +14,8 @@
 (expect
   true
   (let [client (user->client :rasta)
-        job-id (:job-id (client :get 200 (str "x-ray/field/" (id :venues :price))))
-        _      (result! job-id)]
+        job-id (:job-id (client :get 200 (str "x-ray/field/" (id :venues :price))))]
+    (result! job-id)
     (-> (client :get 200 (str "async/" job-id))
         :result
         (contains? :features))))

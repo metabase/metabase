@@ -6,8 +6,8 @@
 
 (expect
   true
-  (let [job-id (compute (gensym) (constantly 42))
-        _      (result! job-id)]
+  (let [job-id (compute (gensym) (constantly 42))]
+    (result! job-id)
     (done? (ComputationJob job-id))))
 
 (expect

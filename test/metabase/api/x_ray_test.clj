@@ -17,8 +17,8 @@
 (defn- async-call
   [method endpoint & args]
   (let [client (user->client :rasta)
-        job-id (:job-id (apply client method 200 endpoint args))
-        _      (result! job-id)]
+        job-id (:job-id (apply client method 200 endpoint args))]
+    (result! job-id)
     (:result (client :get 200 (str "async/" job-id)))))
 
 (expect
