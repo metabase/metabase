@@ -251,19 +251,20 @@
 (defn- test-slow-handler [state]
   (fn [_]
     (log/debug (u/format-color 'yellow "starting test-slow-handler"))
+    (reset! state :test-started)
     (Thread/sleep 7000)  ;; this is somewhat long to make sure the keepalive polling has time to kill it.
     (reset! state :ran-to-compleation)
     (log/debug (u/format-color 'yellow "finished test-slow-handler"))
     (resp/response {:success true})))
 
 (defn- start-and-maybe-kill-test-request [state kill?]
-  (reset! state [:initial-state kill?])
+  (reset! state :initial-state)
   (let [path "test-slow-handler"]
     (with-redefs [metabase.routes/routes (compojure.core/routes
                                           (GET (str "/" path) [] (middleware/streaming-json-response
                                                                   (test-slow-handler state))))]
       (let  [reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
-        (Thread/sleep 1500)
+        (while (= :initial-state @state))
         (when kill?
           (.close reader))
         (Thread/sleep 10000)))) ;; this is long enough to ensure that the handler has run to completion if it was not killed.
@@ -271,7 +272,7 @@
 
 ;; In this first test we will close the connection before the test handler gets to change the state
 (expect
-  [:initial-state true]
+  :test-started
   (start-and-maybe-kill-test-request (atom :unset) true))
 
 ;; and to make sure this test actually works, run the same test again and let it change the state.
