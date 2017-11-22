@@ -3847,6 +3847,7 @@ databaseChangeLog:
   - changeSet:
       id: 67
       author: attekei
+      comment: 'Added 0.27.0'
       changes:
         - createTable:
             tableName: computation_job
@@ -3930,6 +3931,7 @@ databaseChangeLog:
   - changeSet:
     - id: 68
     - author: sbelak
+    - comment: 'Added 0.27.0'
     - changes:
       - addColumn:
             tableName: computation_job
