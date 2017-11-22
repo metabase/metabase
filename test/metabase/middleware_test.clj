@@ -247,8 +247,6 @@
 ;; test that handler is killed when connection closes
 ;; Note: this closing over state is a dirty hack and the whole test should be
 ;; rewritten.
-(def test-slow-handler-state1 (atom :unset))
-(def test-slow-handler-state2 (atom :unset))
 
 (defn- test-slow-handler [state]
   (fn [_]
@@ -274,9 +272,9 @@
 ;; In this first test we will close the connection before the test handler gets to change the state
 (expect
   [:initial-state true]
-  (start-and-maybe-kill-test-request test-slow-handler-state1 true))
+  (start-and-maybe-kill-test-request (atom :unset) true))
 
 ;; and to make sure this test actually works, run the same test again and let it change the state.
 (expect
   :ran-to-compleation
-  (start-and-maybe-kill-test-request test-slow-handler-state2 false))
+  (start-and-maybe-kill-test-request (atom :unset) false))
