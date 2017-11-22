@@ -189,11 +189,11 @@
    for example updating FieldValues for On-Demand DBs.
    Returns newly created DashboardCard."
   {:style/indent 2}
-  [dashboard-or-id card-or-id & [dashcard-options]]
+  [dashboard-or-id card-or-id-or-nil & [dashcard-options]]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-card      (-> (assoc dashcard-options
                                   :dashboard_id (u/get-id dashboard-or-id)
-                                  :card_id      (u/get-id card-or-id))
+                                  :card_id      (when card-or-id-or-nil (u/get-id card-or-id-or-nil)))
                                 ;; if :series info gets passed in make sure we pass it along as a sequence of IDs
                                 (update :series #(filter identity (map u/get-id %))))]
     (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
