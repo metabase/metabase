@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
-
+import { t } from 'c-3po';
 import DateSingleWidget from "./widgets/DateSingleWidget.jsx";
 import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
 import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
@@ -162,7 +162,7 @@ export default class ParameterValueWidget extends Component {
                 </div>
             );
         } else {
-            let placeholderText = isEditing ? "Select a default value…" : (placeholder || "Select…");
+            let placeholderText = isEditing ? t`Select a default value…` : (placeholder || t`Select…`);
 
             return (
                 <PopoverWithTrigger

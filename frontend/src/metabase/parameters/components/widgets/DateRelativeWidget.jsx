@@ -1,26 +1,26 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import _ from "underscore";
 
 const SHORTCUTS = [
-        { name: "Today",        operator: ["=", "<", ">"], values: [["relative-datetime", "current"]]},
-        { name: "Yesterday",    operator: ["=", "<", ">"], values: [["relative-datetime", -1, "day"]]},
-        { name: "Past 7 days",  operator: "time-interval", values: [-7, "day"]},
-        { name: "Past 30 days", operator: "time-interval", values: [-30, "day"]}
+        { name: t`Today`,        operator: ["=", "<", ">"], values: [["relative-datetime", "current"]]},
+        { name: t`Yesterday`,    operator: ["=", "<", ">"], values: [["relative-datetime", -1, "day"]]},
+        { name: t`Past 7 days`,  operator: "time-interval", values: [-7, "day"]},
+        { name: t`Past 30 days`, operator: "time-interval", values: [-30, "day"]}
 ];
 
 const RELATIVE_SHORTCUTS = {
         "Last": [
-            { name: "Week",  operator: "time-interval", values: ["last", "week"]},
-            { name: "Month", operator: "time-interval", values: ["last", "month"]},
-            { name: "Year",  operator: "time-interval", values: ["last", "year"]}
+            { name: t`Week`,  operator: "time-interval", values: ["last", "week"]},
+            { name: t`Month`, operator: "time-interval", values: ["last", "month"]},
+            { name: t`Year`,  operator: "time-interval", values: ["last", "year"]}
         ],
         "This": [
-            { name: "Week",  operator: "time-interval", values: ["current", "week"]},
-            { name: "Month", operator: "time-interval", values: ["current", "month"]},
-            { name: "Year",  operator: "time-interval", values: ["current", "year"]}
+            { name: t`Week`,  operator: "time-interval", values: ["current", "week"]},
+            { name: t`Month`, operator: "time-interval", values: ["current", "month"]},
+            { name: t`Year`,  operator: "time-interval", values: ["current", "year"]}
         ]
 };
 
@@ -104,43 +104,43 @@ export class PredefinedRelativeDatePicker extends Component {
 // HACK: easiest way to get working with RelativeDatePicker
 const FILTERS = {
     "today": {
-        name: "Today",
+        name: t`Today`,
         mapping: ["=", null, ["relative-datetime", "current"]]
     },
     "yesterday": {
-        name: "Yesterday",
+        name: t`Yesterday`,
         mapping: ["=", null, ["relative-datetime", -1, "day"]]
     },
     "past7days": {
-        name: "Past 7 Days",
+        name: t`Past 7 Days`,
         mapping: ["time-interval", null, -7, "day"]
     },
     "past30days": {
-        name: "Past 30 Days",
+        name: t`Past 30 Days`,
         mapping: ["time-interval", null, -30, "day"]
     },
     "lastweek": {
-        name: "Last Week",
+        name: t`Last Week`,
         mapping: ["time-interval", null, "last", "week"]
     },
     "lastmonth": {
-        name: "Last Month",
+        name: t`Last Month`,
         mapping: ["time-interval", null, "last", "month"]
     },
     "lastyear": {
-        name: "Last Year",
+        name: t`Last Year`,
         mapping: ["time-interval", null, "last", "year"]
     },
     "thisweek": {
-        name: "This Week",
+        name: t`This Week`,
         mapping: ["time-interval", null, "current", "week"]
     },
     "thismonth": {
-        name: "This Month",
+        name: t`This Month`,
         mapping: ["time-interval", null, "current", "month"]
     },
     "thisyear": {
-        name: "This Year",
+        name: t`This Year`,
         mapping: ["time-interval", null, "current", "year"]
     }
 };

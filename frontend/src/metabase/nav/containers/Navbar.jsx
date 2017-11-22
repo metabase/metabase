@@ -82,7 +82,7 @@ export default class Navbar extends Component {
                 <div className="sm-pl4 flex align-center pr1">
                     <div className="NavTitle flex align-center">
                         <Icon name={'gear'} className="AdminGear" size={22}></Icon>
-                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin</span>
+                        <span className="NavItem-text ml1 hide sm-show text-bold">{t`Metabase Admin`}</span>
                     </div>
 
                     <ul className="sm-ml4 flex flex-full">
