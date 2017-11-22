@@ -13,6 +13,7 @@
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models.session :refer [Session]]
             [metabase.test.data.users :refer :all]
+            [metabase.test.async :refer [while-with-timeout]]
             [ring.mock.request :as mock]
             [ring.util.response :as resp]
             [toucan.db :as db]
@@ -264,7 +265,7 @@
                                           (GET (str "/" path) [] (middleware/streaming-json-response
                                                                   (test-slow-handler state))))]
       (let  [reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
-        (while (= :initial-state @state))
+        (while-with-timeout (= :initial-state @state))
         (when kill?
           (.close reader))
         (Thread/sleep 10000)))) ;; this is long enough to ensure that the handler has run to completion if it was not killed.

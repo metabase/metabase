@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.feature-extraction.async :refer :all]
             [metabase.models.computation-job :refer [ComputationJob]]
-            [metabase.test.async :refer [result!]]))
+            [metabase.test.async :refer :all]))
 
 (expect
   true
@@ -12,7 +12,9 @@
 
 (expect
   [true :canceled false]
-  (let [job-id (compute (gensym) #(do (while (not (Thread/interrupted))) 42))
+  (let [job-id (compute (gensym) #(do
+                                    (while-with-timeout (not (Thread/interrupted)))
+                                    42))
         r?     (running? (ComputationJob job-id))]
     (cancel (ComputationJob job-id))
     [r? (:status (ComputationJob job-id)) (running? (ComputationJob job-id))]))
