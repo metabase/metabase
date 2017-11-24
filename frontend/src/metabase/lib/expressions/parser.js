@@ -1,7 +1,7 @@
 import { Lexer, Parser, getImage } from "chevrotain";
 
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import { formatFieldName, formatExpressionName, formatAggregationName, getAggregationFromName } from "../expressions";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
@@ -335,7 +335,7 @@ export function suggest(source, {
     const partialSource = source.slice(0, index);
     const lexResult = ExpressionsLexer.tokenize(partialSource);
     if (lexResult.errors.length > 0) {
-        throw new Error("sad sad panda, lexing errors detected");
+        throw new Error(t`sad sad panda, lexing errors detected`);
     }
 
     const lastInputToken = _.last(lexResult.tokens)

@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import StepIndicators from 'metabase/components/StepIndicators';
 import RetinaImage from 'react-retina-image'
-
+import { t } from 'c-3po';
 import MetabaseSettings from "metabase/lib/settings";
 
 type Props = {
@@ -15,8 +15,8 @@ type State = {
 
 const STEPS = [
     {
-        title: 'Ask questions and explore',
-        text: 'Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.',
+        title: t`Ask questions and explore`,
+        text: t`Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.`,
         image: (
             <RetinaImage
                 className="absolute full"
@@ -26,8 +26,8 @@ const STEPS = [
         )
     },
     {
-        title: 'Make your own charts',
-        text: 'Create line charts, scatter plots, maps, and more.',
+        title: t`Make your own charts`,
+        text: t`Create line charts, scatter plots, maps, and more.`,
         image: (
             <RetinaImage
                 className="absolute ml-auto mr-auto inline-block left right"
@@ -37,8 +37,8 @@ const STEPS = [
         )
     },
     {
-        title: 'Share what you find',
-        text: 'Create powerful and flexible dashboards, and send regular updates via email or Slack.',
+        title: t`Share what you find`,
+        text: t`Create powerful and flexible dashboards, and send regular updates via email or Slack.`,
         image: (
             <RetinaImage
                 className="absolute ml-auto mr-auto inline-block left right"
@@ -94,7 +94,7 @@ export default class NewUserOnboardingModal extends Component {
                             className="link flex-align-right text-bold absolute right"
                             onClick={() => (this.nextStep())}
                         >
-                            { step === 3 ? 'Let\'s go' : 'Next' }
+                            { step === 3 ? t`Let's go` : t`Next` }
                         </a>
                     </div>
                 </div>
