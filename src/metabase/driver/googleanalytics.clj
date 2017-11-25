@@ -39,8 +39,8 @@
   "Return a set of tuples of `Webproperty` and `Profile` for DATABASE."
   [{{:keys [account-id]} :details, :as database}]
   (let [client (database->client database)]
-    (set (for [^Webproperty property (.getItems (fetch-properties client account-id))
-               ^Profile     profile  (.getItems (fetch-profiles client account-id (.getId property)))]
+    (set (for [^Webproperty property (.getItems (fetch-properties client "~all"))
+               ^Profile     profile  (.getItems (fetch-profiles client (.getAccountId property) (.getId property)))]
            [property profile]))))
 
 (defn- profile-ids
