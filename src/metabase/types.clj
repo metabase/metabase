@@ -61,7 +61,8 @@
 (derive :type/Boolean :type/*)
 (derive :type/Enum :type/*)
 
-;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced filter options like starts with / contains
+;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
+;;; filter options like starts with / contains
 
 (derive :type/TextLike :type/*)
 (derive :type/IPAddress :type/TextLike)
@@ -76,7 +77,8 @@
 (derive :type/ZipCode :type/Address)
 
 
-;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and `:cardinality`
+;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
+;;; `:cardinality`
 
 (derive :type/Special :type/*)
 
@@ -91,11 +93,11 @@
 (derive :type/Name :type/Category)
 
 
-;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
+;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (defn types->parents
-  "Return a map of various types to their parent types.
-   This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of `isa?`."
+  "Return a map of various types to their parent types. This is intended for export to the frontend as part of
+  `MetabaseBootstrap` so it can build its own implementation of `isa?`."
   []
   (into {} (for [t (descendants :type/*)]
              {t (parents t)})))

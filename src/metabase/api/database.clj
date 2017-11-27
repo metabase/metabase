@@ -40,7 +40,7 @@
     "value must be a valid database engine."))
 
 
-;;; ------------------------------------------------------------ GET /api/database ------------------------------------------------------------
+;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
@@ -258,7 +258,7 @@
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/fields ------------------------------------------------------------
+;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
 (api/defendpoint GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
@@ -277,7 +277,7 @@
        :schema       (:schema table)})))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/idfields ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
 (api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
@@ -287,7 +287,7 @@
                                                                          (hydrate :table)))))
 
 
-;;; ------------------------------------------------------------ POST /api/database ------------------------------------------------------------
+;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
 (defn- invalid-connection-response [field m]
   ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
@@ -324,11 +324,9 @@
 
 (s/defn ^:private test-connection-details :- su/Map
   "Try a making a connection to database ENGINE with DETAILS.
-   Tries twice: once with SSL, and a second time without if the first fails.
-   If either attempt is successful, returns the details used to successfully connect.
-   Otherwise returns a map with the connection error message. (This map will also
-   contain the key `:valid` = `false`, which you can use to distinguish an error from
-   valid details.)"
+   Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+   the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
+   will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
   (let [details (if (supports-ssl? engine)
                   (assoc details :ssl true)
@@ -398,7 +396,8 @@
   (let [details-or-error (test-connection-details engine details)]
     {:valid (not (false? (:valid details-or-error)))}))
 
-;;; ------------------------------------------------------------ POST /api/database/sample_dataset ------------------------------------------------------------
+
+;;; --------------------------------------- POST /api/database/sample_dataset ----------------------------------------
 
 (api/defendpoint POST "/sample_dataset"
   "Add the sample dataset as a new `Database`."
@@ -408,7 +407,7 @@
   (Database :is_sample true))
 
 
-;;; ------------------------------------------------------------ PUT /api/database/:id ------------------------------------------------------------
+;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
@@ -455,7 +454,7 @@
             (add-expanded-schedules db)))))))
 
 
-;;; ------------------------------------------------------------ DELETE /api/database/:id ------------------------------------------------------------
+;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
@@ -467,8 +466,7 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
-
+;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
 
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
 ;; NOTE Atte: This becomes maybe obsolete

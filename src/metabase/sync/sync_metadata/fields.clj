@@ -1,9 +1,9 @@
 (ns metabase.sync.sync-metadata.fields
   "Logic for updating Metabase Field models from metadata fetched from a physical DB.
-   The basic idea here is to look at the metadata we get from calling `describe-table` on a connected database,
-   then construct an identical set of metadata from what we have about that Table in the Metabase DB. Then we
-   iterate over both sets of Metadata and perform whatever steps are needed to make sure the things in the DB
-   match the things that came back from `describe-table`."
+  The basic idea here is to look at the metadata we get from calling `describe-table` on a connected database, then
+  construct an identical set of metadata from what we have about that Table in the Metabase DB. Then we iterate over
+  both sets of Metadata and perform whatever steps are needed to make sure the things in the DB match the things that
+  came back from `describe-table`."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
@@ -24,8 +24,8 @@
 
 (def ^:private TableMetadataFieldWithID
   "Schema for `TableMetadataField` with an included ID of the corresponding Metabase Field object.
-   `our-metadata` is always returned in this format. (The ID is needed in certain places so we know
-   which Fields to retire, and the parent ID of any nested-fields.)"
+  `our-metadata` is always returned in this format. (The ID is needed in certain places so we know which Fields to
+  retire, and the parent ID of any nested-fields.)"
   (assoc i/TableMetadataField
     :id                             su/IntGreaterThanZero
     (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithID)}))
@@ -51,7 +51,8 @@
     :active     false))
 
 (s/defn ^:private ->metabase-field! :- i/FieldInstance
-  "Return an active Metabase Field instance that matches NEW-FIELD-METADATA. This object will be created or reactivated as a side effect of calling this function."
+  "Return an active Metabase Field instance that matches NEW-FIELD-METADATA. This object will be created or
+  reactivated as a side effect of calling this function."
   [table :- i/TableInstance, new-field-metadata :- i/TableMetadataField, parent-id :- ParentID]
   (if-let [matching-inactive-field (matching-inactive-field table new-field-metadata parent-id)]
     ;; if the field already exists but was just marked inactive then reäctivate it
@@ -60,15 +61,16 @@
         ;; now return the Field in question
         (Field (u/get-id matching-inactive-field)))
     ;; otherwise insert a new field
-    (let [{field-name :name, :keys [base-type special-type pk? raw-column-id]} new-field-metadata]
+    (let [{field-name :name, :keys [database-type base-type special-type pk? raw-column-id]} new-field-metadata]
       (db/insert! Field
-        :table_id     (u/get-id table)
-        :name         field-name
-        :display_name (humanization/name->human-readable-name field-name)
-        :base_type    base-type
-        :special_type (or special-type
-                          (when pk? :type/PK))
-        :parent_id    parent-id))))
+        :table_id      (u/get-id table)
+        :name          field-name
+        :display_name  (humanization/name->human-readable-name field-name)
+        :database_type database-type
+        :base_type     base-type
+        :special_type  (or special-type
+                           (when pk? :type/PK))
+        :parent_id     parent-id))))
 
 
 (s/defn ^:private create-or-reactivate-field!
@@ -174,15 +176,16 @@
 (s/defn ^:private parent-id->fields :- {ParentID #{TableMetadataFieldWithID}}
   "Build a map of the Metabase Fields we have for TABLE, keyed by their parent id (usually `nil`)."
   [table :- i/TableInstance]
-  (->> (for [field (db/select [Field :name :base_type :special_type :parent_id :id]
+  (->> (for [field (db/select [Field :name :database_type :base_type :special_type :parent_id :id]
                      :table_id (u/get-id table)
                      :active   true)]
-         {:parent-id    (:parent_id field)
-          :id           (:id field)
-          :name         (:name field)
-          :base-type    (:base_type field)
-          :special-type (:special_type field)
-          :pk?          (isa? (:special_type field) :type/PK)})
+         {:parent-id     (:parent_id field)
+          :id            (:id field)
+          :name          (:name field)
+          :database-type (:database_type field)
+          :base-type     (:base_type field)
+          :special-type  (:special_type field)
+          :pk?           (isa? (:special_type field) :type/PK)})
        ;; make a map of parent-id -> set of
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
@@ -194,7 +197,8 @@
   "Return information we have about Fields for a TABLE currently in the application database
    in (almost) exactly the same `TableMetadataField` format returned by `describe-table`."
   [table :- i/TableInstance]
-  ;; Fetch all the Fields for this TABLE. Then group them by their parent ID, which we'll use to construct our metadata in the correct format
+  ;; Fetch all the Fields for this TABLE. Then group them by their parent ID, which we'll use to construct our
+  ;; metadata in the correct format
   (let [parent-id->fields (parent-id->fields table)]
     ;; get all the top-level fields, then call `add-nested-fields` to recursively add the fields
     (set (for [field (get parent-id->fields nil)]

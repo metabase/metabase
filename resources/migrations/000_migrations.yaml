@@ -3968,3 +3968,22 @@ databaseChangeLog:
             tableName: pulse
             columnName: name
             columnDataType: varchar(254)
+  - changeSet:
+      id: 70
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_type
+                  type: varchar(255)
+                  remarks: 'The actual type of this column in the database. e.g. VARCHAR or TEXT.'
+        # We want to enforce NOT NULL right away for all columns going forward so just put some sort of
+        # placeholder in place for existing columns.
+        - addNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_type
+            columnDataType: varchar(255)
+            defaultNullValue: '?'

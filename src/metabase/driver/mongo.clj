@@ -13,7 +13,9 @@
              [database :refer [Database]]
              [field :as field]]
             [metabase.sync.interface :as si]
-            [metabase.util.ssh :as ssh]
+            [metabase.util
+             [schema :as su]
+             [ssh :as ssh]]
             [monger
              [collection :as mc]
              [command :as cmd]
@@ -104,22 +106,28 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
+(s/defn ^:private ^:always-validate most-common-object-type :- Class
+  [field-types :- [(s/pair Class "Class" s/Int "Int")]]
+  (->> field-types
+       (sort-by second)
+       last
+       first))
+
 (defn- describe-table-field [field-kw field-info]
-  ;; TODO: indicate preview-display status based on :len
-  (cond-> {:name      (name field-kw)
-           :base-type (->> (vec (:types field-info))
-                           (sort-by second)
-                           last
-                           first
-                           driver/class->base-type)}
-    (= :_id field-kw)           (assoc :pk? true)
-    (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
-                                                          (filter #(not (nil? (first %))))
-                                                          (sort-by second)
-                                                          last
-                                                          first))
-    (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
-                                                             (describe-table-field field (field (:nested-fields field-info))))))))
+  ;; :types
+  (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
+    ;; TODO: indicate preview-display status based on :len
+    (cond-> {:name          (name field-kw)
+             :database-type (.getName most-common-object-type)
+             :base-type     (driver/class->base-type most-common-object-type)}
+      (= :_id field-kw)           (assoc :pk? true)
+      (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
+                                                            (filter #(not (nil? (first %))))
+                                                            (sort-by second)
+                                                            last
+                                                            first))
+      (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
+                                                               (describe-table-field field (field (:nested-fields field-info)))))))))
 
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
