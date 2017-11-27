@@ -363,9 +363,9 @@
 
 
 ;;; GET /api/segement/
-(tt/expect-with-temp [Segment [segment-1]
-                      Segment [segment-2]
-                      Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
+(tt/expect-with-temp [Segment [segment-1 {:name "Segment 1"}]
+                      Segment [segment-2 {:name "Segment 2"}]
+                      Segment [_         {:is_active false}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
                         segment-2] :creator))
   ((user->client :rasta) :get 200 "segment/"))
