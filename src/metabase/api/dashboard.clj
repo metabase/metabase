@@ -75,9 +75,10 @@
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (if (mi/can-read? card)
-    card
-    (select-keys card [:id])))
+  (when card
+    (if (mi/can-read? card)
+      card
+      (select-keys card [:id]))))
 
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."

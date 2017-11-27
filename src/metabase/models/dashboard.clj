@@ -41,14 +41,17 @@
 (defn ordered-cards
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
   {:hydrate :ordered_cards}
-  [dashboard]
+  [dashboard-or-id]
   (db/do-post-select DashboardCard
-    (db/query {:select   [:dashcard.*]
-               :from     [[DashboardCard :dashcard]]
-               :join     [[Card :card] [:= :dashcard.card_id :card.id]]
-               :where    [:and [:= :dashcard.dashboard_id (u/get-id dashboard)]
-                               [:= :card.archived false]]
-               :order-by [[:dashcard.created_at :asc]]})))
+    (db/query {:select    [:dashcard.*]
+               :from      [[DashboardCard :dashcard]]
+               :left-join [[Card :card] [:= :dashcard.card_id :card.id]]
+               :where     [:and
+                           [:= :dashcard.dashboard_id (u/get-id dashboard-or-id)]
+                           [:or
+                            [:= :card.archived false]
+                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+               :order-by  [[:dashcard.created_at :asc]]})))
 
 
 ;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
