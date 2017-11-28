@@ -18,7 +18,6 @@ import { getDashboardActions } from "./DashboardActions";
 import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
-import { CardApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { createCard } from "metabase/lib/card";
 
@@ -49,6 +48,7 @@ type Props = {
     parametersWidget:       React$Element<*>,
 
     addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
+    addDashCardToDashboard: ({ dashId: DashCardId, dashcardOverrides: { } }) => void,
     archiveDashboard:        (dashboardId: DashboardId) => void,
     fetchCards:             (filterMode?: string) => void,
     fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
@@ -90,6 +90,7 @@ export default class DashboardHeader extends Component {
         refreshElapsed: PropTypes.number,
 
         addCardToDashboard: PropTypes.func.isRequired,
+        addDashCardToDashboard: PropTypes.func.isRequired,
         archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
@@ -109,12 +110,17 @@ export default class DashboardHeader extends Component {
     }
 
     async onAddTextBox() {
-        const newTextCard = createCard("text");
-        newTextCard.display = "text";
-        const savedCard = await CardApi.create(newTextCard);
-        // we have to update the frontend's state of cards
-        await this.props.fetchCards();
-        this.props.addCardToDashboard({ dashId: this.props.dashboard.id, cardId: savedCard.id });
+        const virtualTextCard = createCard();
+        virtualTextCard.display = "text";
+        virtualTextCard.archived = false;
+
+        const dashcardOverrides = {
+            card: virtualTextCard,
+            visualization_settings: {
+                virtual_card: virtualTextCard
+            }
+        };
+        this.props.addDashCardToDashboard({ dashId: this.props.dashboard.id, dashcardOverrides: dashcardOverrides });
     }
 
     onDoneEditing() {

@@ -8,6 +8,8 @@ import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
+
 const HEADER_ICON_SIZE = 16;
 
 const HEADER_ACTION_STYLE = {
@@ -16,9 +18,17 @@ const HEADER_ACTION_STYLE = {
 
 const DISALLOWED_TYPES = ['table', 'tableHead', 'tableBody', 'tableRow', 'tableCell'];
 
+type State = {
+    isShowingRenderedOutput: boolean,
+    text: string
+}
+
 export default class Text extends Component {
-    constructor(props, context) {
-        super(props, context);
+    props: VisualizationProps;
+    state: State;
+
+    constructor(props: VisualizationProps) {
+        super(props);
 
         this.state = {
             isShowingRenderedOutput: false,
@@ -47,7 +57,7 @@ export default class Text extends Component {
         }
     }
 
-    handleTextChange(text) {
+    handleTextChange(text: string) {
         this.props.onUpdateVisualizationSettings({ "text": text });
     }
 

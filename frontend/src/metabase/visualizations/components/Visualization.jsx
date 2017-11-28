@@ -270,7 +270,7 @@ export default class Visualization extends Component {
         }
 
         let error = this.props.error || this.state.error;
-        let loading = !(series && series.length > 0 && _.every(series, (s) => s.data || s.card.display === "text"));
+        let loading = !(series && series.length > 0 && _.every(series, (s) => s.data || _.isObject(s.card.visualization_settings.virtual_card)));
         let noResults = false;
 
         // don't try to load settings unless data is loaded
