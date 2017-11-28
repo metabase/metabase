@@ -71,6 +71,14 @@ export default class AccordianList extends Component {
         // NOTE: for some reason the row heights aren't computed correctly when
         // first rendering, so force the list to update
         this._forceUpdateList();
+        // `scrollToRow` upon mounting, after _forceUpdateList
+        // Use list.scrollToRow instead of the scrollToIndex prop since the
+        // causes the list's scrolling to be pinned to the selected row
+        setTimeout(() => {
+            if (this._initialSelectedRowIndex != null) {
+                this._list.scrollToRow(this._initialSelectedRowIndex);
+            }
+        }, 0);
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -229,6 +237,9 @@ export default class AccordianList extends Component {
                 for (const [itemIndex, item] of section.items.entries()) {
                     if (!searchText || item.name.toLowerCase().includes(searchText.toLowerCase())) {
                         const isLastItem = itemIndex === section.items.length - 1;
+                        if (this.itemIsSelected(item)) {
+                            this._initialSelectedRowIndex = rows.length;
+                        }
                         rows.push({ type: "item", section, sectionIndex, isLastSection, item, itemIndex, isLastItem });
                     }
                 }
@@ -259,7 +270,10 @@ export default class AccordianList extends Component {
 
                 // HACK: needs to be large enough to render enough rows to fill the screen since we used
                 // the CellMeasurerCache to calculate the height
-                overscanRowCount={50}
+                overscanRowCount={100}
+
+                // ensure `scrollToRow` scrolls the row to the top of the list
+                scrollToAlignment="start"
 
                 rowRenderer={({ key, index, parent, style }) => {
                     const { type, section, sectionIndex, item, itemIndex, isLastItem } = rows[index];
@@ -315,7 +329,7 @@ export default class AccordianList extends Component {
                                     : type === "item" ?
                                         <div
                                             className={cx("List-item flex mx1", {
-                                                'List-item--selected': this.itemIsSelected(item, itemIndex),
+                                                'List-item--selected': this.itemIsSelected(item),
                                                 'List-item--disabled': !this.itemIsClickable(item),
                                                 "mb1": isLastItem
                                             }, this.getItemClasses(item, itemIndex))}
