@@ -480,7 +480,7 @@
   (let [x-field (first field)]
     (-> features
         (update :series (partial series->dataset ts/from-double field))
-        (dissoc :series :autocorrelation :best-fit)
+        (dissoc :autocorrelation :best-fit)
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
                                       insights/autocorrelation
