@@ -67,25 +67,28 @@ export default class AccordianList extends Component {
         hideSingleSectionTitle: false,
     };
 
-
-    // TODO: reimplement scrolling currently selected item into view
-
     componentDidMount() {
+        // NOTE: for some reason the row heights aren't computed correctly when
+        // first rendering, so force the list to update
         this._forceUpdateList();
     }
+
     componentDidUpdate(prevProps, prevState) {
         // if anything changes that affects the selected rows we need to clear the row height cache
         if (this.state.openSection !== prevState.openSection || this.state.searchText !== prevState.searchText) {
             this._clearRowHeightCache()
         }
     }
+
     componentWillUnmount() {
+        // ensure _forceUpdateList is not called after unmounting
         if (this._forceUpdateTimeout != null) {
             clearTimeout(this._forceUpdateTimeout);
             this._forceUpdateTimeout = null;
         }
     }
 
+    // resets the row height cache when the displayed rows change
     _clearRowHeightCache() {
         this._cache.clearAll();
         // NOTE: unclear why this needs to be async
@@ -94,6 +97,7 @@ export default class AccordianList extends Component {
             this._forceUpdateList();
         })
     }
+
     _forceUpdateList() {
         // NOTE: unclear why this particular set of functions works, but it does
         this._list.invalidateCellSizeAfterRender({
@@ -196,10 +200,6 @@ export default class AccordianList extends Component {
 
     getItemClasses(item, itemIndex) {
         return this.props.getItemClasses && this.props.getItemClasses(item, itemIndex);
-    }
-
-    renderSectionHeader(section, sectionIndex) {
-
     }
 
     render() {
