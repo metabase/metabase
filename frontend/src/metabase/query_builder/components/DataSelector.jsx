@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import AccordianList from "metabase/components/AccordianList.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper"
 
 import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';
@@ -147,8 +148,14 @@ export default class DataSelector extends Component {
     }
 
     renderDatabasePicker = ({ maxHeight }) => {
+        const { databases } = this.state;
+
+        if (databases.length === 0) {
+            return <LoadingAndErrorWrapper loading />;
+        }
+
         let sections = [{
-            items: this.state.databases.map(database => ({
+            items: databases.map(database => ({
                 name: database.name,
                 database: database
             }))
@@ -171,6 +178,10 @@ export default class DataSelector extends Component {
 
     renderDatabaseSchemaPicker = ({ maxHeight }) => {
         const { databases, selectedSchema } = this.state;
+
+        if (databases.length === 0) {
+            return <LoadingAndErrorWrapper loading />;
+        }
 
         let sections = databases
             .map(database => ({
