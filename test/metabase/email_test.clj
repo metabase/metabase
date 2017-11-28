@@ -95,7 +95,9 @@
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
     (m/map-vals (fn [emails-for-recipient]
                   (for [email emails-for-recipient]
-                    (update email :body (comp email-body->regex-boolean first))))
+                    (-> email
+                        (update :to set)
+                        (update :body (comp email-body->regex-boolean first)))))
                 @inbox)))
 
 (defn- mime-type [mime-type-str]
@@ -116,11 +118,13 @@
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
     (m/map-vals (fn [emails-for-recipient]
                   (for [email emails-for-recipient]
-                    (update email :body (fn [email-body-seq]
-                                          (for [{email-type :type :as email-part}  email-body-seq]
-                                            (if (string? email-type)
-                                              (email-body->regex-boolean email-part)
-                                              (summarize-attachment email-part)))))))
+                    (-> email
+                        (update :to set)
+                        (update :body (fn [email-body-seq]
+                                        (for [{email-type :type :as email-part}  email-body-seq]
+                                          (if (string? email-type)
+                                            (email-body->regex-boolean email-part)
+                                            (summarize-attachment email-part))))))))
                 @inbox)))
 
 (defn email-to
@@ -128,7 +132,7 @@
   [user-kwd & [email-map]]
   (let [{:keys [email]} (user/fetch-user user-kwd)]
     {email [(merge {:from "notifications@metabase.com",
-                    :to [email]}
+                    :to #{email}}
                     email-map)]}))
 
 ;; simple test of email sending capabilities

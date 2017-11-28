@@ -193,18 +193,19 @@
                                        "confirmation that your alert" false}))]
 
   (with-alert-setup
-    [(-> ((alert-client :crowberto) :post 200 "alert"
-          {:card              {:id (:id card1)}
-           :alert_condition   "rows"
-           :alert_first_only  false
-           :channels          [{:enabled       true
-                                :channel_type  "email"
-                                :schedule_type "daily"
-                                :schedule_hour 12
-                                :schedule_day  nil
-                                :details       {:emails nil}
-                                :recipients    (mapv fetch-user [:crowberto :rasta])}]})
-         setify-recipient-emails)
+    [(et/with-expected-messages 2
+       (-> ((alert-client :crowberto) :post 200 "alert"
+            {:card              {:id (:id card1)}
+             :alert_condition   "rows"
+             :alert_first_only  false
+             :channels          [{:enabled       true
+                                  :channel_type  "email"
+                                  :schedule_type "daily"
+                                  :schedule_hour 12
+                                  :schedule_day  nil
+                                  :details       {:emails nil}
+                                  :recipients    (mapv fetch-user [:crowberto :rasta])}]})
+           setify-recipient-emails))
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"now getting alerts"
                             #"confirmation that your alert"
