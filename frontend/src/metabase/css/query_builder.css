@@ -82,6 +82,9 @@
 
 .Query-filter {
     display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     flex-shrink: 0;
     font-size: 0.75em;
     border: 2px solid transparent;

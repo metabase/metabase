@@ -116,6 +116,8 @@ export default class GuiQueryEditor extends Component {
     renderFilters() {
         const { query, features, setDatasetQuery } = this.props;
 
+        window.q = query
+
         if (!features.filter) return;
 
         let enabled;
@@ -131,6 +133,7 @@ export default class GuiQueryEditor extends Component {
                     <FilterList
                         query={query}
                         filters={filters}
+                        updateClause={(index) => alert('or') }
                         removeFilter={(index) => query.removeFilter(index).update(setDatasetQuery)}
                         updateFilter={(index, filter) => query.updateFilter(index, filter).update(setDatasetQuery)}
                     />
