@@ -1,6 +1,6 @@
 /* @flow */
 
-
+import { t } from 'c-3po';
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { scatterRenderer } from "../lib/LineAreaBarRenderer";
 
@@ -13,10 +13,10 @@ import {
 } from "../lib/settings/graph";
 
 export default class ScatterPlot extends LineAreaBarChart {
-    static uiName = "Scatter";
+    static uiName = t`Scatter`;
     static identifier = "scatter";
     static iconName = "bubble";
-    static noun = "scatter plot";
+    static noun = t`scatter plot`;
 
     static renderer = scatterRenderer;
 

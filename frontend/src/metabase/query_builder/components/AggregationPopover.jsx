@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import AccordianList from "metabase/components/AccordianList.jsx";
 import FieldList from './FieldList.jsx';
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
@@ -15,8 +15,8 @@ import _ from "underscore";
 
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield.jsx"
 
-const CUSTOM_SECTION_NAME = "Custom Expression";
-const METRICS_SECTION_NAME = "Common Metrics";
+const CUSTOM_SECTION_NAME = t`Custom Expression`;
+const METRICS_SECTION_NAME = t`Common Metrics`;
 
 export default class AggregationPopover extends Component {
     constructor(props, context) {
@@ -220,10 +220,10 @@ export default class AggregationPopover extends Component {
                                     NamedClause.setName(aggregation, e.target.value) :
                                     aggregation
                             })}
-                            placeholder="Name (optional)"
+                            placeholder={t`Name (optional)`}
                         />
                         <Button className="full" primary disabled={this.state.error} onClick={() => this.commitAggregation(this.state.aggregation)}>
-                            Done
+                            {t`Done`}
                         </Button>
                     </div>
                 </div>

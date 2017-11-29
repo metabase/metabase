@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { t } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
 import {
@@ -37,7 +37,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         .map(aggregator => ({
             name: "summarize-by-time",
             section: "sum",
-            title: <span>{capitalize(aggregator.short)} by time</span>,
+            title: <span>{capitalize(aggregator.short)} {t`by time`}</span>,
             question: () =>
                 question
                     .summarize(

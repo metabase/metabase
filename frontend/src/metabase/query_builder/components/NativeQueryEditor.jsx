@@ -23,7 +23,7 @@ import 'ace/snippets/mysql';
 import 'ace/snippets/pgsql';
 import 'ace/snippets/sqlserver';
 import 'ace/snippets/json';
-
+import { t } from 'c-3po';
 
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
@@ -267,7 +267,7 @@ export default class NativeQueryEditor extends Component {
             if (databases.length > 1 && (database == null || _.any(databases, (db) => db.id === database.id))) {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
-                        <span className="GuiBuilder-section-label Query-label">Database</span>
+                        <span className="GuiBuilder-section-label Query-label">{t`Database`}</span>
                         <DataSelector
                             databases={databases}
                             datasetQuery={query.datasetQuery()}
@@ -287,7 +287,7 @@ export default class NativeQueryEditor extends Component {
 
                 dataSelectors.push(
                     <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
-                        <span className="GuiBuilder-section-label Query-label">Table</span>
+                        <span className="GuiBuilder-section-label Query-label">{t`Table`}</span>
                         <DataSelector
                             ref="dataSection"
                             includeTables={true}
@@ -306,17 +306,17 @@ export default class NativeQueryEditor extends Component {
                 );
             }
         } else {
-            dataSelectors = <span className="p2 text-grey-4">{`This question is written in ${query.nativeQueryLanguage()}.`}</span>;
+            dataSelectors = <span className="p2 text-grey-4">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>;
         }
 
         let editorClasses, toggleEditorText, toggleEditorIcon;
         if (this.state.showEditor) {
             editorClasses = "";
-            toggleEditorText = query.hasWritePermission() ? "Hide Editor" : "Hide Query";
+            toggleEditorText = query.hasWritePermission() ? t`Hide Editor` : t`Hide Query`;
             toggleEditorIcon = "contract";
         } else {
             editorClasses = "hide";
-            toggleEditorText = query.hasWritePermission() ? "Open Editor" : "Show Query";
+            toggleEditorText = query.hasWritePermission() ? t`Open Editor` : t`Show Query`;
             toggleEditorIcon = "expand";
         }
 

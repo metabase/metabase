@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
@@ -54,7 +54,7 @@ export default class MetricPane extends Component {
             card.dataset_query = createQuery("query", table.db_id, table.id);
             return card;
         } else {
-            throw new Error("Could not find the table metadata prior to creating a new question")
+            throw new Error(t`Could not find the table metadata prior to creating a new question`)
         }
     }
 
@@ -72,7 +72,7 @@ export default class MetricPane extends Component {
         let useForCurrentQuestion = [];
         let usefulQuestions = [];
 
-        usefulQuestions.push(<QueryButton icon="number" text={"See " + metricName} onClick={this.setQueryMetric} />);
+        usefulQuestions.push(<QueryButton icon="number" text={t`See ${metricName}`} onClick={this.setQueryMetric} />);
 
         return (
             <DetailPane
@@ -82,7 +82,7 @@ export default class MetricPane extends Component {
                 usefulQuestions={usefulQuestions}
                 extra={metadata &&
                     <div>
-                        <p className="text-bold">Metric Definition</p>
+                        <p className="text-bold">{t`Metric Definition`}</p>
                         <QueryDefinition object={metric} tableMetadata={metadata.tables[metric.table_id]} />
                     </div>
                 }

@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Button from "metabase/components/Button.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -65,7 +65,7 @@ export default class AddToDashboard extends Component {
                                     <li
                                         className="text-brand-hover flex align-center border-bottom cursor-pointer py1 md-py2"
                                         onClick={() => this.setState({
-                                            collection: { name: "Everything else" },
+                                            collection: { name: t`Everything else` },
                                             query: { collection: "" }
                                         })}
                                     >
@@ -93,7 +93,7 @@ export default class AddToDashboard extends Component {
         const { query, collection } = this.state;
         return (
             <ModalContent
-                title="Pick a question to add"
+                title={t`Pick a question to add`}
                 className="px4 mb4 scroll-y"
                 onClose={() => this.props.onClose()}
             >
@@ -117,10 +117,10 @@ export default class AddToDashboard extends Component {
                         <div className="ml-auto flex align-center">
                             <h5>Sort by</h5>
                             <Button borderless>
-                                Last modified
+                                {t`Last modified`}
                             </Button>
                             <Button borderless>
-                                Alphabetical order
+                                {t`Alphabetical order`}
                             </Button>
                         </div>
                     }

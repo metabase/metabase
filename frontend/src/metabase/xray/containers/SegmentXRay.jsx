@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
-
+import { t } from 'c-3po';
 import { Link } from 'react-router'
 import { push } from "react-router-redux";
 
@@ -61,7 +61,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ features }) => features && features.model.name || "Segment" )
+@title(({ features }) => features && features.model.name || t`Segment` )
 class SegmentXRay extends Component {
 
     props: Props
@@ -128,14 +128,14 @@ class SegmentXRay extends Component {
                                     <h1 className="mt2 flex align-center">
                                         {features.model.name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">X-ray</span>
+                                        <span className="text-grey-3">{t`X-ray`}</span>
                                     </h1>
                                     <p className="mt1 text-paragraph text-measure">
                                         {features.model.description}
                                     </p>
                                 </div>
                                 <div className="ml-auto flex align-center">
-                                   <h3 className="mr2 text-grey-3">Fidelity</h3>
+                                   <h3 className="mr2 text-grey-3">{t`Fidelity`}</h3>
                                     <CostSelect
                                         currentCost={params.cost}
                                         xrayType='segment'
@@ -150,7 +150,7 @@ class SegmentXRay extends Component {
                             />
                             }
                             <div className="mt2">
-                                <Heading heading="Fields in this segment" />
+                                <Heading heading={t`Fields in this segment`} />
                                 <ol>
                                     { constituents.map((c, i) => {
                                         return (

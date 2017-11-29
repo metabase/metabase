@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import { Motion, spring } from "react-motion";
 
@@ -88,7 +88,7 @@ export default class ExpandingSearchField extends Component {
                         <input
                             ref={(search) => this.searchInput = search}
                             className="input borderless text-bold"
-                            placeholder="Search for a question"
+                            placeholder={t`Search for a question`}
                             style={Object.assign({}, interpolatingStyle, { fontSize: '1em'})}
                             onFocus={() => this.setState({ active: true })}
                             onBlur={() => this.setState({ active: false })}

@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
 
@@ -133,9 +133,9 @@ export default class DatabaseConnectionStep extends Component {
         let { engine, formError } = this.state;
         let engines = MetabaseSettings.get('engines');
 
-        let stepText = 'Add your data';
+        let stepText = t`Add your data`;
         if (activeStep > stepNumber) {
-            stepText = (databaseDetails === null) ? "I'll add my own data later" : 'Connecting to '+databaseDetails.name;
+            stepText = (databaseDetails === null) ? t`I'll add my own data later` : t`Connecting to ${databaseDetails.name}`;
         }
 
 
@@ -147,7 +147,7 @@ export default class DatabaseConnectionStep extends Component {
                     <StepTitle title={stepText} circleText={"2"} />
                     <div className="mb4">
                         <div style={{maxWidth: 600}} className="Form-field Form-offset">
-                            You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.
+                            {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
                         </div>
 
                         <FormField fieldName="engine">
@@ -170,7 +170,7 @@ export default class DatabaseConnectionStep extends Component {
                           : null }
 
                           <div className="Form-field Form-offset">
-                              <a className="link" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
+                              <a className="link" onClick={this.skipDatabase.bind(this)}>{t`I'll add my data later`}</a>
                           </div>
                     </div>
                 </section>

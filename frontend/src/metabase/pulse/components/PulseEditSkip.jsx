@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from 'c-3po';
 
 import Toggle from "metabase/components/Toggle.jsx";
 
@@ -18,8 +19,8 @@ export default class PulseEditSkip extends Component {
         const { pulse } = this.props;
         return (
             <div className="py1">
-                <h2>Skip if no results</h2>
-                <p className="mt1 h4 text-bold text-grey-3">Skip a scheduled Pulse if none of its questions have any results.</p>
+                <h2>{t`Skip if no results`}</h2>
+                <p className="mt1 h4 text-bold text-grey-3">{t`Skip a scheduled Pulse if none of its questions have any results`}.</p>
                 <div className="my3">
                     <Toggle value={pulse.skip_if_empty || false} onChange={this.toggle} />
                 </div>

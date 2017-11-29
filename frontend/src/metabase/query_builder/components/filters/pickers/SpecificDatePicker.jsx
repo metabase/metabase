@@ -2,7 +2,7 @@
 
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import Calendar from "metabase/components/Calendar";
 import Input from "metabase/components/Input";
 import Icon from "metabase/components/Icon";
@@ -107,7 +107,7 @@ export default class SpecificDatePicker extends Component {
                         <div className="border-right border-bottom border-top p2">
                             <Tooltip
                                 tooltip={
-                                    showCalendar ? "Hide calendar" : "Show calendar"
+                                    showCalendar ? t`Hide calendar` : t`Show calendar`
                                 }
                                 children={
                                     <Icon
