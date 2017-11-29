@@ -2,7 +2,7 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -16,7 +16,7 @@ const ArchivedItem = ({ name, type, icon, color = '#DEEAF1', isAdmin = false, on
         />
         { name }
         { isAdmin &&
-            <Tooltip tooltip={`Unarchive this ${type === "card" ? "question" : type}`}>
+            <Tooltip tooltip={type === "card" ? t`Unarchive this question` : t`Unarchive this ${type}`}>
                 <Icon
                     onClick={onUnarchive}
                     className="ml-auto cursor-pointer text-brand-hover hover-child"

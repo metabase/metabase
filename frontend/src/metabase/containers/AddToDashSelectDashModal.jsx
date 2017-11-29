@@ -11,7 +11,7 @@ import * as Urls from "metabase/lib/urls";
 
 import * as dashboardsActions from 'metabase/dashboards/dashboards';
 import { getDashboardListing } from 'metabase/dashboards/selectors';
-
+import { t } from 'c-3po';
 import type { Dashboard } from 'metabase/meta/types/Dashboard'
 import type { Card } from 'metabase/meta/types/Card'
 const mapStateToProps = (state) => ({
@@ -66,7 +66,7 @@ export default class AddToDashSelectDashModal extends Component {
             return (
                 <ModalContent
                     id="AddToDashSelectDashModal"
-                    title="Add Question to Dashboard"
+                    title={t`Add Question to Dashboard`}
                     onClose={this.props.onClose}
                 >
                 <div className="flex flex-column">
@@ -79,7 +79,7 @@ export default class AddToDashSelectDashModal extends Component {
                             style={ { right: 40 } }
                         >
                             <Icon name="add" size={16} />
-                            <h3 className="ml1">Add to new dashboard</h3>
+                            <h3 className="ml1">{t`Add to new dashboard`}</h3>
                         </div>
                     </div>
                     <SortableItemList
