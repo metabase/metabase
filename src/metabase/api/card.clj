@@ -218,7 +218,7 @@
 ;; As a basic step to make sure the Metadata is valid we'll also pass a simple checksum and have the frontend pass it back to us.
 ;; See the QP `results-metadata` middleware namespace for more details
 
-(s/defn ^:private ^:always-validate result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn ^:always-validate result-metadata-for-query :- results-metadata/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]

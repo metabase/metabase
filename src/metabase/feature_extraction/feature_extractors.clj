@@ -168,6 +168,12 @@
   (and (isa? base_type :type/Integer)
        (isa? special_type :type/DateTime)))
 
+(def ^:private Num      [:type/Number :type/*])
+(def ^:private DateTime [:type/DateTime :type/*])
+(def ^:private Category [:type/* :type/Category])
+(def ^:private Any      [:type/* :type/*])
+(def ^:private Text     [:type/Text :type/*])
+
 (defn- field-type
   [field]
   (if (sequential? field)
@@ -207,12 +213,6 @@
 (defmethod comparison-vector :default
   [features]
   (dissoc features :type :field :has-nils? :all-distinct? :percentiles :table :model))
-
-(def ^:private Num      [:type/Number :type/*])
-(def ^:private DateTime [:type/DateTime :type/*])
-(def ^:private Category [:type/* :type/Category])
-(def ^:private Any      [:type/* :type/*])
-(def ^:private Text     [:type/Text :type/*])
 
 (prefer-method feature-extractor Category Text)
 (prefer-method feature-extractor Num Category)
@@ -480,7 +480,7 @@
   (let [x-field (first field)]
     (-> features
         (update :series (partial series->dataset ts/from-double field))
-        (dissoc :series :autocorrelation :best-fit)
+        (dissoc :autocorrelation :best-fit)
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
                                       insights/autocorrelation
