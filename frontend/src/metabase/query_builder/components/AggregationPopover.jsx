@@ -172,7 +172,7 @@ export default class AggregationPopover extends Component {
             if (tableMetadata.db.features.indexOf("expression-aggregations") >= 0) {
                 sections.push({
                     name: CUSTOM_SECTION_NAME,
-                    icon: "staroutline"
+                    icon: "sum"
                 });
             }
         }

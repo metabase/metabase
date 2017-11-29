@@ -101,8 +101,8 @@
 (expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
 
 
-;; Make sure `id` is required when `f` is :database
-(expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
+;; Make sure `model_id` is required when `f` is :database
+(expect {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
   ((user->client :crowberto) :get 400 "card" :f :database))
 
 ;; Filter cards by table
@@ -124,8 +124,8 @@
      (card-returned? table-2-id card-1-id)
      (card-returned? table-2-id card-2-id)]))
 
-;; Make sure `id` is required when `f` is :table
-(expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
+;; Make sure `model_id` is required when `f` is :table
+(expect {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
         ((user->client :crowberto) :get 400 "card", :f :table))
 
 
