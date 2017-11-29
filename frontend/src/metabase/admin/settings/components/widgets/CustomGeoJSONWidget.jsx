@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Utils from "metabase/lib/utils";
-
+import { t } from 'c-3po';
 import Select, { Option } from "metabase/components/Select.jsx";
 import Confirm from "metabase/components/Confirm.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
@@ -126,7 +126,7 @@ export default class CustomGeoJSONWidget extends Component {
                                 geoJsonError: null,
                             })}
                         >
-                            Add a map
+                            {t`Add a map`}
                         </button>
                     }
                 </div>
@@ -170,8 +170,8 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) =>
         <table className="ContentTable">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>URL</th>
+                    <th>{t`Name`}</th>
+                    <th>{t`URL`}</th>
                 </tr>
             </thead>
             <tbody>
@@ -184,8 +184,8 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) =>
                         <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
                     </td>
                     <td className="Table-actions">
-                        <Confirm action={() => onDeleteMap(map)} title="Delete custom map">
-                            <button className="Button Button--danger">Remove</button>
+                        <Confirm action={() => onDeleteMap(map)} title={t`Delete custom map`}>
+                            <button className="Button Button--danger">{t`Remove`}</button>
                         </Confirm>
                     </td>
                 </tr>
@@ -209,14 +209,14 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
         <Select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Select…"
+            placeholder={t`Select…`}
         >
             {Object.entries(options).map(([name, values]) =>
                 <Option key={name} value={name}>
                     <div>
                         <div>{name}</div>
                         <div className="mt1 h6" style={{ maxWidth: 250, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            Sample values: {values.join(", ")}
+                            {t`Sample values:`} {values.join(", ")}
                         </div>
                     </div>
                 </Option>
@@ -236,8 +236,8 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
     <div>
     <div className="flex">
         <div className="flex-no-shrink">
-            <h2>{ !originalMap ? "Add a new map" : "Edit map" }</h2>
-            <SettingContainer description="What do you want to call this map?">
+            <h2>{ !originalMap ? t`Add a new map` : t`Edit map` }</h2>
+            <SettingContainer description={t`What do you want to call this map?`}>
                 <div className="flex">
                     <input
                         type="text"
@@ -248,27 +248,27 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                     />
                 </div>
             </SettingContainer>
-            <SettingContainer description="URL for the GeoJSON file you want to use">
+            <SettingContainer description={t`URL for the GeoJSON file you want to use`}>
                 <div className="flex">
                     <input
                         type="text"
                         className="SettingsInput AdminInput bordered rounded h3"
-                        placeholder="Like https://my-mb-server.com/maps/my-map.json"
+                        placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
                         value={map.url}
                         onChange={(e) => onMapChange({ ...map, "url": e.target.value })}
                     />
-                    <button className={cx("Button ml1", { "Button--primary" : !geoJson, disabled: !map.url })} onClick={onLoadGeoJson}>{geoJson ? "Refresh" : "Load"}</button>
+                    <button className={cx("Button ml1", { "Button--primary" : !geoJson, disabled: !map.url })} onClick={onLoadGeoJson}>{geoJson ? t`Refresh` : t`Load`}</button>
                 </div>
             </SettingContainer>
             <div className={cx({ "disabled": !geoJson })}>
-                <SettingContainer description="Which property specifies the region’s identifier?">
+                <SettingContainer description={t`Which property specifies the region’s identifier?`}>
                     <GeoJsonPropertySelect
                         value={map.region_key}
                         onChange={(value) => onMapChange({ ...map, "region_key": value })}
                         geoJson={geoJson}
                     />
                 </SettingContainer>
-                <SettingContainer description="Which property specifies the region’s display name?">
+                <SettingContainer description={t`Which property specifies the region’s display name?`}>
                     <GeoJsonPropertySelect
                         value={map.region_name}
                         onChange={(value) => onMapChange({ ...map, "region_name": value })}
@@ -288,16 +288,16 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
             </LoadingAndErrorWrapper>
         :
             <div className="flex-full flex layout-centered text-bold text-grey-1 text-centered">
-                Load a GeoJSON file to see a preview
+               {t`Load a GeoJSON file to see a preview`}
             </div>
         }
         </div>
       </div>
       <div className="py1 flex">
         <div className="ml-auto">
-          <button className={cx("Button Button")} onClick={onCancel}>Cancel</button>
+          <button className={cx("Button Button")} onClick={onCancel}>{t`Cancel`}</button>
           <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
-              {originalMap ? "Save map" : "Add map"}
+              {originalMap ? t`Save map` : t`Add map`}
           </button>
         </div>
       </div>

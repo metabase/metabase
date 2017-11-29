@@ -5,7 +5,7 @@ import { Link, withRouter } from "react-router";
 import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon";
-
+import { t } from 'c-3po';
 import * as MetabaseCore from "metabase/lib/core";
 import { titleize, humanize } from "metabase/lib/formatting";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
@@ -83,7 +83,7 @@ export default class Column extends Component {
                         </div>
                     </div>
                     <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
-                        <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description || ""} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
+                        <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description || ""} onBlurChange={this.onDescriptionChange} placeholder={t`No column description yet`} />
                     </div>
                 </div>
                 <Link to={`${this.props.location.pathname}/${this.props.field.id}`} className="text-brand-hover mx2 mt1">
@@ -115,7 +115,7 @@ export class FieldVisibilityPicker extends Component {
         return (
             <Select
                 className={cx("TableEditor-field-visibility block", className)}
-                placeholder="Select a field visibility"
+                placeholder={t`Select a field visibility`}
                 value={_.find(MetabaseCore.field_visibility_types, (type) => { return type.id === field.visibility_type })}
                 options={MetabaseCore.field_visibility_types}
                 onChange={this.onVisibilityChange}
@@ -163,7 +163,7 @@ export class SpecialTypeAndTargetPicker extends Component {
         const { field, idfields, className, selectSeparator } = this.props;
 
         let specialTypes = MetabaseCore.field_special_types.slice(0);
-        specialTypes.push({'id': null, 'name': 'No special type', 'section': 'Other'});
+        specialTypes.push({'id': null, 'name': t`No special type`, 'section': t`Other`});
         // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
         if (!isNumericBaseType(field)) {
             specialTypes = specialTypes.filter((f) => !isa(f.id, TYPE.UNIXTimestamp));
@@ -179,7 +179,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             <div>
                 <Select
                     className={cx("TableEditor-field-special-type", className)}
-                    placeholder="Select a special type"
+                    placeholder={t`Select a special type`}
                     value={_.find(MetabaseCore.field_special_types, (type) => type.id === field.special_type)}
                     options={specialTypes}
                     onChange={this.onSpecialTypeChange}
@@ -189,7 +189,7 @@ export class SpecialTypeAndTargetPicker extends Component {
                 { showFKTargetSelect && <Select
                     className={cx("TableEditor-field-target", className)}
                     triggerClasses={this.props.triggerClasses}
-                    placeholder="Select a target"
+                    placeholder={t`Select a target`}
                     value={field.fk_target_field_id && _.find(idfields, (idField) => idField.id === field.fk_target_field_id)}
                     options={idfields}
                     optionNameFn={

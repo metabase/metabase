@@ -7,7 +7,7 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-
+import { t } from 'c-3po';
 import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 
@@ -61,8 +61,8 @@ export default class DatabaseList extends Component {
         return (
             <div className="wrapper">
                 <section className="PageHeader px2 clearfix">
-                    <Link to="/admin/databases/create" className="Button Button--primary float-right">Add database</Link>
-                    <h2 className="PageTitle">Databases</h2>
+                    <Link to="/admin/databases/create" className="Button Button--primary float-right">{t`Add database`}</Link>
+                    <h2 className="PageTitle">{t`Databases`}</h2>
                 </section>
                 { deletionError &&
                     <section>
@@ -73,8 +73,8 @@ export default class DatabaseList extends Component {
                     <table className="ContentTable">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Engine</th>
+                                <th>{t`Name`}</th>
+                                <th>{t`Engine`}</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -96,13 +96,13 @@ export default class DatabaseList extends Component {
                                                 {engines && engines[database.engine] ? engines[database.engine]['driver-name'] : database.engine}
                                             </td>
                                             { isDeleting
-                                                ? (<td className="text-right">Deleting...</td>)
+                                                ? (<td className="text-right">{t`Deleting...`}</td>)
                                                 : (
                                                     <td className="Table-actions">
                                                         <ModalWithTrigger
                                                             ref={"deleteDatabaseModal_"+database.id}
                                                             triggerClasses="Button Button--danger"
-                                                            triggerElement="Delete"
+                                                            triggerElement={t`Delete`}
                                                         >
                                                             <DeleteDatabaseModal
                                                                 database={database}
@@ -120,7 +120,7 @@ export default class DatabaseList extends Component {
                                 <tr>
                                     <td colSpan={4}>
                                         <LoadingSpinner />
-                                        <h3>Loading ...</h3>
+                                        <h3>{t`Loading ...`}</h3>
                                     </td>
                                 </tr>
                             }
@@ -129,7 +129,7 @@ export default class DatabaseList extends Component {
                     { !hasSampleDataset ?
                         <div className="pt4">
                             <span className={cx("p2 text-italic", {"border-top": databases && databases.length > 0})}>
-                                <a className="text-grey-2 text-brand-hover no-decoration" onClick={() => this.props.addSampleDataset()}>Bring the sample dataset back</a>
+                                <a className="text-grey-2 text-brand-hover no-decoration" onClick={() => this.props.addSampleDataset()}>{t`Bring the sample dataset back`}</a>
                             </span>
                         </div>
                     : null }

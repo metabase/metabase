@@ -7,7 +7,7 @@ import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import { t } from 'c-3po';
 import { CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
@@ -88,12 +88,12 @@ export default class PublicLinksListing extends Component {
                 <table className="ContentTable">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th>{t`Name`}</th>
                             { getPublicUrl &&
-                                <th>Public Link</th>
+                                <th>{t`Public Link`}</th>
                             }
                             { revoke &&
-                                <th>Revoke Link</th>
+                                <th>{t`Revoke Link`}</th>
                             }
                         </tr>
                     </thead>
@@ -125,8 +125,8 @@ export default class PublicLinksListing extends Component {
                                 { revoke &&
                                     <td className="flex layout-centered">
                                         <Confirm
-                                            title="Disable this link?"
-                                            content="They won't work any more, and can't be restored, but you can create new links."
+                                            title={t`Disable this link?`}
+                                            content={t`They won't work any more, and can't be restored, but you can create new links.`}
                                             action={() => {
                                                 this.revoke(link)
                                                 this.trackEvent('Revoked link')
@@ -153,20 +153,20 @@ export const PublicLinksDashboardListing = () =>
     <PublicLinksListing
         load={DashboardApi.listPublic}
         revoke={DashboardApi.deletePublicLink}
-        type='Public Dashboard Listing'
+        type={t`Public Dashboard Listing`}
         getUrl={({ id }) => Urls.dashboard(id)}
         getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
-        noLinksMessage="No dashboards have been publicly shared yet."
+        noLinksMessage={t`No dashboards have been publicly shared yet.`}
     />;
 
 export const PublicLinksQuestionListing = () =>
     <PublicLinksListing
         load={CardApi.listPublic}
         revoke={CardApi.deletePublicLink}
-        type='Public Card Listing'
+        type={t`Public Card Listing`}
         getUrl={({ id }) => Urls.question(id)}
         getPublicUrl={({ public_uuid }) => Urls.publicCard(public_uuid)}
-        noLinksMessage="No questions have been publicly shared yet."
+        noLinksMessage={t`No questions have been publicly shared yet.`}
     />;
 
 export const EmbeddedDashboardListing = () =>
@@ -174,8 +174,8 @@ export const EmbeddedDashboardListing = () =>
         <PublicLinksListing
             load={DashboardApi.listEmbeddable}
             getUrl={({ id }) => Urls.dashboard(id)}
-            type='Embedded Dashboard Listing'
-            noLinksMessage="No dashboards have been embedded yet."
+            type={t`Embedded Dashboard Listing`}
+            noLinksMessage={t`No dashboards have been embedded yet.`}
         />
     </div>
 
@@ -184,7 +184,7 @@ export const EmbeddedQuestionListing = () =>
         <PublicLinksListing
             load={CardApi.listEmbeddable}
             getUrl={({ id }) => Urls.question(id)}
-            type='Embedded Card Listing'
-            noLinksMessage="No questions have been embedded yet."
+            type={t`Embedded Card Listing`}
+            noLinksMessage={t`No questions have been embedded yet.`}
         />
     </div>

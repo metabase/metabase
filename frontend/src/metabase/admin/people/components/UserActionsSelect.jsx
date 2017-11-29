@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-
+import { t } from 'c-3po';
 import { MODAL_EDIT_DETAILS,
          MODAL_INVITE_RESENT,
          MODAL_REMOVE_USER,
@@ -54,16 +54,16 @@ export default class UserActionsSelect extends Component {
                                 className="block"
                                 triggerElement={<span className="text-grey-1"><Icon name={'ellipsis'}></Icon></span>}>
                 <ul className="UserActionsSelect">
-                    <li className="py1 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onEditDetails.bind(this)}>Edit Details</li>
+                    <li className="py1 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onEditDetails.bind(this)}>{t`Edit Details`}</li>
 
                     { (user.last_login === null && MetabaseSettings.isEmailConfigured()) ?
-                        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResendInvite.bind(this)}>Re-send Invite</li>
+                        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResendInvite.bind(this)}>{t`Re-send Invite`}</li>
                     :
-                        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResetPassword.bind(this)}>Reset Password</li>
+                        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResetPassword.bind(this)}>{t`Reset Password`}</li>
                     }
 
                     { !isActiveUser &&
-                        <li className="p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemoveUser.bind(this)}>Remove</li>
+                        <li className="p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemoveUser.bind(this)}>{t`Remove`}</li>
                     }
                 </ul>
             </PopoverWithTrigger>

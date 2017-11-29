@@ -1,7 +1,7 @@
 import React from 'react'
 import SettingsSetting from 'metabase/admin/settings/components/SettingsSetting'
 import cx from 'classnames'
-
+import { t } from 'c-3po';
 import Icon from 'metabase/components/Icon'
 
 import COSTS from 'metabase/xray/costs'
@@ -18,7 +18,7 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
     return (
         <div>
             <div className="mx2">
-                <h2>X-Rays and Comparisons</h2>
+                <h2>{t`X-Rays and Comparisons`}</h2>
             </div>
 
             <ol className="mt4">
@@ -30,12 +30,12 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
             </ol>
 
             <div className="mx2 text-measure">
-                <h3>Maximum Cost</h3>
+                <h3>{t`Maximum Cost`}</h3>
                 <p className="m0 text-paragraph">
-                    If you're having performance issues related to x-ray usage you can cap how expensive x-rays are allowed to be.
+                    {t`If you're having performance issues related to x-ray usage you can cap how expensive x-rays are allowed to be.`}
                 </p>
                 <p className="text-paragraph">
-                  <em><strong>Note:</strong> "Extended" is required for viewing time series x-rays.</em>
+                  <em>{t`<strong>Note:</strong> "Extended" is required for viewing time series x-rays.`}</em>
                 </p>
 
                 <ol className="mt4">

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
@@ -91,7 +91,7 @@ export default class MetadataEditor extends Component {
         } else {
             content = (
                 <div style={{paddingTop: "10rem"}} className="full text-centered">
-                    <AdminEmptyText message="Select any table to see its schema and add or edit metadata." />
+                    <AdminEmptyText message={t`Select any table to see its schema and add or edit metadata.`} />
                 </div>
             );
         }

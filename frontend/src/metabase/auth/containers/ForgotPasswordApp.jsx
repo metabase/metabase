@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import AuthScene from "../components/AuthScene.jsx";
 import BackToLogin from "../components/BackToLogin.jsx"
 import FormField from "metabase/components/form/FormField.jsx";
@@ -12,7 +12,6 @@ import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 
 import { SessionApi } from "metabase/services";
 
@@ -55,7 +54,7 @@ export default class ForgotPasswordApp extends Component {
                       { !emailConfigured ?
                       <div className="Grid-cell">
                           <div className="text-centered bordered rounded shadowed p4">
-                              <h3 className="my4">Please contact an administrator to have them reset your password</h3>
+                              <h3 className="my4">{t`Please contact an administrator to have them reset your password`}</h3>
                               <BackToLogin />
                           </div>
                       </div>
@@ -64,19 +63,19 @@ export default class ForgotPasswordApp extends Component {
                           { !sentNotification ?
                           <div>
                               <form className="ForgotForm bg-white Form-new bordered rounded shadowed" name="form" noValidate>
-                                  <h3 className="Login-header Form-offset mb3">Forgot password</h3>
+                                  <h3 className="Login-header Form-offset mb3">{t`Forgot password`}</h3>
 
                                   <FormMessage message={error && error.data && error.data.message}></FormMessage>
 
                                   <FormField key="email" fieldName="email" formError={error}>
-                                      <FormLabel title={"Email address"}  fieldName={"email"} formError={error} />
-                                      <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} defaultValue={this.state.email} autoFocus />
+                                      <FormLabel title={t`Email address`}  fieldName={"email"} formError={error} />
+                                      <input className="Form-input Form-offset full" name="email" placeholder={t`The email you use for your Metabase account`} type="text" onChange={(e) => this.setState({"email": e.target.value})} defaultValue={this.state.email} autoFocus />
                                       <span className="Form-charm"></span>
                                   </FormField>
 
                                   <div className="Form-actions">
                                       <button className={cx("Button", {"Button--primary": valid})} onClick={(e) => this.sendResetNotification(e)} disabled={!valid}>
-                                          Send password reset email
+                                          {t`Send password reset email`}
                                       </button>
                                   </div>
                               </form>
@@ -87,7 +86,7 @@ export default class ForgotPasswordApp extends Component {
                                   <div className="SuccessMark">
                                       <Icon name="check" />
                                   </div>
-                                  <p className="SuccessText">Check your email for instructions on how to reset your password.</p>
+                                  <p className="SuccessText">{t`Check your email for instructions on how to reset your password.`}</p>
                               </div>
                           </div>
                           }
