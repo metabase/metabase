@@ -115,7 +115,6 @@
                                    (db/select Table :db_id database)
                                    (Table))
                                  (best-match table)
-                                 :id
                                  (vector (:as table)))))
                  tables)
         fields (into {}
@@ -123,11 +122,11 @@
                          (some->> (if (:table field)
                                     (when-let [table-id (->> field
                                                              :table
-                                                             (unify-var tables))]
+                                                             (unify-var tables)
+                                                             :id)]
                                       (db/select Field :table_id table-id))
                                     (Field))
                                   (best-match field)
-                                  :id
                                   (vector (:as field)))))
                  fields)]
     [tables fields]))
@@ -135,13 +134,17 @@
 (defn- unify-vars
   [context form]
   (try
-    (postwalk
-     (fn [sub-form]
-       (if (template-var? sub-form)
-         (or (unify-var context sub-form)
-             (throw (Throwable.)))
-         sub-form))
-     form)
+    (if (map? form)
+      (postwalk
+       (fn [sub-form]
+         (if (template-var? sub-form)
+           (or (-> sub-form (unify-var context) :id)
+               (throw (Throwable.)))
+           sub-form))
+       form)
+      (s/replace form #"\?\w+" (fn [x]
+                                 (or (some->> x (unify-var context) :name)
+                                     (throw (Throwable.))))))
     (catch Throwable _ nil)))
 
 (def ^:private ^Integer grid-width 18)
@@ -175,11 +178,14 @@
       dashboard)))
 
 (defn- create-card!
-  [{:keys [query description title visualization dashboard]}]
-  (let [dataset_query {:query    query
-                       :type     :query
-                       :database (db/select-one-field :db_id Table
-                                   :id (:source_table query))}]
+  [database {:keys [query description title visualization dashboard]}]
+  (let [dataset_query (if (map? query)
+                        {:type     :query
+                         :query    query
+                         :database database}
+                        {:type     :native
+                         :native   {:query query}
+                         :database database})]
     (when (perms/set-has-full-permissions-for-set?
            @api/*current-user-permissions-set*
            (card/query-perms-set dataset_query :write))
@@ -212,11 +218,12 @@
   [database]
   (->> (load-rules)
        (mapcat (fn [{:keys [bindings cards]}]
-                 (let [[tables fields] (bind-models database bindings)]
+                 (let [[tables fields] (bind-models database bindings)
+                       database        (-> tables first val :db_id)]
                    (keep (fn [card]
                            (when-let [query (unify-vars (merge tables fields)
                                                         (:query card))]
-                             (create-card! (assoc card :query query))))
+                             (create-card! database (assoc card :query query))))
                          cards))))
        (map :id)
        distinct))
