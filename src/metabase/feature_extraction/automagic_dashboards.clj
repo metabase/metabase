@@ -21,21 +21,18 @@
   [{:bindings {:fields [{:named [["total" 1.0] ["amount" 0.9] ["income" 1.0] ["price" 0.6]]
                          :type :type/Number
                          :as "income"
-                         :table "?orders"
-                         :constraints [:not-nil :positive]}
+                         :table "?orders"}
                         {:named [["created_at" 1.0] ["timestamp" 1.0] ["date" 0.8]]
                          :type :type/DateTime
                          :as "timestamp"
-                         :table "?orders"
-                         :constraints :not-nil}
+                         :table "?orders"}
                         {:named [["user" 1.0] ["account" 0.9] ["customer" 0.9]
                                  ["email" 0.3]]
                          :type [[:type/FK 1.0]
                                 [:type/String 0.8]
                                 [:type/Integer 0.4]]
                          :as "user"
-                         :table "?orders"
-                         :constraints :not-nil}]
+                         :table "?orders"}]
                :tables [{:named [["orders" 1.0] ["transactions" 1.0] ["sales" 1.0]
                                  ["products" 0.0]]
                          :as "orders"}]}
