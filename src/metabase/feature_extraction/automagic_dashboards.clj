@@ -142,10 +142,12 @@
   (-> x (subs 1) bindings))
 
 (defn- bind-models
-  [{:keys [fields tables]}]
+  [database {:keys [fields tables]}]
   (let [tables (into {}
                  (map (fn [table]
-                        (some->> (Table)
+                        (some->> (if database
+                                   (db/select Table :db_id database)
+                                   (Table))
                                  (best-match table)
                                  :id
                                  (vector (:as table)))))
@@ -186,7 +188,8 @@
                                         :parameters  [])]
                         (events/publish-event! :dashboard-create dashboard)
                         dashboard))]
-    (dashboard/add-dashcard! dashboard card)))
+    (dashboard/add-dashcard! dashboard card)
+    dashboard))
 
 (defn- create-card!
   [{:keys [query description title visualization dashboard]}]
@@ -198,25 +201,29 @@
            (perms/set-has-full-permissions-for-set?
                @api/*current-user-permissions-set*
                (card/query-perms-set dataset_query :write)))
-      (let [card (db/insert! 'Card
-                   :creator_id             1 ;api/*current-user-id*
-                   :dataset_query          dataset_query
-                   :description            description
-                   :display                visualization
-                   :name                   title
-                   :visualization_settings {}
-                   :collection_id          nil
-                   :result_metadata        (card.api/result-metadata-for-query dataset_query))]
+      (let [metadata (card.api/result-metadata-for-query dataset_query)
+            card     (db/insert! 'Card
+                       :creator_id             1 ;api/*current-user-id*
+                       :dataset_query          dataset_query
+                       :description            description
+                       :display                visualization
+                       :name                   title
+                       :visualization_settings {}
+                       :collection_id          nil
+                       :result_metadata        metadata)]
         (events/publish-event! :card-create card)
         (hydrate card :creator :dashboard_count :labels :can_write :collection)
         (add-to-dashboard! dashboard card)))))
 
 (defn populate-dashboards
-  [rules]
-  (for [{:keys [bindings cards]} rules]
-    (let [[tables fields] (bind-models bindings)]
-      (for [card cards]
-        (when-let [query (unify-vars (merge tables fields) (:query card))]
-          (create-card! (assoc card :query query)))))))
-
-; (populate-dashboards rules)
+  [database]
+  (->> rules
+       (mapcat (fn [{:keys [bindings cards]}]
+                 (let [[tables fields] (bind-models database bindings)]
+                   (keep (fn [card]
+                           (when-let [query (unify-vars (merge tables fields)
+                                                        (:query card))]
+                             (create-card! (assoc card :query query))))
+                         cards))))
+       (map :id)
+       distinct))
