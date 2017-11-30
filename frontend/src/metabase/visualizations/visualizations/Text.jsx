@@ -16,8 +16,6 @@ const HEADER_ACTION_STYLE = {
     padding: 4
 };
 
-const DISALLOWED_TYPES = ['table', 'tableHead', 'tableBody', 'tableRow', 'tableCell'];
-
 type State = {
     isShowingRenderedOutput: boolean,
     text: string
@@ -86,7 +84,6 @@ export default class Text extends Component {
                         <ReactMarkdown
                             className={cx("full flex-full flex flex-column text-card-markdown", styles["text-card-markdown"])}
                             source={settings.text}
-                            disallowedTypes={DISALLOWED_TYPES}
                         />
                     :
                         <textarea
@@ -97,7 +94,13 @@ export default class Text extends Component {
                             onChange={(e) => this.handleTextChange(e.target.value)}
                         />
                     }
-
+                    <a
+                        className={cx("text-grey-3 text-small text-bold", styles["text-card-help"])}
+                        href="https://www.metabase.com/docs/latest/"
+                        target={window.OSX ? null : "_blank"}
+                    >
+                        Styling with Markdown is supported
+                    </a>
                 </div>
             );
         } else {
@@ -106,7 +109,6 @@ export default class Text extends Component {
                     <ReactMarkdown
                         className={cx("full flex-full flex flex-column text-card-markdown", styles["text-card-markdown"])}
                         source={settings.text}
-                        disallowedTypes={DISALLOWED_TYPES}
                     />
                 </div>
             );

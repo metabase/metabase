@@ -1,3 +1,7 @@
+:root {
+  --text-card-padding: .65em
+}
+
 :local .Text {
   display: flex;
   flex-direction: column;
@@ -6,7 +10,7 @@
   color: #525658;
 }
 :local .Text.dashboard-is-editing {
-  padding: 2.8em 1em 1em 1em;
+  padding: 2.8em 1em var(--text-card-padding) 1em;
 }
 :local .Text .text-card-textarea {
   padding: .75em;
@@ -16,10 +20,22 @@
   resize: none;
   outline: none;
 }
+:local .Text .text-card-textarea:focus {
+  border-color: var(--input-border-active-color);
+}
 :local .Text .text-card-markdown {
   overflow: scroll;
   pointer-events: all
 }
+:local .Text .text-card-help {
+  padding-top: var(--text-card-padding);
+  text-decoration: none;
+  pointer-events: all;
+}
+:local .Text .text-card-help:hover {
+  text-decoration: underline;
+}
+
 :local .Text .text-card-markdown h1 {
   font-size: 1.831em;
 }
@@ -34,4 +50,64 @@
   line-height: 1.602em;
   padding-bottom: 0;
   margin-bottom: 0;
+}
+
+:local .text-card-markdown ul {
+  margin: 1em 0;
+  padding-left: 40px;
+  list-style-type: disc;
+}
+:local .text-card-markdown ol {
+  margin: 1em 0;
+  padding-left: 40px;
+  list-style-type: decimal;
+}
+
+:local .text-card-markdown a {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--default-link-color);
+}
+:local .text-card-markdown a:hover {
+  text-decoration: underline;
+}
+
+:local .text-card-markdown a:hover {
+  text-decoration: underline;
+}
+
+:local .text-card-markdown th { text-align: left; }
+:local .text-card-markdown table {
+  /* standard table reset */
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  width: 100%;
+
+  font-family: "Helvetica Neue", "Helvetica", sans-serif;
+  font-size: 0.76rem;
+  line-height: 0.76rem;
+  text-align: left;
+}
+:local .text-card-markdown tr {
+  border-bottom: 1px solid var(--table-border-color);
+}
+:local .text-card-markdown tr:nth-child(even) {
+  background-color: var(--table-alt-bg-color);
+}
+:local .text-card-markdown th,
+:local .text-card-markdown td {
+  padding: 1em;
+  border: 1px solid var(--table-border-color);
+}
+
+:local .text-card-markdown code {
+  padding: 1em;
+  display: block;
+  background-color: var(--base-grey);
+}
+
+:local .text-card-markdown img {
+  width: 100%;
+  height: auto;
 }
