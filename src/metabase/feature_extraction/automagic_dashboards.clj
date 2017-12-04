@@ -8,7 +8,7 @@
             [metabase.events :as events]
             [metabase.feature-extraction.core :as fe]
             [metabase.models
-             [card :as card]
+             [card :as card :refer [Card]]
              [dashboard :as dashboard :refer [Dashboard]]
              [field :refer [Field]]
              [interface :as mi]
@@ -58,8 +58,11 @@
   ^{:doc ""
     :arglists '([op model])
     :private true}
-  (fn [op model]
-    op))
+  (fn [op model] op))
+
+(defmethod constraint :not-fk
+  [_ {:keys [special_type]}]
+  (not= special_type :type/FK))
 
 (defmethod constraint :not-nil
   [_ field]
@@ -68,6 +71,17 @@
 (defmethod constraint :unique
   [_ field]
   (->> field (fe/extract-features {}) :features :all-distinct?))
+
+(defn- contains-field?
+  [field form]
+  (some #{[:field-id (:id field)]
+          ["field-id" (:id field)]}
+        (tree-seq sequential? identity form)))
+
+(defmethod constraint :breakout-key
+  [_ field]
+  (some (comp (partial contains-field? field) :breakout :query :dataset_query)
+        (Card)))
 
 (defmethod constraint :positive
   [_ {:keys [type] :as field}]
@@ -119,31 +133,51 @@
                  tables)
         fields (into {}
                  (keep (fn [field]
-                         (some->> (if (:table field)
-                                    (when-let [table-id (->> field
-                                                             :table
-                                                             (unify-var tables)
-                                                             :id)]
-                                      (db/select Field :table_id table-id))
-                                    (Field))
+                         (some->> (or (some->> field
+                                               :table
+                                               (unify-var tables)
+                                               :id
+                                               (db/select Field :table_id))
+                                      (->> field
+                                           :table
+                                           IllegalArgumentException.
+                                           throw))
                                   (best-match field)
                                   (vector (:as field)))))
                  fields)]
     [tables fields]))
+
+(defmulti ->reference
+  ^{:doc ""
+    :arglists '([model])
+    :private true}
+  type)
+
+(defmethod ->reference (type Table)
+  [table]
+  (:id table))
+
+(defmethod ->reference (type Field)
+  [{:keys [fk_target_field_id id]}]
+  (if fk_target_field_id
+    [:fk-> id fk_target_field_id]
+    [:field-id id]))
 
 (defn- unify-vars
   [context form]
   (try
     (if (map? form)
       (postwalk
-       (fn [sub-form]
-         (if (template-var? sub-form)
-           (or (-> sub-form (unify-var context) :id)
+       (fn [subform]
+         (if (template-var? subform)
+           (or (some->> subform
+                        (unify-var context)
+                        ->reference)
                (throw (Throwable.)))
-           sub-form))
+           subform))
        form)
-      (s/replace form #"\?\w+" (fn [x]
-                                 (or (some->> x (unify-var context) :name)
+      (s/replace form #"\?\w+" (fn [token]
+                                 (or (some->> token (unify-var context) :name)
                                      (throw (Throwable.))))))
     (catch Throwable _ nil)))
 
@@ -190,7 +224,7 @@
            @api/*current-user-permissions-set*
            (card/query-perms-set dataset_query :write))
       (let [metadata (card.api/result-metadata-for-query dataset_query)
-            card     (db/insert! 'Card
+            card     (db/insert! Card
                        :creator_id             api/*current-user-id*
                        :dataset_query          dataset_query
                        :description            description
