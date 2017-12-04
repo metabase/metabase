@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import cx from "classnames";
 import { titleCase } from "humanize-plus";
@@ -25,17 +24,8 @@ export default class DateOperatorSelector extends Component {
     props: Props;
     state: State;
 
-    constructor() {
-        super();
-        this.state = {
-            expanded: false
-        };
-    }
-
-    static propTypes = {
-        operator: PropTypes.string,
-        operators: PropTypes.array.isRequired,
-        onOperatorChange: PropTypes.func.isRequired
+    state = {
+        expanded: false
     };
 
     toggleExpanded = () => {
@@ -47,9 +37,9 @@ export default class DateOperatorSelector extends Component {
         const { expanded } = this.state;
 
         return (
-            <div className="mx2">
+            <div className="mx2 relative z3">
                 <div
-                    className="flex align-center cursor-pointer text-purple-hover mb2"
+                    className="flex align-center cursor-pointer text-purple-hover mb2 bordered rounded px2 py1"
                     onClick={() => this.toggleExpanded()}
                 >
                     <h3>{operator && titleCase(operator)}</h3>
@@ -60,29 +50,31 @@ export default class DateOperatorSelector extends Component {
                         className="ml1"
                     />
                 </div>
-                <ul
-                    className="text-purple"
-                    style={{
-                        height: expanded ? 'auto' : 0,
-                        overflow: 'hidden',
-                        display: 'block',
-                    }}
-                >
-                    { operators.map(o =>
-                        <li
-                            className={cx('List-item cursor-pointer p1', {
-                                'List-item--selected': o.name === operator
-                            })}
-                            key={o.name}
-                            onClick={() => {
-                                onOperatorChange(o);
-                                this.toggleExpanded();
-                            }}
-                        >
-                            <h4 className="List-item-title">{o.name}</h4>
-                        </li>
-                    )}
-                </ul>
+                { expanded && (
+                    <ul
+                        className="text-purple bg-white absolute top left right bordered rounded shadowed"
+                        style={{
+                            height: expanded ? 'auto' : 0,
+                            overflow: 'hidden',
+                            display: 'block',
+                        }}
+                    >
+                        { operators.map(o =>
+                            <li
+                                className={cx('List-item cursor-pointer p1', {
+                                    'List-item--selected': o.name === operator
+                                })}
+                                key={o.name}
+                                onClick={() => {
+                                    onOperatorChange(o);
+                                    this.toggleExpanded();
+                                }}
+                            >
+                                <h4 className="List-item-title">{o.name}</h4>
+                            </li>
+                        )}
+                    </ul>
+                )}
             </div>
         );
     }

@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { pluralize, titleCase, capitalize } from "humanize-plus";
 import cx from "classnames";
 
@@ -60,19 +59,21 @@ export default class RelativeDatePicker extends Component {
                     }
                     placeholder="30"
                 />
-                <UnitPicker
-                    open={this.state.showUnits}
-                    value={unit}
-                    onChange={(value) => {
-                        onFilterChange([op, field, intervals, value]);
-                        this.setState({ showUnits: false });
-                    }}
-                    togglePicker={() => this.setState({ showUnits: !this.state.showUnits})}
-                    // $FlowFixMe: intervals could be a string like "current" "next"
-                    intervals={intervals}
-                    formatter={formatter}
-                    periods={this.props.hideTimeSelectors ? DATE_PERIODS : ALL_PERIODS}
-                />
+                <div className="mx2">
+                    <UnitPicker
+                        open={this.state.showUnits}
+                        value={unit}
+                        onChange={(value) => {
+                            onFilterChange([op, field, intervals, value]);
+                            this.setState({ showUnits: false });
+                        }}
+                        togglePicker={() => this.setState({ showUnits: !this.state.showUnits})}
+                        // $FlowFixMe: intervals could be a string like "current" "next"
+                        intervals={intervals}
+                        formatter={formatter}
+                        periods={this.props.hideTimeSelectors ? DATE_PERIODS : ALL_PERIODS}
+                    />
+                </div>
             </div>
         );
     }
@@ -89,10 +90,10 @@ type UnitPickerProps = {
 }
 
 export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, formatter, periods }: UnitPickerProps) =>
-   <div>
+   <div className="relative">
        <div
            onClick={() => togglePicker()}
-           className="flex align-center cursor-pointer text-purple-hover mb2"
+           className="flex align-center cursor-pointer text-purple-hover mb2 bordered rounded px2 py1"
        >
            <h3>{pluralize(formatter(intervals) || 1, titleCase(value))}</h3>
            <Icon
@@ -102,27 +103,28 @@ export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, for
                className="ml1"
            />
         </div>
-        <ol
-            className="text-purple"
-            style={{
-                maxHeight: open ? 'none': 0,
-                overflow: 'hidden'
-            }}
-        >
-           { periods.map((unit, index) =>
-               <li
-                   className={cx(
-                       'List-item cursor-pointer p1',
-                       { 'List-item--selected': unit === value }
-                   )}
-                   key={index}
-                   onClick={ () => onChange(unit) }
-               >
-                   <h4 className="List-item-title">
-                       {capitalize(pluralize(formatter(intervals) || 1, unit))}
-                   </h4>
-               </li>
-             )
-           }
-       </ol>
+        { open && (
+            <ol
+                className="text-purple bg-white absolute top left right bordered rounded shadowed"
+                style={{
+                    maxHeight: open ? 'none': 0,
+                    overflow: 'hidden'
+                }}
+            >
+                { periods.map((unit, index) =>
+                    <li
+                        className={cx(
+                            'List-item cursor-pointer p1',
+                            { 'List-item--selected': unit === value }
+                        )}
+                        key={index}
+                        onClick={ () => onChange(unit) }
+                    >
+                        <h4 className="List-item-title">
+                            {capitalize(pluralize(formatter(intervals) || 1, unit))}
+                        </h4>
+                    </li>
+                )}
+            </ol>
+        )}
    </div>
