@@ -271,7 +271,7 @@
   (->> rules-dir
        clojure.java.io/file
        file-seq
-       (filter #(.isFile %))
+       (filter (memfn ^java.io.File isFile))
        ; Workaround for https://github.com/owainlewis/yaml/issues/11
        (map (comp yaml/parse-string slurp))))
 
