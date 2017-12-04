@@ -1,4 +1,6 @@
 (ns metabase.feature-extraction.automagic-dashboards
+  "Automatically generate questions and dashboards based on predefined
+   heuristics."
   (:require [clojure
              [string :as s]
              [walk :refer [postwalk]]]
@@ -27,6 +29,15 @@
     :else       0))
 
 (defn- apply-rule
+  "Apply rule `pattern` using `pred` to model `model`.
+   If multiple alternatives apply, pick the highest ranking one.
+
+   pattern can be either:
+   * a literal,
+   * a vector of literals,
+   * a vector of [literal, probability] pairs.
+
+   If probability is not given, 1 is assumed."
   [pred pattern model]
   (reduce (fn [best [pattern weight]]
             (-> pattern
@@ -43,19 +54,26 @@
             [[pattern 1.0]])))
 
 (defn- name-contains?
+  "Fuzzy (partial) name (string) match. If field `:name` contains `pattern`,
+   return overlap %, else return nil."
   [pattern {:keys [name]}]
   (when (s/includes? (s/upper-case name) (s/upper-case pattern))
     (/ (count pattern)
        (count name))))
 
-(defn- type-is?
+(defn- field-isa?
+  "Is field of type `t` (as per `isa?`) within `metabase.types` hierarchy?"
   [t {:keys [base_type special_type]}]
   (let [t (keyword "type" t)]
     (or (isa? base_type t)
         (isa? special_type t))))
 
 (defmulti constraint
-  ^{:doc ""
+  ^{:doc "Match constraint.
+          Note: some constraints look at the data and therefore hit the
+          underlying warehouse. As such they should be used with care
+          (also, they are not optimized: a combination of `:non-nil` and
+          `:unique` for instance will cause feature extraction to run twice)."
     :arglists '([op model])
     :private true}
   (fn [op model] op))
@@ -90,6 +108,7 @@
     (->> field (fe/extract-features {}) :features :positive-definite?)))
 
 (defn- apply-rules
+  "Apply all the rules against given model. Abort as soon as one fails."
   [rules model]
   (reduce (fn [p-joint [pred pattern]]
             (let [p (apply-rule pred pattern model)]
@@ -100,11 +119,13 @@
           rules))
 
 (defn- best-match
+  "Find the model among `models` that best matches (highest probability) given
+   rules, if such exists."
   [rules models]
   (when (not-empty models)
     (let [rules        (remove (comp nil? second)
                                [[name-contains? (:named rules)]
-                                [type-is?       (:type rules)]
+                                [field-isa?     (:type rules)]
                                 [constraint     (:constraints rules)]])
           [model best] (->> models
                             (map (fn [model]
@@ -122,33 +143,34 @@
   (-> x (subs 1) bindings))
 
 (defn- bind-models
+  "Bind models for a given heuristics.
+   First narrows down by table, then searches within that table for matching
+   fields."
   [database {:keys [fields tables]}]
   (let [tables (into {}
                  (map (fn [table]
-                        (some->> (if database
-                                   (db/select Table :db_id database)
-                                   (Table))
-                                 (best-match table)
-                                 (vector (:as table)))))
+                        (->> (if database
+                               (db/select Table :db_id database)
+                               (Table))
+                             (best-match table)
+                             (vector (:as table)))))
                  tables)
         fields (into {}
                  (keep (fn [field]
-                         (some->> (or (some->> field
-                                               :table
-                                               (unify-var tables)
-                                               :id
-                                               (db/select Field :table_id))
-                                      (->> field
-                                           :table
-                                           IllegalArgumentException.
-                                           throw))
-                                  (best-match field)
-                                  (vector (:as field)))))
+                         (if-let [table (->> field :table (unify-var tables))]
+                           (->> table
+                                :id
+                                (db/select Field :table_id)
+                                (best-match field)
+                                (vector (:as field)))
+                           (throw (IllegalArgumentException.
+                                   (format "Reference to undefined table: %"
+                                           (:table field)))))))
                  fields)]
     [tables fields]))
 
 (defmulti ->reference
-  ^{:doc ""
+  ^{:doc "Get a MBQL reference for a given model."
     :arglists '([model])
     :private true}
   type)
@@ -164,6 +186,10 @@
     [:field-id id]))
 
 (defn- unify-vars
+  "Replace all template vars in `form` with references to corresponding models
+   in `context` as returned by `bind-models`.
+   `form` can be either a map (MBQL) or string (native SQL).
+   Aborts if any of the template vars cannot be matched."
   [context form]
   (try
     (if (map? form)
@@ -185,7 +211,11 @@
 (def ^:private ^Integer card-width 6)
 (def ^:private ^Integer card-height 4)
 
-(defn- lay-next-card
+(defn- next-card-position
+  "Return `:row` x `:col` coordinates for the next card to be placed on
+   dashboard `dashboard`.
+   Assumes a grid `grid-width` cells wide with cards sized
+   `card-width` x `card-height`."
   [dashboard]
   (let [num-cards (db/count 'DashboardCard :dashboard_id (:id dashboard))]
     {:row (int (* (Math/floor (/ (* card-width num-cards)
@@ -206,9 +236,10 @@
                         (events/publish-event! :dashboard-create dashboard)
                         dashboard))]
     (when (mi/can-write? dashboard)
-      (dashboard/add-dashcard! dashboard card (merge (lay-next-card dashboard)
-                                                     {:sizeX card-width
-                                                      :sizeY card-height}))
+      (dashboard/add-dashcard! dashboard card
+        (merge (next-card-position dashboard)
+               {:sizeX card-width
+                :sizeY card-height}))
       dashboard)))
 
 (defn- create-card!
@@ -249,6 +280,9 @@
        (map (comp yaml/parse-string slurp))))
 
 (defn populate-dashboards
+  "Applying heuristics in `rules-dir` to the models in database `database`,
+   generate cards and dashboards for all the matching rules.
+   If a dashboard with the same name already exists, append to it."
   [database]
   (->> (load-rules)
        (mapcat (fn [{:keys [bindings cards]}]
