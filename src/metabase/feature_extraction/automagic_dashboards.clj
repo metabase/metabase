@@ -67,7 +67,7 @@
     (or (isa? base_type t)
         (isa? special_type t))))
 
-(defmulti constraint
+(defmulti
   ^{:doc "Match constraint.
           Note: some constraints look at the data and therefore hit the
           underlying warehouse. As such they should be used with care
@@ -75,7 +75,7 @@
           `:unique` for instance will cause feature extraction to run twice)."
     :arglists '([op model])
     :private true}
-  (fn [op model] op))
+  constraint (fn [op model] op))
 
 (defmethod constraint :not-fk
   [_ {:keys [special_type]}]
@@ -168,11 +168,11 @@
                  fields)]
     [tables fields]))
 
-(defmulti ->reference
+(defmulti
   ^{:doc "Get a MBQL reference for a given model."
     :arglists '([model])
     :private true}
-  type)
+  ->reference type)
 
 (defmethod ->reference (type Table)
   [table]
