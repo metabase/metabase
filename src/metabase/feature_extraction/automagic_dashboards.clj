@@ -145,27 +145,27 @@
 (defn- bind-models
   "Bind models for a given heuristics.
    First narrows down by table, then searches within that table for matching
-   fields."
-  [database {:keys [fields tables]}]
+   fields. Table candidates can be constrained to a given database or table via
+   `scope`."
+  [{:keys [scope id]} {:keys [fields tables]}]
   (let [tables (into {}
                  (map (fn [table]
-                        (->> (if database
-                               (db/select Table :db_id database)
-                               (Table))
+                        (->> (cond
+                               (= scope :table) [(Table id)]
+                               (nil? id)        (Table)
+                               :else            (db/select Table :db_id id))
                              (best-match table)
                              (vector (:as table)))))
                  tables)
         fields (into {}
                  (keep (fn [field]
-                         (if-let [table (->> field :table (unify-var tables))]
-                           (->> table
-                                :id
-                                (db/select Field :table_id)
-                                (best-match field)
-                                (vector (:as field)))
-                           (throw (IllegalArgumentException.
-                                   (format "Reference to undefined table: %"
-                                           (:table field)))))))
+                         (some->> field
+                                  :table
+                                  (unify-var tables)
+                                  :id
+                                  (db/select Field :table_id)
+                                  (best-match field)
+                                  (vector (:as field)))))
                  fields)]
     [tables fields]))
 
@@ -283,10 +283,10 @@
   "Applying heuristics in `rules-dir` to the models in database `database`,
    generate cards and dashboards for all the matching rules.
    If a dashboard with the same name already exists, append to it."
-  [database]
+  [scope]
   (->> (load-rules)
        (mapcat (fn [{:keys [bindings cards]}]
-                 (let [[tables fields] (bind-models database bindings)
+                 (let [[tables fields] (bind-models scope bindings)
                        database        (-> tables first val :db_id)]
                    (keep (fn [card]
                            (when-let [query (unify-vars (merge tables fields)
