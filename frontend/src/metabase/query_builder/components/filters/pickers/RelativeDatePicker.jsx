@@ -39,18 +39,8 @@ export default class RelativeDatePicker extends Component {
     props: Props;
     state: State;
 
-    constructor (props: Props) {
-        super(props);
-        this.state = {
-            showUnits: false
-        };
-    }
-
-    static propTypes = {
-        filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired,
-        formatter: PropTypes.func.isRequired,
-        hideTimeSelectors: PropTypes.bool
+    state = {
+        showUnits: false
     };
 
     static defaultProps = {
@@ -60,7 +50,7 @@ export default class RelativeDatePicker extends Component {
     render() {
         const { filter: [op, field, intervals, unit], onFilterChange, formatter } = this.props;
         return (
-            <div className="px2">
+            <div className="flex align-center">
                 <NumericInput
                     className="input h3 mb2 border-purple"
                     data-ui-tag="relative-date-input"

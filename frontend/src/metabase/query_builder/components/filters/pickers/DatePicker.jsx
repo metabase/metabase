@@ -1,20 +1,19 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { t } from 'c-3po';
+import cx from 'classnames';
+import moment from "moment";
+import _ from "underscore";
+
 import SpecificDatePicker from "./SpecificDatePicker";
 import RelativeDatePicker, { DATE_PERIODS, UnitPicker } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
 import Calendar from "metabase/components/Calendar";
 
-import moment from "moment";
-
 import Query from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
-import cx from "classnames";
 
-import _ from "underscore";
 
 import type {
     FieldFilter, TimeIntervalFilter,
@@ -81,10 +80,9 @@ class CurrentPicker extends Component {
     props: CurrentPickerProps;
     state: CurrentPickerState;
 
-    constructor(props) {
-        super(props);
-        this.state = { showUnits: false };
-    }
+    state = {
+        showUnits: false
+    };
 
     render() {
         const { filter: [operator, field, intervals, unit], onFilterChange } = this.props
@@ -246,14 +244,6 @@ export default class DatePicker extends Component {
         operators: []
     };
 
-    static propTypes = {
-        filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired,
-        className: PropTypes.string,
-        hideEmptinessOperators: PropTypes.bool,
-        hideTimeSelectors: PropTypes.bool
-    };
-
     componentWillMount() {
         const operators = this.props.hideEmptinessOperators ? DATE_OPERATORS : ALL_OPERATORS;
 
@@ -268,7 +258,7 @@ export default class DatePicker extends Component {
     }
 
     render() {
-        let { filter, onFilterChange, className, includeAllTime } = this.props;
+        const { filter, onFilterChange, includeAllTime } = this.props;
         let { operators } = this.state;
         if (includeAllTime) {
             operators = [ALL_TIME_OPERATOR, ...operators];
@@ -277,8 +267,16 @@ export default class DatePicker extends Component {
         const operator = this._getOperator(operators);
         const Widget = operator && operator.widget;
 
+        // certain types of operators need to have a horizontal layout
+        // where the value is chosen next to the operator selector
+        // TODO - there's no doubt a cleaner _ way to do this
+        const needsHorizontalLayout = operator.name === "Current"  ||
+                                      operator.name === "Previous" ||
+                                      operator.name === "Next";
+
         return (
-            <div className={cx("pt2", className)}>
+            // apply flex to align the operator selector and the "Widget" if necessary
+            <div className={cx("border-top pt2", { "flex align-center": needsHorizontalLayout })}>
                 <DateOperatorSelector
                     operator={operator && operator.name}
                     operators={operators}
