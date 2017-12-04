@@ -137,14 +137,14 @@
   `model-id` as the sole paramenter; functions that don't use the param discard it via `u/drop-first-arg`.
 
      ((filter->option->fn :recent) model-id) -> (cards:recent)"
-  {:all           (u/drop-first-arg cards:all)
-   :mine          (u/drop-first-arg cards:mine)
-   :fav           (u/drop-first-arg cards:fav)
-   :database      cards:database
-   :table         cards:table
-   :recent        (u/drop-first-arg cards:recent)
-   :popular       (u/drop-first-arg cards:popular)
-   :archived      (u/drop-first-arg cards:archived)})
+  {:all      (u/drop-first-arg cards:all)
+   :mine     (u/drop-first-arg cards:mine)
+   :fav      (u/drop-first-arg cards:fav)
+   :database cards:database
+   :table    cards:table
+   :recent   (u/drop-first-arg cards:recent)
+   :popular  (u/drop-first-arg cards:popular)
+   :archived (u/drop-first-arg cards:archived)})
 
 (defn- ^:deprecated card-has-label? [label-slug card]
   (contains? (set (map :slug (:labels card))) label-slug))

@@ -1,4 +1,15 @@
 (ns metabase.driver
+  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+  introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
+  `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
+  below.
+
+  JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
+  implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
+  found in `metabase.driver.generic-sql`.
+
+  This namespace also contains various other functions for fetching drivers, testing database connections, and the
+  like."
   (:require [clj-time.format :as tformat]
             [clojure.tools.logging :as log]
             [medley.core :as m]

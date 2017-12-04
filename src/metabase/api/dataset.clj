@@ -22,7 +22,7 @@
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            org.apache.poi.ss.usermodel.Cell))
 
-;;; ------------------------------------------------------------ Constants ------------------------------------------------------------
+;;; --------------------------------------------------- Constants ----------------------------------------------------
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -38,7 +38,7 @@
    :max-results-bare-rows max-results-bare-rows})
 
 
-;;; ------------------------------------------------------------ Running a Query Normally ------------------------------------------------------------
+;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
 (defn- query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`.
@@ -64,16 +64,17 @@
       {:executed-by api/*current-user-id*, :context :ad-hoc, :card-id source-card-id, :nested? (boolean source-card-id)})))
 
 
-;;; ------------------------------------------------------------ Downloading Query Results in Other Formats ------------------------------------------------------------
+;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
-;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the implementations
-;; we've already defined for encoding things as JSON. These implementations live in `metabase.middleware`.
+;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
+;; implementations we've already defined for encoding things as JSON. These implementations live in
+;; `metabase.middleware`.
 (defmethod spreadsheet/set-cell! Object [^Cell cell, value]
   (when (= (.getCellType cell) Cell/CELL_TYPE_FORMULA)
     (.setCellType cell Cell/CELL_TYPE_STRING))
-  ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and use the resulting value
-  ;; as the cell's new String value.
-  ;; There might be some more efficient way of doing this but I'm not sure what it is.
+  ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
+  ;; use the resulting value as the cell's new String value. There might be some more efficient way of doing this but
+  ;; I'm not sure what it is.
   (.setCellValue cell (str (-> (json/generate-string {:v value})
                                (json/parse-string keyword)
                                :v))))
@@ -113,9 +114,10 @@
   (apply s/enum (keys export-formats)))
 
 (defn export-format->context
-  "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results in EXPORT-FORAMT.
+  "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
+  in EXPORT-FORAMT.
 
-     (export-format->context :json) ;-> :json-download"
+    (export-format->context :json) ;-> :json-download"
   [export-format]
   (or (get-in export-formats [export-format :context])
       (throw (Exception. (str "Invalid export format: " export-format)))))
@@ -154,15 +156,15 @@
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
 
-;;; ------------------------------------------------------------ Other Endpoints ------------------------------------------------------------
+;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
 ;; TODO - this is no longer used. Should we remove it?
 (api/defendpoint POST "/duration"
   "Get historical query execution duration."
   [:as {{:keys [database], :as query} :body}]
   (api/read-check Database database)
-  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if there's no data there.
-  ;; if we still can't find relevant info, just default to 0
+  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
+  ;; there's no data there. If we still can't find relevant info, just default to 0
   {:average (or (query/average-execution-time-ms (qputil/query-hash query))
                 (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
                 0)})

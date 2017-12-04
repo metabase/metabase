@@ -29,25 +29,29 @@
            (= (:aggregation-type (first aggregations)) :rows))))
 
 (defn query->remark
-  "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
-   See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
-  ^String [{{:keys [executed-by query-hash query-type], :as info} :info}]
+  "Generate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being
+  executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
+  for more information."  ^String [{{:keys [executed-by query-hash query-type], :as info} :info}]
   (str "Metabase" (when info
                     (assert (instance? (Class/forName "[B") query-hash))
-                    (format ":: userID: %s queryType: %s queryHash: %s" executed-by query-type (codecs/bytes->hex query-hash)))))
+                    (format ":: userID: %s queryType: %s queryHash: %s"
+                            executed-by query-type (codecs/bytes->hex query-hash)))))
 
 
-;;; ------------------------------------------------------------ Normalization ------------------------------------------------------------
+;;; ------------------------------------------------- Normalization --------------------------------------------------
 
-;; The following functions make it easier to deal with MBQL queries, which are case-insensitive, string/keyword insensitive, and underscore/hyphen insensitive.
-;; These should be preferred instead of assuming the frontend will always pass in clauses the same way, since different variation are all legal under MBQL '98.
+;; The following functions make it easier to deal with MBQL queries, which are case-insensitive, string/keyword
+;; insensitive, and underscore/hyphen insensitive.  These should be preferred instead of assuming the frontend will
+;; always pass in clauses the same way, since different variation are all legal under MBQL '98.
 
-;; TODO - In the future it might make sense to simply walk the entire query and normalize the whole thing when it comes in. I've tried implementing middleware
-;; to do that but it ended up breaking a few things that wrongly assume different clauses will always use a certain case (e.g. SQL `:template_tags`). Fixing
-;; all of that is out-of-scope for the nested queries PR but should possibly be revisited in the future.
+;; TODO - In the future it might make sense to simply walk the entire query and normalize the whole thing when it
+;; comes in. I've tried implementing middleware to do that but it ended up breaking a few things that wrongly assume
+;; different clauses will always use a certain case (e.g. SQL `:template_tags`). Fixing all of that is out-of-scope
+;; for the nested queries PR but should possibly be revisited in the future.
 
 (s/defn ^:always-validate normalize-token :- s/Keyword
-  "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased keyword."
+  "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
+  keyword."
   [token :- su/KeywordOrString]
   (-> (name token)
       str/lower-case
@@ -100,14 +104,16 @@
         :else                         (recur m                more)))))
 
 
-;;; ------------------------------------------------------------ Hashing ------------------------------------------------------------
+;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
 (defn- select-keys-for-hashing
   "Return QUERY with only the keys relevant to hashing kept.
-   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query producing different hashes.)"
+  (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
+  producing different hashes.)"
   [query]
   {:pre [(map? query)]}
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters :constraints])]
+  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters
+                                                                        :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters))))
