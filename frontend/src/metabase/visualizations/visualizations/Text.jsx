@@ -41,6 +41,7 @@ export default class Text extends Component {
     static disableSettingsConfig = true;
     static noHeader = true;
     static supportsSeries = false;
+    static hidden = true;
 
     static minSize = { width: 4, height: 3 };
 
