@@ -24,7 +24,7 @@
 ;;; |                                                       JOB LOGIC                                                        |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate job-context->database :- DatabaseInstance
+(s/defn ^:private job-context->database :- DatabaseInstance
   "Get the Database referred to in JOB-CONTEXT. Guaranteed to return a valid Database."
   [job-context]
   (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
@@ -67,27 +67,27 @@
 
 ;; These getter functions are not strictly neccesary but are provided primarily so we can get some extra validation by using them
 
-(s/defn ^:private ^:always-validate job-key :- JobKey
+(s/defn ^:private job-key :- JobKey
   "Return an appropriate string key for the job described by TASK-INFO for DATABASE-OR-ID."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (jobs/key (format "metabase.task.%s.job.%d" (name (:key task-info)) (u/get-id database))))
 
-(s/defn ^:private ^:always-validate trigger-key :- TriggerKey
+(s/defn ^:private trigger-key :- TriggerKey
   "Return an appropriate string key for the trigger for TASK-INFO and DATABASE-OR-ID."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/get-id database))))
 
-(s/defn ^:private ^:always-validate cron-schedule :- cron-util/CronScheduleString
+(s/defn ^:private cron-schedule :- cron-util/CronScheduleString
   "Fetch the appropriate cron schedule string for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
-(s/defn ^:private ^:always-validate job-class :- Class
+(s/defn ^:private job-class :- Class
   "Get the Job class for TASK-INFO."
   [task-info :- TaskInfo]
   (:job-class task-info))
 
-(s/defn ^:private ^:always-validate description :- s/Str
+(s/defn ^:private description :- s/Str
   "Return an appropriate description string for a job/trigger for Database described by TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/get-id database)))
@@ -97,7 +97,7 @@
 ;;; |                                                DELETING TASKS FOR A DB                                                 |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate delete-task!
+(s/defn ^:private delete-task!
   "Cancel a single sync job for DATABASE-OR-ID and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (let [job-key     (job-key database task-info)
@@ -105,7 +105,7 @@
     (log/debug (u/format-color 'red "Unscheduling task for Database %d: job: %s; trigger: %s" (u/get-id database) (.getName job-key) (.getName trigger-key)))
     (task/delete-task! job-key trigger-key)))
 
-(s/defn ^:always-validate unschedule-tasks-for-db!
+(s/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tassks for DATABASE-OR-ID."
   [database :- DatabaseInstance]
   (doseq [task-info task-infos]
@@ -116,7 +116,7 @@
 ;;; |                                             (RE)SCHEDULING TASKS FOR A DB                                              |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate job :- JobDetail
+(s/defn ^:private job :- JobDetail
   "Build a Quartz Job for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (jobs/build
@@ -125,7 +125,7 @@
    (jobs/using-job-data {"db-id" (u/get-id database)})
    (jobs/with-identity (job-key database task-info))))
 
-(s/defn ^:private ^:always-validate trigger :- CronTrigger
+(s/defn ^:private trigger :- CronTrigger
   "Build a Quartz Trigger for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/build
@@ -139,7 +139,7 @@
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
 
-(s/defn ^:private ^:always-validate schedule-task-for-db!
+(s/defn ^:private schedule-task-for-db!
   "Schedule a new Quartz job for DATABASE and TASK-INFO."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (let [job     (job database task-info)
@@ -148,7 +148,7 @@
     (task/schedule-task! job trigger)))
 
 
-(s/defn ^:always-validate schedule-tasks-for-db!
+(s/defn schedule-tasks-for-db!
   "Schedule all the different sync jobs we have for DATABASE.
    Unschedules any existing jobs."
   [database :- DatabaseInstance]

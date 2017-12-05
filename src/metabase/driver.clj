@@ -428,7 +428,7 @@
   10000)
 
 ;; TODO - move this to the metadata-queries namespace or something like that instead
-(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+(s/defn ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)

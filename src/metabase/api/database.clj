@@ -162,7 +162,7 @@
        "Map of expanded schedule maps")
     "value must be a valid map of schedule maps for a DB."))
 
-(s/defn ^:private ^:always-validate expanded-schedules [db :- DatabaseInstance]
+(s/defn ^:private expanded-schedules [db :- DatabaseInstance]
   {:cache_field_values (cron-util/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (cron-util/cron-string->schedule-map (:metadata_sync_schedule db))})
 
@@ -322,7 +322,7 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(s/defn ^:private ^:always-validate test-connection-details :- su/Map
+(s/defn ^:private test-connection-details :- su/Map
   "Try a making a connection to database ENGINE with DETAILS.
    Tries twice: once with SSL, and a second time without if the first fails.
    If either attempt is successful, returns the details used to successfully connect.
@@ -348,7 +348,7 @@
   {(s/optional-key :metadata_sync_schedule)      cron-util/CronScheduleString
    (s/optional-key :cache_field_values_schedule) cron-util/CronScheduleString})
 
-(s/defn ^:always-validate schedule-map->cron-strings :- CronSchedulesMap
+(s/defn schedule-map->cron-strings :- CronSchedulesMap
   "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
    Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
    insert/update."

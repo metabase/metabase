@@ -9,12 +9,12 @@
             [schema.core :as s]))
 
 
-(s/defn ^:private ^:always-validate cannot-be-category? :- s/Bool
+(s/defn ^:private cannot-be-category? :- s/Bool
   [base-type :- su/FieldType]
   (or (isa? base-type :type/DateTime)
       (isa? base-type :type/Collection)))
 
-(s/defn ^:always-validate infer-is-category :- (s/maybe i/FieldInstance)
+(s/defn infer-is-category :- (s/maybe i/FieldInstance)
   "Classifier that attempts to determine whether FIELD ought to be marked as a Category based on its distinct count."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   (when-not (:special_type field)

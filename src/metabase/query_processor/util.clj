@@ -49,7 +49,7 @@
 ;; different clauses will always use a certain case (e.g. SQL `:template_tags`). Fixing all of that is out-of-scope
 ;; for the nested queries PR but should possibly be revisited in the future.
 
-(s/defn ^:always-validate normalize-token :- s/Keyword
+(s/defn normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- su/KeywordOrString]

@@ -3,7 +3,7 @@
   (:require [metabase.sync.interface :as i]
             [schema.core :as s]))
 
-(s/defn ^:always-validate global-fingerprint :- i/GlobalFingerprint
+(s/defn global-fingerprint :- i/GlobalFingerprint
   "Generate a fingerprint of global information for Fields of all types."
   [values :- i/FieldSample]
   ;; TODO - this logic isn't as nice as the old logic that actually called the DB
