@@ -218,14 +218,14 @@
 ;; As a basic step to make sure the Metadata is valid we'll also pass a simple checksum and have the frontend pass it back to us.
 ;; See the QP `results-metadata` middleware namespace for more details
 
-(s/defn ^:private ^:always-validate result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
   (binding [qpi/*disable-qp-logging* true]
     (get-in (qp/process-query query) [:data :results_metadata :columns])))
 
-(s/defn ^:private ^:always-validate result-metadata :- (s/maybe results-metadata/ResultsMetadata)
+(s/defn ^:private result-metadata :- (s/maybe results-metadata/ResultsMetadata)
   "Get the right results metadata for this CARD. We'll check to see whether the METADATA passed in seems valid;
    otherwise we'll run the query ourselves to get the right values."
   [query metadata checksum]

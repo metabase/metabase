@@ -255,7 +255,7 @@
                        *allow-queries-with-no-executor-id*))
                  "executed-by cannot be nil unless *allow-queries-with-no-executor-id* is true"))
 
-(s/defn ^:always-validate process-query-and-save-execution!
+(s/defn process-query-and-save-execution!
   "Process and run a json based dataset query and return results.
 
   Takes 2 arguments:
