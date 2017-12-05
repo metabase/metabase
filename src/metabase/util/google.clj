@@ -1,4 +1,4 @@
-(ns metabase.driver.google
+(ns metabase.util.google
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
   (:require [clojure.tools.logging :as log]
             [metabase

@@ -12,8 +12,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver
-             [generic-sql :as sql]
-             [google :as google]]
+             [generic-sql :as sql]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.models
@@ -21,7 +20,10 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util
+             [google :as google]
+             [honeysql-extensions :as hx]]
+
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
