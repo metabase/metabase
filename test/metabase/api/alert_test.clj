@@ -577,7 +577,8 @@
   (with-alert-setup
    [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
     (do
-      ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id))
+      (et/with-expected-messages 1
+        ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id)))
       (count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id))))
     (et/regex-email-bodies #"https://metabase.com/testmb"
                            #"Foo")]))
@@ -602,7 +603,8 @@
   (with-alert-setup
    [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
     (do
-      ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id))
+      (et/with-expected-messages 1
+        ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id)))
       (count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id))))
     (et/regex-email-bodies #"https://metabase.com/testmb"
                            #"Foo")]))
@@ -627,7 +629,8 @@
   (with-alert-setup
    [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
     (do
-      ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id))
+      (et/with-expected-messages 1
+        ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id)))
       (count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id))))
     (et/regex-email-bodies #"https://metabase.com/testmb"
                            #"Foo")]))
