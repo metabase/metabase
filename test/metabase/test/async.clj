@@ -30,5 +30,7 @@
                   (future-done? f))
       @f))
   ; Wait for the transaction to finish
-  (while-with-timeout (not (async/done? (ComputationJob job-id))))
+  (while-with-timeout (let [job (ComputationJob job-id)]
+                        (not (or (async/done? job)
+                                 (async/canceled? job)))))
   (async/result (ComputationJob job-id)))
