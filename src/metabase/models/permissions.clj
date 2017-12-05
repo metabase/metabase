@@ -293,7 +293,7 @@
               tables))
 
 ;; TODO - if a DB has no tables, then it won't show up in the permissions graph!
-(s/defn ^:always-validate graph :- PermissionsGraph
+(s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned databases."
   []
   (let [permissions (db/select [Permissions :group_id :object])
@@ -406,13 +406,13 @@
 
 ;;; ---------------------------------------- Graph Updating Fns ----------------------------------------
 
-(s/defn ^:private ^:always-validate update-table-perms!
+(s/defn ^:private update-table-perms!
   [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, table-id :- su/IntGreaterThanZero, new-table-perms :- SchemaPermissionsGraph]
   (case new-table-perms
     :all  (grant-permissions! group-id db-id schema table-id)
     :none (revoke-permissions! group-id db-id schema table-id)))
 
-(s/defn ^:private ^:always-validate update-schema-perms!
+(s/defn ^:private update-schema-perms!
   [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, new-schema-perms :- SchemaPermissionsGraph]
   (cond
     (= new-schema-perms :all)  (do (revoke-permissions! group-id db-id schema) ; clear out any existing related permissions
@@ -421,7 +421,7 @@
     (map? new-schema-perms)    (doseq [[table-id table-perms] new-schema-perms]
                                  (update-table-perms! group-id db-id schema table-id table-perms))))
 
-(s/defn ^:private ^:always-validate update-native-permissions!
+(s/defn ^:private update-native-permissions!
   [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, new-native-perms :- NativePermissionsGraph]
   ;; revoke-native-permissions! will delete all entires that would give permissions for native access.
   ;; Thus if you had a root DB entry like `/db/11/` this will delete that too.
@@ -436,7 +436,7 @@
     :none  nil))
 
 
-(s/defn ^:private ^:always-validate update-db-permissions!
+(s/defn ^:private update-db-permissions!
   [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, new-db-perms :- StrictDBPermissionsGraph]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-permissions! group-id db-id new-native-perms))
@@ -448,7 +448,7 @@
       (map? schemas)    (doseq [schema (keys schemas)]
                           (update-schema-perms! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))
 
-(s/defn ^:private ^:always-validate update-group-permissions!
+(s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero, new-group-perms :- StrictGroupPermissionsGraph]
   (doseq [[db-id new-db-perms] new-group-perms]
     (update-db-permissions! group-id db-id new-db-perms)))
@@ -482,7 +482,7 @@
                      (u/pprint-to-str 'magenta old)
                      (u/pprint-to-str 'blue new))))
 
-(s/defn ^:always-validate update-graph!
+(s/defn update-graph!
   "Update the permissions graph, making any changes neccesary to make it match NEW-GRAPH.
    This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
