@@ -4,17 +4,18 @@ import React, { Component } from "react";
 
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po';
 import DatePicker from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
+import Checkbox from "metabase/components/CheckBox";
 
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
 import { isDate } from "metabase/lib/schema_metadata";
-import { formatField, singularize } from "metabase/lib/formatting";
+import { formatField, singularize, pluralize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
@@ -105,6 +106,43 @@ export default class FilterPopover extends Component {
         let newFilter: FieldFilter = [...filter]
         newFilter[index + 2] = value;
         this.setState({ filter: newFilter });
+    }
+
+    hasCurrentPeriod = () => {
+        // determine if there is an options map on the date filter and if so
+        // use this to indicate that current is included
+        // TODO this is dumb and brittle, just a starting point
+        const has = typeof this.state.filter[4] === "object"
+        console.log('has current period?', has)
+        return has
+    }
+
+    toggleCurrentPeriod = () => {
+        console.log('called?')
+        const { filter  } = this.state;
+        const { query } = this.props;
+        const { field } = Query.getFieldTarget(filter[1], query.table());
+
+        // only do this if we're working with a date
+        if(!isDate(field)) {
+            return false;
+        }
+
+        let newFilter = [...filter]
+
+        if(this.hasCurrentPeriod()) {
+            newFilter = newFilter.slice(0, -1)
+        } else {
+            newFilter = newFilter.concat([{
+                "include-current": true
+            }])
+        }
+
+        console.log('newfilter', newFilter)
+
+        this.setState({
+            filter: newFilter
+        })
     }
 
     setValues = (values: any[]) => {
@@ -241,6 +279,7 @@ export default class FilterPopover extends Component {
         const { query } = this.props;
         const { filter } = this.state;
         const [operator, fieldRef] = filter;
+
         if (operator === "SEGMENT" || fieldRef == undefined) {
             return (
                 <div className="FilterPopover">
@@ -288,10 +327,32 @@ export default class FilterPopover extends Component {
                             { this.renderPicker(filter, field) }
                         </div>
                     }
-                    <div className="FilterPopover-footer p1">
+                    <div className="FilterPopover-footer border-top flex align-center p2">
+                        { isDate(field) && (
+                            <div className="flex align-center">
+                                <Checkbox
+                                    // TODO - this is getting called twice somehow
+                                    onChange={() => this.toggleCurrentPeriod()}
+                                    checked={this.hasCurrentPeriod()}
+                                />
+                                {
+                                    /*
+                                         days = today
+                                         weeks = this week
+                                         months = this month
+                                         years = this year
+                                         minutes = this minute
+                                         hours = this hour
+                                    */
+                                }
+                                <label className="ml1">
+                                    {jt`Include ${<b>{ pluralize('filter')}</b>} so far`}
+                                </label>
+                            </div>
+                        )}
                         <button
                             data-ui-tag="add-filter"
-                            className={cx("Button Button--purple full", { "disabled": !this.isValid() })}
+                            className={cx("Button Button--purple ml-auto", { "disabled": !this.isValid() })}
                             onClick={() => this.commitFilter(this.state.filter)}
                         >
                             {!this.props.filter ? t`Add filter` : t`Update filter`}

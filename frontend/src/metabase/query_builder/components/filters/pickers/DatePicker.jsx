@@ -270,9 +270,11 @@ export default class DatePicker extends Component {
         // certain types of operators need to have a horizontal layout
         // where the value is chosen next to the operator selector
         // TODO - there's no doubt a cleaner _ way to do this
-        const needsHorizontalLayout = operator.name === "Current"  ||
-                                      operator.name === "Previous" ||
-                                      operator.name === "Next";
+        const needsHorizontalLayout = operator && (
+            operator.name === "Current"  ||
+            operator.name === "Previous" ||
+            operator.name === "Next"
+        );
 
         return (
             // apply flex to align the operator selector and the "Widget" if necessary
