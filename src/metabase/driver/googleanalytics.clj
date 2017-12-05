@@ -4,9 +4,9 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.google :as google]
             [metabase.driver.googleanalytics.query-processor :as qp]
-            [metabase.models.database :refer [Database]])
+            [metabase.models.database :refer [Database]]
+            [metabase.util.google :as google])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes]
            [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]

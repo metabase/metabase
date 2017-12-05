@@ -3,13 +3,13 @@
             [environ.core :refer [env]]
             [medley.core :as m]
             [metabase.driver
-             [bigquery :as bigquery]
-             [google :as google]]
+             [bigquery :as bigquery]]
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
             [metabase.test.util :refer [resolve-private-vars]]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.google :as google])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
            [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table
