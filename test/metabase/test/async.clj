@@ -7,11 +7,12 @@
 (defn result!
   "Blocking version of async/result."
   [job-id]
-  (let [f (-> #'async/running-jobs
-              deref                  ; var
-              deref                  ; atom
-              (get job-id))]
-    (when (and f (not (future-cancelled? f)))
+  (when-let [f (-> #'async/running-jobs
+                   deref                  ; var
+                   deref                  ; atom
+                   (get job-id))]
+    (when-not (or (future-cancelled? f)
+                  (future-done? f))
       @f))
   (async/result (ComputationJob job-id)))
 
@@ -20,7 +21,8 @@
   10000000)
 
 (defmacro while-with-timeout
-  "Like while except it runs a maximum of `*max-while-runtime*` milliseconds."
+  "Like `clojure.core/while` except it runs a maximum of `*max-while-runtime*`
+   milliseconds (assuming running time for one iteration is << `*max-while-runtime*`)."
   [test & body]
   `(let [start# (System/currentTimeMillis)]
      (while (and ~test
