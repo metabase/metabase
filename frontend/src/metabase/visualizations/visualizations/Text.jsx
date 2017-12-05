@@ -43,7 +43,7 @@ export default class Text extends Component {
     static supportsSeries = false;
     static hidden = true;
 
-    static minSize = { width: 4, height: 3 };
+    static minSize = { width: 4, height: 2 };
 
     static checkRenderable() {
         // text can always be rendered, nothing needed here
@@ -97,7 +97,7 @@ export default class Text extends Component {
                     }
                     <a
                         className={cx("text-grey-3 text-small text-bold", styles["text-card-help"])}
-                        href="https://www.metabase.com/docs/latest/"
+                        href="https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet"
                         target={window.OSX ? null : "_blank"}
                     >
                         Styling with Markdown is supported
@@ -142,7 +142,7 @@ const TextActionButtons = ({ actionButtons, isShowingRenderedOutput, onEdit, onP
                 >
                     <span className="flex align-center">
                         <span className="flex">
-                            <Icon name="eye" style={{ top: 0, left: 0 }} size={HEADER_ICON_SIZE} />
+                            <Icon name="eye" style={{ top: 0, left: 0 }} size={20} />
                         </span>
                     </span>
                 </a>

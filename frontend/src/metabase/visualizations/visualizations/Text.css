@@ -6,23 +6,25 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 1em 2em;
+  padding: 1em 0 1em 1.5em;
   color: #525658;
 }
 :local .Text.dashboard-is-editing {
-  padding: 2.8em 1em var(--text-card-padding) 1em;
+  padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
 }
 :local .Text .text-card-textarea {
   padding: .75em;
-  font-size: 12.64px;
-  line-height: 20px;
-  font-family: Monaco, monospace;
+  font-size: 1.143em;
+  line-height: 1.602em;
   pointer-events: all;
   resize: none;
   outline: none;
+  border-radius: var(--default-border-radius);
 }
 :local .Text .text-card-textarea:focus {
-  border-color: var(--input-border-active-color);
+  border-color: var(--brand-color);
+  background-color: white;
+  box-shadow: 0 1px 7px rgba(0, 0, 0, .1);
 }
 :local .Text .text-card-markdown {
   overflow: scroll;
@@ -40,41 +42,46 @@
 :local .Text .text-card-markdown h1 {
   font-weight: 900;
   font-size: 1.831em;
-  margin-top: 1em;
+  margin: .375em 0 .25em 0;
+  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h2 {
   font-size: 1.627em;
-  margin-top: 1em;
+  margin: .375em 0 .25em 0;
+  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h3 {
   font-size: 1.447em;
-  margin-top: 1em;
+  margin: .375em 0 .25em 0;
+  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h4 {
   font-size: 1.286em;
-  margin-top: 1em;
+  margin: .375em 0 .25em 0;
+  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h5 {
   font-size: 1.143em;
-  margin-top: 1em;
+  margin: .375em 0 .25em 0;
+  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown p {
   font-size: 1.143em;
   line-height: 1.602em;
-  padding-bottom: 0;
-  margin-bottom: 0;
+  padding: 0;
+  margin: 0 1.5em .5em 0;
 }
 
 :local .text-card-markdown ul {
   font-size: 16px;
-  margin: 1em 0;
-  padding-left: 1em;
+  margin: .5em 0 .5em 0;
+  padding: 0 1.5em 0 1em;
   list-style-type: disc;
 }
 :local .text-card-markdown ol {
   font-size: 16px;
-  margin: 1em 0;
-  padding-left: 1em;
+  margin: .5em 0 .5em 0;
+  padding: 0 1.5em 0 1em;
   list-style-type: decimal;
 }
 
@@ -108,8 +115,8 @@
   border-collapse: collapse;
   border-spacing: 0;
 
-  margin-top: 2em;
-  width: 100%;
+  margin: 1em 0 1em 0;
+  width: 95%;
   font-family: Monaco, monospace;
   font-size: 12.64px;
   line-height: 0.76rem;
@@ -132,16 +139,16 @@
   font-size: 12.64px;
   line-height: 20px;
   padding: 1em;
+  margin-right: 1.5em;
   display: block;
   background-color: var(--base-grey);
 }
 
 :local .text-card-markdown blockquote {
   color: var(--grey-4);
-  padding: 1em;
   border-left: 5px solid var(--grey-1);
-  padding: 0 0 0 17px;
-  margin: 0 0 0 1em;
+  padding: 0 1.5em 0 17px;
+  margin: .5em 0 .5em 1em;
 }
 :local .text-card-markdown blockquote p {
   padding: 0;
@@ -149,6 +156,6 @@
 }
 
 :local .text-card-markdown img {
-  width: 100%;
+  width: 95%;
   height: auto;
 }

@@ -261,7 +261,7 @@ export default class DashboardHeader extends Component {
             buttons.push(
                 <Tooltip tooltip="Add a text box">
                     <a data-metabase-event="Dashboard;Add Text Box" key="add-text" title="Add a text box" className="text-brand-hover cursor-pointer" onClick={() => this.onAddTextBox()}>
-                        <Icon name="string" size={16} />
+                        <Icon name="string" size={20} />
                     </a>
                 </Tooltip>
             );
@@ -273,7 +273,7 @@ export default class DashboardHeader extends Component {
                     triggerElement={
                         <Tooltip tooltip="Revision history">
                             <span data-metabase-event={"Dashboard;Revisions"}>
-                                <Icon className="text-brand-hover" name="history" size={16} />
+                                <Icon className="text-brand-hover" name="history" size={18} />
                             </span>
                         </Tooltip>
                     }
