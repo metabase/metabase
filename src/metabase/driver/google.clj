@@ -90,3 +90,8 @@
                     (.setTransport http-transport)))
       (.setAccessToken  access-token)
       (.setRefreshToken refresh-token))))
+
+(defn -init-driver
+  "Nothing to init as this is code used by the google drivers, but is not a driver itself"
+  []
+  true)
