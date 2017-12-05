@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.expand
-  "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
-   construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
+  "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be
+  needed to construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
@@ -48,14 +48,15 @@
     f))
 
 (s/defn ^:ql ^:always-validate field-literal :- FieldLiteral
-  "Generic reference to a Field by FIELD-NAME. This is intended for use when using nested queries so as to allow one to refer to the fields coming back from
-   the source query."
+  "Generic reference to a Field by FIELD-NAME. This is intended for use when using nested queries so as to allow one
+   to refer to the fields coming back from the source query."
   [field-name :- su/KeywordOrString, field-type :- su/KeywordOrString]
   (i/map->FieldLiteral {:field-name (u/keyword->qualified-name field-name), :base-type (keyword field-type)}))
 
 (s/defn ^:ql ^:always-validate named :- i/Aggregation
   "Specify a CUSTOM-NAME to use for a top-level AGGREGATION-OR-EXPRESSION in the results.
-   (This will probably be extended to support Fields in the future, but for now, only the `:aggregation` clause is supported.)"
+   (This will probably be extended to support Fields in the future, but for now, only the `:aggregation` clause is
+   supported.)"
   {:added "0.22.0"}
   [aggregation-or-expression :- i/Aggregation, custom-name :- su/NonBlankString]
   (assoc aggregation-or-expression :custom-name custom-name))
@@ -63,7 +64,8 @@
 (s/defn ^:ql ^:always-validate datetime-field :- i/AnyField
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
   ([f _ unit]
-   (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. [:datetime-field <field> :as <unit>] is deprecated. "
+   (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. "
+                                          "[:datetime-field <field> :as <unit>] is deprecated. "
                                           "Prefer [:datetime-field <field> <unit>] instead.")))
    (datetime-field f unit))
   ([f unit]
@@ -75,8 +77,8 @@
      :else                       (assoc (field f) :datetime-unit (qputil/normalize-token unit)))))
 
 (s/defn ^:ql ^:always-validate fk-> :- FieldPlaceholder
-  "Reference to a `Field` that belongs to another `Table`. DEST-FIELD-ID is the ID of this Field, and FK-FIELD-ID is the ID of the foreign key field
-   belonging to the *source table* we should use to perform the join.
+  "Reference to a `Field` that belongs to another `Table`. DEST-FIELD-ID is the ID of this Field, and FK-FIELD-ID is
+   the ID of the foreign key field belonging to the *source table* we should use to perform the join.
 
    `fk->` is so named because you can think of it as \"going through\" the FK Field to get to the dest Field:
 
@@ -121,7 +123,8 @@
 (s/defn ^:ql ^:always-validate relative-datetime :- RelativeDatetime
   "Value that represents a point in time relative to each moment the query is ran, e.g. \"today\" or \"1 year ago\".
 
-   With `:current` as the only arg, refer to the current point in time; otherwise N is some number and UNIT is a unit like `:day` or `:year`.
+   With `:current` as the only arg, refer to the current point in time; otherwise N is some number and UNIT is a unit
+   like `:day` or `:year`.
 
      (relative-datetime :current)
      (relative-datetime -31 :day)"
@@ -248,14 +251,16 @@
                         (equality-filter filter-type compound-fn f v)))))
 
 (def ^:ql ^{:arglists '([f v & more])} =
-  "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F matches *any* of the values (i.e.`IN`)
+  "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F
+  matches *any* of the values (i.e.`IN`)
 
      (= f v)
      (= f v1 v2) ; same as (or (= f v1) (= f v2))"
   (partial equality-filter := or))
 
 (def ^:ql ^{:arglists '([f v & more])} !=
-  "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F does not match *any* of the values (i.e. `NOT IN`)
+  "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F
+  does not match *any* of the values (i.e. `NOT IN`)
 
      (!= f v)
      (!= f v1 v2) ; same as (and (!= f v1) (!= f v2))"
@@ -294,7 +299,8 @@
 (s/defn ^:ql ^:always-validate not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.
 
-   For the sake of simplifying driver implementation, `not` automatically translates its argument to a simpler, logically equivalent form whenever possible:
+   For the sake of simplifying driver implementation, `not` automatically translates its argument to a simpler,
+   logically equivalent form whenever possible:
 
      (not (and x y)) -> (or (not x) (not y))
      (not (not x))   -> x
@@ -318,7 +324,9 @@
                             (> field max-val)))
              (i/strict-map->NotFilter {:compound-type :not, :subclause clause})))))
 
-(def ^:ql ^{:arglists '([f s]), :added "0.15.0"} does-not-contain "Filter subclause. Return results where F does not start with the string S." (comp not contains))
+(def ^:ql ^{:arglists '([f s]), :added "0.15.0"} does-not-contain
+  "Filter subclause. Return results where F does not start with the string S."
+  (comp not contains))
 
 (s/defn ^:ql ^:always-validate time-interval :- i/Filter
   "Filter subclause. Syntactic sugar for specifying a specific time interval.
@@ -463,10 +471,11 @@
 
 ;;; Metric & Segment handlers
 
-;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in `metabase.query-processor.macros` before
-;; this namespace ever even sees the query. But since the GA driver's queries consist of custom `metric` and `segment` clauses we need to at least
-;; accept them without barfing so we can expand a query in order to check what permissions it requires.
-;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the rest of the MBQL clauses
+;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in
+;; `metabase.query-processor.macros` before this namespace ever even sees the query. But since the GA driver's queries
+;; consist of custom `metric` and `segment` clauses we need to at least accept them without barfing so we can expand a
+;; query in order to check what permissions it requires.  TODO - in the future, we should just make these functions
+;; expand Metric and Segment macros for consistency with the rest of the MBQL clauses
 (defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
 (defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
 
