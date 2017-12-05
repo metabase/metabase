@@ -7,12 +7,12 @@
 (defn result!
   "Blocking version of async/result."
   [job-id]
-  (some-> #'async/running-jobs   ; It might be that the job has finished and
-                                 ; cleand up already, hence some->
-          deref                  ; var
-          deref                  ; atom
-          (get job-id)
-          deref)                 ; future
+  (let [f (-> #'async/running-jobs
+              deref                  ; var
+              deref                  ; atom
+              (get job-id))]
+    (when (and f (not (future-cancelled? f)))
+      @f))
   (async/result (ComputationJob job-id)))
 
 (def ^:dynamic *max-while-runtime*
