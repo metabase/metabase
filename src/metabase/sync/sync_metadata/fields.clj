@@ -37,9 +37,17 @@
     (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithOptionalID)}))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                             CREATING / REACTIVATING FIELDS                                             |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+(s/defn ^:private field-metadata-name-for-logging :- s/Str
+  "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.
+
+      (field-metadata-name-for-logging table field-metadata) ; -> \"Table 'venues' Field 'name'\""
+  [table :- i/TableInstance, field-metadata :- TableMetadataFieldWithOptionalID]
+  (format "%s Field '%s'" (sync-util/name-for-logging table) (:name field-metadata)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         CREATING / REACTIVATING FIELDS                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private matching-inactive-field :- (s/maybe i/FieldInstance)
   "Return an inactive metabase Field that matches NEW-FIELD-METADATA, if any such Field existis."
@@ -83,14 +91,37 @@
       (create-or-reactivate-field! table nested-field (u/get-id metabase-field)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                               "RETIRING" INACTIVE FIELDS                                               |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            UPDATING FIELD TYPE INFO                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private update-field-metadata-if-needed!
+  "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed."
+  [table :- i/TableInstance, metabase-field :- TableMetadataFieldWithID, field-metadata :- i/TableMetadataField]
+  (let [{old-database-type :database-type, old-base-type :base-type} metabase-field
+        {new-database-type :database-type, new-base-type :base-type} field-metadata]
+    ;; If the driver is reporting a different `database-type` than what we have recorded in the DB, update it
+    (when-not (= old-database-type new-database-type)
+      (log/info (format "Database type of %s has changed from '%s' to '%s'."
+                        (field-metadata-name-for-logging table metabase-field)
+                        old-database-type new-database-type))
+      (db/update! Field (u/get-id metabase-field), :database_type new-database-type))
+    ;; Now do the same for `base-type`
+    (when-not (= old-base-type new-base-type)
+      (log/info (format "Base type of %s has changed from '%s' to '%s'."
+                        (field-metadata-name-for-logging table metabase-field)
+                        old-base-type new-base-type))
+      (db/update! Field (u/get-id metabase-field), :base_type new-base-type))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           "RETIRING" INACTIVE FIELDS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private retire-field!
   "Mark an OLD-FIELD belonging to TABLE as inactive if corresponding Field object exists."
   [table :- i/TableInstance, old-field :- TableMetadataFieldWithID]
-  (log/info (format "Marking %s Field '%s' as inactive." (sync-util/name-for-logging table) (:name old-field)))
+  (log/info (format "Marking %s as inactive." (field-metadata-name-for-logging table old-field)))
   (db/update! Field (:id old-field)
     :active false)
   ;; Now recursively mark and nested fields as inactive
@@ -98,9 +129,9 @@
     (retire-field! table nested-field)))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                               SYNCING FIELDS IN DB (CREATING, REACTIVATING, OR RETIRING)                               |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                           SYNCING FIELDS IN DB (CREATING, REACTIVATING, OR RETIRING)                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)
   "Find Metadata that matches FIELD-METADATA from a set of OTHER-METADATA, if any exists."
@@ -113,14 +144,20 @@
 
 (s/defn ^:private sync-field-instances!
   "Make sure the instances of Metabase Field are in-sync with the DB-METADATA."
-  [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}, our-metadata :- #{TableMetadataFieldWithID}, parent-id :- ParentID]
+  [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}, our-metadata :- #{TableMetadataFieldWithID}
+   parent-id :- ParentID]
   ;; Loop thru fields in DB-METADATA. Create/reactivate any fields that don't exist in OUR-METADATA.
   (doseq [db-field db-metadata]
-    (sync-util/with-error-handling (format "Error checking if Field '%s' needs to be created or reactivated" (:name db-field))
+    (sync-util/with-error-handling (format "Error checking if Field '%s' needs to be created or reactivated"
+                                           (:name db-field))
       (if-let [our-field (matching-field-metadata db-field our-metadata)]
-        ;; if field exists in both metadata sets then recursively check the nested fields
-        (when-let [db-nested-fields (seq (:nested-fields db-field))]
-          (sync-field-instances! table (set db-nested-fields) (:nested-fields our-field) (:id our-field)))
+        ;; if field exists in both metadata sets then...
+        (do
+          ;; ...make sure the data recorded about the Field such as database_type is up-to-date...
+          (update-field-metadata-if-needed! table our-field db-field)
+          ;; ...and then recursively check the nested fields.
+          (when-let [db-nested-fields (seq (:nested-fields db-field))]
+            (sync-field-instances! table (set db-nested-fields) (:nested-fields our-field) (:id our-field))))
         ;; otherwise if field doesn't exist, create or reactivate it
         (create-or-reactivate-field! table db-field parent-id))))
   ;; ok, loop thru Fields in OUR-METADATA. Mark Fields as inactive if they don't exist in DB-METADATA.
@@ -134,9 +171,9 @@
         (retire-field! table our-field)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                UPDATING FIELD METADATA                                                 |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            UPDATING FIELD METADATA                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private update-metadata!
   "Make sure things like PK status and base-type are in sync with what has come back from the DB."
@@ -160,9 +197,9 @@
           (update-metadata! table (set db-nested-fields) (u/get-id field)))))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                             FETCHING OUR CURRENT METADATA                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         FETCHING OUR CURRENT METADATA                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private add-nested-fields :- TableMetadataFieldWithID
   "Recursively add entries for any nested-fields to FIELD."
@@ -205,9 +242,9 @@
            (add-nested-fields field parent-id->fields)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                          FETCHING METADATA FROM CONNECTED DB                                           |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      FETCHING METADATA FROM CONNECTED DB                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private db-metadata :- #{i/TableMetadataField}
   "Fetch metadata about Fields belonging to a given TABLE directly from an external database by calling its
@@ -216,9 +253,9 @@
   (:fields (fetch-metadata/table-metadata database table)))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                PUTTING IT ALL TOGETHER                                                 |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUTTING IT ALL TOGETHER                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific TABLE."

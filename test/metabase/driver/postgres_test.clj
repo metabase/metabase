@@ -281,13 +281,13 @@
 
 ;; Make sure we're able to fingerprint TIME fields (#5911)
 (expect-with-engine :postgres
-  [#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}}}
-   #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}}}
-   #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1}
-                                                                          :type   {:type/Text {:percent-json    0.0
-                                                                                               :percent-url     0.0
-                                                                                               :percent-email   0.0
-                                                                                               :average-length 12.0}}}}]
+  #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}}}
+    #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}}}
+    #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1}
+                                                                           :type   {:type/Text {:percent-json    0.0
+                                                                                                :percent-url     0.0
+                                                                                                :percent-email   0.0
+                                                                                                :average-length 12.0}}}}}
   (do
     (drop-if-exists-and-create-db! "time_field_test")
     (let [details (i/database->connection-details pg-driver :db {:database-name "time_field_test"})]
@@ -301,4 +301,4 @@
                            "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
       (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
         (sync/sync-database! database)
-        (db/select [Field :name :fingerprint] :table_id (db/select-one-id Table :db_id (u/get-id database)))))))
+        (set (db/select [Field :name :fingerprint] :table_id (db/select-one-id Table :db_id (u/get-id database))))))))
