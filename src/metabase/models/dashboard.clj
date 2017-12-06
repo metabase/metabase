@@ -24,7 +24,7 @@
 (defn- dashcards->cards [dashcards]
   (when (seq dashcards)
     (for [dashcard dashcards
-          :when    (:card dashboard) ; skip over ones that are cardless, e.g. text-only DashCards
+          :when    (:card dashcard) ; skip over ones that are cardless, e.g. text-only DashCards
           card     (cons (:card dashcard) (:series dashcard))]
       card)))
 
