@@ -110,15 +110,15 @@
 (defn- card-with-name [card-name]
   (first (u/prog1 (db/select [Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
            (when (> (count <>) 1)
-             (throw (Exception. (tru "Could you be a little more specific? I found these cards with names that matched:\n{0}"
-                                     (format-cards <>))))))))
+             (throw (Exception. (str (tru "Could you be a little more specific? I found these cards with names that matched:\n{0}"
+                                          (format-cards <>)))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
     (integer? card-id-or-name)     (db/select-one [Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
-    :else                          (throw (Exception. (tru "I don't know what Card `{0}` is. Give me a Card ID or name." card-id-or-name)))))
+    :else                          (throw (Exception. (str (tru "I don't know what Card `{0}` is. Give me a Card ID or name." card-id-or-name))))))
 
 
 (defn ^:metabot show
@@ -135,7 +135,7 @@
                                              nil
                                              attachments)))
        (tru "Ok, just a second..."))
-     (throw (Exception. (tru "Not Found")))))
+     (throw (Exception. (str (tru "Not Found"))))))
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my wacky card")
   ([word & more]
    (show (str/join " " (cons word more)))))
