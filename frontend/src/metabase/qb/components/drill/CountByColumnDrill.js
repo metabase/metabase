@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { t } from "c-3po";
 import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
 import { isCategory } from "metabase/lib/schema_metadata";
 
@@ -26,7 +26,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         {
             name: "count-by-column",
             section: "distribution",
-            title: <span>Distribution</span>,
+            title: <span>{t`Distribution`}</span>,
             question: () =>
                 question
                     .summarize(["count"])

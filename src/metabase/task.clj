@@ -72,13 +72,13 @@
 ;;; |                                               SCHEDULING/DELETING TASKS                                                |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:always-validate schedule-task!
+(s/defn schedule-task!
   "Add a given job and trigger to our scheduler."
   [job :- JobDetail, trigger :- Trigger]
   (when-let [scheduler (scheduler)]
     (qs/schedule scheduler job trigger)))
 
-(s/defn ^:always-validate delete-task!
+(s/defn delete-task!
   "delete a task from the scheduler"
   [job-key :- JobKey, trigger-key :- TriggerKey]
   (when-let [scheduler (scheduler)]

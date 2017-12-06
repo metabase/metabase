@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
@@ -25,11 +25,11 @@ import * as metadataActions from "metabase/redux/metadata";
 
 
 const emptyStateData = {
-    title: "Metrics are the official numbers that your team cares about",
-    adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
-    message: "Metrics will appear here once your admins have created some",
+    title: t`Metrics are the official numbers that your team cares about`,
+    adminMessage: t`Defining common metrics for your team makes it even easier to ask questions`,
+    message: t`Metrics will appear here once your admins have created some`,
     image: "app/assets/img/metrics-list",
-    adminAction: "Learn how to create metrics",
+    adminAction: t`Learn how to create metrics`,
     adminLink: "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
 }
 
@@ -63,8 +63,8 @@ export default class MetricList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader 
-                    name="Metrics"
+                <ReferenceHeader
+                    name={t`Metrics`}
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?

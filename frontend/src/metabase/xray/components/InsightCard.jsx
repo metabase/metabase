@@ -168,7 +168,7 @@ export class SeasonalityInsight extends Component {
 
         return (
             <InsightText>
-                { jt`Your data has a ${ quality } seasonal compoment.` }
+                { jt`Your data has a ${ quality } seasonal component.` }
             </InsightText>
         )
     }

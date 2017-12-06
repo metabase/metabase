@@ -37,7 +37,8 @@
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
-                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
+                 [com.amazon.redshift/redshift-jdbc41-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
+                  "1.2.8.1005"]
                  [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient

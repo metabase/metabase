@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
@@ -114,7 +114,7 @@ export default class ChoroplethMap extends Component {
         const details = this._getDetails(this.props);
         if (!details) {
             return (
-                <div>unknown map</div>
+                <div>{t`unknown map`}</div>
             );
         }
 

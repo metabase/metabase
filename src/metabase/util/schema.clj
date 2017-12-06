@@ -7,6 +7,10 @@
             [metabase.util.password :as password]
             [schema.core :as s]))
 
+;; always validate all schemas in s/defn function declarations. See
+;; https://github.com/plumatic/schema#schemas-in-practice for details.
+(s/set-fn-validation! true)
+
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
    validation.

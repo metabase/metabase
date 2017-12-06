@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { assoc, assocIn } from "icepick";
+import { t } from 'c-3po';
 
 import RecipientPicker from "./RecipientPicker.jsx";
 
@@ -25,8 +26,8 @@ export const CHANNEL_ICONS = {
 };
 
 const CHANNEL_NOUN_PLURAL = {
-    "email": "Emails",
-    "slack": "Slack messages"
+    "email": t`Emails`,
+    "slack": t`Slack messages`
 };
 
 export default class PulseEditChannels extends Component {
@@ -197,8 +198,8 @@ export default class PulseEditChannels extends Component {
                     <SchedulePicker
                         schedule={_.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type") }
                         scheduleOptions={channelSpec.schedules}
-                        textBeforeInterval="Sent"
-                        textBeforeSendTime={`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || "Messages"} will be sent at `}
+                        textBeforeInterval={t`Sent`}
+                        textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`} will be sent at`}
                         onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
                     />
                 }
@@ -208,11 +209,11 @@ export default class PulseEditChannels extends Component {
                             actionFn={this.onTestPulseChannel.bind(this, channel)}
                             className={cx("Button", { disabled: !isValid })}
                             normalText={channelSpec.type === "email" ?
-                                "Send email now" :
-                                "Send to  " + channelSpec.name + " now"}
-                            activeText="Sending…"
-                            failedText="Sending failed"
-                            successText={ this.willPulseSkip() ?  "Didn’t send because the pulse has no results." : "Pulse sent"}
+                                t`Send email now` :
+                                t`Send to ${channelSpec.name} now`}
+                            activeText={t`Sending…`}
+                            failedText={t`Sending failed`}
+                            successText={ this.willPulseSkip() ?  t`Didn’t send because the pulse has no results.` : t`Pulse sent`}
                             forceActiveStyle={ this.willPulseSkip() }
                         />
                     </div>
@@ -237,7 +238,7 @@ export default class PulseEditChannels extends Component {
                     <ul className="bg-grey-0 px3">{channels}</ul>
                 : channels.length > 0 && !channelSpec.configured ?
                     <div className="p4 text-centered">
-                        <h3 className="mb2">{channelSpec.name} needs to be set up by an administrator.</h3>
+                        <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
                         <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
                     </div>
                 : null
@@ -250,8 +251,8 @@ export default class PulseEditChannels extends Component {
         let { formInput } = this.props;
         // Default to show the default channels until full formInput is loaded
         let channels = formInput.channels || {
-            email: { name: "Email", type: "email" },
-            slack: { name: "Slack", type: "slack" }
+            email: { name: t`Email`, type: "email" },
+            slack: { name: t`Slack`, type: "slack" }
         };
         return (
             <ul className="bordered rounded">

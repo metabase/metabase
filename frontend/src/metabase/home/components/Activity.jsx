@@ -86,6 +86,44 @@ export default class Activity extends Component {
         };
 
         switch (item.topic) {
+            case "alert-create":
+                if(item.model_exists) {
+                    description.summary = (
+                        <span>
+                            {t`created an alert about - `}
+                            <Link to={Urls.modelToUrl(item.model, item.model_id)}
+                                  data-metabase-event={"Activity Feed;Header Clicked;Database -> " + item.topic}
+                                  className="link text-dark"
+                            >
+                                  {item.details.name}
+                            </Link>
+                        </span>
+                    );
+                } else {
+                    description.summary = (
+                        <span>{t`created an alert about - `}<span className="text-dark">{item.details.name}</span></span>
+                    );
+                }
+                break;
+            case "alert-delete":
+                if(item.model_exists) {
+                    description.summary = (
+                        <span>
+                            {t`deleted an alert about - `}
+                            <Link to={Urls.modelToUrl(item.model, item.model_id)}
+                                  data-metabase-event={"Activity Feed;Header Clicked;Database -> " + item.topic}
+                                  className="link text-dark"
+                            >
+                                  {item.details.name}
+                            </Link>
+                        </span>
+                    );
+                } else {
+                    description.summary = (
+                        <span>{t`deleted an alert about- `}<span className="text-dark">{item.details.name}</span></span>
+                    );
+                }
+                break;
             case "card-create":
             case "card-update":
                 if(item.table) {

@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { t } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
 
@@ -33,7 +33,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
     return [
         {
             name: "summarize",
-            title: "Summarize this segment",
+            title: t`Summarize this segment`,
             icon: "sum",
             // eslint-disable-next-line react/display-name
             popover: (

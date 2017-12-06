@@ -1,8 +1,6 @@
 import React from "react";
-import { shallow, mount } from "enzyme";
-import { Link } from "react-router";
+import { mount } from "enzyme";
 
-import Icon from "metabase/components/Icon";
 import AccordianList from "metabase/components/AccordianList";
 import ListSearchField from "metabase/components/ListSearchField";
 

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import AccordianList from "metabase/components/AccordianList.jsx";
@@ -292,7 +292,7 @@ export default class DataSelector extends Component {
                             <h3 className="text-default">{header}</h3>
                         </div>
                     </div>
-                    <div className="p4 text-centered">No tables found in this database.</div>
+                    <div className="p4 text-centered">{t`No tables found in this database.`}</div>
                 </section>
             );
         } else {
@@ -322,8 +322,8 @@ export default class DataSelector extends Component {
                     />
                     { isSavedQuestionList && (
                         <div className="bg-slate-extra-light p2 text-centered border-top">
-                            Is a question missing?
-                            <a href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data" className="block link">Learn more about nested queries</a>
+                            {t`Is a question missing?`}
+                            <a href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data" className="block link">{t`Learn more about nested queries`}</a>
                         </div>
                     )}
                 </div>
@@ -338,7 +338,7 @@ export default class DataSelector extends Component {
             <span className="flex align-center">
                 <span className="flex align-center text-slate cursor-pointer" onClick={this.onBack}>
                     <Icon name="chevronleft" size={18} />
-                    <span className="ml1">Segments</span>
+                    <span className="ml1">{t`Segments`}</span>
                 </span>
             </span>
         );
@@ -351,7 +351,7 @@ export default class DataSelector extends Component {
                             <h3 className="text-default">{header}</h3>
                         </div>
                     </div>
-                    <div className="p4 text-centered">No segments were found.</div>
+                    <div className="p4 text-centered">{t`No segments were found.`}</div>
                 </section>
             );
         }
@@ -374,7 +374,7 @@ export default class DataSelector extends Component {
                 maxHeight={maxHeight}
                 sections={sections}
                 searchable
-                searchPlaceholder="Find a segment"
+                searchPlaceholder={t`Find a segment`}
                 onChange={this.onChangeSegment}
                 itemIsSelected={(item) => item.segment ? item.segment.id === this.getSegmentId() : false}
                 itemIsClickable={(item) => item.segment && !item.disabled}
@@ -401,19 +401,19 @@ export default class DataSelector extends Component {
             } else if (segment) {
                 content = <span className="text-grey no-decoration">{segment.name}</span>;
             } else {
-                content = <span className="text-grey-4 no-decoration">Pick a segment or table</span>;
+                content = <span className="text-grey-4 no-decoration">{t`Pick a segment or table`}</span>;
             }
         } else if (this.props.includeTables) {
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else {
-                content = <span className="text-grey-4 no-decoration">Select a table</span>;
+                content = <span className="text-grey-4 no-decoration">{t`Select a table`}</span>;
             }
         } else {
             if (database) {
                 content = <span className="text-grey no-decoration">{database.name}</span>;
             } else {
-                content = <span className="text-grey-4 no-decoration">Select a database</span>;
+                content = <span className="text-grey-4 no-decoration">t`Select a database`}</span>;
             }
         }
 

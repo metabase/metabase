@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [postal
              [core :as postal]
              [support :refer [make-props]]]
@@ -52,17 +53,23 @@
       (add-ssl-settings (email-smtp-security))))
 
 (def ^:private EmailMessage
-  {:subject      s/Str
-   :recipients   [(s/pred u/is-email?)]
-   :message-type (s/enum :text :html :attachments)
-   :message      s/Str})
+  (s/constrained
+   {:subject      s/Str
+    :recipients   [(s/pred u/is-email?)]
+    :message-type (s/enum :text :html :attachments)
+    :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
+   (fn [{:keys [message-type message]}]
+     (if (= message-type :attachments)
+       (and (sequential? message) (every? map? message))
+       (string? message)))
+   (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
+        "other types should have a String message.")))
 
 (s/defn send-message-or-throw!
   "Send an email to one or more RECIPIENTS. Upon success, this returns the MESSAGE that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
-  {:pre [(if (= message-type :attachments) (sequential? message) (string? message))]}
   (when-not (email-smtp-host)
     (throw (Exception. "SMTP host is not set.")))
   ;; Now send the email
@@ -93,6 +100,7 @@
   (try
     (send-message-or-throw! msg-args)
     (catch Throwable e
+      (println "Failed to send email:" e)
       (log/warn e "Failed to send email")
       {:error   :ERROR
        :message (.getMessage e)})))

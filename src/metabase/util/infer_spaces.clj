@@ -4,22 +4,54 @@
   ;; TODO - The code in this namespace is very hard to understand. We should clean it up and make it readable.
   (:require [clojure.java.io :as io]
             [clojure.string :as s])
-  (:import java.lang.Math))
+  (:import java.lang.Math
+           java.util.Arrays))
 
 
 (def ^:const ^:private special-words ["checkins"])
 
-;; # Build a cost dictionary, assuming Zipf's law and cost = -math.log(probability).
-(def ^:private words (concat special-words (s/split-lines (slurp (io/resource "words-by-frequency.txt")))))
+(defn- slurp-words-by-frequency []
+  (concat special-words (s/split-lines (slurp (io/resource "words-by-frequency.txt")))))
 
 ;; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
-(def ^:private word-cost
-  (into {} (map-indexed (fn [idx word]
-                          [word (Math/log (* (inc idx) (Math/log (count words))))])
-                        words)))
+(defn- make-cost-map
+  "Creates a map keyed by the hash of the word and the cost as the value. The map is sorted by the hash value"
+  [words]
+  (let [log-count (Math/log (count words))]
+    (into (sorted-map)
+          (map-indexed (fn [idx word]
+                         [(hash word) (Math/log (* (inc idx) log-count))])
+                       words))))
 
-;; maxword = max(len(x) for x in words)
-(def ^:private max-word (apply max (map count words)))
+;; # Build arrays for a cost lookup, assuming Zipf's law and cost = -math.log(probability).
+;;
+;; This is structured as a let for efficiency reasons. It's reading in 120k strings and putting them into two
+;; correlated data structures. We want to ensure that those strings are garbage collected after we setup the
+;; structures and we don't want to read the file in twice
+(let [all-words (slurp-words-by-frequency)
+      sorted-words (make-cost-map all-words)]
+
+  (def ^:private ^"[I" word-hashes
+    "Array of word hash values, ordered by that hash value"
+    (int-array (keys sorted-words)))
+
+  (def ^:private ^"[D" word-cost
+    "Array of word cost doubles, ordered by the hash value for that word"
+    (double-array (vals sorted-words)))
+
+  ;; maxword = max(len(x) for x in words)
+  (def ^:private max-word
+    "Length of the longest word in the word list"
+    (apply max (map count all-words))))
+
+(defn- get-word-cost
+  "Finds `S` in the word list. If found, returns the cost, otherwise returns `DEFAULT` like clojure.core's `get`"
+  [s default]
+  (let [idx (Arrays/binarySearch word-hashes (int (hash s)))]
+    ;; binarySearch returns a negative number if not found
+    (if (< idx 0)
+      default
+      (aget word-cost idx))))
 
 ;; def infer_spaces(s):
 ;;     """Uses dynamic programming to infer the location of spaces in a string
@@ -34,7 +66,7 @@
 (defn- best-match
   [i s cost]
   (let [candidates (reverse (subvec cost (max 0 (- i max-word)) i))]
-    (apply min-key first (map-indexed (fn [k c] [(+ c (get word-cost (subs s (- i k 1) i) 9e9999)) (inc k)]) candidates))))
+    (apply min-key first (map-indexed (fn [k c] [(+ c (get-word-cost (subs s (- i k 1) i) 9e9999)) (inc k)]) candidates))))
 
 ;;     # Build the cost array.
 ;;     cost = [0]
@@ -65,7 +97,7 @@
   [input]
   (let [s (s/lower-case input)
         cost (build-cost-array s)]
-    (loop [i (count s)
+    (loop [i (double (count s))
            out []]
       (if-not (pos? i)
         (reverse out)

@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -95,14 +95,14 @@ export default class UserStep extends Component {
 
         // validate email address
         if (!MetabaseUtils.validEmail(fieldValues.email)) {
-            formErrors.data.errors.email = "Not a valid formatted email address";
+            formErrors.data.errors.email = t`Not a valid formatted email address`;
         }
 
         // TODO - validate password complexity
 
         // validate password match
         if (fieldValues.password !== fieldValues.password_confirm) {
-            formErrors.data.errors.password_confirm = "Passwords do not match";
+            formErrors.data.errors.password_confirm = t`Passwords do not match`;
         }
 
         if (_.keys(formErrors.data.errors).length > 0) {
@@ -141,7 +141,7 @@ export default class UserStep extends Component {
         let { formError, passwordError, valid } = this.state;
 
         const passwordComplexityDesc = MetabaseSettings.passwordComplexity();
-        const stepText = (activeStep <= stepNumber) ? 'What should we call you?' : 'Hi, ' + userDetails.first_name + '. nice to meet you!';
+        const stepText = (activeStep <= stepNumber) ? t`What should we call you?` : t`Hi, ${userDetails.first_name}. nice to meet you!`;
 
         if (activeStep !== stepNumber) {
             return (<CollapsedStep stepNumber={stepNumber} stepCircleText="1" stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
@@ -152,45 +152,45 @@ export default class UserStep extends Component {
                     <form name="userForm" onSubmit={this.formSubmitted} noValidate className="mt2">
                         <FormField className="Grid mb3" fieldName="first_name" formError={formError}>
                             <div>
-                                <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
+                                <FormLabel title={t`First name`} fieldName="first_name" formError={formError}></FormLabel>
                                 <input className="Form-input Form-offset full" name="first_name" defaultValue={(userDetails) ? userDetails.first_name : ""} placeholder="Johnny" required autoFocus={true} onChange={this.onFirstNameChange} />
                                 <span className="Form-charm"></span>
                             </div>
                             <div>
-                                <FormLabel title="Last name" fieldName="last_name" formError={formError}></FormLabel>
+                                <FormLabel title={t`Last name`} fieldName="last_name" formError={formError}></FormLabel>
                                 <input className="Form-input Form-offset" name="last_name" defaultValue={(userDetails) ? userDetails.last_name : ""} placeholder="Appleseed" required onChange={this.onLastNameChange} />
                                 <span className="Form-charm"></span>
                             </div>
                         </FormField>
 
                         <FormField fieldName="email" formError={formError}>
-                            <FormLabel title="Email address" fieldName="email" formError={formError}></FormLabel>
+                            <FormLabel title={t`Email address`} fieldName="email" formError={formError}></FormLabel>
                             <input className="Form-input Form-offset full" name="email" defaultValue={(userDetails) ? userDetails.email : ""} placeholder="youlooknicetoday@email.com" required onChange={this.onEmailChange} />
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <FormField fieldName="password" formError={formError} error={(passwordError !== null)}>
-                            <FormLabel title="Create a password" fieldName="password" formError={formError} message={passwordError}></FormLabel>
+                            <FormLabel title={t`Create a password`} fieldName="password" formError={formError} message={passwordError}></FormLabel>
                             <span style={{fontWeight: "normal"}} className="Form-label Form-offset">{passwordComplexityDesc}</span>
-                            <input className="Form-input Form-offset full" name="password" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh..." required onChange={this.onPasswordChange} onBlur={this.onPasswordBlur}/>
+                            <input className="Form-input Form-offset full" name="password" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder={t`Shhh...`} required onChange={this.onPasswordChange} onBlur={this.onPasswordBlur}/>
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <FormField fieldName="password_confirm" formError={formError}>
-                            <FormLabel title="Confirm password" fieldName="password_confirm" formError={formError}></FormLabel>
-                            <input className="Form-input Form-offset full" name="password_confirm" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh... but one more time so we get it right" required onChange={this.onPasswordConfirmChange} />
+                            <FormLabel title={t`Confirm password`} fieldName="password_confirm" formError={formError}></FormLabel>
+                            <input className="Form-input Form-offset full" name="password_confirm" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder={t`Shhh... but one more time so we get it right`} required onChange={this.onPasswordConfirmChange} />
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <FormField fieldName="site_name" formError={formError}>
-                            <FormLabel title="Your company or team name" fieldName="site_name" formError={formError}></FormLabel>
-                            <input className="Form-input Form-offset full" name="site_name" type="text" defaultValue={(userDetails) ? userDetails.site_name : ""} placeholder="Department of awesome" required onChange={this.onSiteNameChange} />
+                            <FormLabel title={t`Your company or team name`} fieldName="site_name" formError={formError}></FormLabel>
+                            <input className="Form-input Form-offset full" name="site_name" type="text" defaultValue={(userDetails) ? userDetails.site_name : ""} placeholder={t`Department of awesome`} required onChange={this.onSiteNameChange} />
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <div className="Form-actions">
                             <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                                Next
+                                {t`Next`}
                             </button>
                             <FormMessage></FormMessage>
                         </div>

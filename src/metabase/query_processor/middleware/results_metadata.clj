@@ -33,7 +33,7 @@
                                       "Valid array of results column metadata maps")
     "value must be an array of valid results column metadata maps."))
 
-(s/defn ^:private ^:always-validate results->column-metadata :- (s/maybe ResultsMetadata)
+(s/defn ^:private results->column-metadata :- (s/maybe ResultsMetadata)
   "Return the desired storage format for the column metadata coming back from RESULTS, or `nil` if no columns were returned."
   [results]
   ;; rarely certain queries will return columns with no names, for example `SELECT COUNT(*)` in SQL Server seems to come back with no name

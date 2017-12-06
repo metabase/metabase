@@ -2,6 +2,7 @@
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
             [metabase
+             [email-test :as et]
              [http-client :as http]
              [middleware :as middleware]
              [util :as u]]
@@ -13,9 +14,13 @@
              [pulse :as pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [table :refer [Table]]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [users :refer :all]]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -232,3 +237,28 @@
 (tt/expect-with-temp [Pulse [{pulse-id :id} {:alert_condition "rows"}]]
   "Not found."
   ((user->client :rasta) :get 404 (str "pulse/" pulse-id)))
+
+;; ## POST /api/pulse/test
+(expect
+  [{:ok true}
+   (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
+                        :body {"Daily Sad Toucans" true}})]
+  (tu/with-model-cleanup [Pulse]
+    (et/with-fake-inbox
+      (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+        (tt/with-temp* [Database  [{database-id :id}]
+                        Table     [{table-id :id}    {:db_id database-id}]
+                        Card      [{card-id :id}     {:dataset_query {:database database-id
+                                                                      :type     "query"
+                                                                      :query    {:source-table table-id,
+                                                                                 :aggregation  {:aggregation-type "count"}}}}]]
+          [((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                          :cards         [{:id card-id}]
+                                                          :channels      [{:enabled       true
+                                                                           :channel_type  "email"
+                                                                           :schedule_type "daily"
+                                                                           :schedule_hour 12
+                                                                           :schedule_day  nil
+                                                                           :recipients    [(fetch-user :rasta)]}]
+                                                          :skip_if_empty false})
+           (et/regex-email-bodies #"Daily Sad Toucans")])))))

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 
 export default class LimitWidget extends Component {
 
@@ -19,7 +19,7 @@ export default class LimitWidget extends Component {
             <ul className="Button-group Button-group--blue">
                 {this.props.options.map(count =>
                     <li key={count || "None"} className={cx("Button", { "Button--active":  count === this.props.limit })} onClick={() => this.props.onChange(count)}>
-                        {count || "None"}
+                        {count || t`None`}
                     </li>
                 )}
             </ul>

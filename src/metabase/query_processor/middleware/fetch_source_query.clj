@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.fetch-source-query
+  "Middleware responsible for 'hydrating' the source query for queries that use another query as their source."
   (:require [clojure.tools.logging :as log]
             [metabase.query-processor
              [interface :as i]
@@ -16,7 +17,8 @@
                  {:native        (:query native)
                   :template_tags (:template_tags native)})
                (throw (Exception. (str "Missing source query in Card " card-id))))
-      ;; include database ID as well; we'll pass that up the chain so it eventually gets put in its spot in the outer-query
+      ;; include database ID as well; we'll pass that up the chain so it eventually gets put in its spot in the
+      ;; outer-query
       :database (:database card-query))))
 
 (defn- source-table-str->source-query
@@ -28,8 +30,8 @@
         (log/info "\nFETCHED SOURCE QUERY FROM CARD" card-id-str ":\n" (u/pprint-to-str 'yellow <>))))))
 
 (defn- expand-card-source-tables
-  "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate `:source-query` information.
-   Does nothing if `source-table` is a normal ID. Recurses for nested-nested queries."
+  "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate
+  `:source-query` information. Does nothing if `source-table` is a normal ID. Recurses for nested-nested queries."
   [inner-query]
   (let [source-table (qputil/get-normalized inner-query :source-table)]
     (if-not (string? source-table)
@@ -39,7 +41,8 @@
         (-> inner-query
             ;; remove `source-table` `card__id` key
             (qputil/dissoc-normalized :source-table)
-            ;; Add new `source-query` info in its place. Pass the database ID up the chain, removing it from the source query
+            ;; Add new `source-query` info in its place. Pass the database ID up the chain, removing it from the
+            ;; source query
             (assoc
               :source-query (dissoc source-query :database)
               :database     (:database source-query)))))))
@@ -56,6 +59,7 @@
                {:database database})))))
 
 (defn fetch-source-query
-  "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table` `card__n` format."
+  "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
+  `card__n` format."
   [qp]
   (comp qp fetch-source-query*))

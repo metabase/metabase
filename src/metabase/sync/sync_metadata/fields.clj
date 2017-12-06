@@ -41,7 +41,7 @@
 ;;; |                                             CREATING / REACTIVATING FIELDS                                             |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate matching-inactive-field :- (s/maybe i/FieldInstance)
+(s/defn ^:private matching-inactive-field :- (s/maybe i/FieldInstance)
   "Return an inactive metabase Field that matches NEW-FIELD-METADATA, if any such Field existis."
   [table :- i/TableInstance, new-field-metadata :- i/TableMetadataField, parent-id :- ParentID]
   (db/select-one Field
@@ -50,7 +50,7 @@
     :parent_id   parent-id
     :active     false))
 
-(s/defn ^:private ^:always-validate ->metabase-field! :- i/FieldInstance
+(s/defn ^:private ->metabase-field! :- i/FieldInstance
   "Return an active Metabase Field instance that matches NEW-FIELD-METADATA. This object will be created or reactivated as a side effect of calling this function."
   [table :- i/TableInstance, new-field-metadata :- i/TableMetadataField, parent-id :- ParentID]
   (if-let [matching-inactive-field (matching-inactive-field table new-field-metadata parent-id)]
@@ -71,7 +71,7 @@
         :parent_id    parent-id))))
 
 
-(s/defn ^:private ^:always-validate create-or-reactivate-field!
+(s/defn ^:private create-or-reactivate-field!
   "Create (or reactivate) a Metabase Field object(s) for NEW-FIELD-METABASE and any nested fields."
   [table :- i/TableInstance, new-field-metadata :- i/TableMetadataField, parent-id :- ParentID]
   ;; Create (or reactivate) the Metabase Field entry for NEW-FIELD-METADATA...
@@ -85,7 +85,7 @@
 ;;; |                                               "RETIRING" INACTIVE FIELDS                                               |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate retire-field!
+(s/defn ^:private retire-field!
   "Mark an OLD-FIELD belonging to TABLE as inactive if corresponding Field object exists."
   [table :- i/TableInstance, old-field :- TableMetadataFieldWithID]
   (log/info (format "Marking %s Field '%s' as inactive." (sync-util/name-for-logging table) (:name old-field)))
@@ -100,7 +100,7 @@
 ;;; |                               SYNCING FIELDS IN DB (CREATING, REACTIVATING, OR RETIRING)                               |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)
+(s/defn ^:private matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)
   "Find Metadata that matches FIELD-METADATA from a set of OTHER-METADATA, if any exists."
   [field-metadata :- TableMetadataFieldWithOptionalID, other-metadata :- #{TableMetadataFieldWithOptionalID}]
   (some (fn [other-field-metadata]
@@ -109,7 +109,7 @@
               other-field-metadata))
         other-metadata))
 
-(s/defn ^:private ^:always-validate sync-field-instances!
+(s/defn ^:private sync-field-instances!
   "Make sure the instances of Metabase Field are in-sync with the DB-METADATA."
   [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}, our-metadata :- #{TableMetadataFieldWithID}, parent-id :- ParentID]
   ;; Loop thru fields in DB-METADATA. Create/reactivate any fields that don't exist in OUR-METADATA.
@@ -136,7 +136,7 @@
 ;;; |                                                UPDATING FIELD METADATA                                                 |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate update-metadata!
+(s/defn ^:private update-metadata!
   "Make sure things like PK status and base-type are in sync with what has come back from the DB."
   [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}, parent-id :- ParentID]
   (let [existing-fields      (db/select [Field :base_type :special_type :name :id]
@@ -162,7 +162,7 @@
 ;;; |                                             FETCHING OUR CURRENT METADATA                                              |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate add-nested-fields :- TableMetadataFieldWithID
+(s/defn ^:private add-nested-fields :- TableMetadataFieldWithID
   "Recursively add entries for any nested-fields to FIELD."
   [field-metadata :- TableMetadataFieldWithID, parent-id->fields :- {ParentID #{TableMetadataFieldWithID}}]
   (let [nested-fields (get parent-id->fields (u/get-id field-metadata))]
@@ -171,7 +171,7 @@
       (assoc field-metadata :nested-fields (set (for [nested-field nested-fields]
                                                   (add-nested-fields nested-field parent-id->fields)))))))
 
-(s/defn ^:private ^:always-validate parent-id->fields :- {ParentID #{TableMetadataFieldWithID}}
+(s/defn ^:private parent-id->fields :- {ParentID #{TableMetadataFieldWithID}}
   "Build a map of the Metabase Fields we have for TABLE, keyed by their parent id (usually `nil`)."
   [table :- i/TableInstance]
   (->> (for [field (db/select [Field :name :base_type :special_type :parent_id :id]
@@ -190,7 +190,7 @@
                      (set (for [field fields]
                             (dissoc field :parent-id)))))))
 
-(s/defn ^:private ^:always-validate our-metadata :- #{TableMetadataFieldWithID}
+(s/defn ^:private our-metadata :- #{TableMetadataFieldWithID}
   "Return information we have about Fields for a TABLE currently in the application database
    in (almost) exactly the same `TableMetadataField` format returned by `describe-table`."
   [table :- i/TableInstance]
@@ -205,7 +205,7 @@
 ;;; |                                          FETCHING METADATA FROM CONNECTED DB                                           |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate db-metadata :- #{i/TableMetadataField}
+(s/defn ^:private db-metadata :- #{i/TableMetadataField}
   "Fetch metadata about Fields belonging to a given TABLE directly from an external database by calling its
    driver's implementation of `describe-table`."
   [database :- i/DatabaseInstance, table :- i/TableInstance]
@@ -216,7 +216,7 @@
 ;;; |                                                PUTTING IT ALL TOGETHER                                                 |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:always-validate sync-fields-for-table!
+(s/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific TABLE."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
@@ -229,7 +229,7 @@
        (update-metadata! table db-metadata nil)))))
 
 
-(s/defn ^:always-validate sync-fields!
+(s/defn sync-fields!
   "Sync the Fields in the Metabase application database for all the Tables in a DATABASE."
   [database :- i/DatabaseInstance]
   (doseq [table (sync-util/db->sync-tables database)]

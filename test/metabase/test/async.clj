@@ -1,22 +1,34 @@
 (ns metabase.test.async
   "Utilities for testing async API endpoints."
   (:require [clojure.tools.logging :as log]
-            [metabase.test.data.users :refer :all]))
+            [metabase.feature-extraction.async :as async]
+            [metabase.models.computation-job :refer [ComputationJob]]))
 
-(def ^:private ^:const max-retries 20)
+(def ^:dynamic ^Integer *max-while-runtime*
+  "Maximal time in milliseconds `while-with-timeout` runs."
+  10000000)
 
-(defn call-with-retries
-  "Retries fetching job results until `max-retries` times."
-  [user job-id]
-  (loop [tries 1]
-    (let [{:keys [status result] :as response}
-          ((user->client user) :get 200 (str "async/" job-id))]
-      (cond
-        (= status "done")     result
-        (= status "error")    (throw (ex-info (str "Error encountered.\n" result)
-                                       result))
-        (> tries max-retries) (throw (ex-info "Timeout. Max retries exceeded." {}))
-        :else                 (do
-                                (log/info (format "Waiting for computation to finish. Retry: %" tries))
-                                (Thread/sleep (* 100 tries))
-                                (recur (inc tries)))))))
+(defmacro while-with-timeout
+  "Like `clojure.core/while` except it runs a maximum of `*max-while-runtime*`
+   milliseconds (assuming running time for one iteration is << `*max-while-runtime*`)."
+  [test & body]
+  `(let [start# (System/currentTimeMillis)]
+     (while (and ~test
+                 (< (- (System/currentTimeMillis) start#) *max-while-runtime*))
+       ~@body)
+     (when (>= (- (System/currentTimeMillis) start#) *max-while-runtime*)
+       (log/warn "While loop terminated due to exceeded max runtime."))))
+
+(defn result!
+  "Blocking version of async/result."
+  [job-id]
+  (when-let [f (-> #'async/running-jobs
+                   deref                  ; var
+                   deref                  ; atom
+                   (get job-id))]
+    (when-not (or (future-cancelled? f)
+                  (future-done? f))
+      @f))
+  ; Wait for the transaction to finish
+  (while-with-timeout (-> job-id ComputationJob async/running?))
+  (async/result (ComputationJob job-id)))

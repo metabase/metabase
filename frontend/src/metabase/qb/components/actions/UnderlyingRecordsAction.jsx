@@ -3,7 +3,7 @@
 import React from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
+import { jt } from "c-3po";
 import type {
     ClickAction,
     ClickActionProps
@@ -14,19 +14,16 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
     if (!(query instanceof StructuredQuery) || query.isBareRows()) {
         return [];
     }
-
     return [
         {
             name: "underlying-records",
             title: (
                 <span>
-                    View the underlying
-                    {" "}
-                    <span className="text-dark">
-                        {query.table().display_name}
-                    </span>
-                    {" "}
-                    records
+                    {
+                        jt`View the underlying ${<span className="text-dark">
+                                {query.table().display_name}
+                            </span>} records`
+                    }
                 </span>
             ),
             icon: "table2",
