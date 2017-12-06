@@ -19,11 +19,12 @@
              [hydrate :refer [hydrate]]
              [models :as models]]))
 
-;;; ---------------------------------------- Perms Checking ----------------------------------------
+;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (defn- dashcards->cards [dashcards]
   (when (seq dashcards)
     (for [dashcard dashcards
+          :when    (:card dashboard) ; skip over ones that are cardless, e.g. text-only DashCards
           card     (cons (:card dashcard) (:series dashcard))]
       card)))
 
@@ -36,7 +37,7 @@
         (some i/can-read? cards))))
 
 
-;;; ---------------------------------------- Hydration ----------------------------------------
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn ordered-cards
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
@@ -54,7 +55,7 @@
                :order-by  [[:dashcard.created_at :asc]]})))
 
 
-;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Dashboard :report_dashboard)
 
@@ -82,7 +83,7 @@
           :can-write? can-read?}))
 
 
-;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-dashboard
   "Serialize a `Dashboard` for use in a `Revision`."
@@ -135,7 +136,7 @@
                                     (cond
                                       (< num-series₁ num-series₂) (format "added some series to card %d" (get-in dashboard₁ [:cards idx :card_id]))
                                       (> num-series₁ num-series₂) (format "removed some series from card %d" (get-in dashboard₁ [:cards idx :card_id]))
-                                      :else                       (format "modified the series on card %d" (get-in dashboard₁ [:cards idx :card_id]))))))]
+                                      :else                      (format "modified the series on card %d" (get-in dashboard₁ [:cards idx :card_id]))))))]
       (-> [(when (:name changes)
              (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
            (when (:description changes)
