@@ -27,7 +27,8 @@
               deref                  ; var
               deref                  ; atom
               (get job-id))]
-    (if (and f (not (future-cancelled? f)))
+    (if (and f (not (or (future-cancelled? f)
+                        (future-done? f))))
       {:result     @f
        :status     (-> job-id ComputationJob :status)
        :created-at (u/new-sql-timestamp)}
