@@ -20,6 +20,8 @@
      (when (>= (- (System/currentTimeMillis) start#) *max-while-runtime*)
        (log/warn "While loop terminated due to exceeded max runtime."))))
 
+;; We collect when jobs finish so we don't have to spam the DB while
+;; waiting/checking for the job to finish.
 (def ^:private job-done? (atom #{}))
 
 (add-watch (deref #'async/running-jobs) :done-watch
