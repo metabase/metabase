@@ -7,7 +7,7 @@
 
 (def ^:dynamic ^Integer *max-while-runtime*
   "Maximal time in milliseconds `while-with-timeout` runs."
-  10000000)
+  100000)
 
 (defmacro while-with-timeout
   "Like `clojure.core/while` except it runs a maximum of `*max-while-runtime*`
@@ -20,20 +20,17 @@
      (when (>= (- (System/currentTimeMillis) start#) *max-while-runtime*)
        (log/warn "While loop terminated due to exceeded max runtime."))))
 
+(def ^:private job-done? (atom #{}))
+
+(add-watch (deref #'async/running-jobs) :done-watch
+           (fn [_ _ old new]
+             (let [in-new? (set (keys new))]
+               (reduce #(swap! %1 conj %2)
+                       job-done?
+                       (remove in-new? (keys old))))))
+
 (defn result!
   "Blocking version of async/result."
   [job-id]
-  (let [f (-> #'async/running-jobs
-              deref                  ; var
-              deref                  ; atom
-              (get job-id))]
-    (if (and f (not (or (future-cancelled? f)
-                        (future-done? f))))
-      {:result     @f
-       :status     (-> job-id ComputationJob :status)
-       :created-at (u/new-sql-timestamp)}
-      (do
-        ;; Make sure the transaction has finished
-        (binding [*max-while-runtime* 1000]
-          (while-with-timeout (-> job-id ComputationJob async/running?)))
-        (async/result (ComputationJob job-id))))))
+  (while-with-timeout (not (@job-done? job-id)))
+  (async/result (ComputationJob job-id)))
