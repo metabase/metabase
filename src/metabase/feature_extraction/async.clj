@@ -73,8 +73,8 @@
    Uses the same logic as `metabase.api.card`."
   [{:keys [created_at ended_at]}]
   (let [duration (time-delta-seconds created_at ended_at)
-        ttl     (* duration (public-settings/query-caching-ttl-ratio))
-        age     (time-delta-seconds ended_at (java.util.Date.))]
+        ttl      (* duration (public-settings/query-caching-ttl-ratio))
+        age      (time-delta-seconds ended_at (java.util.Date.))]
     (<= age ttl)))
 
 (defn- cached-job
@@ -82,8 +82,7 @@
   (when (public-settings/enable-query-caching)
     (let [job (db/select-one ComputationJob
                 :context (json/encode ctx)
-                :status  [:not= "error"]
-                {:order-by [[:ended_at :desc]]})]
+                :status  [:not= "error"])]
       (when (some-> job fresh?)
         job))))
 
