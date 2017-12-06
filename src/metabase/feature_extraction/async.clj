@@ -35,12 +35,13 @@
         :status   :done
         :ended_at (u/new-sql-timestamp))))
   (swap! running-jobs dissoc id)
-  (log/info (format "Async job %s done." id)))
+  (log/info (format "Async job %s done." id))
+  payload)
 
 (defn- save-error
   [{:keys [id]} error]
-  (when-not (future-cancelled? (@running-jobs id))
-    (let [error (Throwable->map error)]
+  (let [error (Throwable->map error)]
+    (when-not (future-cancelled? (@running-jobs id))
       (log/warn (format "Async job %s encountered an error:\n%s." id error))
       (db/transaction
         (db/insert! ComputationJobResult
@@ -49,8 +50,9 @@
           :payload    error)
         (db/update! ComputationJob id
           :status :error
-          :ended_at (u/new-sql-timestamp)))))
-  (swap! running-jobs dissoc id))
+          :ended_at (u/new-sql-timestamp))))
+    (swap! running-jobs dissoc id)
+    error))
 
 (defn cancel
   "Cancel computation job (if still running)."
