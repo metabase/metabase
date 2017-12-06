@@ -123,29 +123,29 @@
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
-     {:title       "Set up email"
-      :group       "Get connected"
-      :description "Add email credentials so you can more easily invite team members and get updates via Pulses."
+     {:title       (tru "Set up email")
+      :group       (tru "Get connected")
+      :description (tru "Add email credentials so you can more easily invite team members and get updates via Pulses.")
       :link        "/admin/settings/email"
       :completed   (email/email-configured?)
       :triggered   :always}
-     {:title       "Set Slack credentials"
-      :group       "Get connected"
-      :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with MetaBot."
+     {:title       (tru "Set Slack credentials")
+      :group       (tru "Get connected")
+      :description (tru "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot.")
       :link        "/admin/settings/slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
-     {:title       "Invite team members"
-      :group       "Get connected"
-      :description "Share answers and data with the rest of your team."
+     {:title       (tru "Invite team members")
+      :group       (tru "Get connected")
+      :description (tru "Share answers and data with the rest of your team.")
       :link        "/admin/people/"
       :completed   (> num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
                        (>= num-cards 5))}
-     {:title       "Hide irrelevant tables"
-      :group       "Curate your data"
-      :description "If your data contains technical or irrelevant info you can hide it."
+     {:title       (tru "Hide irrelevant tables")
+      :group       (tru "Curate your data")
+      :description (tru "If your data contains technical or irrelevant info you can hide it.")
       :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
@@ -155,15 +155,15 @@
       :link        "/questions/"
       :completed   has-collections?
       :triggered   (>= num-cards 30)}
-     {:title       "Create metrics"
-      :group       "Curate your data"
-      :description "Define canonical metrics to make it easier for the rest of your team to get the right answers."
+     {:title       (tru "Create metrics")
+      :group       (tru "Curate your data")
+      :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
       :link        "/admin/datamodel/database"
       :completed   has-metrics?
       :triggered   (>= num-cards 30)}
-     {:title       "Create segments"
-      :group       "Curate your data"
-      :description "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions."
+     {:title       (tru "Create segments")
+      :group       (tru "Curate your data")
+      :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
       :link        "/admin/datamodel/database"
       :completed   has-segments?
       :triggered   (>= num-cards 30)}]))

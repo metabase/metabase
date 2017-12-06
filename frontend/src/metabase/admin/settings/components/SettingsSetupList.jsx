@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import { SetupApi } from "metabase/services";
+import { t } from "c-3po"
 
 const TaskList = ({tasks}) =>
   <ol>
@@ -83,12 +84,12 @@ export default class SettingsSetupList extends Component {
         return (
             <div className="px2">
               <h2>Getting set up</h2>
-              <p className="mt1">A few things you can do to get the most out of Metabase.</p>
+              <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
               <LoadingAndErrorWrapper loading={!this.state.tasks} error={this.state.error} >
               { () =>
                   <div style={{maxWidth: 468}}>
                       { nextTask &&
-                          <TaskSection name="Recommended next step" tasks={[nextTask]} />
+                          <TaskSection name={t`Recommended next step`} tasks={[nextTask]} />
                       }
                       {
                         tasks.map((section, index) =>

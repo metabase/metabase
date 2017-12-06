@@ -11,6 +11,7 @@ import RetinaImage from "react-retina-image";
 
 import cx from "classnames";
 import _ from "underscore";
+import { t, jt } from "c-3po"
 
 export default class SettingsSlackForm extends Component {
 
@@ -63,9 +64,9 @@ export default class SettingsSlackForm extends Component {
 
         switch (validationType) {
             case "email":
-                return !MetabaseUtils.validEmail(value) ? (validationMessage || "That's not a valid email address") : null;
+                return !MetabaseUtils.validEmail(value) ? (validationMessage || t`That's not a valid email address`) : null;
             case "integer":
-                return isNaN(parseInt(value)) ? (validationMessage || "That's not a valid integer") : null;
+                return isNaN(parseInt(value)) ? (validationMessage || t`That's not a valid integer`) : null;
         }
     }
 
@@ -111,7 +112,7 @@ export default class SettingsSlackForm extends Component {
         if (error.data && error.data.message) {
             formErrors.message = error.data.message;
         } else {
-            formErrors.message = "Looks like we ran into some problems";
+            formErrors.message = t`Looks like we ran into some problems`;
         }
 
         if (error.data && error.data.errors) {
@@ -185,9 +186,9 @@ export default class SettingsSlackForm extends Component {
         });
 
         let saveSettingsButtonStates = {
-            default: "Save changes",
-            working: "Saving...",
-            success: "Changes saved!"
+            default: t`Save changes`,
+            working: t`Saving...`,
+            success: t`Changes saved!`
         };
 
         let disabled = (!valid || submitting !== "default"),
@@ -206,17 +207,16 @@ export default class SettingsSlackForm extends Component {
                         />
                         Slack
                     </h1>
-                    <h3 className="text-grey-1">Answers sent right to your Slack #channels</h3>
+                    <h3 className="text-grey-1">{t`Answers sent right to your Slack #channels`}</h3>
 
                     <div className="pt3">
                         <a href="https://my.slack.com/services/new/bot" target="_blank" className="Button Button--primary" style={{padding:0}}>
-                            <div className="float-left py2 pl2">Create a Slack Bot User for MetaBot</div>
+                            <div className="float-left py2 pl2">{t`Create a Slack Bot User for MetaBot`}</div>
                             <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" size={18}/>
                         </a>
                     </div>
                     <div className="py2">
-                        Once you're there, give it a name and click <strong>"Add bot integration"</strong>. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.
-
+                        {jt`Once you're there, give it a name and click ${<strong>"Add bot integration"</strong>}. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.`}
                     </div>
                 </div>
                 <ul>

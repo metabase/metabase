@@ -275,7 +275,7 @@ const SECTIONS = [
             {
                 key: "custom-geojson",
                 display_name: "Custom Maps",
-                description: "Add your own GeoJSON files to enable different region map visualizations",
+                description: t`Add your own GeoJSON files to enable different region map visualizations`,
                 widget: CustomGeoJSONWidget,
                 noHeader: true
             }
