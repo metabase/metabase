@@ -20,6 +20,8 @@
      (when (>= (- (System/currentTimeMillis) start#) *max-while-runtime*)
        (log/warn "While loop terminated due to exceeded max runtime."))))
 
+;; We collect when jobs finish so we don't have to spam the DB while
+;; waiting/checking for the job to finish.
 (def ^:private job-done? (atom #{}))
 
 (add-watch (deref #'async/running-jobs) :done-watch
@@ -32,10 +34,8 @@
 (defn result!
   "Blocking version of async/result."
   [job-id]
-  (while-with-timeout (or (not (@job-done? job-id))
-                          (-> job-id
-                              ComputationJob
-                              async/result
-                              (find :result)
-                              nil?)))
+  (while-with-timeout (not (and (@job-done? job-id)
+                                (let [job (ComputationJob job-id)]
+                                  (or (:result (async/result job))
+                                      (async/canceled? job))))))
   (async/result (ComputationJob job-id)))

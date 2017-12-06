@@ -36,7 +36,7 @@
 
 (defn- save-result
   [{:keys [id] :as job} payload callback]
-  (when-not (future-cancelled? (@running-jobs id))
+  (when (some-> (@running-jobs id) future-cancelled? not)
     (db/transaction
       (db/insert! ComputationJobResult
         :job_id     id
@@ -54,7 +54,7 @@
 (defn- save-error
   [{:keys [id] :as job} error callback]
   (let [error (Throwable->map error)]
-    (when-not (future-cancelled? (@running-jobs id))
+    (when (some-> (@running-jobs id) future-cancelled? not)
       (log/warn (format "Async job %s encountered an error:\n%s." id error))
       (db/transaction
         (db/insert! ComputationJobResult
