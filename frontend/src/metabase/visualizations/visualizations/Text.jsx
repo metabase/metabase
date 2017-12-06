@@ -56,6 +56,13 @@ export default class Text extends Component {
         }
     }
 
+    componentWillReceiveProps(newProps: VisualizationProps) {
+        // dashboard is going into edit mode
+        if (!this.props.isEditing && newProps.isEditing) {
+            this.onEdit();
+        }
+    }
+
     handleTextChange(text: string) {
         this.props.onUpdateVisualizationSettings({ "text": text });
     }

@@ -160,3 +160,12 @@
   width: 100%;
   height: auto;
 }
+
+@media screen and (--breakpoint-max-md) {
+  :local .Text {
+    padding: .5em 0 .5em 1em;
+  }
+  :local .Text .text-card-help {
+      display: none;
+  }
+}

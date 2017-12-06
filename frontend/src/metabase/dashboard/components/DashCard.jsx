@@ -56,7 +56,6 @@ export default class DashCard extends Component {
             dashcard,
             dashcardData,
             slowCards,
-            parameterValues,
             isEditing,
             isEditingParameter,
             onAddSeries,
@@ -82,14 +81,6 @@ export default class DashCard extends Component {
         const expectedDuration = Math.max(...series.map((s) => s.card.query_average_duration || 0));
         const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
         const isSlow = loading && _.some(series, (s) => s.isSlow) && (usuallyFast ? "usually-fast" : "usually-slow");
-
-        const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
-            .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
-
-        const isMappedToAllParameters = !parameterValues || Object.keys(parameterValues)
-            .filter(parameterId => parameterValues[parameterId] !== null)
-            .every(parameterId => parameterMap[parameterId]);
-
         const errors = series.map(s => s.error).filter(e => e);
 
         let errorMessage, errorIcon;
@@ -109,7 +100,6 @@ export default class DashCard extends Component {
             <div
                 className={cx("Card bordered rounded flex flex-column hover-parent hover--visibility", {
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
                 })}
             >
