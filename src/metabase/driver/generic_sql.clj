@@ -344,7 +344,7 @@
 (defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
   (set (for [{database-type :type_name, column-name :column_name} (jdbc/result-set-seq (.getColumns metadata nil schema table-name nil))]
          (merge {:name          column-name
-                 :database-type (name database-type)
+                 :database-type database-type
                  :base-type     (database-type->base-type driver database-type)}
                 (when-let [special-type (calculated-special-type driver column-name database-type)]
                   {:special-type special-type})))))
