@@ -44,11 +44,14 @@
   background-color: rgb(34, 37, 39);
 }
 
+.Dashboard.Dashboard--night .Card {
+  color: #fff;
+}
+
 .Dashboard.Dashboard--night .Header-button,
 .Dashboard.Dashboard--night .Header-button svg {
     color: rgba(151, 151, 151, 0.3);
 }
-
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
   color: #3f3a3a;

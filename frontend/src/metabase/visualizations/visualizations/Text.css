@@ -7,7 +7,6 @@
   flex-direction: column;
   justify-content: center;
   padding: 1em 0 1em 1.5em;
-  color: #525658;
 }
 :local .Text.dashboard-is-editing {
   padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
