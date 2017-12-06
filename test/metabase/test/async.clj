@@ -33,8 +33,7 @@
   "Blocking version of async/result."
   [job-id]
   (while-with-timeout (not (and (@job-done? job-id)
-                                (-> job-id
-                                    ComputationJob
-                                    async/result
-                                    (find :result)))))
+                                (let [job (ComputationJob job-id)]
+                                  (or (:result (async/result job))
+                                      (async/canceled? job))))))
   (async/result (ComputationJob job-id)))
