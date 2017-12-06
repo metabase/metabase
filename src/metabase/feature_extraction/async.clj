@@ -19,6 +19,10 @@
   "Is the computation job still running?"
   (comp some? #{:running} :status))
 
+(def ^{:arglists '([job])} canceled?
+  "Has the computation job been canceled?"
+  (comp some? #{:canceled} :status))
+
 (defn- save-result
   [{:keys [id]} payload]
   (when-not (future-cancelled? (@running-jobs id))
