@@ -32,10 +32,9 @@
 (defn result!
   "Blocking version of async/result."
   [job-id]
-  (while-with-timeout (or (not (@job-done? job-id))
-                          (-> job-id
-                              ComputationJob
-                              async/result
-                              (find :result)
-                              nil?)))
+  (while-with-timeout (not (and (@job-done? job-id)
+                                (-> job-id
+                                    ComputationJob
+                                    async/result
+                                    (find :result)))))
   (async/result (ComputationJob job-id)))
