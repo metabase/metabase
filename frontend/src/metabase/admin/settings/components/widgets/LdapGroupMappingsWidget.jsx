@@ -15,7 +15,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
-import { t } from "c-3po"
+import { t } from "c-3po";
 
 import SettingToggle from './SettingToggle';
 

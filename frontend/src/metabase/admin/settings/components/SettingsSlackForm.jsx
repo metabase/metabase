@@ -11,7 +11,7 @@ import RetinaImage from "react-retina-image";
 
 import cx from "classnames";
 import _ from "underscore";
-import { t, jt } from "c-3po"
+import { t, jt } from "c-3po";
 
 export default class SettingsSlackForm extends Component {
 
