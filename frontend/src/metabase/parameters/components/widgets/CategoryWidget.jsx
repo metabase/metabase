@@ -3,12 +3,13 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from 'c-3po';
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 import { t } from 'c-3po';
 import { getHumanReadableValue } from "metabase/lib/query/field";
 
-import ListSearchField from "metabase/components/ListSearchField.jsx";
+import SelectPicker from "../../../query_builder/components/filters/pickers/SelectPicker.jsx";
 
 import cx from "classnames";
 
@@ -21,6 +22,7 @@ type Props = {
 type State = {
     searchText: string,
     searchRegex: ?RegExp,
+    selectedValues: Array<string>
 }
 
 export default class CategoryWidget extends Component {
@@ -32,7 +34,8 @@ export default class CategoryWidget extends Component {
 
         this.state = {
             searchText: "",
-            searchRegex: null
+            searchRegex: null,
+            selectedValues: Array.isArray(props.value) ? props.value : [props.value]
         };
     }
 
@@ -60,47 +63,46 @@ export default class CategoryWidget extends Component {
         return getHumanReadableValue(value, fieldValues);
     }
 
-    render() {
-        let { value, values, setValue, onClose } = this.props;
-
-        let filteredValues = [];
-        let regex = this.state.searchRegex;
-
-        if (regex) {
-            for (const value of values) {
-                if (regex.test(value[0]) || regex.test(value[1])) {
-                    filteredValues.push(value);
-                }
+    getOptions() {
+        return this.props.values.slice().map((value) => {
+            return {
+                key: value[0],
+                name: value[0]
             }
-        } else {
-            filteredValues = values.slice();
-        }
+        });
+    }
+
+    commitValues = (values: Array<string>) => {
+        this.props.setValue(values);
+        this.props.onClose();
+    }
+
+    onSelectedValuesChange = (values: Array<string>) => {
+        this.setState({selectedValues: values});
+    }
+
+    render() {
+        const options = this.getOptions();
+        const selectedValues = this.state.selectedValues;
 
         return (
             <div style={{ maxWidth: 200 }}>
-                { values.length > 10 &&
-                  <div className="p1">
-                      <ListSearchField
-                          onChange={this.updateSearchText}
-                          searchText={this.state.searchText}
-                          placeholder={t`Find a value`}
-                          autoFocus={true}
-                      />
-                  </div>
-                }
-                <ul className="scroll-y scroll-show" style={{ maxHeight: 300 }}>
-                    {filteredValues.map(([rawValue, humanReadableValue]) =>
-                        <li
-                            key={rawValue}
-                            className={cx("px2 py1 bg-brand-hover text-white-hover cursor-pointer", {
-                                "text-white bg-brand": rawValue === value
-                            })}
-                            onClick={() => { setValue(rawValue); onClose(); }}
-                        >
-                            {humanReadableValue || String(rawValue)}
-                        </li>
-                     )}
-                </ul>
+                <SelectPicker
+                    options={options}
+                    values={(selectedValues: Array<string>)}
+                    onValuesChange={this.onSelectedValuesChange}
+                    placeholder="Find a value"
+                    multi={true}
+                />
+                <div className="p1">
+                    <button
+                        data-ui-tag="add-category-filter"
+                        className={cx("Button Button--purple full", { "disabled": selectedValues.length === 0 })}
+                        onClick={() => this.commitValues(this.state.selectedValues)}
+                    >
+                        { t`Done`}
+                    </button>
+                </div>
             </div>
         );
     }
