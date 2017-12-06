@@ -553,7 +553,8 @@
   (with-alert-setup
    [(recipient-emails ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
     (do
-      ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id))
+      (et/with-expected-messages 1
+        ((user->client :rasta) :put 204 (format "alert/%d/unsubscribe" pulse-id)))
       (recipient-emails ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id))))
     (et/regex-email-bodies #"https://metabase.com/testmb"
                            #"Foo")]))
@@ -683,10 +684,11 @@
   [1 nil 0
    (rasta-deleted-email {})]
   (with-alert-setup
-   [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
-    ((user->client :crowberto) :delete 204 (format "alert/%d" pulse-id))
-    (count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
-    (et/regex-email-bodies #"Crowberto Corv deleted an alert")]))
+    [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
+     (et/with-expected-messages 1
+       ((user->client :crowberto) :delete 204 (format "alert/%d" pulse-id)))
+     (count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
+     (et/regex-email-bodies #"Crowberto Corv deleted an alert")]))
 
 ;; A deleted alert should notify the creator and any recipients
 (tt/expect-with-temp [Card                 [{card-id :id}  (basic-alert-query)]

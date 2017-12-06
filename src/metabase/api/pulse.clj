@@ -114,7 +114,7 @@
                                                                             :card-id     id})]
     {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title*   true
                                                                             render/*include-buttons* true]
-                                                                    (render/render-pulse-card (p/defaulted-timezone card) card result))]])}))
+                                                                    (render/render-pulse-card-for-display (p/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
@@ -126,7 +126,7 @@
         data      (:data result)
         card-type (render/detect-pulse-card-type card data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card (p/defaulted-timezone card) card result)))]
+                          (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html

@@ -134,33 +134,38 @@
    {:bar-width nil, :row ["3" "34.05" "Aug 1, 2014" "The Gorbals"]}]
   (rest (prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
 
+(defn- render-scalar-value [results]
+  (-> (render:scalar pacific-tz nil results)
+      :content
+      last))
+
 (expect
   "10"
-  (last (render:scalar pacific-tz nil {:cols [{:name         "ID",
-                                               :display_name "ID",
-                                               :base_type    :type/BigInteger
-                                               :special_type nil}]
-                                       :rows [[10]]})))
+  (render-scalar-value {:cols [{:name         "ID",
+                                :display_name "ID",
+                                :base_type    :type/BigInteger
+                                :special_type nil}]
+                        :rows [[10]]}))
 
 (expect
   "10.12"
-  (last (render:scalar pacific-tz nil {:cols [{:name         "floatnum",
-                                               :display_name "FLOATNUM",
-                                               :base_type    :type/Float
-                                               :special_type nil}]
-                                       :rows [[10.12345]]})))
+  (render-scalar-value {:cols [{:name         "floatnum",
+                                :display_name "FLOATNUM",
+                                :base_type    :type/Float
+                                :special_type nil}]
+                        :rows [[10.12345]]}))
 
 (expect
   "foo"
-  (last (render:scalar pacific-tz nil {:cols [{:name         "stringvalue",
-                                               :display_name "STRINGVALUE",
-                                               :base_type    :type/Text
-                                               :special_type nil}]
-                                       :rows [["foo"]]})))
+  (render-scalar-value {:cols [{:name         "stringvalue",
+                                :display_name "STRINGVALUE",
+                                :base_type    :type/Text
+                                :special_type nil}]
+                        :rows [["foo"]]}))
 (expect
   "Apr 1, 2014"
-  (last (render:scalar pacific-tz nil {:cols [{:name         "date",
-                                               :display_name "DATE",
-                                               :base_type    :type/DateTime
-                                               :special_type nil}]
-                                       :rows [["2014-04-01T08:30:00.0000"]]})))
+  (render-scalar-value {:cols [{:name         "date",
+                                :display_name "DATE",
+                                :base_type    :type/DateTime
+                                :special_type nil}]
+                        :rows [["2014-04-01T08:30:00.0000"]]}))
