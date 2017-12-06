@@ -5,6 +5,7 @@ import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
+import { t } from 'c-3po';
 
 import {
     computeSplit,
@@ -60,7 +61,7 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization"
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
-const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
+const UNAGGREGATED_DATA_WARNING = (col) => t`"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 
 const enableBrush = (series, onChangeCardAndRun) => !!(
     onChangeCardAndRun &&
@@ -73,11 +74,11 @@ const enableBrush = (series, onChangeCardAndRun) => !!(
 
 function checkSeriesIsValid({ series, maxSeries }) {
     if (getFirstNonEmptySeries(series).data.cols.length < 2) {
-        throw new Error("This chart type requires at least 2 columns.");
+        throw new Error(t`This chart type requires at least 2 columns.`);
     }
 
     if (series.length > maxSeries) {
-        throw new Error(`This chart type doesn't support more than ${maxSeries} series of data.`);
+        throw new Error(t`This chart type doesn't support more than ${maxSeries} series of data.`);
     }
 }
 
@@ -421,7 +422,7 @@ function addGoalChartAndGetOnGoalHover({ settings, onHoverChange }, xDomain, par
     return (element) => {
         onHoverChange(element && {
             element,
-            data: [{ key: "Goal", value: goalValue }]
+            data: [{ key: t`Goal`, value: goalValue }]
         });
     };
 }

@@ -99,7 +99,7 @@
   `(ql/query (ql/source-table (id ~(keyword table)))
              ~@(map (partial $->id (keyword table)) forms)))
 
-(s/defn ^:always-validate wrap-inner-query
+(s/defn wrap-inner-query
   "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
   {:style/indent 0}
   [query :- qi/Query]
@@ -107,7 +107,7 @@
    :type     :query
    :query    query})
 
-(s/defn ^:always-validate run-query*
+(s/defn run-query*
   "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
 
      (run-query* (query (source-table 5) ...))"

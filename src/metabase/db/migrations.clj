@@ -19,7 +19,7 @@
              [activity :refer [Activity]]
              [card :refer [Card]]
              [dashboard-card :refer [DashboardCard]]
-             [database :refer [Database]]
+             [database :refer [Database virtual-id]]
              [field :refer [Field]]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as perm-group]
@@ -329,8 +329,9 @@
 ;; There was a bug (#5998) preventing database_id from being persisted with
 ;; native query type cards. This migration populates all of the Cards
 ;; missing those database ids
-(defmigration ^{:author "senior", :added "0.26.1"} populate-card-database-id
+(defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))]
+                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))
+          :when (not= db-id virtual-id)]
     (db/update-where! Card {:id [:in (map :id cards)]}
       :database_id db-id)))

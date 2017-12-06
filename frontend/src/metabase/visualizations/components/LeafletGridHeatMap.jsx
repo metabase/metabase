@@ -1,6 +1,6 @@
 import LeafletMap from "./LeafletMap.jsx";
 import L from "leaflet";
-
+import { t } from 'c-3po';
 import d3 from "d3";
 
 import { rangeForValue } from "metabase/lib/dataset";
@@ -22,7 +22,7 @@ export default class LeafletGridHeatMap extends LeafletMap {
 
             const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
             if (!latitudeColumn.binning_info || !longitudeColumn.binning_info) {
-                throw new Error("Grid map requires binned longitude/latitude.");
+                throw new Error(t`Grid map requires binned longitude/latitude.`);
             }
 
             const color = d3.scale.linear().domain([min,max])

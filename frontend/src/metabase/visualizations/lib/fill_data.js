@@ -29,7 +29,7 @@ function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
                 }
             });
             if (map.size > 0) {
-                console.warn("xValues missing!", map, newRows)
+                console.warn(t`"xValues missing!`, map, newRows)
             }
             return newRows;
         });

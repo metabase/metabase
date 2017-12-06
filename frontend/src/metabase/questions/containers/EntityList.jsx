@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ListFilterWidget from "metabase/components/ListFilterWidget"
@@ -15,7 +15,6 @@ import SearchHeader from "metabase/components/SearchHeader";
 import ActionHeader from "../components/ActionHeader";
 
 import _ from "underscore";
-import { t } from 'c-3po';
 
 import { loadEntities, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
 import { loadLabels } from "../labels";

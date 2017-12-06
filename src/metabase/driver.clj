@@ -1,4 +1,15 @@
 (ns metabase.driver
+  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+  introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
+  `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
+  below.
+
+  JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
+  implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
+  found in `metabase.driver.generic-sql`.
+
+  This namespace also contains various other functions for fetching drivers, testing database connections, and the
+  like."
   (:require [clj-time.format :as tformat]
             [clojure.tools.logging :as log]
             [medley.core :as m]
@@ -417,7 +428,7 @@
   10000)
 
 ;; TODO - move this to the metadata-queries namespace or something like that instead
-(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+(s/defn ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)

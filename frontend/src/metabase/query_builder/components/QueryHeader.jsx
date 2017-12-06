@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import QueryModeButton from "./QueryModeButton.jsx";
 
 import ActionButton from 'metabase/components/ActionButton.jsx';
@@ -281,14 +281,14 @@ export default class QueryHeader extends Component {
                         >
                             <span>
                                 <Icon name='check' size={12} />
-                                <span className="ml1">Saved</span>
+                                <span className="ml1">{t`Saved`}</span>
                             </span>
                         </button>
                     ]);
                 } else {
                     // edit button
                     buttonSections.push([
-                        <Tooltip key="edit" tooltip="Edit question">
+                        <Tooltip key="edit" tooltip={t`Edit question`}>
                             <a className="cursor-pointer text-brand-hover" onClick={this.onBeginEditing}>
                                 <Icon name="pencil" size={16} />
                             </a>
@@ -303,17 +303,17 @@ export default class QueryHeader extends Component {
                         key="save"
                         actionFn={() => this.onSave(this.props.card, false)}
                         className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
-                        normalText="SAVE CHANGES"
-                        activeText="Saving…"
-                        failedText="Save failed"
-                        successText="Saved"
+                        normalText={t`SAVE CHANGES`}
+                        activeText={t`Saving…`}
+                        failedText={t`Save failed`}
+                        successText={t`Saved`}
                     />
                 ]);
 
                 // cancel button
                 buttonSections.push([
                     <a key="cancel" className="cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={this.onCancel}>
-                        CANCEL
+                        {t`CANCEL`}
                     </a>
                 ]);
 
@@ -328,7 +328,7 @@ export default class QueryHeader extends Component {
                         key="move"
                         full
                         triggerElement={
-                            <Tooltip tooltip="Move question">
+                            <Tooltip tooltip={t`Move question`}>
                                 <Icon name="move" />
                             </Tooltip>
                         }
@@ -353,7 +353,7 @@ export default class QueryHeader extends Component {
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
             });
             buttonSections.push([
-                <Tooltip key="parameterEdititor" tooltip="Variables">
+                <Tooltip key="parameterEdititor" tooltip={t`Variables`}>
                     <a className={parametersButtonClasses}>
                         <Icon name="variable" size={16} onClick={this.props.toggleTemplateTagsEditor}></Icon>
                     </a>
@@ -365,7 +365,7 @@ export default class QueryHeader extends Component {
         if (!isNew && !isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
             buttonSections.push([
-                <Tooltip key="addtodash" tooltip="Add to dashboard">
+                <Tooltip key="addtodash" tooltip={t`Add to dashboard`}>
                     <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
                         <Icon name="addtodash" size={ICON_SIZE} />
                     </span>
@@ -374,7 +374,7 @@ export default class QueryHeader extends Component {
         } else if (isNew && isDirty) {
             // this is a new card, so we need the user to save first then they can add to dash
             buttonSections.push([
-                <Tooltip key="addtodashsave" tooltip="Add to dashboard">
+                <Tooltip key="addtodashsave" tooltip={t`Add to dashboard`}>
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
                         triggerClasses="h4 text-brand-hover text-uppercase"
@@ -403,7 +403,7 @@ export default class QueryHeader extends Component {
         // history icon on saved cards
         if (!isNew) {
             buttonSections.push([
-                <Tooltip key="history" tooltip="Revision history">
+                <Tooltip key="history" tooltip={t`Revision history`}>
                     <ModalWithTrigger
                         ref="cardHistory"
                         triggerElement={<span className="text-brand-hover"><Icon name="history" size={18} /></span>}
@@ -446,7 +446,7 @@ export default class QueryHeader extends Component {
             'text-brand-hover': !this.state.isShowingDataReference
         });
         buttonSections.push([
-            <Tooltip key="dataReference" tooltip="Learn about your data">
+            <Tooltip key="dataReference" tooltip={t`Learn about your data`}>
                 <a className={dataReferenceButtonClasses}>
                     <Icon name='reference' size={ICON_SIZE} onClick={this.onToggleDataReference}></Icon>
                 </a>
@@ -514,9 +514,9 @@ export default class QueryHeader extends Component {
             <div className="relative">
                 <HeaderBar
                     isEditing={this.props.isEditing}
-                    name={this.props.isNew ? "New question" : this.props.card.name}
+                    name={this.props.isNew ? t`New question` : this.props.card.name}
                     description={this.props.card ? this.props.card.description : null}
-                    breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
+                    breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">{t`started from`} <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.props.onSetCardAttribute}
                     badge={this.props.card.collection &&

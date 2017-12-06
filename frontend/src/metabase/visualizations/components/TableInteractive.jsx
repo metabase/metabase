@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -255,7 +255,7 @@ export default class TableInteractive extends Component {
 
         let columnTitle = formatColumn(column);
         if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
-            columnTitle = "Unset";
+            columnTitle = t`Unset`;
         }
 
         let clicked;

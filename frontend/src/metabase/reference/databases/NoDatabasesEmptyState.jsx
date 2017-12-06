@@ -3,11 +3,11 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 const NoDatabasesEmptyState = (user) =>
     <AdminAwareEmptyState
-        title={"Metabase is no fun without any data"}
-        adminMessage={"Your databases will appear here once you connect one"}
-        message={"Databases will appear here once your admins have added some"}
+        title={t`Metabase is no fun without any data`}
+        adminMessage={t`Your databases will appear here once you connect one`}
+        message={t`Databases will appear here once your admins have added some`}
         image={"app/assets/img/databases-list"}
-        adminAction={"Connect a database"}
+        adminAction={t`Connect a database`}
         adminLink={"/admin/databases/create"}
         user={user}
     />

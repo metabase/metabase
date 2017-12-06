@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import pure from "recompose/pure";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon"
 import * as Urls from "metabase/lib/urls";
 
@@ -52,7 +52,6 @@ const GuideDetail = ({
     const linkHoverClass = `${typeToLinkClass[type]}-hover`
     const bgClass = typeToBgClass[type]
     const hasLearnMore = type === 'metric' || type === 'segment' || type === 'table';
-    const interestingOrImportant = type === 'dashboard' ? 'important' : 'interesting';
 
     return <div className="relative mt2 pb3">
         <div className="flex align-center">
@@ -69,35 +68,35 @@ const GuideDetail = ({
         </div>
         <div className="mt2">
             <ContextHeading>
-                { `Why this ${type} is ${interestingOrImportant}` }
+                { type === 'dashboard' ? t`Why this ${type} is important` : t`Why this ${type} is interesting` }
             </ContextHeading>
 
             <ContextContent empty={!points_of_interest}>
-                {points_of_interest || `Nothing ${interestingOrImportant} yet`}
+                {points_of_interest || (type === 'dashboard' ? t`Nothing important yet` : t`Nothing interesting yet`)}
             </ContextContent>
 
             <div className="mt2">
                 <ContextHeading>
-                    {`Things to be aware of about this ${type}`}
+                    {t`Things to be aware of about this ${type}`}
                 </ContextHeading>
 
                 <ContextContent empty={!caveats}>
-                    {caveats || 'Nothing to be aware of yet'}
+                    {caveats || t`Nothing to be aware of yet`}
                 </ContextContent>
             </div>
 
             { has(exploreLinks) && [
                 <div className="mt2">
-                    <ContextHeading key="detailLabel">Explore this metric</ContextHeading>
+                    <ContextHeading key="detailLabel">{t`Explore this metric`}</ContextHeading>
                     <div key="detailLinks">
-                        <h4 className="inline-block mr2 link text-bold">View this metric</h4>
+                        <h4 className="inline-block mr2 link text-bold">{t`View this metric`}</h4>
                         { exploreLinks.map(link =>
                             <Link
                                 className="inline-block text-bold text-brand mr2 link"
                                 key={link.url}
                                 to={link.url}
                             >
-                                {`By ${link.name}`}
+                                {t`By ${link.name}`}
                             </Link>
                         )}
                     </div>
@@ -108,7 +107,7 @@ const GuideDetail = ({
                     className={cx('block mt3 no-decoration text-underline-hover text-bold', linkClass)}
                     to={learnMoreLink}
                 >
-                    Learn more
+                    {t`Learn more`}
                 </Link>
             }
         </div>

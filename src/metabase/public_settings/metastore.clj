@@ -34,7 +34,7 @@
 
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
-(s/defn ^:private ^:always-validate fetch-token-status :- {:valid s/Bool, :status su/NonBlankString}
+(s/defn ^:private fetch-token-status :- {:valid s/Bool, :status su/NonBlankString}
   "Fetch info about the validity of TOKEN from the MetaStore. "
   [token :- ValidToken]
   (try
