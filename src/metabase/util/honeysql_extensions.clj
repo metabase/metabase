@@ -107,7 +107,7 @@
 
 
 (defn cast
-  "Generate a statement like `cast(x AS c)`/"
+  "Generate a statement like `cast(x AS c)`."
   [c x]
   (hsql/call :cast x (hsql/raw (name c))))
 

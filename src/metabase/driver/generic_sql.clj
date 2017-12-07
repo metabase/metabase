@@ -362,12 +362,16 @@
                                      (assoc field :pk? true))))))))
 
 (defn describe-database
-  "Default implementation of `describe-database` for JDBC-based drivers."
+  "Default implementation of `describe-database` for JDBC-based drivers. Uses various `ISQLDriver` methods and JDBC
+   metadata."
   [driver database]
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
-(defn- describe-table [driver database table]
+(defn describe-table
+  "Default implementation of `describe-table` for JDBC-based drivers. Uses various `ISQLDriver` methods and JDBC
+   metadata."
+  [driver database table]
   (with-metadata [metadata driver database]
     (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
          ;; find PKs and mark them

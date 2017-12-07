@@ -837,7 +837,7 @@
      ;; -> {:a 100}"
   [m ks]
   (into {} (for [k     ks
-                 :when (not (nil? (get m k)))]
+                 :when (some? (get m k))]
              {k (get m k)})))
 
 (defn select-keys-when

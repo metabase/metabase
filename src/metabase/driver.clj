@@ -16,7 +16,9 @@
             [metabase.config :as config]
             [metabase.models
              [database :refer [Database]]
-             [setting :refer [defsetting]]]
+             field
+             [setting :refer [defsetting]]
+             table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
             [schema.core :as s]

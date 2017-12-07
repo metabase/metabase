@@ -1,4 +1,5 @@
 (ns metabase.driver.postgres-test
+  "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [honeysql.core :as hsql]
@@ -27,8 +28,8 @@
 
 (def ^:private ^PostgresDriver pg-driver (PostgresDriver.))
 
-;; # Check that SSL params get added the connection details in the way we'd like
-;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
+;; Check that SSL params get added the connection details in the way we'd like # no SSL -- this should *not* include
+;; the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
 (expect
   {:user        "camsaul"
    :classname   "org.postgresql.Driver"
@@ -150,7 +151,8 @@
    [[(hsql/raw "'192.168.1.1'::inet")]
     [(hsql/raw "'10.4.4.15'::inet")]]])
 
-;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this wouldn't work)
+;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this
+;; wouldn't work)
 (expect-with-engine :postgres
   [[1]]
   (rows (data/dataset metabase.driver.postgres-test/ip-addresses
@@ -180,10 +182,6 @@
   {:tables #{{:schema "public", :name "test_mview"}}}
   (do
     (drop-if-exists-and-create-db! "materialized_views_test")
-    (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
-                   ["DROP DATABASE IF EXISTS materialized_views_test;
-                     CREATE DATABASE materialized_views_test;"]
-                   {:transaction? false})
     (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test"})]
       (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
@@ -210,7 +208,8 @@
       (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
         (driver/describe-database pg-driver database)))))
 
-;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new one being created (#3331)
+;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new
+;; one being created (#3331)
 (expect-with-engine :postgres
   [{:name "angry_birds", :active true}]
   (let [details (i/database->connection-details pg-driver :db {:database-name "dropped_views_test"})
@@ -260,7 +259,8 @@
   "America/Chicago"
   (get-timezone-with-report-timezone "America/Chicago"))
 
-;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This should give us the same result as if we didn't try to set a timezone at all
+;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This
+;; should give us the same result as if we didn't try to set a timezone at all
 (expect-with-engine :postgres
   (get-timezone-with-report-timezone nil)
   (get-timezone-with-report-timezone "Crunk Burger"))
