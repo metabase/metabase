@@ -12,6 +12,7 @@
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard :as dashboard :refer [Dashboard]]
+             [database :refer [virtual-id]]
              [field :refer [Field]]
              [permissions :as perms]
              [table :refer [Table]]]
@@ -178,6 +179,10 @@
   [table]
   (:id table))
 
+(defmethod ->reference (type Card)
+  [card]
+  (format "card__%s" (:id card)))
+
 (defmethod ->reference (type Field)
   [{:keys [fk_target_field_id id]}]
   (if fk_target_field_id
@@ -244,30 +249,41 @@
   dashboard)
 
 (defn- create-card!
-  [database dashboard {:keys [query description title visualization]}]
-  (let [dataset_query (if (map? query)
-                        {:type     :query
-                         :query    query
-                         :database database}
-                        {:type     :native
-                         :native   {:query query}
-                         :database database})]
-    (when (perms/set-has-full-permissions-for-set?
-           @api/*current-user-permissions-set*
-           (card/query-perms-set dataset_query :write))
-      (let [metadata (card.api/result-metadata-for-query dataset_query)
-            card     (db/insert! Card
-                       :creator_id             api/*current-user-id*
-                       :dataset_query          dataset_query
-                       :description            description
-                       :display                visualization
-                       :name                   title
-                       :visualization_settings {}
-                       :collection_id          nil
-                       :result_metadata        metadata)]
-        (events/publish-event! :card-create card)
-        (hydrate card :creator :dashboard_count :labels :can_write :collection)
-        (add-to-dashboard! dashboard card)))))
+  [database context {:keys [query description title visualization dashboard]}]
+  (when-let [query (unify-vars context query)]
+    (let [database      (if (and (string? (:source_table query))
+                                 (s/starts-with? (:source_table query) "card__"))
+                          virtual-id
+                          database)
+          dataset_query (if (map? query)
+                          {:type     :query
+                           :query    query
+                           :database database}
+                          {:type     :native
+                           :native   {:query query}
+                           :database database})]
+      (when (perms/set-has-full-permissions-for-set?
+             @api/*current-user-permissions-set*
+             (card/query-perms-set dataset_query :write))
+        (let [[visualization visualization-settings]
+              (if (sequential? visualization)
+                visualization
+                [visualization {}])
+              metadata (card.api/result-metadata-for-query dataset_query)
+              card     (db/insert! Card
+                         :creator_id             api/*current-user-id*
+                         :dataset_query          dataset_query
+                         :description            description
+                         :display                (or visualization :table)
+                         :name                   title
+                         :visualization_settings visualization-settings
+                         :collection_id          nil
+                         :result_metadata        metadata)]
+          (events/publish-event! :card-create card)
+          (hydrate card :creator :dashboard_count :labels :can_write :collection)
+          (when-let [dashboard (some->> dashboard (unify-var context))]
+            (add-to-dashboard! dashboard card))
+          card)))))
 
 (def ^:private rules-dir "resources/automagic_dashboards")
 
@@ -288,16 +304,16 @@
   (->> (load-rules)
        (mapcat (fn [{:keys [bindings cards dashboards]}]
                  (let [[tables fields] (bind-models scope bindings)
+                       database        (-> tables first val :db_id)
                        dashboards      (create-dashboards! dashboards)
-                       database        (-> tables first val :db_id)]
-                   (keep (fn [card]
-                           (when-let [query (unify-vars (merge tables fields)
-                                                        (:query card))]
-                             (let [dashboard (->> card
-                                                  :dashboard
-                                                  (unify-var dashboards))]
-                               (create-card! database dashboard
-                                             (assoc card :query query)))))
-                         cards))))
-       (map :id)
+                       context         (merge tables fields dashboards)
+                       source-cards    (into {}
+                                         (for [card cards :when (:as card)]
+                                           [(:as card) (create-card! database
+                                                                     context
+                                                                     card)]))
+                       context         (merge context source-cards)]
+                   (doseq [card cards :when (nil? (:as card))]
+                     (create-card! database context card))
+                   (map (comp :id val) dashboards))))
        distinct))
