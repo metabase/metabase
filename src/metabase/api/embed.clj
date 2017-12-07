@@ -79,7 +79,7 @@
 (defn- valid-param?
   "Is V a valid param value? (Is it non-`nil`, and, if a String, non-blank?)"
   [v]
-  (and (not (nil? v))
+  (and (some? v)
        (or (not (string? v))
            (not (str/blank? v)))))
 
@@ -151,7 +151,7 @@
   [parameters parameter-values]
   (for [param parameters
         :let  [value (get parameter-values (keyword (:slug param)))]
-        :when (not (nil? value))]
+        :when (some? value)]
     (assoc (select-keys param [:type :target])
       :value value)))
 

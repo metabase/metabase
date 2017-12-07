@@ -1,6 +1,9 @@
 (ns metabase.query-processor.annotate
-  "Code that analyzes the results of running a query and adds relevant type information about results (including foreign key information)."
-  ;; TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's head around :)
+  "Code that analyzes the results of running a query and adds relevant type information about results (including
+  foreign key information). This also does things like taking lisp-case keys used in the QP and converting them back
+  to snake_case ones used in the frontend."
+  ;; TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's
+  ;;        head around :)
   ;; TODO - This namespace should be called something like `metabase.query-processor.middleware.annotate`
   (:require [clojure
              [set :as set]
@@ -23,11 +26,15 @@
 ;;; ## Field Resolution
 
 (defn- valid-collected-field? [keep-date-time-fields? f]
-  (or (instance? metabase.query_processor.interface.Field f)
-      (instance? metabase.query_processor.interface.FieldLiteral f)
-      (instance? metabase.query_processor.interface.ExpressionRef f)
-      (when keep-date-time-fields?
-        (instance? metabase.query_processor.interface.DateTimeField f))))
+  (or
+   ;; is `f` an instance of `Field`, `FieldLiteral`, or `ExpressionRef`?
+   (some (u/rpartial instance? f)
+         [metabase.query_processor.interface.Field
+          metabase.query_processor.interface.FieldLiteral
+          metabase.query_processor.interface.ExpressionRef])
+   ;; or if we're keeping DateTimeFields, is is an instance of `DateTimeField`?
+   (when keep-date-time-fields?
+     (instance? metabase.query_processor.interface.DateTimeField f))))
 
 (defn collect-fields
   "Return a sequence of all the `Fields` inside THIS, recursing as needed for collections.
@@ -74,21 +81,25 @@
        :base-type          :type/Float
        :special-type       :type/Number)]
 
-    ;; for every value in a map in the query we'll descend into the map and find all the fields contained therein and mark the key as each field's source.
-    ;; e.g. if we descend into the `:breakout` columns for a query each field returned will get a `:source` of `:breakout`
-    ;; The source is important since it is used to determine sort order for for columns
+    ;; for every value in a map in the query we'll descend into the map and find all the fields contained therein and
+    ;; mark the key as each field's source. e.g. if we descend into the `:breakout` columns for a query each field
+    ;; returned will get a `:source` of `:breakout` The source is important since it is used to determine sort order
+    ;; for for columns
     clojure.lang.IPersistentMap
     (for [[k v] (seq this)
           field (collect-fields v keep-date-time-fields?)
           :when field]
       (if (= k :source-query)
         ;; For columns collected from a source query...
-        ;; 1) Make sure they didn't accidentally pick up an integer ID if the fields clause was added implicitly. If it does
-        ;;    the frontend won't know how to use the field since it won't match up with the same field in the "virtual" table metadata.
-        ;; 2) Keep the original `:source` rather than replacing it with `:source-query` since the frontend doesn't know what to do with that.
+        ;; 1) Make sure they didn't accidentally pick up an integer ID if the fields clause was added implicitly. If
+        ;;     it does the frontend won't know how to use the field since it won't match up with the same field in the
+        ;;     "virtual" table metadata.
+        ;; 2) Keep the original `:source` rather than replacing it with `:source-query` since the frontend doesn't
+        ;;    know what to do with that.
         (if (= (:unit field) :year)
-          ;; if the field is broken out by year we don't want to advertise it as type/DateTime because you can't do a datetime breakout on the years that come back
-          ;; (they come back as text). So instead just tell people it's a Text column
+          ;; if the field is broken out by year we don't want to advertise it as type/DateTime because you can't do a
+          ;; datetime breakout on the years that come back (they come back as text). So instead just tell people it's
+          ;; a Text column
           (assoc field
             :field-id [:field-literal (:field-name field) :type/Text]
             :base-type :type/Text
@@ -126,7 +137,8 @@
                                             (if (instance? Expression arg)
                                               (str "(" (aggregation-name arg) ")")
                                               (aggregation-name arg)))))
-    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
+    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
+    ;; is called `:count` (WHY?)
     aggregation-type          (if (= (keyword aggregation-type) :distinct)
                                 "count"
                                 (name aggregation-type))))
@@ -148,13 +160,15 @@
             :field-display-name field-name
             :base-type          (:base-type ag-field)
             :special-type       (:special-type ag-field)})
-         ;; Always treat count or distinct count as an integer even if the DB in question returns it as something wacky like a BigDecimal or Float
+         ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
+         ;; wacky like a BigDecimal or Float
          (when (contains? #{:count :distinct} ag-type)
            {:base-type    :type/Integer
             :special-type :type/Number})
-         ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
-         ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
-         ;; But this will work for the purposes of a patch release.
+         ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
+         ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
+         ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
+         ;; for the purposes of a patch release.
          (when (instance? ExpressionRef ag-field)
            {:base-type    :type/Float
             :special-type :type/Number})))
@@ -163,7 +177,8 @@
   "Does QUERY have an aggregation?"
   [{aggregations :aggregation}]
   (or (empty? aggregations)
-      ;; TODO - Not sure this needs to be checked anymore since `:rows` is a legacy way to specifiy "no aggregations" and should be stripped out during preprocessing
+      ;; TODO - Not sure this needs to be checked anymore since `:rows` is a legacy way to specifiy "no aggregations"
+      ;; and should be stripped out during preprocessing
       (= (:aggregation-type (first aggregations)) :rows)))
 
 (defn- add-aggregate-fields-if-needed
@@ -188,8 +203,8 @@
    :field-name         k
    :field-display-name (humanization/name->human-readable-name (name k))})
 
-;; TODO - I'm not 100% sure the code reaches this point any more since the `collect-fields` logic now handles nested queries
-;; maybe this is used for queries where the source query is native?
+;; TODO - I'm not 100% sure the code reaches this point any more since the `collect-fields` logic now handles nested
+;; queries maybe this is used for queries where the source query is native?
 (defn- info-for-column-from-source-query
   "Return information about a column that comes back when we're using a source query.
    (This is basically the same as the generic information, but we also add `:id` and `:source`
@@ -202,9 +217,10 @@
 
 
 (defn- info-for-duplicate-field
-  "The Clojure JDBC driver automatically appends suffixes like `count_2` to duplicate columns if multiple columns come back with the same name;
-   since at this time we can't resolve those normally (#1786) fall back to using the metadata for the first column (e.g., `count`).
-   This is definitely a HACK, but in most cases this should be correct (or at least better than the generic info) for the important things like type information."
+  "The Clojure JDBC driver automatically appends suffixes like `count_2` to duplicate columns if multiple columns come
+  back with the same name; since at this time we can't resolve those normally (#1786) fall back to using the metadata
+  for the first column (e.g., `count`). This is definitely a HACK, but in most cases this should be correct (or at
+  least better than the generic info) for the important things like type information."
   [fields k]
   (when-let [[_ field-name-without-suffix] (re-matches #"^(.*)_\d+$" (name k))]
     (some (fn [{field-name :field-name, :as field}]
@@ -230,22 +246,19 @@
                         (assert (every? keyword? <>)))
         missing-keys  (set/difference (set actual-keys) expected-keys)]
     (when (seq missing-keys)
-      (log/warn (u/format-color 'yellow "There are fields we (maybe) weren't expecting in the results: %s\nExpected: %s\nActual: %s"
+      (log/warn (u/format-color 'yellow (str "There are fields we (maybe) weren't expecting in the results: %s\n"
+                                             "Expected: %s\nActual: %s")
                   missing-keys expected-keys (set actual-keys))))
     (concat fields (for [k     actual-keys
                          :when (contains? missing-keys k)]
                      (info-for-missing-key inner-query fields k (map k initial-rows))))))
 
 (defn- fixup-renamed-fields
-  "After executing the query, it's possible that java.jdbc changed the
-  name of the column that was originally in the query. This can happen
-  when java.jdbc finds two columns with the same name, it will append
-  an integer (like _2) on the end. When this is done on an existing
-  column in the query, this function fixes that up, updating the
-  column information we have with the new name that java.jdbc assigned
-  the column. The `add-unknown-fields-if-needed` function above is
-  similar, but is used when we don't have existing information on that
-  column and need to infer it."
+  "After executing the query, it's possible that java.jdbc changed the name of the column that was originally in the
+  query. This can happen when java.jdbc finds two columns with the same name, it will append an integer (like _2) on
+  the end. When this is done on an existing column in the query, this function fixes that up, updating the column
+  information we have with the new name that java.jdbc assigned the column. The `add-unknown-fields-if-needed`
+  function above is similar, but is used when we don't have existing information on that column and need to infer it."
   [query actual-keys]
   (let [expected-field-names (set (map (comp keyword name) (:fields query)))]
     (if (= expected-field-names (set actual-keys))
@@ -290,7 +303,8 @@
                                                    (integer? id))]
                                    id))
        (constantly nil)))
-  ;; Fetch the foreign key fields whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
+  ;; Fetch the foreign key fields whose origin is in the returned Fields, create a map of
+  ;; origin-field-id->destination-field-id
   ([fields fk-ids]
    (when (seq fk-ids)
      (fk-field->dest-fn fields fk-ids (db/select-id->field :fk_target_field_id Field
@@ -320,8 +334,8 @@
                         {}))))))
 
 (defn- resolve-sort-and-format-columns
-  "Collect the Fields referenced in INNER-QUERY, sort them according to the rules at the top
-   of this page, format them as expected by the frontend, and return the results."
+  "Collect the Fields referenced in INNER-QUERY, sort them according to the rules at the top of this page, format them
+  as expected by the frontend, and return the results."
   [inner-query result-keys initial-rows]
   {:pre [(sequential? result-keys)]}
   (when (seq result-keys)
@@ -352,8 +366,8 @@
   "Post-process a structured query to add metadata to the results. This stage:
 
   1.  Sorts the results according to the rules at the top of this page
-  2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols`
-      expected by the frontend."
+  2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols` expected by the
+      frontend."
   [query {:keys [columns rows], :as results}]
   (let [row-maps (for [row rows]
                    (zipmap columns row))

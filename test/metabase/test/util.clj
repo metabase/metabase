@@ -108,7 +108,7 @@
                    (if (map? maybe-map)
                      (reduce-kv (fn [acc k v]
                                   (if (pred k)
-                                    (assoc acc k (not (nil? v)))
+                                    (assoc acc k (some? v))
                                     (assoc acc k v)))
                                 {} maybe-map)
                      maybe-map))

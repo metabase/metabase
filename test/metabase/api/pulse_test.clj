@@ -52,8 +52,8 @@
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
       (dissoc :id)
-      (assoc :created_at (not (nil? created_at))
-             :updated_at (not (nil? updated_at)))))
+      (assoc :created_at (some? created_at)
+             :updated_at (some? updated_at))))
 
 
 ;; ## /api/pulse/* AUTHENTICATION Tests

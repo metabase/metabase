@@ -1,5 +1,8 @@
 (ns metabase.query-processor.middleware.resolve
-  "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary."
+  "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary. During the `expand`
+  phase of the Query Processor, forms like `[:field-id 10]` are replaced with placeholder objects of types like
+  `FieldPlaceholder` or similar. During this phase, we'll take those placeholder objects and fetch information from
+  the DB and replace them with actual objects like `Field`."
   (:refer-clojure :exclude [resolve])
   (:require [clj-time.coerce :as tcoerce]
             [clojure
@@ -53,11 +56,11 @@
 (defn- rename-field-value-keys
   [field-values]
   (set/rename-keys (into {} field-values)
-                   {:id                      :field-value-id
-                    :field_id                :field-id
-                    :human_readable_values   :human-readable-values
-                    :updated_at              :updated-at
-                    :created_at              :created-at}))
+                   {:id                    :field-value-id
+                    :field_id              :field-id
+                    :human_readable_values :human-readable-values
+                    :updated_at            :updated-at
+                    :created_at            :created-at}))
 
 (defn convert-db-field
   "Converts a field map from that database to a Field instance"
@@ -71,7 +74,7 @@
                           vals)))
       (update :dimensions (fn [dims]
                             (if (seq dims)
-                              (-> dims rename-dimension-keys i/map->Dimensions )
+                              (-> dims rename-dimension-keys i/map->Dimensions)
                               dims)))))
 
 ;;; ----------------------------------------------- IRESOLVE PROTOCOL ------------------------------------------------
@@ -104,12 +107,17 @@
 
 ;;; ----------------------------------------------------- FIELD ------------------------------------------------------
 
-(defn- field-unresolved-field-id [{:keys [parent parent-id]}]
+(defn- field-unresolved-field-id
+  "Return the ID of a unresolved Fields belonging to a Field. (This means we'll just return the ID of the parent if
+  it's not yet resolved.)"
+  [{:keys [parent parent-id]}]
   (or (unresolved-field-id parent)
       (when (instance? FieldPlaceholder parent)
         parent-id)))
 
-(defn- field-resolve-field [{:keys [parent parent-id], :as this} field-id->field]
+(defn- field-resolve-field
+  "Attempt to resolve the `:parent` of a `Field`, if there is one, if it's a `FieldPlaceholder`."
+  [{:keys [parent parent-id], :as this} field-id->field]
   (cond
     parent    (or (when (instance? FieldPlaceholder parent)
                     (when-let [resolved (resolve-field parent field-id->field)]
@@ -119,7 +127,11 @@
                                       (i/map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
 
-(defn- field-resolve-table [{:keys [table-id fk-field-id field-id], :as this} fk-id+table-id->table]
+(defn- field-resolve-table
+  "Resolve the `Table` belonging to a resolved `Field`. (This is only used for resolving Tables referred to via
+  foreign keys.)"
+  [{:keys [table-id fk-field-id field-id], :as this} fk-id+table-id->table]
+  ;; TODO - use schema for this instead of preconditions :D
   {:pre [(map? fk-id+table-id->table) (every? vector? (keys fk-id+table-id->table))]}
   (let [table (or (fk-id+table-id->table [fk-field-id table-id])
                   ;; if we didn't find a matching table check and see whether we're trying to use a field from another
@@ -169,7 +181,9 @@
   [& maps]
   (apply merge-with #(or %2 %1) maps))
 
-(defn- field-ph-resolve-field [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
+(defn- field-ph-resolve-field
+  "Attempt to resolve the `Field` for a `FieldPlaceholder`. Return a resolved `Field` or `DateTimeField`."
+  [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
@@ -223,7 +237,8 @@
 
         (instance? RelativeDatetime value)
         (do (s/validate RelativeDatetime value)
-            (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+            (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue
+                                               {:field this, :amount (:amount value), :unit (:unit value)})))
 
         (nil? value)
         nil
@@ -231,7 +246,9 @@
         :else
         (throw (Exception. (format "Invalid value '%s': expected a DateTime." value)))))))
 
-(defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->field]
+(defn- value-ph-resolve-field
+  "Attempt to resolve the `Field` for a `ValuePlaceholder`. Return a resolved `Value` or `DateTimeValue`."
+  [{:keys [field-placeholder value]} field-id->field]
   (let [resolved-field (resolve-field field-placeholder field-id->field)]
     (when-not resolved-field
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
@@ -261,9 +278,31 @@
   [expanded-query-dict]
   (assoc expanded-query-dict :fk-field-ids (collect-fk-field-ids expanded-query-dict)))
 
+(defn- add-parent-placeholder-if-needed
+  "If `field` has a `:parent-id` add a `FieldPlaceholder` for its parent."
+  [field]
+  (assoc field :parent (when-let [parent-id (:parent-id field)]
+                         (i/map->FieldPlaceholder {:field-id parent-id}))))
+
+(defn- fetch-fields
+  "Fetch a sequence of Fields with appropriate information from the database for the IDs in `field-ids`, excluding
+  'sensitive' Fields. Then hydrate information that will be used by the QP and transform the keys so they're
+  Clojure-style as expected by the rest of the QP code."
+  [field-ids]
+  (as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
+                    :description :id :fingerprint]
+          :visibility_type [:not= "sensitive"]
+          :id              [:in field-ids]) fields
+    ;; hydrate values & dimensions for the `fields` we just fetched from the DB
+    (hydrate fields :values :dimensions)
+    ;; now for each Field call `rename-mb-field-keys` on it to take underscored DB-style names and replace them with
+    ;; hyphenated Clojure-style names. (I know, this is a questionable step!)
+    (map rename-mb-field-keys fields)
+    ;; now add a FieldPlaceholder for its parent if the Field has a parent-id so it can get resolved on the next pass
+    (map add-parent-placeholder-if-needed fields)))
+
 (defn- resolve-fields
-  "Resolve the `Fields` in an EXPANDED-QUERY-DICT.
-   Record `:table-ids` referenced in the Query."
+  "Resolve the `Fields` in an EXPANDED-QUERY-DICT. Record `:table-ids` referenced in the Query."
   [expanded-query-dict]
   (loop [max-iterations 5, expanded-query-dict expanded-query-dict]
     (when (neg? max-iterations)
@@ -273,22 +312,13 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type
-                                                        :visibility_type :table_id :parent_id :description :id
-                                                        :fingerprint]
-                                              :visibility_type [:not= "sensitive"]
-                                              :id              [:in field-ids])
-                                            (hydrate :values)
-                                            (hydrate :dimensions)))
-                          (m/map-vals rename-mb-field-keys)
-                          (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
-                                                          (i/map->FieldPlaceholder {:field-id parent-id})))))]
+        (let [fields (fetch-fields field-ids)]
           (->>
            ;; Now record the IDs of Tables these fields references in the :table-ids property of the expanded query
            ;; dict. Those will be used for Table resolution in the next step.
-           (update expanded-query-dict :table-ids set/union (set (map :table-id (vals fields))))
+           (update expanded-query-dict :table-ids set/union (set (map :table-id fields)))
            ;; Walk the query and resolve all fields
-           (walk/postwalk (u/rpartial resolve-field fields))
+           (walk/postwalk (u/rpartial resolve-field (u/key-by :field-id fields)))
            ;; Recurse in case any new (nested) unresolved fields were found.
            (recur (dec max-iterations))))))))
 
@@ -317,7 +347,8 @@
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
-    (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
+    (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id
+                       target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
            (i/map->JoinTable {:table-id     target-table-id
                               :table-name   target-table-name
                               :schema       target-table-schema
@@ -337,7 +368,8 @@
     (update-in expanded-query-dict [:query :source-query] (fn [source-query]
                                                             (if (:native source-query)
                                                               source-query
-                                                              (:query (resolve-tables (assoc expanded-query-dict :query source-query))))))
+                                                              (:query (resolve-tables (assoc expanded-query-dict
+                                                                                        :query source-query))))))
     ;; otherwise we can resolve tables in the (current) top-level
     (let [table-ids             (conj table-ids source-table-id)
           joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)

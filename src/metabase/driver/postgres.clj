@@ -1,4 +1,6 @@
 (ns metabase.driver.postgres
+  "Database driver for PostgreSQL databases. Builds on top of the 'Generic SQL' driver, which implements most
+  functionality for JDBC-based drivers."
   (:require [clojure
              [set :as set :refer [rename-keys]]
              [string :as s]]
@@ -13,7 +15,7 @@
              [ssh :as ssh]])
   (:import java.util.UUID))
 
-(def ^:private ^:const column->base-type
+(def ^:private column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   {:bigint        :type/BigInteger
@@ -171,7 +173,10 @@
     #".*" ; default
     message))
 
-(defn- prepare-value [{value :value, {:keys [base-type]} :field}]
+(defn- prepare-value
+  "Prepare a value for compilation to SQL. This should return an appropriate HoneySQL form. See description in
+  `ISQLDriver` protocol for details."
+  [{value :value, {:keys [base-type database-type]} :field}]
   (if-not value
     value
     (cond

@@ -124,7 +124,7 @@
              :base-type     (driver/class->base-type most-common-object-type)}
       (= :_id field-kw)           (assoc :pk? true)
       (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
-                                                            (filter #(not (nil? (first %))))
+                                                            (filter #(some? (first %)))
                                                             (sort-by second)
                                                             last
                                                             first))
