@@ -108,6 +108,7 @@
 (s/defrecord Field [field-id           :- su/IntGreaterThanZero
                     field-name         :- su/NonBlankString
                     field-display-name :- su/NonBlankString
+                    database-type      :- su/NonBlankString
                     base-type          :- su/FieldType
                     special-type       :- (s/maybe su/FieldType)
                     visibility-type    :- (apply s/enum field/visibility-types)

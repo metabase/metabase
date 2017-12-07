@@ -48,6 +48,8 @@
 (derive :type/SerializedJSON :type/Text)
 (derive :type/SerializedJSON :type/Collection)
 
+(derive :type/PostgresEnum :type/Text)
+
 ;;; DateTime Types
 
 (derive :type/DateTime :type/*)
