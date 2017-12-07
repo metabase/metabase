@@ -293,7 +293,7 @@
                           :visibility-type    :visibility_type
                           :remapped-to        :remapped_to
                           :remapped-from      :remapped_from})
-        (dissoc :position :clause-position :parent :parent-id :table-name))))
+        (dissoc :position :clause-position :parent :parent-id :table-name :database-type))))
 
 (defn- fk-field->dest-fn
   "Fetch fk info and return a function that returns the destination Field of a given Field."

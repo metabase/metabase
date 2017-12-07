@@ -38,6 +38,7 @@
                                     :display_name    :field-display-name
                                     :special_type    :special-type
                                     :visibility_type :visibility-type
+                                    :database_type   :database-type
                                     :base_type       :base-type
                                     :table_id        :table-id
                                     :parent_id       :parent-id}))
@@ -290,7 +291,7 @@
   Clojure-style as expected by the rest of the QP code."
   [field-ids]
   (as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
-                    :description :id :fingerprint]
+                    :description :id :fingerprint :database_type]
           :visibility_type [:not= "sensitive"]
           :id              [:in field-ids]) fields
     ;; hydrate values & dimensions for the `fields` we just fetched from the DB
