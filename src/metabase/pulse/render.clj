@@ -411,11 +411,6 @@
 (defn- mb-hash-str [image-hash]
   (str image-hash "@metabase"))
 
-(defn- resource-path->content-id-pair [path]
-  (let [external-link-url (io/resource path)]
-    [(mb-hash-str (hash-image-url external-link-url))
-     external-link-url]))
-
 (defn- write-byte-array-to-temp-file
   [^bytes img-bytes]
   (let [f (doto (java.io.File/createTempFile "metabase_pulse_image_" ".png")
@@ -424,22 +419,72 @@
       (.write fos img-bytes))
     f))
 
-(defn- byte-array->content-id-pair
-  [^bytes img-bytes]
-  (let [f (write-byte-array-to-temp-file img-bytes)]
-    [(mb-hash-str (hash-bytes img-bytes))
-     (io/as-url f)]))
+(defn- byte-array->url [^bytes img-bytes]
+  (-> img-bytes write-byte-array-to-temp-file io/as-url))
+
+(defmulti ^:private make-image-bundle
+  "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
+  `RENDER-TYPE` is `:inline`), or create the hashes/references needed for an attached image (`RENDER-TYPE` of
+  `:attachment`)"
+  (fn [render-type url-or-bytes]
+    [render-type (class url-or-bytes)]))
+
+(defmethod make-image-bundle [:attachment java.net.URL]
+  [render-type ^java.net.URL url]
+  (let [content-id (mb-hash-str (hash-image-url url))]
+    {:content-id  content-id
+     :image-url   url
+     :image-src   (content-id-reference content-id)
+     :render-type render-type}))
+
+(defmethod make-image-bundle [:attachment (class (byte-array 0))]
+  [render-type image-bytes]
+  (let [image-url (byte-array->url image-bytes)
+        content-id (mb-hash-str (hash-bytes image-bytes))]
+    {:content-id  content-id
+     :image-url   image-url
+     :image-src   (content-id-reference content-id)
+     :render-type render-type}))
+
+(defmethod make-image-bundle [:inline java.net.URL]
+  [render-type ^java.net.URL url]
+  {:image-src   (-> url io/input-stream IOUtils/toByteArray render-img-data-uri)
+   :image-url   url
+   :render-type render-type})
+
+(defmethod make-image-bundle [:inline (class (byte-array 0))]
+  [render-type image-bytes]
+  {:image-src   (render-img-data-uri image-bytes)
+   :render-type render-type})
+
+(def ^:private external-link-url (io/resource "frontend_client/app/assets/img/external_link.png"))
+(def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/pulse_no_results@2x.png"))
 
 (def ^:private external-link-image
   (delay
-   (resource-path->content-id-pair "frontend_client/app/assets/img/external_link.png")))
+   (make-image-bundle :attachment external-link-url)))
 
 (def ^:private no-results-image
   (delay
-   (resource-path->content-id-pair "frontend_client/app/assets/img/pulse_no_results@2x.png")))
+   (make-image-bundle :attachment no-results-url)))
+
+(defn- external-link-image-bundle [render-type]
+  (case render-type
+    :attachment @external-link-image
+    :inline (make-image-bundle render-type external-link-url)))
+
+(defn- no-results-image-bundle [render-type]
+  (case render-type
+    :attachment @no-results-image
+    :inline (make-image-bundle render-type no-results-url)))
+
+(defn- image-bundle->attachment [{:keys [render-type content-id image-url]}]
+  (case render-type
+    :attachment {content-id image-url}
+    :inline     nil))
 
 (s/defn ^:private render:sparkline :- RenderedPulseCard
-  [timezone card {:keys [rows cols]}]
+  [render-type timezone card {:keys [rows cols]}]
   (let [ft-row (if (datetime-field? (first cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
@@ -462,14 +507,14 @@
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
         labels (format-timestamp-pair timezone (map first rows') (first cols))
-        [content-id png-url] (byte-array->content-id-pair (render-sparkline-to-png xs' ys' 524 130))]
+        image-bundle (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
 
-    {:attachments (when (and content-id png-url)
-                    {content-id png-url})
+    {:attachments (when image-bundle
+                    (image-bundle->attachment image-bundle))
      :content     [:div
                    [:img {:style (style {:display :block
                                          :width :100%})
-                          :src   (content-id-reference content-id)}]
+                          :src   (:image-src image-bundle)}]
                    [:table
                     [:tr
                      [:td {:style (style {:color         color-brand
@@ -492,13 +537,12 @@
                       (second labels)]]]]}))
 
 (s/defn ^:private render:empty :- RenderedPulseCard
-  [_ _]
-  (let [[content-id no-results-url] @no-results-image]
-    {:attachments (when (and content-id no-results-url)
-                    {content-id no-results-url})
+  [render-type _ _]
+  (let [image-bundle (no-results-image-bundle render-type)]
+    {:attachments (image-bundle->attachment image-bundle)
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :104px})
-                          :src   (content-id-reference content-id)}]
+                          :src   (:image-src image-bundle)}]
                    [:div {:style (style {:margin-top :8px
                                          :color      color-gray-4})}
                     "No results"]]}))
@@ -528,12 +572,12 @@
       :else                                                        :table)))
 
 (s/defn ^:private make-title-if-needed :- (s/maybe RenderedPulseCard)
-  [card]
+  [render-type card]
   (when *include-title*
-    (let [[content-id link-url] (when *include-buttons*
-                                  @external-link-image)]
-      {:attachments (when (and content-id link-url)
-                      {content-id link-url})
+    (let [image-bundle (when *include-buttons*
+                         (external-link-image-bundle render-type))]
+      {:attachments (when image-bundle
+                      (image-bundle->attachment image-bundle))
        :content     [:table {:style (style {:margin-bottom :8px
                                             :width         :100%})}
                      [:tbody
@@ -544,18 +588,18 @@
                         (when *include-buttons*
                           [:img {:style (style {:width :16px})
                                  :width 16
-                                 :src   (content-id-reference content-id)}])]]]]})))
+                                 :src   (:image-src image-bundle)}])]]]]})))
 
 (s/defn ^:private render-pulse-card-body :- RenderedPulseCard
-  [timezone card {:keys [data error]}]
+  [render-type timezone card {:keys [data error]}]
   (try
     (when error
       (let [^String msg (tru "Card has errors: {0}" error)]
         (throw (Exception. msg))))
     (case (detect-pulse-card-type card data)
-      :empty     (render:empty     card data)
+      :empty     (render:empty     render-type card data)
       :scalar    (render:scalar    timezone card data)
-      :sparkline (render:sparkline timezone card data)
+      :sparkline (render:sparkline render-type timezone card data)
       :bar       (render:bar       timezone card data)
       :table     (render:table     timezone card data)
       {:attachments nil
@@ -572,11 +616,11 @@
                                           :padding     :16px})}
                      "An error occurred while displaying this card."]})))
 
-(s/defn render-pulse-card :- RenderedPulseCard
+(s/defn ^:private render-pulse-card :- RenderedPulseCard
   "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."
-  [timezone card results]
-  (let [{title :content title-attachments :attachments} (make-title-if-needed card)
-        {pulse-body :content body-attachments :attachments} (render-pulse-card-body timezone card results)]
+  [render-type timezone card results]
+  (let [{title :content title-attachments :attachments} (make-title-if-needed render-type card)
+        {pulse-body :content body-attachments :attachments} (render-pulse-card-body render-type timezone card results)]
     {:attachments (merge title-attachments body-attachments)
      :content     [:a {:href   (card-href card)
                        :target "_blank"
@@ -592,13 +636,13 @@
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
   [timezone card results]
-  (:content (render-pulse-card timezone card results)))
+  (:content (render-pulse-card :inline timezone card results)))
 
 (s/defn render-pulse-section :- RenderedPulseCard
   "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
   [timezone {:keys [card result]}]
   (let [{:keys [attachments content]} (binding [*include-title* true]
-                                        (render-pulse-card timezone card result))]
+                                        (render-pulse-card :attachment timezone card result))]
     {:attachments attachments
      :content     [:div {:style (style {:margin-top       :10px
                                         :margin-bottom    :20px
@@ -611,4 +655,4 @@
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
   ^bytes [timezone pulse-card result]
-  (render-html-to-png (render-pulse-card timezone pulse-card result) card-width))
+  (render-html-to-png (render-pulse-card :inline timezone pulse-card result) card-width))
