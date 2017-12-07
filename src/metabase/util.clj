@@ -27,12 +27,13 @@
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
-;; This is the very first log message that will get printed.
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+;; This is the very first log message that will get printed.  It's here because this is one of the very first
+;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
+;; the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 (log/info (trs "Loading Metabase..."))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
+;; for pprinting huge things like expanded queries
 (intern 'clojure.pprint '*print-right-margin* 200)
 
 (declare pprint-to-str)
@@ -368,7 +369,8 @@
 
 ;; TODO - rename to `url?`
 (defn is-url?
-  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing IP addresses will return `false`.)"
+  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
+  IP addresses will return `false`.)"
   ^Boolean [^String s]
   (boolean (when (seq s)
              (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
@@ -445,7 +447,8 @@
     (apply f (concat args bound-args))))
 
 (defmacro pdoseq
-  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
+  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and
+  only supports a single binding </3"
   {:style/indent 1}
   [[binding collection] & body]
   `(dorun (pmap (fn [~binding]
@@ -464,7 +467,8 @@
       (seq more)  (recur (inc i) more))))
 
 (defmacro prog1
-  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of FIRST-FORM.
+  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of
+   FIRST-FORM.
 
      (def numbers (atom []))
 
@@ -640,8 +644,8 @@
 
 
 (defn- check-protocol-impl-method-map
-  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are provided.
-   Used internally by `strict-extend`."
+  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are
+   provided. Used internally by `strict-extend`."
   [protocol method-map]
   (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]
     (when missing-methods
@@ -650,10 +654,12 @@
       (throw (Exception. (format "Methods implemented that are not in %s: %s " (:var protocol) extra-methods))))))
 
 (defn strict-extend
-  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any methods not
-   declared in the protocol are provided.
-   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and to
-   `extend-protocol`/ `extend-type` going forward." ; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
+  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any
+  methods not declared in the protocol are provided.
+
+  Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
+  to `extend-protocol`/ `extend-type` going forward."
+  ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
   {:style/indent 1}
   [atype protocol method-map & more]
   (check-protocol-impl-method-map protocol method-map)
@@ -666,11 +672,12 @@
   ^String [^String s]
   (when (seq s)
     (s/replace
-     ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER A' + 'COMBINING ACUTE ACCENT'
-     ;; See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
+     ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER
+     ;; A' + 'COMBINING ACUTE ACCENT' See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
      (Normalizer/normalize s Normalizer$Form/NFD)
-     ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best: http://stackoverflow.com/a/5697575/1198455
-     ;; The closest thing to a relevant JavaDoc I could find was http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
+     ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best:
+     ;; http://stackoverflow.com/a/5697575/1198455 The closest thing to a relevant JavaDoc I could find was
+     ;; http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
      #"\p{Block=CombiningDiacriticalMarks}+"
      "")))
 
@@ -726,8 +733,9 @@
 
 (defn key-by
   "Convert a sequential COLL to a map of `(f item)` -> `item`.
-   This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of items.
-   (Because only a single item is kept for each value of `f`,  items producing duplicate values will be discarded).
+  This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of
+  items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
+  discarded).
 
      (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
   {:style/indent 1}
@@ -868,12 +876,9 @@
   (->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
 (def ^:private ordered-date-parsers
-  "When using clj-time.format/parse without a formatter, it tries all
-  default formatters, but not ordered by how likely the date
-  formatters will succeed. This leads to very slow parsing as many
-  attempts fail before the right one is found. Using this retains that
-  flexibility but improves performance by trying the most likely ones
-  first"
+  "When using clj-time.format/parse without a formatter, it tries all default formatters, but not ordered by how
+  likely the date formatters will succeed. This leads to very slow parsing as many attempts fail before the right one
+  is found. Using this retains that flexibility but improves performance by trying the most likely ones first"
   (let [most-likely-default-formatters [:mysql :date-hour-minute-second :date-time :date
                                         :basic-date-time :basic-date-time-no-ms
                                         :date-time :date-time-no-ms]]
@@ -882,9 +887,8 @@
             (vals (apply dissoc time/formatters most-likely-default-formatters)))))
 
 (defn str->date-time
-  "Like clj-time.format/parse but uses an ordered list of parsers to
-  be faster. Returns the parsed date or nil if it was unable to be
-  parsed."
+  "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date or nil if it
+  was unable to be parsed."
   ([^String date-str]
    (str->date-time date-str nil))
   ([^String date-str ^TimeZone tz]

@@ -99,8 +99,9 @@
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
-    {:name      (.getName field)
-     :base-type (bigquery-type->base-type (.getType field))}))
+    {:name          (.getName field)
+     :database-type (.getType field)
+     :base-type     (bigquery-type->base-type (.getType field))}))
 
 (defn- describe-table [database {table-name :name}]
   {:schema nil

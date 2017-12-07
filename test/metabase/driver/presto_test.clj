@@ -86,18 +86,24 @@
 (datasets/expect-with-engine :presto
   {:name   "venues"
    :schema "default"
-   :fields #{{:name      "name",
-              :base-type :type/Text}
-             {:name      "latitude"
-              :base-type :type/Float}
-             {:name      "longitude"
-              :base-type :type/Float}
-             {:name      "price"
-              :base-type :type/Integer}
-             {:name      "category_id"
-              :base-type :type/Integer}
-             {:name      "id"
-              :base-type :type/Integer}}}
+   :fields #{{:name          "name",
+              :database-type "varchar(255)"
+              :base-type     :type/Text}
+             {:name          "latitude"
+              :database-type "double"
+              :base-type     :type/Float}
+             {:name          "longitude"
+              :database-type "double"
+              :base-type     :type/Float}
+             {:name          "price"
+              :database-type "integer"
+              :base-type     :type/Integer}
+             {:name          "category_id"
+              :database-type "integer"
+              :base-type     :type/Integer}
+             {:name          "id"
+              :database-type "integer"
+              :base-type     :type/Integer}}}
   (driver/describe-table (PrestoDriver.) (data/db) (db/select-one 'Table :id (data/id :venues))))
 
 ;;; TABLE-ROWS-SAMPLE

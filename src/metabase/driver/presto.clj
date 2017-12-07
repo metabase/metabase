@@ -163,7 +163,9 @@
     {:schema schema
      :name   table-name
      :fields (set (for [[name type] rows]
-                    {:name name, :base-type (presto-type->base-type type)}))}))
+                    {:name          name
+                     :database-type type
+                     :base-type     (presto-type->base-type type)}))}))
 
 (defprotocol ^:private IPrepareValue
   (^:private prepare-value [this]))

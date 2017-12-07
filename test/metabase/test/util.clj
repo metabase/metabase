@@ -153,10 +153,11 @@
 
 (u/strict-extend (class Field)
   test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:base_type :type/Text
-                                :name      (random-name)
-                                :position  1
-                                :table_id  (data/id :checkins)})})
+  {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
+                                :base_type     :type/Text
+                                :name          (random-name)
+                                :position      1
+                                :table_id      (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
   test/WithTempDefaults

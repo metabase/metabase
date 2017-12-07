@@ -13,7 +13,9 @@
              [database :refer [Database]]
              [field :as field]]
             [metabase.sync.interface :as si]
-            [metabase.util.ssh :as ssh]
+            [metabase.util
+             [schema :as su]
+             [ssh :as ssh]]
             [monger
              [collection :as mc]
              [command :as cmd]
@@ -104,48 +106,63 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
+(s/defn ^:private most-common-object-type :- Class
+  "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
+  occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
+  for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
+  number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
+  [field-types :- [(s/pair Class "Class", s/Int "Int")]]
+  (->> field-types
+       (sort-by second)
+       last
+       first))
+
 (defn- describe-table-field [field-kw field-info]
-  ;; TODO: indicate preview-display status based on :len
-  (cond-> {:name      (name field-kw)
-           :base-type (->> (vec (:types field-info))
-                           (sort-by second)
-                           last
-                           first
-                           driver/class->base-type)}
-    (= :_id field-kw)           (assoc :pk? true)
-    (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
-                                                          (filter #(not (nil? (first %))))
-                                                          (sort-by second)
-                                                          last
-                                                          first))
-    (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
-                                                             (describe-table-field field (field (:nested-fields field-info))))))))
+  (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
+    (cond-> {:name          (name field-kw)
+             :database-type (.getName most-common-object-type)
+             :base-type     (driver/class->base-type most-common-object-type)}
+      (= :_id field-kw)           (assoc :pk? true)
+      (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
+                                                            (filter #(not (nil? (first %))))
+                                                            (sort-by second)
+                                                            last
+                                                            first))
+      (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
+                                                               (describe-table-field field (field (:nested-fields field-info)))))))))
 
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defn- table-sample-column-info
+  "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
+   sample. The results will look something like:
+
+      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil},
+       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil}}"
+  [^com.mongodb.DB conn, table]
+  (try
+    (->> (mc/find-maps conn (:name table))
+         (take driver/max-sample-rows)
+         (reduce
+          (fn [field-defs row]
+            (loop [[k & more-keys] (keys row), fields field-defs]
+              (if-not k
+                fields
+                (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
+          {}))
+    (catch Throwable t
+      (log/error (format "Error introspecting collection: %s" (:name table)) t))))
+
 (defn- describe-table [database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
-    (let [parsed-rows (try
-                        (->> (mc/find-maps conn (:name table))
-                             (take driver/max-sample-rows)
-                             (reduce
-                               (fn [field-defs row]
-                                 (loop [[k & more-keys] (keys row)
-                                        fields field-defs]
-                                   (if-not k
-                                     fields
-                                     (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-                               {}))
-                        (catch Throwable t
-                          (log/error (format "Error introspecting collection: %s" (:name table)) t)))]
+    (let [column-info (table-sample-column-info conn table)]
       {:schema nil
        :name   (:name table)
-       :fields (set (for [field (keys parsed-rows)]
-                      (describe-table-field field (field parsed-rows))))})))
+       :fields (set (for [[field info] column-info]
+                      (describe-table-field field info)))})))
 
 
 (defrecord MongoDriver []
