@@ -97,9 +97,11 @@ cards:
     breakout: [datetime-field, "?timestamp", month]
     aggregation: [distinct, "?user"]
 - dashboard: "?orders_dashboard"
-  visualization: bar
-  title: Sales by product
+  visualization: row
+  title: Top 10 products by sales
   query:
     source_table: "?orders"
     breakout: ["?product"]
     aggregation: [count]
+    limit: 10
+    order_by: [[[aggregation, 0], "descending"]]
