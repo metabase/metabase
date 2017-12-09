@@ -108,7 +108,7 @@
                    (if (map? maybe-map)
                      (reduce-kv (fn [acc k v]
                                   (if (pred k)
-                                    (assoc acc k (not (nil? v)))
+                                    (assoc acc k (some? v))
                                     (assoc acc k v)))
                                 {} maybe-map)
                      maybe-map))
@@ -153,10 +153,11 @@
 
 (u/strict-extend (class Field)
   test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:base_type :type/Text
-                                :name      (random-name)
-                                :position  1
-                                :table_id  (data/id :checkins)})})
+  {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
+                                :base_type     :type/Text
+                                :name          (random-name)
+                                :position      1
+                                :table_id      (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
   test/WithTempDefaults

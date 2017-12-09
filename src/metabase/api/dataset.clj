@@ -1,11 +1,9 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
-            [clojure.data.csv :as csv]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
              [middleware :as middleware]
              [query-processor :as qp]
@@ -17,10 +15,10 @@
              [database :as database :refer [Database]]
              [query :as query]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
-           org.apache.poi.ss.usermodel.Cell))
+            [metabase.util
+             [export :as ex]
+             [schema :as su]]
+            [schema.core :as s]))
 
 ;;; --------------------------------------------------- Constants ----------------------------------------------------
 
@@ -66,52 +64,9 @@
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
-;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
-;; implementations we've already defined for encoding things as JSON. These implementations live in
-;; `metabase.middleware`.
-(defmethod spreadsheet/set-cell! Object [^Cell cell, value]
-  (when (= (.getCellType cell) Cell/CELL_TYPE_FORMULA)
-    (.setCellType cell Cell/CELL_TYPE_STRING))
-  ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
-  ;; use the resulting value as the cell's new String value. There might be some more efficient way of doing this but
-  ;; I'm not sure what it is.
-  (.setCellValue cell (str (-> (json/generate-string {:v value})
-                               (json/parse-string keyword)
-                               :v))))
-
-(defn- export-to-xlsx [columns rows]
-  (let [wb  (spreadsheet/create-workbook "Query result" (cons (mapv name columns) rows))
-        ;; note: byte array streams don't need to be closed
-        out (ByteArrayOutputStream.)]
-    (spreadsheet/save-workbook! out wb)
-    (ByteArrayInputStream. (.toByteArray out))))
-
-(defn- export-to-csv [columns rows]
-  (with-out-str
-    ;; turn keywords into strings, otherwise we get colons in our output
-    (csv/write-csv *out* (into [(mapv name columns)] rows))))
-
-(defn- export-to-json [columns rows]
-  (for [row rows]
-    (zipmap columns row)))
-
-(def ^:private export-formats
-  {"csv"  {:export-fn    export-to-csv
-           :content-type "text/csv"
-           :ext          "csv"
-           :context      :csv-download},
-   "xlsx" {:export-fn    export-to-xlsx
-           :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-           :ext          "xlsx"
-           :context      :xlsx-download},
-   "json" {:export-fn    export-to-json
-           :content-type "applicaton/json"
-           :ext          "json"
-           :context      :json-download}})
-
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum (keys export-formats)))
+  (apply s/enum (keys ex/export-formats)))
 
 (defn export-format->context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -119,14 +74,14 @@
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
-  (or (get-in export-formats [export-format :context])
+  (or (get-in ex/export-formats [export-format :context])
       (throw (Exception. (str "Invalid export format: " export-format)))))
 
 (defn as-format
   "Return a response containing the RESULTS of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
   [export-format {{:keys [columns rows]} :data, :keys [status], :as response}]
-  (api/let-404 [export-conf (export-formats export-format)]
+  (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
       {:status  200
@@ -142,7 +97,7 @@
    Inteneded for use in an endpoint definition:
 
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
-  (re-pattern (str "(" (str/join "|" (keys export-formats)) ")")))
+  (re-pattern (str "(" (str/join "|" (keys ex/export-formats)) ")")))
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."

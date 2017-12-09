@@ -143,7 +143,7 @@
                                    (u/prog1 (if (instance? java.util.Date v)
                                               (DateTime. ^java.util.Date v) ; convert to Google version of DateTime, otherwise it doesn't work (!)
                                               v)
-                                            (assert (not (nil? <>)))))) ; make sure v is non-nil
+                                            (assert (some? <>))))) ; make sure v is non-nil
              :id (inc i)))))
 
 (defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]

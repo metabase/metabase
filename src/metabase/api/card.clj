@@ -327,7 +327,7 @@
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
   [card enable-embedding? embedding-params]
-  (when (or (and (not (nil? enable-embedding?))
+  (when (or (and (some? enable-embedding?)
                  (not= enable-embedding? (:enable_embedding card)))
             (and embedding-params
                  (not= embedding-params (:embedding_params card))))

@@ -65,7 +65,7 @@
   {:type :inline,
    :content-id true,
    :content-type "image/png",
-   :content java.io.File})
+   :content java.net.URL})
 
 (defn- rasta-pulse-email [& [email]]
   (et/email-to :rasta (merge {:subject "Pulse: Pulse Name",
@@ -366,7 +366,7 @@
 (defn- attachment? [{message-type :type content-type :content-type content :content}]
   (and (= :inline message-type)
        (= "image/png" content-type)
-       (instance? java.io.File content)))
+       (instance? java.net.URL content)))
 
 ;; Test with a slack channel and an email
 (tt/expect-with-temp [Card                  [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
