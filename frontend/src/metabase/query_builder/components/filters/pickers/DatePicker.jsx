@@ -107,6 +107,7 @@ class CurrentPicker extends Component {
 
 const getIntervals = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && typeof value === "number" ? Math.abs(value) : 30;
 const getUnit      = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && unit ? unit : "day";
+const getOptions   = ([op, field, value, unit, options]) => options || {};
 
 const getDate = (value) => {
     if (typeof value !== "string" || !moment(value).isValid()) {
@@ -165,21 +166,21 @@ const ALL_TIME_OPERATOR = {
 export const DATE_OPERATORS: Operator[] = [
     {
         name: t`Previous`,
-        init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter), getOptions(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
     },
     {
         name: t`Next`,
-        init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter), getOptions(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
     },
     {
         name: t`Current`,
-        init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter), getOptions(filter)],
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
