@@ -238,13 +238,13 @@
   [dashboards]
   (into {}
     (for [{:keys [title as descriptioin]} dashboards]
-      (let [dashboard (db/insert! Dashboard
-                        :name        title
-                        :description descriptioin
-                        :creator_id  api/*current-user-id*
-                        :parameters  [])]
-        (events/publish-event! :dashboard-create dashboard)
-        [as dashboard]))))
+      [as (delay (let [dashboard (db/insert! Dashboard
+                                   :name        title
+                                   :description descriptioin
+                                   :creator_id  api/*current-user-id*
+                                   :parameters  [])]
+                   (events/publish-event! :dashboard-create dashboard)
+                   dashboard))])))
 
 (defn- add-to-dashboard!
   [dashboard card]
@@ -342,6 +342,9 @@
                                               (unify-var context))
                            card      (create-card! database context card)]
                        (when (and card dashboard)
-                         (add-to-dashboard! dashboard card))))
-                   (map (comp :id val) dashboards))))
+                         (add-to-dashboard! @dashboard card))))
+                   (->> dashboards
+                        vals
+                        (filter realized?)
+                        (map (comp :id deref))))))
        distinct))

@@ -63,6 +63,7 @@ bindings:
     - [people, 8.0]
     - [account, 1.0]
     - [customer, 1.0]
+    - [profile, 1.0]
     as: users
   - named:
     - [order, 1.0]
