@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.parameters.sql-test
+  "Tests for parameters in native SQL queries, which are of the `{{param}}` form."
   (:require [clj-time.core :as t]
             [expectations :refer :all]
             [metabase
@@ -14,10 +15,11 @@
              [generic-sql :as generic-sql]]
             [toucan.db :as db]))
 
-;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
+;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
 (defn- substitute {:style/indent 1} [sql params]
-  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)] ; apparently you can still bind private dynamic vars
+  ;; apparently you can still bind private dynamic vars
+  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)]
     ((resolve 'metabase.query-processor.middleware.parameters.sql/expand-query-params)
      {:query sql}
      (into {} (for [[k v] params]
@@ -44,7 +46,7 @@
     {:toucans_are_cool true}))
 
 
-;;; ------------------------------------------------------------ optional substitution -- [[ ... {{x}} ... ]] ------------------------------------------------------------
+;;; --------------------------------- optional substitution -- [[ ... {{x}} ... ]]' ----------------------------------
 
 (expect
   {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
@@ -180,7 +182,7 @@
     {:foobar_id 100}))
 
 
-;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
+;;; -------------------------------------------- tests for value-for-tag ---------------------------------------------
 
 (tu/resolve-private-vars metabase.query-processor.middleware.parameters.sql value-for-tag)
 
@@ -236,7 +238,7 @@
                            {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
 
 
-;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
+;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (defn- expand* [query]
   (-> (expand (assoc query :driver (driver/engine->driver :h2)))
@@ -291,7 +293,7 @@
             :parameters [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}]}))
 
 
-;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
+;;; ------------------------------------------ expansion tests: dimensions -------------------------------------------
 
 (defn- expand-with-dimension-param [dimension-param]
   (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
@@ -421,7 +423,7 @@
   (expand-with-dimension-param {:type "text", :value "100"}))
 
 
-;;; ------------------------------------------------------------ "REAL" END-TO-END-TESTS ------------------------------------------------------------
+;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
 (defn- quote-name [identifier]
   (generic-sql/quote-name datasets/*driver* identifier))
@@ -488,7 +490,7 @@
                     {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}]))))
 
 
-;;; ------------------------------------------------------------ SQL PARAMETERS 2.0 TESTS ------------------------------------------------------------
+;;; -------------------------------------------- SQL PARAMETERS 2.0 TESTS --------------------------------------------
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 
@@ -646,3 +648,56 @@
                                                             :dimension    ["field-id" (data/id :checkins :date)]
                                                             :default      "2017-11-14"
                                                             :widget_type  "date/all-options"}}}})))
+
+
+;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
+
+;; Make sure using commas in numeric params treats them as separate IDs (#5457)
+(expect
+  "SELECT * FROM USERS where id IN (1, 2, 3)"
+  (-> (qp/process-query
+        {:database   (data/id)
+         :type       "native"
+         :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
+                      :template_tags {:ids_list {:name         "ids_list"
+                                                 :display_name "Ids list"
+                                                 :type         "number"}}}
+         :parameters [{:type   "category"
+                       :target ["variable" ["template-tag" "ids_list"]]
+                       :value  "1,2,3"}]})
+      :data :native_form :query))
+
+
+;; make sure you can now also pass multiple values in by passing an array of values
+(expect
+  {:query         "SELECT * FROM CATEGORIES where name IN (?, ?, ?)"
+   :template_tags {:names_list {:name "names_list", :display_name "Names List", :type "text"}}
+   :params        ["BBQ" "Bakery" "Bar"]}
+  (:native (expand
+            {:driver     (driver/engine->driver :h2)
+             :native     {:query         "SELECT * FROM CATEGORIES [[where name IN ({{names_list}})]]"
+                          :template_tags {:names_list {:name         "names_list"
+                                                       :display_name "Names List"
+                                                       :type         "text"}}}
+             :parameters [{:type   "category"
+                           :target ["variable" ["template-tag" "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))
+
+;; Make sure arrays of values also work for 'field filter' params
+(expect
+  {:query         "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
+   :template_tags {:names_list {:name         "names_list"
+                                :display_name "Names List"
+                                :type         "dimension"
+                                :dimension    ["field-id" (data/id :users :id)]}}
+   :params        ["BBQ" "Bakery" "Bar"]}
+  (:native (expand
+            {:driver     (driver/engine->driver :h2)
+             :native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
+                          :template_tags {:names_list {:name         "names_list"
+                                                       :display_name "Names List"
+                                                       :type         "dimension"
+                                                       :dimension    ["field-id" (data/id :users :id)]}}}
+             :parameters [{:type   "text"
+                           :target ["dimension" ["template-tag" "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))
