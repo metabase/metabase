@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.parameters.sql-test
+  "Tests for parameters in native SQL queries, which are of the `{{param}}` form."
   (:require [clj-time.core :as t]
             [expectations :refer :all]
             [metabase
@@ -233,7 +234,7 @@
                                  {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
 
 
-;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
+;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (defn- expand* [query]
   (-> (expand (assoc query :driver (driver/engine->driver :h2)))
@@ -288,7 +289,7 @@
             :parameters [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}]}))
 
 
-;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
+;;; ------------------------------------------ expansion tests: dimensions -------------------------------------------
 
 (defn- expand-with-dimension-param [dimension-param]
   (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
@@ -643,3 +644,56 @@
                                                             :dimension    ["field-id" (data/id :checkins :date)]
                                                             :default      "2017-11-14"
                                                             :widget_type  "date/all-options"}}}})))
+
+
+;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
+
+;; Make sure using commas in numeric params treats them as separate IDs (#5457)
+(expect
+  "SELECT * FROM USERS where id IN (1, 2, 3)"
+  (-> (qp/process-query
+        {:database   (data/id)
+         :type       "native"
+         :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
+                      :template_tags {:ids_list {:name         "ids_list"
+                                                 :display_name "Ids list"
+                                                 :type         "number"}}}
+         :parameters [{:type   "category"
+                       :target ["variable" ["template-tag" "ids_list"]]
+                       :value  "1,2,3"}]})
+      :data :native_form :query))
+
+
+;; make sure you can now also pass multiple values in by passing an array of values
+(expect
+  {:query         "SELECT * FROM CATEGORIES where name IN (?, ?, ?)"
+   :template_tags {:names_list {:name "names_list", :display_name "Names List", :type "text"}}
+   :params        ["BBQ" "Bakery" "Bar"]}
+  (:native (expand
+            {:driver     (driver/engine->driver :h2)
+             :native     {:query         "SELECT * FROM CATEGORIES [[where name IN ({{names_list}})]]"
+                          :template_tags {:names_list {:name         "names_list"
+                                                       :display_name "Names List"
+                                                       :type         "text"}}}
+             :parameters [{:type   "category"
+                           :target ["variable" ["template-tag" "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))
+
+;; Make sure arrays of values also work for 'field filter' params
+(expect
+  {:query         "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
+   :template_tags {:names_list {:name         "names_list"
+                                :display_name "Names List"
+                                :type         "dimension"
+                                :dimension    ["field-id" (data/id :users :id)]}}
+   :params        ["BBQ" "Bakery" "Bar"]}
+  (:native (expand
+            {:driver     (driver/engine->driver :h2)
+             :native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
+                          :template_tags {:names_list {:name         "names_list"
+                                                       :display_name "Names List"
+                                                       :type         "dimension"
+                                                       :dimension    ["field-id" (data/id :users :id)]}}}
+             :parameters [{:type   "text"
+                           :target ["dimension" ["template-tag" "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))
