@@ -337,7 +337,11 @@
 ;; missing those database ids
 (defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))
+                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
           :when (not= db-id virtual-id)]
-    (db/update-where! Card {:id [:in (map :id cards)]}
-      :database_id db-id)))
+    (if (db/exists? Database :id db-id)
+      (db/update-where! Card {:id [:in (map :id cards)]}
+        :database_id db-id)
+      (doseq [{id :id card-name :name} cards]
+        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
+        (db/delete! Card :id id)))))
