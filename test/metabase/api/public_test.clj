@@ -4,6 +4,7 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
+             [config :as config]
              [http-client :as http]
              [query-processor-test :as qp-test]
              [util :as u]]
@@ -175,6 +176,39 @@
 
 
 ;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid ------------------------------------------------------------
+(defn- card-with-date-field-filter []
+  (assoc (shared-obj)
+    :dataset_query {:database (data/id)
+                    :type     :native
+                    :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
+                               :template_tags {:date {:name         "date"
+                                                      :display_name "Date"
+                                                      :type         "dimension"
+                                                      :dimension    [:field-id (data/id :checkins :date)]
+                                                      :widget_type  "date/quarter-year"}}}}))
+
+(expect
+  "count\n107\n"
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
+      (http/client :get 200 (str "public/card/" uuid "/query/csv")
+                   :parameters (json/encode [{:type   :date/quarter-year
+                                              :target [:dimension [:template-tag :date]]
+                                              :value  "Q1-2014"}])))))
+
+;; make sure it also works with the forwarded URL
+(expect
+  "count\n107\n"
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
+      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
+        (http/client :get 200 (str "public/question/" uuid ".csv")
+                     :parameters (json/encode [{:type   :date/quarter-year
+                                              :target [:dimension [:template-tag :date]]
+                                              :value  "Q1-2014"}]))))))
+
+
 
 ;; Check that we *cannot* fetch PublicDashboard if setting is disabled
 (expect
