@@ -113,17 +113,24 @@
   (or (when-let [job (cached-job ctx)]
         (callback job (:result (result job)))
         (:id job))
-      (let [{:keys [id] :as job} (db/insert! ComputationJob
-                                   :creator_id api/*current-user-id*
-                                   :status     :running
-                                   :type       :simple-job
-                                   :context    ctx)]
+      (let [{:keys [id] :as job}   (db/insert! ComputationJob
+                                     :creator_id api/*current-user-id*
+                                     :status     :running
+                                     :type       :simple-job
+                                     :context    ctx)
+            added-to-running-jobs? (promise)]
         (log/info (format "Async job %s started." id))
         (swap! running-jobs assoc id (future
                                        (try
+                                         ;; This argument is getting evaluated BEFORE the swap! associates the id with
+                                         ;; the future in the atom. If we're unlucky, that means `save-result` will
+                                         ;; look for the id in that same atom before we've put it there. If that
+                                         ;; happens we'll never acknowledge that the job completed
+                                         @added-to-running-jobs?
                                          (save-result job (f) callback)
                                          (catch Throwable e
                                            (save-error job e callback)))))
+        (deliver added-to-running-jobs? true)
         id)))
 
 (defmacro with-async
