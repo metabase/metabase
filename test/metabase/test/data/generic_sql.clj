@@ -45,8 +45,11 @@
   (add-fk-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
 
-  (column-comment-sql ^String [this, ^String comment]
-    "*Optional* Return a `COMMENT` statement for a column.")
+  (inline-column-comment-sql ^String [this, ^String comment]
+    "*Optional* Return an inline `COMMENT` statement for a column.")
+
+  (standalone-column-comment-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
+    "*Optional* Return standalone `COMMENT` statement for a column.")
 
   (prepare-identifier [this, ^String identifier]
     "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
@@ -106,7 +109,7 @@
                                 (if (map? base-type)
                                   (:native base-type)
                                   (field-base-type->sql-type driver base-type))
-                                (column-comment-sql driver description))))
+                                (inline-column-comment-sql driver description))))
                  (interpose ", ")
                  (apply str))
             pk-field-name (pk-sql-type driver)
@@ -131,9 +134,17 @@
             (qualify+quote-name driver database-name dest-table-name)
             (quot (pk-field-name driver)))))
 
-(defn- default-column-comment-sql [_ comment]
-  "Assume that COMMENT is not supported unless driver specifically overrides."
-  (""))
+(defn standard-inline-column-comment-sql
+  "Generic inline COMMENT that driver can mixin if supported."
+  [_ comment]
+  (format "COMMENT '%s'" comment))
+
+(defn standard-standalone-column-comment-sql
+  "Generic standalone COMMENT that driver can mixin if supported."
+  [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name description]}]
+  (format "COMMENT ON COLUMN %s IS '%s';"
+          (qualify+quote-name driver database-name table-name field-name)
+          description))
 
 (defn- default-qualified-name-components
   ([_ db-name]                       [db-name])
@@ -271,20 +282,21 @@
 
 (def DefaultsMixin
   "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
-  {:add-fk-sql                default-add-fk-sql
-   :column-comment-sql        default-column-comment-sql
-   :create-db-sql             default-create-db-sql
-   :create-table-sql          default-create-table-sql
-   :database->spec            default-database->spec
-   :drop-db-if-exists-sql     default-drop-db-if-exists-sql
-   :drop-table-if-exists-sql  default-drop-table-if-exists-sql
-   :execute-sql!              default-execute-sql!
-   :load-data!                load-data-chunked!
-   :pk-field-name             (constantly "id")
-   :prepare-identifier        (u/drop-first-arg identity)
-   :qualified-name-components default-qualified-name-components
-   :qualify+quote-name        default-qualify+quote-name
-   :quote-name                default-quote-name})
+  {:add-fk-sql                    default-add-fk-sql
+   :inline-column-comment-sql     (constantly nil)
+   :standalone-column-comment-sql (constantly nil)
+   :create-db-sql                 default-create-db-sql
+   :create-table-sql              default-create-table-sql
+   :database->spec                default-database->spec
+   :drop-db-if-exists-sql         default-drop-db-if-exists-sql
+   :drop-table-if-exists-sql      default-drop-table-if-exists-sql
+   :execute-sql!                  default-execute-sql!
+   :load-data!                    load-data-chunked!
+   :pk-field-name                 (constantly "id")
+   :prepare-identifier            (u/drop-first-arg identity)
+   :qualified-name-components     default-qualified-name-components
+   :qualify+quote-name            default-qualify+quote-name
+   :quote-name                    default-quote-name})
 
 
 ;; ## ------------------------------------------------------------ IDriverTestExtensions impl ------------------------------------------------------------
@@ -305,7 +317,7 @@
   ;; Exec SQL for creating the DB
   (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
                                           (create-db-sql driver dbdef)))
-  ;; Build combined statement for creating tables + FKs
+  ;; Build combined statement for creating tables + FKs + comments
   (let [statements (atom [])]
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
@@ -316,6 +328,11 @@
       (doseq [{:keys [fk], :as fielddef} field-definitions]
         (when fk
           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
+    ;; Add the SQL for adding column comments
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
+      (doseq [{:keys [description], :as fielddef} field-definitions]
+        (when description
+          (swap! statements conj (standalone-column-comment-sql driver dbdef tabledef fielddef)))))
     ;; exec the combined statement
     (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
   ;; Now load the data for each Table

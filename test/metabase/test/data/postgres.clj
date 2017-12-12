@@ -49,11 +49,12 @@
 (u/strict-extend PostgresDriver
   generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
-         {:drop-db-if-exists-sql     drop-db-if-exists-sql
-          :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
-          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-          :load-data!                generic/load-data-all-at-once!
-          :pk-sql-type               (constantly "SERIAL")})
+         {:drop-db-if-exists-sql         drop-db-if-exists-sql
+          :drop-table-if-exists-sql      generic/drop-table-if-exists-cascade-sql
+          :field-base-type->sql-type     (u/drop-first-arg field-base-type->sql-type)
+          :load-data!                    generic/load-data-all-at-once!
+          :pk-sql-type                   (constantly "SERIAL")
+          :standalone-column-comment-sql generic/standard-standalone-column-comment-sql})
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
