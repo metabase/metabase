@@ -5,7 +5,7 @@
             [metabase.test.async :refer :all]))
 
 ;; DISABLED due to constant failures 12/6/17. Fix soon!
-#_(expect
+(expect
     true
     (let [job-id (compute (gensym) (constantly 42))]
       (result! job-id)
@@ -27,7 +27,7 @@
       :result))
 
 ;; DISABLED due to constant failures 12/6/17. Fix soon!
-#_(expect
+(expect
   "foo"
   (-> (compute (gensym) #(throw (Throwable. "foo")))
       result!
