@@ -212,8 +212,13 @@
            subform))
        form)
       (s/replace form #"\?\w+" (fn [token]
-                                 (or (some->> token (unify-var context) :name)
-                                     (throw (Throwable.))))))
+                                 (if-let [model (unify-var context token)]
+                                   (if (instance? (type Field) model)
+                                     (format "%s.%s"
+                                             (-> model :table_id Table :name)
+                                             (:name model))
+                                     (:name model))
+                                   (throw (Throwable.))))))
     (catch Throwable _ nil)))
 
 (def ^:private ^Integer grid-width 18)

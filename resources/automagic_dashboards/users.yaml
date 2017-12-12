@@ -82,15 +82,15 @@ cards:
     aggregation: [count]
 - title: LTV
   as: ltv
-  query: select sum(?orders.?income) as LTV, ?users.?source as SOURCE
-         from ?orders left join ?users on ?orders.?users_fk = ?users.?users_id
-         group by ?users.?users_id
+  query: select sum(?income) as LTV, ?source as SOURCE
+         from ?orders left join ?users on ?users_fk = ?users_id
+         group by ?users_id
 - title: First year orders
   as: first_year_orders
-  query: select count(*) as NUM_ORDERS, ?users.?timestamp as COHORT
-         from ?orders left join ?users on ?orders.?users_fk = ?users.?users_id
-         where datediff("MONTH", ?users.?timestamp, ?orders.?order_date) <= 12
-         group by ?users.?users_id
+  query: select count(*) as NUM_ORDERS, ?timestamp as COHORT
+         from ?orders left join ?users on ?users_fk = ?users_id
+         where datediff("MONTH", ?timestamp, ?order_date) <= 12
+         group by ?users_id
 - dashboard: "?users_dashboard"
   visualization: bar
   title: Orders by cohort
