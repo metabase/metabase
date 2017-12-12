@@ -4,6 +4,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]
             [metabase.test.data.interface :as i]
             [toucan.db :as db]
             [metabase.models.table :as table]
@@ -33,12 +34,15 @@
 
 (i/def-database-definition ^:const ^:private db-with-desc
  ["table_with_description"
-  [{:field-name "field_with_description", :base-type :type/Text, :description "field description"}]
-  [["val"]]])
+  [{:field-name "string_with_description", :base-type :type/Text, :description "string description"}
+   {:field-name "int_with_description", :base-type :type/Integer, :description "int description"}]
+  [["val" 1]]])
 
 ;; check field descriptions were synced
-(expect
-  #{{:name "FIELD_WITH_DESCRIPTION", :description "field description"}}
+(datasets/expect-with-engines #{:h2 :postgres}
+  #{{:name (data/format-name "id"), :description nil}
+    {:name (data/format-name "string_with_description"), :description "string description"}
+    {:name (data/format-name "int_with_description"), :description "int description"}}
   (data/dataset metabase.sync.sync-metadata.tables-test/db-with-desc
-    (set (for [field (db/select [Field :name :description], :id (data/id "TABLE_WITH_DESCRIPTION" "FIELD_WITH_DESCRIPTION"))]
+    (set (for [field (db/select [Field :name :description], :table_id (data/id "table_with_description"))]
            (into {} field)))))
