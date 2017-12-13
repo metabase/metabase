@@ -12,6 +12,7 @@
 *  [Changing password complexity](#changing-metabase-password-complexity)
 *  [Handling Timezones](#handling-timezones-in-metabase)
 *  [Configuring Emoji Logging](#configuring-emoji-logging)
+*  [How to setup monitoring via JMX](#monitoring-via-jmx)
 
 # Installing and Running Metabase
 
@@ -322,3 +323,7 @@ Metabase to use your own logging configuration file by passing a `-Dlog4j.config
     java -Dlog4j.configuration=file:/path/to/custom/log4j.properties -jar metabase.jar
 
 The easiest way to get started customizing logging would be to use a copy of default `log4j.properties` file linked to above and adjust that to meet your needs. Keep in mind that you'll need to restart Metabase for changes to the file to take effect.
+
+# [Monitoring via JMX](enable-jmx.md)
+
+Diagnosing performance related issues can be a challenge. Luckily the JVM ships with tools that can help diagnose many common issues. Enabling JMX and using a tool like VisualVM can help diagnose issues related to running out of memory, a hung Metabase instance and slow response times. See [Monitoring via JMX](enable-jmx.md) for more information on setting this up.

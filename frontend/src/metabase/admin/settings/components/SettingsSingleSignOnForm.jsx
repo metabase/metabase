@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import cx from "classnames";
 import _ from "underscore";
+import { t, jt } from "c-3po";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import Input from "metabase/components/Input.jsx";
@@ -112,12 +113,12 @@ export default class SettingsSingleSignOnForm extends Component {
                         ]}
                         className="mb2"
                     />
-                    <h2>Sign in with Google</h2>
+                    <h2>{t`Sign in with Google`}</h2>
                     <p className="text-grey-4">
-                        Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.
+                        {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
                     </p>
                     <p className="text-grey-4">
-                        To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found <a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>
+                        {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${<a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>}`}
                     </p>
                     <Input
                         className="SettingsInput AdminInput bordered rounded h3"
@@ -128,7 +129,7 @@ export default class SettingsSingleSignOnForm extends Component {
                     />
                     <div className="py3">
                         <div className="flex align-center">
-                            <p className="text-grey-4">Allow users to sign up on their own if their Google account email address is from:</p>
+                            <p className="text-grey-4">{t`Allow users to sign up on their own if their Google account email address is from:`}</p>
                         </div>
                         <div className="mt1 bordered rounded inline-block">
                             <div className="inline-block px2 h2">@</div>
@@ -145,7 +146,7 @@ export default class SettingsSingleSignOnForm extends Component {
                     <button className={cx("Button mr2", {"Button--primary": hasChanges})}
                             disabled={!hasChanges}
                             onClick={this.saveChanges}>
-                        {this.state.recentlySaved ? "Changes saved!" : "Save Changes"}
+                        {this.state.recentlySaved ? t`Changes saved!` : t`Save Changes`}
                     </button>
                 </div>
             </form>
