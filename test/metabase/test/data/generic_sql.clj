@@ -142,14 +142,16 @@
 (defn standard-inline-column-comment-sql
   "Generic inline COMMENT that driver can mixin if supported."
   [_ comment]
-  (format "COMMENT '%s'" comment))
+  (when comment
+    (format "COMMENT '%s'" comment)))
 
 (defn standard-standalone-column-comment-sql
   "Generic standalone COMMENT that driver can mixin if supported."
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name description]}]
-  (format "COMMENT ON COLUMN %s IS '%s';"
-          (qualify+quote-name driver database-name table-name field-name)
-          description))
+  (when description
+    (format "COMMENT ON COLUMN %s IS '%s';"
+            (qualify+quote-name driver database-name table-name field-name)
+            description)))
 
 (defn- default-qualified-name-components
   ([_ db-name]                       [db-name])
