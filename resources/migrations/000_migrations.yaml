@@ -3990,7 +3990,7 @@ databaseChangeLog:
   - changeSet:
       id: 71
       author: camsaul
-      comment: 'Added 0.27.0'
+      comment: 'Added 0.28.0'
       changes:
         # drop the NOT NULL constraint on DashboardCard.card_id since we're now letting you add things other than Cards
         # to Dashboards, for example static text cards
