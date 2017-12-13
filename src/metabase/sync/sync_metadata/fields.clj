@@ -79,7 +79,7 @@
         :special_type  (or special-type
                            (when pk? :type/PK))
         :parent_id     parent-id
-        :description  description))))
+        :description   description))))
 
 
 (s/defn ^:private create-or-reactivate-field!
