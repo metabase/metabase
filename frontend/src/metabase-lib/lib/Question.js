@@ -231,7 +231,6 @@ export default class Question {
     }
 
     alertType() {
-        const mode = this.mode();
         const display = this.display();
 
         if (!this.canRun()) {
@@ -240,7 +239,9 @@ export default class Question {
 
         if (display === "progress") {
             return ALERT_TYPE_PROGRESS_BAR_GOAL;
-        } else if (mode && mode.name() === "timeseries") {
+        } else if (
+            display === "line" || display === "area" || display === "bar"
+        ) {
             const vizSettings = this.card().visualization_settings;
             // NOTE Atte Keinänen 11/6/17: Seems that `graph.goal_value` setting can be missing if
             // only the "Show goal" toggle has been toggled but "Goal value" value hasn't explicitly been set
