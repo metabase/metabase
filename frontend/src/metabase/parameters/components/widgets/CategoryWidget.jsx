@@ -66,8 +66,8 @@ export default class CategoryWidget extends Component {
     getOptions() {
         return this.props.values.slice().map((value) => {
             return {
-                key: value[0],
-                name: value[0]
+                name: value[0],
+                key: value[0]
             }
         });
     }
@@ -97,7 +97,7 @@ export default class CategoryWidget extends Component {
                 <div className="p1">
                     <button
                         data-ui-tag="add-category-filter"
-                        className={cx("Button Button--purple full", { "disabled": selectedValues.length === 0 })}
+                        className="Button Button--purple full"
                         onClick={() => this.commitValues(this.state.selectedValues)}
                     >
                         { t`Done`}
