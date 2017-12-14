@@ -30,6 +30,11 @@
            [java.util Collections Date]
            [metabase.query_processor.interface DateTimeValue Value]))
 
+(defrecord BigQueryDriver []
+  clojure.lang.Named
+  (getName [_] "BigQuery"))
+
+
 ;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
@@ -295,23 +300,21 @@
                   (update results :columns (partial map keyword)))]
     (assoc results :annotate? mbql?)))
 
-;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared
+
+;; These provide implementations of `->honeysql` that prevents HoneySQL from converting forms to prepared
 ;; statement parameters (`?`)
-;;
-;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for
-;; `prepare-value` (?) Or perhaps investigate a lower-level way to disable the functionality in HoneySQL, perhaps by
-;; swapping out a function somewhere
-(defprotocol ^:private IPrepareValue
-  (^:private prepare-value [this]))
-(extend-protocol IPrepareValue
-  nil           (prepare-value [_] nil)
-  DateTimeValue (prepare-value [{:keys [value]}] (prepare-value value))
-  Value         (prepare-value [{:keys [value]}] (prepare-value value))
-  String        (prepare-value [this] (hx/literal this))
-  Boolean       (prepare-value [this] (hsql/raw (if this "TRUE" "FALSE")))
-  Date          (prepare-value [this] (hsql/call :timestamp (hx/literal (u/date->iso-8601 this))))
-  Number        (prepare-value [this] this)
-  Object        (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
+(defmethod sqlqp/->honeysql [BigQueryDriver String]
+  [_ s]
+  ;; TODO - what happens if `s` contains single-quotes? Shouldn't we be escaping them somehow?
+  (hx/literal s))
+
+(defmethod sqlqp/->honeysql [BigQueryDriver Boolean]
+  [_ bool]
+  (hsql/raw (if bool "TRUE" "FALSE")))
+
+(defmethod sqlqp/->honeysql [BigQueryDriver Date]
+  [_ date]
+  (hsql/call :timestamp (hx/literal (u/date->iso-8601 date))))
 
 
 (defn- field->alias [{:keys [^String schema-name, ^String field-name, ^String table-name, ^Integer index, field], :as this}]
@@ -416,7 +419,7 @@
 (defn- field->breakout-identifier [field]
   (hsql/raw (str \[ (field->alias field) \])))
 
-(defn- apply-breakout [honeysql-form {breakout-fields :breakout, fields-fields :fields}]
+(defn- apply-breakout [driver honeysql-form {breakout-fields :breakout, fields-fields :fields}]
   (-> honeysql-form
       ;; Group by all the breakout fields
       ((partial apply h/group)  (map field->breakout-identifier breakout-fields))
@@ -424,7 +427,7 @@
       ;; twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field breakout-fields
                                             :when (not (contains? (set fields-fields) field))]
-                                        (sqlqp/as (sqlqp/formatted field) field)))))
+                                        (sqlqp/as driver (sqlqp/->honeysql driver field) field)))))
 
 (defn- apply-join-tables
   "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends schema (dataset-id) to join-alias."
@@ -457,10 +460,9 @@
                         (str/replace #"[^\w\d_]" "_")
                         (str/replace #"(^\d)" "_$1")))))
 
+(defn- date-interval [driver unit amount]
+  (sqlqp/->honeysql driver (u/relative-date unit amount)))
 
-(defrecord BigQueryDriver []
-  clojure.lang.Named
-  (getName [_] "BigQuery"))
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
 (def ^:private bigquery-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS"))
@@ -472,7 +474,7 @@
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-aggregation         apply-aggregation
-          :apply-breakout            (u/drop-first-arg apply-breakout)
+          :apply-breakout            apply-breakout
           :apply-join-tables         (u/drop-first-arg apply-join-tables)
           :apply-order-by            (u/drop-first-arg apply-order-by)
           ;; these two are actually not applicable since we don't use JDBC
@@ -482,7 +484,6 @@
           :date                      (u/drop-first-arg date)
           :field->alias              (u/drop-first-arg field->alias)
           :field->identifier         (u/drop-first-arg field->identifier)
-          :prepare-value             (u/drop-first-arg prepare-value)
           ;; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before
           ;; executing)
           :quote-style               (constantly :sqlserver)
@@ -492,7 +493,7 @@
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:can-connect?             (u/drop-first-arg can-connect?)
-          :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
+          :date-interval            date-interval
           :describe-database        (u/drop-first-arg describe-database)
           :describe-table           (u/drop-first-arg describe-table)
           :details-fields           (constantly [{:name         "project-id"

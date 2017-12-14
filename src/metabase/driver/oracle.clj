@@ -14,6 +14,10 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
 
+(defrecord OracleDriver []
+  clojure.lang.Named
+  (getName [_] "Oracle"))
+
 (def ^:private ^:const pattern->type
   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
    [#"ANYDATA"     :type/*]  ; Instance of a given type with data plus a description of the type (?)
@@ -226,11 +230,9 @@
 
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
-(defn- prepare-value [{value :value}]
-  (cond
-    (true? value)  1
-    (false? value) 0
-    :else          value))
+(defmethod sqlqp/->honeysql [OracleDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
 
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
@@ -255,10 +257,6 @@
 
 (def ^:private oracle-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 (def ^:private oracle-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
-
-(defrecord OracleDriver []
-  clojure.lang.Named
-  (getName [_] "Oracle"))
 
 (u/strict-extend OracleDriver
   driver/IDriver
@@ -335,7 +333,6 @@
                                           (require 'metabase.test.data.oracle)
                                           ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
           :set-timezone-sql          (constantly "ALTER session SET time_zone = %s")
-          :prepare-value             (u/drop-first-arg prepare-value)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
