@@ -138,10 +138,14 @@
   font-family: Monaco, monospace;
   font-size: 12.64px;
   line-height: 20px;
-  padding: 1em;
-  margin-right: 1.5em;
-  display: block;
+  padding: 0 .25em;
   background-color: var(--base-grey);
+}
+
+:local .text-card-markdown pre code {
+  padding: 1em;
+  display: block;
+  margin-right: 1.5em;
 }
 
 :local .text-card-markdown blockquote {
@@ -160,7 +164,7 @@
   height: auto;
 }
 
-@media screen and (--breakpoint-max-md) {
+@media screen and (--breakpoint-max-lg) {
   :local .Text {
     padding: .5em 0 .5em 1em;
   }
