@@ -11,8 +11,6 @@ import { getHumanReadableValue } from "metabase/lib/query/field";
 
 import SelectPicker from "../../../query_builder/components/filters/pickers/SelectPicker.jsx";
 
-import cx from "classnames";
-
 type Props = {
     value: any,
     values: any[],
@@ -59,8 +57,12 @@ export default class CategoryWidget extends Component {
         });
     }
 
-    static format(value, fieldValues) {
-        return getHumanReadableValue(value, fieldValues);
+    static format(values, fieldValues) {
+        if (values.length > 1) {
+            return `${values.length} selections`;
+        } else {
+            return getHumanReadableValue(values, fieldValues);
+        }
     }
 
     getOptions() {
