@@ -88,7 +88,7 @@ export default class CategoryWidget extends Component {
         const selectedValues = this.state.selectedValues;
 
         return (
-            <div style={{ maxWidth: 200 }}>
+            <div style={{ minWidth: 182 }}>
                 <SelectPicker
                     options={options}
                     values={(selectedValues: Array<string>)}
