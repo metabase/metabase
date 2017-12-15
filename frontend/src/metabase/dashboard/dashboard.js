@@ -18,6 +18,7 @@ import type { Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { createCard } from "metabase/lib/card";
 
 import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { push } from "react-router-redux";
@@ -153,6 +154,20 @@ export const addDashCardToDashboard = function({ dashId, dashcardOverrides }: { 
         _.extend(dashcard, dashcardOverrides);
         dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
     };
+}
+
+export const addTextDashCardToDashboard = function({ dashId }: { dashId: DashCardId }) {
+    const virtualTextCard = createCard();
+    virtualTextCard.display = "text";
+    virtualTextCard.archived = false;
+
+    const dashcardOverrides = {
+        card: virtualTextCard,
+        visualization_settings: {
+            virtual_card: virtualTextCard
+        }
+    };
+    return addDashCardToDashboard({ dashId: dashId, dashcardOverrides: dashcardOverrides });
 }
 
 export const saveDashboardAndCards = createThunkAction(SAVE_DASHBOARD_AND_CARDS, function() {

@@ -19,7 +19,6 @@ import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { createCard } from "metabase/lib/card";
 
 import cx from "classnames";
 
@@ -47,15 +46,15 @@ type Props = {
 
     parametersWidget:       React$Element<*>,
 
-    addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
-    addDashCardToDashboard: ({ dashId: DashCardId, dashcardOverrides: { } }) => void,
-    archiveDashboard:        (dashboardId: DashboardId) => void,
-    fetchCards:             (filterMode?: string) => void,
-    fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-    fetchRevisions:         ({ entity: string, id: number }) => void,
-    revertToRevision:       ({ entity: string, id: number, revision_id: RevisionId }) => void,
-    saveDashboardAndCards:  () => Promise<void>,
-    setDashboardAttribute:  (attribute: string, value: any) => void,
+    addCardToDashboard:         ({ dashId: DashCardId, cardId: CardId }) => void,
+    addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
+    archiveDashboard:           (dashboardId: DashboardId) => void,
+    fetchCards:                 (filterMode?: string) => void,
+    fetchDashboard:             (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
+    fetchRevisions:             ({ entity: string, id: number }) => void,
+    revertToRevision:           ({ entity: string, id: number, revision_id: RevisionId }) => void,
+    saveDashboardAndCards:      () => Promise<void>,
+    setDashboardAttribute:      (attribute: string, value: any) => void,
 
     addParameter:           (option: ParameterOption) => Promise<Parameter>,
     setEditingParameter:    (parameterId: ?ParameterId) => void,
@@ -90,7 +89,7 @@ export default class DashboardHeader extends Component {
         refreshElapsed: PropTypes.number,
 
         addCardToDashboard: PropTypes.func.isRequired,
-        addDashCardToDashboard: PropTypes.func.isRequired,
+        addTextDashCardToDashboard: PropTypes.func.isRequired,
         archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
@@ -109,18 +108,8 @@ export default class DashboardHeader extends Component {
         this.props.onEditingChange(true);
     }
 
-    async onAddTextBox() {
-        const virtualTextCard = createCard();
-        virtualTextCard.display = "text";
-        virtualTextCard.archived = false;
-
-        const dashcardOverrides = {
-            card: virtualTextCard,
-            visualization_settings: {
-                virtual_card: virtualTextCard
-            }
-        };
-        this.props.addDashCardToDashboard({ dashId: this.props.dashboard.id, dashcardOverrides: dashcardOverrides });
+    onAddTextBox() {
+        this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
     }
 
     onDoneEditing() {
