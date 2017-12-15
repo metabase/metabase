@@ -12,9 +12,13 @@
 (derive :type/Integer :type/Number)
 (derive :type/BigInteger :type/Integer)
 (derive :type/ZipCode :type/Integer)
+(derive :type/Quantity :type/Integer)
 
 (derive :type/Float :type/Number)
 (derive :type/Decimal :type/Float)
+
+(derive :type/Income :type/Number)
+(derive :type/Discount :type/Number)
 
 (derive :type/Coordinate :type/Float)
 (derive :type/Latitude :type/Coordinate)
@@ -55,6 +59,8 @@
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
 
+(derive :type/CreationTimestamp :type/DateTime)
+
 
 ;;; Other
 
@@ -90,6 +96,10 @@
 (derive :type/Country :type/Category)
 (derive :type/Name :type/Category)
 
+(derive :type/User :type/*)
+(derive :type/Product :type/*)
+
+(derive :type/Channel :type/*)
 
 ;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
 

@@ -83,6 +83,35 @@ export const field_special_types = [{
     'id': TYPE.ZipCode,
     'name': 'Zip Code',
     'section': 'Common'
+}, {
+    'id': TYPE.Quantity,
+    'name': 'Quantity',
+    'section': 'Common'
+}, {
+    'id': TYPE.Income,
+    'name': 'Income',
+    'section': 'Common'
+}, {
+    'id': TYPE.Discount,
+    'name': 'Discount',
+    'section': 'Common'
+}, {
+    'id': TYPE.CreationTimestamp,
+    'name': 'Creation timestamp',
+    'section': 'Common'
+}, {
+    'id': TYPE.Product,
+    'name': 'Product',
+    'section': 'Common'
+}, {
+    'id': TYPE.User,
+    'name': 'User',
+    'section': 'Common'
+},
+                                   {
+    'id': TYPE.Channel,
+    'name': 'Channel',
+    'section': 'Common'
 }];
 
 export const field_special_types_map = field_special_types

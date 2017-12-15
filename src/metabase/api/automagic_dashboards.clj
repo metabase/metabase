@@ -1,16 +1,19 @@
 (ns metabase.api.automagic-dashboards
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction.automagic-dashboards :as magic]))
+            [metabase.feature-extraction.automagic-dashboards :as magic]
+            [metabase.models.table :refer [Table]]
+            [toucan.db :as db]))
 
 ; Should be POST, GET for testing convinience
-(api/defendpoint GET "/"
+(api/defendpoint GET "/database/:id"
   ""
-  [database-id table-id]
-  (magic/populate-dashboards (if table-id
-                               {:scope :table
-                                :id table-id}
-                               {:scope :database
-                                :id database-id})))
+  [id]
+  (magic/populate-dashboards (db/select Table :db_id id)))
+
+(api/defendpoint GET "/table/:id"
+  ""
+  [id]
+  (magic/populate-dashboards [(Table id)]))
 
 (api/define-routes)
