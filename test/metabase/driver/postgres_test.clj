@@ -383,13 +383,12 @@
 ;; End-to-end check: make sure everything works as expected when we run an actual query
 (expect-with-engine :postgres
   {:rows        [["Rasta" "good bird" "toucan"]]
-   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                              " \"public\".\"birds\".\"status\" AS \"status\","
-                              " \"public\".\"birds\".\"type\" AS \"type\" "
-                              "FROM \"public\".\"birds\" "
-                              "WHERE \"public\".\"birds\".\"type\" = CAST(? AS \"bird type\") "
-                              "LIMIT 10")
-                 :params ["toucan"]}}
+   :native_form {:query (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
+                             " \"public\".\"birds\".\"status\" AS \"status\","
+                             " \"public\".\"birds\".\"type\" AS \"type\" "
+                             "FROM \"public\".\"birds\" "
+                             "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                             "LIMIT 10")}}
   (do-with-enums-db
     (fn [db]
       (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")

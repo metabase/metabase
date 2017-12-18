@@ -11,6 +11,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [annotate :as annotate]
              [interface :as i]
@@ -347,8 +348,7 @@
   (binding [*query* outer-query]
     (let [honeysql-form (build-honeysql-form driver outer-query)
           [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
-      {:query  sql
-       :params args})))
+      {:query (unprepare/unprepare (cons sql args) :iso-8601-fn (partial sql/iso-8601->timestamp driver))})))
 
 (defn- parse-date-as-string
   "Most databases will never invoke this code. It's possible with

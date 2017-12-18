@@ -89,6 +89,11 @@
 
      Return `nil` to prevent FIELD from being aliased.")
 
+  (iso-8601->timestamp [this iso-timestamp]
+    "*OPTIONAL*.  Perform any conversion required from ISO 8601 timestamp to a native timestamp literal.
+    This function takes a string as argument and returns the appropriate HoneySQL form
+    For example:  (hsql/call :timestamp (hx/literal iso-timestamp))")
+
   (prepare-sql-param [this obj]
     "*OPTIONAL*. Do any neccesary type conversions, etc. to an object being passed as a prepared statment argument in
      a parameterized raw SQL query. For example, a raw SQL query with a date param, `x`, e.g. `WHERE date > {{x}}`, is
@@ -410,6 +415,7 @@
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)
+   :iso-8601->timestamp  (u/drop-first-arg hx/literal)
    :stddev-fn            (constantly :STDDEV)})
 
 

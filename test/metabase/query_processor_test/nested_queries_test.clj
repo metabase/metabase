@@ -208,8 +208,7 @@
 
 ;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using them
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
-   :params nil}
+  {:query  (format "SELECT * FROM %s WHERE \"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)}
   (qp/query->native
     {:database (data/id)
      :type     :query
@@ -219,11 +218,11 @@
 
 ;; make sure that field-literals work as DateTimeFields
 (expect
-  {:query  (str "SELECT * "
-                (format "FROM %s " venues-source-sql)
-                "WHERE parsedatetime(formatdatetime(\"BIRD.ID\", 'YYYYww'), 'YYYYww') = parsedatetime(formatdatetime(?, 'YYYYww'), 'YYYYww') "
-                "LIMIT 10")
-   :params [#inst "2017-01-01T00:00:00.000000000-00:00"]}
+  {:query (str "SELECT * "
+               (format "FROM %s " venues-source-sql)
+               "WHERE parsedatetime(formatdatetime(\"BIRD.ID\", 'YYYYww'), 'YYYYww')"
+               " = parsedatetime(formatdatetime(timestamp '2017-01-01T00:00:00.000Z', 'YYYYww'), 'YYYYww') "
+               "LIMIT 10")}
   (qp/query->native
     {:database (data/id)
      :type     :query
@@ -239,8 +238,7 @@
                    "FROM \"PUBLIC\".\"VENUES\" "
                    "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
                    "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
-               ") \"source\"")
-   :params nil}
+               ") \"source\"")}
   (qp/query->native
     {:database (data/id)
      :type     :query
@@ -252,8 +250,12 @@
 
 ;; make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense
 (expect
-  {:query  (format "SELECT \"category_id\" AS \"category_id\" FROM %s GROUP BY \"category_id\" ORDER BY \"category_id\" ASC LIMIT 10" venues-source-sql)
-   :params nil}
+  {:query  (format (str "SELECT \"category_id\" AS \"category_id\" "
+                        "FROM %s "
+                        "GROUP BY \"category_id\" "
+                        "ORDER BY \"category_id\" ASC"
+                        " LIMIT 10")
+                   venues-source-sql)}
   (qp/query->native
     {:database (data/id)
      :type     :query
@@ -263,8 +265,7 @@
 
 ;; Make sure we can filter by string fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"text\" <> ? LIMIT 10" venues-source-sql)
-   :params ["Coo"]}
+  {:query (format "SELECT * FROM %s WHERE \"text\" <> 'Coo' LIMIT 10" venues-source-sql)}
   (qp/query->native {:database (data/id)
                      :type     :query
                      :query    {:source-query {:source-table (data/id :venues)}
@@ -273,8 +274,7 @@
 
 ;; Make sure we can filter by number fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"sender_id\" > 3 LIMIT 10" venues-source-sql)
-   :params nil}
+  {:query  (format "SELECT * FROM %s WHERE \"sender_id\" > 3 LIMIT 10" venues-source-sql)}
   (qp/query->native {:database (data/id)
                      :type     :query
                      :query    {:source-query {:source-table (data/id :venues)}
@@ -283,8 +283,7 @@
 
 ;; make sure using a native query with default params as a source works
 (expect
-  {:query  "SELECT * FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",
-   :params nil}
+  {:query  "SELECT * FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
