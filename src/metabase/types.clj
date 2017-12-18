@@ -1,5 +1,8 @@
 (ns metabase.types)
 
+(derive :type/Field :type/*)
+(derive :type/Table :type/*)
+
 (derive :type/Collection :type/*)
 
 (derive :type/Dictionary :type/Collection)
@@ -7,7 +10,7 @@
 
 ;;; Numeric Types
 
-(derive :type/Number :type/*)
+(derive :type/Number :type/Field)
 
 (derive :type/Integer :type/Number)
 (derive :type/BigInteger :type/Integer)
@@ -27,7 +30,7 @@
 
 ;;; Text Types
 
-(derive :type/Text :type/*)
+(derive :type/Text :type/Field)
 
 (derive :type/UUID :type/Text)
 
@@ -49,7 +52,7 @@
 
 ;;; DateTime Types
 
-(derive :type/DateTime :type/*)
+(derive :type/DateTime :type/Field)
 
 (derive :type/Time :type/DateTime)
 (derive :type/Date :type/DateTime)
@@ -64,18 +67,18 @@
 
 ;;; Other
 
-(derive :type/Boolean :type/*)
-(derive :type/Enum :type/*)
+(derive :type/Boolean :type/Field)
+(derive :type/Enum :type/Field)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced filter options like starts with / contains
 
-(derive :type/TextLike :type/*)
+(derive :type/TextLike :type/Field)
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
 
 ;;; "Virtual" Types
 
-(derive :type/Address :type/*)
+(derive :type/Address :type/Field)
 (derive :type/City :type/Address)
 (derive :type/State :type/Address)
 (derive :type/Country :type/Address)
@@ -84,7 +87,7 @@
 
 ;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and `:cardinality`
 
-(derive :type/Special :type/*)
+(derive :type/Special :type/Field)
 
 (derive :type/FK :type/Special)
 (derive :type/PK :type/Special)
@@ -96,16 +99,17 @@
 (derive :type/Country :type/Category)
 (derive :type/Name :type/Category)
 
-(derive :type/User :type/*)
-(derive :type/Product :type/*)
+(derive :type/User :type/Field)
+(derive :type/Product :type/Field)
 
-(derive :type/Channel :type/*)
+(derive :type/Channel :type/Field)
 
 ;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
 
 (defn types->parents
   "Return a map of various types to their parent types.
    This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of `isa?`."
-  []
-  (into {} (for [t (descendants :type/*)]
-             {t (parents t)})))
+  ([] (types->parents :type/*))
+  ([root]
+   (into {} (for [t (descendants root)]
+              {t (parents t)}))))
