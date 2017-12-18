@@ -282,7 +282,7 @@
 
 (defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
   (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare (cons sql params))
+                                                                     (unprepare/unprepare (cons sql params) :iso-8601-fn :timestamp)
                                                                      sql))
         results (process-native* database sql)
         results (if mbql?

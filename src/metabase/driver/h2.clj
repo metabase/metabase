@@ -119,6 +119,7 @@
              expr
              (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
 
+(defn- iso-8601->timestamp [expr] (hsql/raw (format "timestamp '%s'" expr)))
 
 (defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
   {:pre [(integer? database-id)]}
@@ -227,6 +228,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :string-length-fn          (u/drop-first-arg string-length-fn)
+          :iso-8601->timestamp       (u/drop-first-arg iso-8601->timestamp)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (defn -init-driver
