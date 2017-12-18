@@ -64,7 +64,6 @@ import { delay } from "metabase/lib/promise";
 import * as Urls from "metabase/lib/urls";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Radio from "metabase/components/Radio";
-import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 
 const REVIEW_PRODUCT_ID = 32;
