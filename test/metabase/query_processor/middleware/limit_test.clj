@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.middleware.limit-test
+(ns metabase.query-processor.middleware.limit-test
   "Tests for the `:limit` clause and `:max-results` constraints."
   (:require [expectations :refer :all]
             [metabase.query-processor.interface :as i]

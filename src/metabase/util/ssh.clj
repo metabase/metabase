@@ -1,6 +1,6 @@
 (ns metabase.util.ssh
-  (:require [clojure.tools.logging :as log]
-            [clojure.string :as string]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.util :as u])
   (:import com.jcraft.jsch.JSch))
 
@@ -21,7 +21,7 @@
                      (.setPortForwardingL 0 host port))
         input-port (some-> (.getPortForwardingL connection)
                            first
-                           (string/split #":")
+                           (str/split #":")
                            first
                            (Integer/parseInt))]
     (assert (number? input-port))
