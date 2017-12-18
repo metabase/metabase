@@ -1,18 +1,18 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
-const DetailPane = ({ name, description, error, usefulQuestions, useForCurrentQuestion, extra }) =>
+const DetailPane = ({ name, description, usefulQuestions, useForCurrentQuestion, extra }) =>
     <div>
         <h1>{name}</h1>
         <p className={cx({ "text-grey-3": !description })}>
-            {description || "No description set."}
+            {description || t`No description set.`}
         </p>
         { useForCurrentQuestion && useForCurrentQuestion.length > 0 ?
             <div className="py1">
-                <p className="text-bold">Use for current question</p>
+                <p className="text-bold">{t`Use for current question`}</p>
                 <ul className="my2">
                 {useForCurrentQuestion.map((item, index) =>
                     <li className="mt1" key={index}>
@@ -24,7 +24,7 @@ const DetailPane = ({ name, description, error, usefulQuestions, useForCurrentQu
         : null }
         { usefulQuestions && usefulQuestions.length > 0 ?
             <div className="py1">
-                <p className="text-bold">Potentially useful questions</p>
+                <p className="text-bold">{t`Potentially useful questions`}</p>
                 <ul>
                 {usefulQuestions.map((item, index) =>
                     <li className="border-row-divider" key={index}>
@@ -35,7 +35,6 @@ const DetailPane = ({ name, description, error, usefulQuestions, useForCurrentQu
             </div>
         : null }
         {extra}
-        <div>{error}</div>
     </div>
 
 DetailPane.propTypes = {

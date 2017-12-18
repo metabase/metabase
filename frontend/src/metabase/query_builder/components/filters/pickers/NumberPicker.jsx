@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import TextPicker from "./TextPicker.jsx";
 
 type Props = {
@@ -44,7 +44,7 @@ export default class NumberPicker extends Component {
     };
 
     static defaultProps = {
-        placeholder: "Enter desired number"
+        placeholder: t`Enter desired number`
     };
 
     _validate(values: Array<number|null>) {

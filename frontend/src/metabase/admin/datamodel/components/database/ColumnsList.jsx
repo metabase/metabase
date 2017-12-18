@@ -7,9 +7,7 @@ export default class ColumnsList extends Component {
     static propTypes = {
         tableMetadata: PropTypes.object,
         idfields: PropTypes.array,
-        updateField: PropTypes.func.isRequired,
-        updateFieldSpecialType: PropTypes.func.isRequired,
-        updateFieldTarget: PropTypes.func.isRequired
+        updateField: PropTypes.func.isRequired
     };
 
     render() {
@@ -31,8 +29,6 @@ export default class ColumnsList extends Component {
                             field={field}
                             idfields={this.props.idfields}
                             updateField={this.props.updateField}
-                            updateFieldSpecialType={this.props.updateFieldSpecialType}
-                            updateFieldTarget={this.props.updateFieldTarget}
                         />
                     )}
                 </ol>

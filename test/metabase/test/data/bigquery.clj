@@ -12,27 +12,20 @@
             [metabase.util :as u])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table
+            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
+            TableSchema]
            metabase.driver.bigquery.BigQueryDriver))
-
-(resolve-private-vars metabase.driver.bigquery post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
 (def ^:private ^String normalize-name (comp (u/rpartial s/replace #"-" "_") name))
 
-(defn- get-env-var [env-var]
-  (or (env (keyword (format "mb-bigquery-%s" (name env-var))))
-      (throw (Exception. (format "In order to test BigQuery, you must specify the env var MB_BIGQUERY_%s."
-                                 (s/upper-case (s/replace (name env-var) #"-" "_")))))))
-
 (def ^:private ^:const details
   (datasets/when-testing-engine :bigquery
-    {:project-id    (get-env-var :project-id)
-     :client-id     (get-env-var :client-id)
-     :client-secret (get-env-var :client-secret)
-     :access-token  (get-env-var :access-token)
-     :refresh-token (get-env-var :refresh-token)}))
+    (reduce (fn [acc env-var]
+              (assoc acc env-var (i/db-test-env-var-or-throw :bigquery env-var)))
+            {} [:project-id :client-id :client-secret :access-token :refresh-token])))
 
 (def ^:private ^:const ^String project-id (:project-id details))
 
@@ -82,9 +75,10 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (post-process-native (google/execute (.query (.jobs bigquery) project-id
-                                                              (doto (QueryRequest.)
-                                                                (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
+  (ffirst (:rows (#'bigquery/post-process-native
+                  (google/execute (.query (.jobs bigquery) project-id
+                                          (doto (QueryRequest.)
+                                            (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
@@ -149,7 +143,7 @@
                                    (u/prog1 (if (instance? java.util.Date v)
                                               (DateTime. ^java.util.Date v) ; convert to Google version of DateTime, otherwise it doesn't work (!)
                                               v)
-                                            (assert (not (nil? <>)))))) ; make sure v is non-nil
+                                            (assert (some? <>))))) ; make sure v is non-nil
              :id (inc i)))))
 
 (defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]

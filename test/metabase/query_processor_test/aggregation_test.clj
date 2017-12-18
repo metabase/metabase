@@ -3,9 +3,10 @@
   (:require [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.util :as tu]))
 
 ;;; ------------------------------------------------------------ "COUNT" AGGREGATION ------------------------------------------------------------
 
@@ -72,11 +73,12 @@
      :columns     (venues-columns)
      :cols        (venues-cols)
      :native_form true}
-    (->> (data/run-query venues
+    (-> (data/run-query venues
            (ql/limit 10)
            (ql/order-by (ql/asc $id)))
-         booleanize-native-form
-         formatted-venues-rows))
+        booleanize-native-form
+        formatted-venues-rows
+        tu/round-fingerprint-cols))
 
 
 ;;; ------------------------------------------------------------ STDDEV AGGREGATION ------------------------------------------------------------
@@ -149,11 +151,11 @@
             (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
-;; (TODO - this isn't tested against Mongo, BigQuery or Presto because those drivers don't currently work correctly with multiple columns with the same name)
-(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery :presto)
+;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with multiple columns with the same name)
+(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
   [(aggregate-col :count)
    (assoc (aggregate-col :count)
-     :display_name    "count_2"
+     :display_name    "Count 2"
      :name            "count_2"
      :preview_display true)]
   (-> (data/run-query venues
@@ -230,7 +232,8 @@
          (ql/aggregation (ql/cum-sum $id))
          (ql/breakout $name))
        booleanize-native-form
-       (format-rows-by [str int])))
+       (format-rows-by [str int])
+       tu/round-fingerprint-cols))
 
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
@@ -295,7 +298,8 @@
          (ql/aggregation (ql/cum-count))
          (ql/breakout $name))
        booleanize-native-form
-       (format-rows-by [str int])))
+       (format-rows-by [str int])
+       tu/round-fingerprint-cols))
 
 
 ;;; Cumulative count w/ a different breakout field that requires grouping

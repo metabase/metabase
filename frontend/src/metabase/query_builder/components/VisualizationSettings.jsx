@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -52,7 +52,7 @@ export default class VisualizationSettings extends React.Component {
                     className="GuiBuilder-section-label pl0 Query-label"
                     style={{ marginLeft: 4 }}
                 >
-                    Visualization
+                    {t`Visualization`}
                 </span>
                 <PopoverWithTrigger
                     id="VisualizationPopover"
@@ -69,7 +69,7 @@ export default class VisualizationSettings extends React.Component {
                                 key={index}
                                 className={cx('p2 flex align-center cursor-pointer bg-brand-hover text-white-hover', {
                                     'ChartType--selected': vizType === card.display,
-                                    'ChartType--notSensible': !(result && result.data && viz.isSensible(result.data.cols, result.data.rows)),
+                                    'ChartType--notSensible': !(result && result.data && viz.isSensible && viz.isSensible(result.data.cols, result.data.rows)),
                                     'hide': viz.hidden
                                 })}
                                 onClick={this.setDisplay.bind(null, vizType)}

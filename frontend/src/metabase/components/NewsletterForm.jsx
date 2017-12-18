@@ -62,7 +62,7 @@ export default class NewsletterForm extends Component {
 
                 <div className="MB-Newsletter sm-float-right">
                     <div>
-                        <div style={{color: "#878E95"}} className="text-grey-4 text-strong h3 pb3">
+                        <div style={{color: "#878E95"}} className="text-grey-4 h3 pb3">
                             Get infrequent emails about new releases and feature updates.
                         </div>
 

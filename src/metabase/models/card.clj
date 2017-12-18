@@ -1,7 +1,9 @@
 (ns metabase.models.card
+  "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
+  is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [medley.core :as m]
             [metabase
              [public-settings :as public-settings]
              [query :as q]
@@ -12,8 +14,10 @@
              [card-label :refer [CardLabel]]
              [collection :as collection]
              [dependency :as dependency]
+             [field-values :as field-values]
              [interface :as i]
              [label :refer [Label]]
+             [params :as params]
              [permissions :as perms]
              [revision :as revision]]
             [metabase.query-processor.middleware.permissions :as qp-perms]
@@ -25,7 +29,7 @@
 (models/defmodel Card :report_card)
 
 
-;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
+;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (defn dashboard-count
   "Return the number of Dashboards this Card is in."
@@ -42,7 +46,7 @@
     []))
 
 
-;;; ------------------------------------------------------------ Permissions Checking ------------------------------------------------------------
+;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 (defn- native-permissions-path
   "Return the `:read` (for running) or `:write` (for saving) native permissions path for DATABASE-OR-ID."
@@ -53,10 +57,13 @@
 
 (defn- query->source-and-join-tables
   "Return a sequence of all Tables (as TableInstance maps) referenced by QUERY."
-  [{:keys [source-table join-tables native], :as query}]
+  [{:keys [source-table join-tables source-query native], :as query}]
   (cond
-    ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to add native permissions to the complete set below.
+    ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to add native
+    ;; permissions to the complete set below.
     native       [::native]
+    ;; if we have a source-query just recur until we hit either the native source or the MBQL source
+    source-query (recur source-query)
     ;; for root MBQL queries just return source-table + join-tables
     :else        (cons source-table join-tables)))
 
@@ -81,11 +88,15 @@
        ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
        ;; just return a set of permissions that means no one will ever get to see it
        (catch Throwable e
-         (log/warn "Error getting permissions for card:" (.getMessage e) "\n" (u/pprint-to-str (u/filtered-stacktrace e)))
+         (log/warn "Error getting permissions for card:" (.getMessage e) "\n"
+                   (u/pprint-to-str (u/filtered-stacktrace e)))
          #{"/db/0/"})))                        ; DB 0 will never exist
 
-;; it takes a lot of DB calls and function calls to expand/resolve a query, and since they're pure functions we can save ourselves some a lot of DB calls
-;; by caching the results. Cache the permissions reqquired to run a given query dictionary for up to 6 hours
+;; it takes a lot of DB calls and function calls to expand/resolve a query, and since they're pure functions we can
+;; save ourselves some a lot of DB calls by caching the results. Cache the permissions reqquired to run a given query
+;; dictionary for up to 6 hours
+;; TODO - what if the query uses a source query, and that query changes? Not sure if that will cause an issue or not.
+;; May need to revisit this
 (defn- query-perms-set* [{query-type :type, database :database, :as query} read-or-write]
   (cond
     (= query {})                     #{}
@@ -94,7 +105,8 @@
     :else                            (throw (Exception. (str "Invalid query type: " query-type)))))
 
 (def ^{:arglists '([query read-or-write])} query-perms-set
-  "Return a set of required permissions for *running* QUERY (if READ-OR-WRITE is `:read`) or *saving* it (if READ-OR-WRITE is `:write`)."
+  "Return a set of required permissions for *running* QUERY (if READ-OR-WRITE is `:read`) or *saving* it (if
+   READ-OR-WRITE is `:write`)."
   (memoize/ttl query-perms-set* :ttl/threshold (* 6 60 60 1000))) ; memoize for 6 hours
 
 
@@ -108,7 +120,7 @@
     (query-perms-set query read-or-write)))
 
 
-;;; ------------------------------------------------------------ Dependencies ------------------------------------------------------------
+;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (defn card-dependencies
   "Calculate any dependent objects for a given `Card`."
@@ -119,52 +131,84 @@
      :Segment (q/extract-segment-ids (:query dataset_query))}))
 
 
-;;; ------------------------------------------------------------ Revisions ------------------------------------------------------------
+;;; -------------------------------------------------- Revisions --------------------------------------------------
 
 (defn serialize-instance
   "Serialize a `Card` for use in a `Revision`."
   ([instance]
    (serialize-instance nil nil instance))
   ([_ _ instance]
-   (->> (dissoc instance :created_at :updated_at)
-        (into {})                                  ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
-        (m/filter-vals (complement delay?)))))     ; probably not needed anymore
+   (dissoc instance :created_at :updated_at)))
 
 
+;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
-;;; ------------------------------------------------------------ Lifecycle ------------------------------------------------------------
+(defn- native-query? [query-type]
+  (or (= query-type "native")
+      (= query-type :native)))
 
-(defn- query->database-and-table-ids
-  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card."
+(defn query->database-and-table-ids
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
+   other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
+   normal queries."
   [outer-query]
-  (let [database     (qputil/get-normalized outer-query :database)
+  (let [database-id  (qputil/get-normalized outer-query :database)
+        query-type   (qputil/get-normalized outer-query :type)
         source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (when source-table
-      {:database-id (u/get-id database), :table-id (u/get-id source-table)})))
+    (cond
+      (native-query? query-type) {:database-id database-id, :table-id nil}
+      (integer? source-table)    {:database-id database-id, :table-id source-table}
+      (string? source-table)     (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
+                                   (db/select-one [Card [:table_id :table-id] [:database_id :database-id]]
+                                     :id (Integer/parseInt card-id))))))
 
 (defn- populate-query-fields [{{query-type :type, :as outer-query} :dataset_query, :as card}]
-  (merge (when query-type
-           (let [{:keys [database-id table-id]} (query->database-and-table-ids outer-query)]
-             {:database_id database-id
-              :table_id    table-id
-              :query_type  (keyword query-type)}))
+  (merge (when-let [{:keys [database-id table-id]} (and query-type
+                                                        (query->database-and-table-ids outer-query))]
+           {:database_id database-id
+            :table_id    table-id
+            :query_type  (keyword query-type)})
          card))
 
 (defn- pre-insert [{:keys [dataset_query], :as card}]
   ;; TODO - make sure if `collection_id` is specified that we have write permissions for tha tcollection
   (u/prog1 card
     ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
-    ;; because users can always see native Cards and we don't want someone getting around their lack of permissions that way
+    ;; because users can always see native Cards and we don't want someone getting around their lack of permissions
+    ;; that way
     (when (and *current-user-id*
                (= (keyword (:type dataset_query)) :native))
       (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
         (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
 
+(defn- post-insert [card]
+  ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
+  ;; eligible for FieldValues and that belong to a 'On-Demand' database
+  (u/prog1 card
+    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
+      (log/info "Card references Fields in params:" field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+
 (defn- pre-update [{archived? :archived, :as card}]
   (u/prog1 card
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
-      (db/delete! 'DashboardCard :card_id (u/get-id card)))))
+      (db/delete! 'DashboardCard :card_id (u/get-id card)))
+    ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
+    ;; On-Demand DB Fields
+    (when (and (:dataset_query card)
+               (:native (:dataset_query card)))
+      (let [old-param-field-ids (params/card->template-tag-field-ids (db/select-one [Card :dataset_query]
+                                                                       :id (u/get-id card)))
+            new-param-field-ids (params/card->template-tag-field-ids card)]
+        (when (and (seq new-param-field-ids)
+                   (not= old-param-field-ids new-param-field-ids))
+          (let [newly-added-param-field-ids (set/difference new-param-field-ids old-param-field-ids)]
+            (log/info "Referenced Fields in Card params have changed. Was:" old-param-field-ids
+                      "Is Now:" new-param-field-ids
+                      "Newly Added:" newly-added-param-field-ids)
+            ;; Now update the FieldValues for the Fields referenced by this Card.
+            (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))))
 
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'PulseCard :card_id id)
@@ -184,10 +228,12 @@
                                        :display                :keyword
                                        :embedding_params       :json
                                        :query_type             :keyword
+                                       :result_metadata        :json
                                        :visualization_settings :json})
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)
           :pre-insert     (comp populate-query-fields pre-insert)
+          :post-insert    post-insert
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 

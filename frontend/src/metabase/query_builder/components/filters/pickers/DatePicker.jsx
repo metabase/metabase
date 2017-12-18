@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import SpecificDatePicker from "./SpecificDatePicker";
 import RelativeDatePicker, { DATE_PERIODS, UnitPicker } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
@@ -24,24 +24,32 @@ import type {
 } from "metabase/meta/types/Query";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange, hideTimeSelectors }) =>
-    <SpecificDatePicker
-        value={value}
-        onChange={(value) => onFilterChange([op, field, value])}
-        hideTimeSelectors={hideTimeSelectors}
-        calendar />
+    <div className="mx2">
+        <SpecificDatePicker
+            value={value}
+            onChange={(value) => onFilterChange([op, field, value])}
+            hideTimeSelectors={hideTimeSelectors}
+            calendar
+        />
+    </div>
 
 const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange , hideTimeSelectors}) =>
     <div className="mx2 mb1">
-        <div className="flex">
-            <SpecificDatePicker
-                value={startValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, value, endValue])}  />
-            <span className="mx2 mt2">&ndash;</span>
-            <SpecificDatePicker
-                value={endValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, startValue, value])} />
+        <div className="Grid Grid--1of2 Grid--gutters">
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={startValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, value, endValue])}
+                />
+            </div>
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={endValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, startValue, value])}
+                />
+            </div>
         </div>
         <div className="Calendar--noContext">
             <Calendar
@@ -151,52 +159,52 @@ export type Operator = {
 }
 
 const ALL_TIME_OPERATOR = {
-    name: "All Time",
+    name: t`All Time`,
     init: () => null,
     test: (op) => op === null
 }
 
 export const DATE_OPERATORS: Operator[] = [
     {
-        name: "Previous",
+        name: t`Previous`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
     },
     {
-        name: "Next",
+        name: t`Next`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
     },
     {
-        name: "Current",
+        name: t`Current`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter)],
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
     {
-        name: "Before",
+        name: t`Before`,
         init: (filter) =>  ["<", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "<",
         widget: SingleDatePicker,
     },
     {
-        name: "After",
+        name: t`After`,
         init: (filter) => [">", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === ">",
         widget: SingleDatePicker,
     },
     {
-        name: "On",
+        name: t`On`,
         init: (filter) => ["=", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "=",
         widget: SingleDatePicker,
     },
     {
-        name: "Between",
+        name: t`Between`,
         init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter, 2)],
         test: ([op]) => mbqlEq(op, "between"),
         widget: MultiDatePicker,
@@ -206,12 +214,12 @@ export const DATE_OPERATORS: Operator[] = [
 
 export const EMPTINESS_OPERATORS: Operator[] = [
     {
-        name: "Is Empty",
+        name: t`Is Empty`,
         init: (filter) => ["IS_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "IS_NULL"
     },
     {
-        name: "Not Empty",
+        name: t`Not Empty`,
         init: (filter) => ["NOT_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "NOT_NULL"
     }

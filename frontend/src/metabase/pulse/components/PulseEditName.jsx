@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import { t } from 'c-3po';
 
 import _ from "underscore";
 import cx from "classnames";
@@ -32,7 +33,7 @@ export default class PulseEditName extends Component {
         return (
             <div className="py1">
                 <h2>Name your pulse</h2>
-                <p className="mt1 h4 text-bold text-grey-3">Give your pulse a name to help others understand what it's about.</p>
+                <p className="mt1 h4 text-bold text-grey-3">{t`Give your pulse a name to help others understand what it's about`}.</p>
                 <div className="my3">
                     <input
                         ref="name"
@@ -40,8 +41,8 @@ export default class PulseEditName extends Component {
                         style={{"width":"400px"}}
                         value={pulse.name || ""}
                         onChange={this.setName}
-                        onBlur={this.validate}
-                        placeholder="Important metrics"
+                        onBlur={this.refs.name && this.validate}
+                        placeholder={t`Important metrics`}
                         autoFocus
                     />
                 </div>

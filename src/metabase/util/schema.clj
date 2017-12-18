@@ -7,12 +7,41 @@
             [metabase.util.password :as password]
             [schema.core :as s]))
 
+;; always validate all schemas in s/defn function declarations. See
+;; https://github.com/plumatic/schema#schemas-in-practice for details.
+(s/set-fn-validation! true)
+
 (defn with-api-error-message
-  "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails validation."
+  "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
+   validation.
+
+   Has to be a schema (or similar) record type because a simple map would just end up adding a new required key.
+   One easy way to get around this is to just wrap your schema in `s/named`."
   {:style/indent 1}
   [schema api-error-message]
-  {:pre [(map? schema)]}
+  {:pre [(record? schema)]}
   (assoc schema :api-error-message api-error-message))
+
+(defn api-param
+  "Return SCHEMA with an additional API-PARAM-NAME key that will be used in the auto-generate documentation and in
+   error messages. This is important for situations where you want to bind a parameter coming in to the API to
+   something other than the `snake_case` key it normally comes in as:
+
+     ;; BAD -- Documentation/errors will tell you `dimension-type` is wrong
+     [:is {{dimension-type :type} :body}]
+     {dimension-type DimensionType}
+
+     ;; GOOD - Documentation/errors will mention correct param name, `type`
+     [:is {{dimension-type :type} :body}]
+     {dimension-type (su/api-param \"type\" DimensionType)}
+
+   Note that as with `with-api-error-message`, this only works on schemas that are record types. This works by adding
+   an extra property to the record, which wouldn't work for plain maps, because the extra key would just be considered
+   another requrired param. An easy way to get around this is to wrap a non-record type schema in `s/named`."
+  {:style/indent 1}
+  [api-param-name schema]
+  {:pre [(record? schema)]}
+  (assoc schema :api-param-name (name api-param-name)))
 
 (defn- existing-schema->api-error-message
   "Error messages for various schemas already defined in `schema.core`.
@@ -22,18 +51,21 @@
     (= existing-schema s/Int)                           "value must be an integer."
     (= existing-schema s/Str)                           "value must be a string."
     (= existing-schema s/Bool)                          "value must be a boolean."
-    (instance? java.util.regex.Pattern existing-schema) (format "value must be a string that matches the regex `%s`." existing-schema)))
+    (instance? java.util.regex.Pattern existing-schema) (format "value must be a string that matches the regex `%s`."
+                                                                existing-schema)))
 
 (defn api-error-message
   "Extract the API error messages attached to a schema, if any.
    This functionality is fairly sophisticated:
 
     (api-error-message (s/maybe (non-empty [NonBlankString])))
-    ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string. The array cannot be empty.\""
+    ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
+            The array cannot be empty.\""
   [schema]
   (or (:api-error-message schema)
       (existing-schema->api-error-message schema)
-      ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like "value may be nil, or if non-nil, value must be ..."
+      ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like
+      ;; "value may be nil, or if non-nil, value must be ..."
       (when (instance? schema.core.Maybe schema)
         (when-let [message (api-error-message (:schema schema))]
           (str "value may be nil, or if non-nil, " message)))
@@ -42,7 +74,9 @@
         (format "value must be one of: %s." (str/join ", " (for [v (sort (:vs schema))]
                                                              (str "`" v "`")))))
       ;; For cond-pre schemas we'll generate something like
-      ;; value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
+      ;; value must satisfy one of the following requirements:
+      ;; 1) value must be a boolean.
+      ;; 2) value must be a valid boolean string ('true' or 'false').
       (when (instance? schema.core.CondPre schema)
         (str "value must satisfy one of the following requirements: "
              (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
@@ -55,12 +89,15 @@
 
 
 (defn non-empty
-  "Add an addditonal constraint to SCHEMA (presumably an array) that requires it to be non-empty (i.e., it must satisfy `seq`)."
+  "Add an addditonal constraint to SCHEMA (presumably an array) that requires it to be non-empty
+   (i.e., it must satisfy `seq`)."
   [schema]
   (with-api-error-message (s/constrained schema seq "Non-empty")
     (str (api-error-message schema) " The array cannot be empty.")))
 
-;;; ------------------------------------------------------------ Util Schemas ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 USEFUL SCHEMAS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def NonBlankString
   "Schema for a string that cannot be blank."
@@ -79,9 +116,16 @@
   (s/named (s/cond-pre s/Keyword s/Str) "Keyword or string"))
 
 (def FieldType
-  "Schema for a valid Field type (does it derive from `:type/*`?"
+  "Schema for a valid Field type (does it derive from `:type/*`)?"
   (with-api-error-message (s/pred (u/rpartial isa? :type/*) "Valid field type")
     "value must be a valid field type."))
+
+(def FieldTypeKeywordOrString
+  "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
+   This is useful especially for validating API input or objects coming out of the DB as it is unlikely
+   those values will be encoded as keywords at that point."
+  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) "Valid field type (keyword or string)")
+    "value must be a valid field type (keyword or string)."))
 
 (def Map
   "Schema for a valid map."

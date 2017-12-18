@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import AggregationPopover from "./AggregationPopover.jsx";
 import FieldName from './FieldName.jsx';
 import Clearable from './Clearable.jsx';
@@ -56,7 +56,7 @@ export default class AggregationWidget extends Component {
                 <span className="flex align-center">
                     { selectedAggregation.name.replace(" of ...", "") }
                     { fieldId &&
-                        <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
+                        <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">{t`of`}</span>
                     }
                     { fieldId &&
                         <FieldName
@@ -88,7 +88,7 @@ export default class AggregationWidget extends Component {
     }
 
     renderPopover() {
-        const { aggregation, tableMetadata } = this.props;
+        const { query, aggregation, tableMetadata } = this.props;
 
         if (this.state.isOpen) {
             return (
@@ -101,6 +101,7 @@ export default class AggregationWidget extends Component {
                     dismissOnEscape={false} // disable for expression editor
                 >
                     <AggregationPopover
+                        query={query}
                         aggregation={aggregation}
                         availableAggregations={tableMetadata.aggregation_options}
                         tableMetadata={tableMetadata}
@@ -132,7 +133,7 @@ export default class AggregationWidget extends Component {
                             <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
                                 <span className="View-section-aggregation QueryOption py1 mx1">
                                     { aggregationName == null ?
-                                        "Choose an aggregation"
+                                        t`Choose an aggregation`
                                     : name ?
                                         name
                                     :

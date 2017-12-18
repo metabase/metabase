@@ -5,9 +5,10 @@
              [card :refer :all]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
+             [database :as database]
              [interface :as mi]
              [permissions :as perms]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -120,6 +121,42 @@
                            (ql/order-by (ql/asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :name))))))
                    :read))
 
+;; MBQL w/ nested MBQL query
+(defn- query-with-source-card [card]
+  {:database database/virtual-id, :type "query", :query {:source_table (str "card__" (u/get-id card))}})
+
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :venues)}}}]
+    (query-perms-set (query-with-source-card card) :read)))
+
+;; MBQL w/ nested MBQL query including a JOIN
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
+    (perms/object-path (data/id) "PUBLIC" (data/id :users))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :checkins)
+                                                       :order-by     [[:asc [:fk-> (data/id :checkins :user_id) (data/id :users :id)]]]}}}]
+    (query-perms-set (query-with-source-card card) :read)))
+
+;; MBQL w/ nested NATIVE query
+(expect
+  #{(perms/native-read-path (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM CHECKINS"}}}]
+    (query-perms-set (query-with-source-card card) :read)))
+
+(expect
+  #{(perms/native-readwrite-path (data/id))}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM CHECKINS"}}}]
+    (query-perms-set (query-with-source-card card) :write)))
+
 ;; invalid/legacy card should return perms for something that doesn't exist so no one gets to see it
 (expect
   #{"/db/0/"}
@@ -149,3 +186,20 @@
   (tu/with-temporary-setting-values [enable-public-sharing false]
     (tt/with-temp Card [card {:public_uuid (str (java.util.UUID/randomUUID))}]
       (:public_uuid card))))
+
+(defn- dummy-dataset-query [database-id]
+  {:database (data/id)
+   :type     :native
+   :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
+
+(expect
+  [{:name "some name"    :database_id (data/id)}
+   {:name "another name" :database_id (data/id)}]
+  (tt/with-temp Card [{:keys [id] :as card} {:name          "some name"
+                                             :dataset_query (dummy-dataset-query (data/id))
+                                             :database_id   (data/id)}]
+    [(into {} (db/select-one [Card :name :database_id] :id id))
+     (do
+       (db/update! Card id {:name          "another name"
+                            :dataset_query (dummy-dataset-query (data/id))})
+       (into {} (db/select-one [Card :name :database_id] :id id)))]))

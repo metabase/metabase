@@ -31,6 +31,7 @@
     border-right: none;
 }
 
+/*
 .Icon-download,
 .Icon-addToDash {
     fill: #919191;
@@ -42,6 +43,7 @@
     fill: var(--brand-color);
     transition: fill .3s linear;
 }
+*/
 
 /* a section of the graphical query itself */
 .Query-section {
@@ -87,7 +89,7 @@
 }
 
 .Query-filter.selected {
-    border-color: var(--purple-light-color);
+    border-color: var(--purple-color);
 }
 
 .Filter-section {
@@ -243,25 +245,25 @@
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  background-image: url('../assets/img/no_results.svg');
+  background-image: url('../app/assets/img/no_results.svg');
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  background-image: url('../assets/img/no_understand.svg');
+  background-image: url('../app/assets/img/no_understand.svg');
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  background-image: url('../assets/img/blown_up.svg');
+  background-image: url('../app/assets/img/blown_up.svg');
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  background-image: url('../assets/img/stopwatch.svg');
+  background-image: url('../app/assets/img/stopwatch.svg');
 }
 
 .QueryError-message {
@@ -384,7 +386,6 @@
 }
 
 .QueryOption {
-    color: color(var(--base-grey) shade(20%));
     font-weight: 700;
 }
 

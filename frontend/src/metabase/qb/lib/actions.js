@@ -1,26 +1,39 @@
 /* @flow weak */
 
 import moment from "moment";
+import _ from "underscore";
 
 import Q from "metabase/lib/query"; // legacy query lib
+import { fieldIdsEq } from "metabase/lib/query/util";
 import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
-import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
+import { rangeForValue } from "metabase/lib/dataset";
+import {
+    isDate,
+    isState,
+    isCountry,
+    isCoordinate
+} from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
+import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
+import type {
+    StructuredQuery,
+    FieldFilter,
+    Breakout
+} from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
+import { parseTimestamp } from "metabase/lib/time";
 
 // TODO: use icepick instead of mutation, make they handle frozen cards
 
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.display = "table";
     newCard.original_card_id = card.id;
     return newCard;
@@ -28,7 +41,7 @@ export const toUnderlyingData = (card: CardObject): ?CardObject => {
 
 export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     if (card.dataset_query.type === "query") {
-        const query: StructuredQuery = card.dataset_query.query;
+        const query: StructuredQuery = Utils.copy(card.dataset_query).query;
         const newCard = startNewCard(
             "query",
             card.dataset_query.database,
@@ -39,11 +52,11 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     }
 };
 
-export const getFieldRefFromColumn = col => {
+export const getFieldRefFromColumn = (col, fieldId = col.id) => {
     if (col.fk_field_id != null) {
-        return ["fk->", col.fk_field_id, col.id];
+        return ["fk->", col.fk_field_id, fieldId];
     } else {
-        return ["field-id", col.id];
+        return ["field-id", fieldId];
     }
 };
 
@@ -52,7 +65,14 @@ const clone = card => {
 
     newCard.display = card.display;
     newCard.dataset_query = Utils.copy(card.dataset_query);
-    newCard.visualization_settings = Utils.copy(card.visualization_settings);
+
+    // The Question lib doesn't always set a viz setting. Placing a check here, but we should probably refactor this
+    // into a separate test + clean up the question lib.
+    if (card.visualization_settings) {
+        newCard.visualization_settings = Utils.copy(
+            card.visualization_settings
+        );
+    }
 
     return newCard;
 };
@@ -60,6 +80,7 @@ const clone = card => {
 // Adds a new filter with the specified operator, column, and value
 export const filter = (card, operator, column, value) => {
     const newCard = clone(card);
+
     // $FlowFixMe:
     const filter: FieldFilter = [
         operator,
@@ -84,10 +105,20 @@ const drillFilter = (card, value, column) => {
                 "as",
                 column.unit
             ],
-            moment(value).toISOString()
+            parseTimestamp(value, column.unit).toISOString()
         ];
     } else {
-        filter = ["=", getFieldRefFromColumn(column), value];
+        const range = rangeForValue(value, column);
+        if (range) {
+            filter = [
+                "BETWEEN",
+                getFieldRefFromColumn(column),
+                range[0],
+                range[1]
+            ];
+        } else {
+            filter = ["=", getFieldRefFromColumn(column), value];
+        }
     }
 
     return addOrUpdateFilter(card, filter);
@@ -126,8 +157,10 @@ export const addOrUpdateBreakout = (card, breakout) => {
     let breakouts = Query.getBreakouts(newCard.dataset_query.query);
     for (let index = 0; index < breakouts.length; index++) {
         if (
-            Field.getFieldTargetId(breakouts[index]) ===
-            Field.getFieldTargetId(breakout)
+            fieldIdsEq(
+                Field.getFieldTargetId(breakouts[index]),
+                Field.getFieldTargetId(breakout)
+            )
         ) {
             newCard.dataset_query.query = Query.updateBreakout(
                 newCard.dataset_query.query,
@@ -151,41 +184,7 @@ const getNextUnit = unit => {
     return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
 };
 
-export const drillDownForDimensions = dimensions => {
-    const timeDimensions = dimensions.filter(
-        dimension => dimension.column.unit
-    );
-    if (timeDimensions.length === 1) {
-        const column = timeDimensions[0].column;
-        let nextUnit = getNextUnit(column.unit);
-        if (nextUnit && nextUnit !== column.unit) {
-            return {
-                name: column.unit,
-                breakout: [
-                    "datetime-field",
-                    getFieldRefFromColumn(column),
-                    "as",
-                    nextUnit
-                ]
-            };
-        }
-    }
-};
-
-export const drillTimeseriesFilter = (card, value, column) => {
-    const newCard = drillFilter(card, value, column);
-
-    let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
-
-    newCard.dataset_query.query.breakout[0] = [
-        "datetime-field",
-        card.dataset_query.query.breakout[0][1],
-        "as",
-        nextUnit
-    ];
-
-    return newCard;
-};
+export { drillDownForDimensions } from "./drilldown";
 
 export const drillUnderlyingRecords = (card, dimensions) => {
     for (const dimension of dimensions) {
@@ -207,13 +206,13 @@ export const drillRecord = (databaseId, tableId, fieldId, value) => {
 export const plotSegmentField = card => {
     const newCard = startNewCard("query");
     newCard.display = "scatter";
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     return newCard;
 };
 
 export const summarize = (card, aggregation, tableMetadata) => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.dataset_query.query = Query.addAggregation(
         newCard.dataset_query.query,
         aggregation
@@ -224,7 +223,7 @@ export const summarize = (card, aggregation, tableMetadata) => {
 
 export const breakout = (card, breakout, tableMetadata) => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.dataset_query.query = Query.addBreakout(
         newCard.dataset_query.query,
         breakout
@@ -236,7 +235,7 @@ export const breakout = (card, breakout, tableMetadata) => {
 // min number of points when switching units
 const MIN_INTERVALS = 4;
 
-export const updateDateTimeFilter = (card, column, start, end) => {
+export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     let newCard = clone(card);
 
     let fieldRef = getFieldRefFromColumn(column);
@@ -298,15 +297,32 @@ export const updateDateTimeFilter = (card, column, start, end) => {
     }
 };
 
-export const updateNumericFilter = (card, column, start, end) => {
+export function updateLatLonFilter(
+    card,
+    latitudeColumn,
+    longitudeColumn,
+    bounds
+) {
+    return addOrUpdateFilter(card, [
+        "INSIDE",
+        latitudeColumn.id,
+        longitudeColumn.id,
+        bounds.getNorth(),
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast()
+    ]);
+}
+
+export function updateNumericFilter(card, column, start, end) {
     const fieldRef = getFieldRefFromColumn(column);
     return addOrUpdateFilter(card, ["BETWEEN", fieldRef, start, end]);
-};
+}
 
 export const pivot = (
     card: CardObject,
-    breakout,
-    tableMetadata: TableMetadata,
+    tableMetadata: Table,
+    breakouts: Breakout[] = [],
     dimensions: DimensionValue[] = []
 ): ?CardObject => {
     if (card.dataset_query.type !== "query") {
@@ -314,7 +330,7 @@ export const pivot = (
     }
 
     let newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
 
     for (const dimension of dimensions) {
         newCard = drillFilter(newCard, dimension.value, dimension.column);
@@ -323,7 +339,7 @@ export const pivot = (
             tableMetadata
         );
         for (const [index, field] of breakoutFields.entries()) {
-            if (field && field.id === dimension.column.id) {
+            if (field && fieldIdsEq(field.id, dimension.column.id)) {
                 newCard.dataset_query.query = Query.removeBreakout(
                     newCard.dataset_query.query,
                     index
@@ -332,11 +348,12 @@ export const pivot = (
         }
     }
 
-    newCard.dataset_query.query = Query.addBreakout(
-        // $FlowFixMe
-        newCard.dataset_query.query,
-        breakout
-    );
+    for (const breakout of breakouts) {
+        newCard.dataset_query.query = Query.addBreakout(
+            newCard.dataset_query.query,
+            breakout
+        );
+    }
 
     guessVisualization(newCard, tableMetadata);
 
@@ -353,7 +370,7 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: CardObject, tableMetadata: TableMetadata) => {
+const guessVisualization = (card: CardObject, tableMetadata: Table) => {
     const query = Card.getQuery(card);
     if (!query) {
         return;
@@ -384,6 +401,13 @@ const guessVisualization = (card: CardObject, tableMetadata: TableMetadata) => {
         if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
             if (isDate(breakoutFields[0])) {
                 card.display = "line";
+            } else if (_.all(breakoutFields, isCoordinate)) {
+                card.display = "map";
+                // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
+                // Currently show a pin map instead of heat map for double coordinate breakout
+                // This way the binning drill-through works in a somewhat acceptable way (although it is designed for heat maps)
+                card.visualization_settings["map.type"] = "pin";
+                // card.visualization_settings["map.type"] = "grid";
             } else {
                 card.display = "bar";
             }

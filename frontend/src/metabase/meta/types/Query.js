@@ -1,7 +1,7 @@
 /* @flow */
 
 import type { TableId } from "./Table";
-import type { FieldId } from "./Field";
+import type { FieldId, BaseType } from "./Field";
 import type { SegmentId } from "./Segment";
 import type { MetricId } from "./Metric";
 import type { ParameterType } from "./Parameter";
@@ -34,9 +34,11 @@ export type TemplateTag = {
     default?:     string,
 };
 
+export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
+
 export type NativeQuery = {
     query: string,
-    template_tags: { [key: TemplateTagName]: TemplateTag }
+    template_tags: TemplateTags
 };
 
 export type StructuredQuery = {
@@ -51,11 +53,14 @@ export type StructuredQuery = {
 };
 
 export type AggregationClause =
-    Aggregation | // deprecated
+    Aggregation | // @deprecated: aggregation clause is now an array
     Array<Aggregation>;
 
+/**
+ * An aggregation MBQL clause
+ */
 export type Aggregation =
-    Rows | // deprecated
+    Rows | // @deprecated: implicit when there are no aggregations
     CountAgg |
     CountFieldAgg |
     AvgAgg |
@@ -67,8 +72,14 @@ export type Aggregation =
     MaxAgg |
     MetricAgg;
 
-type Rows           = ["rows"]; // deprecated
+
+/**
+ * @deprecated: implicit when there are no aggregations
+ */
+type Rows           = ["rows"];
+
 type CountAgg       = ["count"];
+
 type CountFieldAgg  = ["count", ConcreteField];
 type AvgAgg         = ["avg", ConcreteField];
 type CumSumAgg      = ["cum_sum", ConcreteField];
@@ -77,6 +88,7 @@ type StdDevAgg      = ["stddev", ConcreteField];
 type SumAgg         = ["sum", ConcreteField];
 type MinAgg         = ["min", ConcreteField];
 type MaxAgg         = ["max", ConcreteField];
+
 // NOTE: currently the backend expects METRIC to be uppercase
 type MetricAgg      = ["METRIC", MetricId];
 
@@ -120,7 +132,7 @@ export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDateti
 export type SegmentFilter      = ["SEGMENT", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
-export type OrderBy = ["asc"|"desc", Field];
+export type OrderBy = [Field, "ascending"|"descending"|"asc"|"desc"];
 
 export type LimitClause = number;
 
@@ -132,11 +144,12 @@ export type ConcreteField =
     LocalFieldReference |
     ForeignFieldReference |
     ExpressionReference |
-    DatetimeField;
+    DatetimeField |
+    BinnedField;
 
 export type LocalFieldReference =
     ["field-id", FieldId] |
-    FieldId; // deprecated
+    FieldId; // @deprecated: use ["field-id", FieldId]
 
 export type ForeignFieldReference =
     ["fk->", FieldId, FieldId];
@@ -144,9 +157,17 @@ export type ForeignFieldReference =
 export type ExpressionReference =
     ["expression", ExpressionName];
 
+export type FieldLiteral =
+    ["field-literal", string, BaseType]; // ["field-literal", name, base-type]
+
 export type DatetimeField =
     ["datetime-field", LocalFieldReference | ForeignFieldReference, DatetimeUnit] |
-    ["datetime-field", LocalFieldReference | ForeignFieldReference, "as", DatetimeUnit]; // deprecated
+    ["datetime-field", LocalFieldReference | ForeignFieldReference, "as", DatetimeUnit]; // @deprecated: don't include the "as" element
+
+export type BinnedField =
+    ["binning-strategy", LocalFieldReference | ForeignFieldReference, "default"] | // default binning (as defined by backend)
+    ["binning-strategy", LocalFieldReference | ForeignFieldReference, "num-bins", number] | // number of bins
+    ["binning-strategy", LocalFieldReference | ForeignFieldReference, "bin-width", number]; // width of each bin
 
 export type AggregateField = ["aggregation", number];
 

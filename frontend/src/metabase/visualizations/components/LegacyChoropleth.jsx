@@ -29,10 +29,10 @@ const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeatur
                             })}
                             onMouseLeave={() => onHoverFeature(null)}
                             className={cx({ "cursor-pointer": !!onClickFeature })}
-                            onClick={(e) => onClickFeature({
+                            onClick={onClickFeature && ((e) => onClickFeature({
                                 feature: feature,
                                 event: e.nativeEvent
-                            })}
+                            }))}
                         />
                     )}
                     </svg>

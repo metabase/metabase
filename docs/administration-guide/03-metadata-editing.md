@@ -74,6 +74,24 @@ This is also where you set mark special fields in a table:
 * Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
 * Foreign Key — this is a field in this table that uniquely identifies a *row* in another table. In other words, this is a field that, almost always, points to the primary key of another table. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
 
+### Remapping field values
+One thing that happens commonly in tables is that you'll have a foreign key field, like `Product ID`, with a bunch of ID values in it, when what you actually want to see most of the time is the entity name, like the `Product Title`. You might also have fields which contain coded values that you'd prefer to show up as translated or readable values in your tables and charts — like changing `0`, `1`, and `2` to `Female`, `Male`, and `Other` for example.
+
+To do this in Metabase, click on the gear icon to the right of a field's Type dropdown in the Data Model section of the Admin Panel. You'll see a form with these options:
+
+![Remapping form](./images/remapping/form.png)
+
+`Visibility` and `Type` are the same as on the main Data Model page, but `Display values` lets you choose to swap out a field's values with something else.
+
+Foreign key remapping lets you swap out a foreign key's values with the values of any other field in the connected table. In this example, we're swapping out the `Product ID` field's values with the values in the `Title` field in the Product table:
+
+![Remapping form](./images/remapping/fk-mapping.png)
+
+Another option is custom remapping, which is currently only possible for numeric fields. This lets you map every number that occurs in this field to either a different numeric value or even to a text value, like in this example:
+
+![Remapping form](./images/remapping/custom-mapping.png)
+
+
 ---
 
 ## Next: managing users

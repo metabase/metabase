@@ -1,4 +1,3 @@
-/* @flow */
 
 import type { ISO8601Time } from ".";
 import type { Table } from "./Table";
@@ -18,6 +17,8 @@ export type DatabaseFeature =
 export type DatabaseDetails = {
     [key: string]: any
 }
+
+export type DatabaseEngine = string;
 
 export type DatabaseNativePermission = "write" | "read";
 

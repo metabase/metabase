@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-
+import { t } from "c-3po";
 import DatePicker
     from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -24,7 +24,7 @@ import _ from "underscore";
 
 import type {
     Card as CardObject,
-    DatasetQuery
+    StructuredDatasetQuery
 } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { FieldFilter } from "metabase/meta/types/Query";
@@ -34,7 +34,7 @@ type Props = {
     card: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (
-        datasetQuery: DatasetQuery,
+        datasetQuery: StructuredDatasetQuery,
         options: { run: boolean }
     ) => void
 };
@@ -103,12 +103,16 @@ export default class TimeseriesFilterWidget extends Component {
                 currentFilter
             ).join(" - ");
             if (currentFilter[0] === ">") {
-                currentDescription = "After " + currentDescription;
+                currentDescription = t`After ${currentDescription}`;
             } else if (currentFilter[0] === "<") {
-                currentDescription = "Before " + currentDescription;
+                currentDescription = t`Before ${currentDescription}`;
+            } else if (currentFilter[0] === "IS_NULL") {
+                currentDescription = t`Is Empty`;
+            } else if (currentFilter[0] === "NOT_NULL") {
+                currentDescription = t`Not Empty`;
             }
         } else {
-            currentDescription = "All Time";
+            currentDescription = t`All Time`;
         }
 
         return (
@@ -121,6 +125,8 @@ export default class TimeseriesFilterWidget extends Component {
                 triggerClasses={cx(className, "my2")}
                 ref={ref => this._popover = ref}
                 sizeToFit
+                // accomodate dual calendar size
+                autoWidth={true}
             >
                 <DatePicker
                     filter={this.state.filter}
@@ -146,8 +152,7 @@ export default class TimeseriesFilterWidget extends Component {
                                 } else {
                                     query = Query.addFilter(query, filter);
                                 }
-                                // $FlowFixMe
-                                const datasetQuery: DatasetQuery = {
+                                const datasetQuery: StructuredDatasetQuery = {
                                     ...card.dataset_query,
                                     query
                                 };

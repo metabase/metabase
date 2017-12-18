@@ -4,7 +4,9 @@
             [metabase.driver :as driver]
             [metabase.driver
              [generic-sql :as sql]
-             [oracle :as oracle]])
+             [oracle :as oracle]]
+            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [metabase.test.util :as tu])
   (:import metabase.driver.oracle.OracleDriver))
 
 ;; make sure we can connect with an SID
@@ -62,3 +64,7 @@
                  :user "postgres",
                  :tunnel-user "example"}]
     (#'oracle/can-connect? details)))
+
+(expect-with-engine :oracle
+  "UTC"
+  (tu/db-timezone-id))

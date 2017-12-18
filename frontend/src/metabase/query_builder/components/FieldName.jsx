@@ -1,55 +1,65 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import Icon from "metabase/components/Icon.jsx";
+import { t } from 'c-3po';
 import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";
-import { formatBucketing } from "metabase/lib/query_time";
-import { stripId } from "metabase/lib/formatting";
 
+import Dimension, { AggregationDimension } from "metabase-lib/lib/Dimension";
+
+import _ from "underscore";
 import cx from "classnames";
 
 export default class FieldName extends Component {
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
         onClick: PropTypes.func,
         removeField: PropTypes.func,
-        tableMetadata: PropTypes.object.isRequired
+        tableMetadata: PropTypes.object.isRequired,
+        query: PropTypes.object
     };
 
     static defaultProps = {
         className: ""
     };
 
+    displayNameForFieldLiteral(tableMetadata, fieldLiteral) {
+        // see if we can find an entry in the table metadata that matches the field literal
+        let matchingField = _.find(tableMetadata.fields, (field) => Query.isFieldLiteral(field.id) && field.id[1] === fieldLiteral[1]); // check whether names of field literals match
+
+        return (matchingField && matchingField.display_name) || fieldLiteral[1];
+    }
+
     render() {
-        let { field, tableMetadata, className } = this.props;
-        let fieldTarget = Query.getFieldTarget(field, tableMetadata);
+        let { field, tableMetadata, query, className } = this.props;
 
         let parts = [];
 
-        if (fieldTarget && !fieldTarget.field) {
-            parts.push(<span className="text-error" key="field">Missing Field</span>);
-        } else if (fieldTarget) {
-            // fk path
-            for (let [index, fkField] of Object.entries(fieldTarget.path)) {
-                parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
-                parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" size={10} /></span>);
+        if (field) {
+            const dimension = Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
+            if (dimension) {
+                if (dimension instanceof AggregationDimension) {
+                    // Aggregation dimension doesn't know about its relation to the current query
+                    // so we have to infer the display name of aggregation here
+                    parts = <span key="field">{query.aggregations()[dimension.aggregationIndex()][0]}</span>
+                } else {
+                    parts = <span key="field">{dimension.render()}</span>;
+                }
             }
-            if (fieldTarget.field.id != null) {
-                parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, fieldTarget.table)}</span>);
+            // TODO Atte Keinänen 6/23/17: Move nested queries logic to Dimension subclasses
+            // if the Field in question is a field literal, e.g. ["field-literal", <name>, <type>] just use name as-is
+            else if (Query.isFieldLiteral(field)) {
+                parts.push(<span key="field">{this.displayNameForFieldLiteral(tableMetadata, field)}</span>);
+            }
+            // otherwise if for some weird reason we wound up with a Field Literal inside a field ID,
+            // e.g. ["field-id", ["field-literal", <name>, <type>], still just use the name as-is
+            else if (Query.isLocalField(field) && Query.isFieldLiteral(field[1])) {
+                parts.push(<span key="field">{this.displayNameForFieldLiteral(tableMetadata, field[1])}</span>);
             } else {
-                // expressions, etc
-                parts.push(<span key="field">{fieldTarget.field.display_name}</span>);
-            }
-            // datetime-field unit
-            if (fieldTarget.unit != null) {
-                parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
+                parts.push(<span key="field">{t`Unknown Field`}</span>);
             }
         } else {
-            parts.push(<span key="field">field</span>);
+            parts.push(<span key="field" className={"text-grey-2"}>{t`field`}</span>)
         }
 
         return (

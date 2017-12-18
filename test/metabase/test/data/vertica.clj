@@ -1,7 +1,6 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
-  (:require [environ.core :refer [env]]
-            [metabase.driver.generic-sql :as sql]
+  (:require [metabase.driver.generic-sql :as sql]
             [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
@@ -22,16 +21,16 @@
 
 
 (defn- db-name []
-  (or (env :mb-vertica-db)
-      "docker"))
+  (i/db-test-env-var-or-throw :vertica :db "docker"))
 
 (def ^:private db-connection-details
-  (delay {:host     (or (env :mb-vertica-host) "localhost")
+  (delay {:host     (i/db-test-env-var-or-throw :vertica :host "localhost")
+          :port     (Integer/parseInt (i/db-test-env-var-or-throw :vertica :port "5433"))
+          :user     (i/db-test-env-var :vertica :user "dbadmin")
+          :password (i/db-test-env-var :vertica :password)
           :db       (db-name)
-          :port     5433
           :timezone :America/Los_Angeles ; why?
-          :user     (or (env :mb-vertica-user) "dbadmin")
-          :password (env :mb-vertica-password)}))
+          }))
 
 (defn- qualified-name-components
   ([_]                             [(db-name)])

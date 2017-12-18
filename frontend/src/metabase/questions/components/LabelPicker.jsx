@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-
+import { t } from 'c-3po';
 import S from "./LabelPicker.css";
 
 import LabelIcon from "metabase/components/LabelIcon.jsx";
@@ -15,9 +15,9 @@ const LabelPicker = ({ labels, count, item, setLabeled }) =>
     <div className={S.picker}>
         <div className={S.heading}>
         { count > 1 ?
-            "Apply labels to " + count + " questions"
+            t`Apply labels to ${count} questions`
         :
-            "Label as"
+            t`Label as`
         }
         </div>
         <ul className={S.options}>
@@ -49,8 +49,8 @@ const LabelPicker = ({ labels, count, item, setLabeled }) =>
             }) }
         </ul>
         <div className={S.footer}>
-            <Link className="link" to="/labels">Add and edit labels</Link>
-            <Tooltip tooltip="In an upcoming release, Labels will be removed in favor of Collections.">
+            <Link className="link" to="/labels">{t`Add and edit labels`}</Link>
+            <Tooltip tooltip={t`In an upcoming release, Labels will be removed in favor of Collections.`}>
                 <Icon name="warning2" className="text-error float-right" />
             </Tooltip>
         </div>

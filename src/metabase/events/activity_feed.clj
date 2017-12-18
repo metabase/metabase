@@ -1,17 +1,23 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.events :as events]
+            [metabase
+             [events :as events]
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.models
              [activity :as activity :refer [Activity]]
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [table :as table]]
+            [metabase.query-processor.util :as qputil]
             [toucan.db :as db]))
 
 (def ^:const activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
-  #{:card-create
+  #{:alert-create
+    :alert-delete
+    :card-create
     :card-update
     :card-delete
     :dashboard-create
@@ -36,11 +42,20 @@
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
+(defn- inner-query->source-table-id
+  "Recurse through INNER-QUERY source-queries as needed until we can return the ID of this query's source-table."
+  [inner-query]
+  (or (when-let [source-table (qputil/get-normalized inner-query :source-table)]
+        (u/get-id source-table))
+      (when-let [source-query (qputil/get-normalized inner-query :source-query)]
+        (recur source-query))))
 
 (defn- process-card-activity! [topic object]
   (let [details-fn  #(select-keys % [:name :description])
-        database-id (get-in object [:dataset_query :database])
-        table-id    (get-in object [:dataset_query :query :source_table])]
+        query       (u/ignore-exceptions (qp/expand (:dataset_query object)))
+        database-id (when-let [database (:database query)]
+                      (u/get-id database))
+        table-id    (inner-query->source-table-id (:query query))]
     (activity/record-activity!
       :topic       topic
       :object      object
@@ -85,6 +100,16 @@
       :object      object
       :details-fn  details-fn)))
 
+(defn- process-alert-activity! [topic {:keys [card] :as alert}]
+  (let [details-fn #(select-keys (:card %) [:name])]
+    (activity/record-activity!
+      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
+      :model       "card"
+      :model-id    (:id card)
+      :topic       topic
+      :object      alert
+      :details-fn  details-fn)))
+
 (defn- process-segment-activity! [topic object]
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
@@ -110,7 +135,8 @@
     (db/insert! Activity, :topic "install", :model "install")))
 
 (def ^:private model->processing-fn
-  {"card"      process-card-activity!
+  {"alert"     process-alert-activity!
+   "card"      process-card-activity!
    "dashboard" process-dashboard-activity!
    "install"   process-install-activity!
    "metric"    process-metric-activity!

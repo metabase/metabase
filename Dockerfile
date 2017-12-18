@@ -2,7 +2,7 @@
 # images hosted on Docker Hub https://hub.docker.com/r/metabase/metabase/ which use the
 # Dockerfile located at ./bin/docker/Dockerfile
 
-FROM java:openjdk-7-jre-alpine
+FROM java:openjdk-8-jre-alpine
 
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH /usr/local/bin:$PATH

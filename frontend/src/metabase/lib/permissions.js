@@ -1,12 +1,13 @@
-/* @flow */
 
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import type Database from "metabase/meta/metadata/Database";
 import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName, TableId, Table } from "metabase/meta/types/Table";
-import Metadata from "metabase/meta/metadata/Metadata";
+import type { SchemaName, TableId } from "metabase/meta/types/Table";
+
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Database from "metabase-lib/lib/metadata/Database";
+import Table from "metabase-lib/lib/metadata/Table";
 
 import type { Group, GroupId, GroupsPermissions } from "metabase/meta/types/Permissions";
 
@@ -121,10 +122,9 @@ const entityIdToMetadataTableFields = (entityId: EntityId) => ({
 
 function inferEntityPermissionValueFromChildTables(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
     const { databaseId } = entityId;
-    const database = metadata && metadata.database(databaseId);
+    const database = metadata && metadata.databases[databaseId];
 
-    // $FlowFixMe
-    const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables())
+    const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables)
         .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
         .map(metadataTableToTableEntityId)
         .value();
@@ -178,8 +178,8 @@ export function updateFieldsPermission(permissions: GroupsPermissions, groupId: 
 }
 
 export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
-    const database = metadata && metadata.database(databaseId);
-    const tableIds: ?number[] = database && database.tables().filter(t => (t.schema || "") === schemaName).map(t => t.id);
+    const database = metadata && metadata.databases[databaseId];
+    const tableIds: ?number[] = database && database.tables.filter(t => (t.schema || "") === schemaName).map(t => t.id);
 
     permissions = updateSchemasPermission(permissions, groupId, { databaseId }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName], value, tableIds);
@@ -188,7 +188,7 @@ export function updateTablesPermission(permissions: GroupsPermissions, groupId: 
 }
 
 export function updateSchemasPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {
-    const database = metadata.database(databaseId);
+    const database = metadata.databases[databaseId];
     const schemaNames = database && database.schemaNames();
     const schemaNamesOrNoSchema = (schemaNames && schemaNames.length > 0) ? schemaNames : [""];
 
@@ -247,7 +247,7 @@ function diffDatabasePermissions(newPerms: GroupsPermissions, oldPerms: GroupsPe
         databaseDiff.native = newNativePerm;
     }
     // check each table in this db
-    for (const table of database.tables()) {
+    for (const table of database.tables) {
         const oldFieldsPerm = getFieldsPermission(oldPerms, groupId, { databaseId: database.id, schemaName: table.schema || "", tableId: table.id });
         const newFieldsPerm = getFieldsPermission(newPerms, groupId, { databaseId: database.id, schemaName: table.schema || "", tableId: table.id });
         if (oldFieldsPerm !== newFieldsPerm) {
@@ -267,7 +267,7 @@ function diffDatabasePermissions(newPerms: GroupsPermissions, oldPerms: GroupsPe
 
 function diffGroupPermissions(newPerms: GroupsPermissions, oldPerms: GroupsPermissions, groupId: GroupId, metadata: Metadata): GroupPermissionsDiff {
     let groupDiff: GroupPermissionsDiff = { databases: {} };
-    for (const database of metadata.databases()) {
+    for (const database of metadata.databasesList()) {
         groupDiff.databases[database.id] = diffDatabasePermissions(newPerms, oldPerms, groupId, database);
         deleteIfEmpty(groupDiff.databases, database.id);
         if (groupDiff.databases[database.id]) {

@@ -1,6 +1,10 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
+import { t } from 'c-3po';
+import { fetchTableMetadata } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
@@ -11,15 +15,20 @@ import { createCard } from "metabase/lib/card";
 import Query, { createQuery } from "metabase/lib/query";
 
 import _ from "underscore";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+const mapDispatchToProps = {
+    fetchTableMetadata,
+};
+
+const mapStateToProps = (state, props) => ({
+    metadata: getMetadata(state, props)
+})
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentPane extends Component {
     constructor(props, context) {
         super(props, context);
-
-        this.state = {
-            table: undefined,
-            tableForeignKeys: undefined
-        };
 
         _.bindAll(this, "filterBy", "setQueryFilteredBy", "setQueryCountFilteredBy");
     }
@@ -27,42 +36,48 @@ export default class SegmentPane extends Component {
     static propTypes = {
         segment: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
-        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQuery: PropTypes.func.isRequired,
-        setDatasetQuery: PropTypes.func.isRequired,
-        setCardAndRun: PropTypes.func.isRequired
+        fetchTableMetadata: PropTypes.func.isRequired,
+        runQuestionQuery: PropTypes.func.isRequired,
+        updateQuestion: PropTypes.func.isRequired,
+        setCardAndRun: PropTypes.func.isRequired,
+        question: PropTypes.object.isRequired,
+        originalQuestion: PropTypes.object.isRequired,
+        metadata: PropTypes.object.isRequired
     };
 
     componentWillMount() {
-        this.props.loadTableAndForeignKeysFn(this.props.segment.table_id).then((result) => {
-            this.setState({
-                table: result.table,
-                tableForeignKeys: result.foreignKeys
-            });
-        }).catch((error) => {
-            this.setState({
-                error: "An error occurred loading the table"
-            });
-        });
+        this.props.fetchTableMetadata(this.props.segment.table_id);
     }
 
     filterBy() {
-        let { datasetQuery } = this.props;
-        // Add an aggregation so both aggregation and filter popovers aren't visible
-        if (!Query.hasValidAggregation(datasetQuery.query)) {
-            Query.clearAggregations(datasetQuery.query);
+        const { question } = this.props;
+        let query = question.query();
+
+        if (query instanceof StructuredQuery) {
+            // Add an aggregation so both aggregation and filter popovers aren't visible
+            if (!Query.hasValidAggregation(query.datasetQuery().query)) {
+                query = query.clearAggregations()
+            }
+
+            query = query.addFilter(["SEGMENT", this.props.segment.id]);
+
+            this.props.updateQuestion(query.question())
+            this.props.runQuestionQuery();
         }
-        Query.addFilter(datasetQuery.query, ["SEGMENT", this.props.segment.id]);
-        this.props.setDatasetQuery(datasetQuery);
-        this.props.runQuery();
     }
 
     newCard() {
-        let card = createCard();
-        card.dataset_query = createQuery("query", this.state.table.db_id, this.state.table.id);
-        return card;
-    }
+        const { segment, metadata } = this.props;
+        const table = metadata && metadata.tables[segment.table_id];
 
+        if (table) {
+            let card = createCard();
+            card.dataset_query = createQuery("query", table.db_id, table.id);
+            return card;
+        } else {
+            throw new Error(t`Could not find the table metadata prior to creating a new question`)
+        }
+    }
     setQueryFilteredBy() {
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["rows"];
@@ -78,20 +93,24 @@ export default class SegmentPane extends Component {
     }
 
     render() {
-        let { segment, datasetQuery } = this.props;
-        let { error, table } = this.state;
+        let { segment, metadata, question } = this.props;
+        const query = question.query();
 
         let segmentName = segment.name;
 
         let useForCurrentQuestion = [];
         let usefulQuestions = [];
 
-        if (datasetQuery.query && datasetQuery.query.source_table === segment.table_id && !_.findWhere(Query.getFilters(datasetQuery.query), { [0]: "SEGMENT", [1]: segment.id })) {
-            useForCurrentQuestion.push(<UseForButton title={"Filter by " + segmentName} onClick={this.filterBy} />);
+
+        if (query instanceof StructuredQuery &&
+            query.tableId() === segment.table_id &&
+            !_.findWhere(query.filters(), {[0]: "SEGMENT", [1]: segment.id})) {
+
+            useForCurrentQuestion.push(<UseForButton title={t`Filter by ${segmentName}`} onClick={this.filterBy} />);
         }
 
-        usefulQuestions.push(<QueryButton icon="number" text={"Number of " + segmentName} onClick={this.setQueryCountFilteredBy} />);
-        usefulQuestions.push(<QueryButton icon="table" text={"See all " + segmentName} onClick={this.setQueryFilteredBy} />);
+        usefulQuestions.push(<QueryButton icon="number" text={t`Number of ${segmentName}`} onClick={this.setQueryCountFilteredBy} />);
+        usefulQuestions.push(<QueryButton icon="table" text={t`See all ${segmentName}`} onClick={this.setQueryFilteredBy} />);
 
         return (
             <DetailPane
@@ -99,12 +118,11 @@ export default class SegmentPane extends Component {
                 description={segment.description}
                 useForCurrentQuestion={useForCurrentQuestion}
                 usefulQuestions={usefulQuestions}
-                error={error}
-                extra={table &&
-                    <div>
-                        <p className="text-bold">Segment Definition</p>
-                        <QueryDefinition object={segment} tableMetadata={table} />
-                    </div>
+                extra={metadata &&
+                <div>
+                    <p className="text-bold">{t`Segment Definition`}</p>
+                    <QueryDefinition object={segment} tableMetadata={metadata.tables[segment.table_id]} />
+                </div>
                 }
             />
         );

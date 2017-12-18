@@ -29,12 +29,15 @@
              [card-label :refer [CardLabel]]
              [collection :refer [Collection]]
              [collection-revision :refer [CollectionRevision]]
+             [computation-job :refer [ComputationJob]]
+             [computation-job-result :refer [ComputationJobResult]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [dashboard-favorite :refer [DashboardFavorite]]
              [database :refer [Database]]
              [dependency :refer [Dependency]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [label :refer [Label]]
@@ -48,8 +51,6 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [raw-column :refer [RawColumn]]
-             [raw-table :refer [RawTable]]
              [revision :refer [Revision]]
              [segment :refer [Segment]]
              [session :refer [Session]]
@@ -67,8 +68,6 @@
    This is done so we make sure that we load load instances of entities before others
    that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   [Database
-   RawTable
-   RawColumn
    User
    Setting
    Dependency
@@ -100,6 +99,9 @@
    Collection
    CollectionRevision
    DashboardFavorite
+   Dimension
+   ComputationJob
+   ComputationJobResult
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

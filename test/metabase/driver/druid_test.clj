@@ -1,17 +1,68 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
+            [clj-time.core :as time]
             [expectations :refer [expect]]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows rows+column-names]]
              [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor.expand :as ql]
-            [metabase.test.data :as data]
+            metabase.driver.druid
+            [metabase.models
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import metabase.driver.druid.DruidDriver))
+
+;;; table-rows-sample
+(datasets/expect-with-engine :druid
+  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
+  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T07:00:00.000Z"]
+   ["10"   "Dal Rae Restaurant"          "2015-08-22T07:00:00.000Z"]
+   ["100"  "PizzaHacker"                 "2014-07-26T07:00:00.000Z"]
+   ["1000" "Tito's Tacos"                "2014-06-03T07:00:00.000Z"]
+   ["101"  "Golden Road Brewing"         "2015-09-04T07:00:00.000Z"]]
+  (->> (driver/table-rows-sample (Table (data/id :checkins))
+                                 [(Field (data/id :checkins :id))
+                                  (Field (data/id :checkins :venue_name))])
+       (sort-by first)
+       (take 5)))
+
+(datasets/expect-with-engine :druid
+  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
+  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T00:00:00.000-07:00"]
+   ["10"   "Dal Rae Restaurant"          "2015-08-22T00:00:00.000-07:00"]
+   ["100"  "PizzaHacker"                 "2014-07-26T00:00:00.000-07:00"]
+   ["1000" "Tito's Tacos"                "2014-06-03T00:00:00.000-07:00"]
+   ["101"  "Golden Road Brewing"         "2015-09-04T00:00:00.000-07:00"]]
+  (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+    (->> (driver/table-rows-sample (Table (data/id :checkins))
+                                   [(Field (data/id :checkins :id))
+                                    (Field (data/id :checkins :venue_name))])
+         (sort-by first)
+         (take 5))))
+
+(datasets/expect-with-engine :druid
+  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
+  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T02:00:00.000-05:00"]
+   ["10"   "Dal Rae Restaurant"          "2015-08-22T02:00:00.000-05:00"]
+   ["100"  "PizzaHacker"                 "2014-07-26T02:00:00.000-05:00"]
+   ["1000" "Tito's Tacos"                "2014-06-03T02:00:00.000-05:00"]
+   ["101"  "Golden Road Brewing"         "2015-09-04T02:00:00.000-05:00"]]
+  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+    (->> (driver/table-rows-sample (Table (data/id :checkins))
+                                   [(Field (data/id :checkins :id))
+                                    (Field (data/id :checkins :venue_name))])
+         (sort-by first)
+         (take 5))))
 
 (def ^:const ^:private ^String native-query-1
   (json/generate-string
@@ -29,9 +80,13 @@
 (defn- process-native-query [query]
   (datasets/with-engine :druid
     (timeseries-qp-test/with-flattened-dbdef
-      (qp/process-query {:native   {:query query}
-                         :type     :native
-                         :database (data/id)}))))
+      (-> (qp/process-query {:native   {:query query}
+                             :type     :native
+                             :database (data/id)})
+          (m/dissoc-in [:data :results_metadata])))))
+
+(def ^:private col-defaults
+  {:base_type :type/Text, :remapped_from nil, :remapped_to nil})
 
 ;; test druid native queries
 (expect-with-engine :druid
@@ -40,12 +95,13 @@
    :data      {:columns     ["timestamp" "id" "user_name" "venue_price" "venue_name" "count"]
                :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-               :cols        [{:name "timestamp",   :base_type :type/Text}
-                             {:name "id",          :base_type :type/Text}
-                             {:name "user_name",   :base_type :type/Text}
-                             {:name "venue_price", :base_type :type/Text}
-                             {:name "venue_name",  :base_type :type/Text}
-                             {:name "count",       :base_type :type/Integer}]
+               :cols        (mapv #(merge col-defaults %)
+                                  [{:name "timestamp",   :display_name "Timestamp"}
+                                   {:name "id",          :display_name "ID"}
+                                   {:name "user_name",   :display_name "User Name"}
+                                   {:name "venue_price", :display_name "Venue Price"}
+                                   {:name "venue_name",  :display_name "Venue Name"}
+                                   {:name "count",       :display_name "Count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
   (process-native-query native-query-1))
 
@@ -80,6 +136,16 @@
 
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(rows (druid-query ~@body)))
+
+;; Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by default will
+;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
+;; have counted for the previous week
+(expect-with-engine :druid
+  [["2015-10-04T00:00:00.000Z" 9]]
+  (druid-query-returning-rows
+    (ql/filter (ql/between (ql/datetime-field $timestamp :day) "2015-10-04" "2015-10-10"))
+    (ql/aggregation (ql/count $id))
+    (ql/breakout (ql/datetime-field $timestamp :week))))
 
 ;; sum, *
 (expect-with-engine :druid

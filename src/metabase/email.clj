@@ -2,22 +2,25 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [postal
              [core :as postal]
-             [support :refer [make-props]]])
+             [support :refer [make-props]]]
+            [puppetlabs.i18n.core :refer [tru trs]]
+            [schema.core :as s])
   (:import javax.mail.Session))
 
 ;;; CONFIG
 ;; TODO - smtp-port should be switched to type :integer
 
-(defsetting email-from-address  "Email address you want to use as the sender of Metabase." :default "notifications@metabase.com")
-(defsetting email-smtp-host     "The address of the SMTP server that handles your emails.")
-(defsetting email-smtp-username "SMTP username.")
-(defsetting email-smtp-password "SMTP password.")
-(defsetting email-smtp-port     "The port your SMTP server uses for outgoing emails.")
+(defsetting email-from-address  (tru "Email address you want to use as the sender of Metabase.") :default "notifications@metabase.com")
+(defsetting email-smtp-host     (tru "The address of the SMTP server that handles your emails."))
+(defsetting email-smtp-username (tru "SMTP username."))
+(defsetting email-smtp-password (tru "SMTP password."))
+(defsetting email-smtp-port     (tru "The port your SMTP server uses for outgoing emails."))
 (defsetting email-smtp-security
-  "SMTP secure connection protocol. (tls, ssl, starttls, or none)"
-  :default "none"
+  (tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :default (tru "none")
   :setter  (fn [new-value]
              (when-not (nil? new-value)
                (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
@@ -50,9 +53,41 @@
        :port (Integer/parseInt (email-smtp-port))}
       (add-ssl-settings (email-smtp-security))))
 
+(def ^:private EmailMessage
+  (s/constrained
+   {:subject      s/Str
+    :recipients   [(s/pred u/is-email?)]
+    :message-type (s/enum :text :html :attachments)
+    :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
+   (fn [{:keys [message-type message]}]
+     (if (= message-type :attachments)
+       (and (sequential? message) (every? map? message))
+       (string? message)))
+   (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
+        "other types should have a String message.")))
+
+(s/defn send-message-or-throw!
+  "Send an email to one or more RECIPIENTS. Upon success, this returns the MESSAGE that was just sent. This function
+  does not catch and swallow thrown exceptions, it will bubble up."
+  {:style/indent 0}
+  [{:keys [subject recipients message-type message]} :- EmailMessage]
+  (when-not (email-smtp-host)
+    (let [^String msg (tru "SMTP host is not set.")]
+      (throw (Exception. msg))))
+  ;; Now send the email
+  (send-email! (smtp-settings)
+    {:from    (email-from-address)
+     :to      recipients
+     :subject subject
+     :body    (case message-type
+                :attachments message
+                :text        message
+                :html        [{:type    "text/html; charset=utf-8"
+                               :content message}])}))
+
 (defn send-message!
   "Send an email to one or more RECIPIENTS.
-   RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
+   RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html` or `:attachments`.
 
      (email/send-message!
        :subject      \"[Metabase] Password Reset Request\"
@@ -60,31 +95,14 @@
        :message-type :text
        :message      \"How are you today?\")
 
-   Upon success, this returns the MESSAGE that was just sent."
+   Upon success, this returns the MESSAGE that was just sent. This function will catch and log any exception,
+  returning a map with a description of the error"
   {:style/indent 0}
-  [& {:keys [subject recipients message-type message]}]
-  ;; TODO - should just use a schema to validate this
-  {:pre [(string? subject)
-         (sequential? recipients)
-         (or (every? u/is-email? recipients)
-             (log/error "recipients contains an invalid email:" recipients))
-         (contains? #{:text :html :attachments} message-type)
-         (if (= message-type :attachments) (sequential? message) (string? message))]}
+  [& {:keys [subject recipients message-type message] :as msg-args}]
   (try
-    (when-not (email-smtp-host)
-      (throw (Exception. "SMTP host is not set.")))
-    ;; Now send the email
-    (send-email! (smtp-settings)
-      {:from    (email-from-address)
-       :to      recipients
-       :subject subject
-       :body    (case message-type
-                  :attachments message
-                  :text        message
-                  :html        [{:type    "text/html; charset=utf-8"
-                                 :content message}])})
+    (send-message-or-throw! msg-args)
     (catch Throwable e
-      (log/warn "Failed to send email: " (.getMessage e))
+      (log/warn e (trs "Failed to send email"))
       {:error   :ERROR
        :message (.getMessage e)})))
 
@@ -109,7 +127,7 @@
     {:error   :SUCCESS
      :message nil}
     (catch Throwable e
-      (log/error "Error testing SMTP connection:" (.getMessage e))
+      (log/error e (trs "Error testing SMTP connection"))
       {:error   :ERROR
        :message (.getMessage e)})))
 

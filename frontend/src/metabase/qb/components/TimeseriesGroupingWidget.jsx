@@ -14,13 +14,13 @@ import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
 import type {
     Card as CardObject,
-    DatasetQuery
+    StructuredDatasetQuery
 } from "metabase/meta/types/Card";
 
 type Props = {
     card: CardObject,
     setDatasetQuery: (
-        datasetQuery: DatasetQuery,
+        datasetQuery: StructuredDatasetQuery,
         options: { run: boolean }
     ) => void
 };
@@ -62,8 +62,7 @@ export default class TimeseriesGroupingWidget extends Component {
                                     0,
                                     breakout
                                 );
-                                // $FlowFixMe
-                                const datasetQuery: DatasetQuery = {
+                                const datasetQuery: StructuredDatasetQuery = {
                                     ...card.dataset_query,
                                     query
                                 };

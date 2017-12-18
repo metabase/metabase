@@ -2,18 +2,21 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
-
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { slugify } from "metabase/lib/formatting";
 
 import AdminLayout from "metabase/components/AdminLayout.jsx";
 
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
+import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
+import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
+import SettingsXrayForm from "../components/SettingsXrayForm.jsx";
 
 import { prepareAnalyticsValue } from 'metabase/admin/settings/utils'
 
@@ -46,12 +49,15 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
+    layout = null // the reference to AdminLayout
+
     static propTypes = {
         sections: PropTypes.array.isRequired,
         activeSection: PropTypes.object,
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
+        updateLdapSettings: PropTypes.func.isRequired,
         sendTestEmail: PropTypes.func.isRequired
     };
 
@@ -60,9 +66,9 @@ export default class SettingsEditorApp extends Component {
     }
 
     updateSetting = async (setting, newValue) => {
-        const { settings, settingValues, updateSetting } = this.props;
+        const { settingValues, updateSetting } = this.props;
 
-        this.refs.layout.setSaving();
+        this.layout.setSaving();
 
         const oldValue = setting.value;
 
@@ -72,17 +78,10 @@ export default class SettingsEditorApp extends Component {
             await updateSetting(setting);
 
             if (setting.onChanged) {
-                await setting.onChanged(oldValue, newValue, settingValues, (key, value) => {
-                    let setting = _.findWhere(settings, { key });
-                    if (!setting) {
-                        throw new Error("Unknown setting " + key);
-                    }
-                    setting.value = value;
-                    return updateSetting(setting);
-                })
+                await setting.onChanged(oldValue, newValue, settingValues, this.handleChangeSetting)
             }
 
-            this.refs.layout.setSaved();
+            this.layout.setSaved();
 
             const value = prepareAnalyticsValue(setting);
 
@@ -95,9 +94,18 @@ export default class SettingsEditorApp extends Component {
             );
         } catch (error) {
             let message = error && (error.message || (error.data && error.data.message));
-            this.refs.layout.setSaveError(message);
+            this.layout.setSaveError(message);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         }
+    }
+
+    handleChangeSetting = (key, value) => {
+        const { settings, updateSetting } = this.props;
+        const setting = _.findWhere(settings, { key });
+        if (!setting) {
+            throw new Error("Unknown setting " + key);
+        }
+        return updateSetting({ ...setting, value });
     }
 
     renderSettingsPane() {
@@ -138,15 +146,39 @@ export default class SettingsEditorApp extends Component {
                     updateSetting={this.updateSetting}
                 />
             );
-        } else if (activeSection.name === "Single Sign-On") {
+        } else if (activeSection.name === "Authentication") {
+            // HACK - the presence of this param is a way for us to tell if
+            // a user is looking at a sub section of the autentication section
+            // since allowing for multi page settings more broadly would require
+            // a fairly significant refactor of how settings does its routing logic
+            if(this.props.params.authType) {
+                if(this.props.params.authType === 'ldap') {
+                    return (
+                        <SettingsLdapForm
+                            elements={_.findWhere(this.props.sections, { slug: 'ldap'}).settings}
+                            updateLdapSettings={this.props.updateLdapSettings}
+                        />
+                    )
+                } else if (this.props.params.authType === 'google') {
+                    return (
+                        <SettingsSingleSignOnForm
+                            elements={ _.findWhere(this.props.sections, { slug: slugify('Single Sign-On')}).settings}
+                            updateSetting={this.updateSetting}
+                        />
+                    )
+                }
+            } else {
+                return (<SettingsAuthenticationOptions />)
+            }
+        } else if (activeSection.name === "X-Rays") {
             return (
-                <SettingsSingleSignOnForm
+                <SettingsXrayForm
+                    settings={this.props.settings}
                     elements={activeSection.settings}
-                    updateSetting={this.updateSetting}
+                    updateSetting={this.updateSetting.bind(this)}
                 />
-            );
+            )
         } else {
-
             return (
                 <ul>
                     {activeSection.settings
@@ -157,7 +189,8 @@ export default class SettingsEditorApp extends Component {
                         <SettingsSetting
                             key={setting.key}
                             setting={setting}
-                            updateSetting={this.updateSetting.bind(this, setting)}
+                            onChange={this.updateSetting.bind(this, setting)}
+                            onChangeSetting={this.handleChangeSetting}
                             reloadSettings={this.props.reloadSettings}
                             autoFocus={index === 0}
                             settingValues={settingValues}
@@ -172,6 +205,13 @@ export default class SettingsEditorApp extends Component {
         const { sections, activeSection, newVersionAvailable } = this.props;
 
         const renderedSections = _.map(sections, (section, idx) => {
+
+            // HACK - This is used to hide specific items in the sidebar and is currently
+            // only used as a way to fake the multi page auth settings pages without
+            // requiring a larger refactor.
+            if(section.sidebar === false) {
+                return false;
+            }
             const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
                 "selected": activeSection && section.name === activeSection.name // this.state.currentSection === idx
             });
@@ -206,7 +246,7 @@ export default class SettingsEditorApp extends Component {
     render() {
         return (
             <AdminLayout
-                ref="layout"
+                ref={(layout) => this.layout = layout}
                 title="Settings"
                 sidebar={this.renderSettingsSections()}
             >

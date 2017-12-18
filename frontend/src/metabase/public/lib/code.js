@@ -99,7 +99,7 @@ METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
 payload = {
-  "resource": "{${resourceType}": ${resourceId}},
+  "resource": {"${resourceType}": ${resourceId}},
   "params": {
     ${Object.entries(params).map(([key,value]) => JSON.stringify(key) + ": " + JSON.stringify(value)).join(",\n    ")}
   }

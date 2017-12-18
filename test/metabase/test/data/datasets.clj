@@ -43,6 +43,11 @@
                     #{:h2})]
     (when config/is-test?
       (log/info (color/cyan "Running QP tests against these engines: " engines)))
+
+    (when-not (every? all-valid-engines engines)
+      (throw (Exception.
+              (format "Testing on '%s', but the following drivers are not available '%s'"
+                      engines (set (remove all-valid-engines engines))))))
     engines))
 
 

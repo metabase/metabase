@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import MainPane from './MainPane.jsx';
 import TablePane from './TablePane.jsx';
 import FieldPane from './FieldPane.jsx';
@@ -27,7 +27,7 @@ export default class DataReference extends Component {
     static propTypes = {
         query: PropTypes.object.isRequired,
         onClose: PropTypes.func.isRequired,
-        runQuery: PropTypes.func.isRequired,
+        runQuestionQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func.isRequired,
@@ -72,7 +72,7 @@ export default class DataReference extends Component {
             backButton = (
                 <a className="flex align-center mb2 text-default text-brand-hover no-decoration" onClick={this.back}>
                     <Icon name="chevronleft" size={18} />
-                    <span className="text-uppercase">Back</span>
+                    <span className="text-uppercase">{t`Back`}</span>
                 </a>
             )
         }

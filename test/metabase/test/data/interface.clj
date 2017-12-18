@@ -4,6 +4,7 @@
    Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as str]
+            [environ.core :refer [env]]
             [metabase
              [db :as db]
              [driver :as driver]
@@ -38,19 +39,21 @@
 
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
-   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle, where this is disallowed on RDS.
-   (Since Oracle can't create seperate DBs, we just create various tables in the same DB; thus their names must be qualified to differentiate them effectively.)"
+  Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
+  where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
+  DB; thus their names must be qualified to differentiate them effectively.)"
   ^String [^String database-name, ^String table-name]
   {:pre [(string? database-name) (string? table-name)]}
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (apply str (take-last 30 (str/replace (str/lower-case (str database-name \_ table-name)) #"-" "_"))))
 
 (defn single-db-qualified-name-components
-  "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing DB for testing.
-   This implementation simulates separate databases by doing two things:
+  "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing
+   DB for testing. This implementation simulates separate databases by doing two things:
 
      1.  Using a \"session schema\" to make sure each test run is isolated from other test runs
-     2.  Embedding the name of the database into table names, e.g. to differentiate \"test_data_categories\" and \"tupac_sightings_categories\".
+     2.  Embedding the name of the database into table names, e.g. to differentiate \"test_data_categories\" and
+         \"tupac_sightings_categories\".
 
    To use this implementation, partially bind this function with a SESSION-SCHEMA:
 
@@ -63,8 +66,8 @@
 (defprotocol IMetabaseInstance
   (metabase-instance [this context]
     "Return the Metabase object associated with this definition, if applicable. CONTEXT should be the parent
-     object (the actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a `FieldDefintion`). For a `DatabaseDefinition`,
-     pass the engine keyword."))
+     object (the actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
+     `FieldDefintion`). For a `DatabaseDefinition`, pass the engine keyword."))
 
 (extend-protocol IMetabaseInstance
   FieldDefinition
@@ -73,7 +76,8 @@
 
   TableDefinition
   (metabase-instance [this database]
-    ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them like Oracle
+    ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
+    ;; like Oracle
     (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
         (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
 
@@ -94,10 +98,11 @@
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
   (database->connection-details [this, ^Keyword context, ^DatabaseDefinition database-definition]
-    "Return the connection details map that should be used to connect to this database (i.e. a Metabase `Database` details map)
-     CONTEXT is one of:
+    "Return the connection details map that should be used to connect to this database (i.e. a Metabase `Database`
+     details map). CONTEXT is one of:
 
-     *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for creating/destroying databases)
+     *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for
+                    creating/destroying databases)
      *  `:db`     - Return details for connecting specifically to the DB.")
 
   (create-db! [this, ^DatabaseDefinition database-definition]
@@ -111,20 +116,23 @@
 
   (expected-base-type->actual [this base-type]
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
-     The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
-     can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
+     The default implementation of this method is an identity fn. This is provided so DBs that don't support a given
+     BASE-TYPE used in the test data can specifiy what type we should expect in the results instead.  For example,
+     Oracle has no `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map
+     to `:type/Decimal`.")
 
   (format-name ^String [this, ^String table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
 
   (has-questionable-timezone-support? ^Boolean [this]
-    "*OPTIONAL*. Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the `US/Pacific` when we're testing?)
+    "*OPTIONAL*. Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead
+     of the `US/Pacific` when we're testing?).
      Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
 
   (id-field-type ^clojure.lang.Keyword [this]
-    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."))
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to
+    `:type/Integer`."))
 
 (def IDriverTestExtensionsDefaultsMixin
   "Default implementations for the `IDriverTestExtensions` methods marked *OPTIONAL*."
@@ -225,10 +233,45 @@
           (str  \_ (flatten-field-name fk-dest-name))))))
 
 (defn flatten-dbdef
-  "Create a flattened version of DBDEF by following resolving all FKs and flattening all rows into the table with TABLE-NAME."
+  "Create a flattened version of DBDEF by following resolving all FKs and flattening all rows into the table with
+  TABLE-NAME."
   [^DatabaseDefinition dbdef, ^String table-name]
   (create-database-definition (:database-name dbdef)
     [table-name
      (for [fielddef (nest-fielddefs dbdef table-name)]
        (update fielddef :field-name flatten-field-name))
      (flatten-rows dbdef table-name)]))
+
+(defn db-test-env-var
+  "Look up test environment var `:ENV-VAR` for the given `:DATABASE-NAME` containing connection related parameters.
+  If no `:default` param is specified and the var isn't found, throw.
+
+     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`"
+  ([engine env-var]
+   (db-test-env-var engine env-var nil))
+  ([engine env-var default]
+   (get env
+        (keyword (format "mb-%s-test-%s" (name engine) (name env-var)))
+        default)))
+
+(defn- to-system-env-var-str
+  "Converts the clojure environment variable form (a keyword) to a stringified version that will be specified at the
+  system level
+
+  i.e. :foo-bar -> FOO_BAR"
+  [env-var-kwd]
+  (-> env-var-kwd
+      name
+      (str/replace "-" "_")
+      str/upper-case))
+
+(defn db-test-env-var-or-throw
+  "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
+  ([engine env-var]
+   (db-test-env-var-or-throw engine env-var nil))
+  ([engine env-var default]
+   (or (db-test-env-var engine env-var default)
+       (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
+                                  (name engine)
+                                  (str/upper-case (name engine))
+                                  (to-system-env-var-str env-var)))))))

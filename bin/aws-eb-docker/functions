@@ -12,6 +12,9 @@ export LANG=en_US.UTF-8
 export LANGUAGE=$LANG
 export LC_ALL=$LANG
 
+CF_TEMPLATE=cloudformation-elasticbeanstalk.json
+CF_TEMPLATE_PATH=/tmp/$CF_TEMPLATE
+S3_CF_TEMPLATE_PATH=s3://$ARTIFACTS_S3BUCKET/eb/$CF_TEMPLATE
 
 make_eb_version() {
     MB_TAG=$1
@@ -37,6 +40,9 @@ make_eb_version() {
     sed "s/@@MB_REPOSITORY@@/${MB_DOCKER_REPOSITORY}/" < ${BASEDIR}/Dockerrun.aws.json.template > ${BASEDIR}/Dockerrun.aws.json.tmp
     sed "s/@@MB_TAG@@/${MB_TAG}/" < ${BASEDIR}/Dockerrun.aws.json.tmp > ${BASEDIR}/Dockerrun.aws.json
 
+    # set the default version in the cloudformation template from the template-template (yo dawg i heard you like templates ;)
+    sed "s/@@MB_TAG@@/${MB_TAG}/" < ${BASEDIR}/$CF_TEMPLATE.template > $CF_TEMPLATE_PATH
+
     # create our EB zip file
     cd $BASEDIR; zip -r ${RELEASE_FILE} .ebextensions Dockerrun.aws.json; cd $CURRENTDIR
 
@@ -57,6 +63,10 @@ upload_eb_version() {
 
     echo "uploading /tmp/${MB_TAG}.zip -> $ARTIFACTS_S3BUCKET/eb/"
     aws s3 cp /tmp/${MB_TAG}.zip s3://$ARTIFACTS_S3BUCKET/eb/${MB_TAG}.zip
+
+    echo "uploading $CF_TEMPLATE_PATH -> $S3_CF_TEMPLATE_PATH"
+    aws s3 cp $CF_TEMPLATE_PATH $S3_CF_TEMPLATE_PATH
+
 }
 
 create_eb_version() {

@@ -1,18 +1,24 @@
 /* @flow */
 
 import React from "react";
+import { jt } from "c-3po";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-import { summarize } from "metabase/qb/lib/actions";
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery)) {
+        return [];
+    }
 
-export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
-    return tableMetadata.metrics.slice(0, 5).map(metric => ({
+    const activeMetrics = query.table().metrics.filter(m => m.isActive());
+    return activeMetrics.slice(0, 5).map(metric => ({
         name: "common-metric",
-        title: <span>View <strong>{metric.name}</strong></span>,
-        card: () => summarize(card, ["METRIC", metric.id], tableMetadata)
+        title: <span>{jt`View ${<strong>{metric.name}</strong>}`}</span>,
+        question: () => question.summarize(["METRIC", metric.id])
     }));
 };

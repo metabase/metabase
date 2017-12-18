@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
-
+import { t } from 'c-3po';
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import LegendItem from "./LegendItem.jsx";
@@ -82,7 +82,7 @@ export default class LegendVertical extends Component {
                     <li key="extra" className="flex flex-no-shrink" >
                         <Tooltip tooltip={<LegendVertical className="p2" titles={extraItems} colors={extraColors} />}>
                             <LegendItem
-                                title={(overflowCount + 1) + " more"}
+                                title={(overflowCount + 1) + " " + t`more`}
                                 color="gray"
                                 showTooltip={false}
                             />

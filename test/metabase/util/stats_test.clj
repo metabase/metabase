@@ -67,6 +67,13 @@
 (expect false ((anonymous-usage-stats) :sso_configured))
 (expect false ((anonymous-usage-stats) :has_sample_data))
 
+;;Spot checking a few system stats to ensure conversion from property
+;;names and presence in the anonymous-usage-stats
+(expect
+  #{true}
+  (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
+    (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
+
 ;;; check that the new lazy-seq version of the executions metrics works the same way the old one did
 (tu/resolve-private-vars metabase.util.stats
   execution-metrics histogram)

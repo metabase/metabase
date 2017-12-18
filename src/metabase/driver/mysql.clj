@@ -51,10 +51,12 @@
 (def ^:private ^:const default-connection-args
   "Map of args for the MySQL JDBC connection string.
    Full list of is options is available here: http://dev.mysql.com/doc/connector-j/6.0/en/connector-j-reference-configuration-properties.html"
-  {:zeroDateTimeBehavior :convertToNull ; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
-   :useUnicode           :true          ; Force UTF-8 encoding of results
-   :characterEncoding    :UTF8
-   :characterSetResults  :UTF8})
+  {:zeroDateTimeBehavior          :convertToNull ; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
+   :useUnicode                    :true          ; Force UTF-8 encoding of results
+   :characterEncoding             :UTF8
+   :characterSetResults           :UTF8
+   :useLegacyDatetimeCode         :true          ; Needs to be true to set useJDBCCompliantTimezoneShift to true
+   :useJDBCCompliantTimezoneShift :true})        ; This allows us to adjust the timezone of timestamps as we pull them from the resultset
 
 (def ^:private ^:const ^String default-connection-args-string
   (s/join \& (for [[k v] default-connection-args]
@@ -148,6 +150,8 @@
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
 
+(def ^:private mysql-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS zzz"))
+(def ^:private mysql-db-time-query "select CONCAT(DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%f' ), ' ', @@system_time_zone)")
 
 (defrecord MySQLDriver []
   clojure.lang.Named
@@ -180,7 +184,8 @@
                                                             {:name         "additional-options"
                                                              :display-name "Additional JDBC connection string options"
                                                              :placeholder  "tinyInt1isBit=false"}]))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :current-db-time                   (driver/make-current-db-time-fn mysql-date-formatter mysql-db-time-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -198,4 +203,7 @@
           :set-timezone-sql          (constantly "SET @@session.time_zone = %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-(driver/register-driver! :mysql (MySQLDriver.))
+(defn -init-driver
+  "Register the MySQL driver"
+  []
+  (driver/register-driver! :mysql (MySQLDriver.)))

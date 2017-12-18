@@ -63,7 +63,6 @@ export default class AddToDashSelectDashModal extends Component {
         } else if (this.props.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
             return <CreateDashboardModal createDashboardFn={this.createDashboard} onClose={this.props.onClose} />
         } else {
-            console.log('in this branch, confusing', this.state, this.props)
             return (
                 <ModalContent
                     id="AddToDashSelectDashModal"

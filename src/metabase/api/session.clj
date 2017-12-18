@@ -11,6 +11,7 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
+            [metabase.integrations.ldap :as ldap]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
@@ -33,27 +34,48 @@
       :user_id (:id user))
     (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
-
 ;;; ## API Endpoints
 
 (def ^:private login-throttlers
-  {:email      (throttle/make-throttler :email)
-   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
+  {:username   (throttle/make-throttler :username)
+   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by username
+
+(defn- ldap-login
+  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password]
+  (when (ldap/ldap-configured?)
+    (try
+      (when-let [user-info (ldap/find-user username)]
+        (when-not (ldap/verify-password user-info password)
+          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly outdated password
+          (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                     :errors      {:password "did not match stored password"}})))
+        ;; password is ok, return new session
+        {:id (create-session! (ldap/fetch-or-create-user! user-info password))})
+      (catch com.unboundid.util.LDAPSDKException e
+        (log/error (u/format-color 'red "Problem connecting to LDAP server, will fallback to local authentication") (.getMessage e))))))
+
+(defn- email-login
+  "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
+  [username password]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+    (when (pass/verify-password password (:password_salt user) (:password user))
+      {:id (create-session! user)})))
 
 (api/defendpoint POST "/"
   "Login."
-  [:as {{:keys [email password]} :body, remote-address :remote-addr}]
-  {email    su/Email
+  [:as {{:keys [username password]} :body, remote-address :remote-addr}]
+  {username su/NonBlankString
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :email)      email)
-  (let [user (db/select-one [User :id :password_salt :password :last_login], :email email, :is_active true)]
-    ;; Don't leak whether the account doesn't exist or the password was incorrect
-    (when-not (and user
-                   (pass/verify-password password (:password_salt user) (:password user)))
+  (throttle/check (login-throttlers :username)   username)
+  ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
+  (or (ldap-login username password)  ; First try LDAP if it's enabled
+      (email-login username password) ; Then try local authentication
+      ;; If nothing succeeded complain about it
+      ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                 :errors      {:password "did not match stored password"}})))
-    {:id (create-session! user)}))
+                                                                 :errors      {:password "did not match stored password"}}))))
 
 
 (api/defendpoint DELETE "/"
@@ -192,7 +214,7 @@
   (throttle/check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-    (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
+    (log/info "Successfully authenticated Google Auth token for:" given_name family_name)
     (google-auth-fetch-or-create-user! given_name family_name email)))
 
 

@@ -1,21 +1,39 @@
-/* eslint "react/prop-types": "warn" */
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import TagEditorParam from "./TagEditorParam.jsx";
 import TagEditorHelp from "./TagEditorHelp.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
-
+import { t } from 'c-3po';
 import cx from "classnames";
-import { getTemplateTags } from "metabase/meta/Card";
+
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import type { DatasetQuery } from "metabase/meta/types/Card"
+import type { TableId } from "metabase/meta/types/Table"
+import type { TemplateTag } from "metabase/meta/types/Query"
+import type { Field as FieldObject } from "metabase/meta/types/Field"
+
+type Props = {
+    query: NativeQuery,
+
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+    updateTemplateTag: (tag: TemplateTag) => void,
+
+    databaseFields: FieldObject[],
+    sampleDatasetId: TableId,
+
+    onClose: () => void,
+}
+type State = {
+    section: "help"|"settings";
+}
 
 export default class TagEditorSidebar extends Component {
-
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            section: null
-        };
+    props: Props;
+    state: State = {
+        section: "settings"
     }
 
     static propTypes = {
@@ -33,15 +51,12 @@ export default class TagEditorSidebar extends Component {
     }
 
     render() {
-
-        const { card } = this.props;
-        const tags = getTemplateTags(card);
+        const { query } = this.props;
+        const tags = query.templateTags()
 
         let section;
         if (tags.length === 0) {
             section = "help";
-        } else if (this.state.section == null) {
-            section = "settings";
         } else {
             section = this.state.section;
         }
@@ -50,7 +65,7 @@ export default class TagEditorSidebar extends Component {
             <div className="DataReference-container p3 full-height scroll-y">
                 <div className="DataReference-header flex align-center mb2">
                     <h2 className="text-default">
-                        Variables
+                        {t`Variables`}
                     </h2>
                     <a className="flex-align-right text-default text-brand-hover no-decoration" onClick={() => this.props.onClose()}>
                         <Icon name="close" size={18} />
@@ -58,8 +73,8 @@ export default class TagEditorSidebar extends Component {
                 </div>
                 <div className="DataReference-content">
                     <div className="Button-group Button-group--brand text-uppercase mb2">
-                        <a className={cx("Button Button--small", { "Button--active": section === "settings" , "disabled": tags.length === 0 })} onClick={() => this.setSection("settings")}>Settings</a>
-                        <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setSection("help")}>Help</a>
+                        <a className={cx("Button Button--small", { "Button--active": section === "settings" , "disabled": tags.length === 0 })} onClick={() => this.setSection("settings")}>{t`Settings`}</a>
+                        <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setSection("help")}>{t`Help`}</a>
                     </div>
                     { section === "settings" ?
                         <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>

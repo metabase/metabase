@@ -9,14 +9,22 @@ import SegmentForm from "./SegmentForm.jsx";
 import { segmentEditSelectors } from "../selectors";
 import * as actions from "../datamodel";
 import { clearRequestState } from "metabase/redux/requests";
+import { getMetadata } from "metabase/selectors/metadata";
+import { fetchTableMetadata } from "metabase/redux/metadata";
 
 const mapDispatchToProps = {
     ...actions,
+    fetchTableMetadata,
     clearRequestState,
     onChangeLocation: push
 };
 
-@connect(segmentEditSelectors, mapDispatchToProps)
+const mapStateToProps = (state, props) => ({
+    ...segmentEditSelectors(state, props),
+    metadata: getMetadata(state, props)
+})
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;
@@ -31,7 +39,9 @@ export default class SegmentApp extends Component {
         }
 
         if (tableId != null) {
+            // TODO Atte Keinänen 6/8/17: Use only global metadata (`fetchTableMetadata`)
             this.props.loadTableMetadata(tableId);
+            this.props.fetchTableMetadata(tableId);
         }
     }
 

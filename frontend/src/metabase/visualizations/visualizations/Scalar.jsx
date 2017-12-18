@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import styles from "./Scalar.css";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
@@ -19,7 +19,7 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 export default class Scalar extends Component {
     props: VisualizationProps;
 
-    static uiName = "Number";
+    static uiName = t`Number`;
     static identifier = "scalar";
     static iconName = "number";
 
@@ -59,7 +59,7 @@ export default class Scalar extends Component {
                 },
                 data: {
                     cols: [
-                        { base_type: TYPE.Text, display_name: "Name", name: "name" },
+                        { base_type: TYPE.Text, display_name: t`Name`, name: "name" },
                         { ...s.data.cols[0] }],
                     rows: [
                         [s.card.name, s.data.rows[0][0]]
@@ -73,7 +73,7 @@ export default class Scalar extends Component {
 
     static settings = {
         "scalar.locale": {
-            title: "Separator style",
+            title: t`Separator style`,
             widget: "select",
             props: {
                 options: [
@@ -86,19 +86,19 @@ export default class Scalar extends Component {
             default: "en"
         },
         "scalar.decimals": {
-            title: "Number of decimal places",
+            title: t`Number of decimal places`,
             widget: "number"
         },
         "scalar.prefix": {
-            title: "Add a prefix",
+            title: t`Add a prefix`,
             widget: "input"
         },
         "scalar.suffix": {
-            title: "Add a suffix",
+            title: t`Add a suffix`,
             widget: "input"
         },
         "scalar.scale": {
-            title: "Multiply by a number",
+            title: t`Multiply by a number`,
             widget: "number"
         },
     };
@@ -193,29 +193,31 @@ export default class Scalar extends Component {
                         {compactScalarValue}
                     </span>
                 </Ellipsified>
-                <div className={styles.Title + " flex align-center relative"}>
-                    <Ellipsified tooltip={card.name}>
-                        <span
-                            onClick={onChangeCardAndRun && (() => onChangeCardAndRun({ nextCard: card }))}
-                            className={cx("fullscreen-normal-text fullscreen-night-text", {
-                                "cursor-pointer": !!onChangeCardAndRun
-                            })}
-                        >
-                            {settings["card.title"]}
-                        </span>
+                { this.props.isDashboard  && (
+                    <div className={styles.Title + " flex align-center relative"}>
+                        <Ellipsified tooltip={card.name}>
+                            <span
+                                onClick={onChangeCardAndRun && (() => onChangeCardAndRun({ nextCard: card }))}
+                                className={cx("fullscreen-normal-text fullscreen-night-text", {
+                                    "cursor-pointer": !!onChangeCardAndRun
+                                })}
+                            >
+                                <span className="Scalar-title">{settings["card.title"]}</span>
+                            </span>
 
-                    </Ellipsified>
-                    { description &&
-                        <div
-                            className="absolute top bottom hover-child flex align-center justify-center"
-                            style={{ right: -20, top: 2 }}
-                        >
-                          <Tooltip tooltip={description} maxWidth={'22em'}>
-                              <Icon name='infooutlined' />
-                          </Tooltip>
-                      </div>
-                    }
-                </div>
+                        </Ellipsified>
+                        { description &&
+                            <div
+                                className="absolute top bottom hover-child flex align-center justify-center"
+                                style={{ right: -20, top: 2 }}
+                            >
+                              <Tooltip tooltip={description} maxWidth={'22em'}>
+                                  <Icon name='infooutlined' />
+                              </Tooltip>
+                          </div>
+                        }
+                    </div>
+                )}
             </div>
         );
     }

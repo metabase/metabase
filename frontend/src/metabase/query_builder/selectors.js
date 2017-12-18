@@ -4,17 +4,22 @@ import _ from "underscore";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
 
-import { isCardDirty, isCardRunnable } from "metabase/lib/card";
-import { parseFieldTargetId } from "metabase/lib/query_time";
-import { isPK } from "metabase/lib/types";
-import Query from "metabase/lib/query";
+import { isCardDirty } from "metabase/lib/card";
 import Utils from "metabase/lib/utils";
+
+import Question from "metabase-lib/lib/Question";
 
 import { getIn } from "icepick";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 
-export const getUiControls      = state => state.qb.uiControls;
+export const getUiControls = state => state.qb.uiControls;
+
+export const getIsShowingTemplateTagsEditor = state => getUiControls(state).isShowingTemplateTagsEditor;
+export const getIsShowingDataReference = state => getUiControls(state).isShowingDataReference;
+export const getIsShowingTutorial = state => getUiControls(state).isShowingTutorial;
+export const getIsEditing = state => getUiControls(state).isEditing;
+export const getIsRunning = state => getUiControls(state).isRunning;
 
 export const getCard            = state => state.qb.card;
 export const getOriginalCard    = state => state.qb.originalCard;
@@ -22,6 +27,11 @@ export const getLastRunCard     = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
 export const getQueryResult     = state => state.qb.queryResult;
+export const getQueryResults    = state => state.qb.queryResults;
+
+// get instance settings, used for determining whether to display certain actions,
+// currently used only for xrays
+export const getSettings        = state => state.settings.values
 
 export const getIsDirty = createSelector(
     [getCard, getOriginalCard],
@@ -83,75 +93,25 @@ export const getDatabaseFields = createSelector(
     (databaseId, databaseFields) => databaseFields[databaseId]
 );
 
-export const getIsObjectDetail = createSelector(
-    [getQueryResult],
-    (queryResult) => {
-        if (!queryResult || !queryResult.json_query) {
-            return false;
-        }
-
-        const data = queryResult.data,
-              dataset_query = queryResult.json_query;
-
-        let response = false;
-
-        // NOTE: we specifically use only the query result here because we don't want the state of the
-        //       visualization being shown (Object Details) to change as the query/card changes.
-
-        // "rows" type query w/ an '=' filter against the PK column
-        if (dataset_query.query &&
-                dataset_query.query.source_table &&
-                dataset_query.query.filter &&
-                Query.isBareRows(dataset_query.query) &&
-                data.rows &&
-                data.rows.length === 1) {
-
-            // we need to know the PK field of the table that was queried, so find that now
-            let pkField;
-            for (var i=0; i < data.cols.length; i++) {
-                let coldef = data.cols[i];
-                if (coldef.table_id === dataset_query.query.source_table && isPK(coldef.special_type)) {
-                    pkField = coldef.id;
-                }
-            }
-
-            // now check that we have a filter clause w/ '=' filter on PK column
-            if (pkField !== undefined) {
-                for (const filter of Query.getFilters(dataset_query.query)) {
-                    if (Array.isArray(filter) &&
-                            filter.length === 3 &&
-                            filter[0] === "=" &&
-                               parseFieldTargetId(filter[1]) === pkField &&
-                            filter[2] !== null) {
-                        // well, all of our conditions have passed so we have an object detail query here
-                        response = true;
-                    }
-                }
-            }
-        }
-
-        return response;
-    }
-);
-
 
 
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
+import { getAlerts } from "metabase/alert/selectors";
 
 export const getMode = createSelector(
     [getLastRunCard, getTableMetadata],
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
 
+export const getIsObjectDetail = createSelector(
+    [getMode],
+    (mode) => mode && mode.name === "object"
+);
+
 export const getParameters = createSelector(
     [getCard, getParameterValues],
     (card, parameterValues) => getParametersWithExtras(card, parameterValues)
 );
-
-export const getIsRunnable = createSelector(
-    [getCard, getTableMetadata],
-    (card, tableMetadata) => isCardRunnable(card, tableMetadata)
-)
 
 const getLastRunDatasetQuery = createSelector([getLastRunCard], (card) => card && card.dataset_query);
 const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.dataset_query);
@@ -167,4 +127,38 @@ export const getIsResultDirty = createSelector(
     (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) => {
         return !Utils.equals(lastDatasetQuery, nextDatasetQuery) || !Utils.equals(lastParameters, nextParameters);
     }
-);
+)
+
+export const getQuestion = createSelector(
+    [getMetadata, getCard, getParameterValues],
+    (metadata, card, parameterValues) => {
+        return metadata && card && new Question(metadata, card, parameterValues)
+    }
+)
+
+export const getLastRunQuestion = createSelector(
+    [getMetadata, getLastRunCard, getParameterValues],
+    (metadata, getLastRunCard, parameterValues) => {
+        return metadata && getLastRunCard && new Question(metadata, getLastRunCard, parameterValues)
+    }
+)
+
+export const getOriginalQuestion = createSelector(
+    [getMetadata, getOriginalCard],
+    (metadata, card) => {
+        // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
+        return metadata && card && new Question(metadata, card)
+    }
+)
+
+export const getQuery = createSelector(
+    [getQuestion],
+    (question) => question && question.query()
+)
+
+export const getIsRunnable = createSelector([getQuestion], (question) => question && question.canRun())
+
+export const getQuestionAlerts = createSelector(
+    [getAlerts, getCard],
+    (alerts, card) => card && card.id && _.pick(alerts, (alert) => alert.card.id === card.id) || {}
+)

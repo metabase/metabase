@@ -1,7 +1,6 @@
 (ns metabase.test.data.druid
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
-            [environ.core :refer [env]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as i]]
@@ -10,10 +9,8 @@
   (:import metabase.driver.druid.DruidDriver))
 
 (defn- database->connection-details [& _]
-  {:host (or (env :mb-druid-host)
-             (throw (Exception. "In order to test Druid, you must specify `MB_DRUID_HOST`.")))
-   :port (Integer/parseInt (or (env :mb-druid-port)
-                               (throw (Exception. "In order to test Druid, you must specify `MB_DRUID_PORT`."))))})
+  {:host (i/db-test-env-var-or-throw :druid :host)
+   :port (Integer/parseInt (i/db-test-env-var-or-throw :druid :port))})
 
 (u/strict-extend DruidDriver
   i/IDriverTestExtensions

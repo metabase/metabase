@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import cx from "classnames";
+import { t } from 'c-3po'
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -51,29 +52,25 @@ const AdminNavItem = ({ name, path, currentPath }) =>
         </Link>
     </li>
 
-const MainNavLink = ({ to, name, eventName }) =>
+const MainNavLink = ({ to, name, eventName, icon }) =>
     <Link
         to={to}
         data-metabase-event={`NavBar;${eventName}`}
         style={BUTTON_PADDING_STYLES.navButton}
-        className={"NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background"}
+        className={"NavItem cursor-pointer flex-full text-white text-bold no-decoration flex align-center px2 transition-background"}
         activeClassName="NavItem--selected"
     >
-        {name}
+        <Icon name={icon} className="md-hide" />
+        <span className="hide md-show">{name}</span>
     </Link>
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
     static propTypes = {
-        className: PropTypes.string,
         context: PropTypes.string.isRequired,
         path: PropTypes.string.isRequired,
         user: PropTypes.object
     };
-
-    constructor(props, context) {
-        super(props, context);
-    }
 
     isActive(path) {
         return this.props.path.startsWith(path);
@@ -81,14 +78,14 @@ export default class Navbar extends Component {
 
     renderAdminNav() {
         return (
-            <nav className={cx("Nav AdminNav", this.props.className)}>
-                <div className="wrapper flex align-center">
+            <nav className={cx("Nav AdminNav sm-py1")}>
+                <div className="sm-pl4 flex align-center pr1">
                     <div className="NavTitle flex align-center">
                         <Icon name={'gear'} className="AdminGear" size={22}></Icon>
-                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin Panel</span>
+                        <span className="NavItem-text ml1 hide sm-show text-bold">Metabase Admin</span>
                     </div>
 
-                    <ul className="sm-ml4 flex flex-full text-strong">
+                    <ul className="sm-ml4 flex flex-full">
                         <AdminNavItem name="Settings"    path="/admin/settings"     currentPath={this.props.path} />
                         <AdminNavItem name="People"      path="/admin/people"       currentPath={this.props.path} />
                         <AdminNavItem name="Data Model"  path="/admin/datamodel"    currentPath={this.props.path} />
@@ -104,7 +101,7 @@ export default class Navbar extends Component {
 
     renderEmptyNav() {
         return (
-            <nav className={cx("Nav py2 sm-py1 xl-py3 relative", this.props.className)}>
+            <nav className="Nav sm-py1 relative">
                 <ul className="wrapper flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer flex align-center">
@@ -118,31 +115,36 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className={cx("Nav relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
-                <ul className="ml2 sm-pl4 pr1 flex align-center">
+            <nav className="Nav relative bg-brand">
+                <ul className="md-pl4 flex align-center md-pr1">
                     <li>
-                        <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background p1">
+                        <Link
+                            to="/"
+                            data-metabase-event={"Navbar;Logo"}
+                            className="LogoNavItem NavItem cursor-pointer text-white flex align-center transition-background justify-center"
+                            activeClassName="NavItem--selected"
+                        >
                             <LogoIcon dark={true}></LogoIcon>
                         </Link>
                     </li>
-                    <li className="pl3 hide sm-show">
-                        <MainNavLink to="/dashboards" name="Dashboards" eventName="Dashboards" />
+                    <li className="md-pl3 hide xs-show">
+                        <MainNavLink to="/dashboards" name={t`Dashboards`} eventName="Dashboards" icon="dashboard" />
                     </li>
-                    <li className="pl1 hide sm-show">
-                        <MainNavLink to="/questions" name="Questions" eventName="Questions" />
+                    <li className="md-pl1 hide xs-show">
+                        <MainNavLink to="/questions" name={t`Questions`} eventName="Questions" icon="all" />
                     </li>
-                    <li className="pl1 hide sm-show">
-                        <MainNavLink to="/pulse" name="Pulses" eventName="Pulses" />
+                    <li className="md-pl1 hide xs-show">
+                        <MainNavLink to="/pulse" name={t`Pulses`} eventName="Pulses" icon="pulse" />
                     </li>
-                    <li className="pl1 hide sm-show">
-                        <MainNavLink to="/reference/guide" name="Data Reference" eventName="DataReference" />
+                    <li className="md-pl1 hide xs-show">
+                        <MainNavLink to="/reference/guide" name={t`Data Reference`} eventName="DataReference" icon="reference" />
                     </li>
-                    <li className="pl3 hide sm-show">
-                        <Link to={Urls.question()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
-                            New <span>Question</span>
+                    <li className="md-pl3 hide sm-show">
+                        <Link to={Urls.newQuestion()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
+                            {t`New Question`}
                         </Link>
                     </li>
-                    <li className="flex-align-right transition-background">
+                    <li className="flex-align-right transition-background hide sm-show">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>
                     </li>
                 </ul>
@@ -151,7 +153,7 @@ export default class Navbar extends Component {
     }
 
     render() {
-        let { context, user } = this.props;
+        const { context, user } = this.props;
 
         if (!user) return null;
 

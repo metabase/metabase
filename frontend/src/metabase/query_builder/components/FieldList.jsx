@@ -1,46 +1,63 @@
+/* @flow weak */
+
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
-import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
-import { parseFieldBucketing, parseFieldTargetId } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
-import Query from "metabase/lib/query";
 
-import _ from "underscore";
+import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
+import type { ConcreteField } from "metabase/meta/types/Query";
+import type Table from "metabase-lib/lib/metadata/Table";
+
+// import type { Section } from "metabase/components/AccordianList";
+export type AccordianListItem = {
+}
+
+export type AccordianListSection = {
+    name: ?string;
+    items: AccordianListItem[]
+}
+
+type Props = {
+    className?: string,
+    maxHeight?: number,
+
+    field: ?ConcreteField,
+    onFieldChange: (field: ConcreteField) => void,
+
+    // HACK: for segments
+    onFilterChange?: (filter: any) => void,
+
+    tableMetadata: Table,
+
+    alwaysExpanded?: boolean,
+    enableSubDimensions?: boolean,
+
+    hideSectionHeader?: boolean
+}
+
+type State = {
+    sections: AccordianListSection[]
+}
 
 export default class FieldList extends Component {
-    constructor(props, context) {
-        super(props, context);
-
-        _.bindAll(this, "onChange", "itemIsSelected", "renderItemExtra", "renderItemIcon", "renderSectionIcon", "getItemClasses");
+    props: Props;
+    state: State = {
+        sections: []
     }
-
-    static propTypes = {
-        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
-        segmentOptions: PropTypes.array,
-        tableName: PropTypes.string,
-        onFieldChange: PropTypes.func.isRequired,
-        onFilterChange: PropTypes.func,
-        enableTimeGrouping: PropTypes.bool,
-        tableMetadata: PropTypes.object.isRequired
-    };
 
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, field, fieldOptions, customFieldOptions, segmentOptions } = newProps;
+        let { tableMetadata, fieldOptions, segmentOptions, hideSectionHeader } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
@@ -52,72 +69,51 @@ export default class FieldList extends Component {
             }));
         }
 
-        if (customFieldOptions) {
-            specialOptions = specialOptions.concat(Object.keys(customFieldOptions).map(name => ({
-                name: name,
-                value: ["expression", name],
-                customField: customFieldOptions[name]
-            })));
-        }
+        const getSectionItems = (sectionOptions) =>
+            sectionOptions.dimensions.map(dimension => ({
+                name: dimension.displayName(),
+                dimension: dimension
+            }))
 
         let mainSection = {
-            name: singularize(tableName),
-            items: specialOptions.concat(fieldOptions.fields.map(field => ({
-                name: Query.getFieldPathName(field.id, tableMetadata),
-                value: typeof field.id === "number" ? ["field-id", field.id] : field.id,
-                field: field
-            })))
+            name: hideSectionHeader ? null : singularize(tableName),
+            items: specialOptions.concat(getSectionItems(fieldOptions))
         };
 
-        let fkSections = fieldOptions.fks.map(fk => ({
-            name: stripId(fk.field.display_name),
-            items: fk.fields.map(field => {
-                const value = ["fk->", fk.field.id, field.id];
-                const target = Query.getFieldTarget(value, tableMetadata);
-                return {
-                    name: Query.getFieldPathName(target.field.id, target.table),
-                    value: value,
-                    field: field
-                };
-            })
+        let fkSections = fieldOptions.fks.map(fkOptions => ({
+            name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
+            items: getSectionItems(fkOptions)
         }));
 
         let sections = []
-        if (mainSection.items.length > 0) {
+        if (mainSection.items.length > 0 ) {
             sections.push(mainSection);
         }
         sections.push(...fkSections);
 
-        let fieldTarget = parseFieldTargetId(field);
-
-        this.setState({ sections, fieldTarget });
+        this.setState({ sections });
     }
 
-    itemIsSelected(item) {
-        let { fieldTarget } = this.state;
-        if (typeof fieldTarget === "number") {
-            fieldTarget = ["field-id", fieldTarget];
-        }
-        return _.isEqual(fieldTarget, item.value);
+    itemIsSelected = (item) => {
+        return item.dimension && item.dimension.isSameBaseDimension(this.props.field);
     }
 
-    renderItemExtra(item) {
-        let { field, enableTimeGrouping } = this.props;
+    renderItemExtra = (item) => {
+        const { field, enableSubDimensions, tableMetadata: { metadata } } = this.props;
 
         return (
             <div className="Field-extra flex align-center">
                 { item.segment &&
                     this.renderSegmentTooltip(item.segment)
                 }
-                { item.customField &&
-                    <span className="h5 text-grey-2 px1">Custom</span>
+                { item.dimension && item.dimension.tag &&
+                    <span className="h5 text-grey-2 px1">{item.dimension.tag}</span>
                 }
-                { item.field && enableTimeGrouping && isDate(item.field) &&
+                { enableSubDimensions && item.dimension && item.dimension.dimensions().length > 0 ?
                     <PopoverWithTrigger
-                        id="TimeGroupingPopover"
                         className={this.props.className}
                         hasArrow={false}
-                        triggerElement={this.renderTimeGroupingTrigger(field)}
+                        triggerElement={this.renderSubDimensionTrigger(item.dimension)}
                         tetherOptions={{
                             attachment: 'top left',
                             targetAttachment: 'top right',
@@ -125,34 +121,36 @@ export default class FieldList extends Component {
                             constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
                         }}
                     >
-                        <TimeGroupingPopover
-                            field={field || ["datetime-field", item.value, "as", null]}
-                            onFieldChange={this.props.onFieldChange}
-                            groupingOptions={item.field.grouping_options}
+                        <DimensionPicker
+                            dimension={Dimension.parseMBQL(field, metadata)}
+                            dimensions={item.dimension.dimensions()}
+                            onChangeDimension={dimension => this.props.onFieldChange(dimension.mbql())}
                         />
                     </PopoverWithTrigger>
-                }
+                : null }
             </div>
         );
     }
 
-    renderItemIcon(item) {
+    renderItemIcon = (item) => {
         let name;
         if (item.segment) {
             name = "staroutline";
-        } else if (item.field) {
-            name = getIconForField(item.field);
-        } else if (item.customField) {
-            // TODO: need to make this better
-            name = 'int';
+        } else if (item.dimension) {
+            name = item.dimension.icon();
         }
         return <Icon name={name || 'unknown'} size={18} />;
     }
 
-    renderTimeGroupingTrigger(field) {
+    renderSubDimensionTrigger(dimension) {
+        const { field, tableMetadata: { metadata } } = this.props;
+        const subDimension = dimension.isSameBaseDimension(field) ?
+            Dimension.parseMBQL(field, metadata) :
+            dimension.defaultDimension();
+        const name = subDimension ? subDimension.subTriggerDisplayName() : null;
         return (
             <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
-                <h4 className="mr1">by {parseFieldBucketing(field, "day").split("-").join(" ")}</h4>
+                {name && <h4 className="mr1">{name}</h4> }
                 <Icon name="chevronright" size={16} />
             </div>
         );
@@ -169,7 +167,7 @@ export default class FieldList extends Component {
         );
     }
 
-    getItemClasses(item, itemIndex) {
+    getItemClasses = (item, itemIndex) => {
         if (item.segment) {
             return "List-item--segment";
         } else {
@@ -177,7 +175,7 @@ export default class FieldList extends Component {
         }
     }
 
-    renderSectionIcon(section, sectionIndex) {
+    renderSectionIcon = (section, sectionIndex) => {
         if (sectionIndex > 0) {
             return <Icon name="connections" size={18} />
         } else {
@@ -185,16 +183,25 @@ export default class FieldList extends Component {
         }
     }
 
-    onChange(item) {
-        if (item.segment) {
-            this.props.onFilterChange(item.value);
-        } else if (this.itemIsSelected(item)) {
+    onChange = (item) => {
+        const { field, enableSubDimensions, onFilterChange, onFieldChange} = this.props;
+        if (item.segment && onFilterChange) {
+            onFilterChange(item.value);
+        } else if (field != null && this.itemIsSelected(item)) {
             // ensure if we select the same item we don't reset datetime-field's unit
-            this.props.onFieldChange(this.props.field);
-        }  else if (this.props.enableTimeGrouping && isDate(item.field)) {
-            this.props.onFieldChange(["datetime-field", item.value, "as", "day"]);
+            onFieldChange(field);
         } else {
-            this.props.onFieldChange(item.value);
+            const dimension = item.dimension.defaultDimension() || item.dimension;
+            const shouldExcludeBinning = !enableSubDimensions && dimension instanceof BinnedDimension
+
+            if (shouldExcludeBinning) {
+                // If we don't let user choose the sub-dimension, we don't want to treat the field
+                // as a binned field (which would use the default binning)
+                // Let's unwrap the base field of the binned field instead
+                onFieldChange(dimension.baseDimension().mbql());
+            } else {
+                onFieldChange(dimension.mbql());
+            }
         }
     }
 
@@ -202,6 +209,7 @@ export default class FieldList extends Component {
         return (
             <AccordianList
                 className={this.props.className}
+                maxHeight={this.props.maxHeight}
                 sections={this.state.sections}
                 onChange={this.onChange}
                 itemIsSelected={this.itemIsSelected}
@@ -213,4 +221,23 @@ export default class FieldList extends Component {
             />
         )
     }
+}
+
+import cx from "classnames";
+
+export const DimensionPicker = ({ className, dimension, dimensions, onChangeDimension }) => {
+    return (
+        <ul className="px2 py1">
+            { dimensions.map((d, index) =>
+                <li
+                    key={index}
+                    className={cx("List-item", { "List-item--selected": d.isEqual(dimension) })}
+                >
+                    <a className="List-item-title full px2 py1 cursor-pointer" onClick={() => onChangeDimension(d)}>
+                        {d.subDisplayName()}
+                    </a>
+                </li>
+            )}
+        </ul>
+    )
 }

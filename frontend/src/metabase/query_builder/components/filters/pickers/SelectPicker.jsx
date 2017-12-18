@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import CheckBox from 'metabase/components/CheckBox.jsx';
 import ListSearchField from "metabase/components/ListSearchField.jsx";
 
@@ -80,7 +80,7 @@ export default class SelectPicker extends Component {
 
     nameForOption(option: SelectOption) {
         if (option.name === "") {
-            return "Empty";
+            return t`Empty`;
         } else if (typeof option.name === "string") {
             return option.name;
         } else {
@@ -91,10 +91,7 @@ export default class SelectPicker extends Component {
     render() {
         let { values, options, placeholder, multi } = this.props;
 
-        let checked = {};
-        for (let value of values) {
-            checked[value] = true;
-        }
+        let checked = new Set(values);
 
         let validOptions = [];
         let regex = this.state.searchRegex;
@@ -117,7 +114,7 @@ export default class SelectPicker extends Component {
                       <ListSearchField
                           onChange={this.updateSearchText}
                           searchText={this.state.searchText}
-                          placeholder="Find a value"
+                          placeholder={t`Find a value`}
                           autoFocus={true}
                       />
                   </div>
@@ -130,8 +127,11 @@ export default class SelectPicker extends Component {
                        <ul>
                            {validOptions.map((option, index) =>
                                <li key={index}>
-                                   <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked[option.key])}>
-                                       <CheckBox checked={checked[option.key]} />
+                                   <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked.has(option.key))}>
+                                       <CheckBox
+                                           checked={checked.has(option.key)}
+                                           color='purple'
+                                       />
                                        <h4 className="ml1">{this.nameForOption(option)}</h4>
                                    </label>
                                </li>
@@ -145,7 +145,7 @@ export default class SelectPicker extends Component {
                                        style={{ height: "95px" }}
                                        className={cx("full rounded bordered border-purple text-centered text-bold", {
                                                "text-purple bg-white": values[0] !== option.key,
-                                               "text-white bg-purple-light": values[0] === option.key
+                                               "text-white bg-purple": values[0] === option.key
                                            })}
                                        onClick={() => this.selectValue(option.key, true)}
                                    >

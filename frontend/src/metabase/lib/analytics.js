@@ -24,7 +24,7 @@ const MetabaseAnalytics = {
     },
 
     // track an event
-    trackEvent: function(category: string, action?: string, label?: string, value?: number) {
+    trackEvent: function(category: string, action?: string, label?: string|number|boolean, value?: number) {
         const { tag } = MetabaseSettings.get('version');
 
         // category & action are required, rest are optional

@@ -40,6 +40,10 @@ export const field_special_types = [{
     'name': 'Email',
     'section': 'Common'
 }, {
+    'id': TYPE.Enum,
+    'name': 'Enum',
+    'section': 'Common'
+}, {
     'id': TYPE.ImageURL,
     'name': 'Image URL',
     'section': 'Common'

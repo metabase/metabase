@@ -27,11 +27,11 @@ export default class BreakoutWidget extends Component {
         setField: PropTypes.func.isRequired,
         isInitiallyOpen: PropTypes.bool,
         tableMetadata: PropTypes.object.isRequired,
-        enableTimeGrouping: PropTypes.bool
+        enableSubDimensions: PropTypes.bool
     };
 
     static defaultProps = {
-        enableTimeGrouping: true
+        enableSubDimensions: true
     };
 
     setBreakout(value) {
@@ -63,7 +63,7 @@ export default class BreakoutWidget extends Component {
                         fieldOptions={this.props.fieldOptions}
                         customFieldOptions={this.props.customFieldOptions}
                         onFieldChange={this.setBreakout}
-                        enableTimeGrouping={this.props.enableTimeGrouping}
+                        enableSubDimensions={this.props.enableSubDimensions}
                     />
                 </Popover>
             );

@@ -32,7 +32,7 @@
 .Form-field .Form-label {
     display: block;
     font-size: 0.85em;
-    font-weight: bold;
+    font-weight: 700;
     color: currentColor;
 }
 
@@ -217,7 +217,6 @@
 }
 
 .NewForm .Form-actions {
-    border-top: 1px solid #EAEAEA;
     padding-bottom: 1.2rem;
     padding-top: 1.2rem;
     padding-left: var(--padding-4);

@@ -30,7 +30,7 @@ If you already have two or more saved questions you’d like to compare, and the
 
 ![multiseriesmodal1](images/MultiSeriesModal1.png)
 
-The X and Y axis will automagically update if necessary and Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
+The X and Y axis will automatically update if necessary and Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
 To remove a series either uncheck the box, or click the x next to the title in the legend above the chart.
 

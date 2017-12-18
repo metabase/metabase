@@ -15,5 +15,7 @@
 *   [Get answers in Slack with Metabot](11-metabot.md)
 *   [Some helpful tips on building your data model](12-data-model-reference.md)
 *   [Creating SQL Templates](13-sql-parameters.md)
+*   [Viewing X-ray reports](14-x-rays.md)
+*   [Getting alerts](15-alerts.md)
 
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

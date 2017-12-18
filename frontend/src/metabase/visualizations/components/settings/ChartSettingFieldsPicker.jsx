@@ -1,5 +1,5 @@
 import React from "react";
-
+import { t } from 'c-3po';
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker.jsx";
 
 const ChartSettingFieldsPicker = ({ value = [], options, onChange, addAnother }) =>
@@ -25,7 +25,7 @@ const ChartSettingFieldsPicker = ({ value = [], options, onChange, addAnother })
                     null
                 }
             />
-        ) : <span className="text-error">error</span>}
+        ) : <span className="text-error">{t`error`}</span>}
         { addAnother &&
             <div className="mt1">
                 <a onClick={() => {

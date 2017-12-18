@@ -63,14 +63,14 @@
 (declare client)
 
 (defn authenticate
-  "Authenticate a test user with EMAIL and PASSWORD, returning their Metabase Session token;
+  "Authenticate a test user with USERNAME and PASSWORD, returning their Metabase Session token;
    or throw an Exception if that fails."
-  [{:keys [email password], :as credentials}]
-  {:pre [(string? email) (string? password)]}
+  [{:keys [username password], :as credentials}]
+  {:pre [(string? username) (string? password)]}
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e
-      (log/error "Failed to authenticate with email:" email "and password:" password ":" (.getMessage e)))))
+      (log/error "Failed to authenticate with username:" username "and password:" password ":" (.getMessage e)))))
 
 
 ;;; client
@@ -98,12 +98,11 @@
         (log/error (u/pprint-to-str 'red body))
         (throw (ex-info message {:status-code actual-status-code}))))))
 
-(defn- method->request-fn [method]
-  (case method
-    :get    client/get
-    :post   client/post
-    :put    client/put
-    :delete client/delete))
+(def ^:private method->request-fn
+  {:get    client/get
+   :post   client/post
+   :put    client/put
+   :delete client/delete})
 
 (defn- -client [credentials method expected-status url http-body url-param-kwargs request-options]
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -141,7 +140,7 @@
 
   Args:
 
-   *  CREDENTIALS           Optional map of `:email` and `:password` or `X-METABASE-SESSION` token of a User who we should perform the request as
+   *  CREDENTIALS           Optional map of `:username` and `:password` or `X-METABASE-SESSION` token of a User who we should perform the request as
    *  METHOD                `:get`, `:post`, `:delete`, or `:put`
    *  EXPECTED-STATUS-CODE  When passed, throw an exception if the response has a different status code.
    *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`

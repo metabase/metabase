@@ -1,6 +1,8 @@
 /* @flow */
 
 import React from "react";
+import { t } from "c-3po";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,
@@ -8,10 +10,14 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 import { isDate } from "metabase/lib/schema_metadata";
-import { summarize, breakout } from "metabase/qb/lib/actions";
 
-export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
-    const dateField = tableMetadata.fields.filter(isDate)[0];
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery)) {
+        return [];
+    }
+
+    const dateField = query.table().fields.filter(isDate)[0];
     if (!dateField) {
         return [];
     }
@@ -20,14 +26,17 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
         {
             name: "count-by-time",
             section: "sum",
-            title: <span>Count of rows by time</span>,
+            title: <span>{t`Count of rows by time`}</span>,
             icon: "line",
-            card: () =>
-                breakout(
-                    summarize(card, ["count"], tableMetadata),
-                    ["datetime-field", ["field-id", dateField.id], "as", "day"],
-                    tableMetadata
-                )
+            question: () =>
+                question
+                    .summarize(["count"])
+                    .breakout([
+                        "datetime-field",
+                        ["field-id", dateField.id],
+                        "as",
+                        "day"
+                    ])
         }
     ];
 };

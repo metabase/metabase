@@ -2,10 +2,9 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import CollectionActions from "../components/CollectionActions";
@@ -27,26 +26,26 @@ export const CollectionEmptyState = () =>
     <div className="flex align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
         <Icon name="collection" size={32} className="mr2"/>
         <div className="flex-full">
-            <h3>Create collections for your saved questions</h3>
+            <h3>{t`Create collections for your saved questions`}</h3>
             <div className="mt1">
-                Collections help you organize your questions and allow you to decide who gets to see what.
+                {t`Collections help you organize your questions and allow you to decide who gets to see what.`}
                 {" "}
                 <a href="http://www.metabase.com/docs/latest/administration-guide/06-collections.html" target="_blank">
-                    Learn more
+                    {t`Learn more`}
                 </a>
             </div>
         </div>
         <Link to="/collections/create">
-            <Button primary>Create a collection</Button>
+            <Button primary>{t`Create a collection`}</Button>
         </Link>
     </div>;
 
 export const NoSavedQuestionsState = () =>
     <div className="flex-full flex align-center justify-center mb4">
         <EmptyState
-            message={<span>Explore your data, create charts or maps, and save what you find.</span>}
+            message={<span>${t`Explore your data, create charts or maps, and save what you find.`}</span>}
             image="/app/img/questions_illustration"
-            action="Ask a question"
+            action={t`Ask a question"`}
             link="/question"
         />
     </div>;
@@ -59,26 +58,27 @@ export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch})
     const showSearch = hasCollections || hasQuestionsWithoutCollection;
     const showSetPermissionsLink = isAdmin && hasCollections;
 
-    return (<div className="flex align-center pt4 pb2">
-        <TitleAndDescription title={ hasCollections ? "Collections of Questions" : "Saved Questions" }/>
+    return (
+        <div className="flex align-center pt4 pb2">
+
+          { showSearch && hasCollections &&
+          <ExpandingSearchField onSearch={onSearch}/>
+          }
 
         <div className="flex align-center ml-auto">
-            { showSearch &&
-            <ExpandingSearchField className="mr2" onSearch={onSearch}/>
-            }
-
             <CollectionActions>
                 { showSetPermissionsLink &&
                 <Link to="/collections/permissions">
-                    <Icon size={18} name="lock" tooltip="Set permissions for collections"/>
+                    <Icon size={18} name="lock" tooltip={t`Set permissions for collections`}/>
                 </Link>
                 }
                 <Link to="/questions/archive">
-                    <Icon size={20} name="viewArchive" tooltip="View the archive"/>
+                    <Icon size={20} name="viewArchive" tooltip={t`View the archive`}/>
                 </Link>
             </CollectionActions>
         </div>
-    </div>);
+    </div>
+    );
 };
 
 const mapStateToProps = (state, props) => ({
@@ -112,7 +112,6 @@ export class QuestionIndex extends Component {
 
         const hasEntityListSectionQuery = !!(location.query && location.query.f);
         const showEntityList = hasQuestionsWithoutCollection || hasEntityListSectionQuery;
-        const showEverythingElseTitle = showEntityList && hasCollections;
 
         return (
             <div className={cx("relative px4", {"full-height flex flex-column bg-slate-extra-light": showNoSavedQuestionsState})}>
@@ -132,9 +131,7 @@ export class QuestionIndex extends Component {
 
                 { showNoSavedQuestionsState && <NoSavedQuestionsState /> }
 
-                { showEverythingElseTitle && <h2 className="mt2 mb2">Everything Else</h2> }
-
-                <div className={cx({ "hide": !showEntityList })}>
+                <div className={cx("pt4", { "hide": !showEntityList })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"
@@ -152,4 +149,3 @@ export class QuestionIndex extends Component {
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(QuestionIndex);
-

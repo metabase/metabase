@@ -5,6 +5,7 @@
             [expectations :refer :all]
             [medley.core :as m]
             [metabase
+             [email-test :as et]
              [http-client :as http :refer :all]
              [middleware :as middleware]
              [util :as u]]
@@ -17,18 +18,20 @@
              [label :refer [Label]]
              [permissions :as perms]
              [permissions-group :as perms-group]
+             [pulse :as pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu :refer [match-$ random-name]]]
             [metabase.test.data.users :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
-
-;;; CARD LIFECYCLE
 
 ;;; Helpers
 
@@ -42,9 +45,41 @@
    :made_public_by_id nil
    :public_uuid       nil
    :query_type        "query"
-   :cache_ttl         nil})
+   :cache_ttl         nil
+   :result_metadata   nil})
 
-;; ## GET /api/card
+(defn- do-with-self-cleaning-random-card-name
+  "Generate a random card name (or use CARD-NAME), pass it to F, then delete any Cards with that name afterwords."
+  [f & [card-name]]
+  (let [card-name (or card-name (random-name))]
+    (try (f card-name)
+         (finally (db/delete! Card :name card-name)))))
+
+(defmacro ^:private with-self-cleaning-random-card-name
+  "Generate a random card name (or optionally use CARD-NAME) and bind it to CARD-NAME-BINDING.
+   Execute BODY and then delete and Cards with that name afterwards."
+  {:style/indent 1, :arglists '([[card-name-binding] & body] [[card-name-binding card-name] & body])}
+  [[card-name-binding card-name] & body]
+  `(do-with-self-cleaning-random-card-name (fn [~card-name-binding]
+                                             ~@body)
+                                           ~@(when card-name [card-name])))
+
+(defn- mbql-count-query [database-id table-id]
+  {:database database-id
+   :type     "query"
+   :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}})
+
+(defn- card-with-name-and-query [card-name query]
+  {:name                   card-name
+   :display                "scalar"
+   :dataset_query          query
+   :visualization_settings {:global {:title nil}}})
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                               FETCHING CARDS & FILTERING                                               |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Filter cards by database
 (expect
   [true
@@ -66,8 +101,8 @@
 (expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
 
 
-;; Make sure `id` is required when `f` is :database
-(expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
+;; Make sure `model_id` is required when `f` is :database
+(expect {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
   ((user->client :crowberto) :get 400 "card" :f :database))
 
 ;; Filter cards by table
@@ -89,8 +124,8 @@
      (card-returned? table-2-id card-1-id)
      (card-returned? table-2-id card-2-id)]))
 
-;; Make sure `id` is required when `f` is :table
-(expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
+;; Make sure `model_id` is required when `f` is :table
+(expect {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
         ((user->client :crowberto) :get 400 "card", :f :table))
 
 
@@ -152,12 +187,11 @@
   [card-2-id]
   (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))                 ; filtering is done by slug
 
-(defn- mbql-count-query [database-id table-id]
-  {:database database-id
-   :type     "query"
-   :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}})
 
-;; ## POST /api/card
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    CREATING A CARD                                                     |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Test that we can make a card
 (let [card-name (random-name)]
   (tt/expect-with-temp [Database [{database-id :id}]
@@ -168,16 +202,66 @@
             :dataset_query          (mbql-count-query database-id table-id)
             :visualization_settings {:global {:title nil}}
             :database_id            database-id ; these should be inferred automatically
-            :table_id               table-id})
-    ;; make sure we clean up after ourselves as well and delete the Card we create
-    (dissoc (u/prog1 ((user->client :rasta) :post 200 "card" {:name                   card-name
-                                                              :display                "scalar"
-                                                              :dataset_query          (mbql-count-query database-id table-id)
-                                                              :visualization_settings {:global {:title nil}}})
-              (db/delete! Card :id (u/get-id <>)))
-            :created_at :updated_at :id)))
+            :table_id               table-id
+            :labels                 []
+            :can_write              true,
+            :dashboard_count        0,
+            :collection             nil
+            :creator                (match-$ (fetch-user :rasta)
+                                      {:common_name  "Rasta Toucan"
+                                       :is_superuser false
+                                       :is_qbnewb    true
+                                       :last_login   $
+                                       :last_name    "Toucan"
+                                       :first_name   "Rasta"
+                                       :date_joined  $
+                                       :email        "rasta@metabase.com"
+                                       :id           $})})
+    (with-self-cleaning-random-card-name [_ card-name]
+      (dissoc ((user->client :rasta) :post 200 "card" (card-with-name-and-query card-name (mbql-count-query database-id table-id)))
+              :created_at :updated_at :id))))
 
-;; ## GET /api/card/:id
+;; Make sure when saving a Card the query metadata is saved (if correct)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "Count Chocula"
+    :name         "count_chocula"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (with-self-cleaning-random-card-name [card-name]
+      ;; create a card with the metadata
+      ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                :result_metadata    metadata
+                                                :metadata_checksum  ((resolve 'metabase.query-processor.middleware.results-metadata/metadata-checksum) metadata)))
+      ;; now check the metadata that was saved in the DB
+      (db/select-one-field :result_metadata Card :name card-name))))
+
+;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "count"
+    :name         "count"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (with-self-cleaning-random-card-name [card-name]
+      ;; create a card with the metadata
+      ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                :result_metadata    metadata
+                                                :metadata_checksum  "ABCDEF")) ; bad checksum
+      ;; now check the correct metadata was fetched and was saved in the DB
+      (db/select-one-field :result_metadata Card :name card-name))))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                FETCHING A SPECIFIC CARD                                                |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Test that we can fetch a card
 (tt/expect-with-temp [Database  [{database-id :id}]
                       Table     [{table-id :id}   {:db_id database-id}]
@@ -221,7 +305,10 @@
     ;; now a non-admin user shouldn't be able to fetch this card
     ((user->client :rasta) :get 403 (str "card/" (u/get-id card)))))
 
-;; ## PUT /api/card/:id
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    UPDATING A CARD                                                     |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; updating a card that doesn't exist should give a 404
 (expect "Not found."
@@ -288,7 +375,203 @@
     (tu/with-temporary-setting-values [enable-embedding false]
       ((user->client :crowberto) :put 400 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))
 
-;; ## DELETE /api/card/:id
+;; make sure when updating a Card the query metadata is saved (if correct)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "Count Chocula"
+    :name         "count_chocula"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (tt/with-temp Card [card]
+      ;; update the Card's query
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id card))
+       {:dataset_query (mbql-count-query (data/id) (data/id :venues))
+        :result_metadata    metadata
+        :metadata_checksum  ((resolve 'metabase.query-processor.middleware.results-metadata/metadata-checksum) metadata)})
+      ;; now check the metadata that was saved in the DB
+      (db/select-one-field :result_metadata Card :id (u/get-id card)))))
+
+;; Make sure when updating a Card the correct query metadata is fetched (if incorrect)
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "count"
+    :name         "count"
+    :special_type "type/Number"}]
+  (let [metadata [{:base_type    :type/Integer
+                   :display_name "Count Chocula"
+                   :name         "count_chocula"
+                   :special_type :type/Number}]]
+    (tt/with-temp Card [card]
+      ;; update the Card's query
+      ((user->client :rasta) :put 200 (str "card/" (u/get-id card))
+       {:dataset_query (mbql-count-query (data/id) (data/id :venues))
+        :result_metadata    metadata
+        :metadata_checksum  "ABC123"})  ; invalid checksum
+      ;; now check the metadata that was saved in the DB
+      (db/select-one-field :result_metadata Card :id (u/get-id card)))))
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                           Card updates that impact alerts                                              |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn- rasta-alert-not-working [body-map]
+  (et/email-to :rasta {:subject "One of your alerts has stopped working",
+                       :body body-map}))
+
+(defn- crowberto-alert-not-working [body-map]
+  (et/email-to :crowberto {:subject "One of your alerts has stopped working",
+                           :body body-map}))
+
+;; Validate archiving a card trigers alert deletion
+(tt/expect-with-temp [Card  [{card-id :id :as card}]
+                      Pulse [{pulse-id :id}                 {:alert_condition   "rows"
+                                                             :alert_first_only  false
+                                                             :creator_id        (user->id :rasta)
+                                                             :name              "Original Alert Name"}]
+
+                      PulseCard             [_              {:pulse_id pulse-id
+                                                             :card_id  card-id
+                                                             :position 0}]
+                      PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
+                      PulseChannelRecipient [{pcr-id-1 :id} {:user_id          (user->id :crowberto)
+                                                             :pulse_channel_id pc-id}]
+                      PulseChannelRecipient [{pcr-id-2 :id} {:user_id          (user->id :rasta)
+                                                             :pulse_channel_id pc-id}]]
+  [(merge (crowberto-alert-not-working {"the question was archived by Rasta Toucan" true})
+          (rasta-alert-not-working {"the question was archived by Rasta Toucan" true}))
+   nil]
+  (et/with-fake-inbox
+    (et/with-expected-messages 2
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:archived true}))
+    [(et/regex-email-bodies #"the question was archived by Rasta Toucan")
+     (Pulse pulse-id)]))
+
+;; Validate changing a display type trigers alert deletion
+(tt/expect-with-temp [Card  [{card-id :id :as card}         {:display :table}]
+                      Pulse [{pulse-id :id}                 {:alert_condition   "rows"
+                                                             :alert_first_only  false
+                                                             :creator_id        (user->id :rasta)
+                                                             :name              "Original Alert Name"}]
+
+                      PulseCard             [_              {:pulse_id pulse-id
+                                                             :card_id  card-id
+                                                             :position 0}]
+                      PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
+                      PulseChannelRecipient [{pcr-id-1 :id} {:user_id          (user->id :crowberto)
+                                                             :pulse_channel_id pc-id}]
+                      PulseChannelRecipient [{pcr-id-2 :id} {:user_id          (user->id :rasta)
+                                                             :pulse_channel_id pc-id}]]
+  [(merge (crowberto-alert-not-working {"the question was edited by Rasta Toucan" true})
+          (rasta-alert-not-working {"the question was edited by Rasta Toucan" true}))
+
+   nil]
+  (et/with-fake-inbox
+    (et/with-expected-messages 2
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:display :line}))
+    [(et/regex-email-bodies #"the question was edited by Rasta Toucan")
+     (Pulse pulse-id)]))
+
+;; Changing the display type from line to table should force a delete
+(tt/expect-with-temp [Card  [{card-id :id :as card}       {:display                :line
+                                                           :visualization_settings {:graph.goal_value 10}}]
+                      Pulse [{pulse-id :id}               {:alert_condition  "goal"
+                                                           :alert_first_only false
+                                                           :creator_id       (user->id :rasta)
+                                                           :name             "Original Alert Name"}]
+                      PulseCard             [_            {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                      PulseChannel          [{pc-id :id}  {:pulse_id pulse-id}]
+                      PulseChannelRecipient [{pcr-id :id} {:user_id          (user->id :rasta)
+                                                           :pulse_channel_id pc-id}]]
+  [(rasta-alert-not-working {"the question was edited by Rasta Toucan" true})
+   nil]
+  (et/with-fake-inbox
+    (et/with-expected-messages 1
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:display :table}))
+    [(et/regex-email-bodies #"the question was edited by Rasta Toucan")
+     (Pulse pulse-id)]))
+
+;; Changing the display type from line to area/bar is fine and doesn't delete the alert
+(tt/expect-with-temp [Card  [{card-id :id :as card}       {:display                :line
+                                                           :visualization_settings {:graph.goal_value 10}}]
+                      Pulse [{pulse-id :id}               {:alert_condition  "goal"
+                                                           :alert_first_only false
+                                                           :creator_id       (user->id :rasta)
+                                                           :name             "Original Alert Name"}]
+                      PulseCard             [_            {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                      PulseChannel          [{pc-id :id}  {:pulse_id pulse-id}]
+                      PulseChannelRecipient [{pcr-id :id} {:user_id          (user->id :rasta)
+                                                           :pulse_channel_id pc-id}]]
+  [{} true {} true]
+  (et/with-fake-inbox
+    [(do
+       ((user->client :rasta) :put 200 (str "card/" card-id) {:display :area})
+       (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
+     (boolean (Pulse pulse-id))
+     (do
+       ((user->client :rasta) :put 200 (str "card/" card-id) {:display :bar})
+       (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
+     (boolean (Pulse pulse-id))]))
+
+;; Removing the goal value will trigger the alert to be deleted
+(tt/expect-with-temp [Card  [{card-id :id :as card}       {:display                :line
+                                                           :visualization_settings {:graph.goal_value 10}}]
+                      Pulse [{pulse-id :id}               {:alert_condition  "goal"
+                                                           :alert_first_only false
+                                                           :creator_id       (user->id :rasta)
+                                                           :name             "Original Alert Name"}]
+                      PulseCard             [_            {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                      PulseChannel          [{pc-id :id}  {:pulse_id pulse-id}]
+                      PulseChannelRecipient [{pcr-id :id} {:user_id          (user->id :rasta)
+                                                           :pulse_channel_id pc-id}]]
+  [(rasta-alert-not-working {"the question was edited by Rasta Toucan" true})
+   nil]
+  (et/with-fake-inbox
+    (et/with-expected-messages 1
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:visualization_settings {:something "else"}}))
+    [(et/regex-email-bodies #"the question was edited by Rasta Toucan")
+     (Pulse pulse-id)]))
+
+;; Adding an additional breakout will cause the alert to be removed
+(tt/expect-with-temp [Database [{database-id :id}]
+                      Table    [{table-id :id}  {:db_id database-id}]
+                      Card  [{card-id :id :as card}       {:display                :line
+                                                           :visualization_settings {:graph.goal_value 10}
+                                                           :dataset_query          (assoc-in (mbql-count-query database-id table-id)
+                                                                                             [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]])}]
+                      Pulse [{pulse-id :id}               {:alert_condition  "goal"
+                                                           :alert_first_only false
+                                                           :creator_id       (user->id :rasta)
+                                                           :name             "Original Alert Name"}]
+                      PulseCard             [_            {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                      PulseChannel          [{pc-id :id}  {:pulse_id pulse-id}]
+                      PulseChannelRecipient [{pcr-id :id} {:user_id          (user->id :rasta)
+                                                           :pulse_channel_id pc-id}]]
+  [(rasta-alert-not-working {"the question was edited by Crowberto Corv" true})
+   nil]
+  (et/with-fake-inbox
+    (et/with-expected-messages 1
+      ((user->client :crowberto) :put 200 (str "card/" card-id) {:dataset_query (assoc-in (mbql-count-query database-id table-id)
+                                                                                          [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
+                                                                                                              ["datetime-field" (data/id :checkins :date) "second"]])}))
+    [(et/regex-email-bodies #"the question was edited by Crowberto Corv")
+     (Pulse pulse-id)]))
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                              DELETING A CARD (DEPRECATED)                                              |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;; Deprecated because you're not supposed to delete cards anymore. Archive them instead
+
 ;; Check that we can delete a card
 (expect
   nil
@@ -297,10 +580,14 @@
     (Card id)))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
-(expect "Not found."
+(expect
+  "Not found."
   ((user->client :crowberto) :delete 404 "card/12345"))
 
-;; # CARD FAVORITE STUFF
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                       FAVORITING                                                       |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; Helper Functions
 (defn- fave? [card]
@@ -343,6 +630,10 @@
          (fave? card))]))
 
 
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                         LABELS                                                         |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;;; POST /api/card/:id/labels
 ;; Check that we can update card labels
 (tt/expect-with-temp [Card  [{card-id :id}]
@@ -361,6 +652,10 @@
      (update-labels [label-1-id label-2-id]) ; (2)
      (update-labels [])]))                   ; (3)
 
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                CSV/JSON/XLSX DOWNLOADS                                                 |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;;; POST /api/:card-id/query/csv
 
@@ -461,6 +756,7 @@
            (spreadsheet/select-sheet "Query result")
            (spreadsheet/select-columns {:A :col})))))
 
+
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      COLLECTIONS                                                       |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -468,26 +764,19 @@
 ;; Make sure we can create a card and specify its `collection_id` at the same time
 (tt/expect-with-temp [Collection [collection]]
   (u/get-id collection)
-  (do
+  (with-self-cleaning-random-card-name [card-name]
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-    (let [{card-id :id} ((user->client :rasta) :post 200 "card" {:name                   "My Cool Card"
-                                                                 :display                "scalar"
-                                                                 :dataset_query          (mbql-count-query (id) (id :venues))
-                                                                 :visualization_settings {:global {:title nil}}
-                                                                 :collection_id          (u/get-id collection)})]
-      ;; make sure we clean up after ourselves and delete the newly created Card
-      (u/prog1 (db/select-one-field :collection_id Card :id card-id)
-        (db/delete! Card :id card-id)))))
+    (let [{card-id :id} ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                                  :collection_id (u/get-id collection)))]
+      (db/select-one-field :collection_id Card :id card-id))))
 
 ;; Make sure we card creation fails if we try to set a `collection_id` we don't have permissions for
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp Collection [collection]
-    ((user->client :rasta) :post 403 "card" {:name                   "My Cool Card"
-                                             :display                "scalar"
-                                             :dataset_query          (mbql-count-query (id) (id :venues))
-                                             :visualization_settings {:global {:title nil}}
-                                             :collection_id          (u/get-id collection)})))
+  (with-self-cleaning-random-card-name [card-name]
+    (tt/with-temp Collection [collection]
+      ((user->client :rasta) :post 403 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                :collection_id (u/get-id collection))))))
 
 ;; Make sure we can change the `collection_id` of a Card if it's not in any collection
 (tt/expect-with-temp [Card       [card]

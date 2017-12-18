@@ -1,9 +1,12 @@
 (ns metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints."
-  (:require [expectations :refer :all]
+  (:require [cheshire.generate :as generate]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
+            [expectations :refer :all]
+            [medley.core :as m]
             [metabase.api.dataset :refer [default-query-constraints]]
             [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
@@ -32,11 +35,11 @@
                              (.endsWith (name k) "_id"))
                  (if (or (= :created_at k)
                          (= :updated_at k))
-                   [k (not (nil? v))]
+                   [k (some? v)]
                    [k (f v)]))))))
 
 (defn format-response [m]
-  (into {} (for [[k v] m]
+  (into {} (for [[k v] (m/dissoc-in m [:data :results_metadata])]
              (cond
                (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)
@@ -53,7 +56,7 @@
    {:data                   {:rows    [[1000]]
                              :columns ["count"]
                              :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                        :description nil, :target nil, :extra_info {}, :source "aggregation"}]
+                                        :description nil, :target nil, :extra_info {}, :source "aggregation", :remapped_from nil, :remapped_to nil}]
                              :native_form true}
     :row_count              1
     :status                 "completed"
@@ -127,3 +130,26 @@
                                                                         :native   {:query "foobar"}})]
     [(check-error-message (format-response result))
      (check-error-message (format-response (most-recent-query-execution)))]))
+
+
+;;; Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in XLSX (#5145, #5220, #5459)
+(defrecord ^:private SampleNastyClass [^String v])
+
+(generate/add-encoder
+ SampleNastyClass
+ (fn [obj, ^com.fasterxml.jackson.core.JsonGenerator json-generator]
+   (.writeString json-generator (:v obj))))
+
+(defrecord ^:private AnotherNastyClass [^String v])
+
+(expect
+  [{"Values" "values"}
+   {"Values" "Hello XLSX World!"}   ; should use the JSON encoding implementation for object
+   {"Values" "{:v \"No Encoder\"}"} ; fall back to the implementation of `str` for an object if no JSON encoder exists rather than barfing
+   {"Values" "ABC"}]
+  (->> (spreadsheet/create-workbook "Results" [["values"]
+                                               [(SampleNastyClass. "Hello XLSX World!")]
+                                               [(AnotherNastyClass. "No Encoder")]
+                                               ["ABC"]])
+       (spreadsheet/select-sheet "Results")
+       (spreadsheet/select-columns {:A "Values"})))

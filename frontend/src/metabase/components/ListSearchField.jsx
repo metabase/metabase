@@ -21,8 +21,17 @@ export default class ListSearchField extends Component {
         autoFocus: false
     };
 
+    componentDidMount() {
+        if (this.props.autoFocus) {
+            // Call focus() with a small delay because instant input focus causes an abrupt scroll to top of page
+            // when ListSearchField is used inside a popover. It seems that it takes a while for Tether library
+            // to correctly position the popover.
+            setTimeout(() => this._input && this._input.focus(), 50);
+        }
+    }
+
     render() {
-        const { className, inputClassName, onChange, placeholder, searchText, autoFocus } = this.props;
+        const { className, inputClassName, onChange, placeholder, searchText } = this.props;
 
         return (
             <div className={className}>
@@ -35,7 +44,7 @@ export default class ListSearchField extends Component {
                     placeholder={placeholder}
                     value={searchText}
                     onChange={(e) => onChange(e.target.value)}
-                    autoFocus={autoFocus}
+                    ref={input => this._input = input}
                 />
             </div>
         );

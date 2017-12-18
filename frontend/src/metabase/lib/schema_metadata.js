@@ -1,6 +1,7 @@
 import _ from "underscore";
 
-import { isa, isFK, TYPE } from "metabase/lib/types";
+import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
+import { getFieldValues } from "metabase/lib/query/field";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -108,6 +109,9 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
 
+export const isFK = (field) => field && isTypeFK(field.special_type);
+export const isPK = (field) => field && isTypePK(field.special_type);
+
 export const isAny = (col) => true;
 
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
@@ -121,6 +125,8 @@ export const isCountry      = (field) => isa(field && field.special_type, TYPE.C
 export const isCoordinate   = (field) => isa(field && field.special_type, TYPE.Coordinate);
 export const isLatitude     = (field) => isa(field && field.special_type, TYPE.Latitude);
 export const isLongitude    = (field) => isa(field && field.special_type, TYPE.Longitude);
+
+export const isID           = (field) => isFK(field) || isPK(field);
 
 // operator argument constructors:
 
@@ -168,18 +174,18 @@ function equivalentArgument(field, table) {
     }
 
     if (isCategory(field)) {
-        if (table.field_values && field.id in table.field_values && table.field_values[field.id].length > 0) {
-            let validValues = [...table.field_values[field.id]];
-            // this sort function works for both numbers and strings:
-            validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
+        const values = getFieldValues(field)
+        if (values && values.length > 0) {
             return {
                 type: "select",
-                values: validValues
-                    .filter(value => value != null)
-                    .map(value => ({
+                values: values
+                    .filter(([value, displayValue]) => value != null)
+                    .map(([value, displayValue]) => ({
                         key: value,
-                        name: value
+                        // NOTE Atte Keinänen 8/7/17: Similar logic as in getHumanReadableValue of lib/query/field
+                        name: displayValue ? displayValue : String(value)
                     }))
+                    .sort((a, b) => a.key === b.key ? 0 : (a.key < b.key ? -1 : 1))
             };
         }
     }
@@ -475,6 +481,9 @@ export function getAggregator(short) {
     return _.findWhere(Aggregators, { short: short });
 }
 
+export const isCompatibleAggregatorForField = (aggregator, field) =>
+    aggregator.validFieldsFilters.every(filter => filter([field]).length === 1)
+
 export function getBreakouts(fields) {
     var result = populateFields(BreakoutAggregator, fields);
     result.fields = result.fields[0];
@@ -550,7 +559,7 @@ export function computeMetadataStrength(table) {
         table.fields.forEach(function(field) {
             score(field.description);
             score(field.special_type);
-            if (isFK(field.special_type)) {
+            if (isFK(field)) {
                 score(field.target);
             }
         });

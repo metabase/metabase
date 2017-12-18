@@ -1,22 +1,24 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [sync-database :as sync-database]
+             [sync :as sync]
              [util :as u]]
             metabase.driver.h2
             [metabase.models
              [database :refer [Database]]
+             [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [table :refer [Table]]]
-            [metabase.query-processor
-             [expand :as ql]
-             [interface :as qi]]
+            [metabase.query-processor.interface :as qi]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
@@ -97,7 +99,7 @@
   `(ql/query (ql/source-table (id ~(keyword table)))
              ~@(map (partial $->id (keyword table)) forms)))
 
-(s/defn ^:always-validate wrap-inner-query
+(s/defn wrap-inner-query
   "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
   {:style/indent 0}
   [query :- qi/Query]
@@ -105,7 +107,7 @@
    :type     :query
    :query    query})
 
-(s/defn ^:always-validate run-query*
+(s/defn run-query*
   "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
 
      (run-query* (query (source-table 5) ...))"
@@ -129,7 +131,7 @@
   (i/format-name *driver* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
-  {:pre [(integer? db-id) (u/string-or-keyword? table-name)]}
+  {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
   (let [table-name (format-name table-name)]
     (or (db/select-one-id Table, :db_id db-id, :name table-name)
         (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))
@@ -153,9 +155,13 @@
    (:id (db)))
 
   ([table-name]
+   ;; Ensure the database has been created
+   (db)
    (get-table-id-or-explode (id) table-name))
 
   ([table-name field-name & nested-field-names]
+   ;; Ensure the database has been created
+   (db)
    (let [table-id (id table-name)]
      (loop [parent-id (get-field-id-or-explode table-id field-name), [nested-field-name & more] nested-field-names]
        (if-not nested-field-name
@@ -167,10 +173,18 @@
   []
   (contains? (driver/features *driver*) :foreign-keys))
 
+(defn binning-supported?
+  "Does the current engine support binning?"
+  []
+  (contains? (driver/features *driver*) :binning))
+
 (defn default-schema [] (i/default-schema *driver*))
 (defn id-field-type  [] (i/id-field-type *driver*))
 
-(defn expected-base-type->actual [base-type]
+(defn expected-base-type->actual
+  "Return actual `base_type` that will be used for the given driver if we asked for BASE-TYPE.
+   Mainly for Oracle because it doesn't have `INTEGER` types and uses decimals instead."
+  [base-type]
   (i/expected-base-type->actual *driver* base-type))
 
 
@@ -202,14 +216,22 @@
   ;; Create the database
   (i/create-db! driver database-definition)
   ;; Add DB object to Metabase DB
-  (u/prog1 (db/insert! Database
+  (let [db (db/insert! Database
              :name    database-name
              :engine  (name engine)
-             :details (i/database->connection-details driver :db database-definition))
+             :details (i/database->connection-details driver :db database-definition))]
     ;; sync newly added DB
-    (sync-database/sync-database! <>)
+    (sync/sync-database! db)
     ;; add extra metadata for fields
-    (add-extra-metadata! database-definition <>)))
+    (add-extra-metadata! database-definition db)
+    ;; make sure we're returing an up-to-date copy of the DB
+    (Database (u/get-id db))))
+
+(defn- reload-test-extensions [engine]
+  (println "Reloading test extensions for driver:" engine)
+  (let [extension-ns (symbol (str "metabase.test.data." (name engine)))]
+    (println (format "(require '%s 'metabase.test.data.datasets :reload)" extension-ns))
+    (require extension-ns 'metabase.test.data.datasets :reload)))
 
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
@@ -218,9 +240,18 @@
   ([database-definition]
    (get-or-create-database! *driver* database-definition))
   ([driver database-definition]
-   (let [engine (i/engine driver)]
-     (or (i/metabase-instance database-definition engine)
-         (create-database! database-definition engine driver)))))
+   (let [engine         (i/engine driver)
+         get-or-create! (fn []
+                          (or (i/metabase-instance database-definition engine)
+                              (create-database! database-definition engine driver)))]
+     (try
+       (get-or-create!)
+       ;; occasionally we'll see an error like
+       ;; java.lang.IllegalArgumentException: No implementation of method: :database->connection-details of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
+       ;; to fix this we just need to reload a couple namespaces and then try again
+       (catch IllegalArgumentException _
+         (reload-test-extensions engine)
+         (get-or-create!))))))
 
 
 (defn do-with-temp-db
@@ -270,3 +301,50 @@
   [dataset & body]
   `(with-temp-db [_# (resolve-dbdef '~dataset)]
      ~@body))
+
+(defn- delete-model-instance!
+  "Allows deleting a row by the model instance toucan returns when
+  it's inserted"
+  [{:keys [id] :as instance}]
+  (db/delete! (-> instance name symbol) :id id))
+
+(defn call-with-data
+  "Takes a thunk `DATA-LOAD-FN` that returns a seq of toucan model
+  instances that will be deleted after `BODY-FN` finishes"
+  [data-load-fn body-fn]
+  (let [result-instances (data-load-fn)]
+    (try
+      (body-fn)
+      (finally
+        (doseq [instance result-instances]
+          (delete-model-instance! instance))))))
+
+(defmacro with-data [data-load-fn & body]
+  `(call-with-data ~data-load-fn (fn [] ~@body)))
+
+(def venue-categories
+  (map vector (defs/field-values defs/test-data-map "categories" "name")))
+
+(defn create-venue-category-remapping
+  "Returns a thunk that adds an internal remapping for category_id in
+  the venues table aliased as `REMAPPING-NAME`. Can be used in a
+  `with-data` invocation."
+  [remapping-name]
+  (fn []
+    [(db/insert! Dimension {:field_id (id :venues :category_id)
+                            :name remapping-name
+                            :type :internal})
+     (db/insert! FieldValues {:field_id (id :venues :category_id)
+                              :values (json/generate-string (range 0 (count venue-categories)))
+                              :human_readable_values (json/generate-string (map first venue-categories))})]))
+
+(defn create-venue-category-fk-remapping
+  "Returns a thunk that adds a FK remapping for category_id in the
+  venues table aliased as `REMAPPING-NAME`. Can be used in a
+  `with-data` invocation."
+  [remapping-name]
+  (fn []
+    [(db/insert! Dimension {:field_id (id :venues :category_id)
+                            :name remapping-name
+                            :type :external
+                            :human_readable_field_id (id :categories :name)})]))

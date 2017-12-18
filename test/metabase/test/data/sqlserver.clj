@@ -1,8 +1,6 @@
 (ns metabase.test.data.sqlserver
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
-            [environ.core :refer [env]]
             [metabase.driver.generic-sql :as sql]
             [metabase.test.data
              [datasets :as datasets]
@@ -35,22 +33,11 @@
 (defn- +suffix [db-name]
   (str db-name \_ @db-name-suffix-number))
 
-(defn- get-db-env-var
-  "Since we run our tests on non-Windows machines, we need to connect to a remote server for running tests.
-   Look up the relevant env var or throw an exception if it's not set.
-
-     (get-db-env-var :user) ; Look up `MB_SQL_SERVER_USER`"
-  [env-var & [default]]
-  (or (env (keyword (format "mb-sql-server-%s" (name env-var))))
-      default
-      (throw (Exception. (format "In order to test SQL Server, you must specify the env var MB_SQL_SERVER_%s."
-                                 (s/upper-case (name env-var)))))))
-
 (defn- database->connection-details [context {:keys [database-name]}]
-  {:host         (get-db-env-var :host)
-   :port         (Integer/parseInt (get-db-env-var :port "1433"))
-   :user         (get-db-env-var :user)
-   :password     (get-db-env-var :password)
+  {:host         (i/db-test-env-var-or-throw :sqlserver :host)
+   :port         (Integer/parseInt (i/db-test-env-var-or-throw :sqlserver :port "1433"))
+   :user         (i/db-test-env-var-or-throw :sqlserver :user)
+   :password     (i/db-test-env-var-or-throw :sqlserver :password)
    :db           (when (= context :db)
                    (+suffix database-name))})
 

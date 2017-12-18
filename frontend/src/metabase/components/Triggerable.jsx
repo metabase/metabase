@@ -45,6 +45,11 @@ export default ComposedComponent => class extends Component {
         if (e && e.target && ReactDOM.findDOMNode(this.refs.trigger).contains(e.target)) {
             return;
         }
+
+        if (this.props.onClose) {
+            this.props.onClose(e)
+        }
+
         this.close();
     }
 

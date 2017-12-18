@@ -2,7 +2,7 @@
 
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import MetabaseSettings from "metabase/lib/settings";
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 
@@ -33,25 +33,26 @@ class VisualizationError extends Component {
 
   render () {
       const { card, duration, error } = this.props
-      if (typeof error.status === "number") {
+
+      if (error && typeof error.status === "number") {
           // Assume if the request took more than 15 seconds it was due to a timeout
           // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
           if (duration > 15*1000) {
               return <VisualizationErrorMessage
                         type="timeout"
-                        title="Your question took too long"
-                        message="We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
+                        title={t`Your question took too long`}
+                        message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
                         action={<EmailAdmin />}
                     />
           } else {
               return <VisualizationErrorMessage
                         type="serverError"
-                        title="We're experiencing server issues"
-                        message="Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
+                        title={t`We're experiencing server issues`}
+                        message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
                         action={<EmailAdmin />}
                     />
           }
-      } else if (card.dataset_query && card.dataset_query.type === 'native') {
+      } else if (card && card.dataset_query && card.dataset_query.type === 'native') {
           // always show errors for native queries
           return (
               <div className="QueryError flex full align-center text-error">
@@ -66,15 +67,15 @@ class VisualizationError extends Component {
       } else {
           return (
               <div className="QueryError2 flex full justify-center">
-                  <div className="QueryError-image QueryError-image--queryError mr4"></div>
+                  <div className="QueryError-image QueryError-image--queryError mr4" />
                   <div className="QueryError2-details">
-                      <h1 className="text-bold">There was a problem with your question</h1>
-                      <p className="QueryError-messageText">Most of the time this is caused by an invalid selection or bad input value.  Double check your inputs and retry your query.</p>
+                      <h1 className="text-bold">{t`There was a problem with your question`}</h1>
+                      <p className="QueryError-messageText">{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
                       <div className="pt2">
-                          <a onClick={() => this.setState({ showError: true })} className="link cursor-pointer">Show error details</a>
+                          <a onClick={() => this.setState({ showError: true })} className="link cursor-pointer">{t`Show error details`}</a>
                       </div>
                       <div style={{ display: this.state.showError? 'inherit': 'none'}} className="pt3 text-left">
-                          <h2>Here's the full error message</h2>
+                          <h2>{t`Here's the full error message`}</h2>
                           <div style={{fontFamily: "monospace"}} className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1">{error}</div>
                       </div>
                   </div>

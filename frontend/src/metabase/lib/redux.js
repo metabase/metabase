@@ -15,6 +15,7 @@ export function createThunkAction(actionType, actionThunkCreator) {
         var thunk = actionThunkCreator(...actionArgs);
         return async function(dispatch, getState) {
             try {
+
                 let payload = await thunk(dispatch, getState);
                 let dispatchValue = { type: actionType, payload };
                 dispatch(dispatchValue);
@@ -64,11 +65,15 @@ export const fetchData = async ({
     const existingData = getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['fetch']);
     try {
-        const requestState = getIn(getState(), ["requests", ...statePath]);
+        const requestState = getIn(getState(), ["requests", "states", ...statePath]);
         if (!requestState || requestState.error || reload) {
             dispatch(setRequestState({ statePath, state: "LOADING" }));
             const data = await getData();
-            dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+            // NOTE Atte Keinänen 8/23/17:
+            // Dispatch `setRequestState` after clearing the call stack because we want to the actual data to be updated
+            // before we notify components via `state.requests.fetches` that fetching the data is completed
+            setTimeout(() => dispatch(setRequestState({ statePath, state: "LOADED" })), 0);
 
             return data;
         }

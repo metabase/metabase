@@ -1,39 +1,33 @@
 /* @flow */
 
-import { drillRecord } from "metabase/qb/lib/actions";
-
-import { isFK, isPK } from "metabase/lib/types";
-
-import * as Table from "metabase/lib/query/table";
-
+import { isFK, isPK } from "metabase/lib/schema_metadata";
+import { t } from "c-3po";
 import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     if (
         !clicked ||
         !clicked.column ||
         clicked.value === undefined ||
-        !(isFK(clicked.column.special_type) ||
-            isPK(clicked.column.special_type))
+        !(isFK(clicked.column) || isPK(clicked.column))
     ) {
         return [];
     }
 
-    const value = clicked.value;
+    // $FlowFixMe
+    let field = question.metadata().fields[clicked.column.id];
+    if (!field) {
+        return [];
+    }
 
-    let field = Table.getField(tableMetadata, clicked.column.id);
-    let table = tableMetadata;
     if (field.target) {
-        table = field.target.table;
         field = field.target;
     }
 
-    if (!field || !table) {
+    if (!clicked) {
         return [];
     }
 
@@ -41,10 +35,9 @@ export default (
         {
             name: "object-detail",
             section: "details",
-            title: "View details",
+            title: t`View details`,
             default: true,
-            card: () =>
-                drillRecord(tableMetadata.db_id, table.id, field.id, value)
+            question: () => question.drillPK(field, clicked && clicked.value)
         }
     ];
 };

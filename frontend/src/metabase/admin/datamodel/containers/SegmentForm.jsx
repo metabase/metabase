@@ -14,6 +14,8 @@ import { segmentFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
 import cx from "classnames";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Table from "metabase-lib/lib/metadata/Table";
 
 @reduxForm({
     form: "segment",
@@ -55,13 +57,13 @@ export default class SegmentForm extends Component {
         return (
             <div>
                 <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
-                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button Button--borderless mx1">Cancel</Link>
+                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button ml2">Cancel</Link>
             </div>
         )
     }
 
     render() {
-        const { fields: { id, name, description, definition, revision_message }, segment, tableMetadata, handleSubmit, previewSummary } = this.props;
+        const { fields: { id, name, description, definition, revision_message }, segment, metadata, tableMetadata, handleSubmit, previewSummary } = this.props;
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -79,10 +81,17 @@ export default class SegmentForm extends Component {
                                 features={{
                                     filter: true
                                 }}
-                                tableMetadata={{
-                                    ...tableMetadata,
-                                    segments: null
-                                }}
+                                metadata={
+                                    metadata && tableMetadata && metadata.tables && metadata.tables[tableMetadata.id].fields && Object.assign(new Metadata(), metadata, {
+                                        tables: {
+                                            ...metadata.tables,
+                                            [tableMetadata.id]: Object.assign(new Table(), metadata.tables[tableMetadata.id], {
+                                                segments: []
+                                            })
+                                        }
+                                    })
+                                }
+                                tableMetadata={tableMetadata}
                                 previewSummary={previewSummary == null ? "" : formatValue(previewSummary) + " rows"}
                                 updatePreviewSummary={this.updatePreviewSummary.bind(this)}
                                 {...definition}

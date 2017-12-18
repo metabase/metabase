@@ -2,10 +2,14 @@
 
 import type { LimitClause } from "metabase/meta/types/Query";
 
-export function updateLimit(bc: ?LimitClause, limit: ?LimitClause): ?LimitClause {
+export function getLimit(lc: ?LimitClause): ?number {
+    return lc;
+}
+
+export function updateLimit(lc: ?LimitClause, limit: ?number): ?LimitClause {
     return limit;
 }
 
-export function clearLimit(bc: ?LimitClause): ?LimitClause {
+export function clearLimit(lc: ?LimitClause): ?LimitClause {
     return undefined;
 }

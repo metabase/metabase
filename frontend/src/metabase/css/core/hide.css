@@ -1,5 +1,5 @@
 .hide { display: none !important; }
-.show { display: inheirt; }
+.show { display: inherit; }
 
 .hidden { visibility: hidden; }
 
@@ -7,6 +7,15 @@
 .md-show,
 .lg-show,
 .xl-show { display: none; }
+
+/* extra-small */
+
+@media screen and (--breakpoint-min-xs) {
+  .xs-hide { display: none !important; }
+}
+@media screen and (--breakpoint-min-xs) {
+  .xs-show { display: inherit !important; }
+}
 
 /* small */
 

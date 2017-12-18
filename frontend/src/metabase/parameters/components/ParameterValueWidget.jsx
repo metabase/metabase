@@ -19,8 +19,9 @@ import TextWidget from "./widgets/TextWidget.jsx";
 import S from "./ParameterWidget.css";
 
 import cx from "classnames";
+import _ from "underscore"
 
-const WIDGETS = {
+const DATE_WIDGETS = {
     "date/single": DateSingleWidget,
     "date/range": DateRangeWidget,
     "date/relative": DateRelativeWidget,
@@ -30,17 +31,21 @@ const WIDGETS = {
 }
 
 import { fetchFieldValues } from "metabase/redux/metadata";
-import { getParameterFieldValues } from "metabase/selectors/metadata";
+import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 
-const mapStateToProps = (state, props) => ({
-    values: getParameterFieldValues(state, props),
-})
+const makeMapStateToProps = () => {
+    const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
+    const mapStateToProps = (state, props) => ({
+        values: getMergedParameterFieldValues(state, props),
+    })
+    return mapStateToProps;
+}
 
 const mapDispatchToProps = {
     fetchFieldValues
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
 
     static propTypes = {
@@ -67,10 +72,10 @@ export default class ParameterValueWidget extends Component {
     };
 
     static getWidget(parameter, values) {
-        if (values && values.length > 0) {
+        if (DATE_WIDGETS[parameter.type]) {
+            return DATE_WIDGETS[parameter.type];
+        } else if (values && values.length > 0) {
             return CategoryWidget;
-        } else if (WIDGETS[parameter.type]) {
-            return WIDGETS[parameter.type];
         } else {
             return TextWidget;
         }
@@ -86,7 +91,11 @@ export default class ParameterValueWidget extends Component {
     state = { isFocused: false };
 
     componentWillMount() {
-        this.updateFieldValues(this.props);
+        // In public dashboards we receive field values before mounting this component and
+        // without need to call `fetchFieldValues` separately
+        if (_.isEmpty(this.props.values)) {
+            this.updateFieldValues(this.props);
+        }
     }
 
     componentWillReceiveProps(nextProps) {
@@ -159,13 +168,15 @@ export default class ParameterValueWidget extends Component {
                 <PopoverWithTrigger
                     ref="valuePopover"
                     triggerElement={
-                    <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
-                        { getParameterTypeIcon() }
-                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
-                        { getWidgetStatusIcon() }
-                    </div>
-                }
+                        <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
+                            { getParameterTypeIcon() }
+                            <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
+                            { getWidgetStatusIcon() }
+                        </div>
+                    }
                     target={() => this.refs.trigger} // not sure why this is necessary
+                    // make sure the full date picker will expand to fit the dual calendars
+                    autoWidth={parameter.type === "date/all-options"}
                 >
                     <Widget value={value} values={values} setValue={setValue}
                             onClose={() => this.refs.valuePopover.close()}/>

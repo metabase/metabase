@@ -16,6 +16,7 @@
             [clojure.tools.namespace.find :as ns-find]
             colorize.core ; this needs to be loaded for `format-color`
             [metabase.config :as config]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import clojure.lang.Keyword
            [java.net InetAddress InetSocketAddress Socket]
@@ -26,12 +27,13 @@
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
-;; This is the very first log message that will get printed.
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-(log/info "Loading Metabase...")
+;; This is the very first log message that will get printed.  It's here because this is one of the very first
+;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
+;; the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+(log/info (trs "Loading Metabase..."))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
+;; for pprinting huge things like expanded queries
 (intern 'clojure.pprint '*print-right-margin* 200)
 
 (declare pprint-to-str)
@@ -333,11 +335,6 @@
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
   (jdbc-clob->str [this]
-    (jdbc-clob->str (.getCharacterStream this)))
-
-  ;; SQL Server -- See also http://jtds.sourceforge.net/doc/net/sourceforge/jtds/jdbc/ClobImpl.html
-  net.sourceforge.jtds.jdbc.ClobImpl
-  (jdbc-clob->str [this]
     (jdbc-clob->str (.getCharacterStream this))))
 
 
@@ -372,7 +369,8 @@
 
 ;; TODO - rename to `url?`
 (defn is-url?
-  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing IP addresses will return `false`.)"
+  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
+  IP addresses will return `false`.)"
   ^Boolean [^String s]
   (boolean (when (seq s)
              (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
@@ -449,7 +447,8 @@
     (apply f (concat args bound-args))))
 
 (defmacro pdoseq
-  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
+  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and
+  only supports a single binding </3"
   {:style/indent 1}
   [[binding collection] & body]
   `(dorun (pmap (fn [~binding]
@@ -468,7 +467,8 @@
       (seq more)  (recur (inc i) more))))
 
 (defmacro prog1
-  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of FIRST-FORM.
+  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of
+   FIRST-FORM.
 
      (def numbers (atom []))
 
@@ -503,24 +503,29 @@
     identity
     (constantly "")))
 
-(def ^String ^{:style/indent 2, :arglists '([color-symb x] [color-symb format-str & args])}
-  format-color
+(def ^:private ^{:arglists '([color-symb x])} colorize
+  "Colorize string X with the function matching COLOR-SYMB, but only if `MB_COLORIZE_LOGS` is enabled (the default)."
+  (if (config/config-bool :mb-colorize-logs)
+    (fn [color-symb x]
+      (let [color-fn (or (ns-resolve 'colorize.core color-symb)
+                         (throw (Exception. (str "Invalid color symbol: " color-symb))))]
+        (color-fn x)))
+    (fn [_ x]
+      x)))
+
+(defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  (if (config/config-bool :mb-colorize-logs)
-    (fn
-      ([color-symb x]
-       {:pre [(symbol? color-symb)]}
-       ((ns-resolve 'colorize.core color-symb) x))
-      ([color-symb format-string & args]
-       (format-color color-symb (apply format format-string args))))
-    (fn
-      ([_ x] x)
-      ([_ format-string & args] (apply format format-string args)))))
+  {:style/indent 2}
+  (^String [color-symb x]
+   {:pre [(symbol? color-symb)]}
+   (colorize color-symb x))
+  (^String [color-symb format-string & args]
+   (colorize color-symb (apply format format-string args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
@@ -528,51 +533,46 @@
    function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
-  ([x]
+  {:style/indent 1}
+  (^String [x]
    (when x
      (with-out-str (pprint x))))
-  ([color-symb x]
-   ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
+  (^String [color-symb x]
+   (colorize color-symb (pprint-to-str x))))
 
-(def emoji-progress-bar
-  "Create a string that shows progress for something, e.g. a database sync process.
 
-     (emoji-progress-bar 10 40)
-       -> \"[************······································] 😒   25%"
-  (let [^:const meter-width    50
-        ^:const progress-emoji ["😱"  ; face screaming in fear
-                                "😢"  ; crying face
-                                "😞"  ; disappointed face
-                                "😒"  ; unamused face
-                                "😕"  ; confused face
-                                "😐"  ; neutral face
-                                "😬"  ; grimacing face
-                                "😌"  ; relieved face
-                                "😏"  ; smirking face
-                                "😋"  ; face savouring delicious food
-                                "😊"  ; smiling face with smiling eyes
-                                "😍"  ; smiling face with heart shaped eyes
-                                "😎"] ; smiling face with sunglasses
-        percent-done->emoji    (fn [percent-done]
-                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
-    (fn [completed total]
-      (let [percent-done (float (/ completed total))
-            filleds      (int (* percent-done meter-width))
-            blanks       (- meter-width filleds)]
-        (str "["
-             (s/join (repeat filleds "*"))
-             (s/join (repeat blanks "·"))
-             (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
+(defprotocol ^:private IFilteredStacktrace
+  (filtered-stacktrace [this]
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
 
-(defn filtered-stacktrace
-  "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
-  [^Throwable e]
-  (when e
-    (when-let [stacktrace (.getStackTrace e)]
-      (vec (for [frame stacktrace
-                 :let  [s (str frame)]
-                 :when (re-find #"metabase" s)]
-             (s/replace s #"^metabase\." ""))))))
+;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
+;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
+;; a VerifyError. Adding a layer of indirection here avoids the problem. Once we upgrade to Clojure 1.9
+;; we should be able to remove this code.
+(defn- throwable-get-stack-trace [^Throwable t]
+  (.getStackTrace t))
+
+(defn- thread-get-stack-trace [^Thread t]
+  (.getStackTrace t))
+
+(extend nil
+  IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
+
+(extend Throwable
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
+
+(extend Thread
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (filtered-stacktrace (thread-get-stack-trace this)))})
+
+;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
+(extend (Class/forName "[Ljava.lang.StackTraceElement;")
+  IFilteredStacktrace {:filtered-stacktrace (fn [this]
+                                              (vec (for [frame this
+                                                         :let  [s (str frame)]
+                                                         :when (re-find #"metabase" s)]
+                                                     (s/replace s #"^metabase\." ""))))})
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
@@ -644,8 +644,8 @@
 
 
 (defn- check-protocol-impl-method-map
-  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are provided.
-   Used internally by `strict-extend`."
+  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are
+   provided. Used internally by `strict-extend`."
   [protocol method-map]
   (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]
     (when missing-methods
@@ -654,10 +654,12 @@
       (throw (Exception. (format "Methods implemented that are not in %s: %s " (:var protocol) extra-methods))))))
 
 (defn strict-extend
-  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any methods not
-   declared in the protocol are provided.
-   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and to
-   `extend-protocol`/ `extend-type` going forward." ; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
+  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any
+  methods not declared in the protocol are provided.
+
+  Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
+  to `extend-protocol`/ `extend-type` going forward."
+  ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
   {:style/indent 1}
   [atype protocol method-map & more]
   (check-protocol-impl-method-map protocol method-map)
@@ -670,11 +672,12 @@
   ^String [^String s]
   (when (seq s)
     (s/replace
-     ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER A' + 'COMBINING ACUTE ACCENT'
-     ;; See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
+     ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER
+     ;; A' + 'COMBINING ACUTE ACCENT' See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
      (Normalizer/normalize s Normalizer$Form/NFD)
-     ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best: http://stackoverflow.com/a/5697575/1198455
-     ;; The closest thing to a relevant JavaDoc I could find was http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
+     ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best:
+     ;; http://stackoverflow.com/a/5697575/1198455 The closest thing to a relevant JavaDoc I could find was
+     ;; http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
      #"\p{Block=CombiningDiacriticalMarks}+"
      "")))
 
@@ -728,16 +731,11 @@
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
 
-(defn string-or-keyword?
-  "Is X a `String` or a `Keyword`?"
-  [x]
-  (or (string? x)
-      (keyword? x)))
-
 (defn key-by
   "Convert a sequential COLL to a map of `(f item)` -> `item`.
-   This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of items.
-   (Because only a single item is kept for each value of `f`,  items producing duplicate values will be discarded).
+  This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of
+  items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
+  discarded).
 
      (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
   {:style/indent 1}
@@ -778,15 +776,15 @@
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
    This is intended for use by various routines that load related namespaces, such as task and events initialization.
-   Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand or so
-   namespaces that are part of the Metabase project; use this instead for a massive performance increase."
-  ;; Actually we can go ahead and start doing this in the background once the app launches while other stuff is loading, so use a future here
-  ;; This would be faster when running the *JAR* if we just did it at compile-time and made it ^:const, but that would inhibit the "plugin system"
-  ;; from loading "plugin" namespaces at launch if they're on the classpath
-  (future (vec (for [ns-symb (ns-find/find-namespaces (classpath/classpath))
-                     :when   (and (.startsWith (name ns-symb) "metabase.")
-                                  (not (.contains (name ns-symb) "test")))]
-                 ns-symb))))
+   Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand
+   or so namespaces that are part of the Metabase project; use this instead for a massive performance increase."
+  ;; We want to give JARs in the ./plugins directory a chance to load. At one point we have this as a future so it
+  ;; start looking for things in the background while other stuff is happening but that meant plugins couldn't
+  ;; introduce new Metabase namespaces such as drivers.
+  (delay (vec (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
+                    :when   (and (.startsWith (name ns-symb) "metabase.")
+                                 (not (.contains (name ns-symb) "test")))]
+                ns-symb))))
 
 (def ^:const ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."
@@ -825,10 +823,10 @@
 
 (defn occurances-of-substring
   "Return the number of times SUBSTR occurs in string S."
-  ^Integer [^String s, ^String substr]
+  ^Long [^String s, ^String substr]
   (when (and (seq s) (seq substr))
     (loop [index 0, cnt 0]
-      (if-let [new-index (s/index-of s substr index)]
+      (if-let [^long new-index (s/index-of s substr index)]
         (recur (inc new-index) (inc cnt))
         cnt))))
 
@@ -839,7 +837,7 @@
      ;; -> {:a 100}"
   [m ks]
   (into {} (for [k     ks
-                 :when (not (nil? (get m k)))]
+                 :when (some? (get m k))]
              {k (get m k)})))
 
 (defn select-keys-when
@@ -856,3 +854,48 @@
   [m & {:keys [present non-nil]}]
   (merge (select-keys m present)
          (select-non-nil-keys m non-nil)))
+
+(defn order-of-magnitude
+  "Return the order of magnitude as a power of 10 of a given number."
+  [x]
+  (if (zero? x)
+    0
+    (long (math/floor (/ (Math/log (math/abs x))
+                         (Math/log 10))))))
+
+(defn update-when
+  "Like clojure.core/update but does not create a new key if it does not exist."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
+(def ^:private date-time-with-millis-no-t
+  "This primary use for this formatter is for Dates formatted by the
+  built-in SQLite functions"
+  (->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+
+(def ^:private ordered-date-parsers
+  "When using clj-time.format/parse without a formatter, it tries all default formatters, but not ordered by how
+  likely the date formatters will succeed. This leads to very slow parsing as many attempts fail before the right one
+  is found. Using this retains that flexibility but improves performance by trying the most likely ones first"
+  (let [most-likely-default-formatters [:mysql :date-hour-minute-second :date-time :date
+                                        :basic-date-time :basic-date-time-no-ms
+                                        :date-time :date-time-no-ms]]
+    (concat (map time/formatters most-likely-default-formatters)
+            [date-time-with-millis-no-t]
+            (vals (apply dissoc time/formatters most-likely-default-formatters)))))
+
+(defn str->date-time
+  "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date or nil if it
+  was unable to be parsed."
+  ([^String date-str]
+   (str->date-time date-str nil))
+  ([^String date-str ^TimeZone tz]
+   (let [dtz (some-> tz .getID t/time-zone-for-id)]
+     (first
+      (for [formatter ordered-date-parsers
+            :let [formatter-with-tz (time/with-zone formatter dtz)
+                  parsed-date (ignore-exceptions (time/parse formatter-with-tz date-str))]
+            :when parsed-date]
+        parsed-date)))))

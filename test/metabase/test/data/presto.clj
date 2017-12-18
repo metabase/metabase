@@ -1,6 +1,5 @@
 (ns metabase.test.data.presto
   (:require [clojure.string :as s]
-            [environ.core :refer [env]]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -13,20 +12,12 @@
 
 (resolve-private-vars metabase.driver.presto execute-presto-query! presto-type->base-type quote-name quote+combine-names)
 
-;;; Helpers
-
-(defn- get-env-var [env-var]
-  (or (env (keyword (format "mb-presto-%s" (name env-var))))
-      (throw (Exception. (format "In order to test Presto, you must specify the env var MB_PRESTO_%s."
-                                 (s/upper-case (s/replace (name env-var) #"-" "_")))))))
-
-
 ;;; IDriverTestExtensions implementation
 
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host (get-env-var :host)
-          :port (get-env-var :port)
-          :user "metabase"
+  (merge {:host (i/db-test-env-var-or-throw :presto :host)
+          :port (i/db-test-env-var-or-throw :presto :port)
+          :user (i/db-test-env-var-or-throw :presto :user "metabase")
           :ssl  false}
          (when (= context :db)
            {:catalog database-name})))

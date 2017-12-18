@@ -3,13 +3,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue, capitalize } from "metabase/lib/formatting";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { isID } from "metabase/lib/schema_metadata";
 import { getTableCellClickedObject, isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import _ from "underscore";
@@ -31,6 +31,7 @@ type Props = VisualizationProps & {
     height: number,
     sort: any,
     isPivoted: boolean,
+    onActionDismissal: () => void
 }
 type State = {
     columnWidths: number[],
@@ -227,7 +228,8 @@ export default class TableInteractive extends Component {
                 className={cx("TableInteractive-cellWrapper", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
                     "cursor-pointer": isClickable,
-                    "justify-end": isColumnRightAligned(column)
+                    "justify-end": isColumnRightAligned(column),
+                    "link": isClickable && isID(column)
                 })}
                 onClick={isClickable && ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
@@ -251,12 +253,9 @@ export default class TableInteractive extends Component {
         const { cols } = this.props.data;
         const column = cols[columnIndex];
 
-        let columnTitle = getFriendlyName(column);
-        if (column.unit && column.unit !== "default") {
-            columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
-        }
+        let columnTitle = formatColumn(column);
         if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
-            columnTitle = "Unset";
+            columnTitle = t`Unset`;
         }
 
         let clicked;
@@ -362,7 +361,10 @@ export default class TableInteractive extends Component {
                         rowCount={rows.length}
                         rowHeight={ROW_HEIGHT}
                         cellRenderer={this.cellRenderer}
-                        onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                        onScroll={({ scrollLeft }) => {
+                            this.props.onActionDismissal()
+                            return onScroll({ scrollLeft })}
+                        }
                         scrollLeft={scrollLeft}
                         tabIndex={null}
                         overscanRowCount={20}

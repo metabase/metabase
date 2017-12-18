@@ -107,12 +107,14 @@
      (:id (fetch-user username)))))
 
 (defn user->credentials
-  "Return a map with `:email` and `:password` for User with USERNAME.
+  "Return a map with `:username` and `:password` for User with USERNAME.
 
-    (user->credentials :rasta) -> {:email \"rasta@metabase.com\", :password \"blueberries\"}"
+    (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
   [username]
   {:pre [(contains? usernames username)]}
-  (select-keys (user->info username) [:email :password]))
+  (let [{:keys [email password]} (user->info username)]
+    {:username email
+     :password password}))
 
 (def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.

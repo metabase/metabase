@@ -25,44 +25,17 @@ The rest of this guide will follow each phase of the Elastic Beanstalk setup ste
 
 ### New Application
 
+
+You should now see a screen that looks like 
+
+![Elastic Beanstalk First Screen](images/EBFirstScreen.png)
+
+NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documenatation [here](running-metabase-on-elastic-beanstalk-old.md)
+
 Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  Enter the application name `Metabase` and continue by clicking `Next`.
 
-![ebappinfo](images/EBAppInfo.png)
+![Elastic Beanstalk ApplicationInformation](images/EBApplicationInformation.png)
 
-
-### New Environment
-
-Elastic Beanstalk provides 2 choices for environments within an Application, we want to pick `Create web server` by clicking the button on the right.
-
-![ebnewenv](images/EBNewEnv.png)
-
-
-### Environment Type
-
-For the environment settings we want to make the following selections:
-
- * Predefined configuration: `Generic > Docker`
- * Environment type: `Load balancing, auto scaling`
-
-![ebenvtype](images/EBEnvType.png)
-
-This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.
-This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
-
-When your environment type settings look like the above then go ahead and click `Next`.
-
-
-### Application Version
-
-The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.
-Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.
-Simply enter the following url in the `S3 URL` textbox:
-
-https://s3.amazonaws.com/downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip
-
-Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
-
-![ebappversion](images/EBAppVersion.png)
 
 
 ### Environment Information
@@ -73,58 +46,60 @@ so you'll have to pick something nobody else is already using.
 
 We often recommend something like `mycompanyname-metabase`
 
-![ebenvinfo](images/EBEnvInfo.png)
+![Elastic Beanstalk Environment Information](images/EBNewEnvironmentInformation.png)
 
 And of course if you don't care about the URL you can simply leave it to whatever Amazon inputs by default.
 
-Click `Next` to continue.
+### New Environment
+
+Elastic Beanstalk provides two choices for environments within an Application, but you should leave the setting to `Web Server` on that landing page. 
+
+![ebnewenv](images/EBWebTier.png)
 
 
-### Additional Resources
+### Base Configuration
 
-##### Using RDS with metabase
+For the base configuration settings we want to make the following selections:
+
+ * Platform: `Preconfigured Platform > Docker`
+ * Application Code: `Upload Your Code`
+
+![Elastic Beanstalk Base Configuration](images/EBBaseConfig.png)
+
+This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.
+
+If you reached this screen from the Metabase start page at [www.metabase.com/start/aws.html](www.metabase.com/start/aws.html) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
+
+When your environment type settings look like the above then go ahead and click `Review and launch`.
+
+
+##### Enabling enhanced health checks
+
+You will need to enable enhanced health checks for your Beanstalk Monitoring.
+
+Click on the `modify` link under the Monitoring section as below.
+![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
+
+Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch. 
+
+![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
+
+##### Configuring RDS for Metabase
 
 To run Metabase in a cloud environment of any kind we highly recommend using an independent database server with high availability such as Amazon RDS.  So for standard deployments we will choose to create an RDS instance with our Elastic Beanstalk application.
 
+
 NOTE: it's possible to skip this step if you wish, however this will force Metabase to use a local H2 database file on your application server and there will be no way to backup and maintain that database, so when your instance is restarted for any reason you'll lose all your Metabase data.  If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against this.
 
-##### Using Metabase in a VPC
+To set the database password from the Beanstalk template, hit "Review and Launch", and then look for the Database configuration pane as below. It should have a red outline when you first see this page.
 
-Newer AWS accounts are encouraging the use of VPC for deployments and in general we think it's simplest to follow that best practice.
+![Elastic Beanstalk Database Configuration Options](images/EBDatabaseConfigurationOptions.png)
 
-If you prefer not to use a VPC that is fine, however one thing to note is that some EC2 instance types (t2.* in specific) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
+Once there, enter a database username and password. We suggest you hold onto this in a password manager, as it can be useful for things like backups or troubleshooting. 
 
-![ebaddresources](images/EBAddResources.png)
+![Elastic Beanstalk Database Settings](images/EBDatabaseSettings.png)
 
-Once you've made your choices click `Next` and lets move on
-
-
-### Configuration Details
-
-There are quite a few choices available here so we'll go through each of them individually.
-
-* `Instance type` is for picking the size of AWS instance you want to run.  Any size is fine but we recommend `t2.small` for most uses.
-	* Remember that you cannot choose a t2.* instance type if you did not check the box to run in a VPC.
-* `EC2 key pair` is only needed if you want to ssh into your instance directly.  We recommend leaving this out.
-* Enter an `Email address` to get notifications about your deployments and changes to your application.  This is a very simple way to keep some tabs on your Metabase environment, so we recommend putting a valid email in here.
-* The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run, you must set this to `/api/health`
-* The remainder of the options can all be safely left to their default values
-
-![ebconfigdetails](images/EBConfigDetails.png)
-
-Once everything looks good then click `Next`
-
-
-### Environment Tags
-
-You can safely skip this page and simply click `Next`
-
-
-### RDS Configuration
-
-If you clicked the checkbox to create an RDS instance you will come to this section, otherwise you can move on.
-
-Here you'll make the appropriate choices to configure your RDS database to work with Metabase.  Again, we cover each choice one-by-one:
+Regarding individual settings, we recommend:
 
 * `Snapshot` should be left as `None`.
 * `DB engine` should be set to `postgres`. Metabase also supports MySQL/Maria DB as backing databases, but this guide currently only covers running Metabase on Postgres.
@@ -135,20 +110,39 @@ Here you'll make the appropriate choices to configure your RDS database to work 
 * You can safely leave the `Retention setting` as `Create snapshot`
 * Under `Availability` we recommend the default value of `Single Availability Zone` for most circumstances.
 
-![ebrdsconfig](images/EBRDSConfig.png)
-
-That should be it, you can click `Next` to continue.
+Once you've entered a password and clicked `Save`, the red outline should have gone away, indicating that the application is valid and ready to be launched.
 
 
-### VPC Configuration (optional)
+
+### Additional Options
+
+
+##### Using Metabase in a VPC
+
+Newer AWS accounts are encouraging the use of VPC for deployments and in general we think it's simplest to follow that best practice.
+
+If you prefer not to use a VPC that is fine, however one thing to note is that some EC2 instance types (t2.* in specific) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
+
+![Elastic Beanstalk VPC Entry](images/EBVPCEntry.png)
 
 If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets.
 
-Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets.
+Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets. Note that the Load Balancer cannot be in more than one subnet per availability zone, and the database requires subnets in at least two availability zones.
 
-![ebvpcconfig](images/EBVPCConfig.png)
+![Elastic Beanstalk VPC Settings](images/EBVPCSettings.png)
 
-Once you've finished your VPC config click `Next`
+Once you've finished your VPC config click `Save`
+
+### Configuration Details
+
+There are many ways to customize your Beanstalk deployment, but commonly modified settings include:
+
+* `Instance type` is for picking the size of AWS instance you want to run.  Any size is fine but we recommend `t2.small` for most uses.
+    * Remember that you cannot choose a t2.* instance type if you did not check the box to run in a VPC.
+* `EC2 key pair` is only needed if you want to ssh into your instance directly.  We recommend leaving this out.
+* Enter an `Email address` to get notifications about your deployments and changes to your application.  This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
+* The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run. You must set this to `/api/health`
+* The remainder of the options can all be safely left to their default values
 
 
 ### Permissions
@@ -161,14 +155,6 @@ When you click `Next` a new tab will open in your browser and you will be prompt
 
 ![ebiamrole](images/EBIAMRole.png)
 
-
-### Review Information
-
-The final screen just gives you a full summary of the choices you made along the way so you can double check things.  Always cood to take a look at this and make sure you didn't miss anything.
-
-When you're ready click the `Launch` button at the bottom of the page and then you're off!
-
-![ebreview](images/EBReview.png)
 
 
 ### Wait for your Environment to start

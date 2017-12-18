@@ -9,8 +9,9 @@
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]]
-            [metabase.test.data :refer :all]
+            [metabase.test.data :as data :refer :all]
             [metabase.test.data.users :refer [user->id]]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -40,6 +41,27 @@
         :topic    "card-create"
         :model_id (:id card)))))
 
+;; when I save a Card that uses a NESTED query, is the activity recorded? :D
+(expect
+  {:topic       :card-create
+   :user_id     (user->id :rasta)
+   :model       "card"
+   :database_id (data/id)
+   :table_id    (data/id :venues)
+   :details     {:name "My Cool NESTED Card", :description nil}}
+  (tt/with-temp* [Card [card-1 {:name          "My Cool Card"
+                                :dataset_query {:database (data/id)
+                                                :type     :query
+                                                :query    {:source-table (data/id :venues)}}}]
+                  Card [card-2 {:name          "My Cool NESTED Card"
+                                :dataset_query {:database metabase.models.database/virtual-id
+                                                :type     :query
+                                                :query    {:source-table (str "card__" (u/get-id card-1))}}}]]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-create, :item card-2})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-create"
+        :model_id (:id card-2)))))
 
 
 ;; `:card-update` event

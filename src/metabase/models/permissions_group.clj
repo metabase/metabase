@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-group
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [metabase.models.setting :as setting]
             [metabase.util :as u]
             [toucan
              [db :as db]
@@ -40,7 +41,7 @@
 (defn exists-with-name?
   "Does a `PermissionsGroup` with GROUP-NAME exist in the DB? (case-insensitive)"
   ^Boolean [group-name]
-  {:pre [(u/string-or-keyword? group-name)]}
+  {:pre [((some-fn keyword? string?) group-name)]}
   (db/exists? PermissionsGroup
     :%lower.name (s/lower-case (name group-name))))
 
@@ -69,8 +70,14 @@
 
 (defn- pre-delete [{id :id, :as group}]
   (check-not-magic-group group)
-  (db/delete! 'Permissions                :group_id id)
-  (db/delete! 'PermissionsGroupMembership :group_id id))
+  (db/delete! 'Permissions                 :group_id id)
+  (db/delete! 'PermissionsGroupMembership  :group_id id)
+  ;; Remove from LDAP mappings
+  (setting/set-json! :ldap-group-mappings
+    (when-let [mappings (setting/get-json :ldap-group-mappings)]
+      (zipmap (keys mappings)
+              (for [val (vals mappings)]
+                (remove (partial = id) val))))))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group

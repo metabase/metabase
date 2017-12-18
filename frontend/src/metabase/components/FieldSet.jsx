@@ -6,7 +6,7 @@ type Props = {
     className: string,
     legend: string,
     noPadding?: boolean,
-    children: ReactElement
+    children: React$Element<any>
 }
 
 export default function FieldSet({className = "border-brand", legend, noPadding, children}: Props) {

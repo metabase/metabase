@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import SetUserPassword from "./SetUserPassword.jsx";
 import UpdateUserDetails from "./UpdateUserDetails.jsx";
 
@@ -31,7 +31,7 @@ export default class UserSettings extends Component {
 
     render() {
         let { tab } = this.props;
-        const nonSSOManagedAccount = !this.props.user.google_auth
+        const nonSSOManagedAccount = !this.props.user.google_auth && !this.props.user.ldap_auth;
 
         let allClasses = "Grid-cell md-no-flex md-mt1 text-brand-hover bordered border-brand-hover rounded p1 md-p3 block cursor-pointer text-centered md-text-left",
             tabClasses = {};
@@ -44,7 +44,7 @@ export default class UserSettings extends Component {
             <div>
                 <div className="py4 border-bottom">
                     <div className="wrapper wrapper--trim">
-                        <h2 className="text-grey-4">Account settings</h2>
+                        <h2 className="text-grey-4">{t`Account settings`}</h2>
                     </div>
                 </div>
                 <div className="mt2 md-mt4 wrapper wrapper--trim">
@@ -53,12 +53,12 @@ export default class UserSettings extends Component {
                             <div className="Grid-cell Grid Grid--fit md-flex-column md-Cell--1of3">
                               <a className={cx(tabClasses['details'])}
                                 onClick={this.onSetTab.bind(this, 'details')}>
-                                User Details
+                                {t`User Details`}
                               </a>
 
                               <a className={cx(tabClasses['password'])}
                                 onClick={this.onSetTab.bind(this, 'password')}>
-                                Password
+                                {t`Password`}
                               </a>
                             </div>
                         )}

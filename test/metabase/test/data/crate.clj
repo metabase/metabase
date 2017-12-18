@@ -51,7 +51,8 @@
       (insert! rows))))
 
 (def ^:private database->connection-details
-  (constantly {:hosts "localhost:5200"}))
+  (constantly {:hosts "localhost:5200/"
+               :user  "crate"}))
 
 (extend CrateDriver
   generic/IGenericSQLTestExtensions

@@ -1,13 +1,23 @@
 (ns metabase.driver.bigquery-test
   (:require [expectations :refer :all]
+            [metabase.driver.bigquery]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qptest]]
-            [metabase.query-processor.expand :as ql]
+            metabase.driver.bigquery
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine]]))
+            [metabase.test.data.datasets :refer [expect-with-engine]])
+  (:import metabase.driver.bigquery.BigQueryDriver))
+
+(def ^:private col-defaults
+  {:remapped_to nil, :remapped_from nil})
 
 ;; Test native queries
 (expect-with-engine :bigquery
@@ -18,13 +28,28 @@
                              :database (data/id)})
           [:data :rows]))
 
+;;; table-rows-sample
+(expect-with-engine :bigquery
+  [[1 "Red Medicine"]
+   [2 "Stout Burgers & Beers"]
+   [3 "The Apple Pan"]
+   [4 "Wurstküche"]
+   [5 "Brite Spot Family Restaurant"]]
+  (->> (driver/table-rows-sample (Table (data/id :venues))
+         [(Field (data/id :venues :id))
+          (Field (data/id :venues :name))])
+       (sort-by first)
+       (take 5)))
+
 
 ;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
-  {:columns ["venue_id" "user_id" "checkins_id"]
-   :cols    [{:name "venue_id",    :base_type :type/Integer}
-             {:name "user_id",     :base_type :type/Integer}
-             {:name "checkins_id", :base_type :type/Integer}]}
+  {:columns ["venue_id" "user_id" "checkins_id"],
+   :cols    (mapv #(merge col-defaults %)
+                  [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
+                   {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
+                   {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}])}
+
   (select-keys (:data (qp/process-query {:native   {:query "SELECT [test_data.checkins.venue_id] AS [venue_id], [test_data.checkins.user_id] AS [user_id], [test_data.checkins.id] AS [checkins_id]
                                                             FROM [test_data.checkins]
                                                             LIMIT 2"}
@@ -86,3 +111,7 @@
                                      (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
                                                      (ql/sum (ql/field-id (data/id :checkins :user_id)))
                                                      (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+
+(expect-with-engine :bigquery
+  "UTC"
+  (tu/db-timezone-id))

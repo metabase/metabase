@@ -2,20 +2,48 @@
   "Middleware for substituting parameters in queries."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.query-processor.interface :as i]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]
             [metabase.query-processor.middleware.parameters
              [mbql :as mbql-params]
              [sql :as sql-params]]
             [metabase.util :as u]))
 
-(defn- expand-parameters
+(defn- expand-parameters*
   "Expand any :parameters set on the QUERY-DICT and apply them to the query definition.
    This function removes the :parameters attribute from the QUERY-DICT as part of its execution."
   [{:keys [parameters], :as query-dict}]
   ;; params in native queries are currently only supported for SQL drivers
-  (if (= :query (keyword (:type query-dict)))
+  (if (qputil/mbql-query? query-dict)
     (mbql-params/expand (dissoc query-dict :parameters) parameters)
     (sql-params/expand query-dict)))
+
+(defn- expand-params-in-native-source-query
+  "Expand parameters in a native source query."
+  [{{{original-query :native, tags :template_tags} :source-query} :query, :as outer-query}]
+  ;; TODO - This isn't recursive for nested-nested queries
+  ;; TODO - Yes, this approach is hacky. But hacky & working > not working
+  (let [{{new-query :query, new-params :params} :native} (sql-params/expand (assoc outer-query
+                                                                              :type   :native
+                                                                              :native {:query         original-query
+                                                                                       :template_tags tags}))]
+    (if (= original-query new-query)
+      ;; if the native query didn't change, we don't need to do anything; return as-is
+      outer-query
+      ;; otherwise replace the native query with the param-substituted version.
+      ;; 'Unprepare' the args because making sure args get passed in the right order is too tricky for nested queries
+      ;; TODO - This might not work for all drivers. We should make 'unprepare' a Generic SQL method
+      ;; so different drivers can invoke unprepare/unprepare with the correct args
+      (-> outer-query
+          (assoc-in [:query :source-query :native] (unprepare/unprepare (cons new-query new-params)))))))
+
+(defn- expand-parameters
+  "Expand parameters in the OUTER-QUERY, and if the query is using a native source query, expand params in that as well."
+  [outer-query]
+  (cond-> (expand-parameters* outer-query)
+    (get-in outer-query [:query :source-query :native]) expand-params-in-native-source-query))
 
 (defn- substitute-parameters*
   "If any parameters were supplied then substitute them into the query."

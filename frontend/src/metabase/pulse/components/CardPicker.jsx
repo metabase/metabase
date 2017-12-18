@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import { t } from 'c-3po';
 
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -10,18 +11,13 @@ import Query from "metabase/lib/query";
 import _ from "underscore";
 
 export default class CardPicker extends Component {
-    constructor(props, context) {
-        super(props, context);
+    state = {
+        isOpen: false,
+        inputValue: "",
+        inputWidth: 300,
+        collectionId: undefined,
+    };
 
-        this.state = {
-            isOpen: false,
-            inputValue: "",
-            inputWidth: 300,
-            collectionId: undefined,
-        };
-
-        _.bindAll(this, "onChange", "onInputChange", "onInputFocus", "onInputBlur");
-    }
 
     static propTypes = {
         cardList: PropTypes.array.isRequired,
@@ -32,15 +28,15 @@ export default class CardPicker extends Component {
         clearTimeout(this._timer);
     }
 
-    onInputChange(e) {
-        this.setState({ inputValue: e.target.value });
+    onInputChange = ({target}) => {
+        this.setState({ inputValue: target.value });
     }
 
-    onInputFocus() {
+    onInputFocus = () => {
         this.setState({ isOpen: true });
     }
 
-    onInputBlur() {
+    onInputBlur = () => {
         // Without a timeout here isOpen gets set to false when an item is clicked
         // which causes the click handler to not fire. For some reason this even
         // happens with a 100ms delay, but not 200ms?
@@ -54,7 +50,7 @@ export default class CardPicker extends Component {
         }, 250);
     }
 
-    onChange(id) {
+    onChange = (id) => {
         this.props.onChange(id);
         ReactDOM.findDOMNode(this.refs.input).blur();
     }
@@ -63,11 +59,11 @@ export default class CardPicker extends Component {
         let error;
         try {
             if (Query.isBareRows(card.dataset_query.query)) {
-                error = "Raw data cannot be included in pulses";
+                error = t`Raw data cannot be included in pulses`;
             }
         } catch (e) {}
         if (card.display === "pin_map" || card.display === "state" || card.display === "country") {
-            error = "Maps cannot be included in pulses";
+            error = t`Maps cannot be included in pulses`;
         }
 
         if (error) {
@@ -107,9 +103,10 @@ export default class CardPicker extends Component {
             .uniq(c => c && c.id)
             .filter(c => c)
             .sortBy("name")
+            // add "Everything else" as the last option for cards without a
+            // collection
+            .concat([{ id: null, name: t`Everything else`}])
             .value();
-
-        collections.unshift({ id: null, name: "None" });
 
         let visibleCardList;
         if (inputValue) {
@@ -132,7 +129,7 @@ export default class CardPicker extends Component {
                 <input
                     ref="input"
                     className="input no-focus full text-bold"
-                    placeholder="Type a question name to filter"
+                    placeholder={t`Type a question name to filter`}
                     value={this.inputValue}
                     onFocus={this.onInputFocus}
                     onBlur={this.onInputBlur}
@@ -162,11 +159,11 @@ export default class CardPicker extends Component {
                         </ul>
                     : collections ?
                         <CollectionList>
-                        {collections.map(collection =>
-                            <CollectionListItem collection={collection} onClick={(e) => {
-                                this.setState({ collectionId: collection.id, isClicking: true });
-                            }}/>
-                        )}
+                            {collections.map(collection =>
+                                <CollectionListItem collection={collection} onClick={(e) => {
+                                    this.setState({ collectionId: collection.id, isClicking: true });
+                                }}/>
+                            )}
                         </CollectionList>
                     : null }
                     </div>

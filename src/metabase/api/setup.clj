@@ -1,6 +1,5 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
-            [medley.core :as m]
             [metabase
              [driver :as driver]
              [email :as email]
@@ -10,13 +9,14 @@
              [util :as u]]
             [metabase.api
              [common :as api]
-             [database :refer [DBEngine]]]
+             [database :as database-api :refer [DBEngineString]]]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [database :refer [Database]]
              [session :refer [Session]]
              [user :as user :refer [User]]]
             [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -29,14 +29,18 @@
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body}]
+  [:as {{:keys [token]
+         {:keys [name engine details is_full_sync is_on_demand schedules]} :database
+         {:keys [first_name last_name email password]}                     :user
+         {:keys [allow_tracking site_name]}                                :prefs} :body}]
   {token          SetupToken
    site_name      su/NonBlankString
    first_name     su/NonBlankString
    last_name      su/NonBlankString
    email          su/Email
    password       su/ComplexPassword
-   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))}
+   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))
+   schedules      (s/maybe database-api/ExpandedSchedulesMap)}
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -54,13 +58,17 @@
                                                allow_tracking))      ; the setting will set itself correctly whether a boolean or boolean string is specified
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
-      (->> (db/insert! Database
-             :name         name
-             :engine       engine
-             :details      details
-             :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
-                               is_full_sync))
-           (events/publish-event! :database-create)))
+      (let [db (db/insert! Database
+                 (merge
+                  {:name         name
+                   :engine       engine
+                   :details      details
+                   :is_on_demand (boolean is_on_demand)
+                   :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
+                                     is_full_sync)}
+                  (when schedules
+                    (database-api/schedule-map->cron-strings schedules))))]
+        (events/publish-event! :database-create db)))
     ;; clear the setup token now, it's no longer needed
     (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
@@ -77,12 +85,14 @@
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
   {token  SetupToken
-   engine DBEngine}
+   engine DBEngineString}
   (let [engine           (keyword engine)
         details          (assoc details :engine engine)
         response-invalid (fn [field m] {:status 400 :body (if (= :general field)
                                                             {:message m}
                                                             {:errors {field m}})})]
+    ;; TODO - as @atte mentioned this should just use the same logic as we use in POST /api/database/, which tries with
+    ;; both SSL and non-SSL.
     (try
       (cond
         (driver/can-connect-with-details? engine details :rethrow-exceptions) {:valid true}
@@ -107,53 +117,53 @@
         num-tables         (db/count 'Table)
         num-cards          (db/count 'Card)
         num-users          (db/count 'User)]
-    [{:title       "Add a database"
-      :group       "Get connected"
-      :description "Connect to your data so your whole team can start to explore."
+    [{:title       (tru "Add a database")
+      :group       (tru "Get connected")
+      :description (tru "Connect to your data so your whole team can start to explore.")
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
-     {:title       "Set up email"
-      :group       "Get connected"
-      :description "Add email credentials so you can more easily invite team members and get updates via Pulses."
+     {:title       (tru "Set up email")
+      :group       (tru "Get connected")
+      :description (tru "Add email credentials so you can more easily invite team members and get updates via Pulses.")
       :link        "/admin/settings/email"
       :completed   (email/email-configured?)
       :triggered   :always}
-     {:title       "Set Slack credentials"
-      :group       "Get connected"
-      :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with MetaBot."
+     {:title       (tru "Set Slack credentials")
+      :group       (tru "Get connected")
+      :description (tru "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot.")
       :link        "/admin/settings/slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
-     {:title       "Invite team members"
-      :group       "Get connected"
-      :description "Share answers and data with the rest of your team."
+     {:title       (tru "Invite team members")
+      :group       (tru "Get connected")
+      :description (tru "Share answers and data with the rest of your team.")
       :link        "/admin/people/"
       :completed   (> num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
                        (>= num-cards 5))}
-     {:title       "Hide irrelevant tables"
-      :group       "Curate your data"
-      :description "If your data contains technical or irrelevant info you can hide it."
+     {:title       (tru "Hide irrelevant tables")
+      :group       (tru "Curate your data")
+      :description (tru "If your data contains technical or irrelevant info you can hide it.")
       :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
-     {:title       "Organize questions"
-      :group       "Curate your data"
-      :description "Have a lot of saved questions in Metabase? Create collections to help manage them and add context."
+     {:title       (tru "Organize questions")
+      :group       (tru "Curate your data")
+      :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
       :link        "/questions/"
       :completed   has-collections?
       :triggered   (>= num-cards 30)}
-     {:title       "Create metrics"
-      :group       "Curate your data"
-      :description "Define canonical metrics to make it easier for the rest of your team to get the right answers."
+     {:title       (tru "Create metrics")
+      :group       (tru "Curate your data")
+      :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
       :link        "/admin/datamodel/database"
       :completed   has-metrics?
       :triggered   (>= num-cards 30)}
-     {:title       "Create segments"
-      :group       "Curate your data"
-      :description "Keep everyone on the same page by creating canonnical sets of filters anyone can use while asking questions."
+     {:title       (tru "Create segments")
+      :group       (tru "Curate your data")
+      :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
       :link        "/admin/datamodel/database"
       :completed   has-segments?
       :triggered   (>= num-cards 30)}]))

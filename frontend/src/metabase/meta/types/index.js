@@ -9,6 +9,9 @@ export type EntityType = string;
 // DashboardId, CardId, etc
 export type EntityId = number;
 
+// An Icon name, which is defined in `metabase/icon_paths.js`
+export type IconName = string;
+
 /* Location descriptor used by react-router and history */
 export type LocationDescriptor = {
     hash: string,

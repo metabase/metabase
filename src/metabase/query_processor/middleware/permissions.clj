@@ -79,9 +79,11 @@
 ;; TODO - why is this the only function here that takes `user-id`?
 (defn- throw-if-cannot-run-query
   "Throw an exception if USER-ID doesn't have permissions to run QUERY."
-  [user-id {:keys [source-table join-tables]}]
-  (doseq [table (cons source-table join-tables)]
-    (throw-if-cannot-run-query-referencing-table user-id table)))
+  [user-id {:keys [source-table join-tables source-query]}]
+  (if source-query
+    (recur user-id source-query)
+    (doseq [table (cons source-table join-tables)]
+      (throw-if-cannot-run-query-referencing-table user-id table))))
 
 
 ;;; ------------------------------------------------------------ Permissions for Native Queries ------------------------------------------------------------
@@ -120,7 +122,7 @@
 
 (defn- check-query-permissions-for-user
   "Check that User with USER-ID has permissions to run QUERY, or throw an exception."
-  [user-id {query-type :type, database :database, query :query, {card-id :card-id} :info, :as outer-query}]
+  [user-id {query-type :type, database :database, {:keys [source-query], :as query} :query, {:keys [card-id]} :info, :as outer-query}]
   {:pre [(integer? user-id) (map? outer-query)]}
   (let [native?       (= (keyword query-type) :native)
         collection-id (db/select-one-field :collection_id 'Card :id card-id)]
@@ -128,6 +130,11 @@
       ;; if the card is in a COLLECTION, then see if the current user has permissions for that collection
       collection-id
       (throw-if-user-doesnt-have-access-to-collection collection-id)
+      ;; Otherwise if this is a NESTED query then we should check permissions for the source query
+      source-query
+      (if (:native source-query)
+        (throw-if-cannot-run-existing-native-query-referencing-db database)
+        (throw-if-cannot-run-query user-id source-query))
       ;; for native queries that are *not* part of an existing card, check that we have native permissions for the DB
       (and native? (not card-id))
       (throw-if-cannot-run-new-native-query-referencing-db database)

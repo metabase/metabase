@@ -2,6 +2,8 @@
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
 
+If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](./start.md#upgrading-metabase).
+
 ### Launching Metabase on a new container
 
 Here's a quick one-liner to get you off the ground (please note, we recommend further configuration for production deployments below):
@@ -23,7 +25,7 @@ To persist your data outside of the container and make it available for use betw
 
     docker run -d -p 3000:3000 -v ~/metabase-data:/metabase-data -e "MB_DB_FILE=/metabase-data/metabase.db" --name metabase metabase/metabase
 
-Now when you launch your container we are telling Metabase to use the database file at `/tmp/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
+Now when you launch your container we are telling Metabase to use the database file at `~/metabase-data/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
 
 ### Getting your config back if you stopped your container
 
@@ -69,7 +71,35 @@ In this scenario all you need to do is make sure you launch Metabase with the co
 
 Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's `/etc/hosts file`.
 
-See instructions for [migrating from H2 to MySQL or Postgres](./start.md#migrating-from-using-the-h2-database-to-mysql-or-postgres).
+### Migrating from H2 to Postgres as the Metabase application database
+
+For general information, see instructions for [migrating from H2 to MySQL or Postgres](./start.md#migrating-from-using-the-h2-database-to-mysql-or-postgres).
+
+To migrate an existing Metabase container from an H2 application database to another database container (e.g. Postgres, MySQL), there are a few considerations to keep in mind:
+
+* The target database container must be accessible (i.e. on an available network)
+* The target database container must be supported (e.g. MySQL, Postgres)
+* The existing H2 database should be [mapped outside the running container](#mounting-a-mapped-file-storage-volume)
+
+The migration process involves 2 main steps:
+
+1. Stop the existing Metabase container
+2. Run a new, temporary Metabase container to perform the migration
+
+Using a Postgres container as the target, here's an example invocation:
+
+    docker run --name metabase-migration \
+        -v /path/metabase/data:/metabase-data \
+        -e "MB_DB_FILE=/metabase-data/metabase.db" \
+        -e "MB_DB_TYPE=postgres" \
+        -e "MB_DB_DBNAME=metabase" \
+        -e "MB_DB_PORT=5432" \
+        -e "MB_DB_USER=<username>" \
+        -e "MB_DB_PASS=<password>" \
+        -e "MB_DB_HOST=my-database-host" \
+        metabase/metabase load-from-h2
+
+To further explain the example: in addition to specifying the target database connection details, set the `MB_DB_FILE` environment variable for the source H2 database location, and pass the argument `load-from-h2` to begin migrating.
 
 ### Setting the Java Timezone
 
@@ -103,12 +133,12 @@ The DB contents will be left in a directory named metabase.db.
 Note that some older versions of metabase stored their db in a different default location.
 
     docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
-    
+
 ### Fixing OutOfMemoryErrors in some hosted environments
 
 On some hosts Metabase can fail to start with an error message like:
 
     java.lang.OutOfMemoryError: Java heap space
-    
+
 If that happens, you'll need to set a JVM option to manually configure the maximum amount of memory the JVM uses for the heap. Refer
 to [these instructions](./start.md#metabase-fails-to-start-due-to-heap-space-outofmemoryerrors) for details on how to do that.

@@ -182,9 +182,9 @@ export default class PeopleListingApp extends Component {
 
     renderAddPersonModal(modalDetails) {
         return (
-            <Modal title="Add Person" onClose={this.onCloseModal}>
+            <Modal title="Who do you want to add?" onClose={this.onCloseModal}>
                 <EditUserForm
-                    buttonText="Add Person"
+                    buttonText="Add"
                     submitFn={this.onAddPerson.bind(this)}
                     groups={this.props.groups}
                 />
@@ -196,7 +196,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal full form title="Edit Details" onClose={this.onCloseModal}>
+            <Modal full form title={"Edit " + user.first_name + "'s details"} onClose={this.onCloseModal}>
                 <EditUserForm
                     user={user}
                     submitFn={this.onEditDetails.bind(this)}
@@ -252,13 +252,13 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small form
-                title={"We've Re-sent "+user.first_name+"'s Invite"}
+                title={"We've re-sent "+user.first_name+"'s invite"}
                 footer={[
                     <Button primary onClick={this.onCloseModal}>Okay</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
-                <div>Any previous email invites they have will no longer work.</div>
+                <p className="text-paragraph pb2">Any previous email invites they have will no longer work.</p>
             </Modal>
         );
     }
@@ -268,15 +268,15 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={"Remove "+user.common_name}
+                title={"Remove " + user.common_name + "?"}
                 footer={[
                     <Button onClick={this.onCloseModal}>Cancel</Button>,
-                    <Button warning onClick={() => this.onRemoveUserConfirm(user)}>Remove</Button>
+                    <Button className="Button--danger" onClick={() => this.onRemoveUserConfirm(user)}>Remove</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    Are you sure you want to do this? {user.first_name} won't be able to log in anymore.  This can't be undone.
+                    {user.first_name} won't be able to log in anymore.  This can't be undone.
                 </div>
             </Modal>
         );
@@ -287,7 +287,7 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={"Reset "+user.first_name+"'s Password"}
+                title={"Reset "+user.first_name+"'s password?"}
                 footer={[
                     <Button onClick={this.onCloseModal}>Cancel</Button>,
                     <Button warning onClick={() => this.onPasswordResetConfirm(user)}>Reset</Button>
@@ -306,7 +306,7 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={user.first_name+"'s Password Has Been Reset"}
+                title={user.first_name+"'s password has been reset"}
                 footer={<button className="Button Button--primary mr2" onClick={this.onCloseModal}>Done</button>}
                 onClose={this.onCloseModal}
             >
@@ -325,7 +325,7 @@ export default class PeopleListingApp extends Component {
         return (
             <Modal
                 small
-                title={user.first_name+"'s Password Has Been Reset"}
+                title={user.first_name+"'s password has been reset"}
                 footer={<Button primary onClick={this.onCloseModal}>Done</Button>}
                 onClose={this.onCloseModal}
             >
@@ -362,7 +362,7 @@ export default class PeopleListingApp extends Component {
             {() =>
                 <AdminPaneLayout
                     title="People"
-                    buttonText="Add person"
+                    buttonText="Add someone"
                     buttonAction={() => this.props.showModal({type: MODAL_ADD_PERSON})}
                 >
                     <section className="pb4">
@@ -386,6 +386,10 @@ export default class PeopleListingApp extends Component {
                                         <Tooltip tooltip="Signed up via Google">
                                             <Icon name='google' />
                                         </Tooltip> : null}
+                                      {user.ldap_auth ?
+                                        <Tooltip tooltip="Signed up via LDAP">
+                                            <Icon name='ldap' />
+                                        </Tooltip> : null }
                                     </td>
                                     <td>{user.email}</td>
                                     <td>

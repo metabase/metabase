@@ -58,10 +58,10 @@
   ([]
    (set-backend! (config/config-kw :mb-qp-cache-backend)))
   ([backend]
-   (let [backend-ns (symbol (str "metabase.query-processor.middleware.cache-backend." (munge (name backend))))]
-     (require backend-ns)
+   (let [backend-ns-symb (symbol (str "metabase.query-processor.middleware.cache-backend." (munge (name backend))))]
+     (require backend-ns-symb)
      (log/info "Using query processor cache backend:" (u/format-color 'blue backend) (u/emoji "💾"))
-     (reset! backend-instance (get-backend-instance-in-namespace backend-ns)))))
+     (reset! backend-instance (get-backend-instance-in-namespace backend-ns-symb)))))
 
 
 

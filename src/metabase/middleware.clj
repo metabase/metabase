@@ -123,7 +123,7 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth] (models/default-fields User))))
+  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and `*current-user-permissions-set*`.
@@ -278,7 +278,7 @@
 ;; ## Custom JSON encoders
 
 ;; Always fall back to `.toString` instead of barfing.
-;; In some cases we should be able to improve upon this behavior; `.toString` may just return the Class and address, e.g. `net.sourceforge.jtds.jdbc.ClobImpl@72a8b25e`
+;; In some cases we should be able to improve upon this behavior; `.toString` may just return the Class and address, e.g. `some.Class@72a8b25e`
 ;; The following are known few classes where `.toString` is the optimal behavior:
 ;; *  `org.postgresql.jdbc4.Jdbc4Array` (Postgres arrays)
 ;; *  `org.bson.types.ObjectId`         (Mongo BSON IDs)
@@ -290,7 +290,6 @@
 
 ;; stringify JDBC clobs
 (add-encoder org.h2.jdbc.JdbcClob               encode-jdbc-clob) ; H2
-(add-encoder net.sourceforge.jtds.jdbc.ClobImpl encode-jdbc-clob) ; SQLServer
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
 ;; Encode BSON undefined like `nil`

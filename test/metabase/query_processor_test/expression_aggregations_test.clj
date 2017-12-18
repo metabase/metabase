@@ -6,7 +6,7 @@
              [query-processor-test :refer :all]
              [util :as u]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [*driver* *engine*]]
             [toucan.util.test :as tt]))
@@ -251,3 +251,13 @@
          :query    {:source-table (data/id :venues)
                     :aggregation  [[:named ["COUNT"] "Count of Things"]]}})
       :data :cols first))
+
+;; check that we can use cumlative count in expression aggregations
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  [[1000]]
+  (format-rows-by [int]
+    (rows (qp/process-query
+            {:database (data/id)
+             :type     :query
+             :query    {:source-table (data/id :venues)
+                        :aggregation  [["*" ["cum_count"] 10]]}}))))

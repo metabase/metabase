@@ -24,7 +24,7 @@ const RELATIVE_SHORTCUTS = {
         ]
 };
 
-class PredefinedRelativeDatePicker extends Component {
+export class PredefinedRelativeDatePicker extends Component {
     constructor(props, context) {
         super(props, context);
 

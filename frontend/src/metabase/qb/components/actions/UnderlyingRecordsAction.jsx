@@ -2,36 +2,32 @@
 
 import React from "react";
 
-import { toUnderlyingRecords } from "metabase/qb/lib/actions";
-import * as Query from "metabase/lib/query/query";
-import * as Card from "metabase/meta/Card";
-
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { jt } from "c-3po";
 import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
-    const query = Card.getQuery(card);
-    if (query && !Query.isBareRows(query)) {
-        return [
-            {
-                name: "underlying-records",
-                title: (
-                    <span>
-                        View the underlying
-                        {" "}
-                        <span className="text-dark">
-                            {tableMetadata.display_name}
-                        </span>
-                        {" "}
-                        records
-                    </span>
-                ),
-                icon: "table2",
-                card: () => toUnderlyingRecords(card)
-            }
-        ];
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery) || query.isBareRows()) {
+        return [];
     }
-    return [];
+    return [
+        {
+            name: "underlying-records",
+            title: (
+                <span>
+                    {
+                        jt`View the underlying ${<span className="text-dark">
+                                {query.table().display_name}
+                            </span>} records`
+                    }
+                </span>
+            ),
+            icon: "table2",
+            question: () => question.toUnderlyingRecords()
+        }
+    ];
 };

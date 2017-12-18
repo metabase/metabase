@@ -1,7 +1,8 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
+/* @flow weak */
 
+import React, { Component } from "react";
+import { Link } from "react-router";
+import { t, jt } from 'c-3po';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -26,31 +27,51 @@ import cx from "classnames";
 import _ from "underscore";
 import moment from "moment";
 
+import Question from "metabase-lib/lib/Question";
+import type  { Database } from "metabase/meta/types/Database";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { ParameterValues } from "metabase/meta/types/Parameter";
+
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
+type Props = {
+    question: Question,
+    originalQuestion: Question,
+    result?: Object,
+    databases?: Database[],
+    tableMetadata?: TableMetadata,
+    tableForeignKeys?: [],
+    tableForeignKeyReferences?: {},
+    setDisplayFn: (any) => void,
+    onUpdateVisualizationSettings: (any) => void,
+    onReplaceAllVisualizationSettings: (any) => void,
+    cellIsClickableFn?: (any) => void,
+    cellClickedFn?: (any) => void,
+    isRunning: boolean,
+    isRunnable: boolean,
+    isAdmin: boolean,
+    isObjectDetail: boolean,
+    isResultDirty: boolean,
+    runQuestionQuery: (any) => void,
+    cancelQuery?: (any) => void,
+    className: string
+};
+
+type State = {
+    lastRunDatasetQuery: DatasetQuery,
+    lastRunParameterValues: ParameterValues,
+    warnings: string[]
+}
+
 export default class QueryVisualization extends Component {
+    props: Props;
+    state: State;
+
     constructor(props, context) {
         super(props, context);
         this.state = this._getStateFromProps(props);
     }
-
-    static propTypes = {
-        card: PropTypes.object.isRequired,
-        result: PropTypes.object,
-        databases: PropTypes.array,
-        tableMetadata: PropTypes.object,
-        tableForeignKeys: PropTypes.array,
-        tableForeignKeyReferences: PropTypes.object,
-        setDisplayFn: PropTypes.func.isRequired,
-        onUpdateVisualizationSettings: PropTypes.func.isRequired,
-        onReplaceAllVisualizationSettings: PropTypes.func.isRequired,
-        cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func,
-        isRunning: PropTypes.bool.isRequired,
-        isRunnable: PropTypes.bool.isRequired,
-        runQuery: PropTypes.func.isRequired,
-        cancelQuery: PropTypes.func
-    };
 
     static defaultProps = {
         // NOTE: this should be more dynamic from the backend, it's set based on the query lang
@@ -59,7 +80,7 @@ export default class QueryVisualization extends Component {
 
     _getStateFromProps(props) {
         return {
-            lastRunDatasetQuery: Utils.copy(props.card.dataset_query),
+            lastRunDatasetQuery: Utils.copy(props.question.query().datasetQuery()),
             lastRunParameterValues: Utils.copy(props.parameterValues)
         };
     }
@@ -76,16 +97,15 @@ export default class QueryVisualization extends Component {
     }
 
     runQuery = () => {
-        this.props.runQuery(null, { ignoreCache: true });
-    }
+        this.props.runQuestionQuery({ ignoreCache: true });
+    };
 
     renderHeader() {
-        const { isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, card, result, cancelQuery } = this.props;
-        const isSaved = card.id != null;
+        const { question, isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, result, cancelQuery } = this.props;
 
         let runButtonTooltip;
         if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
-            runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
+            runButtonTooltip = t`This question will take approximately ${duration(result.average_execution_time)} to refresh`;
         }
 
         const messages = [];
@@ -94,19 +114,18 @@ export default class QueryVisualization extends Component {
                 icon: "clock",
                 message: (
                     <div>
-                        Updated {moment(result.updated_at).fromNow()}
+                        {t`Updated ${moment(result.updated_at).fromNow()}`}
                     </div>
                 )
             })
         }
-        if (result && result.data && !isObjectDetail && card.display === "table") {
+        if (result && result.data && !isObjectDetail && question.display() === "table") {
             messages.push({
                 icon: "table2",
                 message: (
-                    <div>
-                        { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
-                        <strong>{formatNumber(result.row_count)}</strong>
-                        { " " + inflect("row", result.data.rows.length) }
+                    // class name is included for the sake of making targeting the element in tests easier
+                    <div className="ShownRowCount">
+                        {jt`${ result.data.rows_truncated != null ? (t`Showing first`) : (t`Showing`)} ${<strong>{formatNumber(result.row_count)}</strong>} ${inflect("row", result.data.rows.length)}`}
                     </div>
                 )
             })
@@ -152,17 +171,17 @@ export default class QueryVisualization extends Component {
                     { !isResultDirty && result && !result.error ?
                         <QueryDownloadWidget
                             className="mx1 hide sm-show"
-                            card={card}
+                            card={question.card()}
                             result={result}
                         />
                     : null }
-                    { isSaved && (
-                        (isPublicLinksEnabled && (isAdmin || card.public_uuid)) ||
+                    { question.isSaved() && (
+                        (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
                         (isEmbeddingEnabled && isAdmin)
                     ) ?
                         <QuestionEmbedWidget
                             className="mx1 hide sm-show"
-                            card={card}
+                            card={question.card()}
                         />
                     : null }
                 </div>
@@ -171,7 +190,7 @@ export default class QueryVisualization extends Component {
     }
 
     render() {
-        const { className, card, databases, isObjectDetail, isRunning, result } = this.props
+        const { className, question, databases, isObjectDetail, isRunning, result } = this.props;
         let viz;
 
         if (!result) {
@@ -181,7 +200,7 @@ export default class QueryVisualization extends Component {
             let error = result.error;
 
             if (error) {
-                viz = <VisualizationError error={error} card={card} duration={result.duration} />
+                viz = <VisualizationError error={error} card={question.card()} duration={result.duration} />
             } else if (result.data) {
                 viz = (
                     <VisualizationResult
@@ -211,7 +230,7 @@ export default class QueryVisualization extends Component {
                 { isRunning && (
                     <div className="Loading spread flex flex-column layout-centered text-brand z2">
                         <LoadingSpinner />
-                        <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
+                        <h2 className="Loading-message text-brand text-uppercase my3">{t`Doing science`}...</h2>
                     </div>
                 )}
                 <div className={visualizationClasses}>
@@ -222,8 +241,8 @@ export default class QueryVisualization extends Component {
     }
 }
 
-const VisualizationEmptyState = ({showTutorialLink}) =>
+export const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
-        <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-        { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">How do I use this thing?</Link> }
-    </div>
+        <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
+        { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">{t`How do I use this thing?`}</Link> }
+    </div>;

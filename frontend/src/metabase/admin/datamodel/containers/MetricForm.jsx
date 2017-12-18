@@ -16,6 +16,8 @@ import { reduxForm } from "redux-form";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Table from "metabase-lib/lib/metadata/Table";
 
 @reduxForm({
     form: "metric",
@@ -57,13 +59,14 @@ export default class MetricForm extends Component {
         return (
             <div>
                 <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
-                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button Button--borderless mx1">Cancel</Link>
+                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button ml2">Cancel</Link>
             </div>
         )
     }
 
+
     render() {
-        const { fields: { id, name, description, definition, revision_message }, metric, tableMetadata, handleSubmit, previewSummary } = this.props;
+        const { fields: { id, name, description, definition, revision_message }, metric, metadata, tableMetadata, handleSubmit, previewSummary } = this.props;
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -82,11 +85,18 @@ export default class MetricForm extends Component {
                                 filter: true,
                                 aggregation: true
                             }}
-                            tableMetadata={{
-                                ...tableMetadata,
-                                aggregation_options: tableMetadata.aggregation_options.filter(a => a.short !== "rows"),
-                                metrics: null
-                            }}
+                            metadata={
+                                metadata && tableMetadata && metadata.tables && metadata.tables[tableMetadata.id].fields && Object.assign(new Metadata(), metadata, {
+                                    tables: {
+                                        ...metadata.tables,
+                                        [tableMetadata.id]: Object.assign(new Table(), metadata.tables[tableMetadata.id], {
+                                            aggregation_options: tableMetadata.aggregation_options.filter(a => a.short !== "rows"),
+                                            metrics: []
+                                        })
+                                    }
+                                })
+                            }
+                            tableMetadata={tableMetadata}
                             previewSummary={previewSummary == null ? "" : "Result: " + formatValue(previewSummary)}
                             updatePreviewSummary={this.updatePreviewSummary.bind(this)}
                             {...definition}

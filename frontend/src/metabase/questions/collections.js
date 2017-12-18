@@ -2,7 +2,6 @@
 import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 import { reset } from 'redux-form';
 import { replace } from "react-router-redux";
-import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 
@@ -36,9 +35,9 @@ export const saveCollection = createThunkAction(SAVE_COLLECTION, (collection) =>
             }
             if (response.id != null) {
                 dispatch(reset("collection"));
+                // use `replace` so form url doesn't appear in history
+                dispatch(replace('/questions/'));
             }
-            // use `replace` so form url doesn't appear in history
-            dispatch(replace(Urls.collection(response)));
             return response;
         } catch (e) {
             // redux-form expects an object with either { field: error } or { _error: error }

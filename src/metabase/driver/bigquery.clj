@@ -1,7 +1,7 @@
 (ns metabase.driver.bigquery
   (:require [clojure
              [set :as set]
-             [string :as s]
+             [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [honeysql
@@ -21,7 +21,6 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
@@ -100,8 +99,9 @@
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
-    {:name      (.getName field)
-     :base-type (bigquery-type->base-type (.getType field))}))
+    {:name          (.getName field)
+     :database-type (.getType field)
+     :base-type     (bigquery-type->base-type (.getType field))}))
 
 (defn- describe-table [database {table-name :name}]
   {:schema nil
@@ -120,7 +120,7 @@
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
                    ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
-                   (.setUseLegacySql (not (s/includes? (s/lower-case query-string) "#standardsql")))
+                   (.setUseLegacySql (not (str/includes? (str/lower-case query-string) "#standardsql")))
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
@@ -135,7 +135,8 @@
          ;; Add the appropriate number of milliseconds to the number to convert it to the local timezone.
          ;; We do this because the dates come back in UTC but we want the grouping to match the local time (HUH?)
          ;; This gives us the same results as the other `has-questionable-timezone-support?` drivers
-         ;; Not sure if this is actually desirable, but if it's not, it probably means all of those other drivers are doing it wrong
+         ;; Not sure if this is actually desirable, but if it's not, it probably means all of those other drivers are
+         ;; doing it wrong
          (u/->Timestamp (- (* (Double/parseDouble s) 1000)
                            (.getDSTSavings default-timezone)
                            (.getRawOffset  default-timezone))))))
@@ -156,7 +157,8 @@
    (post-process-native response query-timeout-seconds))
   ([^QueryResponse response, ^Integer timeout-seconds]
    (if-not (.getJobComplete response)
-     ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
+     ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
+     ;; wait a few seconds for the job to finish.
      (do
        (when (zero? timeout-seconds)
          (throw (ex-info "Query timed out." (into {} response))))
@@ -173,36 +175,17 @@
         :rows    (for [^TableRow row (.getRows response)]
                    (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
                      (when-let [v (.getV cell)]
-                       ;; There is a weird error where everything that *should* be NULL comes back as an Object. See https://jira.talendforge.org/browse/TBD-1592
+                       ;; There is a weird error where everything that *should* be NULL comes back as an Object.
+                       ;; See https://jira.talendforge.org/browse/TBD-1592
                        ;; Everything else comes back as a String luckily so we can proceed normally.
                        (when-not (= (class v) Object)
                          (parser v)))))}))))
 
 (defn- process-native* [database query-string]
-  ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by `execute` so operations going through `process-native*` may be
-  ;; retried up to 3 times.
+  ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
+  ;; `execute` so operations going through `process-native*` may be retried up to 3 times.
   (u/auto-retry 1
     (post-process-native (execute-bigquery database query-string))))
-
-
-(defn- field-values-lazy-seq [{field-name :name, :as field-instance}]
-  {:pre [(map? field-instance)]}
-  (let [{table-name :name, :as table}                 (field/table field-instance)
-        {{dataset-name :dataset-id} :details, :as db} (table/database table)
-        query                                         (format "SELECT [%s.%s.%s] FROM [%s.%s] LIMIT %d"
-                                                              dataset-name table-name field-name dataset-name table-name driver/field-values-lazy-seq-chunk-size)
-        fetch-page                                    (fn [page]
-                                                        (map first (:rows (process-native* db (str query " OFFSET " (* page driver/field-values-lazy-seq-chunk-size))))))
-        fetch-all                                     (fn fetch-all [page]
-                                                        (lazy-seq (let [results               (fetch-page page)
-                                                                        total-results-fetched (* page driver/field-values-lazy-seq-chunk-size)]
-                                                                    (concat results
-                                                                            (when (and (= (count results) driver/field-values-lazy-seq-chunk-size)
-                                                                                       (< total-results-fetched driver/max-sync-lazy-seq-results))
-                                                                              (fetch-all (inc page)))))))]
-    (fetch-all 0)))
-
-
 
 
 ;;; # Generic SQL Driver Methods
@@ -210,15 +193,15 @@
 (defn- date-add [unit timestamp interval]
   (hsql/call :date_add timestamp interval (hx/literal unit)))
 
-;; µs = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this format
+;; microseconds = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this format
 
-(def ^:private ->µs (partial hsql/call :timestamp_to_usec))
+(def ^:private ->microseconds (partial hsql/call :timestamp_to_usec))
 
-(defn- µs->str [format-str µs]
+(defn- microseconds->str [format-str µs]
   (hsql/call :strftime_utc_usec µs (hx/literal format-str)))
 
 (defn- trunc-with-format [format-str timestamp]
-  (hx/->timestamp (µs->str format-str (->µs timestamp))))
+  (hx/->timestamp (microseconds->str format-str (->microseconds timestamp))))
 
 (defn- date [unit expr]
   {:pre [expr]}
@@ -253,7 +236,8 @@
 
 (declare driver)
 
-;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out where things is from
+;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out
+;; where things is from
 (defn- qualify-fields-and-tables-with-dataset-id [{{{:keys [dataset-id]} :details} :database, :as query}]
   (walk/postwalk (fn [x]
                    (cond
@@ -269,14 +253,15 @@
   {:pre [(map? honeysql-form)]}
   ;; replace identifiers like [shakespeare].[word] with ones like [shakespeare.word] since that's hat BigQuery expects
   (let [[sql & args] (sql/honeysql-form->sql+args driver honeysql-form)
-        sql          (s/replace (hx/unescape-dots sql) #"\]\.\[" ".")]
+        sql          (str/replace (hx/unescape-dots sql) #"\]\.\[" ".")]
     (assert (empty? args)
       "BigQuery statements can't be parameterized!")
     sql))
 
 (defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
-  ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
-  (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
+  ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset
+  ;; and table IDs
+  (let [demangle-name (u/rpartial str/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
         columns       (for [column columns]
                         (keyword (demangle-name column)))
         rows          (for [row rows]
@@ -335,13 +320,15 @@
                     ag-type)))
     :else (str schema-name \. table-name \. field-name)))
 
-;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
+;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
+;; currently only used for SQL params so it's not a huge deal at this point
 (defn- field->identifier [{table-id :table_id, :as field}]
   (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
         dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
     (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
 
-;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
+;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting
+;; functions in SELECT
 ;; BAD:
 ;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
 ;; FROM [sad_toucan_incidents.incidents]
@@ -440,14 +427,18 @@
 
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
 (defn- format-custom-field-name ^String [^String custom-field-name]
-  (s/join (take 128 (-> (s/trim custom-field-name)
-                        (s/replace #"[^\w\d_]" "_")
-                        (s/replace #"(^\d)" "_$1")))))
+  (str/join (take 128 (-> (str/trim custom-field-name)
+                        (str/replace #"[^\w\d_]" "_")
+                        (str/replace #"(^\d)" "_$1")))))
 
 
 (defrecord BigQueryDriver []
   clojure.lang.Named
   (getName [_] "BigQuery"))
+
+;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
+(def ^:private bigquery-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS"))
+(def ^:private bigquery-db-time-query "select CAST(CURRENT_TIMESTAMP() AS STRING)")
 
 (def ^:private driver (BigQueryDriver.))
 
@@ -470,8 +461,7 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table            analyze/generic-analyze-table
-          :can-connect?             (u/drop-first-arg can-connect?)
+         {:can-connect?             (u/drop-first-arg can-connect?)
           :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
           :describe-database        (u/drop-first-arg describe-database)
           :describe-table           (u/drop-first-arg describe-table)
@@ -503,12 +493,16 @@
           :features                 (constantly (set/union #{:basic-aggregations
                                                              :standard-deviation-aggregations
                                                              :native-parameters
-                                                             :expression-aggregations}
+                                                             :expression-aggregations
+                                                             :binning}
                                                            (when-not config/is-test?
                                                              ;; during unit tests don't treat bigquery as having FK support
                                                              #{:foreign-keys})))
-          :field-values-lazy-seq    (u/drop-first-arg field-values-lazy-seq)
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
-          :mbql->native             (u/drop-first-arg mbql->native)}))
+          :mbql->native             (u/drop-first-arg mbql->native)
+          :current-db-time          (driver/make-current-db-time-fn bigquery-date-formatter bigquery-db-time-query)}))
 
-(driver/register-driver! :bigquery driver)
+(defn -init-driver
+  "Register the BigQuery driver"
+  []
+  (driver/register-driver! :bigquery driver))
