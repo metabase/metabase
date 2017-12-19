@@ -127,11 +127,11 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, un
 
         if (undoable) {
             const type = archived ? "archived" : "unarchived"
-            dispatch(addUndo(createUndo(
+            dispatch(addUndo(createUndo({
                 type,
-                 <div>{`Dashboard was ${type}.`}</div>,
-                setArchived(dashId, !archived)
-            )));
+                message: <div>{`Dashboard was ${type}.`}</div>,
+                action: setArchived(dashId, !archived)
+            })));
         }
 
         MetabaseAnalytics.trackEvent("Dashboard", archived ? "Archive" : "Unarchive");
