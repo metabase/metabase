@@ -76,4 +76,23 @@ describe("CategoryWidget", () => {
             expect(ON_SET_VALUE).toHaveBeenCalledWith(['Second']);
         });
     });
+
+    describe("selecting no values", () => {
+        it("selected values should be null", () => {
+            let categoryWidget = renderCategoryWidget({ value: [] });
+            // Check option 1
+            click(
+                categoryWidget.find("label").at(0)
+            );
+            clickButton(categoryWidget.find(".Button"));
+            expect(ON_SET_VALUE).toHaveBeenCalledWith(['First']);
+
+            // un-check option 1
+            click(
+                categoryWidget.find("label").at(0)
+            );
+            clickButton(categoryWidget.find(".Button"));
+            expect(ON_SET_VALUE).toHaveBeenCalledWith(null);
+        });
+    });
 });

@@ -75,6 +75,7 @@ export default class CategoryWidget extends Component {
     }
 
     commitValues = (values: Array<string>) => {
+        if (values.length === 0) { values = null; }
         this.props.setValue(values);
         this.props.onClose();
     }
