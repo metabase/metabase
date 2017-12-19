@@ -83,20 +83,25 @@ function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeri
                          const row        = (rowIndex != null) && seriesData.rows[rowIndex];
                          const rawRow     = row && row._origin && row._origin.row; // get the raw query result row
                          // make sure the row index we've determined with our formula above is correct. Check the
-                         // x/y axis values ("key" & "value") and make sure they match up with the row before pushing
-                         // extra data for the tooltip
+                         // x/y axis values ("key" & "value") and make sure they match up with the row before setting
+                         // the data for the tooltip
                          if (rawRow && row[0] === d.data.key && row[1] === d.data.value) {
-                             // loop over all the columns returned with the query
-                             for (let colIndex = 0; colIndex < rawCols.length; colIndex++) {
-                                 const col = rawCols[colIndex];
-                                 // skip over the x/y column since those will already be included
-                                 if (col === cols[0] || col === cols[1]) continue;
-                                 data.push({
+                             // rather than just append the additional values we'll just create a new `data` array.
+                             // simply appending the additional values would result in tooltips whose order switches
+                             // between different series.
+                             // Loop over *all* of the columns and create the new array
+                             data = rawCols.map((col, i) => {
+                                 // if this was one of the original x/y columns keep the original object because it
+                                 // may have the `isNormalized` tweak above.
+                                 if (col === data[0].col) return data[0];
+                                 if (col === data[1].col) return data[1];
+                                 // otherwise just create a new object for any other columns.
+                                 return {
                                      key: getFriendlyName(col),
-                                     value: rawRow[colIndex],
+                                     value: rawRow[i],
                                      col: col
-                                 });
-                             }
+                                 };
+                             });
                          }
                      }
 
