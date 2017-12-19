@@ -32,10 +32,10 @@
             [toucan.db :as db]
             [toucan.util.test :as test])
   (:import java.util.TimeZone
-           [org.joda.time DateTime DateTimeZone]
+           org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-;; ## match-$
+;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
 (defn- $->prop
   "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
@@ -65,8 +65,9 @@
   ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
   ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
   ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
-  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their presence;
-  ;; see the `boolean-ids-and-timestamps` function below
+  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their
+  ;; presence see the `boolean-ids-and-timestamps` function below
+  {:style/indent 1}
   [source-obj dest-object]
   {:pre [(map? dest-object)]}
   (let [source##    (gensym)
@@ -217,7 +218,7 @@
                                 :password   (random-name)})})
 
 
-;;; ------------------------------------------------------------ Other Util Fns ------------------------------------------------------------
+;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
 
 (defn- namespace-or-symbol? [x]
@@ -235,21 +236,24 @@
     (intern target-namespace symb varr)))
 
 (defmacro ^:deprecated resolve-private-vars
-  "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
+  "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so
+  we can test them.
 
     (resolve-private-vars metabase.driver.generic-sql.sync
       field-avg-length field-percent-urls)
 
-   DEPRECATED: Just refer to vars directly using `#'` syntax instead of using this macro.
+  DEPRECATED: Just refer to vars directly using `#'` syntax instead of using this macro.
 
      (#'some-ns/field-avg-length ...)"
+  {:style/indent 1}
   [namespc & symbols]
   `(resolve-private-vars* (quote ~namespc) *ns* (quote ~symbols)))
 
 
 (defn obj->json->obj
-  "Convert an object to JSON and back again. This can be done to ensure something will match its serialized + deserialized form,
-   e.g. keywords that aren't map keys, record types vs. plain map types, or timestamps vs ISO-8601 strings:
+  "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
+  deserialized form, e.g. keywords that aren't map keys, record types vs. plain map types, or timestamps vs ISO-8601
+  strings:
 
      (obj->json->obj {:type :query}) -> {:type \"query\"}"
   {:style/indent 0}
@@ -259,7 +263,8 @@
 
 (defn mappify
   "Walk COLL and convert all record types to plain Clojure maps.
-   Useful because expectations will consider an instance of a record type to be different from a plain Clojure map, even if all keys & values are the same."
+  Useful because expectations will consider an instance of a record type to be different from a plain Clojure map,
+  even if all keys & values are the same."
   [coll]
   {:style/indent 0}
   (walk/postwalk (fn [x]
@@ -270,8 +275,8 @@
 
 
 (defn do-with-temporary-setting-value
-  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the original value.
-   This works much the same way as `binding`.
+  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the
+  original value. This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
@@ -284,7 +289,8 @@
         (setting/set! setting-k original-value)))))
 
 (defmacro with-temporary-setting-values
-  "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This works much the same way as `binding`.
+  "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
+  works much the same way as `binding`.
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
@@ -309,9 +315,8 @@
     @messages))
 
 (defmacro with-log-messages
-  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions.
-   Messages are of the format `[:level throwable message]`, and are returned in chronological order
-   from oldest to newest.
+  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
+  format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
 
      (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
   {:style/indent 0}
@@ -320,9 +325,9 @@
 
 
 (defn vectorize-byte-arrays
-  "Walk form X and convert any byte arrays in the results to standard Clojure vectors.
-   This is useful when writing tests that return byte arrays (such as things that work with query hashes),
-   since identical arrays are not considered equal."
+  "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
+  tests that return byte arrays (such as things that work with query hashes),since identical arrays are not considered
+  equal."
   {:style/indent 0}
   [x]
   (walk/postwalk (fn [form]
@@ -360,12 +365,13 @@
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       SCHEDULER                                                        |
-;;; +------------------------------------------------------------------------------------------------------------------------+
 
-;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler in place
-;; and then check the tasks that get scheduled
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   SCHEDULER                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
+;; in place and then check the tasks that get scheduled
 
 (defn do-with-scheduler [scheduler f]
   (with-redefs [metabase.task/scheduler (constantly scheduler)]
@@ -396,8 +402,8 @@
   `(do-with-temp-scheduler (fn [] ~@body)))
 
 (defn scheduler-current-tasks
-  "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler.
-   Intended so we can test that things were scheduled correctly."
+  "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler. Intended so we
+  can test that things were scheduled correctly."
   []
   (when-let [^Scheduler scheduler (#'task/scheduler)]
     (vec
@@ -417,9 +423,8 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)}))))}))))))
 
 (defn db-timezone-id
-  "Return the timezone id from the test database. Must be called with
-  `metabase.test.data.datasets/*driver*` bound, such as via
-  `metabase.test.data.datasets/with-engine`"
+  "Return the timezone id from the test database. Must be called with `metabase.test.data.datasets/*driver*` bound,
+  such as via `metabase.test.data.datasets/with-engine`"
   []
   (assert (bound? #'*driver*))
   (data/dataset test-data
@@ -429,8 +434,8 @@
         .getID)))
 
 (defn call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the
-  various timezone settings back the way it found it when it exits."
+  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found
+  it when it exits."
   [^DateTimeZone dtz f]
   (let [orig-tz (TimeZone/getDefault)
         orig-dtz (time/default-time-zone)

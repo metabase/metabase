@@ -54,8 +54,10 @@
     ;; set a couple preferences
     (public-settings/site-name site_name)
     (public-settings/admin-email email)
-    (public-settings/anon-tracking-enabled (or (nil? allow_tracking) ; default to `true` if allow_tracking isn't specified
-                                               allow_tracking))      ; the setting will set itself correctly whether a boolean or boolean string is specified
+    ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
+    ;; boolean string is specified
+    (public-settings/anon-tracking-enabled (or (nil? allow_tracking)
+                                               allow_tracking))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (let [db (db/insert! Database
@@ -83,25 +85,14 @@
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
-  [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
+  [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
   (let [engine           (keyword engine)
-        details          (assoc details :engine engine)
-        response-invalid (fn [field m] {:status 400 :body (if (= :general field)
-                                                            {:message m}
-                                                            {:errors {field m}})})]
-    ;; TODO - as @atte mentioned this should just use the same logic as we use in POST /api/database/, which tries with
-    ;; both SSL and non-SSL.
-    (try
-      (cond
-        (driver/can-connect-with-details? engine details :rethrow-exceptions) {:valid true}
-        (and host port (u/host-port-up? host port))                           (response-invalid :dbname  (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-        (and host (u/host-up? host))                                          (response-invalid :port    (format "Connection to '%s' successful, but port %d is invalid." port))
-        host                                                                  (response-invalid :host    (format "'%s' is not reachable" host))
-        :else                                                                 (response-invalid :general "Unable to connect to database."))
-      (catch Throwable e
-        (response-invalid :general (.getMessage e))))))
+        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
+                                                             {:errors {field m}}
+                                                             {:message m})})]
+    (database-api/test-database-connection engine details :invalid-response-handler invalid-response)))
 
 
 ;;; Admin Checklist

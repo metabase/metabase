@@ -76,9 +76,9 @@
    (keyword "DOUBLE PRECISION") :type/Float})
 
 
-;; These functions for exploding / imploding the options in the connection strings are here so we can override shady options
-;; users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can replace that
-;; and make the connection read-only.
+;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
+;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
+;; replace that and make the connection read-only.
 
 (defn- connection-string->file+options
   "Explode a CONNECTION-STRING like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
@@ -123,8 +123,9 @@
 (defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
   {:pre [(integer? database-id)]}
   (u/prog1 query
-    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
-    ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
+    ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
+    ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
+    ;; reasons
     (when (= (keyword query-type) :native)
       (let [{:keys [db]}   (db/select-one-field :details Database :id database-id)
             _              (assert db)

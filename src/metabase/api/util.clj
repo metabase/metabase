@@ -1,5 +1,6 @@
 (ns metabase.api.util
-  "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin page tasks."
+  "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
+  page tasks."
   (:require [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
             [metabase.api.common :as api]

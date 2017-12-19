@@ -81,7 +81,7 @@
   (load-data! [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
     "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
-  (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
+  (^{:style/indent 2} execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
     "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
 

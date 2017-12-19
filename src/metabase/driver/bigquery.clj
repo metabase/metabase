@@ -25,11 +25,12 @@
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
+            TableList TableList$Tables TableReference TableRow TableSchema]
            [java.util Collections Date]
            [metabase.query_processor.interface DateTimeValue Value]))
 
-;;; ------------------------------------------------------------ Client ------------------------------------------------------------
+;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. google/http-transport google/json-factory credential)
@@ -42,11 +43,12 @@
   (comp credential->client database->credential))
 
 
-;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------
+;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
 (defn- ^TableList list-tables
-  "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are present, you may
-    fetch subsequent pages by specifying the PAGE-TOKEN; the token for the next page is returned with a page when one exists."
+  "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are
+  present, you may fetch subsequent pages by specifying the PAGE-TOKEN; the token for the next page is returned with a
+  page when one exists."
   ([database]
    (list-tables database nil))
 
@@ -73,7 +75,8 @@
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
-  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're g2g
+  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're
+  ;; g2g
   (boolean (list-tables {:details details-map})))
 
 
@@ -193,7 +196,8 @@
 (defn- date-add [unit timestamp interval]
   (hsql/call :date_add timestamp interval (hx/literal unit)))
 
-;; microseconds = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this format
+;; microseconds = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this
+;; format
 
 (def ^:private ->microseconds (partial hsql/call :timestamp_to_usec))
 
@@ -241,8 +245,10 @@
 (defn- qualify-fields-and-tables-with-dataset-id [{{{:keys [dataset-id]} :details} :database, :as query}]
   (walk/postwalk (fn [x]
                    (cond
-                     (instance? metabase.query_processor.interface.Field x)     (assoc x :schema-name dataset-id) ; TODO - it is inconvenient that we use different keys for `schema` across different
-                     (instance? metabase.query_processor.interface.JoinTable x) (assoc x :schema      dataset-id) ; classes. We should one day refactor to use the same key everywhere.
+                     ;; TODO - it is inconvenient that we use different keys for `schema` across different classes. We
+                     ;; should one day refactor to use the same key everywhere.
+                     (instance? metabase.query_processor.interface.Field x)     (assoc x :schema-name dataset-id)
+                     (instance? metabase.query_processor.interface.JoinTable x) (assoc x :schema      dataset-id)
                      :else                                                      x))
                  (assoc-in query [:query :source-table :schema] dataset-id)))
 
@@ -290,9 +296,12 @@
                   (update results :columns (partial map keyword)))]
     (assoc results :annotate? mbql?)))
 
-;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
-;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
-;;        Or perhaps investigate a lower-level way to disable the functionality in HoneySQL, perhaps by swapping out a function somewhere
+;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared
+;; statement parameters (`?`)
+;;
+;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for
+;; `prepare-value` (?) Or perhaps investigate a lower-level way to disable the functionality in HoneySQL, perhaps by
+;; swapping out a function somewhere
 (defprotocol ^:private IPrepareValue
   (^:private prepare-value [this]))
 (extend-protocol IPrepareValue
@@ -330,14 +339,16 @@
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting
 ;; functions in SELECT
 ;; BAD:
-;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
+;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp],
+;;       count(*) AS [count]
 ;; FROM [sad_toucan_incidents.incidents]
 ;; GROUP BY msec_to_timestamp([sad_toucan_incidents.incidents.timestamp])
 ;; ORDER BY msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) ASC
 ;; LIMIT 10
 ;;
 ;; GOOD:
-;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
+;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp],
+;;        count(*) AS [count]
 ;; FROM [sad_toucan_incidents.incidents]
 ;; GROUP BY [sad_toucan_incidents.incidents.timestamp]
 ;; ORDER BY [sad_toucan_incidents.incidents.timestamp] ASC
@@ -386,16 +397,18 @@
 (defn- deduplicate-select-aliases
   "Replace duplicate aliases in SELECT-SUBCLAUSES with appropriately suffixed aliases.
 
-   BigQuery doesn't allow duplicate aliases in `SELECT` statements; a statement like `SELECT sum(x) AS sum, sum(y) AS sum` is invalid. (See #4089)
-   To work around this, we'll modify the HoneySQL aliases to make sure the same one isn't used twice by suffixing duplicates appropriately.
-   (We'll generate SQL like `SELECT sum(x) AS sum, sum(y) AS sum_2` instead.)"
+  BigQuery doesn't allow duplicate aliases in `SELECT` statements; a statement like `SELECT sum(x) AS sum, sum(y) AS
+  sum` is invalid. (See #4089) To work around this, we'll modify the HoneySQL aliases to make sure the same one isn't
+  used twice by suffixing duplicates appropriately.
+  (We'll generate SQL like `SELECT sum(x) AS sum, sum(y) AS sum_2` instead.)"
   [select-subclauses]
   (let [aliases (select-subclauses->aliases select-subclauses)
         deduped (deduplicate-aliases aliases)]
     (update-select-subclause-aliases select-subclauses deduped)))
 
 (defn- apply-aggregation
-  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results."
+  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls
+  `deduplicate-select-aliases` on the results."
   [driver honeysql-form query]
   (-> (sqlqp/apply-aggregation driver honeysql-form query)
       (update :select deduplicate-select-aliases)))
@@ -408,7 +421,8 @@
   (-> honeysql-form
       ;; Group by all the breakout fields
       ((partial apply h/group)  (map field->breakout-identifier breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
+      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
+      ;; twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field breakout-fields
                                             :when (not (contains? (set fields-fields) field))]
                                         (sqlqp/as (sqlqp/formatted field) field)))))
@@ -425,7 +439,8 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
-;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
+;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
+;; at most 128 characters long.
 (defn- format-custom-field-name ^String [^String custom-field-name]
   (str/join (take 128 (-> (str/trim custom-field-name)
                         (str/replace #"[^\w\d_]" "_")
@@ -448,14 +463,17 @@
          {:apply-aggregation         apply-aggregation
           :apply-breakout            (u/drop-first-arg apply-breakout)
           :apply-order-by            (u/drop-first-arg apply-order-by)
-          :column->base-type         (constantly nil)                           ; these two are actually not applicable
-          :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
+          ;; these two are actually not applicable since we don't use JDBC
+          :column->base-type         (constantly nil)
+          :connection-details->spec  (constantly nil)
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
           :field->alias              (u/drop-first-arg field->alias)
           :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before executing)
+          ;; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before
+          ;; executing)
+          :quote-style               (constantly :sqlserver)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})
 
@@ -486,17 +504,20 @@
                                                   :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                   :required     true}])
           :execute-query            (u/drop-first-arg execute-query)
-          ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still allowed, which puts us in a weird position, however;
-          ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
-          ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
-          ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
+          ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins
+          ;; are still allowed, which puts us in a weird position, however; people can manually specifiy "foreign key"
+          ;; relationships in admin and everything should work correctly. Since we can't infer any "FK" relationships
+          ;; during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
+          ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set
+          ;; up these FK relationships for FK tables
           :features                 (constantly (set/union #{:basic-aggregations
                                                              :standard-deviation-aggregations
                                                              :native-parameters
                                                              :expression-aggregations
                                                              :binning}
                                                            (when-not config/is-test?
-                                                             ;; during unit tests don't treat bigquery as having FK support
+                                                             ;; during unit tests don't treat bigquery as having FK
+                                                             ;; support
                                                              #{:foreign-keys})))
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
           :mbql->native             (u/drop-first-arg mbql->native)

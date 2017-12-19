@@ -94,7 +94,8 @@
 
   ExpressionRef
   (formatted [{:keys [expression-name]}]
-    ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the original formuala.
+    ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
+    ;; original formuala.
     (formatted (expression-with-name expression-name)))
 
   Field
@@ -445,13 +446,16 @@
          (throw (Exception. (exception->nice-error-message e))))))
 
 (defn- do-with-auto-commit-disabled
-  "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the transaction finishes `.rollback` will be called instead of `.commit`.
-   Furthermore, execute F in a try-finally block; in the `finally`, manually call `.rollback` just to be extra-double-sure JDBC any changes made by the transaction aren't committed."
+  "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the
+  transaction finishes `.rollback` will be called instead of `.commit`. Furthermore, execute F in a try-finally block;
+  in the `finally`, manually call `.rollback` just to be extra-double-sure JDBC any changes made by the transaction
+  aren't committed."
   {:style/indent 1}
   [conn f]
   (jdbc/db-set-rollback-only! conn)
   (.setAutoCommit (jdbc/get-connection conn) false)
-  ;; TODO - it would be nice if we could also `.setReadOnly` on the transaction as well, but that breaks setting the timezone. Is there some way we can have our cake and eat it too?
+  ;; TODO - it would be nice if we could also `.setReadOnly` on the transaction as well, but that breaks setting the
+  ;; timezone. Is there some way we can have our cake and eat it too?
   (try (f)
        (finally (.rollback (jdbc/get-connection conn)))))
 

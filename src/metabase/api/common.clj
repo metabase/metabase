@@ -19,7 +19,7 @@
 
 (declare check-403 check-404)
 
-;;; ------------------------------------------------------------ DYNAMIC VARIABLES ------------------------------------------------------------
+;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
 
 (def ^:dynamic ^Integer *current-user-id*
@@ -40,15 +40,17 @@
   (atom #{}))
 
 
-;;; ------------------------------------------------------------ Precondition checking helper fns  ------------------------------------------------------------
+;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
 (defn check
   "Assertion mechanism for use inside API functions.
-   Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
+  Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
 
-   MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional details, such as an `:error_code`.
+  MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
+  details, such as an `:error_code`.
 
-  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
+  generated.
 
   `check` can be called with the form
 
@@ -62,6 +64,7 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
+  {:style/indent 1}
   ([tst code-or-code-message-pair & rest-args]
    (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
                                       [code-or-code-message-pair rest-args]
@@ -86,7 +89,8 @@
   (check-403 *is-superuser?*))
 
 
-;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.
+;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
+;; w/ relevant error messages.
 
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
@@ -97,13 +101,15 @@
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
-   Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
+  Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
 
-  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
+  This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
+  generated.
 
   `checkp` can be called with the form
 
       (checkp test field-name message)"
+  {:style/indent 1}
   ([tst field-name message]
    (when-not tst
      (throw-invalid-param-exception (str field-name) message))))
@@ -142,7 +148,7 @@
   (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
 
 
-;;; ------------------------------------------------------------ api-let, api->, etc. ------------------------------------------------------------
+;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
 ;; The following all work exactly like the corresponding Clojure versions
 ;; but take an additional arg at the beginning called RESPONSE-PAIR.
@@ -156,7 +162,7 @@
 
     (api-let [404 \"Not found.\"] [user @*current-user*]
       (:id user))"
-  {:arglists '([[status-code message] [binding test] & body])}
+  {:arglists '([[status-code message] [binding test] & body]), :style/indent 2}
   [response-pair [binding test & more] & body]
   (if (seq more)
     `(api-let ~response-pair ~[binding test]
@@ -168,74 +174,89 @@
              ~@more]
          ~@body))))
 
-(defmacro api->
-  "If TEST is true, thread the result using `->` through BODY.
-
-    (api-> [404 \"Not found\"] @*current-user*
-      :id)"
-  [response-pair tst & body]
-  `(api-let ~response-pair [result# ~tst]
-     (-> result#
-         ~@body)))
-
-(defmacro api->>
-  "Like `api->`, but threads result using `->>`."
-  [response-pair tst & body]
-  `(api-let ~response-pair [result# ~tst]
-     (->> result#
-          ~@body)))
-
 
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
 
 ;; #### GENERIC 400 RESPONSE HELPERS
-(def ^:private ^:const generic-400 [400 "Invalid Request."])
-(defn     check-400 "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-400))
-(defmacro let-400   "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-400 ~@body))
-(defmacro ->400     "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-400 ~@body))
-(defmacro ->>400    "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-400 ~@body))
+(def ^:private generic-400
+  [400 "Invalid Request."])
+
+(defn check-400
+  "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-400))
+
+(defmacro let-400
+  "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let ~generic-400 ~@body))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
-(def ^:private ^:const generic-404 [404 "Not found."])
-(defn     check-404 "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-404))
-(defmacro let-404   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-404 ~@body))
-(defmacro ->404     "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-404 ~@body))
-(defmacro ->>404    "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-404 ~@body))
+(def ^:private generic-404
+  [404 "Not found."])
+
+(defn check-404
+  "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-404))
+
+(defmacro let-404
+  "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let ~generic-404 ~@body))
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
-(def ^:private ^:const generic-403 [403 "You don't have permissions to do that."])
-(defn     check-403 "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]     (check arg generic-403))
-(defmacro let-403   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-403 ~@body))
-(defmacro ->403     "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-403 ~@body))
-(defmacro ->>403    "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-403 ~@body))
+(def ^:private generic-403
+  [403 "You don't have permissions to do that."])
+
+(defn check-403
+  "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-403))
+(defmacro let-403
+  "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let ~generic-403 ~@body))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
-(def ^:private ^:const generic-500 [500 "Internal server error."])
-(defn     check-500 "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-500))
-(defmacro let-500   "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-500 ~@body))
-(defmacro ->500     "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-500 ~@body))
-(defmacro ->>500    "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-500 ~@body))
+(def ^:private generic-500
+  [500 "Internal server error."])
+
+(defn check-500
+  "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."
+  [arg]
+  (check arg generic-500))
+
+(defmacro let-500
+  "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."
+  {:style/indent 1}
+  [& body]
+  `(api-let   ~generic-500 ~@body))
 
 (def ^:const generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
 
-;;; ------------------------------------------------------------ DEFENDPOINT AND RELATED FUNCTIONS ------------------------------------------------------------
+;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
 
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via `Integer/parseInt`
+   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
+      `Integer/parseInt`
    -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
    -  sequentially applies specified annotation functions on args to validate them.
-   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo` and includes a `:status-code`,
-      that code will be returned
+   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo`
+      and includes a `:status-code`, that code will be returned
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form.
@@ -252,7 +273,8 @@
     (when-not docstr
       (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document their API error messages
+                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+                      ;; their API error messages
                       :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
                       :is-endpoint? true)
        (~method ~route ~args
@@ -277,7 +299,7 @@
        ~@additional-routes ~@api-routes)))
 
 
-;;; ------------------------------------------------------------ PERMISSIONS CHECKING HELPER FNS ------------------------------------------------------------
+;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
 (defn read-check
   "Check whether we can read an existing OBJ, or ENTITY with ID.
@@ -308,7 +330,7 @@
    (write-check (apply db/select-one entity :id id other-conditions))))
 
 
-;;; ------------------------------------------------------------ OTHER HELPER FNS ------------------------------------------------------------
+;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
 (defn check-public-sharing-enabled
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
