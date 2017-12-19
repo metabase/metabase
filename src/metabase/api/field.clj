@@ -1,11 +1,11 @@
 (ns metabase.api.field
-  (:require [compojure.core :refer [GET POST PUT DELETE]]
+  (:require [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
             [metabase.models
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
-             [field-values :as field-values :refer [create-field-values-if-needed! field-should-have-field-values? field-values->pairs FieldValues]]]
+             [field-values :as field-values :refer [FieldValues]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -103,14 +103,14 @@
   {:values []})
 
 (api/defendpoint GET "/:id/values"
-  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
-   all distinct values of the field, and a map of human-readable values defined by the user."
+  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
+  values of the field, and a map of human-readable values defined by the user."
   [id]
   (let [field (api/read-check Field id)]
-    (if-let [field-values (and (field-should-have-field-values? field)
-                               (create-field-values-if-needed! field))]
+    (if-let [field-values (and (field-values/field-should-have-field-values? field)
+                               (field-values/create-field-values-if-needed! field))]
       (-> field-values
-          (assoc :values (field-values->pairs field-values))
+          (assoc :values (field-values/field-values->pairs field-values))
           (dissoc :human_readable_values))
       {:values []})))
 
@@ -147,17 +147,15 @@
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
 (api/defendpoint GET "/field-literal%2C:field-name%2Ctype%2F:field-type/values"
-  "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB.
-   This endpoint is just a convenience to simplify the frontend code. It just returns the standard
-   'empty' field values response."
+  "Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
+  convenience to simplify the frontend code. It just returns the standard 'empty' field values response."
   ;; we don't actually care what field-name or field-type are, so they're ignored
   [_ _]
   empty-field-values)
 
 (defn- validate-human-readable-pairs
-  "Human readable values are optional, but if present they must be
-  present for each field value. Throws if invalid, returns a boolean
-  indicating whether human readable values were found."
+  "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,
+  returns a boolean indicating whether human readable values were found."
   [value-pairs]
   (let [human-readable-missing? #(= ::not-found (get % 1 ::not-found))
         has-human-readable-values? (not-any? human-readable-missing? value-pairs)]
@@ -183,13 +181,14 @@
                                (map second value-pairs)))))
 
 (api/defendpoint POST "/:id/values"
-  "Update the fields values and human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
-   or whose base type is `type/Boolean`. The human-readable values are optional."
+  "Update the fields values and human-readable values for a `Field` whose special type is
+  `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
   {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
-    (api/check (field-should-have-field-values? field)
-      [400 "You can only update the human readable values of a mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
+    (api/check (field-values/field-should-have-field-values? field)
+      [400 (str "You can only update the human readable values of a mapped values of a Field whose 'special_type' "
+                "is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'.")])
     (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))

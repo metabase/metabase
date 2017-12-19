@@ -127,7 +127,8 @@
 
 
 (defn- increment-identifier-suffix
-  "Add an appropriate suffix to a keyword IDENTIFIER to make it distinct from previous usages of the same identifier, e.g.
+  "Add an appropriate suffix to a keyword IDENTIFIER to make it distinct from previous usages of the same identifier,
+  e.g.
 
      (increment-identifier-suffix :my_col)   ; -> :my_col_2
      (increment-identifier-suffix :my_col_2) ; -> :my_col_3"
@@ -171,8 +172,8 @@
         ;; otherwise if we haven't seen it record it as seen and move on to the next column
         :else                          (recur (conj already-seen alias) (conj acc [col alias]) more)))))
 
-;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't supported on Oracle versions older than 12).
-;; This has to wrap the actual query, e.g.
+;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
+;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
 ;;
 ;; SELECT *
 ;; FROM (
@@ -182,8 +183,8 @@
 ;; )
 ;; WHERE ROWNUM < 10;
 ;;
-;; This wrapping can cause problems if there is an ambiguous column reference in the nested query (i.e. two columns with the same alias name).
-;; To ensure that doesn't happen, those column references need to be disambiguated first
+;; This wrapping can cause problems if there is an ambiguous column reference in the nested query (i.e. two columns
+;; with the same alias name). To ensure that doesn't happen, those column references need to be disambiguated first
 ;;
 ;; To do an offset we have to do something like:
 ;;
@@ -301,7 +302,9 @@
           :excluded-schemas          (fn [& _]
                                        (set/union
                                         #{"ANONYMOUS"
-                                          "APEX_040200" ; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+                                          ;; TODO - are there othere APEX tables we want to skip? Maybe we should make
+                                          ;; this a pattern instead? (#"^APEX_")
+                                          "APEX_040200"
                                           "APPQOSSYS"
                                           "AUDSYS"
                                           "CTXSYS"
@@ -326,8 +329,9 @@
                                           "XDB"
                                           "XS$NULL"}
                                         (when config/is-test?
-                                          ;; DIRTY HACK (!) This is similar hack we do for Redshift, see the explanation there
-                                          ;; we just want to ignore all the test "session schemas" that don't match the current test
+                                          ;; DIRTY HACK (!) This is similar hack we do for Redshift, see the
+                                          ;; explanation there we just want to ignore all the test "session schemas"
+                                          ;; that don't match the current test
                                           (require 'metabase.test.data.oracle)
                                           ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
           :set-timezone-sql          (constantly "ALTER session SET time_zone = %s")
@@ -341,8 +345,9 @@
   ;; only register the Oracle driver if the JDBC driver is available
   (when (u/ignore-exceptions
          (Class/forName "oracle.jdbc.OracleDriver"))
-    ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like java.sql.Timestamp
-    ;; it returns wacky types like oracle.sql.TIMESTAMPT. By setting this System property the JDBC driver will return the appropriate types.
-    ;; See this page for more details: http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
+    ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like
+    ;; java.sql.Timestamp it returns wacky types like oracle.sql.TIMESTAMPT. By setting this System property the JDBC
+    ;; driver will return the appropriate types. See this page for more details:
+    ;; http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
     (.setProperty (System/getProperties) "oracle.jdbc.J2EE13Compliant" "TRUE")
     (driver/register-driver! :oracle (OracleDriver.))))

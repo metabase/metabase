@@ -11,7 +11,7 @@
             [metabase.models
              [card :refer [Card]]
              [dashboard :as dashboard :refer [Dashboard]]
-             [dashboard-card :refer [create-dashboard-card! DashboardCard delete-dashboard-card! update-dashboard-card!]]
+             [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
              [dashboard-favorite :refer [DashboardFavorite]]
              [interface :as mi]
              [query :as query :refer [Query]]
@@ -70,7 +70,7 @@
        (events/publish-event! :dashboard-create)))
 
 
-;;; ------------------------------------------------------------ Hiding Unreadable Cards ------------------------------------------------------------
+;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
@@ -89,26 +89,36 @@
                                                 (update :series (partial mapv hide-unreadable-card))))))))
 
 
-;;; ------------------------------------------------------------ Query Average Duration Info ------------------------------------------------------------
+;;; ------------------------------------------ Query Average Duration Info -------------------------------------------
 
-;; Adding the average execution time to all of the Cards in a Dashboard efficiently is somewhat involved. There are a few things that make this tricky:
+;; Adding the average execution time to all of the Cards in a Dashboard efficiently is somewhat involved. There are a
+;; few things that make this tricky:
 ;;
-;; 1.  Queries are usually executed with `:constraints` that different from how they're actually definied, but not always. This means we should look
-;;     up hashes for both the query as-is and for the query with `default-query-constraints` and use whichever one we find
-;; 2.  The structure of DashCards themselves is complicated. It has a top-level `:card` property and (optionally) a sequence of additional Cards under `:series`
-;; 3.  Query hashes are byte arrays, and two idential byte arrays aren't equal to each other in Java; thus they don't work as one would expect when being used as map keys
+;; 1. Queries are usually executed with `:constraints` that different from how they're actually definied, but not
+;;    always. This means we should look up hashes for both the query as-is and for the query with
+;;    `default-query-constraints` and use whichever one we find
+;;
+;; 2. The structure of DashCards themselves is complicated. It has a top-level `:card` property and (optionally) a
+;;    sequence of additional Cards under `:series`
+;;
+;; 3. Query hashes are byte arrays, and two idential byte arrays aren't equal to each other in Java; thus they don't
+;;    work as one would expect when being used as map keys
 ;;
 ;; Here's an overview of the approach used to efficiently add the info:
 ;;
-;; 1. Build a sequence of query hashes (both as-is and with default constraints) for every card and series in the dashboard cards
-;; 2. Fetch all matching entires from Query in the DB and build a map of hash (converted to a Clojure vector)  -> average execution time
-;; 3. Iterate back over each card and look for matching entries in the `hash-vec->avg-time` for either the normal hash or the hash with default constraints,
-;;    and add the result as `:average_execution_time`
+;; 1. Build a sequence of query hashes (both as-is and with default constraints) for every card and series in the
+;;    dashboard cards
+;;
+;; 2. Fetch all matching entires from Query in the DB and build a map of hash (converted to a Clojure vector) ->
+;;    average execution time
+;;
+;; 3. Iterate back over each card and look for matching entries in the `hash-vec->avg-time` for either the normal hash
+;;    or the hash with default constraints, and add the result as `:average_execution_time`
 
 (defn- card->query-hashes
-  "Return a tuple of possible hashes that would be associated with executions of CARD.
-   The first is the hash of the query dictionary as-is; the second is one with the `default-query-constraints`,
-   which is how it will most likely be run."
+  "Return a tuple of possible hashes that would be associated with executions of CARD. The first is the hash of the
+  query dictionary as-is; the second is one with the `default-query-constraints`, which is how it will most likely be
+  run."
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp-util/query-hash dataset_query)
@@ -130,15 +140,16 @@
 
 (defn- hashes->hash-vec->avg-time
   "Given some query HASHES, return a map of hashes (as normal Clojure vectors) to the average query durations.
-   (The hashes are represented as normal Clojure vectors because identical byte arrays aren't considered equal to one another, and thus do not
-   work as one would expect when used as map keys.)"
+  (The hashes are represented as normal Clojure vectors because identical byte arrays aren't considered equal to one
+  another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
     (into {} (for [[k v] (db/select-field->field :query_hash :average_execution_time Query :query_hash [:in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
-  "Add `:query_average_duration` info to a CARD (i.e., the `:card` property of a DashCard or an entry in its `:series` array)."
+  "Add `:query_average_duration` info to a CARD (i.e., the `:card` property of a DashCard or an entry in its `:series`
+  array)."
   [card hash-vec->avg-time]
   (assoc card :query_average_duration (some (fn [query-hash]
                                               (hash-vec->avg-time (vec query-hash)))
@@ -162,7 +173,8 @@
   (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
 
 
-;;; ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
 (api/defendpoint GET "/:id"
   "Get `Dashboard` with ID."
@@ -179,9 +191,11 @@
 (api/defendpoint PUT "/:id"
   "Update a `Dashboard`.
 
-   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
-   but to change the value of `enable_embedding` you must be a superuser."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params position archived], :as dashboard} :body}]
+  Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
+  permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
+  superuser."
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
+                   embedding_params position archived], :as dashboard} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -193,7 +207,8 @@
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)}
   (let [dash (api/write-check Dashboard id)]
-    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
+    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
+    ;; enabled
     (when (or (and (some? enable_embedding)
                    (not= enable_embedding (:enable_embedding dash)))
               (and embedding_params
@@ -205,17 +220,20 @@
      ;; description, position are allowed to be `nil`. Everything else must be non-nil
      (u/select-keys-when dashboard
        :present #{:description :position}
-       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params :archived})))
+       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                  :embedding_params :archived})))
   ;; now publish an event and return the updated Dashboard
   (u/prog1 (Dashboard id)
     (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
 
 
-;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to be setting `:archived` to `true` via the `PUT` endpoint instead
+;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
+;; be setting `:archived` to `true` via the `PUT` endpoint instead
 (api/defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
   [id]
-  (log/warn "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its `archived` value via PUT /api/dashboard/:id.")
+  (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
+                 "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check Dashboard id)]
     (db/delete! Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
@@ -283,7 +301,7 @@
     :revision-id revision_id))
 
 
-;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
+;;; --------------------------------------------------- Favoriting ---------------------------------------------------
 
 (api/defendpoint POST "/:id/favorite"
   "Favorite a Dashboard."
@@ -301,12 +319,12 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:dashboard-id/public_link"
-  "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
-   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
-   Public sharing must be enabled."
+  "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
+  Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
+  sharing must be enabled."
   [dashboard-id]
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -329,14 +347,16 @@
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
-  "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled."
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is
+  enabled."
   []
   (api/check-superuser)
   (api/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
-  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT."
+  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
+  endpoints and a signed JWT."
   []
   (api/check-superuser)
   (api/check-embedding-enabled)

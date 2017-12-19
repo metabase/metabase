@@ -160,6 +160,7 @@
 
 (defn create-database-definition
   "Convenience for creating a new `DatabaseDefinition`."
+  {:style/indent 1}
   ^DatabaseDefinition [^String database-name & table-name+field-definition-maps+rows]
   (s/validate DatabaseDefinition (map->DatabaseDefinition {:database-name     database-name
                                                            :table-definitions (mapv (partial apply create-table-definition)

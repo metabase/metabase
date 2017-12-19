@@ -17,14 +17,18 @@
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
-   This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this Collection; keep in mind
-   that regardless of this status you must be a superuser to modify properties of Collections themselves.
+  This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this
+  Collection; keep in mind that regardless of this status you must be a superuser to modify properties of Collections
+  themselves.
 
-   By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`."
+  By default, this returns non-archived Collections, but instead you can show archived ones by passing
+  `?archived=true`."
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (-> (filterv mi/can-read? (db/select Collection :archived (Boolean/parseBoolean archived) {:order-by [[:%lower.name :asc]]}))
-      (hydrate :can_write)))
+  (as-> (db/select Collection :archived (Boolean/parseBoolean archived)
+                   {:order-by [[:%lower.name :asc]]}) collections
+    (filter mi/can-read? collections)
+    (hydrate collections :can_write)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including cards that belong to it."
@@ -45,8 +49,12 @@
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it."
   [id, :as {{:keys [name color description archived]} :body}]
-  {name su/NonBlankString, color collection/hex-color-regex, description (s/maybe su/NonBlankString), archived (s/maybe s/Bool)}
-  ;; you have to be a superuser to modify a Collection itself, but `/collection/:id/` perms are sufficient for adding/removing Cards
+  {name        su/NonBlankString
+   color       collection/hex-color-regex
+   description (s/maybe su/NonBlankString)
+   archived    (s/maybe s/Bool)}
+  ;; you have to be a superuser to modify a Collection itself, but `/collection/:id/` perms are sufficient for
+  ;; adding/removing Cards
   (api/check-superuser)
   (api/api-let [404 "Not Found"] [collection-before-update (Collection id)]
     (db/update! Collection id
@@ -68,7 +76,7 @@
   (Collection id))
 
 
-;;; ------------------------------------------------------------ GRAPH ENDPOINTS ------------------------------------------------------------
+;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
@@ -88,7 +96,8 @@
              {(->int group-id) (dejsonify-collections collections)})))
 
 (defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and parsing object keys as integers."
+  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
+  parsing object keys as integers."
   [graph]
   (update graph :groups dejsonify-groups))
 

@@ -12,8 +12,7 @@
              [ssh :as ssh]]))
 
 (def ^:private ^:const column->base-type
-  "Map of Vertica column types -> Field base types.
-   Add more mappings here as you come across them."
+  "Map of Vertica column types -> Field base types. Add more mappings here as you come across them."
   {:Boolean        :type/Boolean
    :Integer        :type/Integer
    :Bigint         :type/BigInteger
@@ -48,10 +47,9 @@
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
 (defn- cast-timestamp
-  "Vertica requires stringified timestamps (what
-  Date/DateTime/Timestamps are converted to) to be cast as timestamps
-  before date operations can be performed. This function will add that
-  cast if it is a timestamp, otherwise this is a noop."
+  "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
+  before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
+  noop."
   [expr]
   (if (u/is-temporal? expr)
     (hx/cast :timestamp expr)

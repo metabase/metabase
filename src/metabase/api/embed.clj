@@ -242,8 +242,11 @@
    (api/check (:enable_embedding object)
      [400 "Embedding is not enabled for this object."])))
 
-(def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard (partial check-embedding-enabled-for-object Dashboard))
-(def ^:private ^{:arglists '([card-id])}      check-embedding-enabled-for-card      (partial check-embedding-enabled-for-object Card))
+(def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+  (partial check-embedding-enabled-for-object Dashboard))
+
+(def ^:private ^{:arglists '([card-id])} check-embedding-enabled-for-card
+  (partial check-embedding-enabled-for-object Card))
 
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
