@@ -44,6 +44,8 @@
   [table :- i/TableInstance, field-metadata :- TableMetadataFieldWithOptionalID]
   (format "%s Field '%s'" (sync-util/name-for-logging table) (:name field-metadata)))
 
+(defn- canonical-name [field]
+  (str/lower-case (:name field)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -175,26 +177,39 @@
 ;;; |                                            UPDATING FIELD METADATA                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn ^:private special-type [field :- (s/maybe i/TableMetadataField)]
+  (and field
+       (or (:special-type field)
+           (when (:pk? field) :type/PK))))
+
 (s/defn ^:private update-metadata!
   "Make sure things like PK status and base-type are in sync with what has come back from the DB."
   [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}, parent-id :- ParentID]
-  (let [existing-fields      (db/select [Field :base_type :special_type :name :id]
-                               :table_id  (u/get-id table)
-                               :active    true
-                               :parent_id parent-id)
-        field-name->db-metadata (u/key-by (comp str/lower-case :name) db-metadata)]
+  (let [existing-fields         (db/select [Field :base_type :special_type :name :id]
+                                  :table_id  (u/get-id table)
+                                  :active    true
+                                  :parent_id parent-id)
+        field-name->db-metadata (u/key-by canonical-name db-metadata)]
     ;; Make sure special types are up-to-date for all the fields
-    (doseq [field existing-fields]
-      (when-let [db-field (get field-name->db-metadata (str/lower-case (:name field)))]
-        ;; update special type if one came back from DB metadata but Field doesn't currently have one
-        (db/update! Field (u/get-id field)
-          (merge {:base_type (:base-type db-field)}
-                 (when-not (:special_type field)
-                   {:special_type (or (:special-type db-field)
-                                      (when (:pk? db-field) :type/PK))})))
-        ;; now recursively do the same for any nested fields
-        (when-let [db-nested-fields (seq (:nested-fields db-field))]
-          (update-metadata! table (set db-nested-fields) (u/get-id field)))))))
+    (doseq [field existing-fields
+            :let  [db-field         (get field-name->db-metadata (canonical-name field))
+                   new-special-type (special-type db-field)]
+            :when (and db-field
+                       (or
+                        ;; If the base_type has changed, we need to updated it
+                        (not= (:base_type field)         (:base-type db-field))
+                        ;; If the base_type hasn't changed, but we now have a special_type, we should update it. We
+                        ;; should not overwrite a special_type that is already present (could have been specified by
+                        ;; the user).
+                        (and (not (:special_type field)) new-special-type)))]
+      ;; update special type if one came back from DB metadata but Field doesn't currently have one
+      (db/update! Field (u/get-id field)
+                  (merge {:base_type (:base-type db-field)}
+                         (when-not (:special_type field)
+                           {:special_type new-special-type})))
+      ;; now recursively do the same for any nested fields
+      (when-let [db-nested-fields (seq (:nested-fields db-field))]
+        (update-metadata! table (set db-nested-fields) (u/get-id field))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
