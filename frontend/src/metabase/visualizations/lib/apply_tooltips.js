@@ -19,10 +19,10 @@ function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeri
         if (onHoverChange) {
             chart.selectAll(".bar, .dot, .area, .line, .bubble")
                  .on("mousemove", function(d, i) {
-                     const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
-                     const card = series[seriesIndex].card;
+                     const seriesIndex       = determineSeriesIndexFromElement(this, isStacked);
+                     const card              = series[seriesIndex].card;
                      const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
-                     const isArea = this.classList.contains("area");
+                     const isArea            = this.classList.contains("area");
 
                      let data = [];
                      if (Array.isArray(d.key)) { // scatter
@@ -58,14 +58,38 @@ function applyChartTooltips(chart, series, isStacked, isNormalized, isScalarSeri
 
                          // now add entries to the tooltip for columns that aren't the X or Y axis. These aren't in
                          // the normal `cols` array, which is just the cols used in the graph axes; look in `_rawCols`
-                         // for any other columns. If we find them, add them at the end of the `data` array
+                         // for any other columns. If we find them, add them at the end of the `data` array.
+                         //
+                         // To find the actual row where data is coming from is somewhat overcomplicated because i
+                         // seems to follow a strange pattern that doesn't directly correspond to the rows in our
+                         // data. Not sure why but it appears values of i follow this pattern:
+                         //
+                         //  [Series 1]  i = 7   i = 8   i = 9  i = 10   i = 11
+                         //  [Series 0]  i = 1   i = 2   i = 3  i = 4    i = 5
+                         //             [Row 0] [Row 1] [Row 2] [Row 3] [Row 4]
+                         //
+                         // Deriving the rowIndex from i can be done as follows:
+                         // rowIndex = (i % (numRows + 1)) - 1;
+                         //
+                         // example: for series 1, i = 10
+                         // rowIndex = (10 % 6) - 1 = 4 - 1 = 3
+                         //
+                         // for series 0, i = 3
+                         // rowIndex = (3 % 6) - 1 = 3 - 1 = 2
                          const seriesData = series[seriesIndex].data || {};
                          const rawCols    = seriesData._rawCols;
-                         const row        = seriesData && seriesData.rows && seriesData.rows[i];
+                         const rows       = seriesData && seriesData.rows;
+                         const rowIndex   = rows && ((i % (rows.length + 1)) - 1);
+                         const row        = (rowIndex != null) && seriesData.rows[rowIndex];
                          const rawRow     = row && row._origin && row._origin.row; // get the raw query result row
-                         if (rawRow) {
+                         // make sure the row index we've determined with our formula above is correct. Check the
+                         // x/y axis values ("key" & "value") and make sure they match up with the row before pushing
+                         // extra data for the tooltip
+                         if (rawRow && row[0] === d.data.key && row[1] === d.data.value) {
+                             // loop over all the columns returned with the query
                              for (let colIndex = 0; colIndex < rawCols.length; colIndex++) {
                                  const col = rawCols[colIndex];
+                                 // skip over the x/y column since those will already be included
                                  if (col === cols[0] || col === cols[1]) continue;
                                  data.push({
                                      key: getFriendlyName(col),
