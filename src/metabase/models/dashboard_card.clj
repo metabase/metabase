@@ -141,13 +141,12 @@
    ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
    s/Keyword                                s/Any})
 
-(defn create-dashboard-card!
+(s/defn create-dashboard-card!
   "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as
    `DashboardCardSeries`. Returns the newly created `DashboardCard` or throws an Exception."
-  [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings] :as dashboard-card}]
-  (s/validate NewDashboardCard dashboard-card)
-  (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
-                                                    dashboard-card)]
+  [dashboard-card :- NewDashboardCard]
+  (let [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings sizeX sizeY row col series]
+         :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
     (db/transaction
       (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
                                               :dashboard_id           dashboard_id
