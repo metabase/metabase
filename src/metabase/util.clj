@@ -23,7 +23,6 @@
            [java.sql SQLException Timestamp]
            [java.text Normalizer Normalizer$Form]
            [java.util Calendar Date TimeZone]
-           javax.xml.bind.DatatypeConverter
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
@@ -48,6 +47,8 @@
   (->Timestamp ^java.sql.Timestamp [this]
     "Coerce this object to a `java.sql.Timestamp`. Strings are parsed as ISO-8601."))
 
+(declare str->date-time)
+
 (extend-protocol ITimestampCoercible
   nil       (->Timestamp [_]
               nil)
@@ -62,7 +63,7 @@
               (->Timestamp (.getTime this)))
   ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
   String    (->Timestamp [this]
-              (->Timestamp (DatatypeConverter/parseDateTime this)))
+              (->Timestamp (str->date-time this)))
   DateTime  (->Timestamp [this]
               (->Timestamp (.getMillis this))))
 
@@ -251,7 +252,7 @@
   (let [year    (date-extract :year date timezone-id)
         quarter (date-extract :quarter-of-year date timezone-id)
         month   (- (* 3 quarter) 2)]
-    (format "%d-%02d-01ZZ" year month)))
+    (format "%d-%02d-01'T'ZZ" year month)))
 
 (defn date-trunc
   "Truncate DATE to UNIT. DATE defaults to now.
@@ -267,11 +268,11 @@
      ;; For minute and hour truncation timezone should not be taken into account
      :minute  (trunc-with-floor date (* 60 1000))
      :hour    (trunc-with-floor date (* 60 60 1000))
-     :day     (trunc-with-format "yyyy-MM-ddZZ" date timezone-id)
-     :week    (trunc-with-format "yyyy-MM-ddZZ" (->first-day-of-week date timezone-id) timezone-id)
-     :month   (trunc-with-format "yyyy-MM-01ZZ" date timezone-id)
+     :day     (trunc-with-format "yyyy-MM-dd'T'ZZ" date timezone-id)
+     :week    (trunc-with-format "yyyy-MM-dd'T'ZZ" (->first-day-of-week date timezone-id) timezone-id)
+     :month   (trunc-with-format "yyyy-MM-01'T'ZZ" date timezone-id)
      :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
-     :year    (trunc-with-format "yyyy-01-01ZZ" date timezone-id))))
+     :year    (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
 
 
 (defn date-trunc-or-extract

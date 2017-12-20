@@ -132,17 +132,16 @@
 
 (defn- parse-timestamp-str [s]
   ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
-  (try (u/->Timestamp s)
-       (catch IllegalArgumentException _
-         ;; If parsing as ISO-8601 fails parse as a double then convert to ms
-         ;; Add the appropriate number of milliseconds to the number to convert it to the local timezone.
-         ;; We do this because the dates come back in UTC but we want the grouping to match the local time (HUH?)
-         ;; This gives us the same results as the other `has-questionable-timezone-support?` drivers
-         ;; Not sure if this is actually desirable, but if it's not, it probably means all of those other drivers are
-         ;; doing it wrong
-         (u/->Timestamp (- (* (Double/parseDouble s) 1000)
-                           (.getDSTSavings default-timezone)
-                           (.getRawOffset  default-timezone))))))
+  (or
+   (u/->Timestamp s)
+   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. Add the appropriate number of milliseconds to
+   ;; the number to convert it to the local timezone. We do this because the dates come back in UTC but we want the
+   ;; grouping to match the local time (HUH?) This gives us the same results as the other
+   ;; `has-questionable-timezone-support?` drivers. Not sure if this is actually desirable, but if it's not, it
+   ;; probably means all of those other drivers are doing it wrong
+   (u/->Timestamp (- (* (Double/parseDouble s) 1000)
+                     (.getDSTSavings default-timezone)
+                     (.getRawOffset  default-timezone)))))
 
 (def ^:private type->parser
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
