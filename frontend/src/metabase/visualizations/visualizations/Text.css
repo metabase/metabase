@@ -29,14 +29,6 @@
   overflow: scroll;
   pointer-events: all
 }
-:local .Text .text-card-help {
-  padding-top: var(--text-card-padding);
-  text-decoration: none;
-  pointer-events: all;
-}
-:local .Text .text-card-help:hover {
-  text-decoration: underline;
-}
 
 :local .Text .text-card-markdown h1 {
   font-weight: 900;
@@ -167,8 +159,5 @@
 @media screen and (--breakpoint-max-lg) {
   :local .Text {
     padding: .5em 0 .5em 1em;
-  }
-  :local .Text .text-card-help {
-      display: none;
   }
 }
