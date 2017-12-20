@@ -46,6 +46,10 @@
     fk_target_field_id [:fk-> id fk_target_field_id]
     :else              [:field-id id]))
 
+(defmethod ->reference [:mbql clojure.lang.PersistentVector]
+  [_ form]
+  form)
+
 (defn- ->type
   [x]
   (if (keyword? x)
@@ -73,24 +77,41 @@
             (filter (fn [{:keys [base_type special_type]}]
                       (or (isa? base_type fieldspec)
                           (isa? special_type fieldspec))))
-            (map (fn [field]
-                   (assoc field :link fk))))))))
+            (map #(assoc % :link fk)))))))
 
-(defn- field-type-op?
+(defn- op?
   [form]
   (and (sequential? form)
-       (= "FIELD-TYPE" (-> form first name s/upper-case))))
+       ((some-fn keyword? string?) (first form))))
 
-(defn- bind-field-type
+(defmulti
+  ^{:doc ""
+    :arglists '([context [op & args]])
+    :private true}
+  op (fn [_ [op & _]]
+       (if (keyword? op)
+         op
+         (keyword (s/lower-case op)))))
+
+(defmethod op :field-type
   [context [_ & typespec :as form]]
   {form (apply field-candidates context typespec)})
+
+(defmethod op :dimension
+  [context [_ dimension :as form]]
+  (println (:dimensions context))
+  {form (-> context :dimensions (get dimension) :matches)})
+
+(defmethod op :default
+  [_ _]
+  nil)
 
 (defn- bindings-candidates
   [context form]
   (->> form
        (tree-seq (some-fn map? vector?) identity)
-       (filter field-type-op?)
-       (map (partial bind-field-type context))
+       (filter op?)
+       (keep (partial op context))
        (apply merge)))
 
 (defn- form-candidates
@@ -289,15 +310,14 @@
    If a dashboard with the same name already exists, append to it."
   [root]
   (when-let [rule (best-matching-rule (load-rules) root)]
-    (let [{:keys [cards metrics dimensions filters title description]} rule
-          context {:root-table    root
-                   :linked-tables (linked-tables root)
-                   :database      (:db_id root)}
-          context (assoc context
-                      :metrics    (bind-entities context metrics)
-                      :filters    (bind-entities context filters)
-                      :dimensions (bind-entities context dimensions))
-          cards   (->> cards
+    (let [context (reduce-kv (fn [context k v]
+                               (assoc context k (bind-entities context v)))
+                             {:root-table    root
+                              :linked-tables (linked-tables root)
+                              :database      (:db_id root)}
+                             (select-keys rule [:dimensions :metrics :filters]))
+          cards   (->> rule
+                       :cards
                        (map (comp (fn [[name card]]
                                     {name (card-candidates context card)})
                                   first))
@@ -305,7 +325,7 @@
                        vals
                        (apply concat))]
       (when (not-empty cards)
-        (let [dashboard (create-dashboard! title description)]
+        (let [dashboard (create-dashboard! (:title rule) (:description rule))]
           (doseq [card (->> cards
                             (sort-by :score >)
                             (take max-cards))]
