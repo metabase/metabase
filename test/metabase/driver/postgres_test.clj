@@ -165,7 +165,9 @@
 
 ;;; Util Fns
 
-(defn- drop-if-exists-and-create-db! [db-name]
+(defn drop-if-exists-and-create-db!
+  "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
+  [db-name]
   (let [spec (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))]
     ;; kill any open connections
     (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
