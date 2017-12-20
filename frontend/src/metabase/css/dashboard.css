@@ -345,3 +345,8 @@
 .Dashboard--night .goal .line {
   stroke: white;
 }
+
+/* when in night mode code snippets should have a more readable background-color */
+.Dashboard--night pre code {
+  background-color: rgba(255, 255, 255, 0.14);
+}

@@ -140,6 +140,7 @@
   line-height: 20px;
   padding: 0 .25em;
   background-color: var(--base-grey);
+  border-radius: var(--default-border-radius);
 }
 
 :local .text-card-markdown pre code {
