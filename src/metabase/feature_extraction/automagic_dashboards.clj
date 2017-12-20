@@ -102,7 +102,6 @@
 
 (defmethod op :dimension
   [context [_ dimension :as form]]
-  (println (:dimensions context))
   {form (-> context :dimensions (get dimension) :matches)})
 
 (defmethod op :default
@@ -260,9 +259,8 @@
     (when (every? some? bindings)
       (let [score (* (or score max-score)
                      (/ (transduce (map :score) + bindings)
-                        max-score (+ (count filters)
-                                     (count dimensions)
-                                     (count metrics))))]
+                        max-score
+                        (count bindings)))]
         (->> (combo/cartesian-product
               (apply combo/cartesian-product (map :matches filters))
               (apply combo/cartesian-product (map :matches dimensions))
@@ -322,8 +320,8 @@
                              (select-keys rule [:dimensions :metrics :filters]))
           cards   (->> rule
                        :cards
-                       (map (comp (fn [[name card]]
-                                    {name (card-candidates context card)})
+                       (map (comp (fn [[id card]]
+                                    {(name id) (card-candidates context card)})
                                   first))
                        (apply merge-with (partial max-key (comp :score first)))
                        vals

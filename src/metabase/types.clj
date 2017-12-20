@@ -73,6 +73,7 @@
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
 
 (derive :type/CreationTimestamp :type/DateTime)
+(derive :type/JoinTimestamp :type/DateTime)
 
 
 ;;; Other
