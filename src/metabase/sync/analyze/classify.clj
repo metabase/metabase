@@ -56,12 +56,12 @@
       (when-not (contains? values-that-can-be-set k)
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the Field
-    (db/update! (if (instance? (type Field) original-model)
-                  Field
-                  Table)
-        (u/get-id original-model)
-      values-to-set)))
-
+    (when values-to-set
+      (db/update! (if (instance? (type Field) original-model)
+                    Field
+                    Table)
+          (u/get-id original-model)
+        values-to-set))))
 
 (def ^:private classifiers
   "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`

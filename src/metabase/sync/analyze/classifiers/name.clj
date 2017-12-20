@@ -91,9 +91,12 @@
 (def ^:private entity-types-patterns
   [[#"order"       :type/TransactionTable]
    [#"transaction" :type/TransactionTable]
+   [#"sale"        :type/TransactionTable]
    [#"product"     :type/ProductTable]
    [#"user"        :type/UserTable]
    [#"account"     :type/UserTable]
+   [#"people"      :type/UserTable]
+   [#"person"      :type/UserTable]
    [#"event"       :type/EventTable]])
 
 (s/defn ^:always-validate infer-entity-type :- i/TableInstance

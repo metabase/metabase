@@ -153,7 +153,7 @@
                            (or (db/select-one 'Collection
                                  :name "Automagic dashboards cards")
                                (create-collection! "Automagic dashboards cards"
-                                                   "000000"
+                                                   "#000000"
                                                    "All the cards we have automatically created for you."))))
 
 (defn- create-card!
@@ -217,39 +217,31 @@
         dimensions (some->> dimensions
                             ensure-seq
                             (map (partial get (:dimensions context))))
-        metric     (some->> metrics
+        metrics    (some->> metrics
                             ensure-seq
-                            (map (partial get (:metrics context))))]
-    (when (every? some? (concat filters dimensions metrics))
-      (let [dimensions-combos (apply combo/cartesian-product
-                                     (map :matches dimensions))
-            filters-combos    (apply combo/cartesian-product
-                                     (map :matches filters))
-            metrics-combos    (apply combo/cartesian-product
-                                     (map :matches metrics))
-            score             (* (or score 100)
-                                 (/ (transduce (map :score)
-                                               +
-                                               (concat filters
-                                                       dimensions
-                                                       metrics))
-                                    100 (+ (count filters)
-                                           (count dimensions)
-                                           (count metrics))))]
-        (for [[filters dimensions metrics] (combo/cartesian-product
-                                            filters-combos
-                                            dimensions-combos
-                                            metrics-combos)]
-          (when-let [query (build-query (:database context)
-                                        (-> context :tableset first :id)
-                                        filters
-                                        metrics
-                                        dimensions
-                                        limit
-                                        order_by)]
-            (assoc card
-              :query query
-              :score score)))))))
+                            (map (partial get (:metrics context))))
+        bindings   (concat filters dimensions metrics)]
+    (when (every? some? bindings)
+      (let [score (* (or score 100)
+                     (/ (transduce (map :score) + bindings)
+                        100 (+ (count filters)
+                               (count dimensions)
+                               (count metrics))))]
+        (->> (combo/cartesian-product
+              (apply combo/cartesian-product (map :matches filters))
+              (apply combo/cartesian-product (map :matches dimensions))
+              (apply combo/cartesian-product (map :matches metrics)))
+             (mapv (fn [[filters dimensions metrics]]
+                     (when-let [query (build-query (:database context)
+                                                   (-> context :tableset first :id)
+                                                   filters
+                                                   metrics
+                                                   dimensions
+                                                   limit
+                                                   order_by)]
+                       (assoc card
+                         :query query
+                         :score score)))))))))
 
 (def ^:private rules-dir "resources/automagic_dashboards")
 
@@ -259,8 +251,23 @@
        clojure.java.io/file
        file-seq
        (filter (memfn ^java.io.File isFile))
-       ;; Workaround for https://github.com/owainlewis/yaml/issues/11
-       (map (comp yaml/parse-string slurp))))
+       (map (fn [f]
+              (-> f
+                  slurp
+                  yaml/parse-string
+                  (update :table (fnil ->type
+                                       (let [fname (.getName f)]
+                                         (subs fname 0 (- (count fname) 5))))))))))
+
+(defn- best-matching-rule
+  "Pick the most specific among applicable rules.
+   Most specific is defined as entity type specification the longest ancestor
+   chain."
+  [rules table]
+  (some->> rules
+           (filter #(isa? (:entity_type table) (:table %)))
+           not-empty
+           (apply max-key (comp count ancestors :table))))
 
 (def ^:private ^Integer max-cards 9)
 
@@ -269,22 +276,25 @@
    generate cards and dashboards for all the matching rules.
    If a dashboard with the same name already exists, append to it."
   [root]
-  (let [context {:tableset    [root]
-                 :database    (:db_id root)}]
-    (keep (fn [{:keys [cards metrics dimensions filters table title
-                       description]}]
-            (when (or (nil? table)
-                      (isa? (:entity_type root) table))
-              (let [context (assoc context
-                              :metrics    (bind-entities context metrics)
-                              :filters    (bind-entities context filters)
-                              :dimensions (bind-entities context dimensions))
-                    cards   (mapcat (partial card-candidates context) cards)]
-                (when (not-empty cards)
-                  (let [dashboard (create-dashboard! title description)]
-                    (doseq [card (->> cards
-                                      (sort-by :score >)
-                                      (take max-cards))]
-                      (add-to-dashboard! dashboard card))
-                    (:id dashboard))))))
-          (load-rules))))
+  (when-let [rule (best-matching-rule (load-rules) root)]
+    (let [{:keys [cards metrics dimensions filters title description]} rule
+          context {:tableset    [root]
+                   :database    (:db_id root)}
+          context (assoc context
+                      :metrics    (bind-entities context metrics)
+                      :filters    (bind-entities context filters)
+                      :dimensions (bind-entities context dimensions))
+          cards   (->> cards
+                       (map (comp (fn [[name card]]
+                                    {name (card-candidates context card)})
+                                  first))
+                       (apply merge-with (partial max-key (comp :score first)))
+                       vals
+                       (apply concat))]
+      (when (not-empty cards)
+        (let [dashboard (create-dashboard! title description)]
+          (doseq [card (->> cards
+                            (sort-by :score >)
+                            (take max-cards))]
+            (add-to-dashboard! dashboard card))
+          (:id dashboard))))))

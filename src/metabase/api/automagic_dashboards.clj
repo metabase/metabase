@@ -9,11 +9,11 @@
 (api/defendpoint GET "/database/:id"
   ""
   [id]
-  (mapcat magic/populate-dashboards (db/select Table :db_id id)))
+  (keep magic/populate-dashboards (db/select Table :db_id id)))
 
 (api/defendpoint GET "/table/:id"
   ""
   [id]
-  (magic/populate-dashboards (Table id)))
+  [(magic/populate-dashboards (Table id))])
 
 (api/define-routes)
