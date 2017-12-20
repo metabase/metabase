@@ -109,8 +109,8 @@ export const field_special_types = [{
     'section': 'Common'
 },
                                    {
-    'id': TYPE.Channel,
-    'name': 'Channel',
+    'id': TYPE.Source,
+    'name': 'Source',
     'section': 'Common'
 }];
 

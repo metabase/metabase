@@ -27,7 +27,7 @@
   [table]
   (map (fn [{:keys [id fk_target_field_id]}]
          {:table (-> fk_target_field_id Field :table_id Table)
-          :path  [id fk_target_field_id]})
+          :fk    id})
        (db/select [Field :id :fk_target_field_id]
          :table_id (:id table)
          :fk_target_field_id [:not= nil])))
@@ -40,10 +40,11 @@
                 [query-type (type model)]))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id]}]
-  (if fk_target_field_id
-    [:fk-> id fk_target_field_id]
-    [:field-id id]))
+  [_ {:keys [fk_target_field_id id link]}]
+  (cond
+    link               [:fk-> link id]
+    fk_target_field_id [:fk-> id fk_target_field_id]
+    :else              [:field-id id]))
 
 (defn- ->type
   [x]
@@ -52,17 +53,28 @@
     (keyword "type" x)))
 
 (defn- field-candidates
-  ([tableset fieldspec]
+  ([context fieldspec]
    (let [fieldspec (->type fieldspec)]
      (filter (fn [{:keys [base_type special_type]}]
                (or (isa? base_type fieldspec)
                    (isa? special_type fieldspec)))
-             (db/select Field
-               :table_id [:in (map :id tableset)]))))
-  ([tableset tablespec fieldspec]
-   (let [tablespec (->type tablespec)]
-     (field-candidates (filter (comp #(isa? % tablespec) :entity_type) tableset)
-                       fieldspec))))
+             (db/select Field :table_id (-> context :root-table :id)))))
+  ([context tablespec fieldspec]
+   (let [fieldspec            (->type fieldspec)
+         tablespec            (->type tablespec)
+         [{:keys [table fk]}] (->> context
+                                 :linked-tables
+                                 (filter #(-> %
+                                              :table
+                                              :entity_type
+                                              (isa? tablespec))))]
+     (when table
+       (->> (db/select Field :table_id (:id table))
+            (filter (fn [{:keys [base_type special_type]}]
+                      (or (isa? base_type fieldspec)
+                          (isa? special_type fieldspec))))
+            (map (fn [field]
+                   (assoc field :link fk))))))))
 
 (defn- field-type-op?
   [form]
@@ -71,7 +83,7 @@
 
 (defn- bind-field-type
   [context [_ & typespec :as form]]
-  {form (apply field-candidates (:tableset context) typespec)})
+  {form (apply field-candidates context typespec)})
 
 (defn- bindings-candidates
   [context form]
@@ -233,7 +245,7 @@
               (apply combo/cartesian-product (map :matches metrics)))
              (mapv (fn [[filters dimensions metrics]]
                      (when-let [query (build-query (:database context)
-                                                   (-> context :tableset first :id)
+                                                   (-> context :root-table :id)
                                                    filters
                                                    metrics
                                                    dimensions
@@ -278,8 +290,9 @@
   [root]
   (when-let [rule (best-matching-rule (load-rules) root)]
     (let [{:keys [cards metrics dimensions filters title description]} rule
-          context {:tableset    [root]
-                   :database    (:db_id root)}
+          context {:root-table    root
+                   :linked-tables (linked-tables root)
+                   :database      (:db_id root)}
           context (assoc context
                       :metrics    (bind-entities context metrics)
                       :filters    (bind-entities context filters)

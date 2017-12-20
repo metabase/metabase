@@ -8,9 +8,13 @@ metrics:
     metric: [sum, [field-type, Income]]
 - AvgQuantity:
     metric: [avg, [field-type, Quantity]]
+- TotalOrders:
+    metric: [count]
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+- State:
+    field_type: UserTable.State
 cards:
 - IncomeByMonth:
     visualization: line
@@ -36,3 +40,9 @@ cards:
     dimensions: Timestamp
     metrics: AvgDiscount
     score: 20
+- OrdersByState:
+    visualization: [map, {map.type: region,
+                        map.region: us_states}]
+    title: Sales by state
+    dimensions: State
+    metrics: TotalOrders

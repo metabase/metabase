@@ -112,7 +112,7 @@
 (derive :type/User :type/Field)
 (derive :type/Product :type/Field)
 
-(derive :type/Channel :type/Field)
+(derive :type/Source :type/Field)
 
 ;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
 

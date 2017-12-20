@@ -25,9 +25,8 @@ cards:
     dimensions: State
     metrics: Count
 - UsersBySource:
-    dashboard: users_dashboard
     title: Users by source
-    dimension: Source
+    dimensions: Source
     metrics: Count
     visualization: row
     order_by: [Count, descending]
