@@ -97,18 +97,11 @@ export default class Text extends Component {
                         <textarea
                             className={cx("full flex-full flex flex-column bg-grey-0 bordered drag-disabled", styles["text-card-textarea"])}
                             name="text"
-                            placeholder="Write here"
+                            placeholder="Write here, and use Markdown if you'd like"
                             value={settings.text}
                             onChange={(e) => this.handleTextChange(e.target.value)}
                         />
                     }
-                    <a
-                        className={cx("text-grey-3 text-small text-bold", styles["text-card-help"])}
-                        href="https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet"
-                        target={window.OSX ? null : "_blank"}
-                    >
-                        Styling with Markdown is supported
-                    </a>
                 </div>
             );
         } else {

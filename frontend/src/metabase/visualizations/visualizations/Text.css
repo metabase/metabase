@@ -12,7 +12,7 @@
   padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
 }
 :local .Text .text-card-textarea {
-  padding: .75em;
+  padding: .5em .75em .5em .75em;
   font-size: 1.143em;
   line-height: 1.602em;
   pointer-events: all;
