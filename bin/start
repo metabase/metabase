@@ -103,7 +103,6 @@ JAVA_OPTS="$JAVA_OPTS -XX:+IgnoreUnrecognizedVMOptions"           # Don't barf i
 JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"                   # don't try to start AWT. Not sure this does anything but better safe than wasting memory
 JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"                      # Use UTF-8
 JAVA_OPTS="$JAVA_OPTS --add-opens=java.base/java.net=ALL-UNNAMED" # Allow dynamically adding JARs to classpath (Java 9)
-JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"                # Enable access to java.xml.bind module (Java 9)
 
 echo "Using these JAVA_OPTS: ${JAVA_OPTS}"
 
