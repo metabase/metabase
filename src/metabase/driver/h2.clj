@@ -9,6 +9,7 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
             [metabase.util.honeysql-extensions :as hx]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 (def ^:private ^:const column->base-type
@@ -133,7 +134,9 @@
             {:strs [USER]} options]
         (when (or (s/blank? USER)
                   (= USER "sa"))        ; "sa" is the default USER
-          (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))
+          (throw
+           (Exception.
+            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
 
 (defn- process-query-in-context [qp]
   (comp qp check-native-query-not-using-default-user))
@@ -201,9 +204,9 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
-(def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
+(def ^:private date-format-str   "yyyy-MM-dd HH:mm:ss.SSS zzz")
 (def ^:private h2-date-formatter (driver/create-db-time-formatter date-format-str))
-(def ^:private h2-db-time-query (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
+(def ^:private h2-db-time-query  (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
 (defrecord H2Driver []
   clojure.lang.Named

@@ -56,11 +56,13 @@
     (merge mixin
            {:create-db-sql             (constantly create-db-sql)
             :create-table-sql          create-table-sql
-            :database->spec            (comp dbspec/h2 i/database->connection-details) ; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
+            ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
+            :database->spec            (comp dbspec/h2 i/database->connection-details)
             :drop-db-if-exists-sql     (constantly nil)
             :execute-sql!              (fn [this _ dbdef sql]
-                                         ;; we always want to use 'server' context when execute-sql! is called
-                                         ;; (never try connect as GUEST, since we're not giving them priviledges to create tables / etc)
+                                         ;; we always want to use 'server' context when execute-sql! is called (never
+                                         ;; try connect as GUEST, since we're not giving them priviledges to create
+                                         ;; tables / etc)
                                          (execute-sql! this :server dbdef sql))
             :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
             :load-data!                generic/load-data-all-at-once!
