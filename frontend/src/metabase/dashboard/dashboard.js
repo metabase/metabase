@@ -18,6 +18,7 @@ import type { Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { createCard } from "metabase/lib/card";
 
 import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { push } from "react-router-redux";
@@ -135,6 +136,40 @@ export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCar
     };
 }
 
+export const addDashCardToDashboard = function({ dashId, dashcardOverrides }: { dashId: DashCardId, dashcardOverrides: { } }) {
+    return function(dispatch, getState) {
+        const { dashboards, dashcards } = getState().dashboard;
+        const dashboard: DashboardWithCards = dashboards[dashId];
+        const existingCards: Array<DashCard> = dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
+        const dashcard: DashCard = {
+            id: Math.random(), // temporary id
+            card_id: null,
+            card: null,
+            dashboard_id: dashId,
+            series: [],
+            ...getPositionForNewDashCard(existingCards),
+            parameter_mappings: [],
+            visualization_settings: {}
+        };
+        _.extend(dashcard, dashcardOverrides);
+        dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
+    };
+}
+
+export const addTextDashCardToDashboard = function({ dashId }: { dashId: DashCardId }) {
+    const virtualTextCard = createCard();
+    virtualTextCard.display = "text";
+    virtualTextCard.archived = false;
+
+    const dashcardOverrides = {
+        card: virtualTextCard,
+        visualization_settings: {
+            virtual_card: virtualTextCard
+        }
+    };
+    return addDashCardToDashboard({ dashId: dashId, dashcardOverrides: dashcardOverrides });
+}
+
 export const saveDashboardAndCards = createThunkAction(SAVE_DASHBOARD_AND_CARDS, function() {
     return async function (dispatch, getState) {
         let {dashboards, dashcards, dashboardId} = getState().dashboard;
@@ -229,6 +264,8 @@ export const fetchDashboardCardData = createThunkAction(FETCH_DASHBOARD_CARD_DAT
         const dashboard = getDashboardComplete(getState());
         if (dashboard) {
             for (const dashcard of dashboard.ordered_cards) {
+                // we skip over virtual cards, i.e. dashcards that do not have backing cards in the backend
+                if (_.isObject(dashcard.visualization_settings.virtual_card)) { continue }
                 const cards = [dashcard.card].concat(dashcard.series || []);
                 for (const card of cards) {
                     dispatch(fetchCardData(card, dashcard, options));
@@ -368,6 +405,13 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
                 .uniq()
                 .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
         }
+
+        // copy over any virtual cards from the dashcard to the underlying card/question
+        result.ordered_cards.forEach((card) => {
+            if (card.visualization_settings.virtual_card) {
+                _.extend(card.card, card.visualization_settings.virtual_card);
+            }
+        });
 
         if (result.param_values) {
             dispatch(addParamValues(result.param_values));

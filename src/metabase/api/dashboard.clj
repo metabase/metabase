@@ -75,9 +75,10 @@
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (if (mi/can-read? card)
-    card
-    (select-keys card [:id])))
+  (when card
+    (if (mi/can-read? card)
+      card
+      (select-keys card [:id]))))
 
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
@@ -244,10 +245,11 @@
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
   [id :as {{:keys [cardId parameter_mappings series], :as dashboard-card} :body}]
-  {cardId             su/IntGreaterThanZero
+  {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
-  (api/check-not-archived (api/read-check Card cardId))
+  (when cardId
+    (api/check-not-archived (api/read-check Card cardId)))
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
