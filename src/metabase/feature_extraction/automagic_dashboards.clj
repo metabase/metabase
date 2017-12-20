@@ -22,6 +22,8 @@
              [hydrate :refer [hydrate]]]
             [yaml.core :as yaml]))
 
+(def ^:private ^Integer max-score 100)
+
 (defn- linked-tables
   "Return all tables accessable from a given table and the paths to get there."
   [table]
@@ -131,7 +133,7 @@
 
 (defn- bind-entity
   [context [entity {:keys [metric filter field_type score]}]]
-  {(name entity) {:score   (or score 100)
+  {(name entity) {:score   (or score max-score)
                   :matches (form-candidates context (or metric
                                                         filter
                                                         field_type))}})
@@ -255,11 +257,11 @@
                             (map (partial get (:metrics context))))
         bindings   (concat filters dimensions metrics)]
     (when (every? some? bindings)
-      (let [score (* (or score 100)
+      (let [score (* (or score max-score)
                      (/ (transduce (map :score) + bindings)
-                        100 (+ (count filters)
-                               (count dimensions)
-                               (count metrics))))]
+                        max-score (+ (count filters)
+                                     (count dimensions)
+                                     (count metrics))))]
         (->> (combo/cartesian-product
               (apply combo/cartesian-product (map :matches filters))
               (apply combo/cartesian-product (map :matches dimensions))
