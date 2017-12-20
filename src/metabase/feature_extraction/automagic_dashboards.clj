@@ -58,13 +58,17 @@
     x
     (keyword "type" x)))
 
+(defn- filter-fields
+  [fieldspec table]
+  (filter (fn [{:keys [base_type special_type]}]
+            (or (isa? base_type fieldspec)
+                (isa? special_type fieldspec)))
+          (db/select Field :table_id (:id table))))
+
 (defn- field-candidates
   ([context fieldspec]
    (let [fieldspec (->type fieldspec)]
-     (filter (fn [{:keys [base_type special_type]}]
-               (or (isa? base_type fieldspec)
-                   (isa? special_type fieldspec)))
-             (db/select Field :table_id (-> context :root-table :id)))))
+     (filter-fields fieldspec (:root-table context))))
   ([context tablespec fieldspec]
    (let [fieldspec            (->type fieldspec)
          tablespec            (->type tablespec)
@@ -74,12 +78,9 @@
                                               :table
                                               :entity_type
                                               (isa? tablespec))))]
-     (when table
-       (->> (db/select Field :table_id (:id table))
-            (filter (fn [{:keys [base_type special_type]}]
-                      (or (isa? base_type fieldspec)
-                          (isa? special_type fieldspec))))
-            (map #(assoc % :link fk)))))))
+     (some->> table
+              (filter-fields fieldspec)
+              (map #(assoc % :link fk))))))
 
 (defn- op?
   [form]
@@ -290,9 +291,10 @@
               (-> f
                   slurp
                   yaml/parse-string
-                  (update :table (fnil ->type
-                                       (let [fname (.getName f)]
-                                         (subs fname 0 (- (count fname) 5))))))))))
+                  (update :table #(-> %
+                                      (or (let [fname (.getName f)]
+                                            (subs fname 0 (- (count fname) 5))))
+                                      ->type)))))))
 
 (defn- best-matching-rule
   "Pick the most specific among applicable rules.
