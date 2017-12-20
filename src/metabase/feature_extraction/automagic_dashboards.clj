@@ -141,6 +141,21 @@
     (events/publish-event! :dashboard-create dashboard)
     dashboard))
 
+(defn- create-collection!
+  [name color description]
+  (when api/*is-superuser?*
+    (db/insert! 'Collection
+      :name        name
+      :color       color
+      :description description)))
+
+(def automagic-collection (delay
+                           (or (db/select-one 'Collection
+                                 :name "Automagic dashboards cards")
+                               (create-collection! "Automagic dashboards cards"
+                                                   "000000"
+                                                   "All the cards we have automatically created for you."))))
+
 (defn- create-card!
   [{:keys [visualization title description query]}]
   (let [[visualization visualization-settings] (if (sequential? visualization)
@@ -155,7 +170,7 @@
                :visualization_settings visualization-settings
 
                :result_metadata        (card.api/result-metadata-for-query query)
-               :collection_id          nil)]
+               :collection_id          (-> automagic-collection deref :id))]
     (events/publish-event! :card-create card)
     (hydrate card :creator :dashboard_count :labels :can_write :collection)
     card))
@@ -174,7 +189,7 @@
     [x]))
 
 (defn- build-query
-  [database table-id filters metric dimensions]
+  [database table-id filters metrics dimensions limit order_by]
   (let [query {:type     :query
                :database database
                :query    (cond-> {:source_table table-id}
@@ -184,47 +199,54 @@
                            (not-empty dimensions)
                            (assoc :breakout dimensions)
 
-                           metric
-                           (assoc :aggregation metric))}]
+                           metrics
+                           (assoc :aggregation metrics)
+
+                           limit
+                           (assoc :limit limit))}]
     (when (perms/set-has-full-permissions-for-set?
            @api/*current-user-permissions-set*
            (card/query-perms-set query :write))
       query)))
 
 (defn- card-candidates
-  [context {:keys [metric filters dimensions score] :as card}]
+  [context {:keys [metrics filters dimensions score limit order_by] :as card}]
   (let [filters    (some->> filters
                             ensure-seq
                             (map (partial get (:filters context))))
         dimensions (some->> dimensions
                             ensure-seq
                             (map (partial get (:dimensions context))))
-        metric     (get (:metrics context) metric)]
-    (when (and (every? some? filters)
-               (every? some? dimensions)
-               metric)
+        metric     (some->> metrics
+                            ensure-seq
+                            (map (partial get (:metrics context))))]
+    (when (every? some? (concat filters dimensions metrics))
       (let [dimensions-combos (apply combo/cartesian-product
                                      (map :matches dimensions))
             filters-combos    (apply combo/cartesian-product
                                      (map :matches filters))
+            metrics-combos    (apply combo/cartesian-product
+                                     (map :matches metrics))
             score             (* (or score 100)
                                  (/ (transduce (map :score)
                                                +
                                                (concat filters
                                                        dimensions
-                                                       [metric]))
+                                                       metrics))
                                     100 (+ (count filters)
                                            (count dimensions)
-                                           (if metric 1 0))))]
-        (for [[filters dimensions metric] (combo/cartesian-product
-                                           filters-combos
-                                           dimensions-combos
-                                           (:matches metric))]
+                                           (count metrics))))]
+        (for [[filters dimensions metrics] (combo/cartesian-product
+                                            filters-combos
+                                            dimensions-combos
+                                            metrics-combos)]
           (when-let [query (build-query (:database context)
                                         (-> context :tableset first :id)
                                         filters
-                                        metric
-                                        dimensions)]
+                                        metrics
+                                        dimensions
+                                        limit
+                                        order_by)]
             (assoc card
               :query query
               :score score)))))))
