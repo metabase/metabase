@@ -136,7 +136,7 @@
                   (= USER "sa"))        ; "sa" is the default USER
           (throw
            (Exception.
-            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
+            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
 
 (defn- process-query-in-context [qp]
   (comp qp check-native-query-not-using-default-user))
