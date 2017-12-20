@@ -87,3 +87,20 @@
                        (sync-util/name-for-logging field)
                        inferred-special-type))
     (assoc field :special_type inferred-special-type)))
+
+(def ^:private entity-types-patterns
+  [[#"order"       :type/TransactionTable]
+   [#"transaction" :type/TransactionTable]
+   [#"product"     :type/ProductTable]
+   [#"user"        :type/UserTable]
+   [#"account"     :type/UserTable]
+   [#"event"       :type/EventTable]])
+
+(s/defn ^:always-validate infer-entity-type :- i/TableInstance
+  [table :- i/TableInstance]
+  (let [table-name (-> table :name str/lower-case)]
+    (assoc table :entity_type (or (some (fn [[pattern type]]
+                                          (when (re-find pattern table-name)
+                                            type))
+                                        entity-types-patterns)
+                                  :type/GenericTable))))

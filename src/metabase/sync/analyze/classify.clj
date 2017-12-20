@@ -18,7 +18,9 @@
    In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -37,21 +39,27 @@
 
 (def ^:private values-that-can-be-set
   "Columns of Field that classifiers are allowed to set."
-  #{:special_type :preview_display})
+  #{:special_type :preview_display :entity_type})
 
-(s/defn ^:private ^:always-validate save-field-updates!
+(def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
+
+(s/defn ^:private ^:always-validate save-model-updates!
   "Save the updates in UPDATED-FIELD."
-  [original-field :- i/FieldInstance, updated-field :- i/FieldInstance]
-  (let [[_ values-to-set] (data/diff original-field updated-field)]
+  [original-model :- FieldOrTableInstance, updated-model :- FieldOrTableInstance]
+  (assert (= (type original-model) (type updated-model)))
+  (let [[_ values-to-set] (data/diff original-model updated-model)]
     (log/debug (format "Based on classification, updating these values of %s: %s"
-                       (sync-util/name-for-logging original-field)
+                       (sync-util/name-for-logging original-model)
                        values-to-set))
     ;; Check that we're not trying to set anything that we're not allowed to
     (doseq [k (keys values-to-set)]
       (when-not (contains? values-that-can-be-set k)
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the Field
-    (db/update! Field (u/get-id original-field)
+    (db/update! (if (instance? (type Field) original-model)
+                  Field
+                  Table)
+        (u/get-id original-model)
       values-to-set)))
 
 
@@ -86,7 +94,7 @@
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [updated-field (run-classifiers field fingerprint)]
        (when-not (= field updated-field)
-         (save-field-updates! field updated-field))))))
+         (save-model-updates! field updated-field))))))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------+
@@ -110,3 +118,9 @@
   (when-let [fields (fields-to-classify table)]
     (doseq [field fields]
       (classify! field))))
+
+(s/defn ^:always-validat classify-table!
+  "Run various classifiers on the TABLE. These do things like inferring (and
+   setting) entitiy type of TABLE."
+  [table :- i/TableInstance]
+  (save-model-updates! table (name/infer-entity-type table)))

@@ -8,6 +8,16 @@
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
+
+;;; Table (entitiy) Types
+
+(derive :type/GenericTable :type/Table)
+(derive :type/UserTable :type/GenericTable)
+(derive :type/TransactionTable :type/GenericTable)
+(derive :type/Product :type/GenericTable)
+(derive :type/Event :type/GenericTable)
+
+
 ;;; Numeric Types
 
 (derive :type/Number :type/Field)
