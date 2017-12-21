@@ -52,6 +52,7 @@ export const BackendResource = createSharedResource("BackendResource", {
                                             "-XX:+CMSClassUnloadingEnabled",        // (Java 7) Allow GC to collect classes. Clojure makes lots of one-off dynamic classes
                                             "-XX:+UseConcMarkSweepGC",              // (Java 7) Use Concurrent Mark & Sweep GC which allows classes to be GC'ed
                                             "-Djava.awt.headless=true",             // when running on macOS prevent little Java icon from popping up in Dock
+                                            "--add-modules=java.xml.bind",          // Tell Java 9 we want to use java.xml stuff
                                             "-jar", "target/uberjar/metabase.jar"], {
                 env: {
                     MB_DB_FILE: server.dbFile,
