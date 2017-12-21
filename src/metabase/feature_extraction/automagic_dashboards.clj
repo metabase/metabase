@@ -48,7 +48,7 @@
     fk_target_field_id [:fk-> id fk_target_field_id]
     :else              [:field-id id]))
 
-(defmethod ->reference [:mbql clojure.lang.PersistentVector]
+(defmethod ->reference :default
   [_ form]
   form)
 
@@ -123,10 +123,7 @@
          vals
          (apply combo/cartesian-product)
          (map (fn [candidate-set]
-                (walk/postwalk-replace (->> candidate-set
-                                            (map (partial ->reference :mbql))
-                                            (zipmap holes))
-                                       pattern))))))
+                (walk/postwalk-replace (zipmap holes candidate-set) pattern))))))
 
 (defn- make-binding
   [context [binding-name {:keys [metric filter field_type score]}]]
@@ -220,20 +217,22 @@
 
 (defn- build-query
   [database table-id filters metrics dimensions limit order_by]
-  (let [query {:type     :query
-               :database database
-               :query    (cond-> {:source_table table-id}
-                           (not-empty filters)
-                           (assoc :filter (apply vector :and filters))
+  (let [query (walk/postwalk
+               (partial ->reference :mbql)
+               {:type     :query
+                :database database
+                :query    (cond-> {:source_table table-id}
+                            (not-empty filters)
+                            (assoc :filter (apply vector :and filters))
 
-                           (not-empty dimensions)
-                           (assoc :breakout dimensions)
+                            (not-empty dimensions)
+                            (assoc :breakout dimensions)
 
-                           metrics
-                           (assoc :aggregation metrics)
+                            metrics
+                            (assoc :aggregation metrics)
 
-                           limit
-                           (assoc :limit limit))}]
+                            limit
+                            (assoc :limit limit))})]
     (when (perms/set-has-full-permissions-for-set?
            @api/*current-user-permissions-set*
            (card/query-perms-set query :write))
@@ -284,10 +283,11 @@
               (-> f
                   slurp
                   yaml/parse-string
-                  (update :table #(-> %
-                                      (or (let [fname (.getName f)]
-                                            (subs fname 0 (- (count fname) 5))))
-                                      ->type)))))))
+                  (update :table_type #(-> %
+                                           (or (->> f
+                                                    .getName
+                                                    (re-find #".+(?=\.yaml)")))
+                                           ->type)))))))
 
 (defn- best-matching-rule
   "Pick the most specific among applicable rules.
@@ -295,9 +295,9 @@
    chain."
   [rules table]
   (some->> rules
-           (filter #(isa? (:entity_type table :type/GenericTable) (:table %)))
+           (filter #(isa? (:entity_type table :type/GenericTable) (:table_type %)))
            not-empty
-           (apply max-key (comp count ancestors :table))))
+           (apply max-key (comp count ancestors :table_type))))
 
 (def ^:private ^Integer max-cards 9)
 
@@ -311,6 +311,7 @@
                    (fn [context k bindings]
                      (assoc context k (make-bindings context bindings)))
                    {:root-table    root
+                    :rule          (:table_type rule)
                     :linked-tables (linked-tables root)
                     :database      (:db_id root)}
                    (select-keys rule [:dimensions :metrics :filters]))
