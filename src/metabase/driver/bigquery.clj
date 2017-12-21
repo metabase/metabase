@@ -426,6 +426,18 @@
                                             :when (not (contains? (set fields-fields) field))]
                                         (sqlqp/as (sqlqp/formatted field) field)))))
 
+(defn- apply-join-tables
+  "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends schema (dataset-id) to join-alias."
+  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+    (let [honeysql-form (h/merge-left-join honeysql-form
+                          [(hx/qualify-and-escape-dots schema table-name) (hx/qualify-and-escape-dots schema join-alias)]
+                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+                              (hx/qualify-and-escape-dots schema join-alias               (:field-name pk-field))])]
+      (if (seq more)
+        (recur honeysql-form more)
+        honeysql-form))))
+
 (defn- apply-order-by [honeysql-form {subclauses :order-by}]
   (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
     (let [honeysql-form (h/merge-order-by honeysql-form [(field->breakout-identifier field) (case direction
@@ -461,6 +473,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-aggregation         apply-aggregation
           :apply-breakout            (u/drop-first-arg apply-breakout)
+          :apply-join-tables         apply-join-tables
           :apply-order-by            (u/drop-first-arg apply-order-by)
           ;; these two are actually not applicable since we don't use JDBC
           :column->base-type         (constantly nil)
