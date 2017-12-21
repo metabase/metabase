@@ -27,9 +27,8 @@
   nil)
 
 (def ^:private ^:dynamic *nested-query-level*
-  "How many levels deep are we into nested queries? (0 = top level.)
-   We keep track of this so we know what level to find referenced aggregations
-  (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
+  "How many levels deep are we into nested queries? (0 = top level.) We keep track of this so we know what level to
+  find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
 
@@ -330,7 +329,8 @@
                           honeysql-form)]
       (if (seq more)
         (recur honeysql-form more)
-        ;; ok, we're done; if no `:select` clause was specified (for whatever reason) put a default (`SELECT *`) one in
+        ;; ok, we're done; if no `:select` clause was specified (for whatever reason) put a default (`SELECT *`) one
+        ;; in
         (update honeysql-form :select #(if (seq %) % [:*]))))))
 
 
@@ -352,12 +352,10 @@
        :params args})))
 
 (defn- parse-date-as-string
-  "Most databases will never invoke this code. It's possible with
-  SQLite to get here if the timestamp was stored without
-  milliseconds. Currently the SQLite JDBC driver will throw an
-  exception even though the SQLite datetime functions will return
-  datetimes that don't include milliseconds. This attempts to parse
-  that datetime in Clojure land"
+  "Most databases will never invoke this code. It's possible with SQLite to get here if the timestamp was stored
+  without milliseconds. Currently the SQLite JDBC driver will throw an exception even though the SQLite datetime
+  functions will return datetimes that don't include milliseconds. This attempts to parse that datetime in Clojure
+  land"
   [^TimeZone tz ^ResultSet rs ^Integer i]
   (let [date-string (.getString rs i)]
     (if-let [parsed-date (u/str->date-time tz date-string)]
@@ -382,8 +380,7 @@
   (.getObject rs i))
 
 (defn- make-column-reader
-  "Given `COLUMN-TYPE` and `TZ`, return a function for reading
-  that type of column from a ResultSet"
+  "Given `COLUMN-TYPE` and `TZ`, return a function for reading that type of column from a ResultSet"
   [column-type tz]
   (cond
     (and tz (= column-type java.sql.Types/DATE))
