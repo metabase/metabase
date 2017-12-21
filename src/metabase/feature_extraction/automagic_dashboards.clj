@@ -2,7 +2,7 @@
   "Automatically generate questions and dashboards based on predefined
    heuristics."
   (:require [clojure
-             [string :as s]
+             [string :as str]
              [walk :as walk]]
             [clojure.math.combinatorics :as combo]
             [metabase.api
@@ -60,24 +60,24 @@
 
 (defn- filter-fields
   [fieldspec table]
-  (filter (fn [{:keys [base_type special_type]}]
-            (or (isa? base_type fieldspec)
-                (isa? special_type fieldspec)))
-          (db/select Field :table_id (:id table))))
+  (let [fieldspec (->type fieldspec)]
+    (filter (fn [{:keys [base_type special_type]}]
+              (or (isa? base_type fieldspec)
+                  (isa? special_type fieldspec)))
+            (db/select Field :table_id (:id table)))))
+
+(defn- find-linked-table
+  [tablespec context]
+  (let [tablespec (->type tablespec)]
+    (->> context
+         :linked-tables
+         (filter #(-> % :table :entity_type (isa? tablespec))))))
 
 (defn- field-candidates
   ([context fieldspec]
-   (let [fieldspec (->type fieldspec)]
-     (filter-fields fieldspec (:root-table context))))
+   (filter-fields fieldspec (:root-table context)))
   ([context tablespec fieldspec]
-   (let [fieldspec            (->type fieldspec)
-         tablespec            (->type tablespec)
-         [{:keys [table fk]}] (->> context
-                                 :linked-tables
-                                 (filter #(-> %
-                                              :table
-                                              :entity_type
-                                              (isa? tablespec))))]
+   (let [[{:keys [table fk]}] (find-linked-table tablespec context)]
      (some->> table
               (filter-fields fieldspec)
               (map #(assoc % :link fk))))))
@@ -94,7 +94,7 @@
   op (fn [_ [op & _]]
        (if (keyword? op)
          op
-         (keyword (s/lower-case op)))))
+         (keyword (str/lower-case op)))))
 
 (defmethod op :field-type
   [context [_ & typespec :as form]]
@@ -119,7 +119,7 @@
 (defn- form-candidates
   [context form]
   (let [form       (if (string? form)
-                     (apply vector :field-type (s/split form #"\."))
+                     (apply vector :field-type (str/split form #"\."))
                      form)
         candidates (bindings-candidates context form)
         subforms   (keys candidates)]
@@ -245,7 +245,7 @@
       query)))
 
 (defn- card-candidates
-  [context {:keys [metrics filters dimensions score limit order_by] :as card}]
+  [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
   (let [filters    (some->> filters
                             ensure-seq
                             (map (partial get (:filters context))))
@@ -265,7 +265,7 @@
               (apply combo/cartesian-product (map :matches filters))
               (apply combo/cartesian-product (map :matches dimensions))
               (apply combo/cartesian-product (map :matches metrics)))
-             (mapv (fn [[filters dimensions metrics]]
+             (keep (fn [[filters dimensions metrics]]
                      (when-let [query (build-query (:database context)
                                                    (-> context :root-table :id)
                                                    filters
@@ -323,6 +323,7 @@
                        (map (comp (fn [[id card]]
                                     {(name id) (card-candidates context card)})
                                   first))
+                       (remove (comp empty? val first))
                        (apply merge-with (partial max-key (comp :score first)))
                        vals
                        (apply concat))]
