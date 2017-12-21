@@ -119,7 +119,7 @@
     (doseq [field fields]
       (classify! field))))
 
-(s/defn ^:always-validat classify-table!
+(s/defn ^:always-validate classify-table!
   "Run various classifiers on the TABLE. These do things like inferring (and
    setting) entitiy type of TABLE."
   [table :- i/TableInstance]

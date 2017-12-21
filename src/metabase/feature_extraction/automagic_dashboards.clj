@@ -108,40 +108,35 @@
   [_ _]
   nil)
 
-(defn- bindings-candidates
-  [context form]
-  (->> form
-       (tree-seq (some-fn map? vector?) identity)
-       (filter op?)
-       (keep (partial op context))
-       (apply merge)))
-
-(defn- form-candidates
-  [context form]
-  (let [form       (if (string? form)
-                     (apply vector :field-type (str/split form #"\."))
-                     form)
-        candidates (bindings-candidates context form)
-        subforms   (keys candidates)]
+(defn- matches
+  [context pattern]
+  (let [pattern    (if (string? pattern)
+                     (apply vector :field-type (str/split pattern #"\."))
+                     pattern)
+        candidates (->> pattern
+                        (tree-seq (some-fn map? vector?) identity)
+                        (filter op?)
+                        (keep (partial op context))
+                        (apply merge))
+        holes      (keys candidates)]
     (->> candidates
          vals
          (apply combo/cartesian-product)
-         (mapv (fn [candidates]
-                 (walk/postwalk-replace
-                  (zipmap subforms (map (partial ->reference :mbql) candidates))
-                  form))))))
+         (map (fn [candidate-set]
+                (walk/postwalk-replace (->> candidate-set
+                                            (map (partial ->reference :mbql))
+                                            (zipmap holes))
+                                       pattern))))))
 
-(defn- bind-entity
-  [context [entity {:keys [metric filter field_type score]}]]
-  {(name entity) {:score   (or score max-score)
-                  :matches (form-candidates context (or metric
-                                                        filter
-                                                        field_type))}})
+(defn- make-binding
+  [context [binding-name {:keys [metric filter field_type score]}]]
+  {(name binding-name) {:matches (matches context (or metric filter field_type))
+                        :score   (or score max-score)}})
 
-(defn- bind-entities
-  [context entities]
-  (->> entities
-       (map (comp (partial bind-entity context) first))
+(defn- make-bindings
+  [context bindings]
+  (->> bindings
+       (map (comp (partial make-binding context) first))
        (remove (comp empty? :matches val first))
        (apply merge-with (fn [a b]
                            (if (> (:score a) (:score b))
@@ -300,7 +295,7 @@
    chain."
   [rules table]
   (some->> rules
-           (filter #(isa? (:entity_type table) (:table %)))
+           (filter #(isa? (:entity_type table :type/GenericTable) (:table %)))
            not-empty
            (apply max-key (comp count ancestors :table))))
 
@@ -312,12 +307,13 @@
    If a dashboard with the same name already exists, append to it."
   [root]
   (when-let [rule (best-matching-rule (load-rules) root)]
-    (let [context (reduce-kv (fn [context k v]
-                               (assoc context k (bind-entities context v)))
-                             {:root-table    root
-                              :linked-tables (linked-tables root)
-                              :database      (:db_id root)}
-                             (select-keys rule [:dimensions :metrics :filters]))
+    (let [context (reduce-kv
+                   (fn [context k bindings]
+                     (assoc context k (make-bindings context bindings)))
+                   {:root-table    root
+                    :linked-tables (linked-tables root)
+                    :database      (:db_id root)}
+                   (select-keys rule [:dimensions :metrics :filters]))
           cards   (->> rule
                        :cards
                        (map (comp (fn [[id card]]
