@@ -186,10 +186,10 @@
 
 (def automagic-collection (delay
                            (or (db/select-one 'Collection
-                                 :name "Automagic dashboards cards")
-                               (create-collection! "Automagic dashboards cards"
+                                 :name "Automatically Generated Questions")
+                               (create-collection! "Automatically Generated Questions"
                                                    "#000000"
-                                                   "All the cards we have automatically created for you."))))
+                                                   "Cards used in automatically generated dashboards."))))
 
 (defn- create-card!
   [{:keys [visualization title description query]}]
