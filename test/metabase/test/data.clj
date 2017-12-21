@@ -30,8 +30,10 @@
 
 (declare get-or-create-database!)
 
-;;; ## ---------------------------------------- Dataset-Independent Data Fns ----------------------------------------
-;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset combos.
+;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
+
+;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset
+;; combos.
 
 (defn get-or-create-test-data-db!
   "Get or create the Test Data database for DRIVER, which defaults to `*driver*`."
@@ -39,8 +41,9 @@
   ([driver] (get-or-create-database! driver defs/test-data)))
 
 (def ^:dynamic ^:private *get-db*
-  "Implementation of `db` function that should return the current working test database when called, always with no arguments.
-   By default, this is `get-or-create-test-data-db!` for the current `*driver*`, which does exactly what it suggests."
+  "Implementation of `db` function that should return the current working test database when called, always with no
+  arguments. By default, this is `get-or-create-test-data-db!` for the current `*driver*`, which does exactly what it
+  suggests."
   get-or-create-test-data-db!)
 
 (defn db
@@ -61,8 +64,8 @@
 
 (defn- $->id
   "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
-   With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed implicitly as the first arg.
-   With one or more `.` delimiters, no implicit TABLE-NAME arg is passed to `id`:
+  With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed
+  implicitly as the first arg. With one or more `.` delimiters, no implicit TABLE-NAME arg is passed to `id`:
 
     $venue_id  -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
     $cities.id -> (id :cities :id)          ; specify non-default Table"
@@ -100,7 +103,8 @@
              ~@(map (partial $->id (keyword table)) forms)))
 
 (s/defn wrap-inner-query
-  "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
+  "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for
+  the query's `:source-table`."
   {:style/indent 0}
   [query :- qi/Query]
   {:database (db/select-one-field :db_id Table, :id (:source-table query))
@@ -123,10 +127,9 @@
 
 
 (defn format-name
-  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the
-   driver's implementation of `format-name`.
-   (Most databases use the default implementation of `identity`; H2 uses `clojure.string/upper-case`.)
-   This function DOES NOT quote the identifier."
+  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's
+   implementation of `format-name`. (Most databases use the default implementation of `identity`; H2 uses
+   `clojure.string/upper-case`.) This function DOES NOT quote the identifier."
   [nm]
   (i/format-name *driver* (name nm)))
 
@@ -182,8 +185,8 @@
 (defn id-field-type  [] (i/id-field-type *driver*))
 
 (defn expected-base-type->actual
-  "Return actual `base_type` that will be used for the given driver if we asked for BASE-TYPE.
-   Mainly for Oracle because it doesn't have `INTEGER` types and uses decimals instead."
+  "Return actual `base_type` that will be used for the given driver if we asked for BASE-TYPE. Mainly for Oracle
+  because it doesn't have `INTEGER` types and uses decimals instead."
   [base-type]
   (i/expected-base-type->actual *driver* base-type))
 
@@ -234,9 +237,10 @@
     (require extension-ns 'metabase.test.data.datasets :reload)))
 
 (defn get-or-create-database!
-  "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
-   DRIVER should be an object that implements `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the
-   current dataset (`*driver*`), which is H2 by default."
+  "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase
+  `Databases`/`Tables`/`Fields`, and sync the `Database`. DRIVER should be an object that implements
+  `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the current
+  dataset (`*driver*`), which is H2 by default."
   ([database-definition]
    (get-or-create-database! *driver* database-definition))
   ([driver database-definition]
@@ -247,7 +251,8 @@
      (try
        (get-or-create!)
        ;; occasionally we'll see an error like
-       ;; java.lang.IllegalArgumentException: No implementation of method: :database->connection-details of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
+       ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
+       ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
        ;; to fix this we just need to reload a couple namespaces and then try again
        (catch IllegalArgumentException _
          (reload-test-extensions engine)
@@ -255,7 +260,8 @@
 
 
 (defn do-with-temp-db
-  "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was loaded and synced from DBDEF."
+  "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was
+  loaded and synced from DBDEF."
   [^DatabaseDefinition dbdef, f]
   (let [driver *driver*
         dbdef  (i/map->DatabaseDefinition dbdef)]
@@ -268,8 +274,8 @@
 
 
 (defmacro with-temp-db
-  "Load and sync DATABASE-DEFINITION with DRIVER and execute BODY with the newly created `Database` bound to DB-BINDING,
-   and make it the current database for `metabase.test.data` functions like `id`.
+  "Load and sync DATABASE-DEFINITION with DRIVER and execute BODY with the newly created `Database` bound to
+  DB-BINDING, and make it the current database for `metabase.test.data` functions like `id`.
 
      (with-temp-db [db tupac-sightings]
        (driver/process-quiery {:database (:id db)
@@ -278,7 +284,8 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))
 
-   A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion of the suite."
+  A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion
+  of the suite."
   [[db-binding, ^DatabaseDefinition database-definition] & body]
   `(do-with-temp-db ~database-definition
      (fn [~db-binding]
@@ -287,13 +294,15 @@
 (defn resolve-dbdef [symb]
   @(or (resolve symb)
        (ns-resolve 'metabase.test.data.dataset-definitions symb)
-       (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'" symb symb)))))
+       (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'"
+                                  symb symb)))))
 
 (defmacro dataset
-  "Load and sync a temporary `Database` defined by DATASET, make it the current DB (for `metabase.test.data` functions like `id`), and execute BODY.
+  "Load and sync a temporary `Database` defined by DATASET, make it the current DB (for `metabase.test.data` functions
+  like `id`), and execute BODY.
 
-   Like `with-temp-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
-   DATASET is optionally namespace-qualified; if not, `metabase.test.data.dataset-definitions` is assumed.
+  Like `with-temp-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
+  DATASET is optionally namespace-qualified; if not, `metabase.test.data.dataset-definitions` is assumed.
 
      (dataset sad-toucan-incidents
        ...)"
@@ -303,14 +312,13 @@
      ~@body))
 
 (defn- delete-model-instance!
-  "Allows deleting a row by the model instance toucan returns when
-  it's inserted"
+  "Allows deleting a row by the model instance toucan returns when it's inserted"
   [{:keys [id] :as instance}]
   (db/delete! (-> instance name symbol) :id id))
 
 (defn call-with-data
-  "Takes a thunk `DATA-LOAD-FN` that returns a seq of toucan model
-  instances that will be deleted after `BODY-FN` finishes"
+  "Takes a thunk `DATA-LOAD-FN` that returns a seq of toucan model instances that will be deleted after `BODY-FN`
+  finishes"
   [data-load-fn body-fn]
   (let [result-instances (data-load-fn)]
     (try
@@ -326,9 +334,8 @@
   (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 (defn create-venue-category-remapping
-  "Returns a thunk that adds an internal remapping for category_id in
-  the venues table aliased as `REMAPPING-NAME`. Can be used in a
-  `with-data` invocation."
+  "Returns a thunk that adds an internal remapping for category_id in the venues table aliased as `REMAPPING-NAME`.
+  Can be used in a `with-data` invocation."
   [remapping-name]
   (fn []
     [(db/insert! Dimension {:field_id (id :venues :category_id)
@@ -339,9 +346,8 @@
                               :human_readable_values (json/generate-string (map first venue-categories))})]))
 
 (defn create-venue-category-fk-remapping
-  "Returns a thunk that adds a FK remapping for category_id in the
-  venues table aliased as `REMAPPING-NAME`. Can be used in a
-  `with-data` invocation."
+  "Returns a thunk that adds a FK remapping for category_id in the venues table aliased as `REMAPPING-NAME`. Can be
+  used in a `with-data` invocation."
   [remapping-name]
   (fn []
     [(db/insert! Dimension {:field_id (id :venues :category_id)

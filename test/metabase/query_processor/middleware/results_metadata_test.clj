@@ -7,9 +7,7 @@
              [card :refer [Card]]
              [database :as database]]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as users]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -58,14 +56,12 @@
 
 
 ;; tests for valid-checksum?
-(tu/resolve-private-vars metabase.query-processor.middleware.results-metadata metadata-checksum)
-
 (expect
-  (results-metadata/valid-checksum? "ABCDE" (metadata-checksum "ABCDE")))
+  (results-metadata/valid-checksum? "ABCDE" (#'results-metadata/metadata-checksum "ABCDE")))
 
 (expect
   false
-  (results-metadata/valid-checksum? "ABCD" (metadata-checksum "ABCDE")))
+  (results-metadata/valid-checksum? "ABCD" (#'results-metadata/metadata-checksum "ABCDE")))
 
 
 ;; make sure that queries come back with metadata

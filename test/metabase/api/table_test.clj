@@ -474,14 +474,10 @@
 
 (defn- category-id-special-type
   "Field values will only be returned when the field's special type is set to type/Category. This function will change
-  that for category_id, then invoke `F` and roll it back afterwards"
+  that for `category_id`, then invoke `f` and roll it back afterwards"
   [special-type f]
-  (let [original-special-type (:special_type (Field (data/id :venues :category_id)))]
-    (try
-      (db/update! Field (data/id :venues :category_id) {:special_type special-type})
-      (f)
-      (finally
-        (db/update! Field (data/id :venues :category_id) {:special_type original-special-type})))))
+  (tu/with-temp-vals-in-db Field (data/id :venues :category_id) {:special_type special-type}
+    (f)))
 
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure internal remapped dimensions and human_readable_values are returned
@@ -558,18 +554,15 @@
 ;; Numeric fields without min/max values should not have binning strategies
 (expect
   []
-  (let [lat-field-id (data/id :venues :latitude)
-        fingerprint  (:fingerprint (Field lat-field-id))]
-    (try
-      (db/update! Field (data/id :venues :latitude) :fingerprint (-> fingerprint
-                                                                     (assoc-in [:type :type/Number :max] nil)
-                                                                     (assoc-in [:type :type/Number :min] nil)))
+  (let [fingerprint      (db/select-one-field :fingerprint Field {:id (data/id :venues :latitude)})
+        temp-fingerprint (-> fingerprint
+                             (assoc-in [:type :type/Number :max] nil)
+                             (assoc-in [:type :type/Number :min] nil))]
+    (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint temp-fingerprint}
       (-> ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories)))
           (get-in [:fields])
           first
-          :dimension_options)
-      (finally
-        (db/update! Field lat-field-id :fingerprint fingerprint)))))
+          :dimension_options))))
 
 (defn- dimension-options-for-field [response field-name]
   (let [formatted-field-name (data/format-name field-name)]
@@ -600,15 +593,9 @@
   (if (data/binning-supported?)
     #{nil "num-bins" "default"}
     #{})
-  (let [{:keys [special_type]} (Field (data/id :venues :price))]
-    (try
-      (db/update! Field (data/id :venues :price) :special_type nil)
-
-      (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
-        (extract-dimension-options response "price"))
-
-      (finally
-        (db/update! Field (data/id :venues :price) :special_type special_type)))))
+  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:special_type nil}
+    (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
+      (extract-dimension-options response "price"))))
 
 ;; Ensure unix timestamps show date binning options, not numeric binning options
 (expect

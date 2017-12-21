@@ -5,17 +5,18 @@
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [query-processor-test :refer [rows]]
              [sync :as sync]
              [util :as u]]
             [metabase.driver
              [generic-sql :as sql]
              [postgres :as postgres]]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test
@@ -244,14 +245,12 @@
 
 ;;; timezone tests
 
-(tu/resolve-private-vars metabase.driver.generic-sql.query-processor
-  run-query-with-timezone)
-
 (defn- get-timezone-with-report-timezone [report-timezone]
-  (ffirst (:rows (run-query-with-timezone pg-driver
-                                          {:report-timezone report-timezone}
-                                          (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
-                                          {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
+  (ffirst (:rows (#'sqlqp/run-query-with-timezone
+                  pg-driver
+                  {:report-timezone report-timezone}
+                  (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
+                  {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
 
 ;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
 (expect-with-engine :postgres

@@ -1,13 +1,10 @@
 (ns metabase.pulse.render-test
   (:require [expectations :refer :all]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render :refer :all]
-            [metabase.test.util :as tu])
+            [metabase.pulse.render :as render :refer :all])
   (:import java.util.TimeZone))
 
-(tu/resolve-private-vars metabase.pulse.render prep-for-html-rendering render-truncation-warning render:scalar)
-
-(def pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
+(def ^:private pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
 
 (def ^:private test-columns
   [{:name         "ID",
@@ -36,33 +33,33 @@
 (expect
   {:row ["ID" "LATITUDE" "LAST LOGIN" "NAME"]
    :bar-width nil}
-  (first (prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
+  (first (#'render/prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
 
 ;; When including a bar column, bar-width is 99%
 (expect
   {:row ["ID" "LATITUDE" "LAST LOGIN" "NAME"]
    :bar-width 99}
-  (first (prep-for-html-rendering pacific-tz test-columns test-data second 40.0 (count test-columns))))
+  (first (#'render/prep-for-html-rendering pacific-tz test-columns test-data second 40.0 (count test-columns))))
 
-;; When there are too many columns, prep-for-html-rendering show narrow it
+;; When there are too many columns, #'render/prep-for-html-rendering show narrow it
 (expect
   {:row ["ID" "LATITUDE"]
    :bar-width 99}
-  (first (prep-for-html-rendering pacific-tz test-columns test-data second 40.0 2)))
+  (first (#'render/prep-for-html-rendering pacific-tz test-columns test-data second 40.0 2)))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (expect
   [{:bar-width nil, :row ["1" "34.10" "Apr 1, 2014" "Stout Burgers & Beers"]}
    {:bar-width nil, :row ["2" "34.04" "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width nil, :row ["3" "34.05" "Aug 1, 2014" "The Gorbals"]}]
-  (rest (prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
+  (rest (#'render/prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (expect
   [{:bar-width (float 85.249),  :row ["1" "34.10" "Apr 1, 2014" "Stout Burgers & Beers"]}
    {:bar-width (float 85.1015), :row ["2" "34.04" "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width (float 85.1185), :row ["3" "34.05" "Aug 1, 2014" "The Gorbals"]}]
-  (rest (prep-for-html-rendering pacific-tz test-columns test-data second 40 (count test-columns))))
+  (rest (#'render/prep-for-html-rendering pacific-tz test-columns test-data second 40 (count test-columns))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -96,31 +93,31 @@
 (expect
   {:row ["ID" "LATITUDE" "RATING DESC" "LAST LOGIN" "NAME"]
    :bar-width nil}
-  (first (prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping))))
+  (first (#'render/prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping))))
 
 ;; Result rows should include only the remapped column value, not the original
 (expect
   [["1" "34.10" "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
    ["2" "34.04" "Ok" "Dec 5, 2014" "The Apple Pan"]
    ["3" "34.05" "Good" "Aug 1, 2014" "The Gorbals"]]
-  (map :row (rest (prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping)))))
+  (map :row (rest (#'render/prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping)))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (expect
   ""
-  (html (render-truncation-warning 100 10 100 10)))
+  (html (#'render/render-truncation-warning 100 10 100 10)))
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
 (expect
   [true false]
-  (let [html-output (html (render-truncation-warning 100 10 10 100))]
+  (let [html-output (html (#'render/render-truncation-warning 100 10 10 100))]
     [(boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))
      (boolean (re-find #"Showing .* of .* columns" html-output))]))
 
 ;; When there are more columns than the limit, check to ensure a truncation warning is present
 (expect
   [true false]
-  (let [html-output (html (render-truncation-warning 10 100 100 10))]
+  (let [html-output (html (#'render/render-truncation-warning 10 100 100 10))]
     [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
      (boolean (re-find #"Showing .* of .* rows" html-output))]))
 
@@ -132,10 +129,10 @@
   [{:bar-width nil, :row ["1" "34.10" "Apr 1, 2014" "Stout Burgers & Beers"]}
    {:bar-width nil, :row ["2" "34.04" "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width nil, :row ["3" "34.05" "Aug 1, 2014" "The Gorbals"]}]
-  (rest (prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
+  (rest (#'render/prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
 
 (defn- render-scalar-value [results]
-  (-> (render:scalar pacific-tz nil results)
+  (-> (#'render/render:scalar pacific-tz nil results)
       :content
       last))
 

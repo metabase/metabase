@@ -290,22 +290,23 @@
 
 ;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier.
-  Remove `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on
-  whether encryption is enabled."
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove
+  `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on whether
+  encryption is enabled."
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
       (m/dissoc-in [:data :results_metadata])))
 
 (defn format-rows-by
-  "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
-  ROWS can be a sequence or any of the common map formats we expect in QP tests.
+  "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence
+  or any of the common map formats we expect in QP tests.
 
     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
 
   By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override
-  this behavior." {:style/indent 1}
+  this behavior."
+  {:style/indent 1}
   ([format-fns rows]
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
