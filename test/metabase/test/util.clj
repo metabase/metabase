@@ -220,34 +220,9 @@
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
-
 (defn- namespace-or-symbol? [x]
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
-
-(defn ^:deprecated resolve-private-vars* [source-namespace target-namespace symbols]
-  {:pre [(namespace-or-symbol? source-namespace)
-         (namespace-or-symbol? target-namespace)
-         (every? symbol? symbols)]}
-  (require source-namespace)
-  (doseq [symb symbols
-          :let [varr (or (ns-resolve source-namespace symb)
-                         (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]
-    (intern target-namespace symb varr)))
-
-(defmacro ^:deprecated resolve-private-vars
-  "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so
-  we can test them.
-
-    (resolve-private-vars metabase.driver.generic-sql.sync
-      field-avg-length field-percent-urls)
-
-  DEPRECATED: Just refer to vars directly using `#'` syntax instead of using this macro.
-
-     (#'some-ns/field-avg-length ...)"
-  {:style/indent 1}
-  [namespc & symbols]
-  `(resolve-private-vars* (quote ~namespc) *ns* (quote ~symbols)))
 
 
 (defn obj->json->obj
@@ -299,6 +274,33 @@
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))
+
+
+(defn do-with-temp-vals-in-db
+  "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
+  [model object-or-id column->temp-value f]
+  (let [original-column->value (db/select-one (vec (cons model (keys column->temp-value)))
+                                 :id (u/get-id object-or-id))]
+    (try
+      (db/update! model (u/get-id object-or-id)
+        column->temp-value)
+      (f)
+      (finally
+        (db/update! model (u/get-id object-or-id)
+          original-column->value)))))
+
+(defmacro with-temp-vals-in-db
+  "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
+  original values. This is useful for cases when you want to test how something behaves with slightly different values
+  in the DB for 'permanent' rows (rows that live for the life of the test suite, rather than just a single test). For
+  example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
+
+      ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
+      (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
+        (do-something))"
+  {:style/indent 3}
+  [model object-or-id column->temp-value & body]
+  `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
 
 (defn is-uuid-string?
