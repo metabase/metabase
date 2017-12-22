@@ -60,11 +60,14 @@
 
 (defn- filter-fields
   [fieldspec table]
-  (let [fieldspec (->type fieldspec)]
-    (filter (fn [{:keys [base_type special_type]}]
-              (or (isa? base_type fieldspec)
-                  (isa? special_type fieldspec)))
-            (db/select Field :table_id (:id table)))))
+  (filter (if (and (string? fieldspec)
+                   (str/starts-with? fieldspec "ga:"))
+            (comp #{fieldspec} :name)
+            (let [fieldspec (->type fieldspec)]
+              (fn [{:keys [base_type special_type]}]
+                (or (isa? base_type fieldspec)
+                    (isa? special_type fieldspec)))))
+          (db/select Field :table_id (:id table))))
 
 (defn- find-linked-table
   [tablespec context]
@@ -110,20 +113,22 @@
 
 (defn- matches
   [context pattern]
-  (let [pattern    (if (string? pattern)
-                     (apply vector :field-type (str/split pattern #"\."))
-                     pattern)
-        candidates (->> pattern
-                        (tree-seq (some-fn map? vector?) identity)
-                        (filter op?)
-                        (keep (partial op context))
-                        (apply merge))
-        holes      (keys candidates)]
-    (->> candidates
-         vals
-         (apply combo/cartesian-product)
-         (map (fn [candidate-set]
-                (walk/postwalk-replace (zipmap holes candidate-set) pattern))))))
+  (if (string? pattern)
+    (apply field-candidates context (str/split pattern #"\."))
+    (let [candidates (->> pattern
+                          (tree-seq (some-fn map? vector?) identity)
+                          (filter op?)
+                          (keep (partial op context))
+                          (apply merge))
+          holes      (keys candidates)]
+      (if (nil? candidates)
+        [pattern]
+        (->> candidates
+             vals
+             (apply combo/cartesian-product)
+             (map (fn [candidate-set]
+                    (walk/postwalk-replace (zipmap holes candidate-set)
+                                           pattern))))))))
 
 (defn- make-binding
   [context [binding-name {:keys [metric filter field_type score]}]]
@@ -255,21 +260,21 @@
                      (/ (transduce (map :score) + bindings)
                         max-score
                         (count bindings)))]
-        (->> (combo/cartesian-product
-              (apply combo/cartesian-product (map :matches filters))
-              (apply combo/cartesian-product (map :matches dimensions))
-              (apply combo/cartesian-product (map :matches metrics)))
-             (keep (fn [[filters dimensions metrics]]
-                     (when-let [query (build-query (:database context)
-                                                   (-> context :root-table :id)
-                                                   filters
-                                                   metrics
-                                                   dimensions
-                                                   limit
-                                                   order_by)]
-                       (assoc card
-                         :query query
-                         :score score)))))))))
+        (keep (fn [[filters dimensions metrics]]
+                (when-let [query (build-query (:database context)
+                                              (-> context :root-table :id)
+                                              filters
+                                              metrics
+                                              dimensions
+                                              limit
+                                              order_by)]
+                  (assoc card
+                    :query query
+                    :score score)))
+              (combo/cartesian-product
+               (apply combo/cartesian-product (map :matches filters))
+               (apply combo/cartesian-product (map :matches dimensions))
+               (apply combo/cartesian-product (map :matches metrics))))))))
 
 (def ^:private rules-dir "resources/automagic_dashboards")
 

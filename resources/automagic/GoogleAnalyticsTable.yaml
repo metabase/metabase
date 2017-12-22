@@ -49,7 +49,7 @@ Cards:
   - SessionsOverTime:
     title: Sessions per day
     description: Total sessions over time
-    metric: Sessions
+    metrics: Sessions
     dimensions: Day
     filters: Last30Days
     visualization: line
@@ -57,7 +57,7 @@ Cards:
   - 1DayDAUOverTime:
     title: Daily active users
     description: The number of unique users per day
-    metric: 1DayActiveUsers
+    metrics: 1DayActiveUsers
     dimensions: Day
     filters: Last30Days
     visualization: line
@@ -68,7 +68,7 @@ Cards:
 #  - SessionsByNewVsReturningUser:
 #    title: Sessions, new vs. returning users
 #    description: Percent of total sessions in the last 30 days that were from new vs. returning users
-#    metric: Sessions
+#    metrics: Sessions
 #    dimensions:
 #    filters: NewUsers
 #    visualization:
@@ -76,7 +76,7 @@ Cards:
   - SessionsByCountry:
     title: Sessions by Country
     description: Total sessions in each country
-    metric: Sessions
+    metrics: Sessions
     dimensions: Country
     filters: Last30Days
     visualization: [map, {map.type: region,
@@ -85,7 +85,7 @@ Cards:
   - SessionsByDeviceType:
     title: Sessions by device type
     description: Total sessions by desktop, mobile, or tablet
-    metric: Sessions
+    metrics: Sessions
     dimensions: DeviceType
     filters: Last30Days
     visualization: bar
@@ -93,7 +93,7 @@ Cards:
   - PageviewsByPage:
     title: Most-viewed pages
     description: The pages with the most pageviews
-    metric: Pageviews
+    metrics: Pageviews
     dimensions: Page
     filters: Last30Days
     visualization: row
@@ -101,7 +101,7 @@ Cards:
   - SessionsByLandingPage:
     title: Top landing pages
     description: Sessions by page where the session began
-    metric: Sessions
+    metrics: Sessions
     dimensions: LandingPage
     filters: Last30Days
     visualization: row
@@ -109,7 +109,7 @@ Cards:
   - SessionsByTopChannels:
     title: Top acquisition channels
     description: Where most of your sessions originate from
-    metric: Sessions
+    metrics: Sessions
     dimensions: Channel
     filters: Last30Days
     visualization: bar
@@ -117,7 +117,7 @@ Cards:
   - SessionsBySource:
     title: Top referral pages
     description: The top external pages that brought users to your site
-    metric: Sessions
+    metrics: Sessions
     dimensions: Source
     filters: Last30Days
     visualization: bar
@@ -125,7 +125,7 @@ Cards:
 #  - CohortRetention:
 #    title:
 #    description:
-#    metric: Retention
+#    metrics: Retention
 #    dimensions: Day, # The other dimension I want is called Acquisition Date in GA
                      # but I can't find this in ga-metadata.js
 #    filters: Last30Days

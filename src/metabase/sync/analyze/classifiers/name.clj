@@ -5,7 +5,9 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [database :refer [Database]]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -106,4 +108,10 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
+                                  (when (-> table
+                                            :db_id
+                                            Database
+                                            :engine
+                                            (= :googleanalytics))
+                                    :type/GoogleAnalyticsTable)
                                   :type/GenericTable))))
