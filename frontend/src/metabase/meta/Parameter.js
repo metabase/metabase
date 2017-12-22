@@ -107,7 +107,11 @@ export function dateParameterValueToMBQL(parameterValue: ParameterValue, fieldRe
 }
 
 export function stringParameterValueToMBQL(parameterValue: ParameterValue, fieldRef: LocalFieldReference|ForeignFieldReference): ?FieldFilter {
-    return ["=", fieldRef, parameterValue];
+    if (Array.isArray(parameterValue)) {
+        return ["=", fieldRef].concat(parameterValue);
+    } else {
+        return ["=", fieldRef, parameterValue];
+    }
 }
 
 export function numberParameterValueToMBQL(parameterValue: ParameterValue, fieldRef: LocalFieldReference|ForeignFieldReference): ?FieldFilter {

@@ -61,7 +61,7 @@ export default class CategoryWidget extends Component {
     };
 
     static format(values, fieldValues) {
-        if (values.length > 1) {
+        if (Array.isArray(values) && values.length > 1) {
             return `${values.length} selections`;
         } else {
             return getHumanReadableValue(values, fieldValues);
@@ -99,7 +99,6 @@ export default class CategoryWidget extends Component {
                     options={options}
                     values={(selectedValues: Array<string>)}
                     onValuesChange={this.onSelectedValuesChange}
-                    placeholder="Find a value"
                     multi={true}
                 />
                 <div className="p1">
