@@ -6,7 +6,7 @@ metrics:
       score: 100
 filters:
   - Last30Days:
-      filter: [relative-datetime, [field-type, Timestamp], -30, days]
+      filter: ["time-interval", [field-type, Timestamp], -30, day]
 dimensions:
   - Latitude:
       field_type: Latitude
@@ -42,22 +42,22 @@ cards:
   - UsersOverTime:
       title: Users over time
       description: The number of users joining over time
-      metrics: ActiveUsers
+      metrics: Count
       dimensions: JoinDate
       visualization: line
       score: 100
   - UsersByCountry:
       title: Users by country
       description: The users by country of residence
-      metrics: ActiveUsers
+      metrics: Count
       dimensions: Country
       score: 100
       visualization: [map, {map.type: region,
-                        map.region: world}]
+                        map.region: world_countries}]
   - UsersByChannel:
       tile: Users by Acquisition Channel
       description: The number of users from each acquistition source
-      metrics: ActiveUsers
+      metrics: Count
       dimensions: AcquisitionChannel
       filters: Last30Days
       visualization: row
@@ -67,6 +67,12 @@ cards:
 #    query: select count(*) from [[UsersTable]] group by [[GenericCategory]]
 #    visualization: row
 #    score: 50
+  - UsersByCategory:
+      title: Users by [[fieldName]]
+      dimensions: GenericCategory
+      metrics: Count
+      visualization: row
+      score: 50
   - UsersByChannelAndCategory:
       title: Users By Acquisition Channel and [[GenericCategory]]
       metrics: ActiveUsers

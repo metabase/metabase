@@ -9,7 +9,7 @@ metrics:
       score: 100
 filters:
   - Last30Days:
-      filter: [relative-datetime, [dimension, JoinDate], -30, days]
+      filter: ["time-interval", [field-type, Timestamp], -30, day]
 dimensions:
   - Latitude:
       field_type: Latitude
@@ -56,7 +56,7 @@ cards:
       dimensions: Country
       score: 100
       visualization: [map, {map.type: region,
-                          map.region: world}]
+                          map.region: world_countries}]
   - UsersByChannel:
       tile: Users by Acquisition Channel
       description: The number of users from each acquistition source
@@ -71,8 +71,9 @@ cards:
       dimensions: AcquisitionChannel, GenericCategory
       visualization: row
     score: 30
-#  - UsersByCategory:
-#      title: Users by [[fieldName]]
-#      query: select count(*) from [[UsersTable]] group by [[GenericCategory]]
-#      visualization: row
-#      score: 50
+ - UsersByCategory:
+      title: Users by [[fieldName]]
+      metrics: ActiveUsers
+      dimensions: GenericCategory
+      visualization: row
+      score: 50

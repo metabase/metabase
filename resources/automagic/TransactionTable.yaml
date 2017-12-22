@@ -12,7 +12,7 @@ metrics:
       score: 100
 filters:
   - Last30Days:
-      filter: [relative-datetime, [field-type Timestamp], -30, days]
+      filter: ["time-interval", [field-type, Timestamp], -30, day]
 dimensions:
   - AcquisitionChannel:
       field_type: UserTable.Source
