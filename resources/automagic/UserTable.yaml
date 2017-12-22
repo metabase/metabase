@@ -70,8 +70,8 @@ cards:
       metrics: ActiveUsers
       dimensions: AcquisitionChannel, GenericCategory
       visualization: row
-    score: 30
- - UsersByCategory:
+      score: 30
+  - UsersByCategory:
       title: Users by [[fieldName]]
       metrics: ActiveUsers
       dimensions: GenericCategory
