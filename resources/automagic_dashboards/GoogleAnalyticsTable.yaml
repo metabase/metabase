@@ -25,7 +25,7 @@ filters:
 #    [gaid::-3]
 dimensions:
   - Day:
-      field_type: ga:day
+      field_type: ga:date
       score: 100
   - Country:
       field_type: ga:country
