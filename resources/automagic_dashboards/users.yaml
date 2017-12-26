@@ -19,8 +19,10 @@ cards:
     dimensions: Timestamp
     metrics: Count
 - UsersByState:
-    visualization: [map, {map.type: region,
-                        map.region: us_states}]
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
     title: Users by state
     dimensions: State
     metrics: Count
@@ -29,7 +31,9 @@ cards:
     dimensions: Source
     metrics: Count
     visualization: row
-    order_by: [Count, descending]
+    order_by:
+      - Count: descending
+      - Source
 #- UsersBySourceNative:
 #    title: native
 #    query: "select count(*), [[Source]] from [[UserTable]] group by [[Source]]"

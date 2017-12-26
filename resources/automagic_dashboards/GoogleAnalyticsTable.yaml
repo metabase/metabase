@@ -16,7 +16,7 @@ metrics:
 #    score: 100
 filters:
   - Last30Days:
-      filter: ["time-interval", [field-type, "ga:date"], -30, day]
+      filter: ["time-interval", [dimension, Day], -30, day]
 # It doesn't appear that ga-metadata.js includes user type as a dimension, so I've included
 # new and returning users as filters. In the metadata file, they're shown as segments.
 #  - NewUsers
@@ -79,8 +79,10 @@ cards:
       metrics: Sessions
       dimensions: Country
       filters: Last30Days
-      visualization: [map, {map.type: region,
-                        map.region: world_countries}]
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
       score: 80
   - SessionsByDeviceType:
       title: Sessions by device type
@@ -113,6 +115,8 @@ cards:
       dimensions: Channel
       filters: Last30Days
       visualization: bar
+      order_by:
+        - Sessions: descending
       score: 80
   - SessionsBySource:
       title: Top referral pages

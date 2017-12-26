@@ -14,8 +14,9 @@
 (derive :type/GenericTable :type/Table)
 (derive :type/UserTable :type/GenericTable)
 (derive :type/TransactionTable :type/GenericTable)
-(derive :type/Product :type/GenericTable)
-(derive :type/Event :type/GenericTable)
+(derive :type/ProductTable :type/GenericTable)
+(derive :type/EventTable :type/GenericTable)
+(derive :type/GoogleAnalyticsTable :type/GenericTable)
 
 
 ;;; Numeric Types

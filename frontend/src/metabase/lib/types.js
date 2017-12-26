@@ -15,7 +15,7 @@ export function isa(child, ancestor) {
 
     const parents = PARENTS[child];
     if (!parents) {
-        if (child !== "type/*") console.error("Invalid type:", child); // the base type is the only type with no parents, so anything else that gets here is invalid
+        if (child !== "type/Field") console.error("Invalid type:", child); // the base type is the only type with no parents, so anything else that gets here is invalid
         return false;
     }
 

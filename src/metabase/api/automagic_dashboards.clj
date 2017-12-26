@@ -1,7 +1,7 @@
 (ns metabase.api.automagic-dashboards
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.feature-extraction.automagic-dashboards :as magic]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase.models.table :refer [Table]]
             [toucan.db :as db]))
 
