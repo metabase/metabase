@@ -1,5 +1,6 @@
 (ns metabase.automagic-dashboards.rules
   (:require [clojure.string :as str]
+            [metabase.types]
             [metabase.util.schema :as su]
             [schema
              [coerce :as sc]
@@ -88,9 +89,9 @@
 (defn- ->type
   [x]
   (cond
-    (keyword? x)               x
-    (str/starts-with? x "ga:") x
-    :else                      (keyword "type" x)))
+    (keyword? x)      x
+    (ga-dimension? x) x
+    :else             (keyword "type" x)))
 
 (def ^:private rules-validator
   (sc/coercer!
@@ -137,3 +138,7 @@
                                                   .getName
                                                   (re-find #".+(?=\.yaml)"))))
                   rules-validator)))))
+
+(defn -main [& _]
+  (doall (load-rules))
+  (System/exit 0))
