@@ -25,7 +25,7 @@ Filters:
 #    [gaid::-3]
 Dimensions:
   - Day:
-    field_type: ga:day
+    field_type: ga:date
     score: 100
   - Country:
     field_type: ga:country
@@ -46,6 +46,8 @@ Dimensions:
     field_type: ga:source
     score: 100
 Cards:
+  # We want to combine Sessions over time with DAU over time as one big line
+  # chart on the first row of the dashboard:
   - SessionsOverTime:
     title: Sessions per day
     description: Total sessions over time
@@ -65,14 +67,16 @@ Cards:
   # I don't know if I can do this, but I'd like to have a multi-metric card here
   # made up of two scalars, new user sessions and returning user sessions, so that
   # it's displayed as a bar chart.
-#  - SessionsByNewVsReturningUser:
-#    title: Sessions, new vs. returning users
-#    description: Percent of total sessions in the last 30 days that were from new vs. returning users
-#    metrics: Sessions
-#    dimensions:
-#    filters: NewUsers
-#    visualization:
-#    score: 80
+  #  - SessionsByNewVsReturningUser:
+  #    title: Sessions, new vs. returning users
+  #    description: Percent of total sessions in the last 30 days that were from new vs. returning users
+  #    metric: Sessions
+  #    dimensions:
+  #    filters: NewUsers
+  #    visualization:
+  #    score: 80
+
+  # Second row of cards
   - SessionsByCountry:
     title: Sessions by Country
     description: Total sessions in each country
@@ -90,22 +94,6 @@ Cards:
     filters: Last30Days
     visualization: bar
     score: 80
-  - PageviewsByPage:
-    title: Most-viewed pages
-    description: The pages with the most pageviews
-    metrics: Pageviews
-    dimensions: Page
-    filters: Last30Days
-    visualization: row
-    score: 80
-  - SessionsByLandingPage:
-    title: Top landing pages
-    description: Sessions by page where the session began
-    metrics: Sessions
-    dimensions: LandingPage
-    filters: Last30Days
-    visualization: row
-    score: 80
   - SessionsByTopChannels:
     title: Top acquisition channels
     description: Where most of your sessions originate from
@@ -114,20 +102,38 @@ Cards:
     filters: Last30Days
     visualization: bar
     score: 80
+
+  # Third row of cards
+  - PageviewsByPage:
+    title: Most-viewed pages
+    description: The pages with the most pageviews
+    metrics: Pageviews
+    dimensions: Page
+    filters: Last30Days
+    visualization: table
+    score: 80
+  - SessionsByLandingPage:
+    title: Top landing pages
+    description: Sessions by page where the session began
+    metrics: Sessions
+    dimensions: LandingPage
+    filters: Last30Days
+    visualization: table
+    score: 80
   - SessionsBySource:
     title: Top referral pages
     description: The top external pages that brought users to your site
     metrics: Sessions
     dimensions: Source
     filters: Last30Days
-    visualization: bar
+    visualization: table
     score: 80
-#  - CohortRetention:
-#    title:
-#    description:
-#    metrics: Retention
-#    dimensions: Day, # The other dimension I want is called Acquisition Date in GA
-                     # but I can't find this in ga-metadata.js
-#    filters: Last30Days
-#    visualization: table
-#    score: 100
+  #  - CohortRetention:
+  #    title:
+  #    description:
+  #    metric: Retention
+  #    dimensions: Day, # The other dimension I want is called Acquisition Date in GA
+                        # but I can't find this in ga-metadata.js
+  #    filters: Last30Days
+  #    visualization: table
+  #    score: 100
