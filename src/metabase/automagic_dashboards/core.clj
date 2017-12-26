@@ -8,6 +8,7 @@
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
+             [card :as card]
              [field :refer [Field]]
              [permissions :as perms]
              [table :refer [Table]]]
