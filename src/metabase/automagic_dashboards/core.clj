@@ -50,17 +50,17 @@
        (filter #(-> % :table :entity_type (isa? tablespec)))))
 
 (defn- field-candidates
-  [context fieldspec]
-  (if (= (count fieldspec) 2)
-    (let [[{:keys [table fk]}] (find-linked-table (first fieldspec) context)]
-      (some->> table
-               (filter-fields (second fieldspec))
-               (map #(assoc % :link fk))))
-    (filter-fields (first fieldspec) (:root-table context))))
+  ([context fieldspec]
+   (filter-fields fieldspec (:root-table context)))
+  ([context tablespec fieldspec]
+   (let [[{:keys [table fk]}] (find-linked-table tablespec context)]
+     (some->> table
+              (filter-fields fieldspec)
+              (map #(assoc % :link fk))))))
 
 (defn- make-binding
   [context [binding-name {:keys [field_type score]}]]
-  {(name binding-name) {:matches (field-candidates context field_type)
+  {(name binding-name) {:matches (apply field-candidates context field_type)
                         :score   score}})
 
 (def ^:private ^{:arglists '([definitions])} resolve-overloading
