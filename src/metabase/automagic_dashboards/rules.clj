@@ -113,7 +113,7 @@
                         (shorthand-definition :field_type))
     Filter        (comp (with-defaults {:score max-score})
                         (shorthand-definition :filter))
-    Card          ensure-score
+    Card          (with-defaults {:score max-score})
     TableType     ->type
     FieldType     ->type
     Identifier    (fn [x]
