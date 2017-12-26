@@ -137,7 +137,7 @@
                              (map (partial get (:dimensions context)))
                              (concat filters metrics))
         score           (* score
-                           (/ (transduce (map :score) + bindings)
+                           (/ (transduce (keep :score) + bindings)
                               rules/max-score
                               (count bindings)))
         dimensions      (map (partial vector :dimension) dimensions)
@@ -196,6 +196,7 @@
                        (keep (comp (fn [[identifier card]]
                                      (some->> card
                                               (card-candidates context)
+                                              not-empty
                                               (hash-map (name identifier))))
                                    first))
                        (apply merge-with (partial max-key (comp :score first)))
