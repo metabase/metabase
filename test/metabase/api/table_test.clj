@@ -419,7 +419,7 @@
                           (assoc :table_id      (data/id :users)
                                  :name          "ID"
                                  :display_name  "ID"
-                                 :base_type     "type/Biginteger"
+                                 :base_type     "type/BigInteger"
                                  :database_type "BIGINT"
                                  :special_type  "type/PK"
                                  :table        (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
