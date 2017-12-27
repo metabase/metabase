@@ -60,8 +60,8 @@
 
 (defn- filter-tables
   [tablespec context]
-  (->> (concat (:linked-tables context) [(:root-table context)])
-       (filter #(-> % :entity_type (isa? tablespec)))))
+  (->> (concat (:linked-tables context) [{:table (:root-table context)}])
+       (filter #(-> % :table :entity_type (isa? tablespec)))))
 
 (defn- field-candidates
   ([context fieldspec]
@@ -154,7 +154,8 @@
                                                 (-> identifier
                                                     rules/->type
                                                     (filter-tables context)
-                                                    first))))))
+                                                    first
+                                                    :table))))))
 
 (defn- instantiate-metadata
   [context bindings x]
