@@ -115,8 +115,9 @@ cards:
       dimensions: Channel
       filters: Last30Days
       visualization: bar
-      order_by:
-        - Sessions: descending
+# MBQL does not support ordering by GA metric
+#      order_by:
+#        - Sessions: descending
       score: 80
   - SessionsBySource:
       title: Top referral pages
