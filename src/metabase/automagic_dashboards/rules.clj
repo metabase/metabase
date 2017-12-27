@@ -12,17 +12,17 @@
 
 (def ^Integer max-score 100)
 
-(def Score (s/constrained s/Int #(<= 0 % max-score)))
+(def ^:private Score (s/constrained s/Int #(<= 0 % max-score)))
 
-(def MBQL [s/Any])
+(def ^:private MBQL [s/Any])
 
-(def Identifier s/Str)
+(def ^:private Identifier s/Str)
 
-(def Metric {Identifier {(s/required-key :metric) MBQL
-                         (s/required-key :score)  Score}})
+(def ^:private Metric {Identifier {(s/required-key :metric) MBQL
+                                   (s/required-key :score)  Score}})
 
-(def Filter {Identifier {(s/required-key :filter) MBQL
-                         (s/required-key :score)  Score}})
+(def ^:private Filter {Identifier {(s/required-key :filter) MBQL
+                                   (s/required-key :score)  Score}})
 
 (defn- field-type?
   [t]
@@ -37,29 +37,30 @@
   [t]
   (str/starts-with? t "ga:"))
 
-(def TableType (s/constrained s/Keyword table-type?))
-(def FieldType (s/either (s/constrained s/Str ga-dimension?)
-                         (s/constrained s/Keyword field-type?)))
+(def ^:private TableType (s/constrained s/Keyword table-type?))
+(def ^:private FieldType (s/either (s/constrained s/Str ga-dimension?)
+                                   (s/constrained s/Keyword field-type?)))
 
-(def FieldSpec (s/either [FieldType]
-                         [(s/one TableType "table") FieldType]))
+(def ^:private FieldSpec (s/either [FieldType]
+                                   [(s/one TableType "table") FieldType]))
 
-(def Dimension {Identifier {(s/required-key :field_type) FieldSpec
-                            (s/required-key :score)      Score}})
+(def ^:private Dimension {Identifier {(s/required-key :field_type) FieldSpec
+                                      (s/required-key :score)      Score}})
 
-(def OrderByPair {Identifier (s/enum "descending" "ascending")})
+(def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
-(def Visualization [(s/one s/Str "visualization") su/Map])
+(def  ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
-(def Card {Identifier {(s/required-key :title)         s/Str
-                       (s/required-key :visualization) Visualization
-                       (s/required-key :score)         Score
-                       (s/optional-key :dimensions)    [s/Str]
-                       (s/optional-key :filters)       [s/Str]
-                       (s/optional-key :metrics)       [s/Str]
-                       (s/optional-key :limit)         su/IntGreaterThanZero
-                       (s/optional-key :order_by)      [OrderByPair]
-                       (s/optional-key :description)   s/Str}})
+(def ^:private Card
+  {Identifier {(s/required-key :title)         s/Str
+               (s/required-key :visualization) Visualization
+               (s/required-key :score)         Score
+               (s/optional-key :dimensions)    [s/Str]
+               (s/optional-key :filters)       [s/Str]
+               (s/optional-key :metrics)       [s/Str]
+               (s/optional-key :limit)         su/IntGreaterThanZero
+               (s/optional-key :order_by)      [OrderByPair]
+               (s/optional-key :description)   s/Str}})
 
 (def ^:private ^{:arglists '([definitions])} identifiers
   (comp set (partial map (comp key first))))
@@ -93,15 +94,15 @@
          (every? dimensions (all-references :dimensions cards))
          (every? dimensions (collect-dimensions [metrics filters])))))
 
-(def Rules (s/constrained
-            {(s/required-key :table_type)  TableType
-             (s/required-key :title)       s/Str
-             (s/required-key :dimensions)  [Dimension]
-             (s/required-key :cards)       [Card]
-             (s/optional-key :description) s/Str
-             (s/optional-key :metrics)     [Metric]
-             (s/optional-key :filters)     [Filter]}
-            valid-references?))
+(def ^:private Rules (s/constrained
+                      {(s/required-key :table_type)  TableType
+                       (s/required-key :title)       s/Str
+                       (s/required-key :dimensions)  [Dimension]
+                       (s/required-key :cards)       [Card]
+                       (s/optional-key :description) s/Str
+                       (s/optional-key :metrics)     [Metric]
+                       (s/optional-key :filters)     [Filter]}
+                      valid-references?))
 
 (defn- with-defaults
   [defaults]
