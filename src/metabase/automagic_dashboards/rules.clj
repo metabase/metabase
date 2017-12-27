@@ -201,5 +201,5 @@
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"
   [& _]
-  (doall (load-rules))
+  (dorun (load-rules))
   (System/exit 0))
