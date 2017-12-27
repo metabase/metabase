@@ -76,6 +76,24 @@
        (remove (comp empty? :matches val first))
        (apply merge-with (partial max-key :score))))
 
+(defn- index-of
+  [pred coll]
+  (first (keep-indexed (fn [idx x]
+                         (when (pred x)
+                           idx))
+                       coll)))
+
+(defn- build-order-by
+  [dimensions metrics order-by]
+  (let [dimensions (set dimensions)]
+    (for [[identifier ordering] (map first order-by)]
+      [(if (= ordering "ascending")
+         :asc
+         :desc)
+       (if (dimensions identifier)
+         [:dimension identifier]
+         [:aggregate-field (index-of #{identifier} metrics)])])))
+
 (defn- build-query
   [bindings database table-id filters metrics dimensions limit order_by]
   (let [query (walk/postwalk
@@ -98,7 +116,10 @@
                             (assoc :aggregation (map :metric metrics))
 
                             limit
-                            (assoc :limit limit))})]
+                            (assoc :limit limit)
+
+                            (not-empty order_by)
+                            (assoc :order_by order_by))})]
     (when (perms/set-has-full-permissions-for-set?
            @api/*current-user-permissions-set*
            (card/query-perms-set query :write))
@@ -120,7 +141,8 @@
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
   [context {:keys [metrics filters dimensions score limit order_by] :as card}]
-  (let [metrics         (map (partial get (:metrics context)) metrics)
+  (let [order_by        (build-order-by dimensions metrics order_by)
+        metrics         (map (partial get (:metrics context)) metrics)
         filters         (map (partial get (:filters context)) filters)
         bindings        (->> dimensions
                              (map (partial get (:dimensions context)))
