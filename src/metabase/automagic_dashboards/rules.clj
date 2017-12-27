@@ -90,11 +90,16 @@
   "Check if all references to metrics, dimensions, and filters are valid (ie.
    have a corresponding definition)."
   [{:keys [metrics dimensions filters cards]}]
-  (let [dimensions (identifiers dimensions)]
-    (and (every? (identifiers metrics) (all-references :metrics cards))
-         (every? (identifiers filters) (all-references :filters cards))
-         (every? dimensions (all-references :dimensions cards))
-         (every? dimensions (collect-dimensions [metrics filters])))))
+  (let [defined-dimensions (identifiers dimensions)
+        defined-metrics    (identifiers metrics)
+        defined-filters    (identifiers filters)]
+    (and (every? defined-metrics (all-references :metrics cards))
+         (every? defined-filters (all-references :filters cards))
+         (every? defined-dimensions (all-references :dimensions cards))
+         (->> cards
+              (all-references :order_by)
+              (every? (comp (into defined-dimensions defined-metrics) key first)))
+         (every? defined-dimensions (collect-dimensions [metrics filters])))))
 
 (def ^:private Rules
   (s/constrained
@@ -177,7 +182,7 @@
        clojure.java.io/file
        file-seq
        (filter (memfn ^java.io.File isFile))
-       (keep (fn [f]
+       (keep (fn [^java.io.File f]
                (try
                  (-> f
                      slurp
