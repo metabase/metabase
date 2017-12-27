@@ -63,8 +63,8 @@
                (str (name k) \= (name v)))))
 
 (defn- append-connection-args
-  "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to explicitly disable SSL if appropriate.
-   (Newer versions of MySQL will complain if you don't explicitly disable SSL.)"
+  "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to
+  explicitly disable SSL if appropriate. (Newer versions of MySQL will complain if you don't explicitly disable SSL.)"
   {:argslist '([connection-spec details])}
   [{connection-string :subname, :as connection-spec} {ssl? :ssl}]
   (assoc connection-spec
@@ -86,8 +86,9 @@
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
-;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting back to a date.
-;; See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an explanation of format specifiers
+;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
+;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
+;; explanation of format specifiers
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 

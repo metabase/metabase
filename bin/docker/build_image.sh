@@ -1,4 +1,6 @@
-#!/bin/bash
+#! /usr/bin/env bash
+
+set -eu
 
 BASEDIR=$(dirname $0)
 PROJECT_ROOT="$BASEDIR/../.."
@@ -26,8 +28,8 @@ if [ "$4" == "--latest" ]; then
     LATEST="YES"
 fi
 
-if [ "$PUBLISH" == "YES" ] && [ -z "$DOCKERHUB_EMAIL" -o -z "$DOCKERHUB_USERNAME" -o -z "$DOCKERHUB_PASSWORD" ]; then
-    echo "In order to publish an image to Dockerhub you must set \$DOCKERHUB_EMAIL, \$DOCKERHUB_USERNAME and \$DOCKERHUB_PASSWORD before running."
+if [ "$PUBLISH" == "YES" ] && [ -z "$DOCKERHUB_USERNAME" -o -z "$DOCKERHUB_PASSWORD" ]; then
+    echo "In order to publish an image to Dockerhub you must set \$DOCKERHUB_USERNAME and \$DOCKERHUB_PASSWORD before running."
     exit 1
 fi
 
@@ -77,7 +79,7 @@ if [ "$PUBLISH" == "YES" ]; then
     echo "Publishing image ${DOCKER_IMAGE} to Dockerhub"
 
     # make sure that we are logged into dockerhub
-    docker login --email="${DOCKERHUB_EMAIL}" --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
+    docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
 
     # push the built image to dockerhub
     docker push ${DOCKER_IMAGE}
@@ -99,4 +101,3 @@ fi
 rm -f ${BASEDIR}/metabase.jar
 
 echo "Done"
-

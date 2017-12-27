@@ -55,7 +55,7 @@
 ;; `last_analyzed` is not `nil`.
 
 
-(s/defn ^:private ^:always-validate update-fields-last-analyzed!
+(s/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
   [table :- i/TableInstance]
   ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
@@ -65,7 +65,7 @@
     :last_analyzed (u/new-sql-timestamp)))
 
 
-(s/defn ^:always-validate analyze-table!
+(s/defn analyze-table!
   "Perform in-depth analysis for a TABLE."
   [table :- i/TableInstance]
   (table-row-count/update-row-count! table)
@@ -75,7 +75,7 @@
   (update-fields-last-analyzed! table))
 
 
-(s/defn ^:always-validate analyze-db!
+(s/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given DATABASE.
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row
    counting. This also updates the `:last_analyzed` value for each affected Field."

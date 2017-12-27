@@ -11,19 +11,19 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(s/defn ^:private ^:always-validate clear-field-values-for-field! [field :- i/FieldInstance]
+(s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
   (when (db/exists? FieldValues :field_id (u/get-id field))
     (log/debug (format "Based on type info, %s should no longer have field values.\n" (sync-util/name-for-logging field))
                (format "(base type: %s, special type: %s, visibility type: %s)\n" (:base_type field) (:special_type field) (:visibility_type field))
                "Deleting FieldValues...")
     (db/delete! FieldValues :field_id (u/get-id field))))
 
-(s/defn ^:private ^:always-validate update-field-values-for-field! [field :- i/FieldInstance]
+(s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
   (field-values/create-or-update-field-values! field))
 
 
-(s/defn ^:always-validate update-field-values-for-table!
+(s/defn update-field-values-for-table!
   "Update the cached FieldValues for all Fields (as needed) for TABLE."
   [table :- i/TableInstance]
   (doseq [field (db/select Field :table_id (u/get-id table), :active true, :visibility_type "normal")]
@@ -33,7 +33,7 @@
         (clear-field-values-for-field! field)))))
 
 
-(s/defn ^:always-validate update-field-values!
+(s/defn update-field-values!
   "Update the cached FieldValues (distinct values for categories and certain other fields that are shown
    in widgets like filters) for the Tables in DATABASE (as needed)."
   [database :- i/DatabaseInstance]

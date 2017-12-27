@@ -8,6 +8,8 @@
              [card :refer [Card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [interface :as i]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -131,16 +133,20 @@
       (->> (retrieve-dashboard-card id)
            (events/publish-event! :dashboard-card-update)))))
 
-(defn create-dashboard-card!
-  "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as `DashboardCardSeries`.
-   Returns the newly created `DashboardCard` or throws an Exception."
-  [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings] :as dashboard-card}]
-  {:pre [(integer? dashboard_id)
-         (integer? card_id)
-         (u/maybe? u/sequence-of-maps? parameter_mappings)
-         (u/maybe? map? visualization_settings)]}
-  (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
-                                                    dashboard-card)]
+(def ^:private NewDashboardCard
+  {:dashboard_id                            su/IntGreaterThanZero
+   (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
+   (s/optional-key :visualization_settings) (s/maybe su/Map)
+   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
+   s/Keyword                                s/Any})
+
+(s/defn create-dashboard-card!
+  "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as
+   `DashboardCardSeries`. Returns the newly created `DashboardCard` or throws an Exception."
+  [dashboard-card :- NewDashboardCard]
+  (let [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings sizeX sizeY row col series]
+         :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
     (db/transaction
       (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
                                               :dashboard_id           dashboard_id

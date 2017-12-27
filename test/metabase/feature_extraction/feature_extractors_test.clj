@@ -83,7 +83,7 @@
       t.coerce/to-sql-time))
 
 (def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22 0.0])
-(def ^:private ints [0 nil Long/MAX_VALUE Long/MIN_VALUE 5 -100])
+(def ^:private integers [0 nil Long/MAX_VALUE Long/MIN_VALUE 5 -100])
 (def ^:private datetimes [(make-sql-timestamp 2015 6 1)
                           nil
                           (make-sql-timestamp 2015 6 1)
@@ -107,7 +107,7 @@
    (var-get #'fe/Text)
    nil]
   [(-> (->features {:base_type :type/Number} numbers) :type)
-   (-> (->features {:base_type :type/Number} ints) :type)
+   (-> (->features {:base_type :type/Number} integers) :type)
    (-> (->features {:base_type :type/DateTime} datetimes) :type)
    (-> (->features {:base_type :type/Text
                     :special_type :type/Category}

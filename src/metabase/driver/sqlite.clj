@@ -109,13 +109,17 @@
                                    :month   [1 "months"]
                                    :quarter [3 "months"]
                                    :year    [1 "years"])]
-    ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month')
-    ;; The date bucketing will end up being done twice since `date` is called on the results of `date-interval` automatically.
-    ;; This shouldn't be a big deal because it's used for relative dates and only needs to be done once.
-    ;; It's important to call `date` on 'now' to apply bucketing *before* adding/subtracting dates to handle certain edge cases as discussed in
-    ;; issue #2275 (https://github.com/metabase/metabase/issues/2275).
-    ;; Basically, March 30th minus one month becomes Feb 30th in SQLite, which becomes March 2nd. DATE(DATETIME('2016-03-30', '-1 month'), 'start of month') is thus March 1st.
-    ;; The SQL we produce instead (for "last month") ends up looking something like: DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
+    ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month') The date bucketing will end up being
+    ;; done twice since `date` is called on the results of `date-interval` automatically. This shouldn't be a big deal
+    ;; because it's used for relative dates and only needs to be done once.
+    ;;
+    ;; It's important to call `date` on 'now' to apply bucketing *before* adding/subtracting dates to handle certain
+    ;; edge cases as discussed in issue #2275 (https://github.com/metabase/metabase/issues/2275).
+    ;;
+    ;; Basically, March 30th minus one month becomes Feb 30th in SQLite, which becomes March 2nd.
+    ;; DATE(DATETIME('2016-03-30', '-1 month'), 'start of month') is thus March 1st.
+    ;; The SQL we produce instead (for "last month") ends up looking something like:
+    ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
     ;; It's a little verbose, but gives us the correct answer (Feb 1st).
     (->datetime (date unit (hx/literal "now"))
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
@@ -126,12 +130,16 @@
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
 
-;; SQLite doesn't like things like Timestamps getting passed in as prepared statement args, so we need to convert them to date literal strings instead to get things to work
-;; TODO - not sure why this doesn't need to be done in `prepare-value` as well? I think it's because the MBQL date values are funneled through the `date` family of functions above
+;; SQLite doesn't like things like Timestamps getting passed in as prepared statement args, so we need to convert them
+;; to date literal strings instead to get things to work
+;;
+;; TODO - not sure why this doesn't need to be done in `prepare-value` as well? I think it's because the MBQL date
+;; values are funneled through the `date` family of functions above
 (defn- prepare-sql-param [obj]
   (if (instance? java.util.Date obj)
-    ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal string
-    ;; For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?` sometimes so we need to use just the date rather than a full ISO-8601 string
+    ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
+    ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
+    ;; sometimes so we need to use just the date rather than a full ISO-8601 string
     (u/format-date "yyyy-MM-dd" obj)
     ;; every other prepared statement arg can be returned as-is
     obj))
@@ -167,8 +175,9 @@
                              (set/difference (sql/features this)
                                              ;; SQLite doesn't have a standard deviation function
                                              #{:standard-deviation-aggregations}
-                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
-                                             ;; so for now we'll just skip the foreign key stuff in the tests.
+                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and
+                                             ;; I don't have all day to work around this so for now we'll just skip
+                                             ;; the foreign key stuff in the tests.
                                              (when config/is-test?
                                                #{:foreign-keys})))
           :current-db-time (driver/make-current-db-time-fn sqlite-date-formatter sqlite-db-time-query)})

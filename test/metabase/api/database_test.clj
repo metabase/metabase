@@ -306,6 +306,7 @@
                                                     :special_type    "type/PK"
                                                     :name            "ID"
                                                     :display_name    "ID"
+                                                    :database_type   "BIGINT"
                                                     :base_type       "type/BigInteger"
                                                     :visibility_type "normal")
                                                   (assoc (field-details (Field (id :categories :name)))
@@ -313,6 +314,7 @@
                                                     :special_type       "type/Name"
                                                     :name               "NAME"
                                                     :display_name       "Name"
+                                                    :database_type      "VARCHAR"
                                                     :base_type          "type/Text"
                                                     :visibility_type    "normal")]
                                    :segments     []

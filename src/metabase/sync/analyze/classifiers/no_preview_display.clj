@@ -9,7 +9,7 @@
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
-(s/defn ^:always-validate infer-no-preview-display :- (s/maybe i/FieldInstance)
+(s/defn infer-no-preview-display :- (s/maybe i/FieldInstance)
   "Classifier that determines whether FIELD should be marked 'No Preview Display'.
    If FIELD is textual and its average length is too great, mark it so it isn't displayed in the UI."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]

@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
-
+import { t } from 'c-3po';
 import S from "./UsefulQuestions.css";
 import D from "metabase/reference/components/Detail.css";
 import L from "metabase/components/List.css";
@@ -15,7 +15,7 @@ const UsefulQuestions = ({
     <div className={cx(D.detail)}>
         <div className={D.detailBody}>
             <div className={D.detailTitle}>
-                <span className={D.detailName}>Potentially useful questions</span>
+                <span className={D.detailName}>{t`Potentially useful questions`}</span>
             </div>
             <div className={S.usefulQuestions}>
                 { questions.map((question, index, questions) =>

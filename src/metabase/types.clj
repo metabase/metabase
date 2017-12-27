@@ -1,4 +1,9 @@
-(ns metabase.types)
+(ns metabase.types
+  "The Metabase Hierarchical Type System (MHTS). This is a hierarchy where types derive from one or more parent types,
+   which in turn derive from their own parents. This makes it possible to add new types without needing to add
+   corresponding mappings in the frontend or other places. For example, a Database may want a type called something
+   like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
+   continue to treat it as such until further notice.")
 
 (derive :type/Field :type/*)
 (derive :type/Table :type/*)
@@ -61,6 +66,8 @@
 (derive :type/SerializedJSON :type/Text)
 (derive :type/SerializedJSON :type/Collection)
 
+(derive :type/PostgresEnum :type/Text)
+
 ;;; DateTime Types
 
 (derive :type/DateTime :type/Field)
@@ -82,7 +89,8 @@
 (derive :type/Boolean :type/Field)
 (derive :type/Enum :type/Field)
 
-;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced filter options like starts with / contains
+;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
+;;; filter options like starts with / contains
 
 (derive :type/TextLike :type/Field)
 (derive :type/IPAddress :type/TextLike)
@@ -97,7 +105,8 @@
 (derive :type/ZipCode :type/Address)
 
 
-;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and `:cardinality`
+;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
+;;; `:cardinality`
 
 (derive :type/Special :type/Field)
 
@@ -116,7 +125,7 @@
 
 (derive :type/Source :type/Field)
 
-;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
+;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (defn types->parents
   "Return a map of various types to their parent types.

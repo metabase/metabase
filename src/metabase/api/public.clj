@@ -90,7 +90,7 @@
   (dataset-api/as-format export-format
     (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
-;;; ----------------------------------------------- Public Dashboards -----------------------------------------------
+;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (defn public-dashboard
   "Return a public Dashboard matching key-value CONDITIONS, removing all fields that should not be visible to the

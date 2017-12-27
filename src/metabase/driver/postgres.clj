@@ -1,5 +1,8 @@
 (ns metabase.driver.postgres
-  (:require [clojure
+  "Database driver for PostgreSQL databases. Builds on top of the 'Generic SQL' driver, which implements most
+  functionality for JDBC-based drivers."
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure
              [set :as set :refer [rename-keys]]
              [string :as s]]
             [honeysql.core :as hsql]
@@ -13,8 +16,8 @@
              [ssh :as ssh]])
   (:import java.util.UUID))
 
-(def ^:private ^:const column->base-type
-  "Map of Postgres column types -> Field base types.
+(def ^:private default-base-types
+  "Map of default Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   {:bigint        :type/BigInteger
    :bigserial     :type/BigInteger
@@ -26,6 +29,7 @@
    :bytea         :type/*    ; byte array
    :cidr          :type/Text ; IPv4/IPv6 network address
    :circle        :type/*
+   :citext        :type/Text ; case-insensitive text
    :date          :type/Date
    :decimal       :type/Decimal
    :float4        :type/Float
@@ -73,6 +77,15 @@
    (keyword "time without time zone")     :type/Time
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
+
+(defn- column->base-type
+  "Actual implementation of `column->base-type`. If `:enum-types` is passed along (usually done by our implementation
+  of `describe-table` below) we'll give the column a base type of `:type/PostgresEnum` *if* it's an enum type.
+  Otherwise we'll look in the static `default-base-types` map above."
+  [driver column]
+  (if (contains? (:enum-types driver) column)
+    :type/PostgresEnum
+    (default-base-types column)))
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
@@ -170,16 +183,41 @@
     #".*" ; default
     message))
 
-(defn- prepare-value [{value :value, {:keys [base-type]} :field}]
+(defn- prepare-value
+  "Prepare a value for compilation to SQL. This should return an appropriate HoneySQL form. See description in
+  `ISQLDriver` protocol for details."
+  [{value :value, {:keys [base-type database-type]} :field}]
   (if-not value
     value
     (cond
-      (isa? base-type :type/UUID)      (UUID/fromString value)
-      (isa? base-type :type/IPAddress) (hx/cast :inet value)
-      :else                            value)))
+      (isa? base-type :type/UUID)         (UUID/fromString value)
+      (isa? base-type :type/IPAddress)    (hx/cast :inet value)
+      (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
+      :else                               value)))
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :VARCHAR field-key)))
+
+(defn- enum-types
+  "Fetch a set of the enum types associated with `database`.
+
+     (enum-types some-db) ; -> #{:bird_type :bird_status}"
+  [database]
+  (set
+   (map (comp keyword :typname)
+        (jdbc/query (connection-details->spec (:details database))
+                    [(str "SELECT DISTINCT t.typname "
+                          "FROM pg_enum e "
+                          "LEFT JOIN pg_type t "
+                          "  ON t.oid = e.enumtypid")]))))
+
+(defn- describe-table
+  "Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
+  name, but first fetches database enum types so we have access to them. These are simply assoc'ed with `driver`,
+  since that argument will end up getting passed to the function that can actually do something with the enum types,
+  namely `column->base-type`, which you will find above."
+  [driver database table]
+  (sql/describe-table (assoc driver :enum-types (enum-types database)) database table))
 
 
 (defrecord PostgresDriver []
@@ -190,9 +228,10 @@
 (def ^:private pg-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
 (def PostgresISQLDriverMixin
-  "Implementations of `ISQLDriver` methods for `PostgresDriver`."
+  "Implementations of `ISQLDriver` methods for `PostgresDriver`. This is made a 'mixin' because these implementations
+  are also used by the Redshift driver."
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (u/drop-first-arg column->base-type)
+         {:column->base-type         column->base-type
           :column->special-type      (u/drop-first-arg column->special-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
@@ -204,7 +243,9 @@
 (u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     (u/drop-first-arg date-interval)
+         {:current-db-time                   (driver/make-current-db-time-fn pg-date-formatter pg-db-time-query)
+          :date-interval                     (u/drop-first-arg date-interval)
+          :describe-table                    describe-table
           :details-fields                    (constantly (ssh/with-tunnel-config
                                                            [{:name         "host"
                                                              :display-name "Host"
@@ -232,8 +273,7 @@
                                                             {:name         "additional-options"
                                                              :display-name "Additional JDBC connection string options"
                                                              :placeholder  "prepareThreshold=0"}]))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn pg-date-formatter pg-db-time-query)})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 

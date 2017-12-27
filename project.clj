@@ -27,7 +27,7 @@
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [aleph "0.4.3"]                                      ; Async HTTP library; WebSockets
+                 [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
@@ -39,7 +39,8 @@
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
-                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
+                 [com.amazon.redshift/redshift-jdbc41-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
+                  "1.2.8.1005"]
                  [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient
@@ -119,7 +120,6 @@
              "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
              "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
              "--add-opens=java.base/java.net=ALL-UNNAMED"             ; let Java 9 dynamically add to classpath -- see https://github.com/tobias/dynapath#note-on-java-9
-             "--add-modules=java.xml.bind"                            ; tell Java 9 (Oracle VM only) to add java.xml.bind to classpath. No longer on it by default. See https://stackoverflow.com/questions/43574426/how-to-resolve-java-lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"

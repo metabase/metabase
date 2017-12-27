@@ -40,7 +40,7 @@
     "value must be a valid database engine."))
 
 
-;;; ------------------------------------------------------------ GET /api/database ------------------------------------------------------------
+;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
@@ -150,7 +150,7 @@
       []))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id ------------------------------------------------------------
+;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (def ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
@@ -162,12 +162,13 @@
        "Map of expanded schedule maps")
     "value must be a valid map of schedule maps for a DB."))
 
-(s/defn ^:private ^:always-validate expanded-schedules [db :- DatabaseInstance]
+(s/defn ^:private expanded-schedules [db :- DatabaseInstance]
   {:cache_field_values (cron-util/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (cron-util/cron-string->schedule-map (:metadata_sync_schedule db))})
 
 (defn- add-expanded-schedules
-  "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend consumption."
+  "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
+  consumption."
   [db]
   (assoc db :schedules (expanded-schedules db)))
 
@@ -177,7 +178,7 @@
   (add-expanded-schedules (api/read-check Database id)))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/metadata ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
 ;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
@@ -207,7 +208,7 @@
   (db-metadata id))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/autocomplete_suggestions ------------------------------------------------------------
+;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id prefix]
   (db/select [Table :id :db_id :schema :name]
@@ -258,7 +259,7 @@
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/fields ------------------------------------------------------------
+;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
 (api/defendpoint GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
@@ -268,16 +269,17 @@
                                           :table_id        [:in (db/select-field :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
-    (for [{:keys [id display_name table base_type special_type]} fields]
-      {:id           id
-       :name         display_name
-       :base_type    base_type
-       :special_type special_type
-       :table_name   (:display_name table)
-       :schema       (:schema table)})))
+    (api/piped-json-stream
+     (for [{:keys [id display_name table base_type special_type]} fields]
+       {:id           id
+        :name         display_name
+        :base_type    base_type
+        :special_type special_type
+        :table_name   (:display_name table)
+        :schema       (:schema table)}))))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/idfields ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
 (api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
@@ -287,7 +289,7 @@
                                                                          (hydrate :table)))))
 
 
-;;; ------------------------------------------------------------ POST /api/database ------------------------------------------------------------
+;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
 (defn- invalid-connection-response [field m]
   ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
@@ -295,23 +297,34 @@
    field    m
    :message m})
 
-(defn- test-database-connection
+(defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
-  [engine {:keys [host port] :as details}]
+  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
+                                              :or   {invalid-response-handler invalid-connection-response}}]
   ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
   (when-not config/is-test?
     (let [engine  (keyword engine)
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
-          (and host port (u/host-port-up? host port))                           (invalid-connection-response :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-          (and host (u/host-up? host))                                          (invalid-connection-response :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-          host                                                                  (invalid-connection-response :host   (format "'%s' is not reachable" host))
-          :else                                                                 (invalid-connection-response :db     "Unable to connect to database."))
+          (driver/can-connect-with-details? engine details :rethrow-exceptions)
+          nil
+
+          (and host port (u/host-port-up? host port))
+          (invalid-response-handler :dbname (format "Connection to '%s:%d' successful, but could not connect to DB."
+                                                    host port))
+
+          (and host (u/host-up? host))
+          (invalid-response-handler :port (format "Connection to '%s' successful, but port %d is invalid." port))
+
+          host
+          (invalid-response-handler :host (format "'%s' is not reachable" host))
+
+          :else
+          (invalid-response-handler :db "Unable to connect to database."))
         (catch Throwable e
-          (invalid-connection-response :dbname (.getMessage e)))))))
+          (invalid-response-handler :dbname (.getMessage e)))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
@@ -322,13 +335,11 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(s/defn ^:private ^:always-validate test-connection-details :- su/Map
+(s/defn ^:private test-connection-details :- su/Map
   "Try a making a connection to database ENGINE with DETAILS.
-   Tries twice: once with SSL, and a second time without if the first fails.
-   If either attempt is successful, returns the details used to successfully connect.
-   Otherwise returns a map with the connection error message. (This map will also
-   contain the key `:valid` = `false`, which you can use to distinguish an error from
-   valid details.)"
+   Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+   the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
+   will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
   (let [details (if (supports-ssl? engine)
                   (assoc details :ssl true)
@@ -348,7 +359,7 @@
   {(s/optional-key :metadata_sync_schedule)      cron-util/CronScheduleString
    (s/optional-key :cache_field_values_schedule) cron-util/CronScheduleString})
 
-(s/defn ^:always-validate schedule-map->cron-strings :- CronSchedulesMap
+(s/defn schedule-map->cron-strings :- CronSchedulesMap
   "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
    Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
    insert/update."
@@ -398,7 +409,8 @@
   (let [details-or-error (test-connection-details engine details)]
     {:valid (not (false? (:valid details-or-error)))}))
 
-;;; ------------------------------------------------------------ POST /api/database/sample_dataset ------------------------------------------------------------
+
+;;; --------------------------------------- POST /api/database/sample_dataset ----------------------------------------
 
 (api/defendpoint POST "/sample_dataset"
   "Add the sample dataset as a new `Database`."
@@ -408,7 +420,7 @@
   (Database :is_sample true))
 
 
-;;; ------------------------------------------------------------ PUT /api/database/:id ------------------------------------------------------------
+;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
@@ -455,7 +467,7 @@
             (add-expanded-schedules db)))))))
 
 
-;;; ------------------------------------------------------------ DELETE /api/database/:id ------------------------------------------------------------
+;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
@@ -467,8 +479,7 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
-
+;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
 
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
 ;; NOTE Atte: This becomes maybe obsolete

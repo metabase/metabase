@@ -43,7 +43,7 @@
 
 (def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
 
-(s/defn ^:private ^:always-validate save-model-updates!
+(s/defn ^:private save-model-updates!
   "Save the updates in UPDATED-FIELD."
   [original-model :- FieldOrTableInstance, updated-model :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
@@ -72,7 +72,7 @@
    no-preview-display/infer-no-preview-display
    text-fingerprint/infer-special-type])
 
-(s/defn ^:private ^:always-validate run-classifiers :- i/FieldInstance
+(s/defn ^:private run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against FIELD and FINGERPRINT, and return the resulting FIELD with changes
    decided upon by the classifiers."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
@@ -85,7 +85,7 @@
              more))))
 
 
-(s/defn ^:private ^:always-validate classify!
+(s/defn ^:private classify!
   "Run various classifiers on FIELD and its FINGERPRINT, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
@@ -101,7 +101,7 @@
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate fields-to-classify :- (s/maybe [i/FieldInstance])
+(s/defn ^:private fields-to-classify :- (s/maybe [i/FieldInstance])
   "Return a sequences of Fields belonging to TABLE for which we should attempt to determine special type.
    This should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
@@ -110,7 +110,7 @@
          :fingerprint_version i/latest-fingerprint-version
          :last_analyzed       nil)))
 
-(s/defn ^:always-validate classify-fields!
+(s/defn classify-fields!
   "Run various classifiers on the appropriate FIELDS in a TABLE that have not been previously analyzed.
    These do things like inferring (and setting) the special types and preview display status for Fields
    belonging to TABLE."

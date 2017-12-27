@@ -39,12 +39,13 @@
             [metabase.middleware :as middleware]))
 
 (def ^:private +generic-exceptions
-  "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public endpoints."
+  "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
+  endpoints."
   middleware/genericize-exceptions)
 
 (def ^:private +message-only-exceptions
-  "Wrap ROUTES so any Exception thrown is just returned as a 400 with only the message from the original Exception (i.e., remove
-   the original stacktrace), to prevent details from leaking in public endpoints."
+  "Wrap ROUTES so any Exception thrown is just returned as a 400 with only the message from the original
+  Exception (i.e., remove the original stacktrace), to prevent details from leaking in public endpoints."
   middleware/message-only-exceptions)
 
 (def ^:private +apikey

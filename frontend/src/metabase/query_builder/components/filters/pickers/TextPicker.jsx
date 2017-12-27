@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import AutosizeTextarea from 'react-textarea-autosize';
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import _ from "underscore";
 
@@ -35,7 +35,7 @@ export default class TextPicker extends Component {
 
     static defaultProps = {
         validations: [],
-        placeholder: "Enter desired text"
+        placeholder: t`Enter desired text`
     };
 
     constructor(props: Props) {
@@ -89,7 +89,7 @@ export default class TextPicker extends Component {
 
                 { multi ?
                     <div className="p1 text-small">
-                        You can enter multiple values separated by commas
+                        {t`You can enter multiple values separated by commas`}
                     </div>
                     : null }
             </div>

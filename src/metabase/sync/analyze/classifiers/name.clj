@@ -71,7 +71,7 @@
     (assert (isa? special-type :type/*))))
 
 
-(s/defn ^:private ^:always-validate special-type-for-name-and-base-type :- (s/maybe su/FieldType)
+(s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
   (or (when (= "id" (str/lower-case field-name)) :type/PK)
@@ -81,7 +81,7 @@
                 special-type))
             pattern+base-types+special-type)))
 
-(s/defn ^:always-validate infer-special-type :- (s/maybe i/FieldInstance)
+(s/defn infer-special-type :- (s/maybe i/FieldInstance)
   "Classifer that infers the special type of a FIELD based on its name and base type."
   [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
   (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]

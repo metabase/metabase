@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import styles from "./Table.css";
-
+import { t } from 'c-3po';
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -148,7 +148,7 @@ export default class TableSimple extends Component {
                 </div>
                 { pageSize < rows.length ?
                     <div ref="footer" className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text">
-                        <span className="text-bold">Rows {start + 1}-{end + 1} of {rows.length}</span>
+                        <span className="text-bold">{t`Rows ${start + 1}-${end + 1} of ${rows.length}`}</span>
                         <span className={cx("text-brand-hover px1 cursor-pointer", { disabled: start === 0 })} onClick={() => this.setState({ page: page - 1 })}>
                             <Icon name="left" size={10} />
                         </span>
