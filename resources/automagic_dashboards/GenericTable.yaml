@@ -6,7 +6,7 @@ metrics:
       score: 100
 filters:
   - Last30Days:
-      filter: ["time-interval", [field-type, Timestamp], -30, day]
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
 dimensions:
   - Latitude:
       field_type: Latitude
@@ -27,7 +27,7 @@ dimensions:
       field_type: CreationTimestamp
       score: 90
   - JoinDate:
-      field_type: Timestamp
+      field_type: DateTime
       score: 50
   - GenericNumber:
       field_type: Number
@@ -38,6 +38,7 @@ dimensions:
   - GenericCategory:
       field_type: Category
       score: 75
+  - Timestamp: DateTime
 cards:
   - UsersOverTime:
       title: Users over time
@@ -52,16 +53,18 @@ cards:
       metrics: Count
       dimensions: Country
       score: 100
-      visualization: [map, {map.type: region,
-                        map.region: world_countries}]
-  - UsersByChannel:
-      tile: Users by Acquisition Channel
-      description: The number of users from each acquistition source
-      metrics: Count
-      dimensions: AcquisitionChannel
-      filters: Last30Days
-      visualization: row
-    score: 100
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+#  - UsersByChannel:
+#      title: Users by Acquisition Channel
+#      description: The number of users from each acquistition source
+#      metrics: Count
+#      dimensions: AcquisitionChannel
+#      filters: Last30Days
+#      visualization: row
+#      score: 100
 #  - UsersByCategory:
 #    title: Users by [[fieldName]]
 #    query: select count(*) from [[UsersTable]] group by [[GenericCategory]]
@@ -73,9 +76,11 @@ cards:
       metrics: Count
       visualization: row
       score: 50
-  - UsersByChannelAndCategory:
-      title: Users By Acquisition Channel and [[GenericCategory]]
-      metrics: ActiveUsers
-      dimensions: AcquisitionChannel, GenericCategory
-      visualization: row
-      score: 30
+#  - UsersByChannelAndCategory:
+#      title: Users By Acquisition Channel and [[GenericCategory]]
+#      metrics: ActiveUsers
+#      dimensions:
+#      - AcquisitionChannel
+#      - GenericCategory
+#      visualization: row
+#      score: 30

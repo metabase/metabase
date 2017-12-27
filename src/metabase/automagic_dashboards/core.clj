@@ -2,7 +2,9 @@
   "Automatically generate questions and dashboards based on predefined
    heuristics."
   (:require [clojure.math.combinatorics :as combo]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [populate :as populate]
@@ -12,15 +14,17 @@
              [field :refer [Field]]
              [permissions :as perms]
              [table :refer [Table]]]
+            [metabase.util :as u]
             [toucan
              [db :as db]]))
 
 (defmulti
-  ^{:doc "Get a MBQL reference for a given model."
-    :arglists '([query-type model])
+  ^{:doc "Get a reference for a given model to be injected into a template
+          (either MBQL, native query, or string)."
+    :arglists '([template-type model])
     :private true}
-  ->reference (fn [query-type model]
-                [query-type (type model)]))
+  ->reference (fn [template-type model]
+                [template-type (type model)]))
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link]}]
@@ -34,6 +38,7 @@
   form)
 
 (defn- filter-fields
+  "Find all fields of type `fieldspec` belonging to table `table`."
   [fieldspec table]
   (filter (if (and (string? fieldspec)
                    (rules/ga-dimension? fieldspec))
@@ -59,50 +64,37 @@
               (map #(assoc % :link fk))))))
 
 (defn- make-binding
-  [context [binding-name {:keys [field_type score]}]]
-  {(name binding-name) {:matches (apply field-candidates context field_type)
-                        :score   score}})
+  [context [identifier {:keys [field_type score]}]]
+  {(name identifier) {:matches (apply field-candidates context field_type)
+                      :field_type field_type
+                      :score   score}})
 
-(def ^:private ^{:arglists '([definitions])} resolve-overloading
-  (partial apply merge-with (fn [a b]
-                              (cond
-                                (and (empty? (:matches a))
-                                     (:matches b))         b
-                                (and (empty? (:matches b))
-                                     (:matches a))         a
-                                (> (:score a) (:score b))  a
-                                :else                      b))))
-
-(defn- make-bindings
-  [context bindings]
-  (->> bindings
+(defn- bind-dimensions
+  [context dimensions]
+  (->> dimensions
        (map (comp (partial make-binding context) first))
-       resolve-overloading))
-
-(defn- dimension-form?
-  [form]
-  (and (sequential? form)
-       (#{:dimension "dimension" "DIMENSION"} (first form))))
+       (remove (comp empty? :matches val first))
+       (apply merge-with (partial max-key :score))))
 
 (defn- build-query
   [bindings database table-id filters metrics dimensions limit order_by]
   (let [query (walk/postwalk
                (fn [subform]
-                 (->reference :mbql (if (dimension-form? subform)
-                                      (->> subform second bindings)
-                                      subform)))
+                 (if (rules/dimension-form? subform)
+                   (->> subform second bindings (->reference :mbql))
+                   subform))
                {:type     :query
                 :database database
                 :query    (cond-> {:source_table table-id}
                             (not-empty filters)
-                            (assoc :filter (->> filters
-                                                (map :filter)
-                                                (apply vector :and)))
+                            (assoc :filter (cond->> (map :filter filters)
+                                             (> (count filters) 1)
+                                             (apply vector :and)))
 
                             (not-empty dimensions)
                             (assoc :breakout dimensions)
 
-                            metrics
+                            (not-empty metrics)
                             (assoc :aggregation (map :metric metrics))
 
                             limit
@@ -112,25 +104,21 @@
            (card/query-perms-set query :write))
       query)))
 
-(defn- collect-dimensions
-  [form]
-  (->> form
-       (tree-seq (some-fn map? sequential?) identity)
-       (filter dimension-form?)
-       (map second)
-       distinct))
-
-(defn- instantiate
+(defn- resolve-overloading
+  "Find the overloaded definition with the highest `score` for which all
+   referenced dimensions have at least one matching field."
   [{:keys [dimensions]} definitions]
   (->> definitions
        (filter (comp (fn [[_ definition]]
                        (->> definition
-                            collect-dimensions
+                            rules/collect-dimensions
                             (every? (comp not-empty :matches dimensions))))
                      first))
-       resolve-overloading))
+       (apply merge-with (partial max-key :score))))
 
 (defn- card-candidates
+  "Generate all potential cards given a card definition and bindings for
+   dimensions, metrics, and filters."
   [context {:keys [metrics filters dimensions score limit order_by] :as card}]
   (let [metrics         (map (partial get (:metrics context)) metrics)
         filters         (map (partial get (:filters context)) filters)
@@ -142,7 +130,7 @@
                               rules/max-score
                               (count bindings)))
         dimensions      (map (partial vector :dimension) dimensions)
-        used-dimensions (collect-dimensions [dimensions metrics filters])]
+        used-dimensions (rules/collect-dimensions [dimensions metrics filters])]
     (->> used-dimensions
          (map (comp :matches (partial get (:dimensions context))))
          (apply combo/cartesian-product)
@@ -164,10 +152,11 @@
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules table]
-  (some->> rules
-           (filter #(isa? (:entity_type table :type/GenericTable) (:table_type %)))
-           not-empty
-           (apply max-key (comp count ancestors :table_type))))
+  (let [entity-type (or (:entity_type table) :type/GenericTable)]
+    (some->> rules
+             (filter #(isa? entity-type (:table_type %)))
+             not-empty
+             (apply max-key (comp count ancestors :table_type)))))
 
 (defn- linked-tables
   "Return all tables accessable from a given table and the paths to get there."
@@ -179,35 +168,38 @@
          :table_id (:id table)
          :fk_target_field_id [:not= nil])))
 
-(def ^:private ^Integer max-cards 9)
-
-(defn populate-dashboards
-  ""
+(defn automagic-dashboard
+  "Create a dashboard for table `root` using the best matching heuristic."
   [root]
-  (when-let [rule (best-matching-rule (rules/load-rules) root)]
-    (let [context (as-> {:root-table    root
-                         :rule          (:table_type rule)
-                         :linked-tables (linked-tables root)
-                         :database      (:db_id root)} <>
-                    (assoc <> :dimensions (make-bindings <> (:dimensions rule)))
-                    (assoc <> :metrics (instantiate <> (:metrics rule)))
-                    (assoc <> :filters (instantiate <> (:filters rule))))
-          cards   (->> rule
-                       :cards
-                       (keep (comp (fn [[identifier card]]
-                                     (some->> card
-                                              (card-candidates context)
-                                              not-empty
-                                              (hash-map (name identifier))))
-                                   first))
-                       (apply merge-with (partial max-key (comp :score first)))
-                       vals
-                       (apply concat))]
-      (when (not-empty cards)
-        (let [dashboard (populate/create-dashboard! (:title rule)
-                                                    (:description rule))]
-          (doseq [card (->> cards
-                            (sort-by :score >)
-                            (take max-cards))]
-            (populate/add-to-dashboard! dashboard card))
-          (:id dashboard))))))
+  (let [rule    (best-matching-rule (rules/load-rules) root)
+        context (as-> {:root-table    root
+                       :rule          (:table_type rule)
+                       :linked-tables (linked-tables root)
+                       :database      (:db_id root)} <>
+                  (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
+                  (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
+                  (assoc <> :filters (resolve-overloading <> (:filters rule))))]
+    (log/info (format "Applying heuristic %s to table %s."
+                      (:table_type rule)
+                      (:name root)))
+    (log/info (format "Dimensions bindings:\n%s"
+                      (->> context
+                           :dimensions
+                           (m/map-vals #(update % :matches (partial map :name)))
+                           u/pprint-to-str)))
+    (log/info (format "Overloaded definitions:\nMetrics:\n%s\nFilters:\n%s"
+                      (-> context :metrics u/pprint-to-str)
+                      (-> context :filters u/pprint-to-str)))
+    (some->> rule
+             :cards
+             (keep (comp (fn [[identifier card]]
+                           (some->> card
+                                    (card-candidates context)
+                                    not-empty
+                                    (hash-map (name identifier))))
+                         first))
+             (apply merge-with (partial max-key (comp :score first)))
+             vals
+             (apply concat)
+             (populate/create-dashboard! (:title rule) (:description rule))
+             :id)))

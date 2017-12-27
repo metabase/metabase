@@ -1,6 +1,9 @@
 (ns metabase.automagic-dashboards.rules
+  "Validation, transformation to cannonical form, and loading of heuristics."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.types]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema
              [coerce :as sc]
@@ -49,22 +52,56 @@
 (def Visualization [(s/one s/Str "visualization") su/Map])
 
 (def Card {Identifier {(s/required-key :title)         s/Str
+                       (s/required-key :visualization) Visualization
+                       (s/required-key :score)         Score
                        (s/optional-key :dimensions)    [s/Str]
                        (s/optional-key :filters)       [s/Str]
                        (s/optional-key :metrics)       [s/Str]
                        (s/optional-key :limit)         su/IntGreaterThanZero
                        (s/optional-key :order_by)      [OrderByPair]
-                       (s/required-key :visualization) Visualization
-                       (s/optional-key :description)   s/Str
-                       (s/required-key :score)         Score}})
+                       (s/optional-key :description)   s/Str}})
 
-(def Rules {(s/required-key :table_type)  TableType
-            (s/required-key :title)       s/Str
-            (s/optional-key :description) s/Str
-            (s/optional-key :metrics)     [Metric]
-            (s/optional-key :filters)     [Filter]
-            (s/optional-key :dimensions)  [Dimension]
-            (s/required-key :cards)       [Card]})
+(def ^:private ^{:arglists '([definitions])} identifiers
+  (comp set (partial map (comp key first))))
+
+(defn- all-references
+  [k cards]
+  (mapcat (comp k val first) cards))
+
+(defn dimension-form?
+  "Does form denote a dimension referece?"
+  [form]
+  (and (sequential? form)
+       (#{:dimension "dimension" "DIMENSION"} (first form))))
+
+(defn collect-dimensions
+  "Return all dimension references in form."
+  [form]
+  (->> form
+       (tree-seq (some-fn map? sequential?) identity)
+       (filter dimension-form?)
+       (map second)
+       distinct))
+
+(defn- valid-references?
+  "Check if all references to metrics, dimensions, and filters are valid (ie.
+   have a corresponding definition)."
+  [{:keys [metrics dimensions filters cards]}]
+  (let [dimensions (identifiers dimensions)]
+    (and (every? (identifiers metrics) (all-references :metrics cards))
+         (every? (identifiers filters) (all-references :filters cards))
+         (every? dimensions (all-references :dimensions cards))
+         (every? dimensions (collect-dimensions [metrics filters])))))
+
+(def Rules (s/constrained
+            {(s/required-key :table_type)  TableType
+             (s/required-key :title)       s/Str
+             (s/required-key :dimensions)  [Dimension]
+             (s/required-key :cards)       [Card]
+             (s/optional-key :description) s/Str
+             (s/optional-key :metrics)     [Metric]
+             (s/optional-key :filters)     [Filter]}
+            valid-references?))
 
 (defn- with-defaults
   [defaults]
@@ -73,6 +110,8 @@
       {identifier (merge defaults definition)})))
 
 (defn- shorthand-definition
+  "Expand definition of the form {identifier value} with regards to key `k` into
+   {identifier {k value}}."
   [k]
   (fn [x]
     (let [[identifier definition] (first x)]
@@ -82,7 +121,7 @@
 
 (defn- ensure-seq
   [x]
-  (if (sequential? x)
+  (if (or (sequential? x) (nil? x))
     x
     [x]))
 
@@ -124,21 +163,34 @@
 
 (def ^:private rules-dir "resources/automagic_dashboards")
 
+(def ^:private ^{:arglists '([f])} file-name->table-type
+  (comp (partial re-find #".+(?=\.yaml)") (memfn ^java.io.File getName)))
+
 (defn load-rules
+  "Load and validate all rules in `rules-dir`."
   []
   (->> rules-dir
        clojure.java.io/file
        file-seq
        (filter (memfn ^java.io.File isFile))
-       (map (fn [f]
-              (-> f
-                  slurp
-                  yaml/parse-string
-                  (update :table_type #(or % (->> f
-                                                  .getName
-                                                  (re-find #".+(?=\.yaml)"))))
-                  rules-validator)))))
+       (keep (fn [f]
+               (try
+                 (-> f
+                     slurp
+                     yaml/parse-string
+                     (update :table_type #(or % (file-name->table-type f)))
+                     rules-validator)
+                 (catch Exception e
+                   (log/error (format "Error parsing %s:\n%s"
+                                      (.getName f)
+                                      (-> e
+                                          ex-data
+                                          (select-keys [:error :value])
+                                          u/pprint-to-str)))
+                   nil))))))
 
-(defn -main [& _]
+(defn -main
+  "Entry point for lein task `validate-automagic-dashboards`"
+  [& _]
   (doall (load-rules))
   (System/exit 0))

@@ -1,7 +1,8 @@
 (ns metabase.automagic-dashboards.populate
-  "Automatically generate questions and dashboards based on predefined
-   heuristics."
-  (:require [metabase.api
+  "Create and save models that make up automagic dashboards."
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [metabase.api
              [common :as api]
              [card :as card.api]]
             [metabase.events :as events]
@@ -27,17 +28,6 @@
      :col (int (* (Math/floor (/ (mod (* card-width num-cards) grid-width)
                                  card-width))
                   card-width))}))
-
-(defn create-dashboard!
-  "Create dashboard."
-  [title description]
-  (let [dashboard (db/insert! 'Dashboard
-                    :name        title
-                    :description description
-                    :creator_id  api/*current-user-id*
-                    :parameters  [])]
-    (events/publish-event! :dashboard-create dashboard)
-    dashboard))
 
 (defn- create-collection!
   [name color description]
@@ -73,10 +63,30 @@
     (hydrate card :creator :dashboard_count :labels :can_write :collection)
     card))
 
-(defn add-to-dashboard!
-  "Add card `card` to dashboard `dashboard`."
+(defn- add-to-dashboard!
   [dashboard card]
   (dashboard/add-dashcard! dashboard (create-card! card)
     (merge (next-card-position dashboard)
            {:sizeX card-width
             :sizeY card-height})))
+
+(def ^:private ^Integer max-cards 9)
+
+(defn create-dashboard!
+  "Create dashboard and populate it with cards."
+  [title description cards]
+  (let [dashboard (db/insert! 'Dashboard
+                    :name        title
+                    :description description
+                    :creator_id  api/*current-user-id*
+                    :parameters  [])
+        cards     (->> cards
+                       (sort-by :score >)
+                       (take max-cards))]
+    (events/publish-event! :dashboard-create dashboard)
+    (log/info (format "Adding %s cards to dashboard:\n%s"
+                      (count cards)
+                      (str/join "; " (map :title cards))))
+    (doseq [card cards]
+      (add-to-dashboard! dashboard card))
+    dashboard))

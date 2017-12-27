@@ -92,7 +92,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :show_in_getting_started false
-   :entity_type             nil
+   :entity_type             :type/GenericTable
    :entity_name             nil
    :visibility_type         nil
    :rows                    1000
