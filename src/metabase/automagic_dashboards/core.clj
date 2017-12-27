@@ -67,7 +67,7 @@
   ([context fieldspec]
    (filter-fields fieldspec (:root-table context)))
   ([context tablespec fieldspec]
-   (let [[{:keys [table fk]}] (find-linked-table tablespec context)]
+   (let [[{:keys [table fk]}] (filter-tables tablespec context)]
      (some->> table
               (filter-fields fieldspec)
               (map #(assoc % :link fk))))))
