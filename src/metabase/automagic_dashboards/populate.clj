@@ -30,10 +30,10 @@
                   card-width))}))
 
 (defn- create-collection!
-  [name color description]
+  [title color description]
   (when api/*is-superuser?*
     (db/insert! 'Collection
-      :name        name
+      :name        title
       :color       color
       :description description)))
 

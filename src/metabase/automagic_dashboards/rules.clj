@@ -94,15 +94,16 @@
          (every? dimensions (all-references :dimensions cards))
          (every? dimensions (collect-dimensions [metrics filters])))))
 
-(def ^:private Rules (s/constrained
-                      {(s/required-key :table_type)  TableType
-                       (s/required-key :title)       s/Str
-                       (s/required-key :dimensions)  [Dimension]
-                       (s/required-key :cards)       [Card]
-                       (s/optional-key :description) s/Str
-                       (s/optional-key :metrics)     [Metric]
-                       (s/optional-key :filters)     [Filter]}
-                      valid-references?))
+(def ^:private Rules
+  (s/constrained
+   {(s/required-key :table_type)  TableType
+    (s/required-key :title)       s/Str
+    (s/required-key :dimensions)  [Dimension]
+    (s/required-key :cards)       [Card]
+    (s/optional-key :description) s/Str
+    (s/optional-key :metrics)     [Metric]
+    (s/optional-key :filters)     [Filter]}
+   valid-references?))
 
 (defn- with-defaults
   [defaults]
