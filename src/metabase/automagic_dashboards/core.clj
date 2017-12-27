@@ -3,7 +3,9 @@
    heuristics."
   (:require [clojure.math.combinatorics :as combo]
             [clojure.tools.logging :as log]
+            [clojure.string :as str]
             [clojure.walk :as walk]
+            [kixi.stats.core :as stats]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
@@ -33,6 +35,14 @@
     fk_target_field_id [:fk-> id fk_target_field_id]
     :else              [:field-id id]))
 
+(defmethod ->reference [:string (type Field)]
+  [_ {:keys [display_name]}]
+  display_name)
+
+(defmethod ->reference [:string (type Table)]
+  [_ {:keys [display_name]}]
+  display_name)
+
 (defmethod ->reference :default
   [_ form]
   form)
@@ -48,11 +58,10 @@
                   (isa? special_type fieldspec))))
           (db/select Field :table_id (:id table))))
 
-(defn- find-linked-table
+(defn- filter-tables
   [tablespec context]
-  (->> context
-       :linked-tables
-       (filter #(-> % :table :entity_type (isa? tablespec)))))
+  (->> (concat (:linked-tables context) [(:root-table context)])
+       (filter #(-> % :entity_type (isa? tablespec)))))
 
 (defn- field-candidates
   ([context fieldspec]
@@ -137,6 +146,23 @@
                      first))
        (apply merge-with (partial max-key :score))))
 
+(defn- fill-template
+  [template-type context bindings template]
+  (str/replace template #"\[\[(\w+)\]\]"
+               (fn [[_ identifier]]
+                 (->reference template-type (or (bindings identifier)
+                                                (-> identifier
+                                                    rules/->type
+                                                    (filter-tables context)
+                                                    first))))))
+
+(defn- instantiate-metadata
+  [context bindings x]
+  (let [fill-template (partial fill-template :string context bindings)]
+    (-> x
+        (update :title fill-template)
+        (u/update-when :description fill-template))))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -144,30 +170,30 @@
   (let [order_by        (build-order-by dimensions metrics order_by)
         metrics         (map (partial get (:metrics context)) metrics)
         filters         (map (partial get (:filters context)) filters)
-        bindings        (->> dimensions
+        score           (->> dimensions
                              (map (partial get (:dimensions context)))
-                             (concat filters metrics))
-        score           (* score
-                           (/ (transduce (keep :score) + bindings)
-                              rules/max-score
-                              (count bindings)))
+                             (concat filters metrics)
+                             (transduce (keep :score) stats/mean)
+                             (* (/ score rules/max-score)))
         dimensions      (map (partial vector :dimension) dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters])]
     (->> used-dimensions
          (map (comp :matches (partial get (:dimensions context))))
          (apply combo/cartesian-product)
          (keep (fn [instantiations]
-                 (some->> (build-query (zipmap used-dimensions instantiations)
-                                       (:database context)
-                                       (-> context :root-table :id)
-                                       filters
-                                       metrics
-                                       dimensions
-                                       limit
-                                       order_by)
-                          (assoc card
-                            :score score
-                            :query)))))))
+                 (let [bindings (zipmap used-dimensions instantiations)]
+                   (some->> (build-query bindings
+                                         (:database context)
+                                         (-> context :root-table :id)
+                                         filters
+                                         metrics
+                                         dimensions
+                                         limit
+                                         order_by)
+                            (assoc card
+                              :score score
+                              :query)
+                            (instantiate-metadata context bindings))))))))
 
 (defn- best-matching-rule
   "Pick the most specific among applicable rules.
@@ -200,7 +226,8 @@
                        :database      (:db_id root)} <>
                   (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
                   (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
-                  (assoc <> :filters (resolve-overloading <> (:filters rule))))]
+                  (assoc <> :filters (resolve-overloading <> (:filters rule))))
+        rule    (instantiate-metadata context {} rule)]
     (log/info (format "Applying heuristic %s to table %s."
                       (:table_type rule)
                       (:name root)))

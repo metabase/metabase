@@ -134,7 +134,8 @@
     x
     [x]))
 
-(defn- ->type
+(defn ->type
+  "Turn `x` into proper type name."
   [x]
   (cond
     (keyword? x)      x

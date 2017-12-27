@@ -71,7 +71,7 @@ cards:
 #    visualization: row
 #    score: 50
   - UsersByCategory:
-      title: Users by [[fieldName]]
+      title: Users by [[GenericCategory]]
       dimensions: GenericCategory
       metrics: Count
       visualization: row
