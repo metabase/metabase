@@ -22,7 +22,7 @@
 
 (expect
   true
-  (-> (load-rules) count pos?))
+  (every? some? (load-rules)))
 
 (expect
   [true

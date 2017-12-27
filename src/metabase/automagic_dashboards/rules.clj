@@ -182,21 +182,21 @@
        clojure.java.io/file
        file-seq
        (filter (memfn ^java.io.File isFile))
-       (keep (fn [^java.io.File f]
-               (try
-                 (-> f
-                     slurp
-                     yaml/parse-string
-                     (update :table_type #(or % (file-name->table-type f)))
-                     rules-validator)
-                 (catch Exception e
-                   (log/error (format "Error parsing %s:\n%s"
-                                      (.getName f)
-                                      (-> e
-                                          ex-data
-                                          (select-keys [:error :value])
-                                          u/pprint-to-str)))
-                   nil))))))
+       (map (fn [^java.io.File f]
+              (try
+                (-> f
+                    slurp
+                    yaml/parse-string
+                    (update :table_type #(or % (file-name->table-type f)))
+                    rules-validator)
+                (catch Exception e
+                  (log/error (format "Error parsing %s:\n%s"
+                                     (.getName f)
+                                     (-> e
+                                         ex-data
+                                         (select-keys [:error :value])
+                                         u/pprint-to-str)))
+                  nil))))))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"
