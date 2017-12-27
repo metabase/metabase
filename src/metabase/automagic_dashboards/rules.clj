@@ -10,7 +10,9 @@
              [core :as s]]
             [yaml.core :as yaml]))
 
-(def ^Integer max-score 100)
+(def ^Integer max-score
+  "Maximal (and default) value for heuristics scores."
+  100)
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)))
 
