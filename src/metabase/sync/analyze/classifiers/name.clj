@@ -67,7 +67,7 @@
    [#"discount"       float-type       :type/Discount]
    [#"income"         float-type       :type/Income]
    [#"amount"         float-type       :type/Income]
-   [#"total"          float-type       :type/Income]
+   [#"^total"         float-type       :type/Income]
    [#"quantity"       int-type         :type/Quantity]
    [#"count$"         int-type         :type/Quantity]
    [#"join"           timestamp-type   :type/JoinTimestamp]
