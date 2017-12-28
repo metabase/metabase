@@ -17,8 +17,10 @@
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
+(def ^:private int-type         #{:type/Integer})
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
 (def ^:private text-type        #{:type/Text})
+(def ^:private timestamp-type   #{:type/DateTime})
 
 (def ^:private pattern+base-types+special-type
   "Tuples of `[name-pattern set-of-valid-base-types special-type]`.
@@ -61,7 +63,17 @@
    [#"^type$"         int-or-text-type :type/Category]
    [#"^url$"          text-type        :type/URL]
    [#"^zip_code$"     int-or-text-type :type/ZipCode]
-   [#"^zipcode$"      int-or-text-type :type/ZipCode]])
+   [#"^zipcode$"      int-or-text-type :type/ZipCode]
+   [#"discount"       float-type       :type/Discount]
+   [#"income"         float-type       :type/Income]
+   [#"amount"         float-type       :type/Income]
+   [#"total"          float-type       :type/Income]
+   [#"quantity"       int-type         :type/Quantity]
+   [#"count"          int-type         :type/Quantity]
+   [#"join"           timestamp-type   :type/JoinTimestamp]
+   [#"create"         timestamp-type   :type/CreationTimestamp]
+   [#"source"         text-type        :type/Source]
+   [#"channel"        text-type        :type/Source]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -77,7 +89,7 @@
   (or (when (= "id" (str/lower-case field-name)) :type/PK)
       (some (fn [[name-pattern valid-base-types special-type]]
               (when (and (some (partial isa? base-type) valid-base-types)
-                         (re-matches name-pattern (str/lower-case field-name)))
+                         (re-find name-pattern (str/lower-case field-name)))
                 special-type))
             pattern+base-types+special-type)))
 
