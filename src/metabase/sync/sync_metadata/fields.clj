@@ -15,6 +15,7 @@
              [fetch-metadata :as fetch-metadata]
              [interface :as i]
              [util :as sync-util]]
+            [metabase.sync.analyze.classifiers.name :as name]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -71,13 +72,15 @@
   (when (seq new-fields)
     (db/insert-many! Field
       (for [{:keys [database-type base-type], field-name :name :as field} new-fields]
-        {:table_id      (u/get-id table)
-         :name          field-name
-         :display_name  (humanization/name->human-readable-name field-name)
-         :database_type database-type
-         :base_type     base-type
-         :special_type  (special-type field)
-         :parent_id     parent-id}))))
+        (let [special-type (special-type field)]
+          (cond-> {:table_id      (u/get-id table)
+                   :name          field-name
+                   :display_name  (humanization/name->human-readable-name field-name)
+                   :database_type database-type
+                   :base_type     base-type
+                   :special_type  special-type
+                   :parent_id     parent-id}
+            (nil? special-type) (name/infer-special-type nil)))))))
 
 (s/defn ^:private ->metabase-fields! :- [i/FieldInstance]
   "Return an active Metabase Field instance that matches NEW-FIELD-METADATA. This object will be created or

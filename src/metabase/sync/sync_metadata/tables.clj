@@ -11,6 +11,7 @@
              [fetch-metadata :as fetch-metadata]
              [interface :as i]
              [util :as sync-util]]
+            [metabase.sync.analyze.classifiers.name :as name]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
             [metabase.util :as u]
             [schema.core :as s]
@@ -98,14 +99,15 @@
       (db/update! Table existing-id
         :active true)
       ;; otherwise create a new Table
-      (db/insert! Table
-        :db_id           (u/get-id database)
-        :schema          schema
-        :name            table-name
-        :display_name    (humanization/name->human-readable-name table-name)
-        :active          true
-        :visibility_type (when (is-crufty-table? table)
-                           :cruft)))))
+      (->> {:db_id           (u/get-id database)
+            :schema          schema
+            :name            table-name
+            :display_name    (humanization/name->human-readable-name table-name)
+            :active          true
+            :visibility_type (when (is-crufty-table? table)
+                               :cruft)}
+           name/infer-entity-type
+           (db/insert! Table)))))
 
 
 (s/defn ^:private retire-tables!

@@ -68,6 +68,7 @@
    [#"income"         float-type       :type/Income]
    [#"amount"         float-type       :type/Income]
    [#"total"          float-type       :type/Income]
+   [#"price"          float-type       :type/Price]
    [#"quantity"       int-type         :type/Quantity]
    [#"count$"         int-type         :type/Quantity]
    [#"join"           timestamp-type   :type/JoinTimestamp]
@@ -92,14 +93,17 @@
                 special-type))
             pattern+base-types+special-type)))
 
-(s/defn infer-special-type :- (s/maybe i/FieldInstance)
+(defn infer-special-type
   "Classifer that infers the special type of a FIELD based on its name and base type."
-  [field :- i/FieldInstance, _ :- (s/maybe i/Fingerprint)]
-  (when-let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
-    (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
-                       (sync-util/name-for-logging field)
-                       inferred-special-type))
-    (assoc field :special_type inferred-special-type)))
+  [field _]
+  (let [inferred-special-type (special-type-for-name-and-base-type (:name field) (:base_type field))]
+    (if inferred-special-type
+      (do
+        (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
+                           (sync-util/name-for-logging field)
+                           inferred-special-type))
+        (assoc field :special_type inferred-special-type))
+      field)))
 
 (def ^:private entity-types-patterns
   [[#"order"       :type/TransactionTable]
@@ -112,17 +116,21 @@
    [#"person"      :type/UserTable]
    [#"event"       :type/EventTable]])
 
-(s/defn ^:always-validate infer-entity-type :- i/TableInstance
-  [table :- i/TableInstance]
-  (let [table-name (-> table :name str/lower-case)]
-    (assoc table :entity_type (or (some (fn [[pattern type]]
-                                          (when (re-find pattern table-name)
-                                            type))
-                                        entity-types-patterns)
-                                  (when (-> table
-                                            :db_id
-                                            Database
-                                            :engine
-                                            (= :googleanalytics))
-                                    :type/GoogleAnalyticsTable)
-                                  :type/GenericTable))))
+(defn infer-entity-type
+  [table]
+  (let [table-name  (-> table :name str/lower-case)
+        entity-type (or (some (fn [[pattern type]]
+                                (when (re-find pattern table-name)
+                                  type))
+                              entity-types-patterns)
+                        (when (-> table
+                                  :db_id
+                                  Database
+                                  :engine
+                                  (= :googleanalytics))
+                          :type/GoogleAnalyticsTable)
+                        :type/GenericTable)]
+    (log/debug (format "Based on the name of %s, we're giving it entity type of %s."
+                       (sync-util/name-for-logging table)
+                       entity-type))
+    (assoc table :entity_type entity-type)))

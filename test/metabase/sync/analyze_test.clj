@@ -19,11 +19,11 @@
 ;; Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current
 (expect
   ;; PK is ok because it gets marked as part of metadata sync
-  #{{:name "LONGITUDE",   :special_type nil,      :last_analyzed fake-analysis-completion-date}
+  #{{:name "LONGITUDE",   :special_type :type/Longitude,      :last_analyzed fake-analysis-completion-date}
     {:name "CATEGORY_ID", :special_type nil,      :last_analyzed fake-analysis-completion-date}
     {:name "PRICE",       :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "LATITUDE",    :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "NAME",        :special_type nil,      :last_analyzed fake-analysis-completion-date}
+    {:name "LATITUDE",    :special_type :type/Latitude,      :last_analyzed fake-analysis-completion-date}
+    {:name "NAME",        :special_type :type/Name,      :last_analyzed fake-analysis-completion-date}
     {:name "ID",          :special_type :type/PK, :last_analyzed fake-analysis-completion-date}}
   (tt/with-temp* [Database [db    {:engine "h2", :details (:details (data/db))}]
                   Table    [table {:name "VENUES", :db_id (u/get-id db)}]]
