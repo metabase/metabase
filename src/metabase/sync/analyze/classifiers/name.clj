@@ -117,6 +117,7 @@
    [#"event"       :type/EventTable]])
 
 (defn infer-entity-type
+  "Classifer that infers the entity type of a TABLE based on its name."
   [table]
   (let [table-name  (-> table :name str/lower-case)
         entity-type (or (some (fn [[pattern type]]
