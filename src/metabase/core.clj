@@ -1,7 +1,8 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [pprint :as pprint]
              [string :as s]]
             [clojure.tools.logging :as log]
@@ -22,22 +23,54 @@
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
-             [user :refer [User]]
-             [setting :as setting]]
+             [setting :as setting]
+             [user :refer [User]]]
             [metabase.util.i18n :refer [set-locale]]
-            [puppetlabs.i18n.core :refer [trs locale-negotiator]]
+            [puppetlabs.i18n.core :refer [locale-negotiator]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
              [gzip :refer [wrap-gzip]]
-             [json :refer [wrap-json-body wrap-json-response]]
+             [json :refer [wrap-json-body]]
              [keyword-params :refer [wrap-keyword-params]]
              [params :refer [wrap-params]]
              [session :refer [wrap-session]]]
+            [ring.util
+             [io :as rui]
+             [response :as rr]]
             [toucan.db :as db])
-  (:import org.eclipse.jetty.server.Server))
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [java.nio.charset Charset StandardCharsets]
+           org.eclipse.jetty.server.Server))
 
 ;;; CONFIG
+
+(defn- streamed-json-response
+  "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
+  [response-seq options]
+  (rui/piped-input-stream
+   (fn [^OutputStream output-stream]
+     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+                 buffered-writer (BufferedWriter. output-writer)]
+       (json/generate-stream response-seq buffered-writer)))))
+
+(defn- wrap-streamed-json-response
+  "Similar to ring.middleware/wrap-json-response in that it will serialize the response's body to JSON if it's a
+  collection. Rather than generating a string it will stream the response using a PipedOutputStream.
+
+  Accepts the following options (same as `wrap-json-response`):
+
+  :pretty            - true if the JSON should be pretty-printed
+  :escape-non-ascii  - true if non-ASCII characters should be escaped with \\u"
+  [handler & [{:as opts}]]
+  (fn [request]
+    (let [response (handler request)]
+      (if-let [json-response (and (coll? (:body response))
+                                  (update-in response [:body] streamed-json-response opts))]
+        (if (contains? (:headers json-response) "Content-Type")
+          json-response
+          (rr/content-type json-response "application/json; charset=utf-8"))
+        response))))
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
@@ -46,7 +79,7 @@
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response                 ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params                ; converts string keys in :params to keyword keys
       wrap-params                        ; parses GET and POST params as :query-params/:form-params and both as :params
       mb-middleware/bind-current-user    ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
