@@ -6,8 +6,9 @@
              [config :as config]
              [util :as u]]
             [metabase.models
-             [field :refer [Field]]
-             [database :refer [Database]]]
+             [database :refer [Database]]
+             [field :refer [Field] :as field]
+             [table :as table]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -100,7 +101,9 @@
     (if inferred-special-type
       (do
         (log/debug (format "Based on the name of %s, we're giving it a special type of %s."
-                           (sync-util/name-for-logging field)
+                           (-> (field/->FieldInstance)
+                               (merge field)
+                               sync-util/name-for-logging)
                            inferred-special-type))
         (assoc field :special_type inferred-special-type))
       field)))
@@ -132,6 +135,8 @@
                           :type/GoogleAnalyticsTable)
                         :type/GenericTable)]
     (log/debug (format "Based on the name of %s, we're giving it entity type of %s."
-                       (sync-util/name-for-logging table)
+                       (-> (table/->TableInstance)
+                           (merge table)
+                           sync-util/name-for-logging)
                        entity-type))
     (assoc table :entity_type entity-type)))
