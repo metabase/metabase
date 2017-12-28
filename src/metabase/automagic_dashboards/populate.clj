@@ -2,6 +2,7 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.api
              [common :as api]
              [card :as card.api]]
@@ -20,14 +21,13 @@
    dashboard `dashboard`.
    Assumes a grid `grid-width` cells wide with cards sized
    `card-width` x `card-height`."
-  [dashboard]
-  (let [num-cards (db/count 'DashboardCard :dashboard_id (:id dashboard))]
-    {:row (int (* (Math/floor (/ (* card-width num-cards)
-                                 grid-width))
-                  card-height))
-     :col (int (* (Math/floor (/ (mod (* card-width num-cards) grid-width)
-                                 card-width))
-                  card-width))}))
+  [num-cards]
+  {:row (int (* (Math/floor (/ (* card-width num-cards)
+                               grid-width))
+                card-height))
+   :col (int (* (Math/floor (/ (mod (* card-width num-cards) grid-width)
+                               card-width))
+                card-width))})
 
 (defn- create-collection!
   [title color description]
@@ -64,9 +64,9 @@
     card))
 
 (defn- add-to-dashboard!
-  [dashboard card]
+  [dashboard card idx]
   (dashboard/add-dashcard! dashboard (create-card! card)
-    (merge (next-card-position dashboard)
+    (merge (next-card-position idx)
            {:sizeX card-width
             :sizeY card-height})))
 
@@ -87,6 +87,6 @@
     (log/info (format "Adding %s cards to dashboard:\n%s"
                       (count cards)
                       (str/join "; " (map :title cards))))
-    (doseq [card cards]
-      (add-to-dashboard! dashboard card))
+    (doseq [[idx card] (m/indexed cards)]
+      (add-to-dashboard! dashboard card idx))
     dashboard))
