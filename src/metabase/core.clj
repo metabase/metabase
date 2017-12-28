@@ -182,12 +182,34 @@
     (.stop ^Server @jetty-instance)
     (reset! jetty-instance nil)))
 
+(defn- wrap-with-asterisk [strings-to-wrap]
+  ;; Adding 4 extra asterisks so that we account for the leading asterisk and space, and add two more after the end of the sentence
+  (let [string-length (+ 4 (apply max (map count strings-to-wrap)))]
+    (str (apply str (repeat string-length \* ))
+         "\n"
+         "*\n"
+         (apply str (map #(str "* " % "\n") strings-to-wrap))
+         "*\n"
+         (apply str (repeat string-length \* )))))
+
+(defn- check-jdk-version []
+  (let [java-spec-version (System/getProperty "java.specification.version")]
+    ;; Note for java 7, this is 1.7, but newer versions drop the 1. Java 9 just returns "9" here.
+    (when (= "1.7" java-spec-version)
+      (let [java-version (System/getProperty "java.version")
+            deprecation-messages [(str "DEPRECATION WARNING: You are currently running JDK '" java-version "'. "
+                                       "Support for Java 7 has been deprecated and will be dropped from a future release.")
+                                  (str "See the operation guide for more information: https://metabase.com/docs/latest/operations-guide/start.html.")]]
+        (binding [*out* *err*]
+          (println (wrap-with-asterisk deprecation-messages))
+          (log/warn deprecation-messages))))))
 
 ;;; ## ---------------------------------------- Normal Start ----------------------------------------
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
+    (check-jdk-version)
     ;; launch embedded webserver async
     (start-jetty!)
     ;; run our initialization process
