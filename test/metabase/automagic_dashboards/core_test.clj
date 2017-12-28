@@ -8,8 +8,8 @@
              [field :as field]
              [table :refer [Table] :as table]
              [user :as user]]
-            [metabase.test.data
-             [users :as test-users]]))
+            [metabase.test.data.users :as test-users]
+            [metabase.test.util :as tu]))
 
 (defmacro with-rasta
   "Execute body with rasta as the current user."
@@ -40,4 +40,5 @@
 (expect
   true
   (with-rasta
-    (-> (keep automagic-dashboard (Table)) count pos?)))
+    (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
+      (-> (keep automagic-dashboard (Table)) count pos?))))
