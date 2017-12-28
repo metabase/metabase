@@ -34,7 +34,10 @@ cards:
     order_by:
       - Count: descending
       - Source
-#- UsersBySourceNative:
-#    title: native
-#    query: "select count(*), [[Source]] from [[UserTable]] group by [[Source]]"
-#    visualization: row
+- UsersBySourceNative:
+    title: native
+    query: "select count(*) as COUNT, [[Source]] from [[UserTable]] group by [[Source]]"
+    visualization:
+      row:
+        graph.dimensions: [SOURCE]
+        graph.metrics: [COUNT]

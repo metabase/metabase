@@ -43,6 +43,14 @@
   [_ {:keys [display_name]}]
   display_name)
 
+(defmethod ->reference [:native (type Field)]
+  [_ {:keys [name]}]
+  name)
+
+(defmethod ->reference [:native (type Table)]
+  [_ {:keys [name]}]
+  name)
+
 (defmethod ->reference :default
   [_ form]
   form)
@@ -60,17 +68,27 @@
 
 (defn- filter-tables
   [tablespec context]
-  (->> (concat (:linked-tables context) [{:table (:root-table context)}])
-       (filter #(-> % :table :entity_type (isa? tablespec)))))
+  (filter #(-> % :entity_type (isa? tablespec)) (:tables context)))
+
+(defn- fill-template
+  [template-type context bindings template]
+  (str/replace template #"\[\[(\w+)\]\]"
+               (fn [[_ identifier]]
+                 (->reference template-type (or (bindings identifier)
+                                                (-> identifier
+                                                    rules/->type
+                                                    (filter-tables context)
+                                                    first)
+                                                identifier)))))
 
 (defn- field-candidates
   ([context fieldspec]
    (filter-fields fieldspec (:root-table context)))
   ([context tablespec fieldspec]
-   (let [[{:keys [table fk]}] (filter-tables tablespec context)]
+   (let [[table] (filter-tables tablespec context)]
      (some->> table
               (filter-fields fieldspec)
-              (map #(assoc % :link fk))))))
+              (map #(assoc % :link (:link table)))))))
 
 (defn- make-binding
   [context [identifier {:keys [field_type score]}]]
@@ -82,8 +100,14 @@
   [context dimensions]
   (->> dimensions
        (map (comp (partial make-binding context) first))
-       (remove (comp empty? :matches val first))
-       (apply merge-with (partial max-key :score))))
+       (apply merge-with (fn [a b]
+                           (cond
+                             (and (empty? (:matches a))
+                                  (not-empty (:matches b))) b
+                             (and (empty? (:matches b))
+                                  (not-empty (:matches a))) a
+                             (> (:score a) (:score b))      a
+                             :else                          b)))))
 
 (defn- index-of
   [pred coll]
@@ -103,36 +127,40 @@
          [:dimension identifier]
          [:aggregate-field (index-of #{identifier} metrics)])])))
 
+(defn- have-permissions?
+  [query]
+  (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
+                                           (card/query-perms-set query :write)))
+
 (defn- build-query
-  [bindings database table-id filters metrics dimensions limit order_by]
-  (let [query (walk/postwalk
-               (fn [subform]
-                 (if (rules/dimension-form? subform)
-                   (->> subform second bindings (->reference :mbql))
-                   subform))
-               {:type     :query
-                :database database
-                :query    (cond-> {:source_table table-id}
-                            (not-empty filters)
-                            (assoc :filter (cond->> (map :filter filters)
-                                             (> (count filters) 1)
-                                             (apply vector :and)))
+  ([context bindings filters metrics dimensions limit order_by]
+   (walk/postwalk
+    (fn [subform]
+      (if (rules/dimension-form? subform)
+        (->> subform second bindings (->reference :mbql))
+        subform))
+    {:type     :query
+     :database (:database context)
+     :query    (cond-> {:source_table (-> context :root-table :id)}
+                 (not-empty filters)
+                 (assoc :filter (cond->> (map :filter filters)
+                                  (> (count filters) 1) (apply vector :and)))
 
-                            (not-empty dimensions)
-                            (assoc :breakout dimensions)
+                 (not-empty dimensions)
+                 (assoc :breakout dimensions)
 
-                            (not-empty metrics)
-                            (assoc :aggregation (map :metric metrics))
+                 (not-empty metrics)
+                 (assoc :aggregation (map :metric metrics))
 
-                            limit
-                            (assoc :limit limit)
+                 limit
+                 (assoc :limit limit)
 
-                            (not-empty order_by)
-                            (assoc :order_by order_by))})]
-    (when (perms/set-has-full-permissions-for-set?
-           @api/*current-user-permissions-set*
-           (card/query-perms-set query :write))
-      query)))
+                 (not-empty order_by)
+                 (assoc :order_by order_by))}))
+  ([context bindings query]
+   {:type     :native
+    :native   {:query (fill-template :native context bindings query)}
+    :database (:database context)}))
 
 (defn- resolve-overloading
   "Find the overloaded definition with the highest `score` for which all
@@ -146,17 +174,6 @@
                      first))
        (apply merge-with (partial max-key :score))))
 
-(defn- fill-template
-  [template-type context bindings template]
-  (str/replace template #"\[\[(\w+)\]\]"
-               (fn [[_ identifier]]
-                 (->reference template-type (or (bindings identifier)
-                                                (-> identifier
-                                                    rules/->type
-                                                    (filter-tables context)
-                                                    first
-                                                    :table))))))
-
 (defn- instantiate-metadata
   [context bindings x]
   (let [fill-template (partial fill-template :string context bindings)]
@@ -167,34 +184,37 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit order_by] :as card}]
+  [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
   (let [order_by        (build-order-by dimensions metrics order_by)
         metrics         (map (partial get (:metrics context)) metrics)
         filters         (map (partial get (:filters context)) filters)
-        score           (->> dimensions
-                             (map (partial get (:dimensions context)))
-                             (concat filters metrics)
-                             (transduce (keep :score) stats/mean)
-                             (* (/ score rules/max-score)))
+        score           (if query
+                          score
+                          (->> dimensions
+                               (map (partial get (:dimensions context)))
+                               (concat filters metrics)
+                               (transduce (keep :score) stats/mean)
+                               (* (/ score rules/max-score))))
         dimensions      (map (partial vector :dimension) dimensions)
-        used-dimensions (rules/collect-dimensions [dimensions metrics filters])]
+        used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
     (->> used-dimensions
-         (map (comp :matches (partial get (:dimensions context))))
+         (map (some-fn (comp :matches (partial get (:dimensions context)))
+                       (comp #(filter-tables % context) rules/->type)))
          (apply combo/cartesian-product)
          (keep (fn [instantiations]
-                 (let [bindings (zipmap used-dimensions instantiations)]
-                   (some->> (build-query bindings
-                                         (:database context)
-                                         (-> context :root-table :id)
-                                         filters
-                                         metrics
-                                         dimensions
-                                         limit
-                                         order_by)
-                            (assoc card
-                              :score score
-                              :query)
-                            (instantiate-metadata context bindings))))))))
+                 (let [bindings (zipmap used-dimensions instantiations)
+                       query    (if query
+                                  (build-query context bindings query)
+                                  (build-query context bindings
+                                               filters
+                                               metrics
+                                               dimensions
+                                               limit
+                                               order_by))]
+                   (when (have-permissions? query)
+                     (-> (instantiate-metadata context bindings card)
+                         (assoc :score score
+                                :query query)))))))))
 
 (defn- best-matching-rule
   "Pick the most specific among applicable rules.
@@ -211,8 +231,7 @@
   "Return all tables accessable from a given table and the paths to get there."
   [table]
   (map (fn [{:keys [id fk_target_field_id]}]
-         {:table (-> fk_target_field_id Field :table_id Table)
-          :fk    id})
+         (-> fk_target_field_id Field :table_id Table (assoc :link id)))
        (db/select [Field :id :fk_target_field_id]
          :table_id (:id table)
          :fk_target_field_id [:not= nil])))
@@ -221,10 +240,10 @@
   "Create a dashboard for table `root` using the best matching heuristic."
   [root]
   (let [rule    (best-matching-rule (rules/load-rules) root)
-        context (as-> {:root-table    root
-                       :rule          (:table_type rule)
-                       :linked-tables (linked-tables root)
-                       :database      (:db_id root)} <>
+        context (as-> {:root-table root
+                       :rule       (:table_type rule)
+                       :tables     (concat [root] (linked-tables root))
+                       :database   (:db_id root)} <>
                   (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
                   (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
                   (assoc <> :filters (resolve-overloading <> (:filters rule))))
@@ -237,7 +256,7 @@
                            :dimensions
                            (m/map-vals #(update % :matches (partial map :name)))
                            u/pprint-to-str)))
-    (log/info (format "Overloaded definitions:\nMetrics:\n%s\nFilters:\n%s"
+    (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
                       (-> context :metrics u/pprint-to-str)
                       (-> context :filters u/pprint-to-str)))
     (some->> rule

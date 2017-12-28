@@ -26,6 +26,19 @@
 (def ^:private Filter {Identifier {(s/required-key :filter) MBQL
                                    (s/required-key :score)  Score}})
 
+(defn ga-dimension?
+  "Does string `t` denote a Google Analytics dimension?"
+  [t]
+  (str/starts-with? t "ga:"))
+
+(defn ->type
+  "Turn `x` into proper type name."
+  [x]
+  (cond
+    (keyword? x)      x
+    (ga-dimension? x) x
+    :else             (keyword "type" x)))
+
 (defn- field-type?
   [t]
   (isa? t :type/Field))
@@ -33,11 +46,6 @@
 (defn- table-type?
   [t]
   (isa? t :type/Table))
-
-(defn ga-dimension?
-  "Does string `t` denote a Google Analytics dimension?"
-  [t]
-  (str/starts-with? t "ga:"))
 
 (def ^:private TableType (s/constrained s/Keyword table-type?))
 (def ^:private FieldType (s/either (s/constrained s/Str ga-dimension?)
@@ -62,7 +70,8 @@
                (s/optional-key :metrics)       [s/Str]
                (s/optional-key :limit)         su/IntGreaterThanZero
                (s/optional-key :order_by)      [OrderByPair]
-               (s/optional-key :description)   s/Str}})
+               (s/optional-key :description)   s/Str
+               (s/optional-key :query)         s/Str}})
 
 (def ^:private ^{:arglists '([definitions])} identifiers
   (comp set (partial map (comp key first))))
@@ -82,24 +91,29 @@
   [form]
   (->> form
        (tree-seq (some-fn map? sequential?) identity)
-       (filter dimension-form?)
-       (map second)
+       (mapcat (fn [subform]
+                 (cond
+                   (dimension-form? subform) [(second subform)]
+                   (string? subform)         (->> subform
+                                                  (re-seq #"\[\[(\w+)\]\]")
+                                                  (map second))
+                   :else                     nil)))
        distinct))
 
 (defn- valid-references?
   "Check if all references to metrics, dimensions, and filters are valid (ie.
    have a corresponding definition)."
-  [{:keys [metrics dimensions filters cards]}]
+  [{:keys [metrics dimensions filters cards] :as rule}]
   (let [defined-dimensions (identifiers dimensions)
         defined-metrics    (identifiers metrics)
         defined-filters    (identifiers filters)]
     (and (every? defined-metrics (all-references :metrics cards))
          (every? defined-filters (all-references :filters cards))
          (every? defined-dimensions (all-references :dimensions cards))
-         (->> cards
-              (all-references :order_by)
-              (every? (comp (into defined-dimensions defined-metrics) key first)))
-         (every? defined-dimensions (collect-dimensions [metrics filters])))))
+         (every? (comp (into defined-dimensions defined-metrics) key first)
+                 (all-references :order_by cards))
+         (every? (some-fn defined-dimensions (comp table-type? ->type))
+                 (collect-dimensions rule)))))
 
 (def ^:private Rules
   (s/constrained
@@ -133,14 +147,6 @@
   (if (or (sequential? x) (nil? x))
     x
     [x]))
-
-(defn ->type
-  "Turn `x` into proper type name."
-  [x]
-  (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "type" x)))
 
 (def ^:private rules-validator
   (sc/coercer!
