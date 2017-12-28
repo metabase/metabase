@@ -69,7 +69,7 @@
    [#"amount"         float-type       :type/Income]
    [#"total"          float-type       :type/Income]
    [#"quantity"       int-type         :type/Quantity]
-   [#"count"          int-type         :type/Quantity]
+   [#"count$"         int-type         :type/Quantity]
    [#"join"           timestamp-type   :type/JoinTimestamp]
    [#"create"         timestamp-type   :type/CreationTimestamp]
    [#"source"         text-type        :type/Source]
@@ -81,7 +81,6 @@
     (assert (instance? java.util.regex.Pattern name-pattern))
     (assert (every? (u/rpartial isa? :type/*) base-types))
     (assert (isa? special-type :type/*))))
-
 
 (s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
