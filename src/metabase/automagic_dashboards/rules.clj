@@ -14,7 +14,8 @@
   "Maximal (and default) value for heuristics scores."
   100)
 
-(def ^:private Score (s/constrained s/Int #(<= 0 % max-score)))
+(def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
+                                    (str "0 <= score <= " max-score)))
 
 (def ^:private MBQL [s/Any])
 
@@ -125,7 +126,7 @@
     (s/optional-key :description) s/Str
     (s/optional-key :metrics)     [Metric]
     (s/optional-key :filters)     [Filter]}
-   valid-references?))
+   valid-references? "Valid references"))
 
 (defn- with-defaults
   [defaults]
