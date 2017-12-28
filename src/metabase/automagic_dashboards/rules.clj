@@ -55,7 +55,8 @@
                                    [(s/one TableType "table") FieldType]))
 
 (def ^:private Dimension {Identifier {(s/required-key :field_type) FieldSpec
-                                      (s/required-key :score)      Score}})
+                                      (s/required-key :score)      Score
+                                      (s/optional-key :links_to)   TableType}})
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
@@ -199,10 +200,11 @@
                 (catch Exception e
                   (log/error (format "Error parsing %s:\n%s"
                                      (.getName f)
-                                     (-> e
-                                         ex-data
-                                         (select-keys [:error :value])
-                                         u/pprint-to-str)))
+                                     (or (some-> e
+                                                 ex-data
+                                                 (select-keys [:error :value])
+                                                 u/pprint-to-str)
+                                         e)))
                   nil))))))
 
 (defn -main

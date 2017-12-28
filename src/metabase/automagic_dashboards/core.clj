@@ -44,8 +44,8 @@
   display_name)
 
 (defmethod ->reference [:native (type Field)]
-  [_ {:keys [name]}]
-  name)
+  [_ {:keys [name table_id]}]
+  (format "%s.%s" (-> table_id Table :name) name))
 
 (defmethod ->reference [:native (type Table)]
   [_ {:keys [name]}]
@@ -82,19 +82,26 @@
                                                 identifier)))))
 
 (defn- field-candidates
-  ([context fieldspec]
-   (filter-fields fieldspec (:root-table context)))
-  ([context tablespec fieldspec]
-   (let [[table] (filter-tables tablespec context)]
-     (some->> table
-              (filter-fields fieldspec)
-              (map #(assoc % :link (:link table)))))))
+  [context {:keys [field_type links_to] :as constraints}]
+  (if links_to
+    (filter (comp (->> (filter-tables links_to context)
+                       (keep :link)
+                       set)
+                  :id)
+            (field-candidates context (dissoc constraints :links_to)))
+    (let [[tablespec fieldspec] field_type]
+      (if fieldspec
+        (let [[table] (filter-tables tablespec context)]
+          (some->> table
+                   (filter-fields fieldspec)
+                   (map #(assoc % :link (:link table)))))
+        (filter-fields tablespec (:root-table context))))))
 
 (defn- make-binding
-  [context [identifier {:keys [field_type score]}]]
-  {(name identifier) {:matches (apply field-candidates context field_type)
+  [context [identifier {:keys [field_type score] :as definition}]]
+  {(name identifier) {:matches    (field-candidates context definition)
                       :field_type field_type
-                      :score   score}})
+                      :score      score}})
 
 (defn- bind-dimensions
   [context dimensions]
@@ -228,7 +235,7 @@
              (apply max-key (comp count ancestors :table_type)))))
 
 (defn- linked-tables
-  "Return all tables accessable from a given table and the paths to get there."
+  "Return all tables accessable from a given table with the paths to get there."
   [table]
   (map (fn [{:keys [id fk_target_field_id]}]
          (-> fk_target_field_id Field :table_id Table (assoc :link id)))

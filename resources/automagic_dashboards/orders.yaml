@@ -12,6 +12,8 @@ metrics:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+- Timestamp:
+    field_type: DateTime
 - State:
     field_type: UserTable.State
 - Income:
@@ -19,6 +21,19 @@ dimensions:
 - Discount: Discount
 - Quantity:
     field_type: Quantity
+- UserID: UserTable.PK
+- UserFK:
+    field_type: FK
+    links_to: UserTable
+- JoinDate:
+    field_type: UserTable.JoinTimestamp
+    score: 100
+- JoinDate:
+    field_type: UserTable.CreationTimestamp
+    score: 90
+- JoinDate:
+    field_type: UserTable.DateTime
+    score: 30
 cards:
 - IncomeByMonth:
     visualization: line
@@ -54,3 +69,17 @@ cards:
     title: Sales by state
     dimensions: State
     metrics: TotalOrders
+- FirstYearSalesDistribution:
+    title: First year sales
+    description: Distribution of number of orders a user makes in their first year
+    query: select count(*) as NUM_USERS, NUM_ORDERS
+           from (select count(*) as NUM_ORDERS
+                 from [[TransactionTable]] left join [[UserTable]]
+                   on [[UserFK]] = [[UserID]]
+                 where datediff("MONTH", [[JoinDate]], [[Timestamp]]) <= 12
+                 group by [[UserID]])
+           group by NUM_ORDERS
+    visualization:
+      bar:
+        graph.dimensions: [NUM_ORDERS]
+        graph.metrics: [NUM_USERS]

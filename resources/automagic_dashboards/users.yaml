@@ -5,8 +5,15 @@ metrics:
 - Count:
     metric: [count]
 dimensions:
-- Timestamp:
+- JoinDate:
+    field_type: JoinTimestamp
+    score: 100
+- JoinDate:
     field_type: CreationTimestamp
+    score: 90
+- JoinDate:
+    field_type: DateTime
+    score: 30
 - Source:
     field_type: Source
 - State:
@@ -16,7 +23,7 @@ cards:
     visualization: line
     title: New users by month
     description: How many new users have we acquired each month
-    dimensions: Timestamp
+    dimensions: JoinDate
     metrics: Count
 - UsersByState:
     visualization:
@@ -34,10 +41,3 @@ cards:
     order_by:
       - Count: descending
       - Source
-- UsersBySourceNative:
-    title: native
-    query: "select count(*) as COUNT, [[Source]] from [[UserTable]] group by [[Source]]"
-    visualization:
-      row:
-        graph.dimensions: [SOURCE]
-        graph.metrics: [COUNT]
