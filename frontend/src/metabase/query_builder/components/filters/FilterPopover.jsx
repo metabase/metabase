@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
 import { t, jt } from 'c-3po';
-import DatePicker from "./pickers/DatePicker.jsx";
+import DatePicker, { getOperator } from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
@@ -33,6 +33,15 @@ type Props = {
 type State = {
     filter: FieldFilter
 }
+
+const CURRENT_INTERVAL_NAME = {
+    "day":    t`today`,
+    "week":   t`this week`,
+    "month":  t`this month`,
+    "year":   t`this year`,
+    "minute": t`this minute`,
+    "hour":   t`this hour`,
+};
 
 export default class FilterPopover extends Component {
     props: Props;
@@ -112,37 +121,25 @@ export default class FilterPopover extends Component {
         // determine if there is an options map on the date filter and if so
         // use this to indicate that current is included
         // TODO this is dumb and brittle, just a starting point
-        const has = typeof this.state.filter[4] === "object"
-        console.log('has current period?', has)
-        return has
+        const options = this.state.filter[4] || {};
+        return options["include-current"] || false;
     }
 
     toggleCurrentPeriod = () => {
-        console.log('called?')
         const { filter  } = this.state;
-        const { query } = this.props;
-        const { field } = Query.getFieldTarget(filter[1], query.table());
+        const operator = getOperator(filter);
 
-        // only do this if we're working with a date
-        if(!isDate(field)) {
-            return false;
+        if (operator && operator.options && operator.options["include-current"]) {
+            // NOTE: currently hard codes options at index 4
+            const options = filter[4] || {};
+            const newOptions = {
+              ...options,
+              "include-current": !options["include-current"]
+            };
+            this.setState({
+                filter: [...filter.slice(0,4), newOptions]
+            });
         }
-
-        let newFilter = [...filter]
-
-        if(this.hasCurrentPeriod()) {
-            newFilter = newFilter.slice(0, -1)
-        } else {
-            newFilter = newFilter.concat([{
-                "include-current": true
-            }])
-        }
-
-        console.log('newfilter', newFilter)
-
-        this.setState({
-            filter: newFilter
-        })
     }
 
     setValues = (values: any[]) => {
@@ -297,6 +294,7 @@ export default class FilterPopover extends Component {
         } else {
             let { table, field } = Query.getFieldTarget(fieldRef, query.table());
             const dimension = query.parseFieldReference(fieldRef);
+            const operator = getOperator(filter);
             return (
                 <div style={{
                     minWidth: 300,
@@ -328,25 +326,11 @@ export default class FilterPopover extends Component {
                         </div>
                     }
                     <div className="FilterPopover-footer border-top flex align-center p2">
-                        { isDate(field) && (
-                            <div className="flex align-center">
-                                <Checkbox
-                                    // TODO - this is getting called twice somehow
-                                    onChange={() => this.toggleCurrentPeriod()}
-                                    checked={this.hasCurrentPeriod()}
-                                />
-                                {
-                                    /*
-                                         days = today
-                                         weeks = this week
-                                         months = this month
-                                         years = this year
-                                         minutes = this minute
-                                         hours = this hour
-                                    */
-                                }
+                        { operator && operator.options && operator.options["include-current"] && (
+                            <div className="flex align-center" onClick={() => this.toggleCurrentPeriod()}>
+                                <Checkbox checked={this.hasCurrentPeriod()} />
                                 <label className="ml1">
-                                    {jt`Include ${<b>{ pluralize('filter')}</b>} so far`}
+                                    {jt`Include ${<b>{CURRENT_INTERVAL_NAME[filter[3]]}</b>}`}
                                 </label>
                             </div>
                         )}

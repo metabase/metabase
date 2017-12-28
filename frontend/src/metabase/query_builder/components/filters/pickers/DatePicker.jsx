@@ -107,7 +107,7 @@ class CurrentPicker extends Component {
 
 const getIntervals = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && typeof value === "number" ? Math.abs(value) : 30;
 const getUnit      = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && unit ? unit : "day";
-const getOptions   = ([op, field, value, unit, options]) => options || {};
+const getOptions   = ([op, field, value, unit, options]) => mbqlEq(op, "time-interval") && options || {};
 
 const getDate = (value) => {
     if (typeof value !== "string" || !moment(value).isValid()) {
@@ -170,6 +170,7 @@ export const DATE_OPERATORS: Operator[] = [
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
+        options: { "include-current": true },
     },
     {
         name: t`Next`,
@@ -177,10 +178,11 @@ export const DATE_OPERATORS: Operator[] = [
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
+        options: { "include-current": true },
     },
     {
         name: t`Current`,
-        init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter), getOptions(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter)],
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
@@ -226,6 +228,10 @@ export const EMPTINESS_OPERATORS: Operator[] = [
 
 export const ALL_OPERATORS: Operator[] = DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
 
+export function getOperator(filter, operators?: Operator[] = ALL_OPERATORS) {
+    return _.find(operators, (o) => o.test(filter));
+}
+
 type Props = {
     className?: string,
     filter: FieldFilter,
@@ -248,14 +254,10 @@ export default class DatePicker extends Component {
     componentWillMount() {
         const operators = this.props.hideEmptinessOperators ? DATE_OPERATORS : ALL_OPERATORS;
 
-        const operator = this._getOperator(operators) || operators[0];
+        const operator = getOperator(this.props.filter, operators) || operators[0];
         this.props.onFilterChange(operator.init(this.props.filter));
 
         this.setState({ operators })
-    }
-
-    _getOperator(operators: Operator[]) {
-        return _.find(operators, (o) => o.test(this.props.filter));
     }
 
     render() {
@@ -265,7 +267,7 @@ export default class DatePicker extends Component {
             operators = [ALL_TIME_OPERATOR, ...operators];
         }
 
-        const operator = this._getOperator(operators);
+        const operator = getOperator(this.props.filter, operators);
         const Widget = operator && operator.widget;
 
         // certain types of operators need to have a horizontal layout
