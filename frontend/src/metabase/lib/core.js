@@ -107,12 +107,23 @@ export const field_special_types = [{
     'id': TYPE.User,
     'name': 'User',
     'section': 'Common'
-},
-                                   {
+},{
     'id': TYPE.Source,
     'name': 'Source',
     'section': 'Common'
-}];
+},{
+    'id': TYPE.Price,
+    'name': 'Price',
+    'section': 'Common'
+}, {
+    'id': TYPE.CreationTimestamp,
+    'name': 'CreationTimestamp',
+    'section': 'Common'
+},{
+    'id': TYPE.JoinTimestamp,
+    'name': 'JoinTimestamp',
+    'section': 'Common'
+},];
 
 export const field_special_types_map = field_special_types
     .reduce((map, type) => Object.assign({}, map, {[type.id]: type}), {});
