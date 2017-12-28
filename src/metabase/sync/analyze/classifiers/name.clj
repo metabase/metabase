@@ -69,7 +69,7 @@
    [#"amount"         float-type       :type/Income]
    [#"total"          float-type       :type/Income]
    [#"quantity"       int-type         :type/Quantity]
-   [#"count"          int-type         :type/Quantity]
+   [#"count$"         int-type         :type/Quantity]
    [#"join"           timestamp-type   :type/JoinTimestamp]
    [#"create"         timestamp-type   :type/CreationTimestamp]
    [#"source"         text-type        :type/Source]
