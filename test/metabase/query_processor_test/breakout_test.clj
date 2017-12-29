@@ -8,7 +8,9 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]]
-            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.query-processor.middleware
+             [add-dimension-projections :as add-dim-projections]
+             [expand :as ql]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -16,8 +18,6 @@
              [dataset-definitions :as defs]
              [datasets :as datasets]]
             [toucan.db :as db]))
-
-(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -97,7 +97,7 @@
    :cols    [(assoc (breakout-col (venues-col :category_id))
                :remapped_to "Foo")
              (aggregate-col :count)
-             (create-remapped-col "Foo" (data/format-name "category_id"))]
+             (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (fn []
@@ -240,14 +240,8 @@
    :error (format "Unable to bin field '%s' with id '%s' without a min/max value"
                   (:name (Field (data/id :venues :latitude)))
                   (data/id :venues :latitude))}
-  (let [fingerprint (-> (data/id :venues :latitude)
-                        Field
-                        :fingerprint)]
-    (try
-      (db/update! Field (data/id :venues :latitude) :fingerprint {:type {:type/Number {:min nil :max nil}}})
-      (-> (data/run-query venues
-            (ql/aggregation (ql/count))
-            (ql/breakout (ql/binning-strategy $latitude :default)))
-          (select-keys [:status :class :error]))
-      (finally
-        (db/update! Field (data/id :venues :latitude) :fingerprint fingerprint)))))
+  (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+    (-> (data/run-query venues
+                        (ql/aggregation (ql/count))
+                        (ql/breakout (ql/binning-strategy $latitude :default)))
+        (select-keys [:status :class :error]))))

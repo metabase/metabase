@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test
-  "Helper functions for various query processor tests. The tests themselves can be found in various `metabase.query-processor-test.*`
-   namespaces; there are so many that it is no longer feasible to keep them all in this one.
-   Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
+  "Helper functions for various query processor tests. The tests themselves can be found in various
+  `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
+  this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
@@ -11,8 +11,8 @@
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
-;; make sure all the driver test extension namespaces are loaded <3
-;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
+;; make sure all the driver test extension namespaces are loaded <3 if this isn't done some things will get loaded at
+;; the wrong time which can end up causing test databases to be created more than once, which fails
 (doseq [engine (keys (driver/available-drivers))]
   (let [test-ns (symbol (str "metabase.test.data." (name engine)))]
     (try
@@ -21,7 +21,7 @@
         (log/warn (format "Error loading %s: %s" test-ns (.getMessage e)))))))
 
 
-;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
+;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
 (def ^:private ^:const timeseries-engines #{:druid})
@@ -64,7 +64,10 @@
      (-> ~query-form
          ~@post-process-fns)))
 
-(defmacro qp-expect-with-engines [datasets data query-form]
+;; TODO - this is only used in a single place, consider removing it
+(defmacro qp-expect-with-engines
+  {:style/indent 1}
+  [datasets data query-form]
   `(datasets/expect-with-engines ~datasets
      {:status    :completed
       :row_count ~(count (:rows data))
@@ -73,14 +76,15 @@
 
 
 (defn ->columns
-  "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each column name."
+  "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each
+  column name."
   [& names]
   (mapv (partial data/format-name)
         names))
 
 
-;; ### Predefinied Column Fns
-;; These are meant for inclusion in the expected output of the QP tests, to save us from writing the same results several times
+;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
+;; writing the same results several times
 
 ;; #### categories
 
@@ -246,7 +250,8 @@
 ;;; #### aggregate columns
 
 (defn aggregate-col
-  "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to pass the `Field` in question as well.
+  "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
+  pass the `Field` in question as well.
 
     (aggregate-col :count)
     (aggregate-col :avg (venues-col :id))"
@@ -285,20 +290,22 @@
 
 ;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier.
-   Remove `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled."
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove
+  `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on whether
+  encryption is enabled."
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
       (m/dissoc-in [:data :results_metadata])))
 
 (defn format-rows-by
-  "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
-   ROWS can be a sequence or any of the common map formats we expect in QP tests.
+  "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence
+  or any of the common map formats we expect in QP tests.
 
-     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
+    (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
 
-   By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override this behavior."
+  By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override
+  this behavior."
   {:style/indent 1}
   ([format-fns rows]
    (format-rows-by format-fns (not :format-nil-values?) rows))

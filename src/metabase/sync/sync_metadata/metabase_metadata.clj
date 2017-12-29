@@ -28,7 +28,7 @@
    :field-name (s/maybe su/NonBlankString)
    :k          s/Keyword})
 
-(s/defn ^:private ^:always-validate parse-keypath :- KeypathComponents
+(s/defn ^:private parse-keypath :- KeypathComponents
   "Parse a KEYPATH into components for easy use."
   ;; TODO: this does not support schemas in dbs :(
   [keypath :- su/NonBlankString]
@@ -40,7 +40,7 @@
      :field-name (when third-part second-part)
      :k          (keyword (or third-part second-part))}))
 
-(s/defn ^:private ^:always-validate set-property! :- s/Bool
+(s/defn ^:private set-property! :- s/Bool
   "Set a property for a Field or Table in DATABASE. Returns `true` if a property was successfully set."
   [database :- i/DatabaseInstance, {:keys [table-name field-name k]} :- KeypathComponents, value]
   (boolean
@@ -58,7 +58,7 @@
          (db/update! Table table-id
            k value))))))
 
-(s/defn ^:private ^:always-validate sync-metabase-metadata-table!
+(s/defn ^:private sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other metadata about the `Tables` and `Fields`
    it contains. This table is *not* synced normally, i.e. a Metabase `Table` is not created for it. Instead, *this* function is called, which reads the data it
    contains and updates the relevant Metabase objects.
@@ -80,12 +80,12 @@
           (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath))))))
 
 
-(s/defn ^:always-validate is-metabase-metadata-table? :- s/Bool
+(s/defn is-metabase-metadata-table? :- s/Bool
   "Is this TABLE the special `_metabase_metadata` table?"
   [table :- i/DatabaseMetadataTable]
   (= "_metabase_metadata" (str/lower-case (:name table))))
 
-(s/defn ^:always-validate sync-metabase-metadata!
+(s/defn sync-metabase-metadata!
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."

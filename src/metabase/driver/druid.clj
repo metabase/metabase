@@ -73,10 +73,10 @@
 (defn- describe-table-field [druid-field-type field-name]
   ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
   ;; string-encoded booleans + dates are treated as strings (!)
-  {:name      field-name
-   :base-type (if (= :metric druid-field-type)
-                :type/Float
-                :type/Text)})
+  (assoc (case druid-field-type
+           :metric    {:database-type "metric",    :base-type :type/Float}
+           :dimension {:database-type "dimension", :base-type :type/Text})
+    :name field-name))
 
 (defn- describe-table [database table]
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
@@ -85,9 +85,10 @@
        :name   (:name table)
        :fields (set (concat
                      ;; every Druid table is an event stream w/ a timestamp field
-                     [{:name       "timestamp"
-                       :base-type  :type/DateTime
-                       :pk?        true}]
+                     [{:name          "timestamp"
+                       :database-type "timestamp"
+                       :base-type     :type/DateTime
+                       :pk?           true}]
                      (map (partial describe-table-field :dimension) dimensions)
                      (map (partial describe-table-field :metric) metrics)))})))
 

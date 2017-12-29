@@ -1,4 +1,6 @@
 (ns metabase.sync-database-test
+  "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
+  been written. For newer sync tests see `metabase.sync.*` test namespaces."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [expectations :refer :all]
@@ -22,21 +24,26 @@
 
 
 (def ^:private ^:const sync-test-tables
-  {"movie"  {:name "movie"
+  {"movie"  {:name   "movie"
              :schema "default"
-             :fields #{{:name      "id"
-                        :base-type :type/Integer}
-                       {:name      "title"
-                        :base-type :type/Text}
-                       {:name      "studio"
-                        :base-type :type/Text}}}
-   "studio" {:name "studio"
+             :fields #{{:name          "id"
+                        :database-type "SERIAL"
+                        :base-type     :type/Integer}
+                       {:name          "title"
+                        :database-type "VARCHAR"
+                        :base-type     :type/Text}
+                       {:name          "studio"
+                        :database-type "VARCHAR"
+                        :base-type     :type/Text}}}
+   "studio" {:name   "studio"
              :schema nil
-             :fields #{{:name         "studio"
-                        :base-type    :type/Text
-                        :special-type :type/PK}
-                       {:name      "name"
-                        :base-type :type/Text}}}})
+             :fields #{{:name          "studio"
+                        :database-type "VARCHAR"
+                        :base-type     :type/Text
+                        :special-type  :type/PK}
+                       {:name          "name"
+                        :database-type "VARCHAR"
+                        :base-type     :type/Text}}}})
 
 
 ;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
@@ -126,34 +133,39 @@
            :name         "movie"
            :display_name "Movie"
            :fields       [(merge field-defaults
-                                 {:special_type :type/PK
-                                  :name         "id"
-                                  :display_name "ID"
-                                  :base_type    :type/Integer})
+                                 {:special_type  :type/PK
+                                  :name          "id"
+                                  :display_name  "ID"
+                                  :database_type "SERIAL"
+                                  :base_type     :type/Integer})
                           (merge field-defaults
                                  {:special_type       :type/FK
                                   :name               "studio"
                                   :display_name       "Studio"
+                                  :database_type      "VARCHAR"
                                   :base_type          :type/Text
                                   :fk_target_field_id true})
                           (merge field-defaults
-                                 {:special_type nil
-                                  :name         "title"
-                                  :display_name "Title"
-                                  :base_type    :type/Text})]})
+                                 {:special_type  nil
+                                  :name          "title"
+                                  :display_name  "Title"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text})]})
    (merge table-defaults
           {:name         "studio"
            :display_name "Studio"
            :fields       [(merge field-defaults
-                                 {:special_type :type/Name
-                                  :name         "name"
-                                  :display_name "Name"
-                                  :base_type    :type/Text})
+                                 {:special_type  :type/Name
+                                  :name          "name"
+                                  :display_name  "Name"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text})
                           (merge field-defaults
-                                 {:special_type :type/PK
-                                  :name         "studio"
-                                  :display_name "Studio"
-                                  :base_type    :type/Text})]})]
+                                 {:special_type  :type/PK
+                                  :name          "studio"
+                                  :display_name  "Studio"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text})]})]
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
@@ -170,20 +182,23 @@
           :name         "movie"
           :display_name "Movie"
           :fields       [(merge field-defaults
-                                {:special_type :type/PK
-                                 :name         "id"
-                                 :display_name "ID"
-                                 :base_type    :type/Integer})
+                                {:special_type  :type/PK
+                                 :name          "id"
+                                 :display_name  "ID"
+                                 :database_type "SERIAL"
+                                 :base_type     :type/Integer})
                          (merge field-defaults
-                                {:special_type nil
-                                 :name         "studio"
-                                 :display_name "Studio"
-                                 :base_type    :type/Text})
+                                {:special_type  nil
+                                 :name          "studio"
+                                 :display_name  "Studio"
+                                 :database_type "VARCHAR"
+                                 :base_type     :type/Text})
                          (merge field-defaults
-                                {:special_type nil
-                                 :name         "title"
-                                 :display_name "Title"
-                                 :base_type    :type/Text})]})
+                                {:special_type  nil
+                                 :name          "title"
+                                 :display_name  "Title"
+                                 :database_type "VARCHAR"
+                                 :base_type     :type/Text})]})
   (tt/with-temp* [Database [db    {:engine :sync-test}]
                   Table    [table {:name   "movie"
                                    :schema "default"
@@ -214,7 +229,8 @@
 
 ;; only one sync should be going on at a time
 (expect
- ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for syncing the _metabase_metadata table
+ ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
+ ;; syncing the _metabase_metadata table
  2
  (tt/with-temp* [Database [db {:engine :concurrent-sync-test}]]
    (reset! calls-to-describe-database 0)
@@ -225,7 +241,8 @@
               (Thread/sleep 200)
               ;; Start another in the background. Nothing should happen here because the first is already running
               (future (sync-database! db)))]
-     ;; Start another in the foreground. Again, nothing should happen here because the original should still be running
+     ;; Start another in the foreground. Again, nothing should happen here because the original should still be
+     ;; running
      (sync-database! db)
      ;; make sure both of the futures have finished
      (deref f1)
@@ -234,8 +251,8 @@
      @calls-to-describe-database)))
 
 
-;; Test that we will remove field-values when they aren't appropriate.
-;; Calling `sync-database!` below should cause them to get removed since the Field doesn't have an appropriate special type
+;; Test that we will remove field-values when they aren't appropriate.  Calling `sync-database!` below should cause
+;; them to get removed since the Field doesn't have an appropriate special type
 (expect
   [[1 2 3]
    nil]
@@ -295,7 +312,8 @@
          {:special_type :type/FK, :fk_target_field_id true}]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
-                                          (into {} (-> (db/select-one [Field :special_type :fk_target_field_id], :id field-id)
+                                          (into {} (-> (db/select-one [Field :special_type :fk_target_field_id],
+                                                         :id field-id)
                                                        (update :fk_target_field_id #(db/exists? Field :id %)))))]
     [ ;; FK should exist to start with
      (get-special-type-and-fk-exists?)
@@ -364,7 +382,8 @@
               ;; field values should exist...
               (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                          100))
-              ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
+              ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again,
+              ;; there should be no more field values
               (exec! [(insert-range-sql (range 100 (+ 100 field-values/low-cardinality-threshold)))])
               (sync-database! db)
               (db/exists? FieldValues :field_id field-id))))))))

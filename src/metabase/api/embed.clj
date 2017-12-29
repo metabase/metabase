@@ -79,11 +79,11 @@
 (defn- valid-param?
   "Is V a valid param value? (Is it non-`nil`, and, if a String, non-blank?)"
   [v]
-  (and (not (nil? v))
+  (and (some? v)
        (or (not (string? v))
            (not (str/blank? v)))))
 
-(s/defn ^:private ^:always-validate validate-params
+(s/defn ^:private validate-params
   "Validate that the TOKEN-PARAMS passed in the JWT and the USER-PARAMS (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's OBJECT-EMBEDDING-PARAMS
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
@@ -105,7 +105,7 @@
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
-(s/defn ^:private ^:always-validate remove-locked-and-disabled-params
+(s/defn ^:private remove-locked-and-disabled-params
   "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the EMBEDDING-PARAMS
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
@@ -151,7 +151,7 @@
   [parameters parameter-values]
   (for [param parameters
         :let  [value (get parameter-values (keyword (:slug param)))]
-        :when (not (nil? value))]
+        :when (some? value)]
     (assoc (select-keys param [:type :target])
       :value value)))
 
@@ -242,8 +242,11 @@
    (api/check (:enable_embedding object)
      [400 "Embedding is not enabled for this object."])))
 
-(def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard (partial check-embedding-enabled-for-object Dashboard))
-(def ^:private ^{:arglists '([card-id])}      check-embedding-enabled-for-card      (partial check-embedding-enabled-for-object Card))
+(def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+  (partial check-embedding-enabled-for-object Dashboard))
+
+(def ^:private ^{:arglists '([card-id])} check-embedding-enabled-for-card
+  (partial check-embedding-enabled-for-object Card))
 
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------

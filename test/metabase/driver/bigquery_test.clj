@@ -1,11 +1,10 @@
 (ns metabase.driver.bigquery-test
   (:require [expectations :refer :all]
-            [metabase.driver.bigquery]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qptest]]
-            metabase.driver.bigquery
+            [metabase.driver.bigquery :as bigquery]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
@@ -13,8 +12,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine]])
-  (:import metabase.driver.bigquery.BigQueryDriver))
+            [metabase.test.data.datasets :refer [expect-with-engine]]))
 
 (def ^:private col-defaults
   {:remapped_to nil, :remapped_from nil})
@@ -23,9 +21,13 @@
 (expect-with-engine :bigquery
   [[100]
    [99]]
-  (get-in (qp/process-query {:native   {:query "SELECT [test_data.venues.id] FROM [test_data.venues] ORDER BY [test_data.venues.id] DESC LIMIT 2;"}
-                             :type     :native
-                             :database (data/id)})
+  (get-in (qp/process-query
+            {:native   {:query (str "SELECT [test_data.venues.id] "
+                                    "FROM [test_data.venues] "
+                                    "ORDER BY [test_data.venues.id] DESC "
+                                    "LIMIT 2;")}
+             :type     :native
+             :database (data/id)})
           [:data :rows]))
 
 ;;; table-rows-sample
@@ -42,7 +44,8 @@
        (take 5)))
 
 
-;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
+;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing
+;; ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
    :cols    (mapv #(merge col-defaults %)
@@ -50,11 +53,14 @@
                    {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
                    {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}])}
 
-  (select-keys (:data (qp/process-query {:native   {:query "SELECT [test_data.checkins.venue_id] AS [venue_id], [test_data.checkins.user_id] AS [user_id], [test_data.checkins.id] AS [checkins_id]
-                                                            FROM [test_data.checkins]
-                                                            LIMIT 2"}
-                                         :type     :native
-                                         :database (data/id)}))
+  (select-keys (:data (qp/process-query
+                        {:native   {:query (str "SELECT [test_data.checkins.venue_id] AS [venue_id], "
+                                                "       [test_data.checkins.user_id] AS [user_id], "
+                                                "       [test_data.checkins.id] AS [checkins_id] "
+                                                "FROM [test_data.checkins] "
+                                                "LIMIT 2")}
+                         :type     :native
+                         :database (data/id)}))
                [:cols :columns]))
 
 ;; make sure that the bigquery driver can handle named columns with characters that aren't allowed in BQ itself
@@ -70,25 +76,22 @@
                                                   "User ID Plus Venue ID"]]}})))
 
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
-(tu/resolve-private-vars metabase.driver.bigquery
-  deduplicate-aliases update-select-subclause-aliases)
-
 (expect
   ["sum" "count" "sum_2" "avg" "sum_3" "min"]
-  (deduplicate-aliases ["sum" "count" "sum" "avg" "sum" "min"]))
+  (#'bigquery/deduplicate-aliases ["sum" "count" "sum" "avg" "sum" "min"]))
 
 (expect
   ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
-  (deduplicate-aliases ["sum" "count" "sum" "avg" "sum_2" "min"]))
+  (#'bigquery/deduplicate-aliases ["sum" "count" "sum" "avg" "sum_2" "min"]))
 
 (expect
   ["sum" "count" nil "sum_2"]
-  (deduplicate-aliases ["sum" "count" nil "sum"]))
+  (#'bigquery/deduplicate-aliases ["sum" "count" nil "sum"]))
 
 (expect
   [[:user_id "user_id_2"] :venue_id]
-  (update-select-subclause-aliases [[:user_id "user_id"] :venue_id]
-                                   ["user_id_2" nil]))
+  (#'bigquery/update-select-subclause-aliases [[:user_id "user_id"] :venue_id]
+                                              ["user_id_2" nil]))
 
 
 (expect-with-engine :bigquery

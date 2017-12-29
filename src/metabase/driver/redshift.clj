@@ -36,8 +36,9 @@
                               (hsql/raw "INTERVAL '1 second'")))
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
-;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access information_schema.constraint_column_usage,
-;; so we'll have to use this custom query instead
+;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access
+;; information_schema.constraint_column_usage, so we'll have to use this custom query instead
+;;
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
 (defn- describe-table-fks [database table]
@@ -110,8 +111,8 @@
           :current-datetime-fn       (constantly :%getdate)
           :set-timezone-sql          (constantly "SET TIMEZONE TO %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
-         ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests against a single remote host;
-         ;; when running tests tell the sync process to ignore all the other schemas
+         ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
+         ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
          (when config/is-test?
            {:excluded-schemas (memoize
                                (fn [_]

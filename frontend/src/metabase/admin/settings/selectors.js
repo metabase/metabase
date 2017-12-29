@@ -16,6 +16,7 @@ import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
 
 import { UtilApi } from "metabase/services";
+import { t } from "c-3po";
 
 const SECTIONS = [
     {
@@ -275,7 +276,7 @@ const SECTIONS = [
             {
                 key: "custom-geojson",
                 display_name: "Custom Maps",
-                description: "Add your own GeoJSON files to enable different region map visualizations",
+                description: t`Add your own GeoJSON files to enable different region map visualizations`,
                 widget: CustomGeoJSONWidget,
                 noHeader: true
             }

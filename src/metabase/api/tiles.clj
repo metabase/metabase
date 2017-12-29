@@ -13,7 +13,7 @@
            java.io.ByteArrayOutputStream
            javax.imageio.ImageIO))
 
-;;; # ------------------------------------------------------------ CONSTANTS ------------------------------------------------------------
+;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
 (def ^:private ^:const tile-size             256.0)
 (def ^:private ^:const pixel-origin          (float (/ tile-size 2)))
@@ -21,7 +21,8 @@
 (def ^:private ^:const pixels-per-lon-degree (float (/ tile-size 360)))
 (def ^:private ^:const pixels-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
 
-;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
+
+;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
 (defn- degrees->radians ^double [^double degrees]
   (* degrees (/ Math/PI 180.0)))
@@ -30,7 +31,7 @@
   (/ radians (/ Math/PI 180.0)))
 
 
-;;; # ------------------------------------------------------------ QUERY FNS ------------------------------------------------------------
+;;; --------------------------------------------------- QUERY FNS ----------------------------------------------------
 
 (defn- x+y+zoom->lat-lon
   "Get the latitude & longitude of the upper left corner of a given tile."
@@ -57,7 +58,7 @@
          :else                    inside-filter))))
 
 
-;;; # ------------------------------------------------------------ RENDERING ------------------------------------------------------------
+;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
 (defn- ^BufferedImage create-tile [zoom points]
   (let [num-tiles (bit-shift-left 1 zoom)
@@ -107,12 +108,13 @@
 
 
 
-;;; # ------------------------------------------------------------ ENDPOINT ------------------------------------------------------------
+;;; ---------------------------------------------------- ENDPOINT ----------------------------------------------------
 
 (api/defendpoint GET "/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
-  "This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query string param).
-   We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
-   It's expected that to render a full map view several calls will be made to this endpoint in parallel."
+  "This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query
+  string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
+  appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
+  parallel."
   [zoom x y lat-field-id lon-field-id lat-col-idx lon-col-idx query]
   {zoom         su/IntString
    x            su/IntString

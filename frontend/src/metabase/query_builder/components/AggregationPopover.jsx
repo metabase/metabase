@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from 'c-3po';
 import AccordianList from "metabase/components/AccordianList.jsx";
@@ -44,6 +45,14 @@ export default class AggregationPopover extends Component {
         showOnlyProvidedAggregations: PropTypes.boolean
     };
 
+    componentDidUpdate() {
+        if (this._header) {
+            const { height } = ReactDOM.findDOMNode(this._header).getBoundingClientRect();
+            if (height !== this.state.headerHeight) {
+                this.setState({ headerHeight: height })
+            }
+        }
+    }
 
     commitAggregation(aggregation) {
         this.props.onCommitAggregation(aggregation);
@@ -232,7 +241,7 @@ export default class AggregationPopover extends Component {
             const [agg, fieldId] = aggregation;
             return (
                 <div style={{minWidth: 300}}>
-                    <div className="text-grey-3 p1 py2 border-bottom flex align-center">
+                    <div ref={_ => this._header = _} className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
                             <Icon name="chevronleft" size={18}/>
                             <h3 className="inline-block pl1">{selectedAggregation.name}</h3>
@@ -240,6 +249,7 @@ export default class AggregationPopover extends Component {
                     </div>
                     <FieldList
                         className={"text-green"}
+                        maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
                         tableMetadata={tableMetadata}
                         field={fieldId}
                         fieldOptions={query.aggregationFieldOptions(agg)}
@@ -253,6 +263,7 @@ export default class AggregationPopover extends Component {
             return (
                 <AccordianList
                     className="text-green"
+                    maxHeight={this.props.maxHeight}
                     sections={sections}
                     onChange={this.onPickAggregation}
                     itemIsSelected={this.itemIsSelected.bind(this)}

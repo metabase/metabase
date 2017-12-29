@@ -56,6 +56,21 @@ export const TableCard = (name, ...overrides) =>
         }
     }, ...overrides);
 
+export const TextCard = (name, ...overrides) =>
+    Card(name, {
+        card: {
+            display: "text",
+            visualization_settings: {
+                text: ""
+            }
+        },
+        data: {
+            cols: [],
+            columns: [],
+            rows: []
+        }
+    }, ...overrides);
+
 export const LineCard = (name, ...overrides) =>
     Card(name, {
         card: {
