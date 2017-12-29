@@ -107,10 +107,17 @@ export const field_special_types = [{
     'id': TYPE.User,
     'name': 'User',
     'section': 'Common'
-},
-                                   {
+}, {
     'id': TYPE.Source,
     'name': 'Source',
+    'section': 'Common'
+}, {
+    'id': TYPE.Price,
+    'name': 'Price',
+    'section': 'Common'
+}, {
+    'id': TYPE.JoinTimestamp,
+    'name': 'Join timestamp',
     'section': 'Common'
 }];
 

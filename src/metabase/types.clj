@@ -38,6 +38,7 @@
 
 (derive :type/Income :type/Number)
 (derive :type/Discount :type/Number)
+(derive :type/Price :type/Number)
 
 (derive :type/Coordinate :type/Float)
 (derive :type/Latitude :type/Coordinate)

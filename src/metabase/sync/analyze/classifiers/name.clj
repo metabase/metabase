@@ -111,7 +111,8 @@
    [#"account"     :type/UserTable]
    [#"people"      :type/UserTable]
    [#"person"      :type/UserTable]
-   [#"event"       :type/EventTable]])
+   [#"event"       :type/EventTable]
+   [#"log"         :type/EventTable]])
 
 (s/defn ^:always-validate infer-entity-type :- i/TableInstance
   [table :- i/TableInstance]
