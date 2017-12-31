@@ -347,7 +347,7 @@
                  :database-type database-type
                  :base-type     (database-type->base-type driver database-type)}
                 (when (not (str/blank? remarks))
-                  {:description remarks})
+                  {:field-comment remarks})
                 (when-let [special-type (calculated-special-type driver column-name database-type)]
                   {:special-type special-type})))))
 
