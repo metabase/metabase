@@ -24,11 +24,12 @@
                               special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
                               fk              :- (s/maybe s/Keyword)
-                              description     :- (s/maybe su/NonBlankString)])
+                              field-comment   :- (s/maybe su/NonBlankString)])
 
 (s/defrecord TableDefinition [table-name        :- su/NonBlankString
                               field-definitions :- [FieldDefinition]
-                              rows              :- [[s/Any]]])
+                              rows              :- [[s/Any]]
+                              table-comment     :- (s/maybe su/NonBlankString)])
 
 (s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
                                  table-definitions :- [TableDefinition]])
@@ -108,6 +109,7 @@
      *  `:db`     - Return details for connecting specifically to the DB.")
 
   (create-db! [this, ^DatabaseDefinition database-definition]
+              [this, ^DatabaseDefinition database-definition, ^Boolean skip-drop-db]
     "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints,
      and add the appropriate data. This method should drop existing databases with the same name if applicable.
      (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")

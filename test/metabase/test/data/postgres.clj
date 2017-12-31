@@ -54,7 +54,8 @@
           :field-base-type->sql-type     (u/drop-first-arg field-base-type->sql-type)
           :load-data!                    generic/load-data-all-at-once!
           :pk-sql-type                   (constantly "SERIAL")
-          :standalone-column-comment-sql generic/standard-standalone-column-comment-sql})
+          :standalone-column-comment-sql generic/standard-standalone-column-comment-sql
+          :standalone-table-comment-sql  generic/standard-standalone-table-comment-sql})
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
