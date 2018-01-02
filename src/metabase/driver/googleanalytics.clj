@@ -55,7 +55,7 @@
                    :schema nil}))})
 
 
-;;; ---------------------------------------- describe-table ----------------------------------------
+;;; ------------------------------------------------- describe-table -------------------------------------------------
 
 (def ^:private ^:const redundant-date-fields
   "Set of column IDs covered by `unit->ga-dimension` in the GA QP.
@@ -101,11 +101,13 @@
           column))))
 
 (defn- describe-columns [database]
-  (set (for [^Column column (columns database)]
-         {:name      (.getId column)
-          :base-type (if (= (.getId column) "ga:date")
-                       :type/Date
-                       (qp/ga-type->base-type (column-attribute column :dataType)))})))
+  (set (for [^Column column (columns database)
+             :let [ga-type (column-attribute column :dataType)]]
+         {:name          (.getId column)
+          :base-type     (if (= (.getId column) "ga:date")
+                           :type/Date
+                           (qp/ga-type->base-type ga-type))
+          :database-type ga-type})))
 
 (defn- describe-table [database table]
   {:name   (:name table)
@@ -114,14 +116,14 @@
 
 
 
-;;;---------------------------------------- can-connect?----------------------------------------
+;;; -------------------------------------------------- can-connect? --------------------------------------------------
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
   (boolean (profile-ids {:details details-map})))
 
 
-;;;---------------------------------------- execute-query----------------------------------------
+;;; ------------------------------------------------- execute-query --------------------------------------------------
 
 (defn- column-with-name ^Column [database-or-id column-name]
   (some (fn [^Column column]
@@ -185,7 +187,7 @@
   (google/execute (mbql-query->request query)))
 
 
-;;; ---------------------------------------- Driver ----------------------------------------
+;;; ----------------------------------------------------- Driver -----------------------------------------------------
 
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named
