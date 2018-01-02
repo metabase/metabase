@@ -91,9 +91,11 @@
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
         (let [[table] (filter-tables tablespec context)]
-          (some->> table
-                   (filter-fields fieldspec)
-                   (map #(assoc % :link (:link table)))))
+          (mapcat (fn [table]
+                    (some->> table
+                             (filter-fields fieldspec)
+                             (map #(assoc % :link (:link table)))))
+                  (filter-tables tablespec context)))
         (filter-fields tablespec (:root-table context))))))
 
 (defn- make-binding
@@ -236,7 +238,9 @@
              (apply max-key (comp count ancestors :table_type)))))
 
 (defn- linked-tables
-  "Return all tables accessable from a given table with the paths to get there."
+  "Return all tables accessable from a given table with the paths to get there.
+   If there are multiple FKs pointing to the same table, multiple entries will
+   be returned."
   [table]
   (map (fn [{:keys [id fk_target_field_id]}]
          (-> fk_target_field_id Field :table_id Table (assoc :link id)))
