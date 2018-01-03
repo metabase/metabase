@@ -422,7 +422,8 @@
                                (merge
                                 {:key (.getName (.getKey trigger))}
                                 (when (instance? CronTrigger trigger)
-                                  {:cron-schedule (.getCronExpression ^CronTrigger trigger)}))))}))))))
+                                  {:cron-schedule (.getCronExpression ^CronTrigger trigger)
+                                   :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
 (defn db-timezone-id
   "Return the timezone id from the test database. Must be called with `metabase.test.data.datasets/*driver*` bound,
