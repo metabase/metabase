@@ -16,7 +16,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-;;; ------------------------------------------------------------  "Crufty" Tables ------------------------------------------------------------
+;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
 ;; Crufty tables are ones we know are from frameworks like Rails or Django and thus automatically mark as `:cruft`
 
@@ -78,7 +78,7 @@
   (boolean (some #(re-find % (str/lower-case (:name table))) crufty-table-patterns)))
 
 
-;;; ------------------------------------------------------------ Syncing ------------------------------------------------------------
+;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
@@ -137,7 +137,8 @@
               :active true))))
 
 (s/defn sync-tables!
-  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling DATABASE's driver's implementation of `describe-database`."
+  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling DATABASE's driver's
+  implementation of `describe-database`."
   [database :- i/DatabaseInstance]
   ;; determine what's changed between what info we have and what's in the DB
   (let [db-metadata             (db-metadata database)
@@ -145,7 +146,8 @@
         [new-tables old-tables] (data/diff db-metadata our-metadata)]
     ;; create new tables as needed or mark them as active again
     (when (seq new-tables)
-      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s" (sync-util/name-for-logging database))
+      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                             (sync-util/name-for-logging database))
         (create-or-reactivate-tables! database new-tables)))
     ;; mark old tables as inactive
     (when (seq old-tables)
