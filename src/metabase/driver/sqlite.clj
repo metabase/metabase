@@ -10,11 +10,16 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util.honeysql-extensions :as hx]))
 
+(defrecord SQLiteDriver []
+  clojure.lang.Named
+  (getName [_] "SQLite"))
+
 (defn- connection-details->spec
-  "Create a database specification for a SQLite3 database. DETAILS should include a
-  key for `:db` which is the path to the database file."
+  "Create a database specification for a SQLite3 database. DETAILS should include a key for `:db` which is the path to
+  the database file."
   [{:keys [db]
     :or   {db "sqlite.db"}
     :as   details}]
@@ -23,9 +28,8 @@
           :subname     db}
          (dissoc details :db)))
 
-;; We'll do regex pattern matching here for determining Field types
-;; because SQLite types can have optional lengths, e.g. NVARCHAR(100) or NUMERIC(10,5)
-;; See also http://www.sqlite.org/datatype3.html
+;; We'll do regex pattern matching here for determining Field types because SQLite types can have optional lengths,
+;; e.g. NVARCHAR(100) or NUMERIC(10,5) See also http://www.sqlite.org/datatype3.html
 (def ^:private ^:const pattern->type
   [[#"BIGINT"   :type/BigInteger]
    [#"BIG INT"  :type/BigInteger]
@@ -133,8 +137,8 @@
 ;; SQLite doesn't like things like Timestamps getting passed in as prepared statement args, so we need to convert them
 ;; to date literal strings instead to get things to work
 ;;
-;; TODO - not sure why this doesn't need to be done in `prepare-value` as well? I think it's because the MBQL date
-;; values are funneled through the `date` family of functions above
+;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
+;; are funneled through the `date` family of functions above
 (defn- prepare-sql-param [obj]
   (if (instance? java.util.Date obj)
     ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
@@ -145,19 +149,13 @@
     obj))
 
 ;; SQLite doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
-(defn- prepare-value [{value :value}]
-  (cond
-    (true? value)  1
-    (false? value) 0
-    :else          value))
+(defmethod sqlqp/->honeysql [SQLiteDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
 
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
-
-(defrecord SQLiteDriver []
-  clojure.lang.Named
-  (getName [_] "SQLite"))
 
 ;; SQLite defaults everything to UTC
 (def ^:private sqlite-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss"))
@@ -189,7 +187,6 @@
           :current-datetime-fn       (constantly (hsql/call :datetime (hx/literal :now)))
           :date                      (u/drop-first-arg date)
           :prepare-sql-param         (u/drop-first-arg prepare-sql-param)
-          :prepare-value             (u/drop-first-arg prepare-value)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
