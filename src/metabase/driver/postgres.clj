@@ -1,20 +1,27 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the 'Generic SQL' driver, which implements most
   functionality for JDBC-based drivers."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure
+  (:require [clojure
              [set :as set :refer [rename-keys]]
              [string :as s]]
+            [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.db.spec :as dbspec]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            metabase.query-processor.interface
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import java.util.UUID))
+  (:import java.util.UUID
+           metabase.query_processor.interface.Value))
+
+(defrecord PostgresDriver []
+  clojure.lang.Named
+  (getName [_] "PostgreSQL"))
 
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
@@ -183,17 +190,14 @@
     #".*" ; default
     message))
 
-(defn- prepare-value
-  "Prepare a value for compilation to SQL. This should return an appropriate HoneySQL form. See description in
-  `ISQLDriver` protocol for details."
-  [{value :value, {:keys [base-type database-type]} :field}]
-  (if-not value
-    value
+(defmethod sqlqp/->honeysql [PostgresDriver Value]
+  [driver {value :value, {:keys [base-type database-type]} :field}]
+  (when (some? value)
     (cond
       (isa? base-type :type/UUID)         (UUID/fromString value)
       (isa? base-type :type/IPAddress)    (hx/cast :inet value)
       (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
-      :else                               value)))
+      :else                               (sqlqp/->honeysql driver value))))
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :VARCHAR field-key)))
@@ -220,10 +224,6 @@
   (sql/describe-table (assoc driver :enum-types (enum-types database)) database table))
 
 
-(defrecord PostgresDriver []
-  clojure.lang.Named
-  (getName [_] "PostgreSQL"))
-
 (def ^:private pg-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 (def ^:private pg-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
@@ -235,7 +235,6 @@
           :column->special-type      (u/drop-first-arg column->special-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "SET SESSION TIMEZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))

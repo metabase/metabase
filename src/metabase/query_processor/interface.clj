@@ -5,10 +5,10 @@
   (:require [metabase.models
              [dimension :as dim]
              [field :as field]]
+            [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [metabase.sync.interface :as i])
+            [schema.core :as s])
   (:import clojure.lang.Keyword
            java.sql.Timestamp))
 
@@ -26,7 +26,8 @@
 
 (def ^:dynamic ^Boolean *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
-  cluttered)." false)
+  cluttered)."
+  false)
 
 
 (def ^:dynamic *driver*

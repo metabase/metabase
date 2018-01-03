@@ -1,12 +1,10 @@
 (ns metabase.sync.sync-metadata.metabase-metadata
-  "Logic for syncing the special `_metabase_metadata` table, which is a way for datasets
-   such as the Sample Dataset to specific properties such as special types that should
-   be applied during sync.
+  "Logic for syncing the special `_metabase_metadata` table, which is a way for datasets such as the Sample Dataset to
+  specific properties such as special types that should be applied during sync.
 
-   Currently, this is only used by the Sample Dataset, but theoretically in the future we could
-   add additional sample datasets and preconfigure them by populating this Table; or 3rd-party
-   applications or users can add this table to their database for an enhanced Metabase experience
-   out-of-the box."
+  Currently, this is only used by the Sample Dataset, but theoretically in the future we could add additional sample
+  datasets and preconfigure them by populating this Table; or 3rd-party applications or users can add this table to
+  their database for an enhanced Metabase experience out-of-the box."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -59,20 +57,23 @@
            k value))))))
 
 (s/defn ^:private sync-metabase-metadata-table!
-  "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other metadata about the `Tables` and `Fields`
-   it contains. This table is *not* synced normally, i.e. a Metabase `Table` is not created for it. Instead, *this* function is called, which reads the data it
-   contains and updates the relevant Metabase objects.
+  "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other
+  metadata about the `Tables` and `Fields` it contains. This table is *not* synced normally, i.e. a Metabase `Table`
+  is not created for it. Instead, *this* function is called, which reads the data it contains and updates the relevant
+  Metabase objects.
 
-   The table should have the following schema:
+  The table should have the following schema:
 
-     column  | type    | example
-     --------+---------+-------------------------------------------------
-     keypath | varchar | \"products.created_at.description\"
-     value   | varchar | \"The date the product was added to our catalog.\"
+    column  | type    | example
+    --------+---------+-------------------------------------------------
+    keypath | varchar | \"products.created_at.description\"
+    value   | varchar | \"The date the product was added to our catalog.\"
 
-   `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
+  `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property
+  of `Table` or `Field`.
 
-   This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
+  This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers *must*
+  implement optional fn `:table-rows-seq`."
   [driver, database :- i/DatabaseInstance, metabase-metadata-table :- i/DatabaseMetadataTable]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
@@ -90,7 +91,8 @@
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."
   [database :- i/DatabaseInstance]
-  (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s" (sync-util/name-for-logging database))
+  (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
+                                         (sync-util/name-for-logging database))
     ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
     ;; Hopefully this is never the case.
     (doseq [table (:tables (fetch-metadata/db-metadata database))]
