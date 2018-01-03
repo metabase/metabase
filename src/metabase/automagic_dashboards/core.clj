@@ -58,12 +58,15 @@
 (defn- filter-fields
   "Find all fields of type `fieldspec` belonging to table `table`."
   [fieldspec table]
-  (filter (if (and (string? fieldspec)
-                   (rules/ga-dimension? fieldspec))
-            (comp #{fieldspec} :name)
-            (fn [{:keys [base_type special_type]}]
-              (isa? (or special_type base_type) fieldspec)))
-          (db/select Field :table_id (:id table))))
+  (let [fields (filter (if (and (string? fieldspec)
+                                (rules/ga-dimension? fieldspec))
+                         (comp #{fieldspec} :name)
+                         (fn [{:keys [base_type special_type]}]
+                           (isa? (or special_type base_type) fieldspec)))
+                       (db/select Field :table_id (:id table)))]
+    (for [link  (:links table)
+          field fields]
+      (assoc field :link link))))
 
 (defn- filter-tables
   [tablespec context]
@@ -84,19 +87,20 @@
   [context {:keys [field_type links_to] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to context)
-                       (keep :link)
+                       (mapcat :links)
                        set)
                   :id)
             (field-candidates context (dissoc constraints :links_to)))
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
-        (let [[table] (filter-tables tablespec context)]
-          (mapcat (fn [table]
-                    (some->> table
-                             (filter-fields fieldspec)
-                             (map #(assoc % :link (:link table)))))
-                  (filter-tables tablespec context)))
-        (filter-fields tablespec (:root-table context))))))
+        (->> context
+             (filter-tables tablespec)
+             (mapcat (partial filter-fields fieldspec)))
+        (->> context
+             :tables
+             (filter (comp #{(:root-table context)} :id))
+             first
+             (filter-fields tablespec))))))
 
 (defn- make-binding
   [context [identifier {:keys [field_type score] :as definition}]]
@@ -137,6 +141,16 @@
   (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                            (card/query-perms-set query :write)))
 
+(defn- infer-source-table
+  [fields]
+  (let [sources (distinct (map :table_id fields))]
+    (if (> (count sources) 1)
+      (->> fields
+           (keep (comp Field :link))
+           first
+           :table_id)
+      ((some-fn (comp :table_id Field :link) :table_id) (first fields)))))
+
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
    (walk/postwalk
@@ -146,7 +160,11 @@
         subform))
     {:type     :query
      :database (:database context)
-     :query    (cond-> {:source_table (-> context :root-table :id)}
+     :query    (cond-> {:source_table (->> (rules/collect-dimensions [metrics
+                                                                      dimensions
+                                                                      filters])
+                                           (map bindings)
+                                           infer-source-table)}
                  (not-empty filters)
                  (assoc :filter (cond->> (map :filter filters)
                                   (> (count filters) 1) (apply vector :and)))
@@ -191,6 +209,28 @@
         (update :title fill-template)
         (u/update-when :description fill-template))))
 
+(defn- matchset
+  "Return all applicable bindings for a given combination of dimensions."
+  [context dimensions]
+  (let [used-tables (->> dimensions
+                         (mapcat (comp :matches (:dimensions context)))
+                         (map :table_id)
+                         set)]
+    (for [dimension dimensions]
+      (if-let [matches (->> dimension ((:dimensions context)) :matches)]
+        (->> matches
+             (group-by :id)
+             (mapcat (fn [[_ model]]
+                       (cond
+                         (= (count model) 1)       model
+                         (= (count used-tables) 1) (remove :link model)
+                         :else                     (filter (comp used-tables
+                                                                 :table_id
+                                                                 Field
+                                                                 :link)
+                                                           model)))))
+        (-> dimension rules/->type (filter-tables context))))))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -201,15 +241,15 @@
         score           (if query
                           score
                           (->> dimensions
-                               (map (partial get (:dimensions context)))
+                               (map (:dimensions context))
                                (concat filters metrics)
                                (transduce (keep :score) stats/mean)
                                (* (/ score rules/max-score))))
         dimensions      (map (partial vector :dimension) dimensions)
-        used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
+        used-dimensions (rules/collect-dimensions
+                         [dimensions metrics filters query])]
     (->> used-dimensions
-         (map (some-fn (comp :matches (partial get (:dimensions context)))
-                       (comp #(filter-tables % context) rules/->type)))
+         (matchset context)
          (apply combo/cartesian-product)
          (keep (fn [instantiations]
                  (let [bindings (zipmap used-dimensions instantiations)
@@ -237,24 +277,33 @@
              not-empty
              (apply max-key (comp count ancestors :table_type)))))
 
-(defn- linked-tables
+(defn- tableset
   "Return all tables accessable from a given table with the paths to get there.
-   If there are multiple FKs pointing to the same table, multiple entries will
-   be returned."
+   Considers foregin keys as bi-directional."
   [table]
-  (map (fn [{:keys [id fk_target_field_id]}]
-         (-> fk_target_field_id Field :table_id Table (assoc :link id)))
-       (db/select [Field :id :fk_target_field_id]
-         :table_id (:id table)
-         :fk_target_field_id [:not= nil])))
+  (let [all-tables (db/select-field :id Table :db_id (:db_id table))]
+    (->> (db/select [Field :id :fk_target_field_id :table_id]
+           :table_id [:in all-tables]
+           :fk_target_field_id [:not= nil])
+         (mapcat (fn [{:keys [id fk_target_field_id table_id]}]
+                   (let [source (Table table_id)
+                         target (-> fk_target_field_id Field :table_id Table)]
+                     (cond
+                       (= source table) [(assoc target :links id)]
+                       (= target table) [(assoc target :links id) source]
+                       :else            []))))
+         (concat [table])
+         (group-by :id)
+         (map (fn [[_ [table & _ :as tables]]]
+                (assoc table :links (map :links tables)))))))
 
 (defn automagic-dashboard
   "Create a dashboard for table `root` using the best matching heuristic."
   [root]
   (let [rule    (best-matching-rule (rules/load-rules) root)
-        context (as-> {:root-table root
+        context (as-> {:root-table (:id root)
                        :rule       (:table_type rule)
-                       :tables     (concat [root] (linked-tables root))
+                       :tables     (tableset root)
                        :database   (:db_id root)} <>
                   (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
                   (assoc <> :metrics (resolve-overloading <> (:metrics rule)))

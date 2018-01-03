@@ -3,6 +3,7 @@ description: Some useful metrics about the [[GenericTable]] table to get you sta
 metrics:
 - Count:
     metric: [count]
+- TotalIncome: [sum, [dimension, Income]]
 dimensions:
 - JoinDate:
     field_type: JoinTimestamp
@@ -18,6 +19,17 @@ dimensions:
 - State:
     field_type: State
 - Country: Country
+- UserID: PK
+- UserFK:
+    field_type: TransactionTable.FK
+    links_to: UserTable
+- Timestamp:
+    field_type: TransactionTable.CreationTimestamp
+- Timestamp:
+    field_type: TransactionTable.DateTime
+- Income:
+    field_type: TransactionTable.Income
+- Name: Name
 cards:
 - NewUsersByMonth:
     visualization: line
@@ -48,3 +60,25 @@ cards:
     visualization: row
     order_by:
       - Count: descending
+- Top10Users:
+    title: Top 10 users by income
+    dimensions: Name
+    metrics: TotalIncome
+    visualization: row
+    limit: 10
+    order_by:
+      TotalIncome: descending
+- FirstYearSalesDistribution:
+    title: First year sales
+    description: Distribution of number of orders a user makes in their first year
+    query: select count(*) as NUM_USERS, NUM_ORDERS
+           from (select count(*) as NUM_ORDERS
+                 from [[TransactionTable]] left join [[UserTable]]
+                   on [[UserFK]] = [[UserID]]
+                 where datediff("MONTH", [[JoinDate]], [[Timestamp]]) <= 12
+                 group by [[UserID]])
+           group by NUM_ORDERS
+    visualization:
+      bar:
+        graph.dimensions: [NUM_ORDERS]
+        graph.metrics: [NUM_USERS]
