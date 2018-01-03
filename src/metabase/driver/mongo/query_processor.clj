@@ -510,7 +510,10 @@
                   (decode-fncalls (json/parse-string (encode-fncalls query) keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
-                              :allow-disk-use true)
+                              :allow-disk-use true
+                              ;; options that control the creation of the cursor object. Empty map means use default
+                              ;; options. Needed for Mongo 3.6+
+                              :cursor {})
         results (if (sequential? results)
                   results
                   [results])
