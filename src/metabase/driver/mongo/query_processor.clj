@@ -1,4 +1,6 @@
 (ns metabase.driver.mongo.query-processor
+  "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
+  https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
   (:refer-clojure :exclude [find sort])
   (:require [cheshire.core :as json]
             [clojure
@@ -16,7 +18,8 @@
              [operators :refer :all]])
   (:import java.sql.Timestamp
            java.util.Date
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue
+            Value]
            org.bson.types.ObjectId
            org.joda.time.DateTime))
 
@@ -31,7 +34,8 @@
   (when-not i/*disable-qp-logging*
     (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
                  (->> form
-                      (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
+                      ;; strip namespace qualifiers from Monger form
+                      (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
                       u/pprint-to-str) "\n"))))
 
 
@@ -49,7 +53,8 @@
 
 (defprotocol ^:private IRValue
   (^:private ->rvalue [this]
-    "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s name"))
+    "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. by adding `$` to a
+    `Field`'s name"))
 
 (defprotocol ^:private IField
   (^:private ->lvalue ^String [this]
@@ -70,7 +75,8 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-;; As mentioned elsewhere for some arcane reason distinct aggregations come back named "count" and every thing else as the aggregation type
+;; As mentioned elsewhere for some arcane reason distinct aggregations come back named "count" and every thing else as
+;; the aggregation type
 (defn- ag-type->field-name [ag-type]
   (when ag-type
     (if (= ag-type :distinct)
@@ -129,8 +135,9 @@
                                   1]}
           :month           (stringify "%Y-%m")
           :month-of-year   {$month field}
-          ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and stringify it as yyyy-MM
-          ;; Subtracting (($dayOfYear(field) % 91) - 3) days will put you in correct month. Trust me.
+          ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
+          ;; stringify it as yyyy-MM Subtracting (($dayOfYear(field) % 91) - 3) days will put you in correct month.
+          ;; Trust me.
           :quarter         (stringify "%Y-%m" {$subtract [field
                                                           {$multiply [{$subtract [{$mod [{$dayOfYear field}
                                                                                          91]}
@@ -201,7 +208,8 @@
   (let [all-fields (distinct (annotate/collect-fields query :keep-date-time-fields))]
     (if-not (seq all-fields)
       pipeline-ctx
-      (let [projections (map #(vector (->lvalue %) (->initial-rvalue %)) all-fields)]
+      (let [projections (for [field all-fields]
+                          [(->lvalue field) (->initial-rvalue field)])]
         (-> pipeline-ctx
             (assoc  :projections (doall (map (comp keyword first) projections)))
             (update :query conj {$project (into (hash-map) projections)}))))))
@@ -258,38 +266,59 @@
       :min      {$min (->rvalue field)}
       :max      {$max (->rvalue field)})))
 
-(defn- handle-breakout+aggregation [{breakout-fields :breakout, aggregations :aggregation} pipeline-ctx]
-  (let [aggregations? (seq aggregations)
-        breakout?     (seq breakout-fields)]
-    (if-not (or aggregations? breakout?)
-      pipeline-ctx
-      (let [projected-fields (concat (for [{ag-type :aggregation-type} aggregations]
-                                       [(ag-type->field-name ag-type) (if (= ag-type :distinct)
-                                                                        {$size "$count"} ; HACK
-                                                                        true)])
-                                     (for [field breakout-fields]
-                                       [(->lvalue field) (format "$_id.%s" (->lvalue field))]))]
-        (-> pipeline-ctx
-            (assoc :projections (doall (map (comp keyword first) projected-fields)))
-            (update :query into (filter identity
-                                        [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
-                                         (when breakout?
-                                           {$project (merge {"_id"      "$_id"
-                                                             "___group" (into {} (for [field breakout-fields]
-                                                                                   {(->lvalue field) (->rvalue field)}))}
-                                                            (into {} (for [{ag-field :field} aggregations
-                                                                           :when             ag-field]
-                                                                       {(->lvalue ag-field) (->rvalue ag-field)})))})
-                                         ;; Now project onto the __group and the aggregation rvalue
-                                         {$group (merge {"_id" (when breakout?
-                                                                 "$___group")}
-                                                        (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
-                                                                   {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
-                                         ;; Sort by _id (___group)
-                                         {$sort {"_id" 1}}
-                                         ;; now project back to the fields we expect
-                                         {$project (merge {"_id" false}
-                                                          (into {} projected-fields))}])))))))
+(defn- breakouts-and-ags->projected-fields
+  "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
+  `[projectied-field-name source]`."
+  [breakout-fields aggregations]
+  (concat
+   (for [{ag-type :aggregation-type} aggregations]
+     [(ag-type->field-name ag-type) (if (= ag-type :distinct)
+                                      {$size "$count"} ; HACK
+                                      true)])
+   (for [field breakout-fields]
+     [(->lvalue field) (format "$_id.%s" (->lvalue field))])))
+
+(defn- breakouts-and-ags->pipeline-stages
+  "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
+  [projected-fields breakout-fields aggregations]
+  (remove
+   nil?
+   [ ;; create a totally sweet made-up column called `___group` to store the fields we'd
+    ;; like to group by
+    (when (seq breakout-fields)
+      {$project (merge {"_id"      "$_id"
+                        "___group" (into {} (for [field breakout-fields]
+                                              {(->lvalue field) (->rvalue field)}))}
+                       (into {} (for [{ag-field :field} aggregations
+                                      :when             ag-field]
+                                  {(->lvalue ag-field) (->rvalue ag-field)})))})
+    ;; Now project onto the __group and the aggregation rvalue
+    {$group (merge
+             {"_id" (when (seq breakout-fields)
+                      "$___group")}
+             (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
+                        {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
+    ;; Sort by _id (___group)
+    {$sort {"_id" 1}}
+    ;; now project back to the fields we expect
+    {$project (merge {"_id" false}
+                     (into {} projected-fields))}]))
+
+(defn- handle-breakout+aggregation
+  "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
+  MBQL `aggregations` and `breakout-fields`."
+  [{breakout-fields :breakout, aggregations :aggregation} pipeline-ctx]
+  (if-not (or (seq aggregations) (seq breakout-fields))
+    ;; if both aggregations and breakouts are empty, there's nothing to do...
+    pipeline-ctx
+    ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
+    (let [projected-fields (breakouts-and-ags->projected-fields breakout-fields aggregations)]
+      (-> pipeline-ctx
+          ;; add :projections key which is just a sequence of the names of projections from above
+          (assoc :projections (vec (for [[field] projected-fields]
+                                     (keyword field))))
+          ;; now add additional clauses to the end of :query as applicable
+          (update :query into (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations))))))
 
 
 ;;; ### order-by
@@ -384,13 +413,15 @@
                     v)}))))
 
 
-;;; ------------------------------------------------------------ Handling ISODate(...) and ObjectId(...) forms ------------------------------------------------------------
-;; In Mongo it's fairly common use ISODate(...) or ObjectId(...) forms in queries, which unfortunately are not valid JSON,
-;; and thus cannot be parsed by Cheshire. But we are clever so we will:
+;;; --------------------------------- Handling ISODate(...) and ObjectId(...) forms ----------------------------------
+
+;; In Mongo it's fairly common use ISODate(...) or ObjectId(...) forms in queries, which unfortunately are not valid
+;; JSON, and thus cannot be parsed by Cheshire. But we are clever so we will:
 ;;
 ;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
 ;; 2) Parse Normally
-;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON IDs
+;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON
+;;    IDs
 
 ;; See https://docs.mongodb.com/manual/core/shell-types/ for a list of different supported types
 (def ^:private fn-name->decoder
@@ -398,8 +429,10 @@
                  (DateTime. arg))
    :ObjectId   (fn [^String arg]
                  (ObjectId. arg))
-   :Date       (fn [& _]                                       ; it looks like Date() just ignores any arguments
-                 (u/format-date "EEE MMM dd yyyy HH:mm:ss z")) ; return a date string formatted the same way the mongo console does
+   ;; it looks like Date() just ignores any arguments return a date string formatted the same way the Mongo console
+   ;; does
+   :Date       (fn [& _]
+                 (u/format-date "EEE MMM dd yyyy HH:mm:ss z"))
    :NumberLong (fn [^String s]
                  (Long/parseLong s))
    :NumberInt  (fn [^String s]
@@ -452,7 +485,7 @@
              more))))
 
 
-;;; ------------------------------------------------------------ Query Execution ------------------------------------------------------------
+;;; ------------------------------------------------ Query Execution -------------------------------------------------
 
 (defn mbql->native
   "Process and run an MBQL query."
@@ -463,9 +496,9 @@
     (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
       (log-monger-form generated-pipeline)
       {:projections proj
-       :query generated-pipeline
-       :collection source-table-name
-       :mbql?      true})))
+       :query       generated-pipeline
+       :collection  source-table-name
+       :mbql?       true})))
 
 (defn execute-query
   "Process and run a native MongoDB query."
