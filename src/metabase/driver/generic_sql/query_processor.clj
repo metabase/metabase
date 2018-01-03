@@ -18,7 +18,7 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
            [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
-           [java.util Calendar TimeZone]
+           [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
             ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
 
@@ -27,13 +27,10 @@
   nil)
 
 (def ^:private ^:dynamic *nested-query-level*
-  "How many levels deep are we into nested queries? (0 = top level.)
-   We keep track of this so we know what level to find referenced aggregations
-  (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
+  "How many levels deep are we into nested queries? (0 = top level.) We keep track of this so we know what level to
+  find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
-
-(defn- driver [] {:pre [(map? *query*)]} (:driver *query*))
 
 ;; register the function "distinct-count" with HoneySQL
 ;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
@@ -45,15 +42,15 @@
 
 (defn- qualified-alias
   "Convert the given `FIELD` to a stringified alias"
-  [field]
+  [driver field]
   (some->> field
-           (sql/field->alias (driver))
+           (sql/field->alias driver)
            hx/qualify-and-escape-dots))
 
 (defn as
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
-  [form field]
-  (if-let [alias (qualified-alias field)]
+  [driver form field]
+  (if-let [alias (qualified-alias driver field)]
     [form alias]
     form))
 
@@ -75,84 +72,83 @@
      (nth (:aggregation query) index)
      (recur index (:source-query query) (dec aggregation-level)))))
 
-;; TODO - maybe this fn should be called `->honeysql` instead.
-(defprotocol ^:private IGenericSQLFormattable
-  (formatted [this]
-    "Return an appropriate HoneySQL form for an object."))
 
-(extend-protocol IGenericSQLFormattable
-  nil                    (formatted [_] nil)
-  Number                 (formatted [this] this)
-  String                 (formatted [this] this)
-  Keyword                (formatted [this] this) ; HoneySQL fn calls and keywords (e.g. `:%count.*`) are
-  honeysql.types.SqlCall (formatted [this] this) ; already converted to HoneySQL so just return them as-is
+(defmulti ^{:doc          (str "Return an appropriate HoneySQL form for an object. Dispatches off both driver and object "
+                               "classes making this easy to override in any places needed for a given driver.")
+            :arglists     '([driver x])
+            :style/indent 1}
+  ->honeysql
+  (fn [driver x]
+    [(class driver) (class x)]))
 
-  Expression
-  (formatted [{:keys [operator args]}]
-    (apply (partial hsql/call operator)
-           (map formatted args)))
+(defmethod ->honeysql [Object nil]    [_ _]    nil)
+(defmethod ->honeysql [Object Object] [_ this] this)
 
-  ExpressionRef
-  (formatted [{:keys [expression-name]}]
-    ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
-    ;; original formuala.
-    (formatted (expression-with-name expression-name)))
+(defmethod ->honeysql [Object Expression]
+  [driver {:keys [operator args]}]
+  (apply (partial hsql/call operator)
+         (map (partial ->honeysql driver) args)))
 
-  Field
-  (formatted [{:keys [schema-name table-name special-type field-name]}]
-    (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
-      (cond
-        (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)
-        (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)
-        :else                                               field)))
+(defmethod ->honeysql [Object ExpressionRef]
+  [driver {:keys [expression-name]}]
+  ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
+  ;; original formula.
+  (->honeysql driver (expression-with-name expression-name)))
 
-  FieldLiteral
-  (formatted [{:keys [field-name]}]
-    (keyword (hx/escape-dots (name field-name))))
+(defmethod ->honeysql [Object Field]
+  [driver {:keys [schema-name table-name special-type field-name]}]
+  (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+    (cond
+      (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
+      (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
+      :else                                               field)))
 
-  DateTimeField
-  (formatted [{unit :unit, field :field}]
-    (sql/date (driver) unit (formatted field)))
+(defmethod ->honeysql [Object FieldLiteral]
+  [driver {:keys [field-name]}]
+  (->honeysql driver (keyword (hx/escape-dots (name field-name)))))
 
-  BinnedField
-  (formatted [{:keys [bin-width min-value max-value field]}]
-    (let [formatted-field (formatted field)]
-      ;;
-      ;; Equation is | (value - min) |
-      ;;             | ------------- | * bin-width + min-value
-      ;;             |_  bin-width  _|
-      ;;
-      (-> formatted-field
-          (hx/- min-value)
-          (hx// bin-width)
-          hx/floor
-          (hx/* bin-width)
-          (hx/+ min-value))))
+(defmethod ->honeysql [Object DateTimeField]
+  [driver {unit :unit, field :field}]
+  (sql/date driver unit (->honeysql driver field)))
 
-  ;; e.g. the ["aggregation" 0] fields we allow in order-by
-  AgFieldRef
-  (formatted [{index :index}]
-    (let [{:keys [aggregation-type]} (aggregation-at-index index)]
-      ;; For some arcane reason we name the results of a distinct aggregation "count",
-      ;; everything else is named the same as the aggregation
-      (if (= aggregation-type :distinct)
-        :count
-        aggregation-type)))
+(defmethod ->honeysql [Object BinnedField]
+  [driver {:keys [bin-width min-value max-value field]}]
+  (let [honeysql-field-form (->honeysql driver field)]
+    ;;
+    ;; Equation is | (value - min) |
+    ;;             | ------------- | * bin-width + min-value
+    ;;             |_  bin-width  _|
+    ;;
+    (-> honeysql-field-form
+        (hx/- min-value)
+        (hx// bin-width)
+        hx/floor
+        (hx/* bin-width)
+        (hx/+ min-value))))
 
-  Value
-  (formatted [value] (sql/prepare-value (driver) value))
+;; e.g. the ["aggregation" 0] fields we allow in order-by
+(defmethod ->honeysql [Object AgFieldRef]
+  [_ {index :index}]
+  (let [{:keys [aggregation-type]} (aggregation-at-index index)]
+    ;; For some arcane reason we name the results of a distinct aggregation "count",
+    ;; everything else is named the same as the aggregation
+    (if (= aggregation-type :distinct)
+      :count
+      aggregation-type)))
 
-  DateTimeValue
-  (formatted [{{unit :unit} :field, :as value}]
-    (sql/date (driver) unit (sql/prepare-value (driver) value)))
+(defmethod ->honeysql [Object Value]
+  [driver {:keys [value]}]
+  (->honeysql driver value))
 
-  RelativeDateTimeValue
-  (formatted [{:keys [amount unit], {field-unit :unit} :field}]
-    (sql/date (driver) field-unit (if (zero? amount)
-                                    (sql/current-datetime-fn (driver))
-                                    (driver/date-interval (driver) unit amount)))))
+(defmethod ->honeysql [Object DateTimeValue]
+  [driver {{unit :unit} :field, value :value}]
+  (sql/date driver unit (->honeysql driver value)))
 
-
+(defmethod ->honeysql [Object RelativeDateTimeValue]
+  [driver {:keys [amount unit], {field-unit :unit} :field}]
+  (sql/date driver field-unit (if (zero? amount)
+                                (sql/current-datetime-fn driver)
+                                (driver/date-interval driver unit amount))))
 
 
 ;;; ## Clause Handlers
@@ -176,17 +172,20 @@
                  :sum      :sum
                  :min      :min
                  :max      :max)
-      (formatted field))))
+      (->honeysql driver field))))
 
+;; TODO - can't we just roll this into the ->honeysql method for `expression`?
 (defn- expression-aggregation->honeysql
   "Generate the HoneySQL form for an expression aggregation."
   [driver expression]
-  (formatted (update expression :args (fn [args]
-                                        (for [arg args]
-                                          (cond
-                                            (number? arg)           arg
-                                            (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
-                                            (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
+  (->honeysql driver
+    (update expression :args
+            (fn [args]
+              (for [arg args]
+                (cond
+                  (number? arg)           arg
+                  (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
+                  (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
 
 (defn- apply-expression-aggregation [driver honeysql-form expression]
   (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
@@ -209,50 +208,50 @@
 
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
-  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  [driver honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (as-> honeysql-form new-hsql
     (apply h/merge-select new-hsql (for [field breakout-fields
                                          :when (not (contains? (set fields-fields) field))]
-                                     (as (formatted field) field)))
-    (apply h/group new-hsql (map formatted breakout-fields))))
+                                     (as driver (->honeysql driver field) field)))
+    (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defn apply-fields
   "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
-  [_ honeysql-form {fields :fields}]
+  [driver honeysql-form {fields :fields}]
   (apply h/merge-select honeysql-form (for [field fields]
-                                        (as (formatted field) field))))
+                                        (as driver (->honeysql driver field) field))))
 
 (defn filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`."
-  [{:keys [filter-type field value], :as filter}]
+  [driver {:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
-  (let [field (formatted field)]
+  (let [field (->honeysql driver field)]
     (case          filter-type
-      :between     [:between field (formatted (:min-val filter)) (formatted (:max-val filter))]
-      :starts-with [:like    field (formatted (update value :value (fn [s] (str    s \%)))) ]
-      :contains    [:like    field (formatted (update value :value (fn [s] (str \% s \%))))]
-      :ends-with   [:like    field (formatted (update value :value (fn [s] (str \% s))))]
-      :>           [:>       field (formatted value)]
-      :<           [:<       field (formatted value)]
-      :>=          [:>=      field (formatted value)]
-      :<=          [:<=      field (formatted value)]
-      :=           [:=       field (formatted value)]
-      :!=          [:not=    field (formatted value)])))
+      :between     [:between field (->honeysql driver (:min-val filter)) (->honeysql driver (:max-val filter))]
+      :starts-with [:like    field (->honeysql driver (update value :value (fn [s] (str    s \%)))) ]
+      :contains    [:like    field (->honeysql driver (update value :value (fn [s] (str \% s \%))))]
+      :ends-with   [:like    field (->honeysql driver (update value :value (fn [s] (str \% s))))]
+      :>           [:>       field (->honeysql driver value)]
+      :<           [:<       field (->honeysql driver value)]
+      :>=          [:>=      field (->honeysql driver value)]
+      :<=          [:<=      field (->honeysql driver value)]
+      :=           [:=       field (->honeysql driver value)]
+      :!=          [:not=    field (->honeysql driver value)])))
 
 (defn filter-clause->predicate
   "Given a filter CLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`.
    If this is a compound clause then we call `filter-subclause->predicate` on all of the subclauses."
-  [{:keys [compound-type subclause subclauses], :as clause}]
+  [driver {:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (apply vector :and (map filter-clause->predicate subclauses))
-    :or  (apply vector :or  (map filter-clause->predicate subclauses))
-    :not [:not (filter-subclause->predicate subclause)]
-    nil  (filter-subclause->predicate clause)))
+    :and (apply vector :and (map (partial filter-clause->predicate driver) subclauses))
+    :or  (apply vector :or  (map (partial filter-clause->predicate driver) subclauses))
+    :not [:not (filter-subclause->predicate driver subclause)]
+    nil  (filter-subclause->predicate driver clause)))
 
 (defn apply-filter
   "Apply a `filter` clause to HONEYSQL-FORM. Default implementation of `apply-filter` for SQL drivers."
-  [_ honeysql-form {clause :filter}]
-  (h/where honeysql-form (filter-clause->predicate clause)))
+  [driver honeysql-form {clause :filter}]
+  (h/where honeysql-form (filter-clause->predicate driver clause)))
 
 (defn apply-join-tables
   "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
@@ -273,12 +272,12 @@
 
 (defn apply-order-by
   "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
-  [_ honeysql-form {subclauses :order-by breakout-fields :breakout}]
+  [driver honeysql-form {subclauses :order-by breakout-fields :breakout}]
   (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
     (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-      (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
-                                                                               :ascending  :asc
-                                                                               :descending :desc)])]
+      (let [honeysql-form (h/merge-order-by honeysql-form [(->honeysql driver field) (case direction
+                                                                                       :ascending  :asc
+                                                                                       :descending :desc)])]
         (if (seq more)
           (recur honeysql-form more)
           honeysql-form)))))
@@ -330,7 +329,8 @@
                           honeysql-form)]
       (if (seq more)
         (recur honeysql-form more)
-        ;; ok, we're done; if no `:select` clause was specified (for whatever reason) put a default (`SELECT *`) one in
+        ;; ok, we're done; if no `:select` clause was specified (for whatever reason) put a default (`SELECT *`) one
+        ;; in
         (update honeysql-form :select #(if (seq %) % [:*]))))))
 
 
@@ -352,12 +352,10 @@
        :params args})))
 
 (defn- parse-date-as-string
-  "Most databases will never invoke this code. It's possible with
-  SQLite to get here if the timestamp was stored without
-  milliseconds. Currently the SQLite JDBC driver will throw an
-  exception even though the SQLite datetime functions will return
-  datetimes that don't include milliseconds. This attempts to parse
-  that datetime in Clojure land"
+  "Most databases will never invoke this code. It's possible with SQLite to get here if the timestamp was stored
+  without milliseconds. Currently the SQLite JDBC driver will throw an exception even though the SQLite datetime
+  functions will return datetimes that don't include milliseconds. This attempts to parse that datetime in Clojure
+  land"
   [^TimeZone tz ^ResultSet rs ^Integer i]
   (let [date-string (.getString rs i)]
     (if-let [parsed-date (u/str->date-time tz date-string)]
@@ -382,8 +380,7 @@
   (.getObject rs i))
 
 (defn- make-column-reader
-  "Given `COLUMN-TYPE` and `TZ`, return a function for reading
-  that type of column from a ResultSet"
+  "Given `COLUMN-TYPE` and `TZ`, return a function for reading that type of column from a ResultSet"
   [column-type tz]
   (cond
     (and tz (= column-type java.sql.Types/DATE))

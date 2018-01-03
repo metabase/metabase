@@ -76,6 +76,7 @@ cards:
     visualization: row
     dimensions: ProductCategory
     metrics: TotalOrders
+    order_by: TotalOrders
     score: 90
     order_by:
       TotalOrders: descending
