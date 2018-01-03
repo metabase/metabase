@@ -74,11 +74,11 @@ cards:
     metrics: TotalOrders
 - OrdersByProductCategory:
     title: Sales by product [[ProductCategory]]
-    visualization: area
+    visualization: row
     dimensions:
-      - Timestamp
       - ProductCategory
     metrics: TotalOrders
+    order_by: TotalOrders
     score: 90
 - OrdersBySource:
     title: Sales by source
