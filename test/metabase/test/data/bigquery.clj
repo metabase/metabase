@@ -2,8 +2,9 @@
   (:require [clojure.string :as str]
             [medley.core :as m]
             [metabase.driver
-             [bigquery :as bigquery]
+             bigquery
              [google :as google]]
+            [metabase.driver.bigquery.client :as client]
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
@@ -31,7 +32,7 @@
 
 (def ^:private ^Bigquery bigquery
   (datasets/when-testing-engine :bigquery
-    (#'bigquery/database->client {:details details})))
+    (client/database->client {:details details})))
 
 (defn- database->connection-details
   ([_ {:keys [database-name]}]
@@ -61,7 +62,7 @@
 
 (s/defn ^:private create-table!
   [dataset-id       :- su/NonBlankString
-   table-id         :- su/NonBlankString,
+   table-id         :- su/NonBlankString
    field-name->type :- {su/KeywordOrString (apply s/enum valid-field-types)}]
   (google/execute
    (.insert (.tables bigquery)
@@ -81,7 +82,7 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (#'bigquery/post-process-native
+  (ffirst (:rows (#'client/post-process-native
                   (google/execute
                    (.query (.jobs bigquery) project-id
                            (doto (QueryRequest.)

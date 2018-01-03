@@ -1,4 +1,17 @@
 (ns metabase.driver.bigquery
+  "Google BigQuery driver. For the most part piggybacks off of the Generic SQL driver, but as BigQuery is not
+  JDBC-based significant parts such as syncing and executing queries are customized.
+
+  Since this is a rather complicated driver, it is broken out into two namespaces. The other namespace,
+  `metabase.driver.bigquery.client`, serves as a wrapper around the BigQuery API itself, and also handles conversions
+  between types returned by BigQuery queries and those expected by Metabase itself. Functions related to sync metadata
+  fetching, running queries, and post-processing their results can be found there.
+
+  Note that there is no separate `query-processor` namespace; having one is certainly a more normal way to split a
+  large driver, but splitting the driver in that way proved to be more confusing than the current separation.
+
+  Keep in mind that in addition to using logic from the Generic SQL driver, the BigQuery driver also shares some logic
+  with the Google Analytics driver. This shared code can be found in the `metabase.driver.google` namespace."
   (:require [clojure
              [set :as set]
              [string :as str]
@@ -11,191 +24,29 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.driver
-             [generic-sql :as sql]
-             [google :as google]]
+            [metabase.driver.bigquery.client :as client]
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.models
              [database :refer [Database]]
-             [field :as field]
-             [table :as table]]
-            [metabase.query-processor.util :as qputil]
+             [field :as field]]
+            ;; Required because classes like metabase.query_processor.interface.Field are used below. Don't remove!
+            metabase.query-processor.interface
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
-  (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
-           [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
-            TableList TableList$Tables TableReference TableRow TableSchema]
-           [java.util Collections Date]
-           [metabase.query_processor.interface DateTimeValue Value]))
+  (:import com.google.api.services.bigquery.model.Table
+           java.util.Date))
 
 (defrecord BigQueryDriver []
   clojure.lang.Named
   (getName [_] "BigQuery"))
 
-
-;;; ----------------------------------------------------- Client -----------------------------------------------------
-
-(defn- ^Bigquery credential->client [^GoogleCredential credential]
-  (.build (doto (Bigquery$Builder. google/http-transport google/json-factory credential)
-            (.setApplicationName google/application-name))))
-
-(def ^:private ^{:arglists '([database])} ^GoogleCredential database->credential
-  (partial google/database->credential (Collections/singleton BigqueryScopes/BIGQUERY)))
-
-(def ^:private ^{:arglists '([database])} ^Bigquery database->client
-  (comp credential->client database->credential))
+(def ^:private driver (BigQueryDriver.))
 
 
-;;; ------------------------------------------------------ Etc. ------------------------------------------------------
-
-(defn- ^TableList list-tables
-  "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are
-  present, you may fetch subsequent pages by specifying the PAGE-TOKEN; the token for the next page is returned with a
-  page when one exists."
-  ([database]
-   (list-tables database nil))
-
-  ([{{:keys [project-id dataset-id]} :details, :as database}, ^String page-token-or-nil]
-   (list-tables (database->client database) project-id dataset-id page-token-or-nil))
-
-  ([^Bigquery client, ^String project-id, ^String dataset-id, ^String page-token-or-nil]
-   {:pre [client (seq project-id) (seq dataset-id)]}
-   (google/execute (u/prog1 (.list (.tables client) project-id dataset-id)
-                     (.setPageToken <> page-token-or-nil)))))
-
-(defn- describe-database [database]
-  {:pre [(map? database)]}
-  ;; first page through all the 50-table pages until we stop getting "next page tokens"
-  (let [tables (loop [tables [], ^TableList table-list (list-tables database)]
-                 (let [tables (concat tables (.getTables table-list))]
-                   (if-let [next-page-token (.getNextPageToken table-list)]
-                     (recur tables (list-tables database next-page-token))
-                     tables)))]
-    ;; after that convert the results to MB format
-    {:tables (set (for [^TableList$Tables table tables
-                        :let [^TableReference tableref (.getTableReference table)]]
-                    {:schema nil, :name (.getTableId tableref)}))}))
-
-(defn- can-connect? [details-map]
-  {:pre [(map? details-map)]}
-  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're
-  ;; g2g
-  (boolean (list-tables {:details details-map})))
-
-
-(defn- ^Table get-table
-  ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
-   (get-table (database->client database) project-id dataset-id table-id))
-
-  ([^Bigquery client, ^String project-id, ^String dataset-id, ^String table-id]
-   {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
-   (google/execute (.get (.tables client) project-id dataset-id table-id))))
-
-(defn- bigquery-type->base-type [field-type]
-  (case field-type
-    "BOOLEAN"   :type/Boolean
-    "FLOAT"     :type/Float
-    "INTEGER"   :type/Integer
-    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
-    "STRING"    :type/Text
-    "DATE"      :type/Date
-    "DATETIME"  :type/DateTime
-    "TIMESTAMP" :type/DateTime
-    :type/*))
-
-(defn- table-schema->metabase-field-info [^TableSchema schema]
-  (for [^TableFieldSchema field (.getFields schema)]
-    {:name          (.getName field)
-     :database-type (.getType field)
-     :base-type     (bigquery-type->base-type (.getType field))}))
-
-(defn- describe-table [database {table-name :name}]
-  {:schema nil
-   :name   table-name
-   :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
-
-
-(def ^:private ^:const ^Integer query-timeout-seconds 60)
-
-(defn- ^QueryResponse execute-bigquery
-  ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-bigquery (database->client database) project-id query-string))
-
-  ([^Bigquery client, ^String project-id, ^String query-string]
-   {:pre [client (seq project-id) (seq query-string)]}
-   (let [request (doto (QueryRequest.)
-                   (.setTimeoutMs (* query-timeout-seconds 1000))
-                   ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
-                   (.setUseLegacySql (not (str/includes? (str/lower-case query-string) "#standardsql")))
-                   (.setQuery query-string))]
-     (google/execute (.query (.jobs client) project-id request)))))
-
-(def ^:private ^java.util.TimeZone default-timezone
-  (java.util.TimeZone/getDefault))
-
-(defn- parse-timestamp-str [s]
-  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
-  (or
-   (u/->Timestamp s)
-   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. Add the appropriate number of milliseconds to
-   ;; the number to convert it to the local timezone. We do this because the dates come back in UTC but we want the
-   ;; grouping to match the local time (HUH?) This gives us the same results as the other
-   ;; `has-questionable-timezone-support?` drivers. Not sure if this is actually desirable, but if it's not, it
-   ;; probably means all of those other drivers are doing it wrong
-   (u/->Timestamp (- (* (Double/parseDouble s) 1000)
-                     (.getDSTSavings default-timezone)
-                     (.getRawOffset  default-timezone)))))
-
-(def ^:private type->parser
-  "Functions that should be used to coerce string values in responses to the appropriate type for their column."
-  {"BOOLEAN"   #(Boolean/parseBoolean %)
-   "FLOAT"     #(Double/parseDouble %)
-   "INTEGER"   #(Long/parseLong %)
-   "RECORD"    identity
-   "STRING"    identity
-   "DATE"      parse-timestamp-str
-   "DATETIME"  parse-timestamp-str
-   "TIMESTAMP" parse-timestamp-str})
-
-(defn- post-process-native
-  ([^QueryResponse response]
-   (post-process-native response query-timeout-seconds))
-  ([^QueryResponse response, ^Integer timeout-seconds]
-   (if-not (.getJobComplete response)
-     ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
-     ;; wait a few seconds for the job to finish.
-     (do
-       (when (zero? timeout-seconds)
-         (throw (ex-info "Query timed out." (into {} response))))
-       (Thread/sleep 1000)
-       (post-process-native response (dec timeout-seconds)))
-     ;; Otherwise the job *is* complete
-     (let [^TableSchema schema (.getSchema response)
-           parsers             (for [^TableFieldSchema field (.getFields schema)]
-                                 (type->parser (.getType field)))
-           columns             (for [column (table-schema->metabase-field-info schema)]
-                                 (set/rename-keys column {:base-type :base_type}))]
-       {:columns (map :name columns)
-        :cols    columns
-        :rows    (for [^TableRow row (.getRows response)]
-                   (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                     (when-let [v (.getV cell)]
-                       ;; There is a weird error where everything that *should* be NULL comes back as an Object.
-                       ;; See https://jira.talendforge.org/browse/TBD-1592
-                       ;; Everything else comes back as a String luckily so we can proceed normally.
-                       (when-not (= (class v) Object)
-                         (parser v)))))}))))
-
-(defn- process-native* [database query-string]
-  ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
-  ;; `execute` so operations going through `process-native*` may be retried up to 3 times.
-  (u/auto-retry 1
-    (post-process-native (execute-bigquery database query-string))))
-
-
-;;; # Generic SQL Driver Methods
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                QUERY PROCESSOR                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- date-add [unit timestamp interval]
   (hsql/call :date_add timestamp interval (hx/literal unit)))
@@ -240,9 +91,6 @@
     :milliseconds (hsql/call :msec_to_timestamp expr)))
 
 
-;;; # Query Processing
-
-(declare driver)
 
 ;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out
 ;; where things is from
@@ -268,20 +116,12 @@
       "BigQuery statements can't be parameterized!")
     sql))
 
-(defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
-  ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset
-  ;; and table IDs
-  (let [demangle-name (u/rpartial str/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
-        columns       (for [column columns]
-                        (keyword (demangle-name column)))
-        rows          (for [row rows]
-                        (zipmap columns row))
-        columns       (vec (keys (first rows)))]
-    {:columns columns
-     :rows    (for [row rows]
-                (mapv row columns))}))
-
-(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query}]
+(defn- mbql->native
+  "Convert an MBQL query to a native SQL one."
+  {:arglists '([outer-query])}
+  [{{{:keys [dataset-id]} :details, :as database} :database
+    {{table-name :name} :source-table}            :query
+    :as                                           outer-query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
   (binding [sqlqp/*query* outer-query]
     (let [honeysql-form (honeysql-form outer-query)
@@ -289,16 +129,6 @@
       {:query      sql
        :table-name table-name
        :mbql?      true})))
-
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare (cons sql params))
-                                                                     sql))
-        results (process-native* database sql)
-        results (if mbql?
-                  (post-process-mbql dataset-id table-name results)
-                  (update results :columns (partial map keyword)))]
-    (assoc results :annotate? mbql?)))
 
 
 ;; These provide implementations of `->honeysql` that prevents HoneySQL from converting forms to prepared
@@ -468,7 +298,10 @@
 (def ^:private bigquery-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS"))
 (def ^:private bigquery-db-time-query "select CAST(CURRENT_TIMESTAMP() AS STRING)")
 
-(def ^:private driver (BigQueryDriver.))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 PROTOCOL IMPLS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (u/strict-extend BigQueryDriver
   sql/ISQLDriver
@@ -492,10 +325,10 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?             (u/drop-first-arg can-connect?)
+         {:can-connect?             (u/drop-first-arg client/can-connect?)
           :date-interval            date-interval
-          :describe-database        (u/drop-first-arg describe-database)
-          :describe-table           (u/drop-first-arg describe-table)
+          :describe-database        (u/drop-first-arg client/describe-database)
+          :describe-table           (u/drop-first-arg client/describe-table)
           :details-fields           (constantly [{:name         "project-id"
                                                   :display-name "Project ID"
                                                   :placeholder  "praxis-beacon-120871"
@@ -516,7 +349,7 @@
                                                   :display-name "Auth Code"
                                                   :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                   :required     true}])
-          :execute-query            (u/drop-first-arg execute-query)
+          :execute-query            (u/drop-first-arg client/execute-query)
           ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins
           ;; are still allowed, which puts us in a weird position, however; people can manually specifiy "foreign key"
           ;; relationships in admin and everything should work correctly. Since we can't infer any "FK" relationships
