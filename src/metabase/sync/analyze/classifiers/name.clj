@@ -117,7 +117,8 @@
    [#"account"     :type/UserTable]
    [#"people"      :type/UserTable]
    [#"person"      :type/UserTable]
-   [#"event"       :type/EventTable]])
+   [#"event"       :type/EventTable]
+   [#"log"         :type/EventTable]])
 
 (defn infer-entity-type
   "Classifer that infers the entity type of a TABLE based on its name."

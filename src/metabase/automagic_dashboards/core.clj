@@ -62,8 +62,7 @@
                    (rules/ga-dimension? fieldspec))
             (comp #{fieldspec} :name)
             (fn [{:keys [base_type special_type]}]
-              (or (isa? base_type fieldspec)
-                  (isa? special_type fieldspec))))
+              (isa? (or special_type base_type) fieldspec)))
           (db/select Field :table_id (:id table))))
 
 (defn- filter-tables
@@ -92,9 +91,11 @@
     (let [[tablespec fieldspec] field_type]
       (if fieldspec
         (let [[table] (filter-tables tablespec context)]
-          (some->> table
-                   (filter-fields fieldspec)
-                   (map #(assoc % :link (:link table)))))
+          (mapcat (fn [table]
+                    (some->> table
+                             (filter-fields fieldspec)
+                             (map #(assoc % :link (:link table)))))
+                  (filter-tables tablespec context)))
         (filter-fields tablespec (:root-table context))))))
 
 (defn- make-binding
@@ -108,13 +109,10 @@
   (->> dimensions
        (map (comp (partial make-binding context) first))
        (apply merge-with (fn [a b]
-                           (cond
-                             (and (empty? (:matches a))
-                                  (not-empty (:matches b))) b
-                             (and (empty? (:matches b))
-                                  (not-empty (:matches a))) a
-                             (> (:score a) (:score b))      a
-                             :else                          b)))))
+                           (case (map (comp empty? :matches) [a b])
+                             [false true] a
+                             [true false] b
+                             (max-key :score a b))))))
 
 (defn- index-of
   [pred coll]
@@ -169,17 +167,22 @@
     :native   {:query (fill-template :native context bindings query)}
     :database (:database context)}))
 
+(defn- has-matches?
+  [dimensions definition]
+  (->> definition
+       rules/collect-dimensions
+       (every? (comp not-empty :matches dimensions))))
+
 (defn- resolve-overloading
   "Find the overloaded definition with the highest `score` for which all
    referenced dimensions have at least one matching field."
   [{:keys [dimensions]} definitions]
-  (->> definitions
-       (filter (comp (fn [[_ definition]]
-                       (->> definition
-                            rules/collect-dimensions
-                            (every? (comp not-empty :matches dimensions))))
-                     first))
-       (apply merge-with (partial max-key :score))))
+  (apply merge-with (fn [a b]
+                      (case (map has-matches? [a b])
+                        [true false] a
+                        [false true] b
+                        (max-key :score a b)))
+         definitions))
 
 (defn- instantiate-metadata
   [context bindings x]
@@ -235,7 +238,9 @@
              (apply max-key (comp count ancestors :table_type)))))
 
 (defn- linked-tables
-  "Return all tables accessable from a given table with the paths to get there."
+  "Return all tables accessable from a given table with the paths to get there.
+   If there are multiple FKs pointing to the same table, multiple entries will
+   be returned."
   [table]
   (map (fn [{:keys [id fk_target_field_id]}]
          (-> fk_target_field_id Field :table_id Table (assoc :link id)))
