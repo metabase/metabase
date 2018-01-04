@@ -468,15 +468,16 @@
       ((get-method comparison-vector :default))))
 
 (defn- unpack-linear-regression
-  [keyfn x-field series {:keys [offset slope]}]
-  (series->dataset keyfn
-                   [x-field
-                    {:name         "TREND"
-                     :display_name "Linear regression trend"
-                     :base_type    :type/Float}]
-                   ; 2 points fully define a line
-                   (for [[x y] [(first series) (last series)]]
-                     [x (+ (* slope x) offset)])))
+  [keyfn x-field series {:keys [offset slope] :as model}]
+  (when model
+    (series->dataset keyfn
+                     [x-field
+                      {:name         "TREND"
+                       :display_name "Linear regression trend"
+                       :base_type    :type/Float}]
+                                        ; 2 points fully define a line
+                     (for [[x y] [(first series) (last series)]]
+                       [x (+ (* slope x) offset)]))))
 
 (defmethod x-ray [DateTime Num]
   [{:keys [field series] :as features}]
