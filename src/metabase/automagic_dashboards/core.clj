@@ -58,14 +58,30 @@
   [_ form]
   form)
 
+(def ^:private field-filters
+  {:fieldspec (fn [fieldspec]
+                (if (and (string? fieldspec)
+                         (rules/ga-dimension? fieldspec))
+                  (comp #{fieldspec} :name)
+                  (fn [{:keys [base_type special_type]}]
+                    (isa? (or special_type base_type) fieldspec))))
+   :named     (fn [name-pattern]
+                (comp (->> name-pattern
+                           str/lower-case
+                           re-pattern
+                           (partial re-find))
+                      str/lower-case
+                      :name))})
+
 (defn- filter-fields
-  "Find all fields of type `fieldspec` belonging to table `table`."
-  [fieldspec table]
-  (filter (if (and (string? fieldspec)
-                   (rules/ga-dimension? fieldspec))
-            (comp #{fieldspec} :name)
-            (fn [{:keys [base_type special_type]}]
-              (isa? (or special_type base_type) fieldspec)))
+  "Find all fields belonging to table `table` for which all predicates in
+   `preds` are true."
+  [preds table]
+  (filter (->> preds
+               (keep (fn [[k v]]
+                       (when-let [pred (field-filters k)]
+                         (some-> v pred))))
+               (apply every-pred))
           (db/select Field :table_id (:id table))))
 
 (defn- filter-tables
@@ -84,7 +100,7 @@
                                                 identifier)))))
 
 (defn- field-candidates
-  [context {:keys [field_type links_to] :as constraints}]
+  [context {:keys [field_type links_to named] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to context)
                        (keep :link)
@@ -96,18 +112,20 @@
         (let [[table] (filter-tables tablespec context)]
           (mapcat (fn [table]
                     (some->> table
-                             (filter-fields fieldspec)
+                             (filter-fields {:fieldspec fieldspec
+                                             :named     named})
                              (map #(assoc % :link (:link table)))))
                   (filter-tables tablespec context)))
-        (filter-fields tablespec (:root-table context))))))
+        (filter-fields {:fieldspec tablespec
+                        :named     named}
+                       (:root-table context))))))
 
 (defn- make-binding
-  [context [identifier {:keys [field_type score] :as definition}]]
-  {(name identifier) {:matches    (->> definition
-                                       (field-candidates context)
-                                       (map #(merge % definition)))
-                      :field_type field_type
-                      :score      score}})
+  [context [identifier definition]]
+  {(name identifier) (->> definition
+                          (field-candidates context)
+                          (map #(merge % definition))
+                          (assoc definition :matches))})
 
 (defn- bind-dimensions
   [context dimensions]

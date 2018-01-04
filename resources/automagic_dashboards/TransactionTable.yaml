@@ -16,8 +16,7 @@ dimensions:
 - State:
     field_type: UserTable.State
 - Country: UserTable.Country
-- Income:
-    field_type: Income
+- Income: Income
 - Discount: Discount
 - Quantity:
     field_type: Quantity
