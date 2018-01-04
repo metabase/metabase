@@ -8,6 +8,7 @@
              [http-client :as http]
              [query-processor-test :as qp-test]
              [util :as u]]
+            [metabase.api.public :as public-api]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -92,8 +93,6 @@
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
-(tu/resolve-private-vars metabase.api.public public-card)
-
 ;; make sure :param_values get returned as expected
 (expect
   {(data/id :categories :name) {:values                75
@@ -111,7 +110,7 @@
                                                                                 :dimension    ["field-id" (data/id :categories :name)]
                                                                                 :widget_type  "category"
                                                                                 :required     true}}}}}]
-    (-> (:param_values (public-card :id (u/get-id card)))
+    (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
 
 

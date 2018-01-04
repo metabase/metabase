@@ -107,9 +107,17 @@
 
 
 (defn cast
-  "Generate a statement like `cast(x AS c)`/"
+  "Generate a statement like `cast(x AS c)`."
   [c x]
   (hsql/call :cast x (hsql/raw (name c))))
+
+(defn quoted-cast
+  "Generate a statement like `cast(x AS \"c\")`.
+
+   Like `cast` but quotes the type C. This is useful for cases where we deal with user-defined types or other types
+   that may have a space in the name, for example Postgres enum types."
+  [c x]
+  (hsql/call :cast x (keyword c)))
 
 (defn format
   "SQL `format` function."

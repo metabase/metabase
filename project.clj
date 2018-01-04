@@ -25,7 +25,7 @@
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [aleph "0.4.3"]                                      ; Async HTTP library; WebSockets
+                 [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library

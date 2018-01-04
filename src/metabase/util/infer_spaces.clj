@@ -20,7 +20,7 @@
   (let [log-count (Math/log (count words))]
     (into (sorted-map)
           (map-indexed (fn [idx word]
-                         [(hash word) (Math/log (* (inc idx) log-count))])
+                         [(hash word) (float (Math/log (* (inc idx) log-count)))])
                        words))))
 
 ;; # Build arrays for a cost lookup, assuming Zipf's law and cost = -math.log(probability).
@@ -35,9 +35,9 @@
     "Array of word hash values, ordered by that hash value"
     (int-array (keys sorted-words)))
 
-  (def ^:private ^"[D" word-cost
-    "Array of word cost doubles, ordered by the hash value for that word"
-    (double-array (vals sorted-words)))
+  (def ^:private ^"[F" word-cost
+    "Array of word cost floats, ordered by the hash value for that word"
+    (float-array (vals sorted-words)))
 
   ;; maxword = max(len(x) for x in words)
   (def ^:private max-word
@@ -97,7 +97,7 @@
   [input]
   (let [s (s/lower-case input)
         cost (build-cost-array s)]
-    (loop [i (double (count s))
+    (loop [i (float (count s))
            out []]
       (if-not (pos? i)
         (reverse out)

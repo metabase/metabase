@@ -26,5 +26,7 @@ export default (
         { Object.entries(PAGES).map(([name, Component]) =>
             <Route path={name.toLowerCase()} component={Component} />
         )}
+        <Route path="components/:componentName" component={ComponentsApp} />
+        <Route path="components/:componentName/:exampleName" component={ComponentsApp} />
     </Route>
 );

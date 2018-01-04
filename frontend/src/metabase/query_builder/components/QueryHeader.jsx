@@ -247,7 +247,7 @@ export default class QueryHeader extends Component {
 
         var buttonSections = [];
 
-        // NEW card
+        // A card that is either completely new or it has been derived from a saved question
         if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
@@ -261,7 +261,8 @@ export default class QueryHeader extends Component {
                         card={this.props.card}
                         originalCard={this.props.originalCard}
                         tableMetadata={this.props.tableMetadata}
-                        saveFn={this.onSave}
+                        // if saving modified question, don't show "add to dashboard" modal
+                        saveFn={(card) => this.onSave(card, false)}
                         createFn={this.onCreate}
                         onClose={() => this.refs.saveModal.toggle()}
                     />

@@ -15,6 +15,11 @@ import "./Popover.css";
 const POPOVER_TRANSITION_ENTER = 100;
 const POPOVER_TRANSITION_LEAVE = 100;
 
+// space we should leave berween page edge and popover edge
+const PAGE_PADDING = 10;
+// Popover padding and border
+const POPOVER_BODY_PADDING = 2;
+
 export default class Popover extends Component {
     constructor(props, context) {
         super(props, context);
@@ -102,6 +107,9 @@ export default class Popover extends Component {
     }
 
     _popoverComponent() {
+        const childProps = {
+            maxHeight: this._getMaxHeight()
+        };
         return (
             <OnClickOutsideWrapper
                 handleDismissal={this.handleDismissal}
@@ -122,8 +130,10 @@ export default class Popover extends Component {
                     style={this.props.style}
                 >
                     { typeof this.props.children === "function" ?
-                        this.props.children()
-                        :
+                        this.props.children(childProps)
+                    : React.Children.count(this.props.children) === 1 ?
+                        React.cloneElement(React.Children.only(this.props.children), childProps)
+                    :
                         this.props.children
                     }
                 </div>
@@ -145,6 +155,31 @@ export default class Popover extends Component {
         } else {
             this._tether = new Tether(tetherOptions);
         }
+    }
+
+    _getMaxHeight() {
+        const { top, bottom } = this._getTarget().getBoundingClientRect();
+
+        let attachments;
+        if (this.props.pinInitialAttachment && this._best) {
+            // if we have a pinned attachment only use that
+            attachments = [this._best.attachmentY]
+        } else {
+            // otherwise use the verticalAttachments prop
+            attachments = this.props.verticalAttachments;
+        }
+
+        const availableHeights = attachments.map(attachmentY =>
+            attachmentY === "top" ?
+                window.innerHeight - bottom - this.props.targetOffsetY - PAGE_PADDING
+            : attachmentY === "bottom" ?
+                top - this.props.targetOffsetY - PAGE_PADDING
+            :
+                0
+        );
+
+        // get the largest available height, then subtract .PopoverBody's border and padding
+        return Math.max(...availableHeights) - POPOVER_BODY_PADDING;
     }
 
     _getBestAttachmentOptions(tetherOptions, options, attachments, offscreenProps, getAttachmentOptions) {
@@ -182,6 +217,32 @@ export default class Popover extends Component {
         return best;
     }
 
+    _getTarget() {
+        let target;
+        if (this.props.targetEvent) {
+            // create a fake element at the event coordinates
+            target = document.getElementById("popover-event-target");
+            if (!target) {
+                target = document.createElement("div");
+                target.id = "popover-event-target";
+                document.body.appendChild(target);
+
+            }
+            target.style.left = (this.props.targetEvent.clientX - 3) + "px";
+            target.style.top = (this.props.targetEvent.clientY - 3) + "px";
+        } else if (this.props.target) {
+            if (typeof this.props.target === "function") {
+                target = ReactDOM.findDOMNode(this.props.target());
+            } else {
+                target = ReactDOM.findDOMNode(this.props.target);
+            }
+        }
+        if (target == null) {
+            target = ReactDOM.findDOMNode(this).parentNode;
+        }
+        return target;
+    }
+
     _renderPopover(isOpen) {
         // popover is open, lets do this!
         const popoverElement = this._getPopoverElement();
@@ -200,31 +261,10 @@ export default class Popover extends Component {
         , popoverElement);
 
         if (isOpen) {
-            var tetherOptions = {};
-
-            tetherOptions.element = popoverElement;
-
-            if (this.props.targetEvent) {
-                // create a fake element at the event coordinates
-                tetherOptions.target = document.getElementById("popover-event-target");
-                if (!tetherOptions.target) {
-                    tetherOptions.target = document.createElement("div");
-                    tetherOptions.target.id = "popover-event-target";
-                    document.body.appendChild(tetherOptions.target);
-
-                }
-                tetherOptions.target.style.left = (this.props.targetEvent.clientX - 3) + "px";
-                tetherOptions.target.style.top = (this.props.targetEvent.clientY - 3) + "px";
-            } else if (this.props.target) {
-                if (typeof this.props.target === "function") {
-                    tetherOptions.target = ReactDOM.findDOMNode(this.props.target());
-                } else {
-                    tetherOptions.target = ReactDOM.findDOMNode(this.props.target);
-                }
-            }
-            if (tetherOptions.target == null) {
-                tetherOptions.target = ReactDOM.findDOMNode(this).parentNode;
-            }
+            var tetherOptions = {
+                element: popoverElement,
+                target: this._getTarget()
+            };
 
             if (this.props.tetherOptions) {
                 this._setTetherOptions({
@@ -272,15 +312,14 @@ export default class Popover extends Component {
             }
 
             if (this.props.sizeToFit) {
-                const verticalPadding = 5;
                 const body = tetherOptions.element.querySelector(".PopoverBody");
                 if (this._tether.attachment.top === "top") {
-                    if (constrainToScreen(body, "bottom", verticalPadding)) {
+                    if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
                         body.classList.add("scroll-y");
                         body.classList.add("scroll-show");
                     }
                 } else if (this._tether.attachment.top === "bottom") {
-                    if (constrainToScreen(body, "top", verticalPadding)) {
+                    if (constrainToScreen(body, "top", PAGE_PADDING)) {
                         body.classList.add("scroll-y");
                         body.classList.add("scroll-show");
                     }
@@ -313,7 +352,7 @@ export const TestPopover = (props) =>
                 // to care about clicks that happen inside the popover
                 onClick={ (e) => { e.stopPropagation(); } }
             >
-                { typeof props.children === "function" ? props.children() : props.children}
+                { typeof props.children === "function" ? props.children({ maxHeight: 500 }) : props.children}
             </div>
         </OnClickOutsideWrapper>
         : null

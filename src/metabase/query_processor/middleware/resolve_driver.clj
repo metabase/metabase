@@ -4,7 +4,8 @@
             [metabase.query-processor.interface :as i]))
 
 (defn resolve-driver
-  "Middleware that resolves the driver associated with a query, binds it to `*driver*`, and associates it in the query under the key `:driver`."
+  "Middleware that resolves the driver associated with a query, binds it to `*driver*`, and associates it in the query
+  under the key `:driver`."
   [qp]
   (fn [query]
     (let [driver (or (driver/database-id->driver (:database query))

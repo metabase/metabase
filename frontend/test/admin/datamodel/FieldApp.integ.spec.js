@@ -264,7 +264,7 @@ describe("FieldApp", () => {
             click(fkFieldSelect);
 
             const sourceField = fkFieldSelect.parent().find(TestPopover)
-                .find("li")
+                .find(".List-item")
                 .filterWhere(li => /Source/.test(li.text()))
                 .first().children().first();
 
@@ -385,7 +385,7 @@ describe("FieldApp", () => {
 
             store.waitForActions([UPDATE_FIELD_VALUES]);
         });
-        
+
         it("shows the updated values after page reload", async () => {
             const { fieldApp } = await initFieldApp({ tableId: PRODUCT_RATING_TABLE_ID, fieldId: PRODUCT_RATING_ID });
             const section = fieldApp.find(FieldRemapping)

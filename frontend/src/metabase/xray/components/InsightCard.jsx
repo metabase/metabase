@@ -85,7 +85,7 @@ export class ZerosInsight extends Component {
         // construct the question with filter
         return (
             <InsightText>
-                { t`You have ${ quality } zeros in your data. They may be standins for missing data or indicate some other abnormality.` }
+                { t`You have ${ quality } zeros in your data. They may be stand-ins for missing data, or might indicate some other abnormality.` }
                 <span> </span>
                 { table && <span><Link to={viewAllRowsUrl}>View all rows</Link> with zeros.</span> }
             </InsightText>
@@ -93,7 +93,7 @@ export class ZerosInsight extends Component {
     }
 }
 
-const noisinessDefinition = t`Noisy data is highly variable jumping all over the place with changes carrying relatively little information.`
+const noisinessDefinition = t`Noisy data is highly variable, jumping all over the place with changes carrying relatively little information.`
 const noisinessLink = "https://en.wikipedia.org/wiki/Noisy_data"
 
 export class NoisinessInsight extends Component {
@@ -117,7 +117,7 @@ export class NoisinessInsight extends Component {
     }
 }
 
-const autocorrelationDefinition = t`Measure of how much (changes in) previous values predict future values.`
+const autocorrelationDefinition = t`A measure of how much changes in previous values predict future values.`
 const autocorrelationLink = "https://en.wikipedia.org/wiki/Autocorrelation"
 
 export class AutocorrelationInsight extends Component {
@@ -151,7 +151,7 @@ export class VariationTrendInsight extends Component {
 
         return (
             <InsightText>
-                Looks like this data has grown { mode }ly  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
+                It looks like this data has grown { mode }ly  <TermWithDefinition definition={variationTrendDefinition} link={varianceLink}>
                     varied</TermWithDefinition> over time.
             </InsightText>
         )
@@ -253,7 +253,7 @@ export class StructuralBreaksInsight extends Component {
     }
 }
 
-const stationaryDefinition = t`Mean does not change with time.`
+const stationaryDefinition = t`The mean does not change over time.`
 const stationaryLink = "https://en.wikipedia.org/wiki/Stationary_process"
 
 export class StationaryInsight extends Component {

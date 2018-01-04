@@ -5,19 +5,18 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
-            [metabase.query-processor.middleware.parameters.sql :refer :all, :as sql]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.query-processor.middleware.parameters.sql :as sql :refer :all]
+            [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
              [generic-sql :as generic-sql]]
             [toucan.db :as db]))
 
-;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
+;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
 
 (defn- substitute {:style/indent 1} [sql params]
-  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)] ; apparently you can still bind private dynamic vars
+  ;; apparently you can still bind private dynamic vars
+  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)]
     ((resolve 'metabase.query-processor.middleware.parameters.sql/expand-query-params)
      {:query sql}
      (into {} (for [[k v] params]
@@ -44,7 +43,7 @@
     {:toucans_are_cool true}))
 
 
-;;; ------------------------------------------------------------ optional substitution -- [[ ... {{x}} ... ]] ------------------------------------------------------------
+;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
 
 (expect
   {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
@@ -180,25 +179,23 @@
     {:foobar_id 100}))
 
 
-;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
-
-(tu/resolve-private-vars metabase.query-processor.middleware.parameters.sql value-for-tag)
+;;; -------------------------------------------- tests for value-for-tag ---------------------------------------------
 
 ;; variable -- specified
 (expect
   "2"
-  (value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"}
-                 [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]))
+  (#'sql/value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"}
+                       [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]))
 
 ;; variable -- unspecified
 (expect
   #metabase.query_processor.middleware.parameters.sql.NoValue{}
-  (value-for-tag {:name "id", :display_name "ID", :type "text"} nil))
+  (#'sql/value-for-tag {:name "id", :display_name "ID", :type "text"} nil))
 
 ;; variable -- default
 (expect
   "100"
-  (value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"} nil))
+  (#'sql/value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"} nil))
 
 ;; dimension -- specified
 (expect
@@ -208,8 +205,8 @@
    :param {:type   "date/range"
            :target ["dimension" ["template-tag" "checkin_date"]]
            :value  "2015-04-01~2015-05-01"}}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
-                          [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}])))
+  (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                                [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}])))
 
 ;; dimension -- unspecified
 (expect
@@ -217,8 +214,8 @@
            :parent_id nil
            :table_id  (data/id :checkins)}
    :param nil}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
-                          nil)))
+  (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                                nil)))
 
 ;; multiple values for the same tag should return a vector with multiple params instead of a single param
 (expect
@@ -231,9 +228,9 @@
            {:type   "date/single"
             :target ["dimension" ["template-tag" "checkin_date"]]
             :value  "2015-07-01"}]}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
-                          [{:type "date/range",  :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-01-01~2016-09-01"}
-                           {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
+  (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                                [{:type "date/range",  :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-01-01~2016-09-01"}
+                                 {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
 
 
 ;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
@@ -421,7 +418,7 @@
   (expand-with-dimension-param {:type "text", :value "100"}))
 
 
-;;; ------------------------------------------------------------ "REAL" END-TO-END-TESTS ------------------------------------------------------------
+;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
 (defn- quote-name [identifier]
   (generic-sql/quote-name datasets/*driver* identifier))
@@ -488,7 +485,7 @@
                     {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}]))))
 
 
-;;; ------------------------------------------------------------ SQL PARAMETERS 2.0 TESTS ------------------------------------------------------------
+;;; -------------------------------------------- SQL PARAMETERS 2.0 TESTS --------------------------------------------
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 

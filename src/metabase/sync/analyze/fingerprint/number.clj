@@ -4,7 +4,7 @@
             [metabase.sync.interface :as i]
             [schema.core :as s]))
 
-(s/defn ^:always-validate number-fingerprint :- i/NumberFingerprint
+(s/defn number-fingerprint :- i/NumberFingerprint
   "Generate a fingerprint containing information about values that belong to a `:type/Number` Field."
   [values :- i/FieldSample]
   {:min (apply min values)
