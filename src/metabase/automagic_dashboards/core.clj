@@ -29,8 +29,11 @@
                 [template-type (type model)]))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link]}]
+  [_ {:keys [fk_target_field_id id link aggregation] :as field}]
   (cond
+    aggregation        [:datetime-field
+                        (->reference :mbql (dissoc field :aggregation))
+                        aggregation]
     link               [:fk-> link id]
     fk_target_field_id [:fk-> id fk_target_field_id]
     :else              [:field-id id]))
@@ -100,7 +103,9 @@
 
 (defn- make-binding
   [context [identifier {:keys [field_type score] :as definition}]]
-  {(name identifier) {:matches    (field-candidates context definition)
+  {(name identifier) {:matches    (->> definition
+                                       (field-candidates context)
+                                       (map #(merge % definition)))
                       :field_type field_type
                       :score      score}})
 

@@ -25,6 +25,9 @@ dimensions:
   - Timestamp: DateTime
   - JoinDate: JoinTimestamp
   - CreateDate: CreationTimestamp
+  - DayOfWeek:
+      field_type: DateTime
+      aggregation: day-of-week
 cards:
   - CountByCountry:
       title: Distribution by country
@@ -70,3 +73,9 @@ cards:
         - Sum
         - Avg
       score: 70
+  - DayOfWeek:
+      title: Distribution by day of week
+      visualization: bar
+      dimensions: DayOfWeek
+      metrics: Count
+      score: 60
