@@ -58,7 +58,8 @@
 (def ^:private Dimension {Identifier {(s/required-key :field_type)  FieldSpec
                                       (s/required-key :score)       Score
                                       (s/optional-key :links_to)    TableType
-                                      (s/optional-key :aggregation) s/Str}})
+                                      (s/optional-key :aggregation) s/Str
+                                      (s/optional-key :named)       s/Str}})
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
@@ -91,7 +92,7 @@
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension referece?"
-  (partial s/validate DimensionForm))
+  (complement (s/checker DimensionForm)))
 
 (defn collect-dimensions
   "Return all dimension references in form."
