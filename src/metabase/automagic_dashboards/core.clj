@@ -2,8 +2,8 @@
   "Automatically generate questions and dashboards based on predefined
    heuristics."
   (:require [clojure.math.combinatorics :as combo]
-            [clojure.tools.logging :as log]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [kixi.stats.core :as stats]
             [medley.core :as m]
@@ -17,8 +17,7 @@
              [permissions :as perms]
              [table :refer [Table]]]
             [metabase.util :as u]
-            [toucan
-             [db :as db]]))
+            [toucan.db :as db]))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
