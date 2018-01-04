@@ -395,7 +395,8 @@
             lambda     0.1
             regularize (fn [penalty]
                          (fn [ssr]
-                           (if (Double/isNaN ssr)
+                           (if (or (Double/isNaN ssr)
+                                   (Double/isInfinite ssr))
                              Double/MAX_VALUE
                              (+ ssr (* lambda penalty)))))
             best-fit   (transduce
