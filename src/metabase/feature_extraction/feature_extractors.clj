@@ -422,7 +422,7 @@
                               (regularize 1)))})
                          (fn [fits]
                            (let [[model score] (apply min-key val fits)]
-                             (when (Double/isFinite score)
+                             (when-not (Double/isInfinite score)
                                {:model  model
                                 :params (features model)}))))
                         series)
@@ -432,8 +432,8 @@
                          series)]
         (merge {:resolution             resolution
                 :series                 series
-                :linear-regression      (when (every? #(Double/isFinite %)
-                                                      linear-regression)
+                :linear-regression      (when (not-any? #(Double/isInfinite %)
+                                                        linear-regression)
                                           (zipmap [:offset :slope]
                                                   linear-regression))
                 :best-fit               best-fit
