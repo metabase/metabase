@@ -1,23 +1,26 @@
 title: Transactions
 metrics:
 - AvgDiscount:
-    metric: [/, [sum, [field-type, Discount]], [sum, [field-type, Income]]]
+    metric: [/, [sum, [dimension, Discount]], [sum, [dimension, Income]]]
 - TotalIncome:
-    metric: [sum, [field-type, Income]]
-- AvgIncome: [avg, [field-type, Income]]
+    metric: [sum, [dimension, Income]]
+- AvgIncome: [avg, [dimension, Income]]
 - AvgQuantity:
-    metric: [avg, [field-type, Quantity]]
+    metric: [avg, [dimension, Quantity]]
 - TotalOrders: [count]
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
-    score: 100
 - Timestamp:
     field_type: DateTime
-    score: 90
 - State:
     field_type: UserTable.State
 - Country: UserTable.Country
+- Income:
+    field_type: Income
+- Discount: Discount
+- Quantity:
+    field_type: Quantity
 - ProductCategory: ProductTable.Category
 - Source: UserTable.Source
 - Cohort:
