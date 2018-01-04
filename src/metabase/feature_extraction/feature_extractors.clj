@@ -395,9 +395,8 @@
             lambda     0.1
             regularize (fn [penalty]
                          (fn [ssr]
-                           (if (or (Double/isNaN ssr)
-                                   (Double/isInfinite ssr))
-                             Double/MAX_VALUE
+                           (if (Double/isNaN ssr)
+                             Double/POSITIVE_INFINITY
                              (+ ssr (* lambda penalty)))))
             best-fit   (transduce
                         identity
@@ -422,9 +421,10 @@
                                           (+ a (* b (Math/log x)))))
                               (regularize 1)))})
                          (fn [fits]
-                           (let [model (key (apply min-key val fits))]
-                             {:model  model
-                              :params (features model)})))
+                           (let [[model score] (apply min-key val fits)]
+                             (when (Double/isFinite score)
+                               {:model  model
+                                :params (features model)}))))
                         series)
             resolution (infer-resolution query series)
             series     (if resolution
@@ -432,8 +432,10 @@
                          series)]
         (merge {:resolution             resolution
                 :series                 series
-                :linear-regression      (zipmap [:offset :slope]
-                                                linear-regression)
+                :linear-regression      (when (every? #(Double/isFinite %)
+                                                      linear-regression)
+                                          (zipmap [:offset :slope]
+                                                  linear-regression))
                 :best-fit               best-fit
                 :growth-series          (when resolution
                                           (->> series
