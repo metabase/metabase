@@ -167,7 +167,12 @@
 
 ;; all
 (expect
-  {:key :test-setting-2, :value "TOUCANS", :description "Test setting - this only shows up in dev (2)",  :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
+  {:key            :test-setting-2
+   :value          "TOUCANS"
+   :description    "Test setting - this only shows up in dev (2)"
+   :is_env_setting false
+   :env_name       "MB_TEST_SETTING_2"
+   :default        "[Default Value]"}
   (do (set-settings! nil "TOUCANS")
       (some (fn [setting]
               (when (re-find #"^test-setting-2$" (name (:key setting)))
@@ -176,8 +181,18 @@
 
 ;; all
 (expect
-  [{:key :test-setting-1, :value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
-   {:key :test-setting-2, :value "S2", :is_env_setting false, :env_name "MB_TEST_SETTING_2",  :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
+  [{:key            :test-setting-1
+    :value          nil
+    :is_env_setting true
+    :env_name       "MB_TEST_SETTING_1"
+    :description    "Test setting - this only shows up in dev (1)"
+    :default        "Using $MB_TEST_SETTING_1"}
+   {:key            :test-setting-2
+    :value          "S2"
+    :is_env_setting false
+    :env_name       "MB_TEST_SETTING_2"
+    :description    "Test setting - this only shows up in dev (2)"
+    :default        "[Default Value]"}]
   (do (set-settings! nil "S2")
       (for [setting (setting/all)
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
@@ -220,7 +235,7 @@
 
 ;; should be able to set value with a string...
 (expect
-  "false"
+  false
   (test-boolean-setting "FALSE"))
 
 (expect
@@ -230,7 +245,7 @@
 
 ;; ... or a boolean
 (expect
-  "false"
+  false
   (test-boolean-setting false))
 
 (expect
@@ -241,7 +256,7 @@
 ;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
 (expect
-  "{\"a\":100,\"b\":200}"
+  {:a 100, :b 200}
   (test-json-setting {:a 100, :b 200}))
 
 (expect
