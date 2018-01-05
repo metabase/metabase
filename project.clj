@@ -17,7 +17,7 @@
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
-                 [org.clojure/java.jdbc "0.7.0"]                      ; basic JDBC access from Clojure
+                 [org.clojure/java.jdbc "0.7.5"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
