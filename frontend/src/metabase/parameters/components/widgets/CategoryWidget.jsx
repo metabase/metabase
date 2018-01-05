@@ -6,7 +6,6 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
-import { t } from 'c-3po';
 import { getHumanReadableValue } from "metabase/lib/query/field";
 
 import SelectPicker
