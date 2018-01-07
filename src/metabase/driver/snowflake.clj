@@ -20,10 +20,12 @@
   (let [host (if regionid
                (str account "." regionid)
                account)]
-    (merge {:subprotocol "snowflake"
-            :classname   "net.snowflake.client.jdbc.SnowflakeDriver"
-            :subname     (str "//" host ".snowflakecomputing.com/")
-            :ssl         true}
+    (merge {:subprotocol                                "snowflake"
+            :classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+            :subname                                    (str "//" host ".snowflakecomputing.com/")
+            ;; Don't fetch schemas for databases if the user supplies a single database.
+            :client_metadata_request_use_connection_ctx true
+            :ssl                                        true}
            (dissoc opts :host :port))))
 
 (defrecord SnowflakeDriver []
@@ -114,7 +116,6 @@
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval            (u/drop-first-arg date-interval)
-          ;; :describe-table-fks       (u/drop-first-arg describe-table-fks)
           :details-fields           (constantly (ssh/with-tunnel-config
                                                   [{:name         "account"
                                                     :display-name "Account"
@@ -158,13 +159,13 @@
           :set-timezone-sql          (constantly "alter session set time_zone = %s")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
           :column->base-type         (u/drop-first-arg column->base-type)}
-         ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
+         ;; HACK ! When we test against Snowflake we use a session-unique schema so we can run simultaneous tests
          ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
          #_(when config/is-test?
              {:excluded-schemas (memoize
                                  (fn [_]
-                                   (require 'metabase.test.data.redshift)
-                                   (let [session-schema-number @(resolve 'metabase.test.data.redshift/session-schema-number)]
+                                   (require 'metabase.test.data.snowflake)
+                                   (let [session-schema-number @(resolve 'metabase.test.data.snowflake/session-schema-number)]
                                      (set (conj (for [i     (range 240)
                                                       :when (not= i session-schema-number)]
                                                   (str "schema_" i))
@@ -176,8 +177,3 @@
   "Register the Snowflake driver"
   []
   (driver/register-driver! :Snowflake (SnowflakeDriver.)))
-
-
-(comment
-
-  )
