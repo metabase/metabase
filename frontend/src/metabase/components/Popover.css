@@ -190,7 +190,7 @@
   transition: opacity 100ms ease-in;
 }
 
-.Popover-leave {a
+.Popover-leave {
   opacity: 1;
 }
 

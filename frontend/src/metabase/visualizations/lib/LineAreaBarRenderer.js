@@ -5,6 +5,7 @@ import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
+import { t } from 'c-3po';
 
 import {
     computeSplit,
@@ -19,7 +20,7 @@ import { computeNumericDataInverval } from "./numeric";
 
 import { applyChartTimeseriesXAxis, applyChartQuantitativeXAxis, applyChartOrdinalXAxis, applyChartYAxis } from "./apply_axis";
 
-import { applyChartTooltips } from "./apply_tooltips";
+import { setupTooltips } from "./apply_tooltips";
 
 import fillMissingValuesInDatas from "./fill_data";
 
@@ -60,7 +61,7 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization"
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
-const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
+const UNAGGREGATED_DATA_WARNING = (col) => t`"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 
 const enableBrush = (series, onChangeCardAndRun) => !!(
     onChangeCardAndRun &&
@@ -73,24 +74,21 @@ const enableBrush = (series, onChangeCardAndRun) => !!(
 
 function checkSeriesIsValid({ series, maxSeries }) {
     if (getFirstNonEmptySeries(series).data.cols.length < 2) {
-        throw new Error("This chart type requires at least 2 columns.");
+        throw new Error(t`This chart type requires at least 2 columns.`);
     }
 
     if (series.length > maxSeries) {
-        throw new Error(`This chart type doesn't support more than ${maxSeries} series of data.`);
+        throw new Error(t`This chart type doesn't support more than ${maxSeries} series of data.`);
     }
 }
 
 function getDatas({ settings, series }, warn) {
-    return series.map((s, index) =>
+    return series.map((s) =>
         s.data.rows.map(row => {
             const newRow = [
                 // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-                (isDimensionTimeseries(series) && !isQuantitative(settings)) ?
-                HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-                : isDimensionNumeric(series) ?
-                row[0]
-                :
+                (isDimensionTimeseries(series) && !isQuantitative(settings)) ? HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn) :
+                isDimensionNumeric(series) ? row[0] :
                 String(row[0])
                 , ...row.slice(1)
             ]
@@ -424,7 +422,7 @@ function addGoalChartAndGetOnGoalHover({ settings, onHoverChange }, xDomain, par
     return (element) => {
         onHoverChange(element && {
             element,
-            data: [{ key: "Goal", value: goalValue }]
+            data: [{ key: t`Goal`, value: goalValue }]
         });
     };
 }
@@ -484,18 +482,7 @@ function doHistogramBarStuff(parent) {
     });
 }
 
-function setupTooltips({ settings, series, isScalarSeries, onHoverChange, onVisualizationClick }, datas, parent, { isBrushing }) {
-    applyChartTooltips(parent, series, isStacked(settings, datas), isNormalized(settings, datas), isScalarSeries, (hovered) => {
-        // disable tooltips while brushing
-        if (onHoverChange && !isBrushing()) {
-            // disable tooltips on lines
-            if (hovered && hovered.element && hovered.element.classList.contains("line")) {
-                delete hovered.element;
-            }
-            onHoverChange(hovered);
-        }
-    }, onVisualizationClick);
-}
+
 
 
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/

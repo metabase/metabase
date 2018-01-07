@@ -24,6 +24,7 @@ import {
     setDatasetQuery,
     NAVIGATE_TO_NEW_CARD,
     UPDATE_URL,
+    NOTIFY_CARD_UPDATED
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
@@ -61,6 +62,9 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 
 import { delay } from "metabase/lib/promise";
 import * as Urls from "metabase/lib/urls";
+import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+import Radio from "metabase/components/Radio";
+import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 
 const REVIEW_PRODUCT_ID = 32;
 const REVIEW_RATING_ID = 33;
@@ -110,7 +114,7 @@ describe("QueryBuilder", () => {
             expect(doneButton.length).toBe(1)
 
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
-            expect(fieldsToIncludeCheckboxes.length).toBe(6)
+            expect(fieldsToIncludeCheckboxes.length).toBe(7)
 
             click(fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parent().find("span").text() === "Created At"))
 
@@ -223,7 +227,7 @@ describe("QueryBuilder", () => {
             })
         })
         describe("with original saved question", () => {
-            it("should render normally on page load", async () => {
+            it("should let you replace the original question", async () => {
                 const store = await createTestStore()
                 const savedQuestion = await createSavedQuestion(unsavedOrderCountQuestion);
 
@@ -239,6 +243,18 @@ describe("QueryBuilder", () => {
                 const title = qbWrapper.find(QueryHeader).find("h1")
                 expect(title.text()).toBe("New question")
                 expect(title.parent().children().at(1).text()).toBe(`started from ${savedQuestion.displayName()}`)
+
+                // Click "SAVE" button
+                click(qbWrapper.find(".Header-buttonSection a").first().find("a"))
+
+                expect(qbWrapper.find(SaveQuestionModal).find(Radio).prop("value")).toBe("overwrite")
+                // Click Save in "Save question" dialog
+                clickButton(qbWrapper.find(SaveQuestionModal).find("button").last());
+                await store.waitForActions([NOTIFY_CARD_UPDATED])
+
+                // Should not show a "add to dashboard" dialog in this case
+                // This is included because of regression #6541
+                expect(qbWrapper.find(QuestionSavedModal).length).toBe(0)
             });
         });
     });
@@ -451,7 +467,7 @@ describe("QueryBuilder", () => {
                 await store.waitForActions([QUERY_COMPLETED]);
 
                 // We can use the visible row count as we have a low number of result rows
-                expect(qb.find(".ShownRowCount").text()).toBe("Showing 6 rows");
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 14 rows");
 
                 // Get the binning
                 const results = getQueryResults(store.getState())[0]
@@ -478,7 +494,7 @@ describe("QueryBuilder", () => {
                 click(qb.find(RunButton));
                 await store.waitForActions([QUERY_COMPLETED]);
 
-                expect(qb.find(".ShownRowCount").text()).toBe("Showing 95 rows");
+                expect(qb.find(".ShownRowCount").text()).toBe("Showing 253 rows");
                 const results = getQueryResults(store.getState())[0]
                 const breakoutBinningInfo = results.data.cols[0].binning_info;
                 expect(breakoutBinningInfo.binning_strategy).toBe("num-bins");
@@ -602,10 +618,10 @@ describe("QueryBuilder", () => {
                 const firstRowCells = table.find("tbody tr").first().find("td");
                 expect(firstRowCells.length).toBe(2);
 
-                expect(firstRowCells.first().text()).toBe("12  –  14");
+                expect(firstRowCells.first().text()).toBe("4  –  6");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("387");
+                expect(countCell.text()).toBe("2");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -646,7 +662,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("AA");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("417");
+                expect(countCell.text()).toBe("233");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -690,7 +706,7 @@ describe("QueryBuilder", () => {
                 expect(firstRowCells.first().text()).toBe("90° S  –  80° S");
 
                 const countCell = firstRowCells.last();
-                expect(countCell.text()).toBe("1,079");
+                expect(countCell.text()).toBe("701");
                 click(countCell.children().first());
 
                 // Drill-through is delayed in handleVisualizationClick of Visualization.jsx by 100ms
@@ -796,7 +812,7 @@ describe("QueryBuilder", () => {
 
                 expect(firstRowCells.length).toBe(6);
 
-                expect(firstRowCells.at(4).text()).toBe("Enjoyable");
+                expect(firstRowCells.at(4).text()).toBe("Perfecto");
             })
         });
 
@@ -816,7 +832,7 @@ describe("QueryBuilder", () => {
 
                 expect(firstRowCells.length).toBe(6);
 
-                expect(firstRowCells.at(3).text()).toBe("Ergonomic Leather Pants");
+                expect(firstRowCells.at(3).text()).toBe("Awesome Wooden Pants");
             })
         });
 

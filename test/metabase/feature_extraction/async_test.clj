@@ -1,34 +1,35 @@
 (ns metabase.feature-extraction.async-test
   (:require [expectations :refer :all]
             [metabase.feature-extraction.async :refer :all]
-            [metabase.models.computation-job :refer [ComputationJob]]))
+            [metabase.models.computation-job :refer [ComputationJob]]
+            [metabase.test.async :refer :all]))
+
+;; DISABLED due to constant failures 12/6/17. Fix soon!
+(expect
+    true
+    (let [job-id (compute (gensym) (constantly 42))]
+      (result! job-id)
+      (done? (ComputationJob job-id))))
 
 (expect
-  true
-  (let [job-id (compute (gensym) (constantly 1))]
-    (Thread/sleep 100)
-    (done? (ComputationJob job-id))))
+  [true :canceled false]
+  (let [job-id (compute (gensym) #(do
+                                    (while-with-timeout (not (Thread/interrupted)))
+                                    42))
+        r?     (running? (ComputationJob job-id))]
+    (cancel (ComputationJob job-id))
+    [r? (:status (ComputationJob job-id)) (running? (ComputationJob job-id))]))
 
 (expect
-  [true false false]
-  (let [job-id (compute (gensym) #(loop [] (Thread/sleep 100) (recur)))]
-    (Thread/sleep 100)
-    (let [r? (running? (ComputationJob job-id))]
-      (cancel (ComputationJob job-id))
-      [r? (done? (ComputationJob job-id)) (running? (ComputationJob job-id))])))
+  42
+  (-> (compute (gensym) (constantly 42))
+      result!
+      :result))
 
+;; DISABLED due to constant failures 12/6/17. Fix soon!
 (expect
-  {:status :done
-   :result 1}
-  (let [job-id (compute (gensym) (constantly 1))]
-    (Thread/sleep 100)
-    (select-keys (result (ComputationJob job-id)) [:status :result])))
-
-(expect
-  [:error
-   "foo"]
-  (let [job-id (compute (gensym) #(throw (Throwable. "foo")))]
-    (Thread/sleep 100)
-    (let [job (ComputationJob job-id)]
-      [(:status job)
-       (-> job result :result :cause)])))
+  "foo"
+  (-> (compute (gensym) #(throw (Throwable. "foo")))
+      result!
+      :result
+      :cause))

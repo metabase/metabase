@@ -17,7 +17,7 @@
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
-                 [org.clojure/java.jdbc "0.7.0"]                      ; basic JDBC access from Clojure
+                 [org.clojure/java.jdbc "0.7.5"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
@@ -25,7 +25,7 @@
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [aleph "0.4.3"]                                      ; Async HTTP library; WebSockets
+                 [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
                  [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
@@ -37,7 +37,8 @@
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
-                 [com.amazon.redshift/redshift-jdbc41 "1.2.8.1005"]   ; Redshift JDBC driver
+                 [com.amazon.redshift/redshift-jdbc41-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
+                  "1.2.8.1005"]
                  [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient
@@ -64,7 +65,7 @@
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [javax.validation/validation-api "1.1.0.Final"]      ; Fix DRILL-5383
-                 [kixi/stats "0.3.9"                                  ; Various statistic measures implemented as transducers
+                 [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
@@ -75,6 +76,10 @@
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+                 [jdistlib "0.5.1"                                    ; Distribution statistic tests
+                  :exclusions [com.github.wendykierp/JTransforms]]
+                 [net.cgrand/xforms "0.13.0"                          ; Additional transducers
+                  :exclusions [org.clojure/clojurescript]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
@@ -104,7 +109,7 @@
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.1.2"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
@@ -127,7 +132,8 @@
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init!
-         :destroy metabase.core/destroy}
+         :destroy metabase.core/destroy
+         :reload-paths ["src"]}
   :eastwood {:exclude-namespaces [:test-paths
                                   metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
              :add-linters [:unused-private-vars
@@ -153,20 +159,20 @@
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
-                   :jvm-opts ["-Dlogfile.path=target/log"
-                              "-Xms1024m"                             ; give JVM a decent heap size to start with
-                              "-Xmx2048m"]                            ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
+                   :jvm-opts ["-Dlogfile.path=target/log"]
                    ;; Log appender class needs to be compiled for log4j to use it,
                    ;; classes for fixed Hive driver in must be compiled for tests
                    :aot [metabase.logger
                          metabase.driver.FixedHiveConnection
                          metabase.driver.FixedHiveDriver]}
+             :ci {:jvm-opts ["-Xmx3g"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
-                            :jvm-opts ["-Duser.timezone=UTC"
+                            :jvm-opts ["-Xms1024m"                    ; give JVM a decent heap size to start with
+                                       "-Duser.timezone=UTC"
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
@@ -176,8 +182,7 @@
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
                                   "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
              ;; generate sample dataset with `lein generate-sample-dataset`
-             :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby library
-                                                      [incanter/incanter-core "1.9.1"]] ; Satistical functions like normal distibutions}})
+             :generate-sample-dataset {:dependencies [[faker "0.2.2"]]                   ; Fake data generator -- port of Perl/Ruby library
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
              ;; Profile Metabase start time with `lein profile`

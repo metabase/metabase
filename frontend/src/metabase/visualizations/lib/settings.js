@@ -1,5 +1,5 @@
 import { getVisualizationRaw } from "metabase/visualizations";
-
+import { t } from 'c-3po';
 import {
     columnsAreValid,
     getChartTypeFromData,
@@ -145,14 +145,14 @@ export function fieldSetting(id, filter, getDefault) {
 
 const COMMON_SETTINGS = {
     "card.title": {
-        title: "Title",
+        title: t`Title`,
         widget: "input",
         getDefault: (series) => series.length === 1 ? series[0].card.name : null,
         dashboard: true,
         useRawSeries: true
     },
     "card.description": {
-        title: "Description",
+        title: t`Description`,
         widget: "input",
         getDefault: (series) => series.length === 1 ? series[0].card.description : null,
         dashboard: true,
@@ -165,7 +165,7 @@ function getSetting(settingDefs, id, vizSettings, series) {
         return;
     }
 
-    const settingDef = settingDefs[id];
+    const settingDef = settingDefs[id] || {};
     const [{ card }] = series;
     const visualization_settings = card.visualization_settings || {};
 

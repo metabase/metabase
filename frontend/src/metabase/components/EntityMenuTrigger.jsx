@@ -2,7 +2,7 @@ import React from 'react'
 import Icon from 'metabase/components/Icon'
 import cxs from 'cxs'
 
-const EntityzMenuTrigger = ({ icon, onClick, open }) => {
+const EntityMenuTrigger = ({ icon, onClick, open }) => {
     const interactionColor = '#F2F4F5'
     const classes = cxs({
         display: 'flex',
@@ -34,4 +34,4 @@ const EntityzMenuTrigger = ({ icon, onClick, open }) => {
     )
 }
 
-export default EntityzMenuTrigger
+export default EntityMenuTrigger

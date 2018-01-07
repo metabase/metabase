@@ -5,7 +5,7 @@ import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import {forceRedraw} from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -76,7 +76,7 @@ export default class OperatorSelector extends Component {
                 { !expanded && expandedOperators.length > 0 ?
                     <div className="text-grey-3 text-purple-hover transition-color cursor-pointer" onClick={this.expandOperators}>
                         <Icon className="px1" name="chevrondown" size={14} />
-                        More Options
+                        {t`More Options`}
                     </div>
                 : null }
             </div>

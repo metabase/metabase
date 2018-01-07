@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
 
@@ -38,7 +38,7 @@ export default class DatabaseSchedulingStep extends Component {
         let { activeStep, databaseDetails, setActiveStep, stepNumber } = this.props;
         let { formError } = this.state;
 
-        let stepText = 'Control automatic scans';
+        let stepText = t`Control automatic scans`;
 
         const schedulingIcon =
             <Icon
@@ -60,7 +60,7 @@ export default class DatabaseSchedulingStep extends Component {
                                     formState={{ formError }}
                                     // Use saveDatabase both for db creation and updating
                                     save={this.schedulingDetailsCaptured}
-                                    submitButtonText={ "Next"}
+                                    submitButtonText={ t`Next` }
                                 />
                             </div>
                     </div>

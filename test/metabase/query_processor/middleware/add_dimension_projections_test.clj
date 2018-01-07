@@ -1,25 +1,23 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   "Tests for the Query Processor cache."
   (:require [expectations :refer :all]
-            [metabase.query-processor.middleware.add-dimension-projections :refer :all]
+            [metabase.query-processor.middleware.add-dimension-projections :refer :all :as add-dim-projections]
             [metabase.query-processor.interface :as i]
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [metabase.query-processor.middleware.expand :as ql]))
 
-(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections remap-results add-fk-remaps)
-
 (def ^:private col-defaults
-  {:description nil
-     :source :fields,
-     :extra_info {},
-     :fk_field_id nil,
-     :values [],
-     :dimensions [],
-     :visibility_type :normal,
-     :target nil,
-     :remapped_from nil,
-     :remapped_to nil})
+  {:description     nil
+   :source          :fields
+   :extra_info      {}
+   :fk_field_id     nil
+   :values          []
+   :dimensions      []
+   :visibility_type :normal
+   :target          nil
+   :remapped_from   nil
+   :remapped_to     nil})
 
 (def ^:private example-resultset
   {:rows
@@ -98,7 +96,7 @@
                         :extra_info {}
                         :remapped_from "CATEGORY_ID"
                         :remapped_to nil}))))
-  (remap-results example-resultset))
+  (#'add-dim-projections/remap-results example-resultset))
 
 (def ^:private field-defaults
   {:dimensions [],
@@ -154,7 +152,7 @@
                                             :remapped-from "PRODUCT_ID"
                                             :remapped-to nil
                                             :field-display-name "Product"}))
-  (add-fk-remaps example-query))
+  (#'add-dim-projections/add-fk-remaps example-query))
 
 (expect
   (-> example-query
@@ -172,7 +170,7 @@
                                                 :field-display-name "Product"})))
   (-> example-query
       (assoc-in [:query :order-by] [{:direction :ascending :field {:field-id 32}}])
-      add-fk-remaps))
+      (#'add-dim-projections/add-fk-remaps)))
 
 (def ^:private external-remapped-result
   (-> example-resultset
@@ -201,4 +199,4 @@
   (-> external-remapped-result
       (update :cols (fn [col] (mapv #(dissoc % :dimensions :values) col)))
       (update-in [:cols 2] assoc :remapped_to "CATEGORY"))
-  (remap-results external-remapped-result))
+  (#'add-dim-projections/remap-results external-remapped-result))

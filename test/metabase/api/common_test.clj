@@ -40,28 +40,6 @@
     (let-404 [user {:name "Cam"}]
       {:user user})))
 
-;; test the 404 thread versions
-
-(expect four-oh-four
-  (catch-api-exceptions
-    (->404 nil
-           (- 100))))
-
-(expect -99
-  (catch-api-exceptions
-    (->404 1
-           (- 100))))
-
-(expect four-oh-four
-  (catch-api-exceptions
-    (->>404 nil
-            (- 100))))
-
-(expect 99
-  (catch-api-exceptions
-    (->>404 1
-            (- 100))))
-
 
 (defmacro ^:private expect-expansion
   "Helper to test that a macro expands the way we expect;
@@ -112,7 +90,7 @@
         (metabase.api.common.internal/catch-api-exceptions
           (metabase.api.common.internal/auto-parse [id]
             (metabase.api.common.internal/validate-param 'id id su/IntGreaterThanZero)
-            (metabase.api.common.internal/wrap-response-if-needed (do (->404 (select-one Card :id id))))))))
+            (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))
     (defendpoint GET "/:id" [id]
       {id su/IntGreaterThanZero}
-      (->404 (select-one Card :id id)))))
+      (select-one Card :id id))))

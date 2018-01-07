@@ -9,16 +9,16 @@ import { capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
-const HOUR_OPTIONS = _.times(12, (n) => (
+export const HOUR_OPTIONS = _.times(12, (n) => (
     { name: (n === 0 ? 12 : n)+":00", value: n }
 ));
 
-const AM_PM_OPTIONS = [
+export const AM_PM_OPTIONS = [
     { name: "AM", value: 0 },
     { name: "PM", value: 1 }
 ];
 
-const DAY_OF_WEEK_OPTIONS = [
+export const DAY_OF_WEEK_OPTIONS = [
     { name: "Sunday", value: "sun" },
     { name: "Monday", value: "mon" },
     { name: "Tuesday", value: "tue" },
@@ -28,7 +28,7 @@ const DAY_OF_WEEK_OPTIONS = [
     { name: "Saturday", value: "sat" }
 ];
 
-const MONTH_DAY_OPTIONS = [
+export const MONTH_DAY_OPTIONS = [
     { name: "First", value: "first" },
     { name: "Last", value: "last" },
     { name: "15th (Midpoint)", value: "mid" }

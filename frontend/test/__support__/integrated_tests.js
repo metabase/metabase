@@ -10,7 +10,7 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { CardApi, SessionApi } from "metabase/services";
+import { CardApi, DashboardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from 'metabase/reducers-main';
 import publicReducers from 'metabase/reducers-public';
@@ -42,6 +42,20 @@ let previousLoginSession = null;
 let simulateOfflineMode = false;
 let apiRequestCompletedCallback = null;
 let skippedApiRequests = [];
+
+
+// These i18n settings are same is beginning of app.js
+
+// make the i18n function "t" global so we don't have to import it in basically every file
+import { t, jt } from "c-3po";
+global.t = t;
+global.jt = jt;
+
+// set the locale before loading anything else
+import { setLocalization } from "metabase/lib/i18n";
+if (window.MetabaseLocalization) {
+    setLocalization(window.MetabaseLocalization)
+}
 
 const warnAboutCreatingStoreBeforeLogin = () => {
     if (!loginSession && hasStartedCreatingStore) {
@@ -337,6 +351,11 @@ export const createSavedQuestion = async (unsavedQuestion) => {
     const savedQuestion = unsavedQuestion.setCard(savedCard);
     savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
     return savedQuestion
+}
+
+export const createDashboard = async (details) => {
+    let savedDashboard = await DashboardApi.create(details)
+    return savedDashboard
 }
 
 /**

@@ -18,8 +18,10 @@ import { delay } from "metabase/lib/promise";
 import {
     FETCH_CARD_XRAY,
     FETCH_FIELD_XRAY,
-    FETCH_SEGMENT_XRAY, FETCH_SHARED_TYPE_COMPARISON_XRAY,
-    FETCH_TABLE_XRAY, FETCH_TWO_TYPES_COMPARISON_XRAY
+    FETCH_SEGMENT_XRAY,
+    FETCH_SHARED_TYPE_COMPARISON_XRAY,
+    FETCH_TABLE_XRAY,
+    FETCH_TWO_TYPES_COMPARISON_XRAY
 } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
@@ -50,6 +52,12 @@ import { ComparisonDropdown } from "metabase/xray/components/ComparisonDropdown"
 import { TestPopover } from "metabase/components/Popover";
 import ItemLink from "metabase/xray/components/ItemLink";
 import { TableLikeComparisonXRay } from "metabase/xray/containers/TableLikeComparison";
+import {
+    InsightCard,
+    NoisinessInsight,
+    NormalRangeInsight,
+    AutocorrelationInsight
+} from "metabase/xray/components/InsightCard";
 
 describe("xray integration tests", () => {
     let segmentId = null;
@@ -137,9 +145,9 @@ describe("xray integration tests", () => {
     })
 
     describe("field x-rays", async () => {
-        it("should render the field x-ray page without errors", async () => {
+        it("should render the field x-ray page with expected insights", async () => {
             const store = await createTestStore()
-            store.pushPath(`/xray/field/1/approximate`);
+            store.pushPath(`/xray/field/2/approximate`);
 
             const app = mount(store.getAppContainer());
             await store.waitForActions([FETCH_FIELD_XRAY], { timeout: 20000 })
@@ -148,6 +156,8 @@ describe("xray integration tests", () => {
             expect(fieldXRay.length).toBe(1)
             expect(fieldXRay.find(CostSelect).length).toBe(1)
 
+            expect(app.find(InsightCard).length > 0).toBe(true)
+            expect(app.find(NormalRangeInsight).length).toBe(1)
         })
     })
 
@@ -292,12 +302,17 @@ describe("xray integration tests", () => {
             click(xrayOptionIcon);
 
 
-            await store.waitForActions([FETCH_CARD_XRAY], {timeout: 5000})
+            await store.waitForActions([FETCH_CARD_XRAY], {timeout: 20000})
             expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
             expect(cardXRay.length).toBe(1)
             expect(cardXRay.text()).toMatch(/Time breakout question/);
+
+            // Should contain the expected insights
+            expect(app.find(InsightCard).length > 0).toBe(true)
+            expect(app.find(NoisinessInsight).length).toBe(1)
+            expect(app.find(AutocorrelationInsight).length).toBe(1)
         })
 
         it("let you see segment xray for a question containing a segment", async () => {
@@ -312,7 +327,7 @@ describe("xray integration tests", () => {
             const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
             click(xrayOptionIcon);
 
-            await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 5000 })
+            await store.waitForActions([FETCH_SEGMENT_XRAY], { timeout: 20000 })
             expect(store.getPath()).toBe(`/xray/segment/${segmentId}/approximate`)
 
             const segmentXRay = app.find(SegmentXRay)
@@ -332,7 +347,7 @@ describe("xray integration tests", () => {
 
             app = mount(store.getAppContainer())
 
-            await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
+            await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS], { timeout: 20000 })
 
             const xraySettings = app.find(SettingsXrayForm)
             const xrayToggle = xraySettings.find(Toggle)

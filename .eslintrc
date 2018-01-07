@@ -43,7 +43,8 @@
     },
     "globals": {
         "pending": false,
-        "t": false
+        "t": false,
+        "jt": false
     },
     "env": {
         "browser": true,

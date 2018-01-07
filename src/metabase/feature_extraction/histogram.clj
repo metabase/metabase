@@ -47,15 +47,28 @@
   (+ (impl/total-count histogram)
      (nil-count histogram)))
 
+(defn iqr
+  "Return interquartile range for a given histogram.
+   https://en.wikipedia.org/wiki/Interquartile_range"
+  [^Histogram histogram]
+  {:pre [(not (categorical? histogram))]}
+  (when-not (empty? histogram)
+    (let [{q1 0.25 q3 0.75} (impl/percentiles histogram 0.25 0.75)]
+      {:iqr (- q3 q1)
+       :q1  q1
+       :q3  q3})))
+
 (defn optimal-bin-width
   "Determine optimal bin width (and consequently number of bins) for a given
    histogram using Freedman-Diaconis rule.
    https://en.wikipedia.org/wiki/Freedman%E2%80%93Diaconis_rule"
   [^Histogram histogram]
   {:pre [(not (categorical? histogram))]}
-  (when-not (empty? histogram)
-    (let [{first-q 0.25 third-q 0.75} (impl/percentiles histogram 0.25 0.75)]
-      (* 2 (- third-q first-q) (math/pow (impl/total-count histogram) (/ -3))))))
+  (some-> histogram
+          iqr
+          :iqr
+          (* 2 (math/pow (impl/total-count histogram)
+                         (/ -3)))))
 
 (defn equidistant-bins
   "Split histogram into `bin-width` wide bins. If `bin-width` is not given use

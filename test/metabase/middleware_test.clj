@@ -13,6 +13,7 @@
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models.session :refer [Session]]
             [metabase.test.data.users :refer :all]
+            [metabase.test.async :refer [while-with-timeout]]
             [ring.mock.request :as mock]
             [ring.util.response :as resp]
             [toucan.db :as db]
@@ -184,7 +185,10 @@
 (expect "{\"my-bytes\":\"0xC42360D7\"}"
         (json/generate-string {:my-bytes (byte-array [196 35  96 215  8 106 108 248 183 215 244 143  17 160 53 186
                                                       213 30 116  25 87  31 123 172 207 108  47 107 191 215 76  92])}))
-;;; stuff here
+
+;; Handlers that will generate response. Some of them take a `BLOCK-ON` argument that will hold up the response until
+;; the promise has been delivered. This allows coordination between the scaffolding and the expected response and
+;; avoids the sleeps
 
 (defn- streaming-fast-success [_]
   (resp/response {:success true}))
@@ -192,15 +196,30 @@
 (defn- streaming-fast-failure [_]
   (throw (Exception. "immediate failure")))
 
-(defn- streaming-slow-success [_]
-  (Thread/sleep 7000)
-  (resp/response {:success true}))
+(defn- streaming-slow-success [block-on]
+  (fn [_]
+    @block-on
+    (resp/response {:success true})))
 
-(defn- streaming-slow-failure [_]
-  (Thread/sleep 7000)
-  (throw (Exception. "delayed failure")))
+(defn- streaming-slow-failure [block-on]
+  (fn [_]
+    @block-on
+    (throw (Exception. "delayed failure"))))
 
-(defn- test-streaming-endpoint [handler]
+(def ^:private long-timeout
+  ;; 2 minutes
+  (* 2 60000))
+
+(defn- take-with-timeout [response-chan]
+  (let [[response c] (async/alts!! [response-chan
+                                    ;; We should never reach this unless something is REALLY wrong
+                                    (async/timeout long-timeout)])]
+    (when-not response
+      (throw (Exception. "Taking from streaming endpoint timed out!")))
+
+    response))
+
+(defn- test-streaming-endpoint [handler handle-response-fn]
   (let [path (str handler)]
     (with-redefs [metabase.routes/routes (compojure.core/routes
                                           (GET (str "/" path) [] (middleware/streaming-json-response
@@ -213,66 +232,46 @@
               (async/>! connection (char next-char))
               (recur (.read reader)))
             (async/close! connection)))
-        (let [_ (Thread/sleep 1500)
-              first-second (async/poll! connection)
-              _ (Thread/sleep 1000)
-              second-second (async/poll! connection)
-              eventually (apply str (async/<!! (async/into [] connection)))]
-          [first-second second-second (string/trim eventually)])))))
-
+        (handle-response-fn connection)))))
 
 ;;slow success
 (expect
   [\newline \newline "{\"success\":true}"]
-  (test-streaming-endpoint streaming-slow-success))
+  (let [send-response (promise)]
+    (test-streaming-endpoint (streaming-slow-success send-response)
+                             (fn [response-chan]
+                               [(take-with-timeout response-chan)
+                                (take-with-timeout response-chan)
+                                (do
+                                  (deliver send-response true)
+                                  (string/trim (apply str (async/<!! (async/into [] response-chan)))))]))))
 
 ;; immediate success should have no padding
 (expect
-  [\{ \" "success\":true}"]
-  (test-streaming-endpoint streaming-fast-success))
+  "{\"success\":true}"
+  (test-streaming-endpoint streaming-fast-success
+                           (fn [response-chan]
+                             (string/trim (apply str (async/<!! (async/into [] response-chan)))))))
 
 ;; we know delayed failures (exception thrown) will just drop the connection
 (expect
   [\newline \newline ""]
-  (test-streaming-endpoint streaming-slow-failure))
+  (let [send-response (promise)]
+    (test-streaming-endpoint (streaming-slow-failure send-response)
+                             (fn [response-chan]
+                               [(take-with-timeout response-chan)
+                                (take-with-timeout response-chan)
+                                (do
+                                  (deliver send-response true)
+                                  (string/trim (apply str (async/<!! (async/into [] response-chan)))))]))))
 
 ;; immediate failures (where an exception is thown will return a 500
 (expect
   #"Server returned HTTP response code: 500 for URL:.*"
   (try
-    (test-streaming-endpoint streaming-fast-failure)
+    (test-streaming-endpoint streaming-fast-failure
+                             (fn [response-chan]
+                               ;; Should never reach here
+                               (throw (Exception. "Should not process a message"))))
     (catch java.io.IOException e
       (.getMessage e))))
-
-;; test that handler is killed when connection closes
-(def test-slow-handler-state (atom :unset))
-
-(defn- test-slow-handler [_]
-  (log/debug (u/format-color 'yellow "starting test-slow-handler"))
-  (Thread/sleep 7000)  ;; this is somewhat long to make sure the keepalive polling has time to kill it.
-  (reset! test-slow-handler-state :ran-to-compleation)
-  (log/debug (u/format-color 'yellow "finished test-slow-handler"))
-  (resp/response {:success true}))
-
-(defn- start-and-maybe-kill-test-request [kill?]
-  (reset! test-slow-handler-state :initial-state)
-  (let [path "test-slow-handler"]
-    (with-redefs [metabase.routes/routes (compojure.core/routes
-                                          (GET (str "/" path) [] (middleware/streaming-json-response
-                                                                  test-slow-handler)))]
-      (let  [reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
-        (Thread/sleep 1500)
-        (when kill?
-          (.close reader))
-        (Thread/sleep 10000)))) ;; this is long enough to ensure that the handler has run to completion if it was not killed.
-  @test-slow-handler-state)
-
-;; In this first test we will close the connection before the test handler gets to change the state
-(expect
-  :initial-state
-  (start-and-maybe-kill-test-request true))
-
-;; and to make sure this test actually works, run the same test again and let it change the state.
-(expect
-  :ran-to-compleation
-  (start-and-maybe-kill-test-request false))

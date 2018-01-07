@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 import pure from "recompose/pure";
-
+import { t } from 'c-3po';
 import S from "./List.css";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -72,7 +72,7 @@ const Item = ({
                     <ModalWithTrigger
                         full
                         triggerElement={
-                            <Tooltip tooltip="Move to a collection">
+                            <Tooltip tooltip={t`Move to a collection`}>
                                 <Icon
                                     className="text-light-blue cursor-pointer text-brand-hover transition-color mx2"
                                     name="move"
@@ -86,7 +86,7 @@ const Item = ({
                             initialCollectionId={collection && collection.id}
                         />
                     </ModalWithTrigger>
-                    <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
+                    <Tooltip tooltip={archived ? t`Unarchive` : t`Archive`}>
                         <Icon
                             className="text-light-blue cursor-pointer text-brand-hover transition-color"
                             name={ archived ? "unarchive" : "archive"}
@@ -129,7 +129,7 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
                 <CollectionBadge collection={collection} />
             }
             { favorite != null && setFavorited &&
-                <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
+                <Tooltip tooltip={favorite ? t`Unfavorite` : t`Favorite`}>
                     <Icon
                         className={cx(
                             "flex cursor-pointer",
@@ -145,7 +145,7 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
             <Labels labels={labels} />
         </div>
         <div className={cx({ 'text-slate': description }, { 'text-light-blue': !description })}>
-            {description ? description : "No description yet"}
+            {description ? description : t`No description yet`}
         </div>
     </div>
 );
@@ -161,7 +161,7 @@ ItemBody.propTypes = {
 const ItemCreated = pure(({ created, by }) =>
     (created || by) ?
         <div className={S.itemSubtitle}>
-            {"Created" + (created ? ` ${created}` : ``) + (by ? ` by ${by}` : ``)}
+            {t`Created` + (created ? ` ${created}` : ``) + (by ? t` by ${by}` : ``)}
         </div>
     :
         null

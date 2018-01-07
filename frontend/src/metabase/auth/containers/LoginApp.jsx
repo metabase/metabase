@@ -90,6 +90,10 @@ export default class LoginApp extends Component {
         this.validateForm();
     }
 
+    onChangeUserName(fieldName, fieldValue) {
+        this.onChange(fieldName, fieldValue.trim())
+    }
+
     onChange(fieldName, fieldValue) {
         this.setState({ credentials: { ...this.state.credentials, [fieldName]: fieldValue }});
     }
@@ -131,7 +135,7 @@ export default class LoginApp extends Component {
 
                             <FormField key="username" fieldName="username" formError={loginError}>
                                 <FormLabel title={Settings.ldapEnabled() ? "Username or email address" : "Email address"} fieldName={"username"} formError={loginError} />
-                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
+                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChangeUserName("username", e.target.value)} autoFocus />
                                 <span className="Form-charm"></span>
                             </FormField>
 

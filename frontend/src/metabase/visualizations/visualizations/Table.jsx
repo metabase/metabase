@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple.jsx";
-
+import { t } from 'c-3po';
 import * as DataGrid from "metabase/lib/data_grid";
 
 import Query from "metabase/lib/query";
@@ -13,6 +13,8 @@ import { columnsAreValid, getFriendlyName } from "metabase/visualizations/lib/ut
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
 import _ from "underscore";
+import cx from "classnames";
+import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
@@ -32,7 +34,7 @@ export default class Table extends Component {
     props: Props;
     state: State;
 
-    static uiName = "Table";
+    static uiName = t`Table`;
     static identifier = "table";
     static iconName = "table";
 
@@ -48,7 +50,7 @@ export default class Table extends Component {
 
     static settings = {
         "table.pivot": {
-            title: "Pivot the table",
+            title: t`Pivot the table`,
             widget: "toggle",
             getHidden: ([{ card, data }]) => (
                 data && data.cols.length !== 3
@@ -61,7 +63,7 @@ export default class Table extends Component {
             )
         },
         "table.columns": {
-            title: "Fields to include",
+            title: t`Fields to include`,
             widget: ChartSettingOrderedFields,
             getHidden: (series, vizSettings) => vizSettings["table.pivot"],
             isValid: ([{ card, data }]) =>
@@ -125,21 +127,38 @@ export default class Table extends Component {
         const { data } = this.state;
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
+        const isColumnsDisabled = (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
         if (!data) {
             return null;
         }
 
-        return (
-            // $FlowFixMe
-            <TableComponent
-                {...this.props}
-                data={data}
-                isPivoted={isPivoted}
-                sort={sort}
-            />
-        );
+        if (isColumnsDisabled) {
+            return (
+                <div className={cx("flex-full px1 pb1 text-centered flex flex-column layout-centered", { "text-slate-light": isDashboard, "text-slate": !isDashboard })} >
+                    <RetinaImage
+                        width={99}
+                        src="app/assets/img/hidden-field.png"
+                        forceOriginalDimensions={false}
+                        className="mb2"
+                    />
+                    <span className="h4 text-bold">
+                        Every field is hidden right now
+                    </span>
+                </div>
+            )
+        } else {
+            return (
+                // $FlowFixMe
+                <TableComponent
+                    {...this.props}
+                    data={data}
+                    isPivoted={isPivoted}
+                    sort={sort}
+                />
+            );
+        }
     }
 }
 

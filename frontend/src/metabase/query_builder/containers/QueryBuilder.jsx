@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import _ from "underscore";
 
@@ -133,7 +133,7 @@ const mapDispatchToProps = {
 
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => (card && card.name) || "Question")
+@title(({ card }) => (card && card.name) || t`Question`)
 export default class QueryBuilder extends Component {
     forceUpdateDebounced: () => void;
 

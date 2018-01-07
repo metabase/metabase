@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import CheckBox     from "metabase/components/CheckBox.jsx";
+import Icon         from "metabase/components/Icon.jsx";
 import { sortable } from "react-sortable";
 
 import cx from "classnames";
@@ -42,10 +42,34 @@ export default class ChartSettingOrderedFields extends Component {
         this.props.onChange([...items]);
     }
 
+    isAnySelected = () => {
+        let selected = false;
+        for ( const item of [...this.state.data.items]) {
+            if ( item.enabled ) {
+                selected = true;
+                break;
+            }
+        }
+        return selected;
+    }
+
+    toggleAll = (anySelected) => {
+        const items = [...this.state.data.items].map((item) => ({ ...item, enabled: !anySelected }));
+        this.setState({ data: { items } });
+        this.props.onChange([...items]);
+    }
+
     render() {
         const { columnNames } = this.props;
+        const anySelected = this.isAnySelected();
         return (
             <div className="list">
+                <div className="toggle-all">
+                    <div className={cx("flex align-center p1", { "text-grey-2": !anySelected })} >
+                        <CheckBox checked={anySelected} className={cx("text-brand", { "text-grey-2": !anySelected })} onChange={(e) => this.toggleAll(anySelected)} invertChecked />
+                        <span className="ml1 h4">{ anySelected ? 'Unselect all' : 'Select all'}</span>
+                    </div>
+                </div>
                 {this.state.data.items.map((item, i) =>
                     <OrderedFieldListItem
                         key={i}

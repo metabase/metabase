@@ -3,7 +3,6 @@
   (:require [clojure
              [walk :refer [postwalk]]
              [string :as s]]
-            [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
             [metabase.feature-extraction
@@ -11,6 +10,7 @@
              [costs :as costs]
              [descriptions :refer [add-descriptions]]
              [feature-extractors :as fe]
+             [math :as math]
              [values :as values]]
             [metabase.models
              [card :refer [Card]]
@@ -160,7 +160,6 @@
                              (ensure-aligment fields cols rows)))
                           {:model card
                            :table (Table (:table_id card))})
-     :dataset      dataset
      :sample?      (sampled? opts dataset)
      :comparables  (comparables card)}))
 
@@ -264,13 +263,13 @@
                 {:feature    feature
                  :difference difference})))
     (->> comparisons
-         (comparison/head-tails-breaks (comp :distance val))
+         (math/head-tails-breaks (comp :distance val))
          (mapcat (fn [[field {:keys [top-contributors distance]}]]
                    (for [[feature {:keys [difference]}] top-contributors]
                      {:feature      feature
                       :field        field
-                      :contribution (* (math/sqrt distance) difference)})))
-         (comparison/head-tails-breaks :contribution))))
+                      :contribution (* (Math/sqrt distance) difference)})))
+         (math/head-tails-breaks :contribution))))
 
 (defn compare-features
   "Compare feature vectors of two models."

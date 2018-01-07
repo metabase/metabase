@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-
+import { t } from 'c-3po';
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 
@@ -58,7 +58,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ features }) => features && features.model.display_name || "Table")
+@title(({ features }) => features && features.model.display_name || t`Table`)
 class TableXRay extends Component {
     props: Props
 
@@ -104,12 +104,12 @@ class TableXRay extends Component {
                                     <h1 className="mt2 flex align-center">
                                         {features.model.display_name}
                                         <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                        <span className="text-grey-3">XRay</span>
+                                        <span className="text-grey-3">{t`XRay`}</span>
                                     </h1>
                                     <p className="m0 text-paragraph text-measure">{features.model.description}</p>
                                 </div>
                                 <div className="ml-auto flex align-center">
-                                    <h3 className="mr2">Fidelity:</h3>
+                                    <h3 className="mr2">{t`Fidelity:`}</h3>
                                     <CostSelect
                                         xrayType='table'
                                         currentCost={params.cost}

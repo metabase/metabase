@@ -10,14 +10,16 @@
 
 (defn- valid-json?
   "Does this URL-OR-RESOURCE point to valid JSON?
-   URL-OR-RESOURCE should be something that can be passed to `slurp`, like an HTTP URL or a `java.net.URL` (which is what `io/resource` returns below)."
+  URL-OR-RESOURCE should be something that can be passed to `slurp`, like an HTTP URL or a `java.net.URL` (which is
+  what `io/resource` returns below)."
   [url-or-resource]
   (u/with-timeout 5000
     (json/parse-string (slurp url-or-resource)))
   true)
 
 (defn- valid-json-resource?
-  "Does this RELATIVE-PATH point to a valid local JSON resource? (RELATIVE-PATH is something like \"app/assets/geojson/us-states.json\".)"
+  "Does this RELATIVE-PATH point to a valid local JSON resource? (RELATIVE-PATH is something like
+  \"app/assets/geojson/us-states.json\".)"
   [relative-path]
   (when-let [^java.net.URI uri (u/ignore-exceptions (java.net.URI. relative-path))]
     (when-not (.isAbsolute uri)
@@ -40,7 +42,10 @@
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     s/Str
-              :url                      (s/constrained s/Str valid-json-url-or-resource? "URL must point to a valid JSON file.")
+              :url                      (s/constrained
+                                         s/Str
+                                         valid-json-url-or-resource?
+                                         "URL must point to a valid JSON file.")
               :region_key               (s/maybe s/Str)
               :region_name              (s/maybe s/Str)
               (s/optional-key :builtin) s/Bool}})
@@ -58,7 +63,8 @@
                      :builtin     true}})
 
 (defsetting custom-geojson
-  "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON."
+  "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US
+  State or World GeoJSON."
   :type    :json
   :default {}
   :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))
@@ -69,7 +75,8 @@
 
 
 (defendpoint GET "/:key"
-  "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the file specified for KEY)."
+  "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
+  file specified for KEY)."
   [key]
   {key su/NonBlankString}
   (let [url (or (get-in (custom-geojson) [(keyword key) :url])

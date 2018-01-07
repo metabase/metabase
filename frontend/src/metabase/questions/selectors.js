@@ -3,7 +3,7 @@ import { createSelector } from 'reselect';
 import moment from "moment";
 import { getIn } from "icepick";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import visualizations from "metabase/visualizations";
 import {caseInsensitiveSearch} from "metabase/lib/string"
 
@@ -132,11 +132,11 @@ export const getSectionIsArchive = createSelector(
 );
 
 const sections = [
-    { id: "all",       name: "All questions",   icon: "all" },
-    { id: "fav",       name: "Favorites",       icon: "star" },
-    { id: "recent",    name: "Recently viewed", icon: "recents" },
-    { id: "mine",      name: "Saved by me",     icon: "mine" },
-    { id: "popular",   name: "Most popular",    icon: "popular" }
+    { id: "all",       name: t`All questions`,   icon: "all" },
+    { id: "fav",       name: t`Favorites`,       icon: "star" },
+    { id: "recent",    name: t`Recently viewed`, icon: "recents" },
+    { id: "mine",      name: t`Saved by me`,     icon: "mine" },
+    { id: "popular",   name: t`Most popular`,    icon: "popular" }
 ];
 
 export const getSections    = (state, props) => sections;
@@ -194,7 +194,7 @@ export const getSectionName = createSelector(
             if (section) {
                 return section.name || "";
             } else if (sectionId === "archived") {
-                return "Archive";
+                return t`Archive`;
             }
         }
         return "";

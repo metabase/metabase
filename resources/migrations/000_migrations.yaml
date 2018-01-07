@@ -3847,6 +3847,7 @@ databaseChangeLog:
   - changeSet:
       id: 67
       author: attekei
+      comment: 'Added 0.27.0'
       changes:
         - createTable:
             tableName: computation_job
@@ -3930,6 +3931,7 @@ databaseChangeLog:
   - changeSet:
     - id: 68
     - author: sbelak
+    - comment: 'Added 0.27.0'
     - changes:
       - addColumn:
             tableName: computation_job
@@ -3940,3 +3942,59 @@ databaseChangeLog:
               - column:
                   name: ended_at
                   type: DATETIME
+  - changeSet:
+      id: 69
+      author: senior
+      comment: 'Added 0.27.0'
+      remarks: 'Add columns to the pulse table for alerts'
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: alert_condition
+                  type: varchar(254)
+                  remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+              - column:
+                  name: alert_first_only
+                  type: boolean
+                  remarks: 'True if the alert should be disabled after the first notification'
+              - column:
+                  name: alert_above_goal
+                  type: boolean
+                  remarks: 'For a goal condition, alert when above the goal'
+        # There is no name for an alert, so this column is only required for pulses
+        - dropNotNullConstraint:
+            tableName: pulse
+            columnName: name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: 70
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_type
+                  type: varchar(255)
+                  remarks: 'The actual type of this column in the database. e.g. VARCHAR or TEXT.'
+        # We want to enforce NOT NULL right away for all columns going forward so just put some sort of
+        # placeholder in place for existing columns.
+        - addNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_type
+            columnDataType: varchar(255)
+            defaultNullValue: '?'
+  - changeSet:
+      id: 71
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        # drop the NOT NULL constraint on DashboardCard.card_id since we're now letting you add things other than Cards
+        # to Dashboards, for example static text cards
+        - dropNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: card_id
+            columnDataType: int

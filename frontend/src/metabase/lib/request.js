@@ -1,4 +1,5 @@
 import { AsyncApi } from "metabase/services";
+import _ from "underscore";
 
 export class RestfulRequest {
     // API endpoint that is used for the request
@@ -13,10 +14,16 @@ export class RestfulRequest {
     // can make the migration process from old implementation to this request API a lot easier
     resultPropName = 'result'
 
-    constructor({ endpoint, actionPrefix, resultPropName } = {}) {
+    // If `true`, then the result (either an object an array) will be converted to a dictionary
+    // where the dictionary key is the `id` field of the result.
+    // This dictionary is merged to the possibly pre-existing dictionary.
+    storeAsDictionary = false
+
+    constructor({ endpoint, actionPrefix, resultPropName, storeAsDictionary } = {}) {
         this.endpoint = endpoint
         this.actionPrefix = actionPrefix
         this.resultPropName = resultPropName || this.resultPropName
+        this.storeAsDictionary = storeAsDictionary
 
         this.actions = {
             requestStarted: `${this.actionPrefix}/REQUEST_STARTED`,
@@ -34,21 +41,33 @@ export class RestfulRequest {
                 const result = await this.endpoint(params)
                 dispatch.action(this.actions.requestSuccessful, { result })
             } catch(error) {
-                console.error(error)
                 dispatch.action(this.actions.requestFailed, { error })
+                throw error;
             }
 
         }
 
     reset = () => (dispatch) => dispatch(this.actions.reset)
 
+    mergeToDictionary = (dict, result) => {
+        dict = dict || {}
+        result = _.isArray(result)
+            ? _.indexBy(result, "id")
+            : { [result.id]: result }
+
+        return { ...dict, ...result }
+    }
+
     getReducers = () => ({
-        [this.actions.requestStarted]: (state) => ({...state, loading: true}),
+        [this.actions.requestStarted]: (state) => ({ ...state, loading: true, error: null }),
         [this.actions.requestSuccessful]: (state, { payload: { result }}) => ({
             ...state,
-            [this.resultPropName]: result,
+            [this.resultPropName]: this.storeAsDictionary
+                ? this.mergeToDictionary(state[this.resultPropName], result)
+                : result,
             loading: false,
-            fetched: true
+            fetched: true,
+            error: null
         }),
         [this.actions.requestFailed]: (state, { payload: { error } }) => ({
             ...state,
@@ -106,8 +125,8 @@ export class BackgroundJobRequest {
                 const result = await this._pollForResult(newJobId)
                 dispatch.action(this.actions.requestSuccessful, { result })
             } catch(error) {
-                console.error(error)
                 dispatch.action(this.actions.requestFailed, { error })
+                throw error;
             }
         }
     }
@@ -128,6 +147,8 @@ export class BackgroundJobRequest {
 
                     if (response.status === 'done') {
                         resolve(response.result)
+                    } else if (response.status === 'error') {
+                       throw new Error(response.result.cause)
                     } else if (response.status === 'result-not-available') {
                         // The job result has been deleted; this is an unexpected state as we just
                         // created the job so simply throw a descriptive error
@@ -148,12 +169,13 @@ export class BackgroundJobRequest {
     reset = () => (dispatch) => dispatch(this.actions.reset)
 
     getReducers = () => ({
-        [this.actions.requestStarted]: (state) => ({...state, loading: true}),
+        [this.actions.requestStarted]: (state) => ({...state, loading: true, error: null }),
         [this.actions.requestSuccessful]: (state, { payload: { result }}) => ({
             ...state,
             [this.resultPropName]: result,
             loading: false,
-            fetched: true
+            fetched: true,
+            error: null
         }),
         [this.actions.requestFailed]: (state, { payload: { error } }) => ({
             ...state,

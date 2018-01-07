@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -61,7 +61,7 @@ export default class UpdateUserDetails extends Component {
 
         // validate email address
         if (!MetabaseUtils.validEmail(ReactDOM.findDOMNode(this.refs.email).value)) {
-            formErrors.data.errors.email = "Not a valid formatted email address";
+            formErrors.data.errors.email = t`Not a valid formatted email address`;
         }
 
         if (_.keys(formErrors.data.errors).length > 0) {
@@ -89,19 +89,19 @@ export default class UpdateUserDetails extends Component {
             <div>
                 <form className="Form-new bordered rounded shadowed" onSubmit={this.formSubmitted.bind(this)} noValidate>
                     <FormField fieldName="first_name" formError={formError}>
-                        <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
+                        <FormLabel title={t`First name`} fieldName="first_name" formError={formError}></FormLabel>
                         <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
                         <span className="Form-charm"></span>
                     </FormField>
 
                     <FormField fieldName="last_name" formError={formError}>
-                        <FormLabel title="Last name" fieldName="last_name" formError={formError} ></FormLabel>
+                        <FormLabel title={t`Last name`} fieldName="last_name" formError={formError} ></FormLabel>
                         <input ref="lastName" className="Form-input Form-offset full" name="name" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
                         <span className="Form-charm"></span>
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>
-                        <FormLabel title={ user.google_auth ? "Sign in with Google Email address" : "Email address"} fieldName="email" formError={formError} ></FormLabel>
+                        <FormLabel title={ user.google_auth ? t`Sign in with Google Email address` : t`Email address`} fieldName="email" formError={formError} ></FormLabel>
                         <input
                             ref="email"
                             className={
@@ -122,7 +122,7 @@ export default class UpdateUserDetails extends Component {
 
                     <div className="Form-actions">
                         <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                            Save
+                            {t`Save`}
                         </button>
                         <FormMessage formError={(updateUserResult && !updateUserResult.success) ? updateUserResult : undefined} formSuccess={(updateUserResult && updateUserResult.success) ? updateUserResult : undefined} />
                     </div>

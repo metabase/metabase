@@ -4,7 +4,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import title from 'metabase/hoc/Title'
 import { Link } from 'react-router'
-
+import { t } from 'c-3po';
 import { isDate } from 'metabase/lib/schema_metadata'
 import { fetchFieldXray, initialize } from 'metabase/xray/xray'
 import {
@@ -33,6 +33,7 @@ import LoadingAnimation from 'metabase/xray/components/LoadingAnimation'
 
 import type { Field } from 'metabase/meta/types/Field'
 import type { Table } from 'metabase/meta/types/Table'
+import { Insights } from "metabase/xray/components/Insights";
 
 type Props = {
     fetchFieldXray: () => void,
@@ -44,7 +45,8 @@ type Props = {
         table: Table,
         histogram: {
             value: {}
-        }
+        },
+        insights: []
     },
     params: {
         cost: string,
@@ -66,7 +68,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ features }) => features && features.model.display_name || "Field")
+@title(({ features }) => features && features.model.display_name || t`Field`)
 class FieldXRay extends Component {
     props: Props
 
@@ -119,10 +121,10 @@ class FieldXRay extends Component {
                                         <h1 className="flex align-center">
                                             {features.model.display_name}
                                             <Icon name="chevronright" className="mx1 text-grey-3" size={16} />
-                                            <span className="text-grey-3">X-ray</span>
+                                            <span className="text-grey-3">{t`X-ray`}</span>
                                         </h1>
                                         <div className="ml-auto flex align-center">
-                                            <h3 className="mr2 text-grey-3">Fidelity</h3>
+                                            <h3 className="mr2 text-grey-3">{t`Fidelity`}</h3>
                                             <CostSelect
                                                 xrayType='field'
                                                 id={features.model.id}
@@ -135,8 +137,14 @@ class FieldXRay extends Component {
                                     </p>
                                 </div>
                             </div>
+                            { features["insights"] &&
+                                <div className="mt4">
+                                    <Heading heading="Takeaways" />
+                                    <Insights features={features} />
+                                </div>
+                            }
                             <div className="mt4">
-                                <Heading heading="Distribution" />
+                                <Heading heading={t`Distribution`} />
                                 <div className="bg-white bordered shadowed">
                                     <div className="lg-p4">
                                         <div style={{ height: 300 }}>
@@ -151,20 +159,20 @@ class FieldXRay extends Component {
                             { isDate(features.model) && <Periodicity xray={features} /> }
 
                             <StatGroup
-                                heading="Values overview"
+                                heading={t`Values overview`}
                                 xray={features}
                                 stats={VALUES_OVERVIEW}
                             />
 
                             <StatGroup
-                                heading="Statistical overview"
+                                heading={t`Statistical overview`}
                                 xray={features}
                                 showDescriptions
                                 stats={STATS_OVERVIEW}
                             />
 
                             <StatGroup
-                                heading="Robots"
+                                heading={t`Robots`}
                                 xray={features}
                                 showDescriptions
                                 stats={ROBOTS}
