@@ -98,15 +98,10 @@
 
   The default implementation is `identity`.
 
-  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because other
-  functions like `prepare-value` are used for similar purposes; at some point in the future, we might be able to
-  combine them into a single method used in both places.")
-
-  (prepare-value [this, ^Value value]
-    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this
-     returns VALUE's `:value` as-is, which is eventually passed as a parameter in a prepared statement. Drivers such
-     as BigQuery that don't support prepared statements can skip this behavior by returning a HoneySQL `raw` form
-     instead, or other drivers can perform custom type conversion as appropriate.")
+  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because
+  the multimethod `metabase.driver.generic-sql.query-processor/->honeysql` provides an opportunity for drivers to do
+  type conversions as needed. In the future we may simplify a bit and combine them into a single method used in both
+  places.")
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when
@@ -324,20 +319,29 @@
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
-(defn- describe-table-fields
-  [^DatabaseMetaData metadata, driver, {:keys [schema name]}]
-  (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
-             :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
-         (merge {:name      column_name
-                 :custom    {:column-type type_name}
-                 :base-type (or (column->base-type driver (keyword type_name))
-                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                                                      type_name))
-                                    :type/*))}
-                (when calculated-special-type
-                  (assert (isa? calculated-special-type :type/*)
-                    (str "Invalid type: " calculated-special-type))
-                  {:special-type calculated-special-type})))))
+(defn- database-type->base-type
+  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
+  [driver database-type]
+  (or (column->base-type driver (keyword database-type))
+      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
+                            database-type))
+          :type/*)))
+
+(defn- calculated-special-type
+  "Get an appropriate special type for a column with `column-name` of type `database-type`."
+  [driver column-name database-type]
+  (when-let [special-type (column->special-type driver column-name (keyword database-type))]
+    (assert (isa? special-type :type/*)
+      (str "Invalid type: " special-type))
+    special-type))
+
+(defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
+  (set (for [{database-type :type_name, column-name :column_name} (jdbc/result-set-seq (.getColumns metadata nil schema table-name nil))]
+         (merge {:name          column-name
+                 :database-type database-type
+                 :base-type     (database-type->base-type driver database-type)}
+                (when-let [special-type (calculated-special-type driver column-name database-type)]
+                  {:special-type special-type})))))
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
@@ -352,12 +356,16 @@
                                      (assoc field :pk? true))))))))
 
 (defn describe-database
-  "Default implementation of `describe-database` for JDBC-based drivers."
+  "Default implementation of `describe-database` for JDBC-based drivers. Uses various `ISQLDriver` methods and JDBC
+   metadata."
   [driver database]
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
-(defn- describe-table [driver database table]
+(defn describe-table
+  "Default implementation of `describe-table` for JDBC-based drivers. Uses various `ISQLDriver` methods and JDBC
+   metadata."
+  [driver database table]
   (with-metadata [metadata driver database]
     (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
          ;; find PKs and mark them
@@ -393,7 +401,6 @@
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
    :prepare-sql-param    (u/drop-first-arg identity)
-   :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)
    :stddev-fn            (constantly :STDDEV)})

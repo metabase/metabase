@@ -28,13 +28,6 @@ describe("DashCard", () => {
             renderer.create(<DashCard {...DEFAULT_PROPS} />).toJSON()
         ).toMatchSnapshot();
     });
-    it("should render unmapped card with Card--unmapped className", () => {
-        const props = assocIn(DEFAULT_PROPS, ["parameterValues", "foo"], "bar");
-        const dashCard = render(<DashCard {...props} />);
-        expect(dashCard.find(".Card--recent")).toHaveLength(0);
-        expect(dashCard.find(".Card--unmapped")).toHaveLength(1);
-        expect(dashCard.find(".Card--slow")).toHaveLength(0);
-    });
     it("should render slow card with Card--slow className", () => {
         const props = assocIn(DEFAULT_PROPS, ["slowCards", 1], true);
         const dashCard = render(<DashCard {...props} />);

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon";
 import ArchiveCollectionWidget from "../containers/ArchiveCollectionWidget";
 
@@ -47,7 +47,7 @@ class CollectionButton extends Component {
                     { isAdmin &&
                         <div className="absolute top right mt2 mr2 hover-child">
                             <Link to={"/collections/permissions?collectionId=" + id} className="mr1">
-                                <Icon name="lockoutline" tooltip="Set collection permissions" />
+                                <Icon name="lockoutline" tooltip={t`Set collection permissions`} />
                             </Link>
                             <ArchiveCollectionWidget collectionId={id} />
                         </div>
@@ -90,7 +90,7 @@ const NewCollectionButton = ({ push }) =>
                 />
             </div>
         </div>
-        <h3>New collection</h3>
+        <h3>{t`New collection`}</h3>
     </div>
 
 export default CollectionButtons;

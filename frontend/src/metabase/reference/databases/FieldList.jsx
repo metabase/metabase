@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-
+import { t } from 'c-3po';
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css"
@@ -39,7 +39,7 @@ import * as actions from 'metabase/reference/reference';
 
 
 const emptyStateData = {
-    message: `Fields in this table will appear here as they're added`,
+    message: t`Fields in this table will appear here as they're added`,
     icon: "fields"
 }
 
@@ -128,7 +128,7 @@ export default class FieldList extends Component {
                 }
                 <EditableReferenceHeader 
                     headerIcon="table2"
-                    name={`Fields in ${table.display_name}`}
+                    name={t`Fields in ${table.display_name}`}
                     user={user} 
                     isEditing={isEditing} 
                     startEditing={startEditing} 
@@ -139,13 +139,13 @@ export default class FieldList extends Component {
                         <div className={S.item}>
                             <div className={R.columnHeader}>
                                 <div className={cx(S.itemTitle, F.fieldNameTitle)}>
-                                    Field name
+                                    {t`Field name`}
                                 </div>
                                 <div className={cx(S.itemTitle, F.fieldType)}>
-                                    Field type
+                                    {t`Field type`}
                                 </div>
                                 <div className={cx(S.itemTitle, F.fieldDataType)}>
-                                    Data type
+                                    {t`Data type`}
                                 </div>
                             </div>
                         </div>

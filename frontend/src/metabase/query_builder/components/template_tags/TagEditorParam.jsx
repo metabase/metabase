@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Toggle from "metabase/components/Toggle.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
@@ -100,7 +100,7 @@ export default class TagEditorParam extends Component {
                 <h3 className="pb2">{tag.name}</h3>
 
                 <div className="pb1">
-                    <h5 className="pb1 text-normal">Filter label</h5>
+                    <h5 className="pb1 text-normal">{t`Filter label`}</h5>
                     <Input
                         type="text"
                         value={tag.display_name}
@@ -110,25 +110,25 @@ export default class TagEditorParam extends Component {
                 </div>
 
                 <div className="pb1">
-                    <h5 className="pb1 text-normal">Variable type</h5>
+                    <h5 className="pb1 text-normal">{t`Variable type`}</h5>
                     <Select
                         className="border-med bg-white block"
                         value={tag.type}
                         onChange={(e) => this.setType(e.target.value)}
                         isInitiallyOpen={!tag.type}
-                        placeholder="Select…"
+                        placeholder={t`Select…`}
                         height={300}
                     >
-                        <Option value="text">Text</Option>
-                        <Option value="number">Number</Option>
-                        <Option value="date">Date</Option>
-                        <Option value="dimension">Field Filter</Option>
+                        <Option value="text">{t`Text`}</Option>
+                        <Option value="number">{t`Number`}</Option>
+                        <Option value="date">{t`Date`}</Option>
+                        <Option value="dimension">{t`Field Filter`}</Option>
                     </Select>
                 </div>
 
                 { tag.type === "dimension" &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Field to map to</h5>
+                        <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
                         <Select
                             className="border-med bg-white block"
                             value={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
@@ -136,7 +136,7 @@ export default class TagEditorParam extends Component {
                             searchProp="name"
                             searchCaseInsensitive
                             isInitiallyOpen={!tag.dimension}
-                            placeholder="Select…"
+                            placeholder={t`Select…`}
                             rowHeight={60}
                             width={280}
                         >
@@ -155,13 +155,13 @@ export default class TagEditorParam extends Component {
 
                 { widgetOptions && widgetOptions.length > 0 &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Filter widget type</h5>
+                        <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
                         <Select
                             className="border-med bg-white block"
                             value={tag.widget_type}
                             onChange={(e) => this.setParameterAttribute("widget_type", e.target.value)}
                             isInitiallyOpen={!tag.widget_type}
-                            placeholder="Select…"
+                            placeholder={t`Select…`}
                         >
                             {[{ name: "None", type: undefined }].concat(widgetOptions).map(widgetOption =>
                                 <Option key={widgetOption.type} value={widgetOption.type}>
@@ -174,14 +174,14 @@ export default class TagEditorParam extends Component {
 
                 { tag.type !== "dimension" &&
                     <div className="flex align-center pb1">
-                        <h5 className="text-normal mr1">Required?</h5>
+                        <h5 className="text-normal mr1">{t`Required?`}</h5>
                         <Toggle value={tag.required} onChange={(value) => this.setRequired(value)} />
                     </div>
                 }
 
                 { ((tag.type !== "dimension" && tag.required) || (tag.type === "dimension" || tag.widget_type)) &&
                     <div className="pb1">
-                        <h5 className="pb1 text-normal">Default filter widget value</h5>
+                        <h5 className="pb1 text-normal">{t`Default filter widget value`}</h5>
                         <ParameterValueWidget
                             parameter={{
                                 type: tag.widget_type || (tag.type === "date" ? "date/single" : null)

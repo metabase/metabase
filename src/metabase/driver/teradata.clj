@@ -11,6 +11,7 @@
     [clojure.tools.logging :as log]
     [honeysql.core :as hsql]
     [metabase.driver.generic-sql :as sql]
+    [metabase.driver.generic-sql.query-processor :as sqlqp]
     [metabase.query-processor
      [annotate :as annotate]
      [interface :as i]
@@ -187,11 +188,9 @@
   (hsql/call :char_length (hx/cast "VARCHAR(2048)" field-key)))
 
 ;; Teradata uses ByteInt with values `1`/`0` for boolean `TRUE`/`FALSE`.
-(defn- prepare-value [{value :value}]
-  (cond
-    (true? value)  1
-    (false? value) 0
-    :else          value))
+(defmethod sqlqp/->honeysql [OracleDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."

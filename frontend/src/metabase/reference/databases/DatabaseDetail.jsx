@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
-
+import { t } from 'c-3po';
 import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -139,9 +139,9 @@ export default class DatabaseDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="description"
-                                    name="Description"
+                                    name={t`Description`}
                                     description={entity.description}
-                                    placeholder="No description yet"
+                                    placeholder={t`No description yet`}
                                     isEditing={isEditing}
                                     field={description}
                                 />
@@ -149,9 +149,9 @@ export default class DatabaseDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this database is interesting`}
+                                    name={t`Why this database is interesting`}
                                     description={entity.points_of_interest}
-                                    placeholder="Nothing interesting yet"
+                                    placeholder={t`Nothing interesting yet`}
                                     isEditing={isEditing}
                                     field={points_of_interest}
                                     />
@@ -159,9 +159,9 @@ export default class DatabaseDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this database`}
+                                    name={t`Things to be aware of about this database`}
                                     description={entity.caveats}
-                                    placeholder="Nothing to be aware of yet"
+                                    placeholder={t`Nothing to be aware of yet`}
                                     isEditing={isEditing}
                                     field={caveats}
                                 />

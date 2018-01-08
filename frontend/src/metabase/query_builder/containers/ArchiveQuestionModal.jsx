@@ -1,6 +1,6 @@
 import React, { Component } from "react"
 import { connect } from "react-redux"
-
+import { t } from 'c-3po';
 import Button from "metabase/components/Button"
 import Icon from "metabase/components/Icon"
 import ModalWithTrigger from "metabase/components/ModalWithTrigger"
@@ -37,19 +37,19 @@ class ArchiveQuestionModal extends Component {
             <ModalWithTrigger
                 ref="archiveModal"
                 triggerElement={
-                    <Tooltip key="archive" tooltip="Archive">
+                    <Tooltip key="archive" tooltip={t`Archive`}>
                         <span className="text-brand-hover">
                             <Icon name="archive" size={16} />
                         </span>
                     </Tooltip>
                 }
-                title="Archive this question?"
+                title={t`Archive this question?`}
                 footer={[
-                    <Button key='cancel' onClick={this.onClose}>Cancel</Button>,
-                    <Button key='archive' warning onClick={this.onArchive}>Archive</Button>
+                    <Button key='cancel' onClick={this.onClose}>{t`Cancel`}</Button>,
+                    <Button key='archive' warning onClick={this.onArchive}>{t`Archive`}</Button>
                 ]}
             >
-                <div className="px4 pb4">This question will be removed from any dashboards or pulses using it.</div>
+                <div className="px4 pb4">{t`This question will be removed from any dashboards or pulses using it.`}</div>
             </ModalWithTrigger>
         )
     }

@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import { isQueryable } from "metabase/lib/table";
 
 import inflection from "inflection";
@@ -9,8 +9,8 @@ import cx from "classnames";
 
 const MainPane = ({ databases, show }) =>
     <div>
-        <h1>Data Reference</h1>
-        <p>Learn more about your data structure to ask more useful questions.</p>
+        <h1>{t`Data Reference`}</h1>
+        <p>{t`Learn more about your data structure to ask more useful questions`}.</p>
         <ul>
             {databases && databases.filter(db => db.tables && db.tables.length > 0).map(database =>
                 <li key={database.id}>

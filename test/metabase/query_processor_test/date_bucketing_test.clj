@@ -829,8 +829,9 @@
      [{:field-name "timestamp"
        :base-type  :type/DateTime}]
      (vec (for [i (range -15 15)]
-            ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
-            ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
+            ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
+            ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
+            ;; the same timezone we're running the tests from *cough* SQL Server *cough*
             [(u/prog1 (driver/date-interval *driver* :second (* i interval-seconds))
                (assert <>))]))]))
 

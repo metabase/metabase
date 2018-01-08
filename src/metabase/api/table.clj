@@ -51,7 +51,8 @@
 
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started], :as body} :body}]
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
+                   show_in_getting_started], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe TableEntityType)
    visibility_type         (s/maybe TableVisibilityType)
@@ -61,7 +62,8 @@
    show_in_getting_started (s/maybe s/Bool)}
   (api/write-check Table id)
   (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
-    ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update description and related fields if passed in
+    ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
+    ;; description and related fields if passed in
     (api/check-500
      (db/update! Table id
        (assoc (u/select-keys-when body
@@ -207,8 +209,8 @@
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case
-  will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
+  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
+  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
   (let [table (api/read-check Table id)
