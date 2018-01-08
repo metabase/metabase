@@ -1,61 +1,101 @@
 import React, { Component } from "react";
 
-import CheckBox     from "metabase/components/CheckBox.jsx";
-import Icon         from "metabase/components/Icon.jsx";
-import { sortable } from "react-sortable";
+import CheckBox from "metabase/components/CheckBox.jsx";
+import Icon from "metabase/components/Icon.jsx";
+import {
+    SortableContainer,
+    SortableElement,
+    SortableHandle,
+    arrayMove
+} from "react-sortable-hoc";
 
 import cx from "classnames";
 
-@sortable
-class OrderedFieldListItem extends Component {
-  render() {
+const FieldListHandle = SortableHandle(() =>
+<Icon
+    className="flex-align-right text-grey-2 mr1 cursor-pointer"
+    name="grabber"
+    width={14}
+    height={14}
+/>
+)
+
+const FieldListItem = SortableElement(({
+    item,
+    columnNames,
+    setEnabled
+}) => (
+    <li
+        className={cx("flex align-center p1", {
+            "text-grey-2": !item.enabled
+        })}
+    >
+        <CheckBox
+            checked={item.enabled}
+            onChange={e => setEnabled(e.target.checked)}
+        />
+        <span className="ml1 h4">
+            {columnNames[item.name]}
+        </span>
+        <FieldListHandle />
+    </li>
+));
+
+const FieldListContainer = SortableContainer(({ items, columnNames, setEnabled }) => {
     return (
-      <div {...this.props} className="list-item">{this.props.children}</div>
-    )
-  }
-}
+        <ul>
+            {items.map((item, index) => (
+                <FieldListItem
+                    key={`item-${index}`}
+                    item={item}
+                    columnNames={columnNames}
+                    setEnabled={(enabled) => setEnabled(index, enabled)}
+                />
+            ))}
+        </ul>
+    );
+});
 
 export default class ChartSettingOrderedFields extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            draggingIndex: null,
-            data: { items: [...this.props.value] }
+            items: [...this.props.value]
         };
     }
 
     componentWillReceiveProps(nextProps) {
-        this.setState({ data: { items: [...nextProps.value] } })
+        this.setState({
+            items: [...nextProps.value]
+        });
     }
-
-    updateState = (obj) => {
-        this.setState(obj);
-        if (obj.draggingIndex == null) {
-            this.props.onChange([...this.state.data.items]);
-        }
-    }
+    onSortEnd = ({ oldIndex, newIndex }) => {
+        this.setState({
+            items: arrayMove(this.state.items, oldIndex, newIndex)
+        }, () =>
+            this.props.onChange(this.state.items)
+        );
+    };
 
     setEnabled = (index, checked) => {
-        const items = [...this.state.data.items];
+        const items = [...this.state.items];
         items[index] = { ...items[index], enabled: checked };
-        this.setState({ data: { items } });
+        this.setState({ items });
         this.props.onChange([...items]);
     }
 
     isAnySelected = () => {
-        let selected = false;
-        for ( const item of [...this.state.data.items]) {
+        for ( const item of [...this.state.items]) {
             if ( item.enabled ) {
-                selected = true;
-                break;
+              return true
             }
         }
-        return selected;
+        return false;
     }
 
     toggleAll = (anySelected) => {
-        const items = [...this.state.data.items].map((item) => ({ ...item, enabled: !anySelected }));
-        this.setState({ data: { items } });
+        const items = [...this.state.items].map((item) => ({ ...item, enabled: !anySelected }));
+        this.setState({ items });
         this.props.onChange([...items]);
     }
 
@@ -70,26 +110,14 @@ export default class ChartSettingOrderedFields extends Component {
                         <span className="ml1 h4">{ anySelected ? 'Unselect all' : 'Select all'}</span>
                     </div>
                 </div>
-                {this.state.data.items.map((item, i) =>
-                    <OrderedFieldListItem
-                        key={i}
-                        updateState={this.updateState}
-                        items={this.state.data.items}
-                        draggingIndex={this.state.draggingIndex}
-                        sortId={i}
-                        outline="list"
-                    >
-                        <div className={cx("flex align-center p1", { "text-grey-2": !item.enabled })} >
-                            <CheckBox
-                                checked={item.enabled}
-                                onChange={e => this.setEnabled(i, e.target.checked)}
-                            />
-                            <span className="ml1 h4">{columnNames[item.name]}</span>
-                            <Icon className="flex-align-right text-grey-2 mr1 cursor-pointer" name="grabber" width={14} height={14}/>
-                        </div>
-                    </OrderedFieldListItem>
-                )}
+                <FieldListContainer
+                    items={this.state.items}
+                    onSortEnd={this.onSortEnd}
+                    columnNames={columnNames}
+                    setEnabled={this.setEnabled}
+                    useDragHandle
+                />
             </div>
-        )
-  }
+        );
+    }
 }
