@@ -6,9 +6,14 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
+
+(defrecord SQLServerDriver []
+  clojure.lang.Named
+  (getName [_] "SQL Server"))
 
 (defn- column->base-type
   "Mappings for SQLServer types to Metabase types.
@@ -146,19 +151,13 @@
                                                  items))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
-(defn- prepare-value [{value :value}]
-  (cond
-    (true? value)  1
-    (false? value) 0
-    :else          value))
+(defmethod sqlqp/->honeysql [SQLServerDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
 
 (defn- string-length-fn [field-key]
   (hsql/call :len (hx/cast :VARCHAR field-key)))
 
-
-(defrecord SQLServerDriver []
-  clojure.lang.Named
-  (getName [_] "SQL Server"))
 
 (def ^:private sqlserver-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
 (def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
@@ -212,7 +211,6 @@
           :current-datetime-fn       (constantly :%getutcdate)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
-          :prepare-value             (u/drop-first-arg prepare-value)
           :stddev-fn                 (constantly :stdev)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))

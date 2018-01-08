@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po';
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -68,7 +68,7 @@ export default class PreferencesStep extends Component {
                         { allowTracking ?
                             <div className="Form-field Form-offset">
                                 <ul style={{listStyle: "disc inside", lineHeight: "200%"}}>
-                                    <li>{t`Metabase <span style={{fontWeight: "bold"}}>never</span> collects anything about your data or question results.`}</li>
+                                    <li>{jt`Metabase ${<span style={{fontWeight: "bold"}}>never</span>} collects anything about your data or question results.`}</li>
                                     <li>{t`All collection is completely anonymous.`}</li>
                                     <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
                                 </ul>

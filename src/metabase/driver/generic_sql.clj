@@ -98,15 +98,10 @@
 
   The default implementation is `identity`.
 
-  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because other
-  functions like `prepare-value` are used for similar purposes; at some point in the future, we might be able to
-  combine them into a single method used in both places.")
-
-  (prepare-value [this, ^Value value]
-    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this
-     returns VALUE's `:value` as-is, which is eventually passed as a parameter in a prepared statement. Drivers such
-     as BigQuery that don't support prepared statements can skip this behavior by returning a HoneySQL `raw` form
-     instead, or other drivers can perform custom type conversion as appropriate.")
+  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because
+  the multimethod `metabase.driver.generic-sql.query-processor/->honeysql` provides an opportunity for drivers to do
+  type conversions as needed. In the future we may simplify a bit and combine them into a single method used in both
+  places.")
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when
@@ -407,7 +402,6 @@
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
    :prepare-sql-param    (u/drop-first-arg identity)
-   :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)
    :stddev-fn            (constantly :STDDEV)})

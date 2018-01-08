@@ -8,6 +8,7 @@
              [helpers :as h]]
             [medley.core :as m]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.test.data.interface :as i]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
@@ -15,7 +16,7 @@
            java.sql.SQLException
            [metabase.test.data.interface DatabaseDefinition FieldDefinition TableDefinition]))
 
-;;; ------------------------------------- IGenericDatasetLoader + default impls --------------------------------------
+;;; ----------------------------------- IGenericSQLTestExtensions + default impls ------------------------------------
 
 (defprotocol IGenericSQLTestExtensions
   "Methods for loading `DatabaseDefinition` in a SQL database.
@@ -211,7 +212,7 @@
         columns     (keys (first rows))
         values      (for [row rows]
                       (for [value (map row columns)]
-                        (sql/prepare-value driver {:value value})))
+                        (sqlqp/->honeysql driver value)))
         hsql-form   (-> (apply h/columns (for [column columns]
                                            (hx/qualify-and-escape-dots (prepare-key column))))
                         (h/insert-into (prepare-key table-name))

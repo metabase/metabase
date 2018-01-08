@@ -351,14 +351,3 @@
     (check-404 object)
     (check (not (:archived object))
       [404 {:message "The object has been archived.", :error_code "archived"}])))
-
-(defn piped-json-stream
-  "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
-  [response-seq]
-  (rui/piped-input-stream
-   (fn [^OutputStream output-stream]
-     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
-                 buffered-writer (BufferedWriter. output-writer)]
-       (-> response-seq
-           (json/generate-stream buffered-writer)
-           (rr/content-type "application/json; charset=utf-8"))))))
