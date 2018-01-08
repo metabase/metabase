@@ -62,7 +62,7 @@
   (context "/card"            [] (+auth card/routes))
   (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))
-  (context "/database"        [] (+auth database/routes))
+  (context "/database"        [] database/routes)
   (context "/dataset"         [] (+auth dataset/routes))
   (context "/email"           [] (+auth email/routes))
   (context "/embed"           [] (+message-only-exceptions embed/routes))

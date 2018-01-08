@@ -1,14 +1,23 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`.
    These are primarily used as the internal implementation of `defendpoint`."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire
+             [core :as json]
+             [generate :as json-gen]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [ring.util
+             [io :as rui]
+             [response :as rr]]
             [schema.core :as s])
-  (:import java.sql.SQLException))
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [java.nio.charset Charset StandardCharsets]
+           java.sql.SQLException))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
@@ -282,6 +291,94 @@
   (for [[param schema] param->schema]
     `(validate-param '~param ~param ~schema)))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      Functions for streaming JSON responses                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+
+(defn- call-on-first-row
+  "Calls `f` on the first row seen, acts as a no-op after"
+  [f]
+  (let [seen-first-row? (volatile! false)]
+    (fn [row]
+      (if @seen-first-row?
+        row
+        (do
+          (f row)
+          (vreset! seen-first-row? true)
+          row)))))
+
+(defn- json-piped-input-stream
+  "Ensures the response includes the JSON content type. This is needed as the body is an input stream and could be
+  interpretted as anything."
+  [f]
+  (rr/content-type {:status 200
+                    :body (rui/piped-input-stream f)}
+                   "application/json; charset=utf-8"))
+
+(defn- serialize-to-piped-input-stream
+  "Applies `transducer` to the reducible query results `reducible-q`. Serializes the results as JSON to a
+  PipedOutputStream. Returns the connected PipedInputStream as the body of a response map. Will call `on-first-row`
+  once the first row has be retrieved from `reducible-q` and calls `on-error` if an error occurs."
+  [on-first-row on-error query-eduction]
+  (json-piped-input-stream
+   ;; This function will be invoked in a future and run in a different thread
+   (fn [^OutputStream output-stream]
+     (with-open [output-writer                 (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+                 buffered-writer               (BufferedWriter. output-writer)
+                 ^JsonGenerator json-generator (json/create-generator buffered-writer)]
+       (try
+         ;; We're always going to return a seq of objects, writing them in this way is the fastest way I've found
+         (.writeStartArray json-generator)
+         ;; This is a side-affecty way to run a reducible
+         (run! #(json-gen/encode-map % json-generator)
+               ;; This eduction will help us know that we've successfully executed a query and recevied a result from
+               ;; the result set. Up to this point, we have established a connection to the database but not run the
+               ;; query. We'll check for the first row first before running the `transducer` on the results
+               (eduction (map (call-on-first-row on-first-row)) query-eduction))
+
+         ;; If an exception has occured, let `on-error`
+         (catch Exception e
+           (on-error e))
+         (finally
+           ;; Make sure we finish serializing the array
+           (.writeEndArray json-generator)
+           ;; Not sure if this is necessary, Cheshire does it
+           (.flush json-generator)))))))
+
+(defn- throw-if-exception
+  "Awaits delivery of the promise `p`. If an Exception is found, throw it."
+  [p]
+  (when (instance? Exception @p)
+    (throw @p)))
+
+(defn- make-error-handler
+  "Ensures the error is handled via delivering it to the promise `p`, or logged"
+  [p]
+  (fn [ex]
+    ;; If `p` is realized, we've already received the first row and possibly serialized some results
+    (if (realized? p)
+      ;; Since results are already being delivered, write the error to the log and throw, best I can tell at this
+      ;; stage nothing above will log the message as it is outside of our handlers
+      (do
+        (log/error ex "Error while streaming results for response")
+        (throw ex))
+      ;; The error occured before we have received any results from the query, deliver the exception so that an error
+      ;; response can be returned
+      (deliver p ex))))
+
+(s/defn eduction->piped-streaming-response
+  "Takes a thunk that returns an `eduction` when invoked. Will return a ring response with a PipedInputStream,
+  serializing the `eduction` to JSON to that stream."
+  [query-result :- clojure.core.Eduction]
+  (let [p        (promise)
+        response (serialize-to-piped-input-stream #(deliver p %) (make-error-handler p) query-result)]
+
+    ;; Block until a row or an exception has been delivered to `p`. This will catch something like SQL query that
+    ;; fails to compile or references something that doesn't exist and allow that exception to be returned as if the
+    ;; query was running in the HTTP thread.
+    (throw-if-exception p)
+    response))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |

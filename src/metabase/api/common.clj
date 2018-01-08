@@ -1,6 +1,8 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [cheshire.core :as json]
+  (:require [cheshire
+             [core :as json]
+              [generate :as json-gen]]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes]]
@@ -14,7 +16,8 @@
              [io :as rui]
              [response :as rr]]
             [toucan.db :as db])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           [java.io BufferedWriter OutputStream OutputStreamWriter]
            [java.nio.charset Charset StandardCharsets]))
 
 (declare check-403 check-404)
@@ -246,6 +249,29 @@
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
+(defn- parse-defendpoint-args
+  "Helper function for the `defendpoint` macros, parsing the supplied arguments, validating them and returning them in
+  a map"
+  [method route other-args]
+  (let [fn-name                (route-fn-name method route)
+        route                  (typify-route route)
+        [docstr [args & more]] (u/optional string? other-args)
+        [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
+        validate-param-calls   (validate-params arg->schema)]
+
+    (when-not docstr
+      (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
+
+    {:fn-name              fn-name
+     ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+     ;; their API error messages
+     :route-doc            (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+     :method               method
+     :route                route
+     :route-args           args
+     :route-body           body
+     :validate-params-body validate-param-calls}))
+
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 (defmacro defendpoint
   "Define an API function.
@@ -265,24 +291,34 @@
   [method route & more]
   {:pre [(or (string? route)
              (vector? route))]}
-  (let [fn-name                (route-fn-name method route)
-        route                  (typify-route route)
-        [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
-        validate-param-calls   (validate-params arg->schema)]
-    (when-not docstr
-      (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
+  (let [{:keys [fn-name route-doc method route route-args route-body validate-params-body]} (parse-defendpoint-args method route more)]
     `(def ~(vary-meta fn-name assoc
-                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-                      ;; their API error messages
-                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+                      :doc route-doc
                       :is-endpoint? true)
-       (~method ~route ~args
+       (~method ~route ~route-args
         (catch-api-exceptions
-          (auto-parse ~args
-            ~@validate-param-calls
-            (wrap-response-if-needed (do ~@body))))))))
+          (auto-parse ~route-args
+            ~@validate-params-body
+            (wrap-response-if-needed (do ~@route-body))))))))
 
+(defmacro defendpoint-streaming
+  "Identical to `defendpoint` except it expects the body of the route to return and `eduction` that can be streamed as a response"
+  {:arglists '([method route docstr? args schemas-map? & body])}
+  [method route & more]
+  {:pre [(or (string? route)
+             (vector? route))]}
+  (let [{:keys [fn-name route-doc method route route-args
+                route-body validate-params-body]} (parse-defendpoint-args method route more)]
+    `(def ~(vary-meta fn-name assoc
+                      :doc route-doc
+                      :is-endpoint? true)
+       (~method ~route ~route-args
+        (catch-api-exceptions
+          (auto-parse ~route-args
+            ~@validate-params-body
+            (wrap-response-if-needed
+             (eduction->piped-streaming-response
+              (do ~@route-body)))))))))
 
 (defmacro define-routes
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with
