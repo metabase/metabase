@@ -16,7 +16,7 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
-             [field :refer [Field]]
+             [field :refer [Field readable-fields-only]]
              [field-values :refer [FieldValues]]
              [interface :as mi]
              [permissions :as perms]
@@ -240,7 +240,7 @@
 
 (defn- autocomplete-suggestions [db-id prefix]
   (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
-        fields (filter mi/can-read? (autocomplete-fields db-id prefix))]
+        fields (readable-fields-only (autocomplete-fields db-id prefix))]
     (autocomplete-results tables fields)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
@@ -285,7 +285,7 @@
   [id]
   (api/read-check Database id)
   (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
-                                                                         (hydrate :table)))))
+                                                                       (hydrate :table)))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------

@@ -121,6 +121,15 @@
        :type)])
 
 (expect
+  [nil nil]
+  ((juxt :best-fit :linear-regression)
+   (->features [{:base_type :type/DateTime}
+                {:base_type :type/Number}]
+               [[(make-sql-timestamp 2015 6 1) 0]
+                [(make-sql-timestamp 2015 6 2) 1000000]
+                [(make-sql-timestamp 2015 6 3) Double/MAX_VALUE]])))
+
+(expect
   [:some
    :some
    0.5025]

@@ -10,6 +10,7 @@
             [metabase.util :as u]
             [toucan
              [db :as db]
+             [hydrate :refer [hydrate]]
              [models :as models]]))
 
 ;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
@@ -158,6 +159,13 @@
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
+(defn readable-fields-only
+  "Efficiently checks if each field is readable and returns only readable fields"
+  [fields]
+  (for [field (hydrate fields :table)
+        :when (i/can-read? field)]
+    (dissoc field :table)))
+
 (defn with-targets
   "Efficiently hydrate the FK target fields for a collection of FIELDS."
   {:batched-hydrate :target}
@@ -167,7 +175,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (filter i/can-read? (db/select Field :id [:in target-field-ids]))))]
+                                         (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
