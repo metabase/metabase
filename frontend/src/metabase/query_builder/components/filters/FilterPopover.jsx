@@ -15,7 +15,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
 import { isDate } from "metabase/lib/schema_metadata";
-import { formatField, singularize, pluralize } from "metabase/lib/formatting";
+import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
