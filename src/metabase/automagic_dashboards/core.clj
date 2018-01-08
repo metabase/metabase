@@ -270,6 +270,13 @@
          :table_id (:id table)
          :fk_target_field_id [:not= nil])))
 
+(defn link-table?
+  "Is table comprised only of foregin keys and maybe a primary key?"
+  [table]
+  (empty? (db/select Field
+            :table_id (:id table)
+            :special_type [:not-in ["type/FK" "type/PK"]])))
+
 (defn automagic-dashboard
   "Create a dashboard for table `root` using the best matching heuristic."
   [root]
