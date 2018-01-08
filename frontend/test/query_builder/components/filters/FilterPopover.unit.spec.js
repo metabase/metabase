@@ -10,14 +10,18 @@ import CheckBox from 'metabase/components/CheckBox'
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
+    ORDERS_TOTAL_FIELD_ID,
+    ORDERS_CREATED_DATE_FIELD_ID,
     metadata
 } from "__support__/sample_dataset_fixture";
 
-const RELATIVE_DAY_FILTER = ["time-interval", ["field-id", 1], -30, "day"]
+const RELATIVE_DAY_FILTER = ["time-interval", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], -30, "day"]
 
 const FILTER_WITH_CURRENT_PERIOD = RELATIVE_DAY_FILTER.concat([
     {"include-current": true }
 ])
+
+const NUMERIC_FILTER = ["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 1234];
 
 const QUERY = Question.create({
     databaseId: DATABASE_ID,
@@ -27,6 +31,7 @@ const QUERY = Question.create({
 .query()
 .addAggregation(["count"])
 .addFilter(RELATIVE_DAY_FILTER)
+.addFilter(NUMERIC_FILTER)
 
 describe('FilterPopover', () => {
     describe('existing filter', () => {
@@ -42,6 +47,17 @@ describe('FilterPopover', () => {
             })
         })
         describe('including the current period', () => {
+            it('should not show a control to the user for the appropriate types of queries', () => {
+                const wrapper = shallow(
+                    <FilterPopover
+                        query={QUERY}
+                        filter={QUERY.filters()[1]}
+                    />
+                )
+
+                const toggle = wrapper.find(CheckBox)
+                expect(toggle.length).toBe(0)
+            })
             it('should show a control to the user for the appropriate types of queries', () => {
                 const wrapper = shallow(
                     <FilterPopover
@@ -54,7 +70,6 @@ describe('FilterPopover', () => {
                 expect(toggle.length).toBe(1)
             })
             it('should let the user toggle', () => {
-
                 const wrapper = mount(
                     <FilterPopover
                         query={QUERY}
