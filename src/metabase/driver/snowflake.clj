@@ -82,7 +82,7 @@
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :to_timestamp expr)
-    :milliseconds (recur (hx// expr 1000) :seconds)))
+    :milliseconds (hsql/call :to_timestamp expr 3)))
 
 (defn- date-interval [unit amount]
   (hsql/raw (format "dateadd(%s, %d, current_timestamp())" (name unit) (int amount))))
