@@ -7,8 +7,9 @@ import moment from "moment";
 import _ from "underscore";
 
 import SpecificDatePicker from "./SpecificDatePicker";
-import RelativeDatePicker, { DATE_PERIODS, UnitPicker } from "./RelativeDatePicker";
+import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
+import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
 import Query from "metabase/lib/query";
@@ -87,8 +88,8 @@ class CurrentPicker extends Component {
     render() {
         const { filter: [operator, field, intervals, unit], onFilterChange } = this.props
         return (
-            <div className="mx2">
-                <UnitPicker
+            <div className="flex-full mr2 mb2">
+                <DateUnitSelector
                     value={unit}
                     open={this.state.showUnits}
                     onChange={(value) => {
@@ -280,8 +281,11 @@ export default class DatePicker extends Component {
         );
 
         return (
-            // apply flex to align the operator selector and the "Widget" if necessary
-            <div className={cx("border-top pt2", { "flex align-center": needsHorizontalLayout })}>
+            <div
+              // apply flex to align the operator selector and the "Widget" if necessary
+              className={cx("border-top pt2", { "flex align-center": needsHorizontalLayout })}
+              style={{ minWidth: 380 }}
+            >
                 <DateOperatorSelector
                     operator={operator && operator.name}
                     operators={operators}
