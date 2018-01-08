@@ -73,7 +73,6 @@ export default class RelativeDatePicker extends Component {
                             this.setState({ showUnits: false });
                         }}
                         togglePicker={() => this.setState({ showUnits: !this.state.showUnits})}
-                        // $FlowFixMe: intervals could be a string like "current" "next"
                         intervals={intervals}
                         formatter={formatter}
                         periods={this.props.hideTimeSelectors ? DATE_PERIODS : ALL_PERIODS}

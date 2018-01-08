@@ -20,7 +20,7 @@ import { formatField, singularize } from "metabase/lib/formatting";
 import cx from "classnames";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";
+import type { Filter, FieldFilter, ConcreteField, FilterOptions } from "metabase/meta/types/Query";
 import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
@@ -43,6 +43,32 @@ const CURRENT_INTERVAL_NAME = {
     "minute": t`this minute`,
     "hour":   t`this hour`,
 };
+
+function getCurrentIntervalName(filter: FieldFilter): ?string {
+  if (filter[0] === "time-interval") {
+    // $FlowFixMe:
+    return CURRENT_INTERVAL_NAME[filter[3]];
+  }
+  return null;
+}
+
+function getFilterOptions(filter: FieldFilter): FilterOptions {
+  if (filter[0] === "time-interval") {
+    // $FlowFixMe:
+    const options: FilterOptions = filter[4] || {};
+    return options;
+  }
+  return {};
+}
+
+function setFilterOptions<T: FieldFilter>(filter: T, options: FilterOptions): T {
+  if (filter[0] === "time-interval") {
+    // $FlowFixMe
+    return [...filter.slice(0,4), options];
+  } else {
+    return filter;
+  }
+}
 
 export default class FilterPopover extends Component {
     props: Props;
@@ -119,11 +145,7 @@ export default class FilterPopover extends Component {
     }
 
     hasCurrentPeriod = () => {
-        // determine if there is an options map on the date filter and if so
-        // use this to indicate that current is included
-        // TODO this is dumb and brittle, just a starting point
-        const options = this.state.filter[4] || {};
-        return options["include-current"] || false;
+        return getFilterOptions(this.state.filter)["include-current"] || false;
     }
 
     toggleCurrentPeriod = () => {
@@ -131,14 +153,12 @@ export default class FilterPopover extends Component {
         const operator = getOperator(filter);
 
         if (operator && operator.options && operator.options["include-current"]) {
-            // NOTE: currently hard codes options at index 4
-            const options = filter[4] || {};
-            const newOptions = {
-              ...options,
-              "include-current": !options["include-current"]
-            };
+            const options = getFilterOptions(filter);
             this.setState({
-                filter: [...filter.slice(0,4), newOptions]
+                filter: setFilterOptions(filter, {
+                  ...options,
+                  "include-current": !options["include-current"]
+                })
             });
         }
     }
@@ -332,7 +352,7 @@ export default class FilterPopover extends Component {
                             <div className="flex align-center" onClick={() => this.toggleCurrentPeriod()}>
                                 <Checkbox checked={this.hasCurrentPeriod()} />
                                 <label className="ml1">
-                                    {jt`Include ${<b>{CURRENT_INTERVAL_NAME[filter[3]]}</b>}`}
+                                    {jt`Include ${<b>{getCurrentIntervalName(filter)}</b>}`}
                                 </label>
                             </div>
                         )}

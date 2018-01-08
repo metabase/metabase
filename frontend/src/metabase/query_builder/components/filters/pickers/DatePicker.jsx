@@ -155,7 +155,8 @@ export type Operator = {
     name: OperatorName,
     widget?: any,
     init: (filter: FieldFilter) => any,
-    test: (filter: FieldFilter) => boolean
+    test: (filter: FieldFilter) => boolean,
+    options?: { [key: string]: any }
 }
 
 const ALL_TIME_OPERATOR = {
@@ -229,7 +230,7 @@ export const EMPTINESS_OPERATORS: Operator[] = [
 
 export const ALL_OPERATORS: Operator[] = DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
 
-export function getOperator(filter, operators?: Operator[] = ALL_OPERATORS) {
+export function getOperator(filter: FieldFilter, operators?: Operator[] = ALL_OPERATORS) {
     return _.find(operators, (o) => o.test(filter));
 }
 
