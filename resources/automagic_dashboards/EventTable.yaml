@@ -27,3 +27,4 @@ cards:
       metrics: Count
       dimensions: Category
       visualization: bar
+      score: 80

@@ -112,6 +112,7 @@
    [#"people"      :type/UserTable]
    [#"person"      :type/UserTable]
    [#"event"       :type/EventTable]
+   [#"checkin"     :type/EventTable]
    [#"log"         :type/EventTable]])
 
 (s/defn ^:always-validate infer-entity-type :- i/TableInstance
@@ -121,10 +122,11 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (when (-> table
+                                  (case (-> table
                                             :db_id
                                             Database
-                                            :engine
-                                            (= :googleanalytics))
-                                    :type/GoogleAnalyticsTable)
+                                            :engine)
+                                    :googleanalytics :type/GoogleAnalyticsTable
+                                    :druid           :type/EventTable
+                                    nil)
                                   :type/GenericTable))))

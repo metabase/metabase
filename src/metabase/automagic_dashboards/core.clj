@@ -63,7 +63,7 @@
                          (rules/ga-dimension? fieldspec))
                   (comp #{fieldspec} :name)
                   (fn [{:keys [base_type special_type]}]
-                    (isa? (or special_type base_type) fieldspec))))
+                    (some #(isa? % fieldspec) [special_type base_type]))))
    :named     (fn [name-pattern]
                 (comp (->> name-pattern
                            str/lower-case
@@ -72,15 +72,21 @@
                       str/lower-case
                       :name))})
 
+(defn- key?
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Number)
+       (#{:PK :FK} special_type)))
+
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
    `preds` are true."
   [preds table]
-  (filter (->> preds
-               (keep (fn [[k v]]
-                       (when-let [pred (field-filters k)]
-                         (some-> v pred))))
-               (apply every-pred))
+  (filter (every-pred (complement key?)
+                      (->> preds
+                           (keep (fn [[k v]]
+                                   (when-let [pred (field-filters k)]
+                                     (some-> v pred))))
+                           (apply every-pred)))
           (db/select Field :table_id (:id table))))
 
 (defn- filter-tables
