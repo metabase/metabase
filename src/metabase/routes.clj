@@ -63,16 +63,25 @@
 (def ^:private public (partial entrypoint "public" :embeddable))
 (def ^:private embed  (partial entrypoint "embed"  :embeddable))
 
+(defn- redirect-including-query-string
+  "Like `resp/redirect`, but passes along query string URL params as well. This is important because the public and
+   embedding routes below pass query params (such as template tags) as part of the URL."
+  [url]
+  (fn [{:keys [query-string]}]
+    (resp/redirect (str url "?" query-string))))
+
+;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
        [uuid export-format]
-       (resp/redirect (format "/api/public/card/%s/query/%s" uuid export-format)))
+       (redirect-including-query-string (format "/api/public/card/%s/query/%s" uuid export-format)))
   (GET "*" [] public))
 
+;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 (defroutes ^:private embed-routes
   (GET ["/question/:token.:export-format", :export-format dataset-api/export-format-regex]
        [token export-format]
-       (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format)))
+       (redirect-including-query-string (format "/api/embed/card/%s/query/%s" token export-format)))
   (GET "*" [] embed))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete

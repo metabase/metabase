@@ -4,6 +4,7 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
+             [config :as config]
              [http-client :as http]
              [util :as u]]
             [metabase.api
@@ -261,6 +262,36 @@
 
 
 ;; ------------------------------------------------------------ GET /api/embed/dashboard/:token ------------------------------------------------------------
+;; make sure CSV (etc.) downloads take editable params into account (#6407)
+
+(defn- card-with-date-field-filter []
+  {:dataset_query    {:database (data/id)
+                      :type     :native
+                      :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
+                                 :template_tags {:date {:name         "date"
+                                                        :display_name "Date"
+                                                        :type         "dimension"
+                                                        :dimension    [:field-id (data/id :checkins :date)]
+                                                        :widget_type  "date/quarter-year"}}}}
+   :enable_embedding true
+   :embedding_params {:date :enabled}})
+
+(expect
+  "count\n107\n"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [card (card-with-date-field-filter)]
+      (http/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014")))))
+
+;; make sure it also works with the forwarded URL
+(expect
+  "count\n107\n"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [card (card-with-date-field-filter)]
+      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
+        (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))
+
+
 
 (defn- dashboard-url [dashboard & [additional-token-params]] (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
 
