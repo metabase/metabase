@@ -5483,14 +5483,14 @@ lcid@^1.0.0:
     invert-kv "^1.0.0"
 
 leaflet-draw@^0.4.9:
-  version "0.4.12"
-  resolved "https://registry.yarnpkg.com/leaflet-draw/-/leaflet-draw-0.4.12.tgz#04c9f3506e3b3a8a488ad389381331dc5b2affd8"
+  version "0.4.13"
+  resolved "https://registry.yarnpkg.com/leaflet-draw/-/leaflet-draw-0.4.13.tgz#b9467d8d6523edc5912e93727951005b77b62895"
 
 leaflet.heat@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/leaflet.heat/-/leaflet.heat-0.2.0.tgz#109d8cf586f0adee41f05aff031e27a77fecc229"
 
-leaflet@^1.0.1:
+leaflet@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.2.0.tgz#fd5d93d9cb00091f5f8a69206d0d6744c1c82697"
 
