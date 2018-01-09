@@ -95,7 +95,7 @@
                                org.mortbay.jetty/jetty]
                   :classifier "standalone"]
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
-                 [org.xerial/sqlite-jdbc "3.16.1"]                    ; SQLite driver
+                 [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
