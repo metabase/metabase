@@ -74,7 +74,7 @@
 
 (defn create-dashboard!
   "Create dashboard and populate it with cards."
-  [title description cards]
+  [{:keys [title description]} cards]
   (let [dashboard (db/insert! 'Dashboard
                     :name        title
                     :description description

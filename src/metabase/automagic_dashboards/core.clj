@@ -212,11 +212,19 @@
                         (max-key :score a b)))
          definitions))
 
+(defn- instantate-visualization
+  [bindings v]
+  (let [identifier->name (comp :name bindings)]
+    (-> v
+        (u/update-in-when ["map" "map.latitude_column"] identifier->name)
+        (u/update-in-when ["map" "map.longitude_column"] identifier->name))))
+
 (defn- instantiate-metadata
   [context bindings x]
   (let [fill-template (partial fill-template :string context bindings)]
     (-> x
         (update :title fill-template)
+        (u/update-when :visualization (partial instantate-visualization bindings))
         (u/update-when :description fill-template))))
 
 (defn- card-candidates
@@ -288,15 +296,16 @@
 (defn automagic-dashboard
   "Create a dashboard for table `root` using the best matching heuristic."
   [root]
-  (let [rule    (best-matching-rule (rules/load-rules) root)
-        context (as-> {:root-table root
+  (let [rule      (best-matching-rule (rules/load-rules) root)
+        context   (as-> {:root-table root
                        :rule       (:table_type rule)
                        :tables     (concat [root] (linked-tables root))
                        :database   (:db_id root)} <>
-                  (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
-                  (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
-                  (assoc <> :filters (resolve-overloading <> (:filters rule))))
-        rule    (instantiate-metadata context {} rule)]
+                    (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
+                    (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
+                    (assoc <> :filters (resolve-overloading <> (:filters rule))))
+        dashboard (->> (select-keys rule [:title :description])
+                       (instantiate-metadata context {}))]
     (log/info (format "Applying heuristic %s to table %s."
                       (:table_type rule)
                       (:name root)))
@@ -319,5 +328,5 @@
              (apply merge-with (partial max-key (comp :score first)))
              vals
              (apply concat)
-             (populate/create-dashboard! (:title rule) (:description rule))
+             (populate/create-dashboard! dashboard)
              :id)))
