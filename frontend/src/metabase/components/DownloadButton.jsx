@@ -5,7 +5,7 @@ import Button from "metabase/components/Button.jsx";
 
 const DownloadButton = ({ className, style, children, method, url, params, extensions, ...props }) =>
     <form className={className} style={style} method={method} action={url}>
-        { Object.entries(params).map(([name, value]) =>
+        { params && Object.entries(params).map(([name, value]) =>
             <input key={name} type="hidden" name={name} value={value} />
         )}
         <Button
