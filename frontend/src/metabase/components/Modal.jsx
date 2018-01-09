@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
@@ -79,13 +79,13 @@ export class WindowModal extends Component {
         const { backdropClassName, isOpen, style } = this.props;
         const backdropClassnames = 'flex justify-center align-center fixed top left bottom right';
         ReactDOM.unstable_renderSubtreeIntoContainer(this,
-            <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
+            <CSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
                 { isOpen &&
                     <div key="modal" className={cx(backdropClassName, backdropClassnames)} style={style}>
                         {this._modalComponent()}
                     </div>
                 }
-            </ReactCSSTransitionGroup>
+            </CSSTransitionGroup>
         , this._modalElement);
     }
 

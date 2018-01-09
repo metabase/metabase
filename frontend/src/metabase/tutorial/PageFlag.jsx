@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import "./PageFlag.css";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { CSSTransitionGroup } from "react-transition-group";
 
 import BodyComponent from "metabase/components/BodyComponent.jsx";
 
@@ -25,9 +25,9 @@ export default class PageFlag extends Component {
 
     render() {
         return (
-            <ReactCSSTransitionGroup transitionName="PageFlag" transitionEnterTimeout={250} transitionLeaveTimeout={250}>
+            <CSSTransitionGroup transitionName="PageFlag" transitionEnterTimeout={250} transitionLeaveTimeout={250}>
                 { this.props.target ? [this.renderPageFlag()] : [] }
-            </ReactCSSTransitionGroup>
+            </CSSTransitionGroup>
         );
     }
 }
