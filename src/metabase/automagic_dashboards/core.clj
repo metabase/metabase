@@ -72,16 +72,18 @@
                       str/lower-case
                       :name))})
 
-(defn- key?
-  [{:keys [base_type special_type]}]
+(defn- numeric-key?
+  "Workaround for our leaky type system which conflates types with properties."
+  [{:keys [base_type special_type name]}]
   (and (isa? base_type :type/Number)
-       (#{:PK :FK} special_type)))
+       (or (#{:type/PK :type/FK} special_type)
+           (-> name str/lower-case (= "id")))))
 
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
    `preds` are true."
   [preds table]
-  (filter (every-pred (complement key?)
+  (filter (every-pred (complement numeric-key?)
                       (->> preds
                            (keep (fn [[k v]]
                                    (when-let [pred (field-filters k)]
