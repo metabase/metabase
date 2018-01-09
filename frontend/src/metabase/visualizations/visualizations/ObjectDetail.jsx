@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from 'react-redux';
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po';
 import DirectionalButton from 'metabase/components/DirectionalButton';
 import ExpandableString from 'metabase/query_builder/components/ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
@@ -250,7 +250,7 @@ export class ObjectDetail extends Component {
                         <div className="p4 flex align-center text-bold text-grey-3">
                             <Icon name="connections" size={17} />
                             <div className="ml2">
-                                {t`This <span className="text-dark">${tableName}</span> is connected to:`}
+                                {jt`This ${<span className="text-dark">{tableName}</span>} is connected to:`}
                             </div>
                         </div>
                     </div>
