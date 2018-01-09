@@ -10,15 +10,16 @@ dimensions:
   - Long: Longitude
   - Lat: Latitude
 cards:
-  - EventsByDay:
-      title: Events by [[Category]]
-      description: Count of events by [[Category]] through time.
-      metrics: Count
-      dimensions:
-        - Timestamp
-        - Category
-      visualization: area
-      score: 100
+# disabled until high cardinality categories stop blowing up area charts
+#  - EventsByDay:
+#      title: Events by [[Category]]
+#      description: Count of events by [[Category]] through time.
+#      metrics: Count
+#      dimensions:
+#        - Timestamp
+#        - Category
+#      visualization: area
+#      score: 100
   - EventsByDay:
       title: Events by time
       metrics: Count
