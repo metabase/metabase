@@ -119,7 +119,7 @@
      :display_name "Checkins"
      :rows         1000
      :id           (data/id :checkins)
-     :entity_type  "type/GenericTable"}
+     :entity_type  "type/EventTable"}
     {:name         (data/format-name "users")
      :display_name "Users"
      :rows         15
@@ -409,6 +409,7 @@
                                                          {:schema       "PUBLIC"
                                                           :name         "CHECKINS"
                                                           :display_name "Checkins"
+                                                          :entity_type  "type/EventTable"
                                                           :rows         1000
                                                           :updated_at   $
                                                           :id           $
