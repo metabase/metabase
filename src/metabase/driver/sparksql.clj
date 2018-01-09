@@ -79,6 +79,7 @@
                                             (dash-to-underscore (:name table)))
                                     (str "describe " (dash-to-underscore (:name table))))])]
                     {:name (:col_name result)
+                     :database-type (:data_type result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
 ;; we need this because transactions are not supported in Hive 1.2.1

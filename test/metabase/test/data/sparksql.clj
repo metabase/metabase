@@ -7,6 +7,7 @@
                       [helpers :as h])
             (metabase.driver [generic-sql :as sql]
                              [hive-like :as hive-like])
+            (metabase.driver.generic-sql [query-processor :as sqlqp])
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.util :as u]
@@ -52,7 +53,7 @@
         columns     (keys (first rows))
         values      (for [row rows]
                       (for [value (map row columns)]
-                        (sql/prepare-value driver {:value value})))
+                        (sqlqp/->honeysql driver value)))
         hsql-form   (-> (h/insert-into (prepare-key table-name))
                         (h/values values))
         sql+args    (hive-like/unprepare

@@ -74,6 +74,20 @@
      (nth (:aggregation query) index)
      (recur index (:source-query query) (dec aggregation-level)))))
 
+(defn resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
+  (let [source-table (or (get-in *query* [:query :source-table])
+                         (get-in *query* [:query :source-query :source-table]) )]
+    (if (and (= schema-name (:schema source-table))
+             (= table-name (:name source-table)))
+      (-> (assoc field :schema-name nil)
+          (assoc :table-name source-table-alias))
+      (if-let [matching-join-table (->> (get-in *query* [:query :join-tables])
+                                        (filter #(and (= schema-name (:schema %))
+                                                      (= table-name (:table-name %))))
+                                        first)]
+        (-> (assoc field :schema-name nil)
+            (assoc :table-name (:join-alias matching-join-table)))
+        field))))
 
 (defmulti ^{:doc          (str "Return an appropriate HoneySQL form for an object. Dispatches off both driver and object "
                                "classes making this easy to override in any places needed for a given driver.")
@@ -98,8 +112,9 @@
   (->honeysql driver (expression-with-name expression-name)))
 
 (defmethod ->honeysql [Object Field]
-  [driver {:keys [schema-name table-name special-type field-name]}]
-  (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+  [driver field-before-aliasing]
+  (let [{:keys [schema-name table-name special-type field-name]} (resolve-table-alias field-before-aliasing)
+        field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
       (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)

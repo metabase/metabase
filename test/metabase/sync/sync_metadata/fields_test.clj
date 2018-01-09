@@ -86,12 +86,12 @@
 ;; others' assumption when first coming across bug #6146 was that this was a sync issue), this test can stay here for
 ;; now along with the other test we have testing sync after dropping a column.
 (expect
-  {:before-drop (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\", "
-                     "\"PUBLIC\".\"birds\".\"example_name\" AS \"example_name\" "
-                     "FROM \"PUBLIC\".\"birds\" "
+  {:before-drop (str "SELECT \"t1\".\"species\" AS \"species\", "
+                     "\"t1\".\"example_name\" AS \"example_name\" "
+                     "FROM \"PUBLIC\".\"birds\" \"t1\" "
                      "LIMIT 1048576")
-   :after-drop  (str "SELECT \"PUBLIC\".\"birds\".\"species\" AS \"species\" "
-                     "FROM \"PUBLIC\".\"birds\" "
+   :after-drop  (str "SELECT \"t1\".\"species\" AS \"species\" "
+                     "FROM \"PUBLIC\".\"birds\" \"t1\" "
                      "LIMIT 1048576")}
   (with-test-db-before-and-after-dropping-a-column
     (fn [database]
