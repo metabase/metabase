@@ -199,7 +199,7 @@
                                          {:name         "additional-options"
                                           :display-name "Additional JDBC connection string options"
                                           :placeholder  "trustServerCertificate=false"}]))
-          :current-db-time (driver/make-current-db-time-fn sqlserver-date-formatter sqlserver-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn sqlserver-db-time-query sqlserver-date-formatter)})
 
 
   sql/ISQLDriver

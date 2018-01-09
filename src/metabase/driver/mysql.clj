@@ -252,7 +252,7 @@
                                                              :display-name "Additional JDBC connection string options"
                                                              :placeholder  "tinyInt1isBit=false"}]))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn mysql-date-formatter mysql-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatter)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

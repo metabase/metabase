@@ -103,7 +103,7 @@
                                                     :placeholder  "*******"
                                                     :required     true}]))
           :format-custom-field-name (u/drop-first-arg str/lower-case)
-          :current-db-time          (driver/make-current-db-time-fn redshift-date-formatter redshift-db-time-query)})
+          :current-db-time          (driver/make-current-db-time-fn redshift-db-time-query redshift-date-formatter)})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin

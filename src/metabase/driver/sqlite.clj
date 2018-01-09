@@ -178,7 +178,7 @@
                                              ;; the foreign key stuff in the tests.
                                              (when config/is-test?
                                                #{:foreign-keys})))
-          :current-db-time (driver/make-current-db-time-fn sqlite-date-formatter sqlite-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn sqlite-db-time-query sqlite-date-formatter)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables

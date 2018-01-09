@@ -308,7 +308,7 @@
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn presto-date-formatter presto-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn presto-db-time-query presto-date-formatter)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

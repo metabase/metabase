@@ -296,7 +296,7 @@
   "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
   for the current time. Returns a function that executes the query and
   parses the date returned preserving it's timezone"
-  [date-formatter native-query]
+  [native-query date-formatter]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
                      {:settings {:report-timezone report-tz}})

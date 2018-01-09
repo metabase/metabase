@@ -242,7 +242,7 @@
 (u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:current-db-time                   (driver/make-current-db-time-fn pg-date-formatter pg-db-time-query)
+         {:current-db-time                   (driver/make-current-db-time-fn pg-db-time-query pg-date-formatter)
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-table                    describe-table
           :details-fields                    (constantly (ssh/with-tunnel-config
