@@ -182,17 +182,20 @@ if (NODE_ENV === "hot") {
     // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
     config.output.publicPath = "http://localhost:8080/" + config.output.publicPath;
 
-    config.module.rules.unshift({
-        test: /\.jsx$/,
-        exclude: /node_modules/,
-        use: [
-            // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
-            // because newer versions would require us to upgrade to react-router v4 and possibly deal with
-            // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
-            { loader: 'react-hot-loader' },
-            { loader: 'babel-loader', options: BABEL_CONFIG }
-        ]
-    });
+    // NOTE Tom Robinson 1/9/17 Disable for now since React v16 requires react-hot-loader v3 which
+    // requires react-router v4 and is incompatible with ES2015 modules :-/
+    // Hot reloading still auto-reloads the app, but doesn't actually hot reload.
+    // config.module.rules.unshift({
+    //     test: /\.jsx$/,
+    //     exclude: /node_modules/,
+    //     use: [
+    //         // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
+    //         // because newer versions would require us to upgrade to react-router v4 and possibly deal with
+    //         // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
+    //         { loader: 'react-hot-loader' },
+    //         { loader: 'babel-loader', options: BABEL_CONFIG }
+    //     ]
+    // });
 
     // disable ExtractTextPlugin
     config.module.rules[config.module.rules.length - 1].use = [
