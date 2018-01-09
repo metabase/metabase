@@ -64,7 +64,6 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
-                 [javax.validation/validation-api "1.1.0.Final"]      ; Fix DRILL-5383
                  [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
                   :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
                                org.clojure/data.avl]]
@@ -85,11 +84,6 @@
                  [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
                   :exclusions [org.slf4j/slf4j-api
                                it.unimi.dsi/fastutil]]
-                 [org.apache.drill.exec/drill-jdbc-all "1.10.0"       ; Drill JDBC driver
-                  :exclusions [org.slf4j/log4j-over-slf4j
-                               org.slf4j/jcl-over-slf4j
-                               org.slf4j/slf4j-api
-                               log4j]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
