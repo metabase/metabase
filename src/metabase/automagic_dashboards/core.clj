@@ -28,14 +28,14 @@
                 [template-type (type model)]))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation] :as field}]
-  (cond
-    aggregation        [:datetime-field
-                        (->reference :mbql (dissoc field :aggregation))
-                        aggregation]
-    link               [:fk-> link id]
-    fk_target_field_id [:fk-> id fk_target_field_id]
-    :else              [:field-id id]))
+  [_ {:keys [fk_target_field_id id link aggregation base_type]}]
+  (let [reference (cond
+                    link               [:fk-> link id]
+                    fk_target_field_id [:fk-> id fk_target_field_id]
+                    :else              [:field-id id])]
+    (if (isa? base_type :type/DateTime)
+      [:datetime-field reference (or aggregation :day)]
+      reference)))
 
 (defmethod ->reference [:string (type Field)]
   [_ {:keys [display_name]}]
@@ -274,8 +274,10 @@
   "Is table comprised only of foregin keys and maybe a primary key?"
   [table]
   (empty? (db/select Field
-            :table_id (:id table)
-            :special_type [:not-in ["type/FK" "type/PK"]])))
+            ;; :not-in returns false if field is nil, hence the workaround.
+            {:where [:and [:= :table_id (:id table)]
+                          [:or [:not-in :special_type ["type/FK" "type/PK"]]
+                               [:= :special_type nil]]]})))
 
 (defn automagic-dashboard
   "Create a dashboard for table `root` using the best matching heuristic."
