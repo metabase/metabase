@@ -89,7 +89,8 @@
                  [org.postgresql/postgresql "42.1.4.jre7"]            ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
-                  :exclusions [org.codehaus.jackson/jackson-xc
+                  :exclusions [jdk.tools
+                               org.codehaus.jackson/jackson-xc
                                org.eclipse.jetty.aggregate/jetty-all
                                org.mortbay.jetty/jetty]
                   :classifier "standalone"]
