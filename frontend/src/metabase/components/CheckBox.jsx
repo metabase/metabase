@@ -8,7 +8,7 @@ export default class CheckBox extends Component {
     static propTypes = {
         checked: PropTypes.bool,
         onChange: PropTypes.func.isRequired,
-        color: PropTypes.oneOf(defaultColors),
+        color: PropTypes.oneOf(Object.keys(defaultColors)),
         size: PropTypes.number,  // TODO - this should probably be a concrete set of options
         padding: PropTypes.number// TODO - the component should pad itself properly based on the size
     };
