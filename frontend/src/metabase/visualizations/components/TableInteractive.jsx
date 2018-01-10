@@ -226,7 +226,7 @@ export default class TableInteractive extends Component {
                     "justify-end": isColumnRightAligned(column),
                     "link": isClickable && isID(column)
                 })}
-                onClick={isClickable ? ((e) => {
+                onMouseUp={isClickable ? ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
                 }) : undefined}
             >
@@ -280,7 +280,8 @@ export default class TableInteractive extends Component {
                     "cursor-pointer": isClickable,
                     "justify-end": isRightAligned
                 })}
-                onClick={isClickable ? ((e) => {
+                // use onMouseUp instead of onClick since we can stopPropation when resizing headers
+                onMouseUp={isClickable ? ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
                 }) : undefined}
             >
@@ -298,6 +299,8 @@ export default class TableInteractive extends Component {
                     bounds={{ left: RESIZE_HANDLE_WIDTH }}
                     position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
                     onStop={(e, { x }) => {
+                        // prevent onVisualizationClick from being fired
+                        e.stopPropagation();
                         this.onColumnResize(columnIndex, x)}
                     }
                 >
