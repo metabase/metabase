@@ -15,7 +15,6 @@ import { t } from 'c-3po';
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
-import { t } from "c-3po";
 
 import SettingToggle from './SettingToggle';
 
