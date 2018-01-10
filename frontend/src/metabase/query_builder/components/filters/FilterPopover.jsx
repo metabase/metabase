@@ -6,7 +6,7 @@ import { t } from 'c-3po';
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
 import FilterOptions from "./FilterOptions";
-import DatePicker, { getOperator } from "./pickers/DatePicker.jsx";
+import DatePicker from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
