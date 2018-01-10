@@ -618,6 +618,67 @@
        (et/regex-email-bodies #"https://metabase.com/testmb"
                               #"Foo")])))
 
+;; If email is disabled, users should be unsubscribed
+(expect
+  [1
+   1 ;;<-- Alert should not be deleted
+   (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert",
+                        :body    {"https://metabase.com/testmb" true,
+                                  "letting you know that Crowberto Corv" true}})]
+  (tt/with-temp* [Card                 [{card-id :id :as card}  (basic-alert-query)]
+                  Pulse                [{pulse-id :id}          {:alert_condition  "rows"
+                                                                 :alert_first_only false
+                                                                 :creator_id       (user->id :rasta)}]
+                  PulseCard             [_                      {:pulse_id pulse-id
+                                                                 :card_id  card-id
+                                                                 :position 0}]
+                  PulseChannel          [{pc-id-1 :id}          {:pulse_id     pulse-id
+                                                                 :channel_type :email}]
+                  PulseChannel          [{pc-id-2 :id}          {:pulse_id     pulse-id
+                                                                 :channel_type :slack}]
+                  PulseChannelRecipient [_                      {:user_id          (user->id :rasta)
+                                                                 :pulse_channel_id pc-id-1}]]
+    (with-alert-setup
+      [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
+       (do
+         (et/with-expected-messages 1
+           ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
+            (assoc-in (default-alert-req card pc-id-1) [:channels 0 :enabled] false)))
+         (count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id))))
+       (et/regex-email-bodies #"https://metabase.com/testmb"
+                              #"letting you know that Crowberto Corv" )])))
+
+;; Re-enabling email should send users a subscribe notification
+(expect
+  [1
+   1 ;;<-- Alert should not be deleted
+   (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
+                        :body    {"https://metabase.com/testmb" true,
+                                  "now getting alerts about .*Foo" true}})]
+  (tt/with-temp* [Card                 [{card-id :id :as card}  (basic-alert-query)]
+                  Pulse                [{pulse-id :id}          {:alert_condition  "rows"
+                                                                 :alert_first_only false
+                                                                 :creator_id       (user->id :rasta)}]
+                  PulseCard             [_                      {:pulse_id pulse-id
+                                                                 :card_id  card-id
+                                                                 :position 0}]
+                  PulseChannel          [{pc-id-1 :id}          {:pulse_id     pulse-id
+                                                                 :channel_type :email
+                                                                 :enabled      false}]
+                  PulseChannel          [{pc-id-2 :id}          {:pulse_id     pulse-id
+                                                                 :channel_type :slack}]
+                  PulseChannelRecipient [_                      {:user_id          (user->id :rasta)
+                                                                 :pulse_channel_id pc-id-1}]]
+    (with-alert-setup
+      [(count ((user->client :rasta) :get 200 (format "alert/question/%d" card-id)))
+       (do
+         (et/with-expected-messages 1
+           ((alert-client :crowberto) :put 200 (format "alert/%d" pulse-id)
+            (assoc-in (default-alert-req card pc-id-1) [:channels 0 :enabled] true)))
+         (count ((user->client :crowberto) :get 200 (format "alert/question/%d" card-id))))
+       (et/regex-email-bodies #"https://metabase.com/testmb"
+                              #"now getting alerts about .*Foo" )])))
+
 ;; Alert should not be deleted if the unsubscriber isn't the creator
 (expect
   [1
