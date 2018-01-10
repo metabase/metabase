@@ -24,6 +24,7 @@
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.test
              [data :as data :refer :all]
              [util :as tu :refer [match-$ random-name]]]
@@ -76,9 +77,9 @@
    :visualization_settings {:global {:title nil}}})
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                               FETCHING CARDS & FILTERING                                               |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           FETCHING CARDS & FILTERING                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Filter cards by database
 (expect
@@ -89,7 +90,8 @@
                   Card     [{card-1-id :id} {:database_id (id)}]
                   Card     [{card-2-id :id} {:database_id db-id}]]
     (let [card-returned? (fn [database-id card-id]
-                           (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :database, :model_id database-id)]
+                           (contains? (set (for [card ((user->client :rasta) :get 200 "card"
+                                                       :f :database, :model_id database-id)]
                                              (u/get-id card)))
                                       card-id))]
       [(card-returned? (id) card-1-id)
@@ -135,17 +137,24 @@
                       Card     [{card-2-id :id}]
                       Card     [{card-3-id :id}]
                       Card     [{card-4-id :id}]
-                      ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be returned
-                      ViewLog  [_               {:model "card", :model_id card-1-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2015-12-01")}]
-                      ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird), :timestamp (u/->Timestamp #inst "2016-01-01")}]
-                      ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-02-01")}]
-                      ViewLog  [_               {:model "card", :model_id card-4-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-03-01")}]
-                      ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-04-01")}]]
+                      ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so
+                      ;; shouldn't be returned
+                      ViewLog  [_ {:model "card", :model_id card-1-id, :user_id (user->id :rasta)
+                                   :timestamp (u/->Timestamp #inst "2015-12-01")}]
+                      ViewLog  [_ {:model "card", :model_id card-2-id, :user_id (user->id :trashbird)
+                                   :timestamp (u/->Timestamp #inst "2016-01-01")}]
+                      ViewLog  [_ {:model "card", :model_id card-3-id, :user_id (user->id :rasta)
+                                   :timestamp (u/->Timestamp #inst "2016-02-01")}]
+                      ViewLog  [_ {:model "card", :model_id card-4-id, :user_id (user->id :rasta)
+                                   :timestamp (u/->Timestamp #inst "2016-03-01")}]
+                      ViewLog  [_ {:model "card", :model_id card-3-id, :user_id (user->id :rasta)
+                                   :timestamp (u/->Timestamp #inst "2016-04-01")}]]
   [card-3-id card-4-id card-1-id]
   (mapv :id ((user->client :rasta) :get 200 "card", :f :recent)))
 
 ;;; Filter by `popular`
-;; `f=popular` should return cards sorted by number of ViewLog entries for all users; cards with no entries should be excluded
+;; `f=popular` should return cards sorted by number of ViewLog entries for all users; cards with no entries should be
+;; excluded
 (tt/expect-with-temp [Card     [{card-1-id :id}]
                       Card     [{card-2-id :id}]
                       Card     [{card-3-id :id}]
@@ -179,18 +188,18 @@
 ;;; Filter by labels
 (tt/expect-with-temp [Card      [{card-1-id :id}]
                       Card      [{card-2-id :id}]
-                      Label     [{label-1-id :id} {:name "Toucans"}]                           ; slug will be `toucans`
-                      Label     [{label-2-id :id} {:name "More Toucans"}]                      ; slug will be `more_toucans`
+                      Label     [{label-1-id :id} {:name "Toucans"}]                   ; slug will be `toucans`
+                      Label     [{label-2-id :id} {:name "More Toucans"}]              ; slug will be `more_toucans`
                       CardLabel [_                {:card_id card-1-id, :label_id label-1-id}]
                       CardLabel [_                {:card_id card-2-id, :label_id label-2-id}]]
   ;; When filtering by `more_toucans` only the second Card should get returned
   [card-2-id]
-  (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))                 ; filtering is done by slug
+  (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))            ; filtering is done by slug
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                    CREATING A CARD                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                CREATING A CARD                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can make a card
 (let [card-name (random-name)]
@@ -218,7 +227,8 @@
                                        :email        "rasta@metabase.com"
                                        :id           $})})
     (with-self-cleaning-random-card-name [_ card-name]
-      (dissoc ((user->client :rasta) :post 200 "card" (card-with-name-and-query card-name (mbql-count-query database-id table-id)))
+      (dissoc ((user->client :rasta) :post 200 "card"
+               (card-with-name-and-query card-name (mbql-count-query database-id table-id)))
               :created_at :updated_at :id))))
 
 ;; Make sure when saving a Card the query metadata is saved (if correct)
@@ -233,9 +243,10 @@
                    :special_type :type/Number}]]
     (with-self-cleaning-random-card-name [card-name]
       ;; create a card with the metadata
-      ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
-                                                :result_metadata    metadata
-                                                :metadata_checksum  ((resolve 'metabase.query-processor.middleware.results-metadata/metadata-checksum) metadata)))
+      ((user->client :rasta) :post 200 "card"
+       (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+         :result_metadata    metadata
+         :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
       ;; now check the metadata that was saved in the DB
       (db/select-one-field :result_metadata Card :name card-name))))
 
@@ -251,16 +262,17 @@
                    :special_type :type/Number}]]
     (with-self-cleaning-random-card-name [card-name]
       ;; create a card with the metadata
-      ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
-                                                :result_metadata    metadata
-                                                :metadata_checksum  "ABCDEF")) ; bad checksum
+      ((user->client :rasta) :post 200 "card"
+       (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+         :result_metadata    metadata
+         :metadata_checksum  "ABCDEF")) ; bad checksum
       ;; now check the correct metadata was fetched and was saved in the DB
       (db/select-one-field :result_metadata Card :name card-name))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                FETCHING A SPECIFIC CARD                                                |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            FETCHING A SPECIFIC CARD                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can fetch a card
 (tt/expect-with-temp [Database  [{database-id :id}]
@@ -290,6 +302,7 @@
             :created_at             $
             :database_id            database-id ; these should be inferred from the dataset_query
             :table_id               table-id
+            :in_public_dashboard    false
             :collection             nil
             :labels                 []}))
   ((user->client :rasta) :get 200 (str "card/" (u/get-id card))))
@@ -306,9 +319,9 @@
     ((user->client :rasta) :get 403 (str "card/" (u/get-id card)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                    UPDATING A CARD                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                UPDATING A CARD                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; updating a card that doesn't exist should give a 404
 (expect "Not found."
@@ -390,7 +403,7 @@
       ((user->client :rasta) :put 200 (str "card/" (u/get-id card))
        {:dataset_query (mbql-count-query (data/id) (data/id :venues))
         :result_metadata    metadata
-        :metadata_checksum  ((resolve 'metabase.query-processor.middleware.results-metadata/metadata-checksum) metadata)})
+        :metadata_checksum  (#'results-metadata/metadata-checksum metadata)})
       ;; now check the metadata that was saved in the DB
       (db/select-one-field :result_metadata Card :id (u/get-id card)))))
 
@@ -413,9 +426,9 @@
       ;; now check the metadata that was saved in the DB
       (db/select-one-field :result_metadata Card :id (u/get-id card)))))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                           Card updates that impact alerts                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Card updates that impact alerts                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- rasta-alert-not-working [body-map]
   (et/email-to :rasta {:subject "One of your alerts has stopped working",
@@ -541,35 +554,51 @@
      (Pulse pulse-id)]))
 
 ;; Adding an additional breakout will cause the alert to be removed
-(tt/expect-with-temp [Database [{database-id :id}]
-                      Table    [{table-id :id}  {:db_id database-id}]
-                      Card  [{card-id :id :as card}       {:display                :line
-                                                           :visualization_settings {:graph.goal_value 10}
-                                                           :dataset_query          (assoc-in (mbql-count-query database-id table-id)
-                                                                                             [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]])}]
-                      Pulse [{pulse-id :id}               {:alert_condition  "goal"
-                                                           :alert_first_only false
-                                                           :creator_id       (user->id :rasta)
-                                                           :name             "Original Alert Name"}]
-                      PulseCard             [_            {:pulse_id pulse-id
-                                                           :card_id  card-id
-                                                           :position 0}]
-                      PulseChannel          [{pc-id :id}  {:pulse_id pulse-id}]
-                      PulseChannelRecipient [{pcr-id :id} {:user_id          (user->id :rasta)
-                                                           :pulse_channel_id pc-id}]]
+(tt/expect-with-temp [Database
+                      [{database-id :id}]
+
+                      Table
+                      [{table-id :id} {:db_id database-id}]
+
+                      Card
+                      [card {:display                :line
+                             :visualization_settings {:graph.goal_value 10}
+                             :dataset_query          (assoc-in
+                                                      (mbql-count-query database-id table-id)
+                                                      [:query :breakout]
+                                                      [["datetime-field" (data/id :checkins :date) "hour"]])}]
+
+                      Pulse
+                      [{pulse-id :id} {:alert_condition  "goal"
+                                       :alert_first_only false
+                                       :creator_id       (user->id :rasta)
+                                       :name             "Original Alert Name"}]
+
+                      PulseCard
+                      [_ {:pulse_id pulse-id
+                          :card_id  (u/get-id card)
+                          :position 0}]
+
+                      PulseChannel
+                      [{pc-id :id}  {:pulse_id pulse-id}]
+
+                      PulseChannelRecipient
+                      [{pcr-id :id} {:user_id          (user->id :rasta)
+                                     :pulse_channel_id pc-id}]]
   [(rasta-alert-not-working {"the question was edited by Crowberto Corv" true})
    nil]
   (et/with-fake-inbox
     (et/with-expected-messages 1
-      ((user->client :crowberto) :put 200 (str "card/" card-id) {:dataset_query (assoc-in (mbql-count-query database-id table-id)
-                                                                                          [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
-                                                                                                              ["datetime-field" (data/id :checkins :date) "second"]])}))
+      ((user->client :crowberto) :put 200 (str "card/" (u/get-id card))
+       {:dataset_query (assoc-in (mbql-count-query database-id table-id)
+                                 [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
+                                                     ["datetime-field" (data/id :checkins :date) "second"]])}))
     [(et/regex-email-bodies #"the question was edited by Crowberto Corv")
      (Pulse pulse-id)]))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                              DELETING A CARD (DEPRECATED)                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          DELETING A CARD (DEPRECATED)                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;; Deprecated because you're not supposed to delete cards anymore. Archive them instead
 
 ;; Check that we can delete a card
@@ -585,9 +614,9 @@
   ((user->client :crowberto) :delete 404 "card/12345"))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       FAVORITING                                                       |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   FAVORITING                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Helper Functions
 (defn- fave? [card]
@@ -630,19 +659,20 @@
          (fave? card))]))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                         LABELS                                                         |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              LABELS (DEPRECATED)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;; DEPRECATED because Labels are deprecated in favor of Collections.
 
 ;;; POST /api/card/:id/labels
 ;; Check that we can update card labels
 (tt/expect-with-temp [Card  [{card-id :id}]
                       Label [{label-1-id :id} {:name "Toucan-Friendly"}]
                       Label [{label-2-id :id} {:name "Toucan-Unfriendly"}]]
-  [[]                                                                                  ; (1) should start out with no labels
+  [[]                                                                                  ; (1) should start w/ no labels
    [{:id label-1-id, :name "Toucan-Friendly",   :slug "toucan_friendly",   :icon nil}  ; (2) set a few labels
     {:id label-2-id, :name "Toucan-Unfriendly", :slug "toucan_unfriendly", :icon nil}]
-   []]                                                                                 ; (3) should be able to reset to no labels
+   []]                                                                                 ; (3) can reset to no labels?
   (let [get-labels    (fn []
                         (:labels ((user->client :rasta) :get 200, (str "card/" card-id))))
         update-labels (fn [label-ids]
@@ -653,18 +683,18 @@
      (update-labels [])]))                   ; (3)
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                CSV/JSON/XLSX DOWNLOADS                                                 |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; POST /api/:card-id/query/csv
 
 (defn- do-with-temp-native-card {:style/indent 0} [f]
   (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
-                  Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
-                  Card      [card              {:dataset_query {:database database-id
-                                                                :type     :native
-                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                  Table     [{table-id :id} {:db_id database-id, :name "CATEGORIES"}]
+                  Card      [card {:dataset_query {:database database-id
+                                                   :type     :native
+                                                   :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
     ;; delete all permissions for this DB
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     (f database-id card)))
@@ -703,7 +733,8 @@
   (do-with-temp-native-card
     (fn [database-id card]
       (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
-      (->> ((user->client :rasta) :post 200 (format "card/%d/query/xlsx" (u/get-id card)) {:request-options {:as :byte-array}})
+      (->> ((user->client :rasta) :post 200 (format "card/%d/query/xlsx" (u/get-id card))
+            {:request-options {:as :byte-array}})
            ByteArrayInputStream.
            spreadsheet/load-workbook
            (spreadsheet/select-sheet "Query result")
@@ -712,16 +743,18 @@
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
-  (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
-                  Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
-                  Card      [card              {:dataset_query {:database database-id
-                                                                :type     :native
-                                                                :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                                                           :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
-                                                                                                      :name         "category"
-                                                                                                      :display_name "Category"
-                                                                                                      :type         "number"
-                                                                                                      :required     true}}}}}]]
+  (tt/with-temp*
+    [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
+     Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
+     Card      [card {:dataset_query
+                      {:database database-id
+                       :type     :native
+                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
+                                  :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                                             :name         "category"
+                                                             :display_name "Category"
+                                                             :type         "number"
+                                                             :required     true}}}}}]]
     (f database-id card)))
 
 (def ^:private ^:const ^String encoded-params
@@ -757,17 +790,18 @@
            (spreadsheet/select-columns {:A :col})))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                      COLLECTIONS                                                       |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  COLLECTIONS                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Make sure we can create a card and specify its `collection_id` at the same time
 (tt/expect-with-temp [Collection [collection]]
   (u/get-id collection)
   (with-self-cleaning-random-card-name [card-name]
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-    (let [{card-id :id} ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
-                                                                  :collection_id (u/get-id collection)))]
+    (let [{card-id :id} ((user->client :rasta) :post 200 "card"
+                         (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                           :collection_id (u/get-id collection)))]
       (db/select-one-field :collection_id Card :id card-id))))
 
 ;; Make sure we card creation fails if we try to set a `collection_id` we don't have permissions for
@@ -775,8 +809,9 @@
   "You don't have permissions to do that."
   (with-self-cleaning-random-card-name [card-name]
     (tt/with-temp Collection [collection]
-      ((user->client :rasta) :post 403 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
-                                                :collection_id (u/get-id collection))))))
+      ((user->client :rasta) :post 403 "card"
+       (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+         :collection_id (u/get-id collection))))))
 
 ;; Make sure we can change the `collection_id` of a Card if it's not in any collection
 (tt/expect-with-temp [Card       [card]
@@ -793,7 +828,8 @@
                   Card       [card       {:collection_id (u/get-id collection)}]]
     ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"})))
 
-;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the new collection
+;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the new
+;; collection
 (expect
   "You don't have permissions to do that."
   (tt/with-temp* [Collection [original-collection]
@@ -802,7 +838,8 @@
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
     ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})))
 
-;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the current collection
+;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the current
+;; collection
 (expect
   "You don't have permissions to do that."
   (tt/with-temp* [Collection [original-collection]
@@ -863,7 +900,7 @@
       ((user->client :rasta) :get 200 "card/" :collection "obsługa_klienta"))))
 
 
-;;; ------------------------------------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------------------------------------
+;;; ------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------
 
 (defn- collection-ids [cards-or-card-ids]
   (map :collection_id (db/select [Card :collection_id]
@@ -936,15 +973,15 @@
     (POST-card-collections! :rasta 403 collection [card-1 card-2])))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                    PUBLIC SHARING ENDPOINTS                                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- shared-card []
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (user->id :crowberto)})
 
-;;; ------------------------------------------------------------ POST /api/card/:id/public_link ------------------------------------------------------------
+;;; ----------------------------------------- POST /api/card/:id/public_link -----------------------------------------
 
 ;; Test that we can share a Card
 (expect
@@ -988,7 +1025,7 @@
          (:uuid ((user->client :crowberto) :post 200 (format "card/%d/public_link" (u/get-id card))))))))
 
 
-;;; ------------------------------------------------------------ DELETE /api/card/:id/public_link ------------------------------------------------------------
+;;; ---------------------------------------- DELETE /api/card/:id/public_link ----------------------------------------
 
 ;; Test that we can unshare a Card
 (expect
@@ -1018,7 +1055,7 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     ((user->client :crowberto) :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))
 
-;; Test that we can fetch a list of publically-accessible cards
+;; Test that we can fetch a list of publicly-accessible cards
 (expect
   [{:name true, :id true, :public_uuid true}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
