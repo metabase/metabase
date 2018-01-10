@@ -24,13 +24,13 @@ function getFilterValueSerializer(func: ((val1: string, val2: string) => UrlEnco
 
 const serializersByOperatorName: { [id: OperatorName]: (FieldFilter) => UrlEncoded } = {
     // $FlowFixMe
-    "Previous": getFilterValueSerializer((value, unit, options) => `past${-value}${unit}s${options['include-current'] ? "~" : ""}`),
-    "Next": getFilterValueSerializer((value, unit, options) => `next${value}${unit}s${options['include-current'] ? "~" : ""}`),
-    "Current": getFilterValueSerializer((_, unit) => `this${unit}`),
-    "Before": getFilterValueSerializer((value) => `~${value}`),
-    "After": getFilterValueSerializer((value) => `${value}~`),
-    "On": getFilterValueSerializer((value) => `${value}`),
-    "Between": getFilterValueSerializer((from, to) => `${from}~${to}`)
+    "previous": getFilterValueSerializer((value, unit, options = {}) => `past${-value}${unit}s${options['include-current'] ? "~" : ""}`),
+    "next": getFilterValueSerializer((value, unit, options = {}) => `next${value}${unit}s${options['include-current'] ? "~" : ""}`),
+    "current": getFilterValueSerializer((_, unit) => `this${unit}`),
+    "before": getFilterValueSerializer((value) => `~${value}`),
+    "after": getFilterValueSerializer((value) => `${value}~`),
+    "on": getFilterValueSerializer((value) => `${value}`),
+    "between": getFilterValueSerializer((from, to) => `${from}~${to}`)
 };
 
 function getFilterOperator(filter) {
@@ -47,11 +47,11 @@ function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
 }
 
 
-const prefixedOperators: [OperatorName] = ["Before", "After", "On", "Is Empty", "Not Empty"];
+const prefixedOperators: Set<OperatorName> = new Set(["before", "after", "on", "empty", "not-empty"]);
 function getFilterTitle(filter) {
     const desc = generateTimeFilterValuesDescriptions(filter).join(" - ")
     const op = getFilterOperator(filter);
-    const prefix = op && prefixedOperators.indexOf(op.name) !== -1 ? `${op.name} ` : "";
+    const prefix = op && prefixedOperators.has(op.name) ? `${op.displayName} ` : "";
     return prefix + desc;
 }
 

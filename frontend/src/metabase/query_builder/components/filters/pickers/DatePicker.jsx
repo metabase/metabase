@@ -149,10 +149,11 @@ function getDateTimeFieldAndValues(filter: FieldFilter, count: number): [Concret
 }
 
 
-export type OperatorName = string;
+export type OperatorName = "all"|"previous"|"next"|"current"|"before"|"after"|"on"|"between"|"empty"|"not-empty";
 
 export type Operator = {
     name: OperatorName,
+    displayName: string,
     widget?: any,
     init: (filter: FieldFilter) => any,
     test: (filter: FieldFilter) => boolean,
@@ -160,14 +161,16 @@ export type Operator = {
 }
 
 const ALL_TIME_OPERATOR = {
-    name: t`All Time`,
+    name: "all",
+    displayName: t`All Time`,
     init: () => null,
     test: (op) => op === null
 }
 
 export const DATE_OPERATORS: Operator[] = [
     {
-        name: t`Previous`,
+        name: "previous",
+        displayName: t`Previous`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter), getOptions(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
@@ -175,7 +178,8 @@ export const DATE_OPERATORS: Operator[] = [
         options: { "include-current": true },
     },
     {
-        name: t`Next`,
+        name: "next",
+        displayName: t`Next`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter), getOptions(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
@@ -183,31 +187,36 @@ export const DATE_OPERATORS: Operator[] = [
         options: { "include-current": true },
     },
     {
-        name: t`Current`,
+        name: "current",
+        displayName: t`Current`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter)],
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
     {
-        name: t`Before`,
+        name: "before",
+        displayName: t`Before`,
         init: (filter) =>  ["<", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "<",
         widget: SingleDatePicker,
     },
     {
-        name: t`After`,
+        name: "after",
+        displayName: t`After`,
         init: (filter) => [">", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === ">",
         widget: SingleDatePicker,
     },
     {
-        name: t`On`,
+        name: "on",
+        displayName: t`On`,
         init: (filter) => ["=", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "=",
         widget: SingleDatePicker,
     },
     {
-        name: t`Between`,
+        name: "between",
+        displayName: t`Between`,
         init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter, 2)],
         test: ([op]) => mbqlEq(op, "between"),
         widget: MultiDatePicker,
@@ -217,12 +226,14 @@ export const DATE_OPERATORS: Operator[] = [
 
 export const EMPTINESS_OPERATORS: Operator[] = [
     {
-        name: t`Is Empty`,
+        name: "empty",
+        displayName: t`Is Empty`,
         init: (filter) => ["IS_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "IS_NULL"
     },
     {
-        name: t`Not Empty`,
+        name: "not-empty",
+        displayName: t`Not Empty`,
         init: (filter) => ["NOT_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "NOT_NULL"
     }
@@ -276,9 +287,9 @@ export default class DatePicker extends Component {
         // where the value is chosen next to the operator selector
         // TODO - there's no doubt a cleaner _ way to do this
         const needsHorizontalLayout = operator && (
-            operator.name === "Current"  ||
-            operator.name === "Previous" ||
-            operator.name === "Next"
+            operator.name === "current"  ||
+            operator.name === "previous" ||
+            operator.name === "next"
         );
 
         return (
