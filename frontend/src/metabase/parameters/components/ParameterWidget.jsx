@@ -1,7 +1,7 @@
 
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import ParameterValueWidget from "./ParameterValueWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
@@ -112,11 +112,11 @@ export default class ParameterWidget extends Component {
                     <div className={cx(S.parameter, S.parameterButtons)}>
                         <div className={S.editButton} onClick={() => setEditingParameter(parameter.id)}>
                             <Icon name="pencil"/>
-                            <span className="ml1">Edit</span>
+                            <span className="ml1">{t`Edit`}</span>
                         </div>
                         <div className={S.removeButton} onClick={() => remove()}>
                             <Icon name="close"/>
-                            <span className="ml1">Remove</span>
+                            <span className="ml1">{t`Remove`}</span>
                         </div>
                     </div>
                 </FieldSet>
