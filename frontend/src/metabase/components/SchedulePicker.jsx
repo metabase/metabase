@@ -6,7 +6,7 @@ import Select from "metabase/components/Select.jsx";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
-
+import { t } from 'c-3po';
 import _ from "underscore";
 
 export const HOUR_OPTIONS = _.times(12, (n) => (
@@ -19,19 +19,19 @@ export const AM_PM_OPTIONS = [
 ];
 
 export const DAY_OF_WEEK_OPTIONS = [
-    { name: "Sunday", value: "sun" },
-    { name: "Monday", value: "mon" },
-    { name: "Tuesday", value: "tue" },
-    { name: "Wednesday", value: "wed" },
-    { name: "Thursday", value: "thu" },
-    { name: "Friday", value: "fri" },
-    { name: "Saturday", value: "sat" }
+    { name: t`"Sunday`, value: "sun" },
+    { name: t`Monday`, value: "mon" },
+    { name: t`Tuesday`, value: "tue" },
+    { name: t`Wednesday`, value: "wed" },
+    { name: t`Thursday`, value: "thu" },
+    { name: t`Friday`, value: "fri" },
+    { name: t`Saturday`, value: "sat" }
 ];
 
 export const MONTH_DAY_OPTIONS = [
-    { name: "First", value: "first" },
-    { name: "Last", value: "last" },
-    { name: "15th (Midpoint)", value: "mid" }
+    { name: t`First`, value: "first" },
+    { name: t`Last`, value: "last" },
+    { name: t`15th (Midpoint)`, value: "mid" }
 ];
 
 /**
@@ -102,7 +102,7 @@ export default class SchedulePicker extends Component {
         let { schedule } = this.props;
 
         let DAY_OPTIONS = DAY_OF_WEEK_OPTIONS.slice(0);
-        DAY_OPTIONS.unshift({ name: "Calendar Day", value: null });
+        DAY_OPTIONS.unshift({ name: t`Calendar Day`, value: null });
 
         return (
             <span className="mt1">
@@ -177,7 +177,7 @@ export default class SchedulePicker extends Component {
                 />
                 { textBeforeSendTime &&
                     <div className="mt2 h4 text-bold text-grey-3 border-top pt2">
-                        {textBeforeSendTime} {hour === 0 ? 12 : hour}:00 {amPm ? "PM" : "AM"} {timezone}, your Metabase timezone.
+                        {textBeforeSendTime} {hour === 0 ? 12 : hour}:00 {amPm ? "PM" : "AM"} {timezone}, {t`your Metabase timezone`}.
                     </div>
                 }
             </div>

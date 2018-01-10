@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import CheckBox from 'metabase/components/CheckBox.jsx';
 import ListSearchField from "metabase/components/ListSearchField.jsx";
 
@@ -80,7 +80,7 @@ export default class SelectPicker extends Component {
 
     nameForOption(option: SelectOption) {
         if (option.name === "") {
-            return "Empty";
+            return t`Empty`;
         } else if (typeof option.name === "string") {
             return option.name;
         } else {
@@ -114,7 +114,7 @@ export default class SelectPicker extends Component {
                       <ListSearchField
                           onChange={this.updateSearchText}
                           searchText={this.state.searchText}
-                          placeholder="Find a value"
+                          placeholder={t`Find a value`}
                           autoFocus={true}
                       />
                   </div>

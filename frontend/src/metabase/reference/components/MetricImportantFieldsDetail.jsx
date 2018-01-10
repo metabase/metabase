@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
-
+import { t } from 'c-3po';
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
 
 import Select from "metabase/components/Select.jsx";
@@ -22,7 +22,7 @@ const MetricImportantFieldsDetail = ({
         <div className={D.detailBody}>
             <div className={D.detailTitle}>
                 <span className={D.detailName}>
-                    Which 2-3 fields do you usually group this metric by?
+                    {t`Which 2-3 fields do you usually group this metric by?`}
                 </span>
             </div>
             <div className={cx(D.detailSubtitle, { "mt1" : true })}>
@@ -31,7 +31,7 @@ const MetricImportantFieldsDetail = ({
                     triggerClasses="input p1 block"
                     options={table.fields.map(fieldId => allFields[fieldId])} 
                     optionNameFn={option => option.display_name || option.name}
-                    placeholder="Select..."
+                    placeholder={t`Select...`}
                     values={formField.value || []}
                     disabledOptionIds={formField.value && formField.value.length === 3 ?
                         table.fields
@@ -55,7 +55,7 @@ const MetricImportantFieldsDetail = ({
             fields={fields}
             databaseId={table.db_id} 
             metric={metric}
-            title={"Most useful fields to group this metric by"}
+            title={t`Most useful fields to group this metric by`}
             onChangeLocation={onChangeLocation}
         /> :
         null; 

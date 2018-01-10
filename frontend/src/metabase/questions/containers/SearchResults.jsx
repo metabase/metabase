@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 
 import ExpandingSearchField from "../components/ExpandingSearchField";
@@ -39,14 +39,14 @@ class SearchResults extends Component {
                 <div className="flex align-center mb3">
                     <HeaderWithBack name={totalCount != null ?
                         `${totalCount} ${inflect("result", totalCount)}` :
-                        "Search results"}
+                        t`Search results`}
                     />
                 </div>
                 <EntityList
                     entityType="cards"
                     entityQuery={this.props.location.query}
                     showSearchWidget={false}
-                    defaultEmptyState="No matching questions found"
+                    defaultEmptyState={t`No matching questions found`}
                 />
             </div>
           </div>

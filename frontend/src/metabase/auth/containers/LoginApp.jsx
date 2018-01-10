@@ -89,6 +89,10 @@ export default class LoginApp extends Component {
         this.validateForm();
     }
 
+    onChangeUserName(fieldName, fieldValue) {
+        this.onChange(fieldName, fieldValue.trim())
+    }
+
     onChange(fieldName, fieldValue) {
         this.setState({ credentials: { ...this.state.credentials, [fieldName]: fieldValue }});
     }

@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "c-3po";
 
 import Utils from "metabase/lib/utils";
 import { t } from 'c-3po';
@@ -242,7 +243,7 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                     <input
                         type="text"
                         className="SettingsInput AdminInput bordered rounded h3"
-                        placeholder="e.g. United Kingdom, Brazil, Mars"
+                        placeholder={t`e.g. United Kingdom, Brazil, Mars`}
                         value={map.name}
                         onChange={(e) => onMapChange({ ...map, "name": e.target.value })}
                     />
@@ -288,7 +289,7 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
             </LoadingAndErrorWrapper>
         :
             <div className="flex-full flex layout-centered text-bold text-grey-1 text-centered">
-               {t`Load a GeoJSON file to see a preview`}
+                {t`Load a GeoJSON file to see a preview`}
             </div>
         }
         </div>

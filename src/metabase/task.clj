@@ -72,15 +72,33 @@
 ;;; |                                               SCHEDULING/DELETING TASKS                                                |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:always-validate schedule-task!
+(s/defn schedule-task!
   "Add a given job and trigger to our scheduler."
   [job :- JobDetail, trigger :- Trigger]
   (when-let [scheduler (scheduler)]
     (qs/schedule scheduler job trigger)))
 
-(s/defn ^:always-validate delete-task!
+(s/defn delete-task!
   "delete a task from the scheduler"
   [job-key :- JobKey, trigger-key :- TriggerKey]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
+
+(s/defn add-job!
+  "Add a job separately from a trigger, replace if the job is already there"
+  [job :- JobDetail]
+  (when-let [scheduler (scheduler)]
+    (qs/add-job scheduler job true)))
+
+(s/defn add-trigger!
+  "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"
+  [trigger :- Trigger]
+  (when-let [scheduler (scheduler)]
+    (qs/add-trigger scheduler trigger)))
+
+(s/defn delete-trigger!
+  "Remove `trigger-key` from the scheduler"
+  [trigger-key :- TriggerKey]
+  (when-let [scheduler (scheduler)]
+    (qs/delete-trigger scheduler trigger-key)))

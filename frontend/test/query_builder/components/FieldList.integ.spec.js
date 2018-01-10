@@ -70,12 +70,12 @@ describe('FieldList', () => {
         // Maybe also TestTooltip should provide an interface (like `tooltipWrapper.instance().show()`) for toggling it?
         const tooltipTarget = component.find(`.List-item-title[children="${segment.name}"]`)
             .first()
-            .closest('li')
+            .closest('.List-item')
             .find(".QuestionTooltipTarget")
             .parent();
 
         tooltipTarget.simulate("mouseenter");
-        
+
         const tooltipContent = tooltipTarget.closest(TestTooltip).find(TestTooltipContent);
         expect(tooltipContent.length).toBe(1)
 

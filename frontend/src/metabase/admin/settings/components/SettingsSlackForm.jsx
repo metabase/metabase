@@ -11,6 +11,7 @@ import RetinaImage from "react-retina-image";
 
 import cx from "classnames";
 import _ from "underscore";
+import { t, jt } from "c-3po";
 
 export default class SettingsSlackForm extends Component {
 
@@ -215,7 +216,7 @@ export default class SettingsSlackForm extends Component {
                         </a>
                     </div>
                     <div className="py2">
-                        {t`Once you're there, give it a name and click <strong>"Add bot integration"</strong>. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.`}
+                        {jt`Once you're there, give it a name and click ${<strong>"Add bot integration"</strong>}. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.`}
                     </div>
                 </div>
                 <ul>

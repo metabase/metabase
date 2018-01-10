@@ -2,7 +2,7 @@
 
 import React, {Component} from "react";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
@@ -111,7 +111,7 @@ export default class DateAllOptionsWidget extends Component {
                     className={cx("Button Button--purple full", {"disabled": !this.isValid()})}
                     onClick={this.commitAndClose}
                 >
-                    Update filter
+                    {t`Update filter`}
                 </button>
             </div>
         </div>)

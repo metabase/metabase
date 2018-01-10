@@ -35,7 +35,7 @@
                              (.endsWith (name k) "_id"))
                  (if (or (= :created_at k)
                          (= :updated_at k))
-                   [k (not (nil? v))]
+                   [k (some? v)]
                    [k (f v)]))))))
 
 (defn format-response [m]

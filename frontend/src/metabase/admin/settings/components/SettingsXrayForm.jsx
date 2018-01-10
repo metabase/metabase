@@ -1,7 +1,8 @@
 import React from 'react'
 import SettingsSetting from 'metabase/admin/settings/components/SettingsSetting'
 import cx from 'classnames'
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po'
+
 import Icon from 'metabase/components/Icon'
 
 import COSTS from 'metabase/xray/costs'
@@ -35,7 +36,7 @@ const SettingsXrayForm = ({ settings, elements, updateSetting }) => {
                     {t`If you're having performance issues related to x-ray usage you can cap how expensive x-rays are allowed to be.`}
                 </p>
                 <p className="text-paragraph">
-                  <em>{t`<strong>Note:</strong> "Extended" is required for viewing time series x-rays.`}</em>
+                  <em>{jt`${<strong>Note:</strong>} "Extended" is required for viewing time series x-rays.`}</em>
                 </p>
 
                 <ol className="mt4">

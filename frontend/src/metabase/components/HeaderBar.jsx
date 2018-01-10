@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import Input from "metabase/components/Input.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 export default class Header extends Component {
@@ -21,7 +21,7 @@ export default class Header extends Component {
             titleAndDescription = (
                 <div className="Header-title flex flex-column flex-full bordered rounded my1">
                     <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={name} onChange={(e) => this.props.setItemAttributeFn("name", e.target.value)} />
-                    <Input className="AdminInput rounded-bottom h4" type="text" value={description} onChange={(e) => this.props.setItemAttributeFn("description", e.target.value)} placeholder="No description yet" />
+                    <Input className="AdminInput rounded-bottom h4" type="text" value={description} onChange={(e) => this.props.setItemAttributeFn("description", e.target.value)} placeholder={t`No description yet`} />
                 </div>
             );
         } else {

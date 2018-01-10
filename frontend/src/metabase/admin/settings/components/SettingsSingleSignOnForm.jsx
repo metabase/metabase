@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from 'c-3po';
 import cx from "classnames";
 import _ from "underscore";
+import { t, jt } from "c-3po";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import Input from "metabase/components/Input.jsx";
@@ -117,7 +118,7 @@ export default class SettingsSingleSignOnForm extends Component {
                         {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
                     </p>
                     <p className="text-grey-4">
-                        {t`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found <a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>`}
+                        {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${<a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>}`}
                     </p>
                     <Input
                         className="SettingsInput AdminInput bordered rounded h3"
@@ -145,7 +146,7 @@ export default class SettingsSingleSignOnForm extends Component {
                     <button className={cx("Button mr2", {"Button--primary": hasChanges})}
                             disabled={!hasChanges}
                             onClick={this.saveChanges}>
-                        {this.state.recentlySaved ? t`"Changes saved!` : t`Save Changes`}
+                        {this.state.recentlySaved ? t`Changes saved!` : t`Save Changes`}
                     </button>
                 </div>
             </form>

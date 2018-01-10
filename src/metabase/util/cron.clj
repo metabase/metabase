@@ -42,7 +42,7 @@
 ;;; |                                          SCHEDULE MAP -> CRON STRING                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:always-validate cron-string :- CronScheduleString
+(s/defn ^:private cron-string :- CronScheduleString
   "Build a cron string from key-value pair parts."
   {:style/indent 0}
   [{:keys [seconds minutes hours day-of-month month day-of-week year]}]
@@ -77,7 +77,7 @@
                       "mid"   "15"
                       "last"  "L"))))
 
-(s/defn ^:always-validate ^{:style/indent 0} schedule-map->cron-string :- CronScheduleString
+(s/defn ^{:style/indent 0} schedule-map->cron-string :- CronScheduleString
   "Convert the frontend schedule map into a cron string."
   [{day-of-week :schedule_day, frame :schedule_frame, hour :schedule_hour, schedule-type :schedule_type} :- ScheduleMap]
   (cron-string (case (keyword schedule-type)
@@ -132,7 +132,7 @@
     :else                                         "hourly"))
 
 
-(s/defn ^:always-validate ^{:style/indent 0} cron-string->schedule-map :- ScheduleMap
+(s/defn ^{:style/indent 0} cron-string->schedule-map :- ScheduleMap
   "Convert a normal CRON-STRING into the expanded ScheduleMap format used by the frontend."
   [cron-string :- CronScheduleString]
   (let [[_ _ hours day-of-month _ day-of-week _] (str/split cron-string #"\s+")]

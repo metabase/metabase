@@ -100,19 +100,25 @@
 (datasets/expect-with-engine :mongo
   {:schema nil
    :name   "venues"
-   :fields #{{:name "name"
-              :base-type :type/Text}
-             {:name "latitude"
-              :base-type :type/Float}
-             {:name "longitude"
-              :base-type :type/Float}
-             {:name "price"
-              :base-type :type/Integer}
-             {:name "category_id"
-              :base-type :type/Integer}
-             {:name "_id"
-              :base-type :type/Integer
-              :pk? true}}}
+   :fields #{{:name          "name"
+              :database-type "java.lang.String"
+              :base-type     :type/Text}
+             {:name          "latitude"
+              :database-type "java.lang.Double"
+              :base-type     :type/Float}
+             {:name          "longitude"
+              :database-type "java.lang.Double"
+              :base-type     :type/Float}
+             {:name          "price"
+              :database-type "java.lang.Long"
+              :base-type     :type/Integer}
+             {:name          "category_id"
+              :database-type "java.lang.Long"
+              :base-type     :type/Integer}
+             {:name          "_id"
+              :database-type "java.lang.Long"
+              :base-type     :type/Integer
+              :pk?           true}}}
   (driver/describe-table (MongoDriver.) (data/db) (Table (data/id :venues))))
 
 

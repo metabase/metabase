@@ -31,7 +31,7 @@
 ;; lucky, member of All Users, Ops
 
 
-;;; ------------------------------------------------------------ Ops Group ------------------------------------------------------------
+;;; -------------------------------------------------- Ops Group ----------------------------------------------------
 
 ;; ops group is a group with only one member: lucky
 (def ^:dynamic *ops-group*)
@@ -48,7 +48,7 @@
         (f)))))
 
 
-;;; ------------------------------------------------------------ DBs, Tables, & Fields ------------------------------------------------------------
+;;; --------------------------------------------- DBs, Tables, & Fields ---------------------------------------------
 
 (def db-details
   (delay (db/select-one [Database :details :engine] :id (data/id))))
@@ -77,8 +77,15 @@
       (doseq [table-name ["venues" "users" "checkins"]]
         (db/insert! Table :db_id (u/get-id db), :active true, :name table-name))
       ;; do the same for Fields
-      (doseq [field [{:table_id (u/get-id (table db :venues)), :name "price",      :base_type :type/Integer, :special_type :type/Category}
-                     {:table_id (u/get-id (table db :users)),  :name "last_login", :base_type :type/DateTime}]]
+      (doseq [field [{:table_id      (u/get-id (table db :venues)),
+                      :name          "price"
+                      :database_type "INT"
+                      :base_type     :type/Integer
+                      :special_type  :type/Category}
+                     {:table_id      (u/get-id (table db :users))
+                      :name          "last_login"
+                      :database_type "TIMESTAMP"
+                      :base_type     :type/DateTime}]]
         (db/insert! Field field))
       ;; ok !
       (f db))))
@@ -109,7 +116,7 @@
                         (f)))))
 
 
-;;; ------------------------------------------------------------ Cards ------------------------------------------------------------
+;;; ----------------------------------------------------- Cards -----------------------------------------------------
 
 (defn- count-card [db table-name card-name]
   (let [table (table db table-name)]
@@ -174,8 +181,7 @@
                 *card:db2-sql-count-of-users* db2-sql-count-of-users]
         (f)))))
 
-
-;;; ------------------------------------------------------------ Dashboards ------------------------------------------------------------
+;;; --------------------------------------------------- Dashboards ---------------------------------------------------
 
 (def ^:dynamic *dash:db1-all*)
 (def ^:dynamic *dash:db2-all*)
@@ -218,7 +224,7 @@
         (f)))))
 
 
-;;; ------------------------------------------------------------ Pulses ------------------------------------------------------------
+;;; ----------------------------------------------------- Pulses -----------------------------------------------------
 
 (def ^:dynamic *pulse:all*)
 (def ^:dynamic *pulse:db1-all*)
@@ -297,7 +303,7 @@
         (f)))))
 
 
-;;; ------------------------------------------------------------ Metrics ------------------------------------------------------------
+;;; ---------------------------------------------------- Metrics -----------------------------------------------------
 
 (def ^:dynamic *metric:db1-venues-count*)
 (def ^:dynamic *metric:db2-venues-count*)
@@ -326,7 +332,8 @@
                 *metric:db2-users-count*  db2-users-count]
         (f)))))
 
-;;; ------------------------------------------------------------ Segments ------------------------------------------------------------
+
+;;; ---------------------------------------------------- Segments ----------------------------------------------------
 
 (def ^:dynamic *segment:db1-expensive-venues*)
 (def ^:dynamic *segment:db2-expensive-venues*)
@@ -365,8 +372,8 @@
                 *segment:db2-todays-users*     db2-todays-users]
         (f)))))
 
-;;; ------------------------------------------------------------ with everything! ------------------------------------------------------------
 
+;;; ------------------------------------------------ with everything! ------------------------------------------------
 
 (defn -do-with-test-data [f]
   (((comp with-ops-group
@@ -389,11 +396,11 @@
        ~actual)))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                          QUERY BUILDER                                                                         |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 QUERY BUILDER                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------------------ GET /api/database?include_tables=true (Visible DBs + Tables) ------------------------------------------------------------
+;;; -------------------------- GET /api/database?include_tables=true (Visible DBs + Tables) --------------------------
 
 (defn- GET-database [username]
   (vec (for [db    ((test-users/user->client username) :get 200 "database", :include_tables true)
@@ -418,7 +425,7 @@
   (GET-database :lucky))
 
 
-;;; ------------------------------------------------------------ GET /api/table/:id/query_metadata ------------------------------------------------------------
+;;; --------------------------------------- GET /api/table/:id/query_metadata ----------------------------------------
 
 (defn- GET-table-query-metadata [username db table-name]
   (not= ((test-users/user->client username) :get (format "table/%d/query_metadata" (u/get-id (table db table-name))))
@@ -449,7 +456,7 @@
 (expect-with-test-data true  (GET-table-query-metadata :lucky *db2* :venues))
 
 
-;;; ------------------------------------------------------------ POST /api/dataset (SQL query) ------------------------------------------------------------
+;;; ----------------------------------------- POST /api/dataset (SQL query) ------------------------------------------
 
 (defn- sql-query [username db]
   (let [results ((test-users/user->client username) :post "dataset"
@@ -466,17 +473,18 @@
 (expect-with-test-data [[100]] (sql-query :rasta *db1*))
 (expect-with-test-data [[100]] (sql-query :lucky *db1*))
 
-;; Only Admin should be able to ask SQL questions against DB 2. Error message is slightly different for Rasta & Lucky because Rasta has no permissions whatsoever for DB 2 while Lucky has partial perms
+;; Only Admin should be able to ask SQL questions against DB 2. Error message is slightly different for Rasta & Lucky
+;; because Rasta has no permissions whatsoever for DB 2 while Lucky has partial perms
 (expect-with-test-data [[100]] (sql-query :crowberto *db2*))
 (expect-with-test-data "You don't have permissions to do that." (sql-query :rasta *db2*))
 (expect-with-test-data #"You do not have read permissions for /db/\d+/native/\." (sql-query :lucky *db2*))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                         SAVED QUESTIONS                                                                        |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                SAVED QUESTIONS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------------------ GET /api/card (Visible Cards) ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/card (Visible Cards) ------------------------------------------
 
 (defn- GET-card [username]
   (vec (for [card  ((test-users/user->client username) :get 200 "card")
@@ -514,7 +522,7 @@
   (GET-card :lucky))
 
 
-;;; ------------------------------------------------------------ GET /api/card/:id ------------------------------------------------------------
+;;; ----------------------------------------------- GET /api/card/:id ------------------------------------------------
 
 ;; just return true/false based on whether they were allowed to see the card
 (defn- GET-card-id [username card]
@@ -552,11 +560,11 @@
 (expect-with-test-data true  (GET-card-id :lucky *card:db2-sql-count-of-users*))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                           DASHBOARDS                                                                           |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   DASHBOARDS                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------------------ GET /api/dashboard (Visible Dashboards) ------------------------------------------------------------
+;;; ------------------------------------ GET /api/dashboard (Visible Dashboards) -------------------------------------
 
 (defn- GET-dashboard [username]
   (vec (for [dashboard ((test-users/user->client username) :get 200 "dashboard")
@@ -584,7 +592,7 @@
   (GET-dashboard :lucky))
 
 
-;;; ------------------------------------------------------------ GET /api/dashboard/:id  ------------------------------------------------------------
+;;; --------------------------------------------- GET /api/dashboard/:id ---------------------------------------------
 
 (defn- GET-dashboard-id [username dashboard]
   (not= ((test-users/user->client username) :get (str "dashboard/" (u/get-id dashboard)))
@@ -603,11 +611,11 @@
 (expect-with-test-data false (GET-dashboard-id :lucky *dash:db2-public*))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                             PULSES                                                                             |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                     PULSES                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------------------ GET /api/pulse ------------------------------------------------------------
+;;; ------------------------------------------------- GET /api/pulse -------------------------------------------------
 
 (defn- GET-pulse [username]
   (vec (for [pulse ((test-users/user->client username) :get 200 "pulse")
@@ -637,7 +645,7 @@
   (GET-pulse :lucky))
 
 
-;;; ------------------------------------------------------------ GET /api/pulse/:id ------------------------------------------------------------
+;;; ----------------------------------------------- GET /api/pulse/:id -----------------------------------------------
 
 (defn- GET-pulse-id [username pulse]
   (not= ((test-users/user->client username) :get (str "pulse/" (u/get-id pulse)))
@@ -665,11 +673,11 @@
 (expect-with-test-data false (GET-pulse-id :lucky *pulse:db2-restricted*))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                         DATA REFERENCE                                                                         |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 DATA REFERENCE                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------------------ GET /api/metric (Visible Metrics) ------------------------------------------------------------
+;;; --------------------------------------- GET /api/metric (Visible Metrics) ----------------------------------------
 
 (defn- GET-metric [username]
   (vec (for [metric ((test-users/user->client username) :get 200 "metric")
@@ -695,7 +703,7 @@
   (GET-metric :lucky))
 
 
-;;; ------------------------------------------------------------ GET /api/segment (Visible Segments) ------------------------------------------------------------
+;;; -------------------------------------- GET /api/segment (Visible Segments) ---------------------------------------
 
 (defn- GET-segment [username]
   (vec (for [segment ((test-users/user->client username) :get 200 "segment")
@@ -721,7 +729,7 @@
   (GET-segment :lucky))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/metadata (Visible Tables) ------------------------------------------------------------
+;;; -------------------------------- GET /api/database/:id/metadata (Visible Tables) ---------------------------------
 
 (defn- GET-database-id-metadata [username db]
   (let [db ((test-users/user->client username) :get (format "database/%d/metadata" (u/get-id db)))]
