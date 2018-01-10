@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import "./SortableItemList.css";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import Radio from 'metabase/components/Radio.jsx';
 
@@ -58,7 +58,7 @@ export default class SortableItemList extends Component {
                                     : null}
                                     <div className="text-brand-hover">
                                         <h3 className="mb1">{item.name}</h3>
-                                        <h4 className="text-grey-3">{item.description || "No description yet"}</h4>
+                                        <h4 className="text-grey-3">{item.description || t`No description yet`}</h4>
                                     </div>
                                 </div>
                                 {item.creator && item.updated_at &&

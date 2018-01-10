@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 export default class LoadingAndErrorWrapper extends Component {
@@ -34,7 +34,7 @@ export default class LoadingAndErrorWrapper extends Component {
         noBackground:   false,
         noWrapper:      false,
         showSpinner:    true,
-        loadingMessages: ['Loading...'],
+        loadingMessages: [t`Loading...`],
         messageInterval: 6000,
     };
 
@@ -45,7 +45,7 @@ export default class LoadingAndErrorWrapper extends Component {
             error.data && (error.data.message ? error.data.message : error.data) ||
             error.statusText ||
             error.message ||
-            "An error occured"
+            t`An error occured`
         );
     }
 
@@ -85,7 +85,6 @@ export default class LoadingAndErrorWrapper extends Component {
             messageIndex: this.state.messageIndex + 1 < this.props.loadingMessages.length
             ? this.state.messageIndex + 1
             : 0
-
         })
     }
 

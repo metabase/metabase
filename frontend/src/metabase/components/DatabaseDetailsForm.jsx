@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -175,11 +175,11 @@ export default class DatabaseDetailsForm extends Component {
                             <Toggle value={on} onChange={(val) => this.onChange("tunnel-enabled", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>Use an SSH-tunnel for database connections</h3>
+                            <h3>{t`Use an SSH-tunnel for database connections`}</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
-                                 Some database installations can only be accessed by connecting through an SSH bastion host.
+                                 {t`Some database installations can only be accessed by connecting through an SSH bastion host.
                                  This option also provides an extra layer of security when a VPN is not available.
-                                 Enabling this is usually slower than a direct connection.
+                                 Enabling this is usually slower than a direct connection.`}
                             </div>
                         </div>
                     </div>
@@ -197,10 +197,10 @@ export default class DatabaseDetailsForm extends Component {
                             <Toggle value={on} onChange={(val) => this.onChange("let-user-control-scheduling", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>This is a large database, so let me choose when Metabase syncs and scans</h3>
+                            <h3>{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
-                                By default, Metabase does a lightweight hourly sync, and an intensive daily scan of field values.
-                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+                                {t`By default, Metabase does a lightweight hourly sync, and an intensive daily scan of field values.
+                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
                             </div>
                         </div>
                     </div>
@@ -215,8 +215,8 @@ export default class DatabaseDetailsForm extends Component {
                 credentialsURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <a href={credentialsURL} target='_blank'>Click here</a> to generate a Client ID and Client Secret for your project.
-                            Choose "Other" as the application type. Name it whatever you'd like.
+                            {t`<a href=${credentialsURL} target='_blank'>Click here</a> to generate a Client ID and Client Secret for your project.`}
+                            {t`Choose "Other" as the application type. Name it whatever you'd like.`}
                         </div>
                     </div>);
             // }
@@ -237,9 +237,9 @@ export default class DatabaseDetailsForm extends Component {
                 authURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <a href={authURL} target='_blank'>Click here</a> to get an auth code
+                            {t`<a href=${authURL} target='_blank'>Click here</a> to get an auth code`}
                             { engine === "bigquery" &&
-                                <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>with Google Drive permissions</a>)</span>
+                                <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>{t`with Google Drive permissions`}</a>)</span>
                             }
                         </div>
                     </div>);
@@ -272,8 +272,8 @@ export default class DatabaseDetailsForm extends Component {
         let fields = [
             {
                 name: 'name',
-                'display-name': 'Name',
-                placeholder: "How would you like to refer to this database?",
+                'display-name': t`Name`,
+                placeholder: t`How would you like to refer to this database?`,
                 required: true
             },
             ...engines[engine]['details-fields'],
@@ -295,7 +295,7 @@ export default class DatabaseDetailsForm extends Component {
 
                 <div className="Form-actions">
                     <button className={cx("Button", {"Button--primary": valid})} disabled={!valid || submitting}>
-                        {submitting ? "Saving..." : (willProceedToNextDbCreationStep ? "Next" : submitButtonText)}
+                        {submitting ? t`Saving...` : (willProceedToNextDbCreationStep ? t`Next` : submitButtonText)}
                     </button>
                     <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
                 </div>
