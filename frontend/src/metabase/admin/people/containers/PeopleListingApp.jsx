@@ -224,7 +224,7 @@ export default class PeopleListingApp extends Component {
 
                     <PasswordReveal password={user.password} />
 
-                    <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">{jt`If you want to be able to send email invites, just go to the <Link to="/admin/settings/email" className="link text-bold">Email Settings</Link> page.`}</div>
+                    <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">{jt`If you want to be able to send email invites, just go to the ${<Link to="/admin/settings/email" className="link text-bold">Email Settings</Link>} page.`}</div>
                 </div>
             </Modal>
         );
@@ -242,7 +242,7 @@ export default class PeopleListingApp extends Component {
                 ]}
                 onClose={this.onCloseModal}
             >
-                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{t`We’ve sent an invite to <span className="text-bold">${user.email}</span> with instructions to set their password.`}</div>
+                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{jt`We’ve sent an invite to ${<span className="text-bold">${user.email}</span>} with instructions to set their password.`}</div>
             </Modal>
         );
     }
