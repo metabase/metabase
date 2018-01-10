@@ -708,7 +708,7 @@
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
 
-    (contains? #{:sqlserver :sqlite :crate :oracle :sparksql :drill} *engine*)
+    (contains? #{:sqlserver :sqlite :crate :oracle :sparksql} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
     (and (supports-report-timezone? *engine*)
@@ -864,8 +864,7 @@
 (expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
 (expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-;; Drill does not support week intervals
-(expect-with-non-timeseries-dbs-except #{:bigquery :drill} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
 (expect-with-non-timeseries-dbs-except #{:bigquery}
@@ -876,8 +875,7 @@
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
 
-;; Drill does not support week intervals
-(expect-with-non-timeseries-dbs-except #{:bigquery :drill}
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   7
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
         (data/run-query checkins
