@@ -123,9 +123,8 @@
 (derive :type/Name :type/Category)
 
 (derive :type/User :type/Field)
-(derive :type/Product :type/Field)
-
-(derive :type/Source :type/Field)
+(derive :type/Product :type/Category)
+(derive :type/Source :type/Category)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
