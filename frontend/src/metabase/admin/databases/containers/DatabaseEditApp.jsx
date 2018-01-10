@@ -8,7 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
 import DatabaseSchedulingForm from "../components/DatabaseSchedulingForm";
-
+import { t } from 'c-3po';
 import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -135,15 +135,15 @@ export default class DatabaseEditApp extends Component {
         return (
             <div className="wrapper">
                 <Breadcrumbs className="py4" crumbs={[
-                    ["Databases", "/admin/databases"],
-                    [addingNewDatabase ? "Add Database" : database.name]
+                    [t`Databases`, "/admin/databases"],
+                    [addingNewDatabase ? t`Add Database` : database.name]
                 ]} />
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed pt0">
                             { showTabs &&
                                 <Tabs
-                                    tabs={['Connection', 'Scheduling']}
+                                    tabs={[t`Connection`, t`Scheduling`]}
                                     currentTab={currentTab}
                                     setTab={tab => this.setState({currentTab: tab.toLowerCase()})}
                                 />
@@ -171,7 +171,7 @@ export default class DatabaseEditApp extends Component {
                                             formState={formState}
                                             // Use saveDatabase both for db creation and updating
                                             save={this.props.saveDatabase}
-                                            submitButtonText={ addingNewDatabase ? "Save" : "Save changes" }
+                                            submitButtonText={ addingNewDatabase ? t`Save` : t`Save changes` }
                                         />
                                         }
                                     </div>
@@ -185,42 +185,42 @@ export default class DatabaseEditApp extends Component {
                         <div className="Grid-cell Cell--1of3">
                             <div className="Actions bordered rounded shadowed">
                                 <div className="Actions-group">
-                                    <label className="Actions-groupLabel block text-bold">Actions</label>
+                                    <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
                                     <ol>
                                         <li>
                                             <ActionButton
                                                 actionFn={() => this.props.syncDatabaseSchema(database.id)}
                                                 className="Button Button--syncDbSchema"
-                                                normalText="Sync database schema now"
-                                                activeText="Starting…"
-                                                failedText="Failed to sync"
-                                                successText="Sync triggered!"
+                                                normalText={t`Sync database schema now`}
+                                                activeText={t`Starting…`}
+                                                failedText={t`Failed to sync`}
+                                                successText={t`Sync triggered!`}
                                             />
                                         </li>
                                         <li className="mt2">
                                             <ActionButton
                                                 actionFn={() => this.props.rescanDatabaseFields(database.id)}
                                                 className="Button Button--rescanFieldValues"
-                                                normalText="Re-scan field values now"
-                                                activeText="Starting…"
-                                                failedText="Failed to start scan"
-                                                successText="Scan triggered!"
+                                                normalText={t`Re-scan field values now`}
+                                                activeText={t`Starting…`}
+                                                failedText={t`Failed to start scan`}
+                                                successText={t`Scan triggered!`}
                                             />
                                         </li>
                                     </ol>
                                 </div>
 
                                 <div className="Actions-group">
-                                    <label className="Actions-groupLabel block text-bold">Danger Zone</label>
+                                    <label className="Actions-groupLabel block text-bold">{t`Danger Zone`}</label>
                                     <ol>
                                         <li>
                                             <ModalWithTrigger
                                                 ref="discardSavedFieldValuesModal"
                                                 triggerClasses="Button Button--danger Button--discardSavedFieldValues"
-                                                triggerElement="Discard saved field values"
+                                                triggerElement={t`Discard saved field values`}
                                             >
                                                 <ConfirmContent
-                                                    title="Discard saved field values"
+                                                    title={t`Discard saved field values`}
                                                     onClose={() => this.refs.discardSavedFieldValuesModal.toggle()}
                                                     onAction={() => this.props.discardSavedFieldValues(database.id)}
                                                 />
@@ -231,7 +231,7 @@ export default class DatabaseEditApp extends Component {
                                             <ModalWithTrigger
                                                 ref="deleteDatabaseModal"
                                                 triggerClasses="Button Button--deleteDatabase Button--danger"
-                                                triggerElement="Remove this database"
+                                                triggerElement={t`Remove this database`}
                                             >
                                                 <DeleteDatabaseModal
                                                     database={database}

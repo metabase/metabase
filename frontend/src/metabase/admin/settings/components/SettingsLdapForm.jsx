@@ -4,7 +4,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import Collapse from "react-collapse";
-
+import { t } from 'c-3po';
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
@@ -67,11 +67,11 @@ export default class SettingsLdapForm extends Component {
 
         switch (validationType) {
             case "email":
-                return !MetabaseUtils.validEmail(value) ? (validationMessage || "That's not a valid email address") : null;
+                return !MetabaseUtils.validEmail(value) ? (validationMessage || t`That's not a valid email address`) : null;
             case "integer":
-                return isNaN(parseInt(value)) ? (validationMessage || "That's not a valid integer") : null;
+                return isNaN(parseInt(value)) ? (validationMessage || t`That's not a valid integer`) : null;
             case "ldap_filter":
-                return (value.match(/\(/g) || []).length !== (value.match(/\)/g) || []).length ? (validationMessage || "Check your parentheses") : null;
+                return (value.match(/\(/g) || []).length !== (value.match(/\)/g) || []).length ? (validationMessage || t`Check your parentheses`) : null;
         }
     }
 
@@ -117,7 +117,7 @@ export default class SettingsLdapForm extends Component {
         if (error.data && error.data.message) {
             formErrors.message = error.data.message;
         } else {
-            formErrors.message = "Looks like we ran into some problems";
+            formErrors.message = t`Looks like we ran into some problems`;
         }
 
         if (error.data && error.data.errors) {
@@ -210,9 +210,9 @@ export default class SettingsLdapForm extends Component {
         let groupSettings = elements.filter(e => sections[e.key] === 'group').map(toElement);
 
         let saveSettingsButtonStates = {
-            default: "Save changes",
-            working: "Saving...",
-            success: "Changes saved!"
+            default: t`Save changes`,
+            working: t`Saving...`,
+            success: t`Changes saved!`
         };
 
         let disabled = (!valid || submitting !== "default");
@@ -222,27 +222,27 @@ export default class SettingsLdapForm extends Component {
             <form noValidate>
                 <Breadcrumbs
                     crumbs={[
-                        ["Authentication", "/admin/settings/authentication"],
-                        ["LDAP"]
+                        [t`Authentication`, "/admin/settings/authentication"],
+                        [t`LDAP`]
                     ]}
                     className="ml2 mb3"
                 />
-                <h2 className="mx2">Server Settings</h2>
+                <h2 className="mx2">{t`Server Settings`}</h2>
                 <ul>{serverSettings}</ul>
-                <h2 className="mx2">User Schema</h2>
+                <h2 className="mx2">{t`User Schema`}</h2>
                 <ul>{userSettings}</ul>
                 <div className="mb4">
                     <div className="inline-block ml1 cursor-pointer text-brand-hover" onClick={this.handleAttributeToggle.bind(this)}>
                         <div className="flex align-center">
                             <DisclosureTriangle open={showAttributes} />
-                            <h3>Attributes</h3>
+                            <h3>{t`Attributes`}</h3>
                         </div>
                     </div>
                     <Collapse isOpened={showAttributes} keepCollapsedContent>
                         <ul>{attributeSettings}</ul>
                     </Collapse>
                 </div>
-                <h2 className="mx2">Group Schema</h2>
+                <h2 className="mx2">{t`Group Schema`}</h2>
                 <ul>{groupSettings}</ul>
                 <div className="m2 mb4">
                     <button className={cx("Button mr2", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.updateLdapSettings.bind(this)}>

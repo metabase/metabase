@@ -1,5 +1,5 @@
 import React from "react";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 const AddRow = ({ value, isValid, placeholder, onKeyDown, onChange, onDone, onCancel, children }) =>
@@ -15,10 +15,10 @@ const AddRow = ({ value, isValid, placeholder, onKeyDown, onChange, onDone, onCa
             onChange={onChange}
         />
         <span className="link no-decoration cursor-pointer" onClick={onCancel}>
-            Cancel
+            {t`Cancel`}
         </span>
         <button className={cx("Button ml2", {"Button--primary": !!isValid})} disabled={!isValid} onClick={onDone}>
-            Add
+            {t`Add`}
         </button>
     </div>
 

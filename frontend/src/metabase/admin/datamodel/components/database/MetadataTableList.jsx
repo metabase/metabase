@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
-
+import { t } from 'c-3po';
 import { inflect } from "metabase/lib/formatting";
 
 import _ from "underscore";
@@ -78,7 +78,7 @@ export default class MetadataTableList extends Component {
                     <input
                         className="AdminInput pl4 border-bottom"
                         type="text"
-                        placeholder="Find a table"
+                        placeholder={t`Find a table`}
                         value={this.state.searchText}
                         onChange={this.updateSearchText}
                     />
@@ -86,7 +86,7 @@ export default class MetadataTableList extends Component {
                 { (this.props.onBack || this.props.schema) &&
                     <h4 className="p2 border-bottom">
                         { this.props.onBack &&
-                            <span className="text-brand cursor-pointer" onClick={this.props.onBack}><Icon name="chevronleft" size={10}/> Schemas</span>
+                            <span className="text-brand cursor-pointer" onClick={this.props.onBack}><Icon name="chevronleft" size={10}/>{t`Schemas`}</span>
                         }
                         { this.props.onBack && this.props.schema && <span className="mx1">-</span>}
                         { this.props.schema && <span> {this.props.schema.name}</span>}

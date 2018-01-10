@@ -7,7 +7,7 @@ import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import GroupSelect from "../components/GroupSelect.jsx";
 import GroupSummary from "../components/GroupSummary.jsx";
-
+import { t } from 'c-3po';
 import MetabaseUtils from "metabase/lib/utils";
 import SelectButton from "metabase/components/SelectButton.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -74,7 +74,7 @@ export default class EditUserForm extends Component {
         // validate email address
         let email = ReactDOM.findDOMNode(this.refs.email).value ? ReactDOM.findDOMNode(this.refs.email).value.trim() : null;
         if (!MetabaseUtils.validEmail(email)) {
-            formErrors.data.errors.email = "Not a valid formatted email address";
+            formErrors.data.errors.email = t`Not a valid formatted email address`;
         }
 
         if (_.keys(formErrors.data.errors).length > 0) {
@@ -109,7 +109,7 @@ export default class EditUserForm extends Component {
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
                 <div className="px4 pb2">
                     <FormField fieldName="first_name" formError={formError}>
-                        <FormLabel title="First name" fieldName="first_name" formError={formError} offset={false}></FormLabel>
+                        <FormLabel title={t`First name`} fieldName="first_name" formError={formError} offset={false}></FormLabel>
                         <input
                             ref="firstName"
                             className="Form-input full"
@@ -121,7 +121,7 @@ export default class EditUserForm extends Component {
                     </FormField>
 
                     <FormField fieldName="last_name" formError={formError}>
-                        <FormLabel title="Last name" fieldName="last_name" formError={formError} offset={false}></FormLabel>
+                        <FormLabel title={t`Last name`} fieldName="last_name" formError={formError} offset={false}></FormLabel>
                         <input
                             ref="lastName"
                             className="Form-input full"
@@ -134,7 +134,7 @@ export default class EditUserForm extends Component {
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>
-                        <FormLabel title="Email address" fieldName="email" formError={formError} offset={false}></FormLabel>
+                        <FormLabel title={t`Email address`} fieldName="email" formError={formError} offset={false}></FormLabel>
                         <input
                             ref="email"
                             className="Form-input full"
@@ -148,7 +148,7 @@ export default class EditUserForm extends Component {
 
                     { groups && groups.filter(g => canEditMembership(g) && !isAdminGroup(g)).length > 0 ?
                         <FormField>
-                            <FormLabel title="Permission Groups" offset={false}></FormLabel>
+                            <FormLabel title={t`Permission Groups`} offset={false}></FormLabel>
                             <PopoverWithTrigger
                                 sizeToFit
                                 triggerElement={
@@ -174,17 +174,17 @@ export default class EditUserForm extends Component {
                                     this.setState({ selectedGroups: isAdmin ? { [adminGroup.id]: true } : {} })
                                 }}
                             />
-                            <span className="ml2">Make this user an admin</span>
+                            <span className="ml2">{t`Make this user an admin`}</span>
                         </div>
                     : null }
                 </div>
 
                 <ModalFooter>
                     <Button type="button" onClick={this.cancel.bind(this)}>
-                        Cancel
+                        {t`Cancel`}
                     </Button>
                     <Button primary disabled={!valid}>
-                        { buttonText ? buttonText : "Save changes" }
+                        { buttonText ? buttonText : t`Save changes` }
                     </Button>
                 </ModalFooter>
             </form>

@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import AuthScene from "../components/AuthScene.jsx";
 import SSOLoginButton from "../components/SSOLoginButton.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
@@ -13,7 +13,6 @@ import FormMessage from "metabase/components/form/FormMessage.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import Settings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
-
 
 import * as authActions from "../auth";
 
@@ -119,14 +118,14 @@ export default class LoginApp extends Component {
                     </div>
                     <div className="Login-content Grid-cell">
                         <form className="Form-new bg-white bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)} noValidate>
-                            <h3 className="Login-header Form-offset">Sign in to Metabase</h3>
+                            <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
 
                             { Settings.ssoEnabled() &&
                                 <div className="mx4 mb4 py3 border-bottom relative">
                                     <SSOLoginButton provider='google' ref="ssoLoginButton"/>
                                     {/*<div className="g-signin2 ml1 relative z2" id="g-signin2"></div>*/}
                                     <div className="mx1 absolute text-centered left right" style={{ bottom: -8 }}>
-                                        <span className="text-bold px3 py2 text-grey-3 bg-white">OR</span>
+                                        <span className="text-bold px3 py2 text-grey-3 bg-white">{t`OR`}</span>
                                     </div>
                                 </div>
                             }
@@ -134,20 +133,20 @@ export default class LoginApp extends Component {
                             <FormMessage formError={loginError && loginError.data.message ? loginError : null} ></FormMessage>
 
                             <FormField key="username" fieldName="username" formError={loginError}>
-                                <FormLabel title={Settings.ldapEnabled() ? "Username or email address" : "Email address"} fieldName={"username"} formError={loginError} />
-                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChangeUserName("username", e.target.value)} autoFocus />
+                                <FormLabel title={Settings.ldapEnabled() ? t`Username or email address` : t`Email address`} fieldName={"username"} formError={loginError} />
+                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
                                 <span className="Form-charm"></span>
                             </FormField>
 
                             <FormField key="password" fieldName="password" formError={loginError}>
-                                <FormLabel title={"Password"}  fieldName={"password"} formError={loginError} />
+                                <FormLabel title={t`Password`}  fieldName={"password"} formError={loginError} />
                                 <input className="Form-input Form-offset full py1" name="password" placeholder="Shh..." type="password" onChange={(e) => this.onChange("password", e.target.value)} />
                                 <span className="Form-charm"></span>
                             </FormField>
 
                             <div className="Form-field">
                                 <ul className="Form-offset">
-                                    <input name="remember" type="checkbox" defaultChecked /> <label className="inline-block">Remember Me:</label>
+                                    <input name="remember" type="checkbox" defaultChecked /> <label className="inline-block">{t`Remember Me:`}</label>
                                 </ul>
                             </div>
 
@@ -155,7 +154,7 @@ export default class LoginApp extends Component {
                                 <button className={cx("Button Grid-cell", {'Button--primary': this.state.valid})} disabled={!this.state.valid}>
                                     Sign in
                                 </button>
-                                <Link to={"/auth/forgot_password"+(Utils.validEmail(this.state.credentials.username) ? "?email="+this.state.credentials.username : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
+                                <Link to={"/auth/forgot_password"+(Utils.validEmail(this.state.credentials.username) ? "?email="+this.state.credentials.username : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>{t`I seem to have forgotten my password`}</Link>
                             </div>
                         </form>
                     </div>

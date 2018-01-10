@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-
+import { t } from 'c-3po';
 import { inflect } from "metabase/lib/formatting";
 
 import _ from "underscore";
@@ -38,7 +38,7 @@ export default class MetadataSchemaList extends Component {
                     <input
                         className="AdminInput pl4 border-bottom"
                         type="text"
-                        placeholder="Find a schema"
+                        placeholder={t`Find a schema`}
                         value={this.state.searchText}
                         onChange={this.updateSearchText}
                     />

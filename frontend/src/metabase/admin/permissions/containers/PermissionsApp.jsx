@@ -6,7 +6,7 @@ import { push } from "react-router-redux";
 
 import { initialize } from "../permissions";
 import { getIsDirty } from "../selectors";
-
+import { t } from 'c-3po';
 import ConfirmContent from "metabase/components/ConfirmContent.jsx";
 import Modal from "metabase/components/Modal.jsx";
 
@@ -53,8 +53,8 @@ export default class PermissionsApp extends Component {
                 {this.props.children}
                 <Modal isOpen={this.state.nextLocation}>
                     <ConfirmContent
-                        title="You have unsaved changes"
-                        message="Do you want to leave this page and discard your changes?"
+                        title={t`You have unsaved changes`}
+                        message={t`Do you want to leave this page and discard your changes?`}
                         onClose={() => {
                             this.setState({ nextLocation: null });
                         }}

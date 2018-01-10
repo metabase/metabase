@@ -3,7 +3,7 @@ import _ from "underscore"
 import { handleActions } from "redux-actions";
 import { combineReducers } from "redux";
 import { addUndo, createUndo } from "metabase/redux/undo";
-
+import { t } from 'c-3po';
 import { AlertApi } from "metabase/services";
 import { RestfulRequest } from "metabase/lib/request";
 import Icon from "metabase/components/Icon.jsx";
@@ -52,7 +52,7 @@ export const createAlert = (alert) => {
         dispatch(addUndo(createUndo({
             type: "create-alert",
             // eslint-disable-next-line react/display-name
-            message: () => <div className="flex align-center text-bold"><Icon name="alertConfirm" size="19" className="mr2 text-success" />Your alert is all set up.</div>,
+            message: () => <div className="flex align-center text-bold"><Icon name="alertConfirm" size="19" className="mr2 text-success" />{t`Your alert is all set up.`}</div>,
             action: null // alert creation is not undoable
         })));
 
@@ -73,7 +73,7 @@ export const updateAlert = (alert) => {
         dispatch(addUndo(createUndo({
             type: "update-alert",
             // eslint-disable-next-line react/display-name
-            message: () => <div className="flex align-center text-bold"><Icon name="alertConfirm" size="19" className="mr2 text-success" />Your alert was updated.</div>,
+            message: () => <div className="flex align-center text-bold"><Icon name="alertConfirm" size="19" className="mr2 text-success" />{t`Your alert was updated.`}</div>,
             action: null // alert updating is not undoable
         })));
 
@@ -112,7 +112,7 @@ export const deleteAlert = (alertId) => {
         dispatch(addUndo(createUndo({
             type: "delete-alert",
             // eslint-disable-next-line react/display-name
-            message: () => <div className="flex align-center text-bold"><Icon name="alertConfirm" size="19" className="mr2 text-success" />The alert was successfully deleted.</div>,
+            message: () => <div className="flex align-center text-bold"><Icon name="alertConfirm" size="19" className="mr2 text-success" />{t`The alert was successfully deleted.`}</div>,
             action: null // alert deletion is not undoable
         })));
         dispatch.action(DELETE_ALERT, alertId)
