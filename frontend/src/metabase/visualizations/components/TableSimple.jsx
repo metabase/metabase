@@ -131,9 +131,9 @@ export default class TableSimple extends Component {
                                             >
                                                 <span
                                                     className={cx({ "cursor-pointer text-brand-hover": isClickable })}
-                                                    onClick={isClickable && ((e) => {
+                                                    onClick={isClickable ? ((e) => {
                                                         onVisualizationClick({ ...clicked, element: e.currentTarget });
-                                                    })}
+                                                    }) : undefined}
                                                 >
                                                     { cell == null ? "-" : formatValue(cell, { column: cols[columnIndex], jsx: true }) }
                                                 </span>
