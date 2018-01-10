@@ -2,7 +2,7 @@ import React from "react";
 
 import inflection from "inflection";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
@@ -516,16 +516,16 @@ var Query = {
                 return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
             }
             switch (aggregation[0]) {
-                case "rows":      return           ["Raw data"];
-                case "count":     return              ["Count"];
-                case "cum_count": return   ["Cumulative count"];
-                case "avg":       return            ["Average of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "distinct":  return    ["Distinct values of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "stddev":    return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "sum":       return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "cum_sum":   return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "max":       return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "min":       return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "rows":      return           [t`Raw data`];
+                case "count":     return              [t`Count`];
+                case "cum_count": return   [t`Cumulative count`];
+                case "avg":       return            [t`Average of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "distinct":  return    [t`Distinct values of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "stddev":    return [t`Standard deviation of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "sum":       return                [t`Sum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "cum_sum":   return     [t`Cumulative sum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "max":       return            [t`Maximum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "min":       return            [t`Minimum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
                 default:          return [formatExpression(aggregation, { tableMetadata })]
             }
         }), "and");
@@ -533,7 +533,7 @@ var Query = {
 
     getBreakoutDescription(tableMetadata, { breakout }, options) {
         if (breakout && breakout.length > 0) {
-            return ["Grouped by ", joinList(breakout.map((b) => Query.getFieldName(tableMetadata, b, options)), " and ")];
+            return [t`Grouped by `, joinList(breakout.map((b) => Query.getFieldName(tableMetadata, b, options)), " and ")];
         }
     },
 
@@ -541,7 +541,7 @@ var Query = {
         // getFilters returns list of filters without the implied "AND"
         let filters = ["AND"].concat(Query.getFilters(query));
         if (filters && filters.length > 1) {
-            return ["Filtered by ", Query.getFilterClauseDescription(tableMetadata, filters, options)];
+            return [t`Filtered by `, Query.getFilterClauseDescription(tableMetadata, filters, options)];
         }
     },
 
@@ -560,7 +560,7 @@ var Query = {
 
     getOrderByDescription(tableMetadata, { order_by }, options) {
         if (order_by && order_by.length > 0) {
-            return ["Sorted by ", joinList(order_by.map(o => Query.getFieldName(tableMetadata, o[0], options) + " " + o[1]), " and ")];
+            return [t`Sorted by `, joinList(order_by.map(o => Query.getFieldName(tableMetadata, o[0], options) + " " + o[1]), " and ")];
         }
     },
 

@@ -1,6 +1,6 @@
 import { AsyncApi } from "metabase/services";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 export class RestfulRequest {
     // API endpoint that is used for the request
     endpoint = null
@@ -196,6 +196,6 @@ export class BackgroundJobRequest {
 class ResultNoAvailableError extends Error {
     constructor() {
         super()
-        this.message = "Background job result isn't available for an unknown reason"
+        this.message = t`Background job result isn't available for an unknown reason`
     }
 }
