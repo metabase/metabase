@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon.jsx";
@@ -20,7 +20,7 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 export default class Progress extends Component {
     props: VisualizationProps;
 
-    static uiName = "Progress";
+    static uiName = t`Progress`;
     static identifier = "progress";
     static iconName = "progress";
 
@@ -32,20 +32,20 @@ export default class Progress extends Component {
 
     static checkRenderable([{ data: { cols, rows} }]) {
         if (!isNumeric(cols[0])) {
-            throw new Error("Progress visualization requires a number.");
+            throw new Error(t`Progress visualization requires a number.`);
         }
     }
 
     static settings = {
         "progress.goal": {
             section: "Display",
-            title: "Goal",
+            title: t`Goal`,
             widget: "number",
             default: 0
         },
         "progress.color": {
             section: "Display",
-            title: "Color",
+            title: t`Color`,
             widget: "color",
             default: normal.green
         },
@@ -121,9 +121,9 @@ export default class Progress extends Component {
 
         let barMessage;
         if (value === goal) {
-            barMessage = "Goal met";
+            barMessage = t`Goal met`;
         } else if (value > goal) {
-            barMessage = "Goal exceeded";
+            barMessage = t`Goal exceeded`;
         }
 
         const clicked = {
@@ -189,7 +189,7 @@ export default class Progress extends Component {
                     </div>
                     <div className="mt1">
                         <span className="float-left">0</span>
-                        <span className="float-right">Goal {formatValue(goal, { comma: true })}</span>
+                        <span className="float-right">{t`Goal ${formatValue(goal, { comma: true })}`}</span>
                     </div>
                 </div>
             </div>

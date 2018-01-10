@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { findDOMNode } from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
+import { t } from "c-3po";
 
 import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
 import Icon from "metabase/components/Icon";
@@ -227,7 +228,7 @@ export default class RecipientPicker extends Component {
                         <Input
                             ref="input"
                             className="full h4 text-bold text-default no-focus borderless"
-                            placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
+                            placeholder={recipients.length === 0 ? t`Enter email addresses you'd like this data to go to` : null}
                             value={inputValue}
                             autoFocus={focused}
                             onKeyDown={this.onInputKeyDown}

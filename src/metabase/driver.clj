@@ -1,11 +1,24 @@
 (ns metabase.driver
+  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+  introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
+  `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
+  below.
+
+  JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
+  implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
+  found in `metabase.driver.generic-sql`.
+
+  This namespace also contains various other functions for fetching drivers, testing database connections, and the
+  like."
   (:require [clj-time.format :as tformat]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.models
              [database :refer [Database]]
-             [setting :refer [defsetting]]]
+             field
+             [setting :refer [defsetting]]
+             table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
             [schema.core :as s]
@@ -99,7 +112,7 @@
 
       Is this property required? Defaults to `false`.")
 
-  (execute-query ^java.util.Map [this, ^java.util.Map query]
+  (^{:style/indent 1} execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
 
   The query passed in will contain:
@@ -177,7 +190,7 @@
          (fn [query]
            (qp query)))")
 
-  (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
+  (^{:style/indent 2} sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
      `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
      arguments.
@@ -194,7 +207,7 @@
      table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
      returned in any given order.")
 
-  (current-db-time ^DateTime [this ^DatabaseInstance database]
+  (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
     "Returns the current time and timezone from the perspective of `DATABASE`."))
 
 (def IDriverDefaultsMixin
@@ -324,7 +337,7 @@
              [java.sql.Date                  :type/Date]
              [java.sql.Timestamp             :type/DateTime]
              [java.util.Date                 :type/DateTime]
-             [org.joda.time.DateTime         :type/DateTime]
+             [DateTime                       :type/DateTime]
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
@@ -417,7 +430,7 @@
   10000)
 
 ;; TODO - move this to the metadata-queries namespace or something like that instead
-(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+(s/defn ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)

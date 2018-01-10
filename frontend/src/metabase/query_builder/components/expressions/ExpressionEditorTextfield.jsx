@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import S from "./ExpressionEditorTextfield.css";
-
+import { t } from 'c-3po';
 import _ from "underscore";
 import cx from "classnames";
 
@@ -171,7 +171,7 @@ export default class ExpressionEditorTextfield extends Component {
         } else if (this.state.expressionErrorMessage) {
             this.props.onError(this.state.expressionErrorMessage);
         } else {
-            this.props.onError({ message: "Invalid expression" });
+            this.props.onError({ message: t`Invalid expression` });
         }
     }
 
@@ -239,7 +239,7 @@ export default class ExpressionEditorTextfield extends Component {
 
     render() {
         let errorMessage = this.state.expressionErrorMessage;
-        if (errorMessage && !errorMessage.length) errorMessage = 'unknown error';
+        if (errorMessage && !errorMessage.length) errorMessage = t`unknown error`;
 
         const { placeholder } = this.props;
         const { suggestions } = this.state;

@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { jt } from "c-3po";
 import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -42,7 +42,6 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
         if (breakoutOptions.count === 0) {
             return [];
         }
-
         return [
             {
                 name: "pivot-by-" + name.toLowerCase(),
@@ -50,11 +49,11 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                 title: clicked
                     ? name
                     : <span>
-                          Break out by
-                          {" "}
-                          <span className="text-dark">
-                              {name.toLowerCase()}
-                          </span>
+                          {
+                              jt`Break out by ${<span className="text-dark">
+                                      {name.toLowerCase()}
+                                  </span>}`
+                          }
                       </span>,
                 icon: icon,
                 // eslint-disable-next-line react/display-name

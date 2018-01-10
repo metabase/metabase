@@ -11,7 +11,7 @@ import E from "metabase/reference/components/EditButton.css";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-
+import { t } from 'c-3po';
 
 const ReferenceHeader = ({
     name,
@@ -56,7 +56,7 @@ const ReferenceHeader = ({
                             data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
                         >
                             <div className="flex align-center relative">
-                                <span className="mr1 flex-no-shrink">See this {type}</span>
+                                <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>
                                 <Icon name="chevronright" size={16} />
                             </div>
                         </Link>

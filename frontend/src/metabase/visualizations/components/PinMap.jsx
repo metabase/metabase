@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
@@ -44,7 +44,7 @@ export default class PinMap extends Component {
     props: Props;
     state: State;
 
-    static uiName = "Pin Map";
+    static uiName = t`Pin Map`;
     static identifier = "pin_map";
     static iconName = "pinmap";
 
@@ -169,7 +169,7 @@ export default class PinMap extends Component {
                 <div className="absolute top right m1 z2 flex flex-column hover-child">
                     { isEditing || !isDashboard ?
                         <div className={cx("PinMapUpdateButton Button Button--small mb1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
-                            Save as default view
+                            {t`Save as default view`}
                         </div>
                     : null }
                     { !isDashboard &&
@@ -183,7 +183,7 @@ export default class PinMap extends Component {
                                 }
                             }}
                         >
-                            { !this.state.filtering ? "Draw box to filter" : "Cancel filter" }
+                            { !this.state.filtering ? t`Draw box to filter` : t`Cancel filter` }
                         </div>
                     }
                 </div>

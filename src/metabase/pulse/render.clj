@@ -5,18 +5,21 @@
              [format :as f]]
             [clojure
              [pprint :refer [cl-format]]
-             [string :as s]]
+             [string :as str]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [h html]]
             [metabase.util :as u]
-            [metabase.util.urls :as urls])
+            [metabase.util.urls :as urls]
+            [puppetlabs.i18n.core :refer [tru trs]]
+            [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
            java.awt.image.BufferedImage
            [java.io ByteArrayInputStream ByteArrayOutputStream]
+           java.net.URL
            java.nio.charset.StandardCharsets
-           java.util.Date
+           [java.util Arrays Date]
            javax.imageio.ImageIO
            org.apache.commons.io.IOUtils
            [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
@@ -75,6 +78,10 @@
                      :padding-right :1em
                      :padding-top   :8px}))
 
+(def ^:private RenderedPulseCard
+  "Schema used for functions that operate on pulse card contents and their attachments"
+  {:attachments (s/maybe {s/Str URL})
+   :content [s/Any]})
 
 ;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
 
@@ -83,9 +90,9 @@
 
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
   [& style-maps]
-  (s/join " " (for [[k v] (into {} style-maps)
-                    :let  [v (if (keyword? v) (name v) v)]]
-                (str (name k) ": " v ";"))))
+  (str/join " " (for [[k v] (into {} style-maps)
+                      :let  [v (if (keyword? v) (name v) v)]]
+                  (str (name k) ": " v ";"))))
 
 
 (defn- datetime-field?
@@ -229,12 +236,13 @@
     (.createLayout content-canvas window-size)
     (ImageIO/write (.getImage content-canvas) "png" os)))
 
-(defn- render-html-to-png
-  ^bytes [html-body width]
+(s/defn ^:private render-html-to-png :- bytes
+  [{:keys [content]} :- RenderedPulseCard
+   width]
   (let [html (html [:html [:body {:style (style {:margin           0
                                                  :padding          0
                                                  :background-color :white})}
-                           html-body]])
+                           content]])
         os   (ByteArrayOutputStream.)]
     (render-to-png html os width)
     (.toByteArray os)))
@@ -288,7 +296,7 @@
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
-          (s/upper-case (name (or (:display_name col) (:name col)))))
+          (str/upper-case (name (or (:display_name col) (:name col)))))
    :bar-width (when include-bar? 99)})
 
 (defn- query-results->row-seq
@@ -336,23 +344,26 @@
         " of "     [:strong {:style (style {:color color-gray-3})} (format-number col-count)]
         " columns."])]))
 
-(defn- render:table
+(s/defn ^:private render:table :- RenderedPulseCard
   [timezone card {:keys [cols rows] :as data}]
-  [:div
-   (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
-   (render-truncation-warning cols-limit (count cols) rows-limit (count rows))])
+  {:attachments nil
+   :content     [:div
+                 (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                 (render-truncation-warning cols-limit (count cols) rows-limit (count rows))]})
 
-(defn- render:bar
+(s/defn ^:private render:bar :- RenderedPulseCard
   [timezone card {:keys [cols rows] :as data}]
   (let [max-value (apply max (map second rows))]
-    [:div
-     (render-table (prep-for-html-rendering timezone cols rows second max-value 2))
-     (render-truncation-warning 2 (count cols) rows-limit (count rows))]))
+    {:attachments nil
+     :content     [:div
+                   (render-table (prep-for-html-rendering timezone cols rows second max-value 2))
+                   (render-truncation-warning 2 (count cols) rows-limit (count rows))]}))
 
-(defn- render:scalar
+(s/defn ^:private render:scalar :- RenderedPulseCard
   [timezone card {:keys [cols rows]}]
-  [:div {:style (style scalar-style)}
-   (h (format-cell timezone (ffirst rows) (first cols)))])
+  {:attachments nil
+   :content     [:div {:style (style scalar-style)}
+                 (h (format-cell timezone (ffirst rows) (first cols)))]})
 
 (defn- render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
@@ -380,11 +391,100 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (throw (Exception. "No approprate image writer found!")))
+      (let [^String msg (tru "No approprate image writer found!")]
+        (throw (Exception. msg))))
     (.toByteArray os)))
 
-(defn- render:sparkline
-  [timezone card {:keys [rows cols]}]
+(defn- hash-bytes
+  "Generate a hash to be used in a Content-ID"
+  [^bytes img-bytes]
+  (Math/abs ^Integer (Arrays/hashCode img-bytes)))
+
+(defn- hash-image-url
+  "Generate a hash to be used in a Content-ID"
+  [^java.net.URL url]
+  (-> url io/input-stream IOUtils/toByteArray hash-bytes))
+
+(defn- content-id-reference [content-id]
+  (str "cid:" content-id))
+
+(defn- mb-hash-str [image-hash]
+  (str image-hash "@metabase"))
+
+(defn- write-byte-array-to-temp-file
+  [^bytes img-bytes]
+  (let [f (doto (java.io.File/createTempFile "metabase_pulse_image_" ".png")
+            .deleteOnExit)]
+    (with-open [fos (java.io.FileOutputStream. f)]
+      (.write fos img-bytes))
+    f))
+
+(defn- byte-array->url [^bytes img-bytes]
+  (-> img-bytes write-byte-array-to-temp-file io/as-url))
+
+(defmulti ^:private make-image-bundle
+  "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
+  `RENDER-TYPE` is `:inline`), or create the hashes/references needed for an attached image (`RENDER-TYPE` of
+  `:attachment`)"
+  (fn [render-type url-or-bytes]
+    [render-type (class url-or-bytes)]))
+
+(defmethod make-image-bundle [:attachment java.net.URL]
+  [render-type ^java.net.URL url]
+  (let [content-id (mb-hash-str (hash-image-url url))]
+    {:content-id  content-id
+     :image-url   url
+     :image-src   (content-id-reference content-id)
+     :render-type render-type}))
+
+(defmethod make-image-bundle [:attachment (class (byte-array 0))]
+  [render-type image-bytes]
+  (let [image-url (byte-array->url image-bytes)
+        content-id (mb-hash-str (hash-bytes image-bytes))]
+    {:content-id  content-id
+     :image-url   image-url
+     :image-src   (content-id-reference content-id)
+     :render-type render-type}))
+
+(defmethod make-image-bundle [:inline java.net.URL]
+  [render-type ^java.net.URL url]
+  {:image-src   (-> url io/input-stream IOUtils/toByteArray render-img-data-uri)
+   :image-url   url
+   :render-type render-type})
+
+(defmethod make-image-bundle [:inline (class (byte-array 0))]
+  [render-type image-bytes]
+  {:image-src   (render-img-data-uri image-bytes)
+   :render-type render-type})
+
+(def ^:private external-link-url (io/resource "frontend_client/app/assets/img/external_link.png"))
+(def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/pulse_no_results@2x.png"))
+
+(def ^:private external-link-image
+  (delay
+   (make-image-bundle :attachment external-link-url)))
+
+(def ^:private no-results-image
+  (delay
+   (make-image-bundle :attachment no-results-url)))
+
+(defn- external-link-image-bundle [render-type]
+  (case render-type
+    :attachment @external-link-image
+    :inline (make-image-bundle render-type external-link-url)))
+
+(defn- no-results-image-bundle [render-type]
+  (case render-type
+    :attachment @no-results-image
+    :inline (make-image-bundle render-type no-results-url)))
+
+(defn- image-bundle->attachment [{:keys [render-type content-id image-url]}]
+  (case render-type
+    :attachment {content-id image-url}
+    :inline     nil))
+
+(s/defn ^:private render:sparkline :- RenderedPulseCard
+  [render-type timezone card {:keys [rows cols]}]
   (let [ft-row (if (datetime-field? (first cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
@@ -406,42 +506,46 @@
         ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
-        labels (format-timestamp-pair timezone (map first rows') (first cols))]
-    [:div
-     [:img {:style (style {:display :block
-                           :width :100%})
-            :src   (*render-img-fn* (render-sparkline-to-png xs' ys' 524 130))}]
-     [:table
-      [:tr
-       [:td {:style (style {:color         color-brand
-                            :font-size     :24px
-                            :font-weight   700
-                            :padding-right :16px})}
-        (first values)]
-       [:td {:style (style {:color       color-gray-3
-                            :font-size   :24px
-                            :font-weight 700})}
-        (second values)]]
-      [:tr
-       [:td {:style (style {:color         color-brand
-                            :font-size     :16px
-                            :font-weight   700
-                            :padding-right :16px})}
-        (first labels)]
-       [:td {:style (style {:color     color-gray-3
-                            :font-size :16px})}
-        (second labels)]]]]))
+        labels (format-timestamp-pair timezone (map first rows') (first cols))
+        image-bundle (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
 
-(defn- render-image-with-filename [^String filename]
-  (*render-img-fn* (IOUtils/toByteArray (io/input-stream (io/resource filename)))))
+    {:attachments (when image-bundle
+                    (image-bundle->attachment image-bundle))
+     :content     [:div
+                   [:img {:style (style {:display :block
+                                         :width :100%})
+                          :src   (:image-src image-bundle)}]
+                   [:table
+                    [:tr
+                     [:td {:style (style {:color         color-brand
+                                          :font-size     :24px
+                                          :font-weight   700
+                                          :padding-right :16px})}
+                      (first values)]
+                     [:td {:style (style {:color       color-gray-3
+                                          :font-size   :24px
+                                          :font-weight 700})}
+                      (second values)]]
+                    [:tr
+                     [:td {:style (style {:color         color-brand
+                                          :font-size     :16px
+                                          :font-weight   700
+                                          :padding-right :16px})}
+                      (first labels)]
+                     [:td {:style (style {:color     color-gray-3
+                                          :font-size :16px})}
+                      (second labels)]]]]}))
 
-(defn- render:empty [_ _]
-  [:div {:style (style {:text-align :center})}
-   [:img {:style (style {:width :104px})
-          :src   (render-image-with-filename "frontend_client/app/assets/img/pulse_no_results@2x.png")}]
-   [:div {:style (style {:margin-top :8px
-                         :color      color-gray-4})}
-    "No results"]])
+(s/defn ^:private render:empty :- RenderedPulseCard
+  [render-type _ _]
+  (let [image-bundle (no-results-image-bundle render-type)]
+    {:attachments (image-bundle->attachment image-bundle)
+     :content     [:div {:style (style {:text-align :center})}
+                   [:img {:style (style {:width :104px})
+                          :src   (:image-src image-bundle)}]
+                   [:div {:style (style {:margin-top :8px
+                                         :color      color-gray-4})}
+                    "No results"]]}))
 
 (defn detect-pulse-card-type
   "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
@@ -467,63 +571,88 @@
            (number-field? col-2))                                  :bar
       :else                                                        :table)))
 
-(defn render-pulse-card
+(s/defn ^:private make-title-if-needed :- (s/maybe RenderedPulseCard)
+  [render-type card]
+  (when *include-title*
+    (let [image-bundle (when *include-buttons*
+                         (external-link-image-bundle render-type))]
+      {:attachments (when image-bundle
+                      (image-bundle->attachment image-bundle))
+       :content     [:table {:style (style {:margin-bottom :8px
+                                            :width         :100%})}
+                     [:tbody
+                      [:tr
+                       [:td [:span {:style header-style}
+                             (-> card :name h)]]
+                       [:td {:style (style {:text-align :right})}
+                        (when *include-buttons*
+                          [:img {:style (style {:width :16px})
+                                 :width 16
+                                 :src   (:image-src image-bundle)}])]]]]})))
+
+(s/defn ^:private render-pulse-card-body :- RenderedPulseCard
+  [render-type timezone card {:keys [data error]}]
+  (try
+    (when error
+      (let [^String msg (tru "Card has errors: {0}" error)]
+        (throw (Exception. msg))))
+    (case (detect-pulse-card-type card data)
+      :empty     (render:empty     render-type card data)
+      :scalar    (render:scalar    timezone card data)
+      :sparkline (render:sparkline render-type timezone card data)
+      :bar       (render:bar       timezone card data)
+      :table     (render:table     timezone card data)
+      {:attachments nil
+       :content     [:div {:style (style font-style
+                                         {:color       "#F9D45C"
+                                          :font-weight 700})}
+                     "We were unable to display this card." [:br] "Please view this card in Metabase."]})
+    (catch Throwable e
+      (log/error e (trs "Pulse card render error"))
+      {:attachments nil
+       :content     [:div {:style (style font-style
+                                         {:color       "#EF8C8C"
+                                          :font-weight 700
+                                          :padding     :16px})}
+                     "An error occurred while displaying this card."]})))
+
+(s/defn ^:private render-pulse-card :- RenderedPulseCard
   "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."
-  [timezone card {:keys [data error]}]
-  [:a {:href   (card-href card)
-       :target "_blank"
-       :style  (style section-style
-                      {:margin          :16px
-                       :margin-bottom   :16px
-                       :display         :block
-                       :text-decoration :none})}
-   (when *include-title*
-     [:table {:style (style {:margin-bottom :8px
-                             :width         :100%})}
-      [:tbody
-       [:tr
-        [:td [:span {:style header-style}
-              (-> card :name h)]]
-        [:td {:style (style {:text-align :right})}
-         (when *include-buttons*
-           [:img {:style (style {:width :16px})
-                  :width 16
-                  :src   (render-image-with-filename "frontend_client/app/assets/img/external_link.png")}])]]]])
-   (try
-     (when error
-       (throw (Exception. (str "Card has errors: " error))))
-     (case (detect-pulse-card-type card data)
-       :empty     (render:empty     card data)
-       :scalar    (render:scalar    timezone card data)
-       :sparkline (render:sparkline timezone card data)
-       :bar       (render:bar       timezone card data)
-       :table     (render:table     timezone card data)
-       [:div {:style (style font-style
-                            {:color       "#F9D45C"
-                             :font-weight 700})}
-        "We were unable to display this card." [:br] "Please view this card in Metabase."])
-     (catch Throwable e
-       (log/warn "Pulse card render error:" e)
-       [:div {:style (style font-style
-                            {:color       "#EF8C8C"
-                             :font-weight 700
-                             :padding     :16px})}
-        "An error occurred while displaying this card."]))])
+  [render-type timezone card results]
+  (let [{title :content title-attachments :attachments} (make-title-if-needed render-type card)
+        {pulse-body :content body-attachments :attachments} (render-pulse-card-body render-type timezone card results)]
+    {:attachments (merge title-attachments body-attachments)
+     :content     [:a {:href   (card-href card)
+                       :target "_blank"
+                       :style  (style section-style
+                                      {:margin          :16px
+                                       :margin-bottom   :16px
+                                       :display         :block
+                                       :text-decoration :none})}
+                   title
+                   pulse-body]}))
 
+(defn render-pulse-card-for-display
+  "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
+  attachments"
+  [timezone card results]
+  (:content (render-pulse-card :inline timezone card results)))
 
-(defn render-pulse-section
+(s/defn render-pulse-section :- RenderedPulseCard
   "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
   [timezone {:keys [card result]}]
-  [:div {:style (style {:margin-top       :10px
-                        :margin-bottom    :20px
-                        :border           "1px solid #dddddd"
-                        :border-radius    :2px
-                        :background-color :white
-                        :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
-   (binding [*include-title* true]
-     (render-pulse-card timezone card result))])
+  (let [{:keys [attachments content]} (binding [*include-title* true]
+                                        (render-pulse-card :attachment timezone card result))]
+    {:attachments attachments
+     :content     [:div {:style (style {:margin-top       :10px
+                                        :margin-bottom    :20px
+                                        :border           "1px solid #dddddd"
+                                        :border-radius    :2px
+                                        :background-color :white
+                                        :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
+                   content]}))
 
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
   ^bytes [timezone pulse-card result]
-  (render-html-to-png (render-pulse-card timezone pulse-card result) card-width))
+  (render-html-to-png (render-pulse-card :inline timezone pulse-card result) card-width))

@@ -13,8 +13,9 @@
           aggregations)))
 
 (defn- pre-cumulative-aggregation
-  "Rewrite queries containing a cumulative aggregation (e.g. `:cumulative-count`) as a different 'basic' aggregation (e.g. `:count`).
-   This lets various drivers handle the aggregation normallly; we implement actual behavior here in post-processing."
+  "Rewrite queries containing a cumulative aggregation (e.g. `:cumulative-count`) as a different 'basic' aggregation
+  (e.g. `:count`). This lets various drivers handle the aggregation normallly; we implement actual behavior here in
+  post-processing."
   [cumlative-ag-type basic-ag-type ag-field {{aggregations :aggregation, breakout-fields :breakout} :query, :as query}]
   (update-in query [:query :aggregation] (fn [aggregations]
                                            (for [{ag-type :aggregation-type, :as ag} aggregations]
@@ -22,9 +23,20 @@
                                                ag
                                                {:aggregation-type basic-ag-type, :field ag-field})))))
 
+(defn- first-index-satisfying
+  "Return the index of the first item in COLL where `(pred item)` is logically `true`.
+
+     (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
+  {:style/indent 1}
+  [pred coll]
+  (loop [i 0, [item & more] coll]
+    (cond
+      (pred item) i
+      (seq more)  (recur (inc i) more))))
+
 (defn- post-cumulative-aggregation [basic-ag-type ag-field {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
-        field-index (u/prog1 (u/first-index-satisfying (comp (partial = (name basic-ag-type)) :name)
+        field-index (u/prog1 (first-index-satisfying (comp (partial = (name basic-ag-type)) :name)
                                cols)
                       (assert (integer? <>)))
         ;; Now make a sequence of cumulative sum values for each row
@@ -47,13 +59,16 @@
 
 
 (def ^:private ^{:arglists '([qp])} cumulative-sum
-  "Handle `cumulative-sum` aggregations, which is done by rewriting the aggregation as a `:sum` in pre-processing and acculumlating the results in post-processing."
+  "Handle `cumulative-sum` aggregations, which is done by rewriting the aggregation as a `:sum` in pre-processing and
+  acculumlating the results in post-processing."
   (partial cumulative-aggregation :cumulative-sum :sum))
 
 (def ^:private ^{:arglists '([qp])} cumulative-count
-  "Handle `cumulative-count` aggregations, which is done by rewriting the aggregation as a `:count` in pre-processing and acculumlating the results in post-processing."
+  "Handle `cumulative-count` aggregations, which is done by rewriting the aggregation as a `:count` in pre-processing
+  and acculumlating the results in post-processing."
   (partial cumulative-aggregation :cumulative-count :count))
 
 (def ^{:arglists '([qp])} handle-cumulative-aggregations
-  "Handle `cumulative-sum` and `cumulative-count` aggregations by rewriting the aggregations appropriately in pre-processing and accumulating the results in post-processing."
+  "Handle `cumulative-sum` and `cumulative-count` aggregations by rewriting the aggregations appropriately in
+  pre-processing and accumulating the results in post-processing."
   (comp cumulative-sum cumulative-count))

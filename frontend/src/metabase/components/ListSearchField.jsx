@@ -26,7 +26,7 @@ export default class ListSearchField extends Component {
             // Call focus() with a small delay because instant input focus causes an abrupt scroll to top of page
             // when ListSearchField is used inside a popover. It seems that it takes a while for Tether library
             // to correctly position the popover.
-            setTimeout(() => this.refs.input.focus(), 50);
+            setTimeout(() => this._input && this._input.focus(), 50);
         }
     }
 
@@ -44,7 +44,7 @@ export default class ListSearchField extends Component {
                     placeholder={placeholder}
                     value={searchText}
                     onChange={(e) => onChange(e.target.value)}
-                    ref="input"
+                    ref={input => this._input = input}
                 />
             </div>
         );

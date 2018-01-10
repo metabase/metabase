@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -42,17 +42,17 @@ export default class ArchiveCollectionWidget extends Component {
                 {...this.props}
                 ref="modal"
                 triggerElement={
-                    <Tooltip tooltip="Archive collection">
+                    <Tooltip tooltip={t`Archive collection`}>
                         <Icon size={18} name="archive" />
                     </Tooltip>
                 }
-                title="Archive this collection?"
+                title={t`Archive this collection?`}
                 footer={[
-                    <Button onClick={this._onClose}>Cancel</Button>,
-                    <Button warning onClick={this._onArchive}>Archive</Button>
+                    <Button onClick={this._onClose}>{t`Cancel`}</Button>,
+                    <Button warning onClick={this._onArchive}>{t`Archive`}</Button>
                 ]}
             >
-                <div className="px4 pb4">The saved questions in this collection will also be archived.</div>
+                <div className="px4 pb4">{t`The saved questions in this collection will also be archived.`}</div>
             </ModalWithTrigger>
         );
     }

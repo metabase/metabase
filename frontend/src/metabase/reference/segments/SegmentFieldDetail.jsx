@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-
+import { t } from 'c-3po';
 import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
@@ -38,7 +38,7 @@ import * as actions from 'metabase/reference/reference';
 const interestingQuestions = (table, field) => {
     return [
         {
-            text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
+            text: t`Number of ${table && table.display_name} grouped by ${field.display_name}`,
             icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
             link: getQuestionUrl({
                 dbId: table && table.db_id,
@@ -48,7 +48,7 @@ const interestingQuestions = (table, field) => {
             })
         },
         {
-            text: `All distinct values of ${field.display_name}`,
+            text: t`All distinct values of ${field.display_name}`,
             icon: "table2",
             link: getQuestionUrl({
                 dbId: table && table.db_id,
@@ -165,7 +165,7 @@ export default class SegmentFieldDetail extends Component {
                     entity={entity}
                     table={table}
                     headerIcon="field"
-                    name="Details"
+                    name={t`Details`}
                     type="field"
                     user={user}
                     isEditing={isEditing}
@@ -182,9 +182,9 @@ export default class SegmentFieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="description"
-                                    name="Description"
+                                    name={t`Description`}
                                     description={entity.description}
-                                    placeholder="No description yet"
+                                    placeholder={t`No description yet`}
                                     isEditing={isEditing}
                                     field={description}
                                 />
@@ -193,7 +193,7 @@ export default class SegmentFieldDetail extends Component {
                                 <li className="relative">
                                     <Detail
                                         id="name"
-                                        name="Actual name in database"
+                                        name={t`Actual name in database`}
                                         description={entity.name}
                                         subtitleClass={S.tableActualName}
                                     />
@@ -202,9 +202,9 @@ export default class SegmentFieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this field is interesting`}
+                                    name={t`Why this field is interesting`}
                                     description={entity.points_of_interest}
-                                    placeholder="Nothing interesting yet"
+                                    placeholder={t`Nothing interesting yet`}
                                     isEditing={isEditing}
                                     field={points_of_interest}
                                     />
@@ -212,9 +212,9 @@ export default class SegmentFieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this field`}
+                                    name={t`Things to be aware of about this field`}
                                     description={entity.caveats}
-                                    placeholder="Nothing to be aware of yet"
+                                    placeholder={t`Nothing to be aware of yet`}
                                     isEditing={isEditing}
                                     field={caveats}
                                 />
@@ -225,7 +225,7 @@ export default class SegmentFieldDetail extends Component {
                                 <li className="relative">
                                     <Detail
                                         id="base_type"
-                                        name={`Data type`}
+                                        name={t`Data type`}
                                         description={entity.base_type}
                                     />
                                 </li>

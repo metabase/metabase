@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
-
+import { t } from 'c-3po';
 import { getHumanReadableValue } from "metabase/lib/query/field";
 
 import ListSearchField from "metabase/components/ListSearchField.jsx";
@@ -83,7 +83,7 @@ export default class CategoryWidget extends Component {
                       <ListSearchField
                           onChange={this.updateSearchText}
                           searchText={this.state.searchText}
-                          placeholder="Find a value"
+                          placeholder={t`Find a value`}
                           autoFocus={true}
                       />
                   </div>
