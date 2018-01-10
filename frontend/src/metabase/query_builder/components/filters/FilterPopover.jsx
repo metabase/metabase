@@ -1,15 +1,15 @@
 /* @flow */
 
 import React, { Component } from "react";
+import { t } from 'c-3po';
 
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
-import { t, jt } from 'c-3po';
+import FilterOptions from "./FilterOptions";
 import DatePicker, { getOperator } from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
-import Checkbox from "metabase/components/CheckBox";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -20,7 +20,7 @@ import { formatField, singularize } from "metabase/lib/formatting";
 import cx from "classnames";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { Filter, FieldFilter, ConcreteField, FilterOptions } from "metabase/meta/types/Query";
+import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
@@ -33,41 +33,6 @@ type Props = {
 
 type State = {
     filter: FieldFilter
-}
-
-const CURRENT_INTERVAL_NAME = {
-    "day":    t`today`,
-    "week":   t`this week`,
-    "month":  t`this month`,
-    "year":   t`this year`,
-    "minute": t`this minute`,
-    "hour":   t`this hour`,
-};
-
-function getCurrentIntervalName(filter: FieldFilter): ?string {
-  if (filter[0] === "time-interval") {
-    // $FlowFixMe:
-    return CURRENT_INTERVAL_NAME[filter[3]];
-  }
-  return null;
-}
-
-function getFilterOptions(filter: FieldFilter): FilterOptions {
-  if (filter[0] === "time-interval") {
-    // $FlowFixMe:
-    const options: FilterOptions = filter[4] || {};
-    return options;
-  }
-  return {};
-}
-
-function setFilterOptions<T: FieldFilter>(filter: T, options: FilterOptions): T {
-  if (filter[0] === "time-interval") {
-    // $FlowFixMe
-    return [...filter.slice(0,4), options];
-  } else {
-    return filter;
-  }
 }
 
 export default class FilterPopover extends Component {
@@ -142,25 +107,6 @@ export default class FilterPopover extends Component {
         let newFilter: FieldFilter = [...filter]
         newFilter[index + 2] = value;
         this.setState({ filter: newFilter });
-    }
-
-    hasCurrentPeriod = () => {
-        return getFilterOptions(this.state.filter)["include-current"] || false;
-    }
-
-    toggleCurrentPeriod = () => {
-        const { filter  } = this.state;
-        const operator = getOperator(filter);
-
-        if (operator && operator.options && operator.options["include-current"]) {
-            const options = getFilterOptions(filter);
-            this.setState({
-                filter: setFilterOptions(filter, {
-                  ...options,
-                  "include-current": !options["include-current"]
-                })
-            });
-        }
     }
 
     setValues = (values: any[]) => {
@@ -316,7 +262,6 @@ export default class FilterPopover extends Component {
         } else {
             let { table, field } = Query.getFieldTarget(fieldRef, query.table());
             const dimension = query.parseFieldReference(fieldRef);
-            const operator = getOperator(filter);
             return (
                 <div style={{
                     minWidth: 300,
@@ -348,14 +293,7 @@ export default class FilterPopover extends Component {
                         </div>
                     }
                     <div className="FilterPopover-footer border-top flex align-center p2">
-                        { operator && operator.options && operator.options["include-current"] && (
-                            <div className="flex align-center" onClick={() => this.toggleCurrentPeriod()}>
-                                <Checkbox checked={this.hasCurrentPeriod()} />
-                                <label className="ml1">
-                                    {jt`Include ${<b>{getCurrentIntervalName(filter)}</b>}`}
-                                </label>
-                            </div>
-                        )}
+                        <FilterOptions filter={filter} onFilterChange={this.setFilter} />
                         <button
                             data-ui-tag="add-filter"
                             className={cx("Button Button--purple ml-auto", { "disabled": !this.isValid() })}

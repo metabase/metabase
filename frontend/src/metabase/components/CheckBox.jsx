@@ -20,7 +20,6 @@ export default class CheckBox extends Component {
     };
 
     onClick() {
-        console.log('called?')
         if (this.props.onChange) {
             // TODO: use a proper event object?
             this.props.onChange({ target: { checked: !this.props.checked }})

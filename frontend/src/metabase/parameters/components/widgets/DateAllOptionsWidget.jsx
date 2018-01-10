@@ -4,6 +4,7 @@ import React, {Component} from "react";
 import cx from "classnames";
 
 import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import FilterOptions from "metabase/query_builder/components/filters/FilterOptions.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
 
@@ -18,13 +19,13 @@ const noopRef: LocalFieldReference = null;
 
 function getFilterValueSerializer(func: ((val1: string, val2: string) => UrlEncoded)) {
     // $FlowFixMe
-    return filter => func(filter[2], filter[3])
+    return filter => func(filter[2], filter[3], filter[4] || {})
 }
 
 const serializersByOperatorName: { [id: OperatorName]: (FieldFilter) => UrlEncoded } = {
     // $FlowFixMe
-    "Previous": getFilterValueSerializer((value, unit) => `past${-value}${unit}s`),
-    "Next": getFilterValueSerializer((value, unit) => `next${value}${unit}s`),
+    "Previous": getFilterValueSerializer((value, unit, options) => `past${-value}${unit}s${options['include-current'] ? "~" : ""}`),
+    "Next": getFilterValueSerializer((value, unit, options) => `next${value}${unit}s${options['include-current'] ? "~" : ""}`),
     "Current": getFilterValueSerializer((_, unit) => `this${unit}`),
     "Before": getFilterValueSerializer((value) => `~${value}`),
     "After": getFilterValueSerializer((value) => `${value}~`),
@@ -99,6 +100,7 @@ export default class DateAllOptionsWidget extends Component {
     }
 
     render() {
+        const { filter } = this.state;
         return (<div style={{minWidth: "300px"}}>
             <DatePicker
                 filter={this.state.filter}
@@ -106,9 +108,10 @@ export default class DateAllOptionsWidget extends Component {
                 hideEmptinessOperators
                 hideTimeSelectors
             />
-            <div className="FilterPopover-footer p1">
+            <div className="FilterPopover-footer border-top flex align-center p2">
+                <FilterOptions filter={filter} onFilterChange={this.setFilter} />
                 <button
-                    className={cx("Button Button--purple full", {"disabled": !this.isValid()})}
+                    className={cx("Button Button--purple ml-auto", {"disabled": !this.isValid()})}
                     onClick={this.commitAndClose}
                 >
                     Update filter
