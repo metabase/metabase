@@ -218,13 +218,13 @@ export default class PeopleListingApp extends Component {
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    <div className="pb4">{t`We couldn’t send them an email invitation,
-                    so make sure to tell them to log in using <span className="text-bold">${user.email}</span>
+                    <div className="pb4">{jt`We couldn’t send them an email invitation,
+                    so make sure to tell them to log in using ${<span className="text-bold">{user.email}</span>}
                     and this password we’ve generated for them:`}</div>
 
                     <PasswordReveal password={user.password} />
 
-                    <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">{jt`If you want to be able to send email invites, just go to the <Link to="/admin/settings/email" className="link text-bold">Email Settings</Link> page.`}</div>
+                    <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">{jt`If you want to be able to send email invites, just go to the ${<Link to="/admin/settings/email" className="link text-bold">Email Settings</Link>} page.`}</div>
                 </div>
             </Modal>
         );
@@ -242,7 +242,7 @@ export default class PeopleListingApp extends Component {
                 ]}
                 onClose={this.onCloseModal}
             >
-                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{t`We’ve sent an invite to <span className="text-bold">${user.email}</span> with instructions to set their password.`}</div>
+                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{jt`We’ve sent an invite to ${<span className="text-bold">${user.email}</span>} with instructions to set their password.`}</div>
             </Modal>
         );
     }
