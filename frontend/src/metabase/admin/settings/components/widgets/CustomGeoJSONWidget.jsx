@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 
 import Utils from "metabase/lib/utils";
-import { t } from 'c-3po';
 import Select, { Option } from "metabase/components/Select.jsx";
 import Confirm from "metabase/components/Confirm.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
