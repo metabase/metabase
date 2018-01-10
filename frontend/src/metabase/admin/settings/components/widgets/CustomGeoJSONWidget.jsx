@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
 
 import Utils from "metabase/lib/utils";
 import { t } from 'c-3po';
