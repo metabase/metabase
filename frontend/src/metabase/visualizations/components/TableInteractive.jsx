@@ -26,6 +26,17 @@ const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
+function pickRowsToMeasure(rows, columnIndex, count = 10) {
+    const rowIndexes = []
+    // measure up to 10 non-nil cells
+    for (let rowIndex = 0; rowIndex < rows.length && rowIndexes.length < count; rowIndex++) {
+        if (rows[rowIndex][columnIndex] != null) {
+            rowIndexes.push(rowIndex);
+        }
+    }
+    return rowIndexes;
+}
+
 type Props = VisualizationProps & {
     width: number,
     height: number,
@@ -129,61 +140,45 @@ export default class TableInteractive extends Component {
     }
 
     _measure() {
-        const { data: { cols } } = this.props;
+        const { data: { cols, rows } } = this.props;
 
-        let contentWidths = cols.map((col, index) =>
-            this._measureColumn(index)
-        );
+        ReactDOM.render(
+            <div style={{ display: "flex" }}>
+                { cols.map((column, columnIndex) =>
+                    <div className="fake-column" key={"column-" + columnIndex}>
+                        { this.tableHeaderRenderer({ columnIndex, rowIndex: 0, key: "header", style: {} })}
+                        { pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                          this.cellRenderer({ rowIndex, columnIndex, key: "row-" + rowIndex, style: {} })
+                        )}
+                    </div>
+                )}
+            </div>
+        , this._div, () => {
+          const contentWidths = [...this._div.getElementsByClassName("fake-column")].map(columnElement =>
+              columnElement.offsetWidth
+          );
 
-        let columnWidths: number[] = cols.map((col, index) => {
-            if (this.columnNeedsResize) {
-                if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
-                    this.columnHasResized[index] = true;
-                    return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-                } else if (this.state.columnWidths[index]) {
-                    return this.state.columnWidths[index];
-                } else {
-                    return 0;
-                }
-            } else {
-                return contentWidths[index] + 1;
-            }
+          const columnWidths: number[] = cols.map((col, index) => {
+              if (this.columnNeedsResize) {
+                  if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
+                      this.columnHasResized[index] = true;
+                      return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+                  } else if (this.state.columnWidths[index]) {
+                      return this.state.columnWidths[index];
+                  } else {
+                      return 0;
+                  }
+              } else {
+                  return contentWidths[index] + 1;
+              }
+          });
+
+          ReactDOM.unmountComponentAtNode(this._div);
+
+          delete this.columnNeedsResize;
+
+          this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
         });
-
-        delete this.columnNeedsResize;
-
-        this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
-    }
-
-    _measureColumn(columnIndex: number) {
-        const { data: { rows } } = this.props;
-        let width = MIN_COLUMN_WIDTH;
-
-        // measure column header
-        width = Math.max(width, this._measureCell(this.tableHeaderRenderer({ columnIndex, rowIndex: 0, key: "", style: {} })));
-
-        // measure up to 10 non-nil cells
-        let remaining = 10;
-        for (let rowIndex = 0; rowIndex < rows.length && remaining > 0; rowIndex++) {
-            if (rows[rowIndex][columnIndex] != null) {
-                const cellWidth = this._measureCell(this.cellRenderer({ rowIndex, columnIndex, key: "", style: {} }));
-                width = Math.max(width, cellWidth);
-                remaining--;
-            }
-        }
-
-        return width;
-    }
-
-    _measureCell(cell: React.Element<any>) {
-        ReactDOM.unstable_renderSubtreeIntoContainer(this, cell, this._div);
-
-        // 2px for border?
-        const width = this._div.clientWidth + 2;
-
-        ReactDOM.unmountComponentAtNode(this._div);
-
-        return width;
     }
 
     recomputeGridSize = () => {
@@ -231,9 +226,9 @@ export default class TableInteractive extends Component {
                     "justify-end": isColumnRightAligned(column),
                     "link": isClickable && isID(column)
                 })}
-                onClick={isClickable && ((e) => {
+                onClick={isClickable ? ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
-                })}
+                }) : undefined}
             >
                 <div className="cellData">
                     {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
@@ -285,9 +280,9 @@ export default class TableInteractive extends Component {
                     "cursor-pointer": isClickable,
                     "justify-end": isRightAligned
                 })}
-                onClick={isClickable && ((e) => {
+                onClick={isClickable ? ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
-                })}
+                }) : undefined}
             >
                 <div className="cellData">
                     {isSortable && isRightAligned &&
