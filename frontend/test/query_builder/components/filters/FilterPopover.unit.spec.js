@@ -48,26 +48,22 @@ describe('FilterPopover', () => {
         })
         describe('including the current period', () => {
             it('should not show a control to the user for the appropriate types of queries', () => {
-                const wrapper = shallow(
+                const wrapper = mount(
                     <FilterPopover
                         query={QUERY}
                         filter={QUERY.filters()[1]}
                     />
                 )
-
-                const toggle = wrapper.find(CheckBox)
-                expect(toggle.length).toBe(0)
+                expect(wrapper.find(CheckBox).length).toBe(0)
             })
             it('should show a control to the user for the appropriate types of queries', () => {
-                const wrapper = shallow(
+                const wrapper = mount(
                     <FilterPopover
                         query={QUERY}
                         filter={QUERY.filters()[0]}
                     />
                 )
-
-                const toggle = wrapper.find(CheckBox)
-                expect(toggle.length).toBe(1)
+                expect(wrapper.find(CheckBox).length).toBe(1)
             })
             it('should let the user toggle', () => {
                 const wrapper = mount(
