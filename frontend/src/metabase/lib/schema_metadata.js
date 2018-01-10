@@ -1,5 +1,5 @@
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
 import { getFieldValues } from "metabase/lib/query/field";
 
@@ -167,8 +167,8 @@ function equivalentArgument(field, table) {
         return {
             type: "select",
             values: [
-                { key: true, name: "True" },
-                { key: false, name: "False" }
+                { key: true, name: t`True` },
+                { key: false, name: t`False` }
             ]
         };
     }
@@ -248,7 +248,7 @@ const OPERATORS = {
     },
     "INSIDE": {
         validArgumentsFilters: [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument, numberArgument],
-        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right longitude"]
+        placeholders: [t`Select longitude field`, t`Enter upper latitude`, t`Enter left longitude`, t`Enter lower latitude`, t`Enter right longitude`]
     },
     "BETWEEN": {
         validArgumentsFilters: [comparableArgument, comparableArgument]
@@ -270,61 +270,61 @@ const OPERATORS = {
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
     [NUMBER]: [
-        { name: "=",                verboseName: "Equal" },
-        { name: "!=",               verboseName: "Not equal" },
-        { name: ">",                verboseName: "Greater than" },
-        { name: "<",                verboseName: "Less than" },
-        { name: "BETWEEN",          verboseName: "Between" },
-        { name: ">=",               verboseName: "Greater than or equal to", advanced: true },
-        { name: "<=",               verboseName: "Less than or equal to", advanced: true },
-        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: t`Equal` },
+        { name: "!=",               verboseName: t`Not equal` },
+        { name: ">",                verboseName: t`Greater than` },
+        { name: "<",                verboseName: t`Less than` },
+        { name: "BETWEEN",          verboseName: t`Between` },
+        { name: ">=",               verboseName: t`Greater than or equal to`, advanced: true },
+        { name: "<=",               verboseName: t`Less than or equal to`, advanced: true },
+        { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
+        { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true }
     ],
     [STRING]: [
-        { name: "=",                verboseName: "Is" },
-        { name: "!=",               verboseName: "Is not" },
-        { name: "CONTAINS",         verboseName: "Contains"},
-        { name: "DOES_NOT_CONTAIN", verboseName: "Does not contain"},
-        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true },
-        { name: "STARTS_WITH",      verboseName: "Starts with", advanced: true},
-        { name: "ENDS_WITH",        verboseName: "Ends with", advanced: true}
+        { name: "=",                verboseName: t`Is` },
+        { name: "!=",               verboseName: t`Is not` },
+        { name: "CONTAINS",         verboseName: t`Contains`},
+        { name: "DOES_NOT_CONTAIN", verboseName: t`Does not contain`},
+        { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
+        { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true },
+        { name: "STARTS_WITH",      verboseName: t`Starts with`, advanced: true},
+        { name: "ENDS_WITH",        verboseName: t`Ends with`, advanced: true}
     ],
     [STRING_LIKE]: [
-        { name: "=",                verboseName: "Is" },
-        { name: "!=",               verboseName: "Is not" },
-        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: t`Is` },
+        { name: "!=",               verboseName: t`Is not` },
+        { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
+        { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true }
     ],
     [DATE_TIME]: [
-        { name: "=",                verboseName: "Is" },
-        { name: "<",                verboseName: "Before" },
-        { name: ">",                verboseName: "After" },
-        { name: "BETWEEN",          verboseName: "Between" },
-        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: t`Is` },
+        { name: "<",                verboseName: t`Before` },
+        { name: ">",                verboseName: t`After` },
+        { name: "BETWEEN",          verboseName: t`Between` },
+        { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
+        { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true }
     ],
     [LOCATION]: [
-        { name: "=",                verboseName: "Is" },
-        { name: "!=",               verboseName: "Is not" },
-        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: t`Is` },
+        { name: "!=",               verboseName: t`Is not` },
+        { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
+        { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true }
     ],
     [COORDINATE]: [
-        { name: "=",                verboseName: "Is" },
-        { name: "!=",               verboseName: "Is not" },
-        { name: "INSIDE",           verboseName: "Inside" }
+        { name: "=",                verboseName: t`Is` },
+        { name: "!=",               verboseName: t`Is no` },
+        { name: "INSIDE",           verboseName: t`Inside` }
     ],
     [BOOLEAN]: [
-        { name: "=",                verboseName: "Is", multi: false, defaults: [true] },
-        { name: "IS_NULL",          verboseName: "Is empty" },
-        { name: "NOT_NULL",         verboseName: "Not empty" }
+        { name: "=",                verboseName: t`Is`, multi: false, defaults: [true] },
+        { name: "IS_NULL",          verboseName: t`Is empty` },
+        { name: "NOT_NULL",         verboseName: t`Not empty` }
     ],
     [UNKNOWN]: [
-        { name: "=",                verboseName: "Is" },
-        { name: "!=",               verboseName: "Is not" },
-        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: t`Is` },
+        { name: "!=",               verboseName: t`Is not` },
+        { name: "IS_NULL",          verboseName: t`Is empty`, advanced: true },
+        { name: "NOT_NULL",         verboseName: t`Not empty`, advanced: true }
     ]
 };
 
@@ -368,79 +368,79 @@ function dimensionFields(fields) {
 }
 
 var Aggregators = [{
-    name: "Raw data",
+    name: t`Raw data`,
     short: "rows",
-    description: "Just a table with the rows in the answer, no additional operations.",
+    description: t`Just a table with the rows in the answer, no additional operations.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Count of rows",
+    name: t`Count of rows`,
     short: "count",
-    description: "Total number of rows in the answer.",
+    description: t`Total number of rows in the answer.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Sum of ...",
+    name: t`Sum of ...`,
     short: "sum",
-    description: "Sum of all the values of a column.",
+    description: t`Sum of all the values of a column.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Average of ...",
+    name: t`Average of ...`,
     short: "avg",
-    description: "Average of all the values of a column",
+    description: t`Average of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Number of distinct values of ...",
+    name: t`Number of distinct values of ...`,
     short: "distinct",
-    description:  "Number of unique values of a column among all the rows in the answer.",
+    description:  t`Number of unique values of a column among all the rows in the answer.`,
     validFieldsFilters: [allFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Cumulative sum of ...",
+    name: t`Cumulative sum of ...`,
     short: "cum_sum",
-    description: "Additive sum of all the values of a column.\ne.x. total revenue over time.",
+    description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Cumulative count of rows",
+    name: t`Cumulative count of rows`,
     short: "cum_count",
-    description: "Additive count of the number of rows.\ne.x. total number of sales over time.",
+    description: t`Additive count of the number of rows.\ne.x. total number of sales over time.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Standard deviation of ...",
+    name: t`Standard deviation of ...`,
     short: "stddev",
-    description: "Number which expresses how much the values of a column vary among all rows in the answer.",
+    description: t`Number which expresses how much the values of a column vary among all rows in the answer.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "standard-deviation-aggregations"
 }, {
-    name: "Minimum of ...",
+    name: t`Minimum of ...`,
     short: "min",
-    description: "Minimum value of a column",
+    description: t`Minimum value of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations"
 }, {
-    name: "Maximum of ...",
+    name: t`Maximum of ...`,
     short: "max",
-    description: "Maximum value of a column",
+    description: t`Maximum value of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations"
 }];
 
 var BreakoutAggregator = {
-    name: "Break out by dimension",
+    name: t`Break out by dimension`,
     short: "breakout",
     validFieldsFilters: [dimensionFields]
 };

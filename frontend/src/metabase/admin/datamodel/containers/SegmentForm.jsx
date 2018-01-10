@@ -7,7 +7,7 @@ import FormTextArea from "../components/FormTextArea.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-
+import { t } from 'c-3po';
 import { formatValue } from "metabase/lib/formatting";
 
 import { segmentFormSelectors } from "../selectors";
@@ -23,18 +23,18 @@ import Table from "metabase-lib/lib/metadata/Table";
     validate: (values) => {
         const errors = {};
         if (!values.name) {
-            errors.name = "Name is required";
+            errors.name = t`Name is required`;
         }
         if (!values.description) {
-            errors.description = "Description is required";
+            errors.description = t`Description is required`;
         }
         if (values.id != null) {
             if (!values.revision_message) {
-                errors.revision_message = "Revision message is required";
+                errors.revision_message = t`Revision message is required`;
             }
         }
         if (!values.definition || !values.definition.filter || values.definition.filter.length < 1) {
-            errors.definition = "At least one filter is required";
+            errors.definition = t`At least one filter is required`;
         }
         return errors;
     },
@@ -56,8 +56,8 @@ export default class SegmentForm extends Component {
         const { invalid, handleSubmit, tableMetadata } = this.props;
         return (
             <div>
-                <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
-                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button ml2">Cancel</Link>
+                <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>{t`Save changes`}</button>
+                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button ml2">{t`Cancel`}</Link>
             </div>
         )
     }
@@ -71,10 +71,10 @@ export default class SegmentForm extends Component {
                 <form className="full" onSubmit={handleSubmit}>
                     <div className="wrapper py4">
                         <FormLabel
-                            title={(segment && segment.id != null ? "Edit" : "Create") + " Your Segment"}
+                            title={(segment && segment.id != null ? t`Edit Your Segment` : t`Create Your Segment`)}
                             description={segment && segment.id != null ?
-                                "Make changes to your segment and leave an explanatory note." :
-                                "Select and add filters to create your new segment for the " + tableMetadata.display_name + " table"
+                                t`Make changes to your segment and leave an explanatory note.` :
+                                t`Select and add filters to create your new segment for the ${tableMetadata.display_name} table`
                             }
                         >
                             <PartialQueryBuilder
@@ -99,29 +99,29 @@ export default class SegmentForm extends Component {
                         </FormLabel>
                         <div style={{ maxWidth: "575px" }}>
                             <FormLabel
-                                title="Name Your Segment"
-                                description="Give your segment a name to help others find it."
+                                title={t`Name Your Segment`}
+                                description={t`Give your segment a name to help others find it.`}
                             >
                                 <FormInput
                                     field={name}
-                                    placeholder="Something descriptive but not too long"
+                                    placeholder={t`Something descriptive but not too long`}
                                 />
                             </FormLabel>
                             <FormLabel
-                                title="Describe Your Segment"
-                                description="Give your segment a description to help others understand what it's about."
+                                title={t`Describe Your Segment`}
+                                description={t`Give your segment a description to help others understand what it's about.`}
                             >
                                 <FormTextArea
                                     field={description}
-                                    placeholder="This is a good place to be more specific about less obvious segment rules"
+                                    placeholder={t`This is a good place to be more specific about less obvious segment rules`}
                                 />
                             </FormLabel>
                             { id.value != null &&
-                                <FieldSet legend="Reason For Changes">
-                                    <FormLabel description="Leave a note to explain what changes you made and why they were required.">
+                                <FieldSet legend={t`Reason For Changes`}>
+                                    <FormLabel description={t`Leave a note to explain what changes you made and why they were required.`}>
                                         <FormTextArea
                                             field={revision_message}
-                                            placeholder="This will show up in the revision history for this segment to help everyone remember why things changed"
+                                            placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                                         />
                                     </FormLabel>
                                     <div className="flex align-center">

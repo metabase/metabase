@@ -181,6 +181,7 @@
    without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you
    can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [conn, ^Liquibase liquibase]
+  (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
     (doseq [line (migrations-lines liquibase)]
       (log/info line)

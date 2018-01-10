@@ -4,7 +4,7 @@ import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
 import CheckBox from "metabase/components/CheckBox";
-
+import { t } from 'c-3po';
 import type { DisplayOptions } from "./EmbedModalContent";
 
 type Props = {
@@ -14,8 +14,8 @@ type Props = {
 }
 
 const THEME_OPTIONS = [
-    { name: "Light", value: null, icon: "sun" },
-    { name: "Dark", value: "night", icon: "moon" }
+    { name: t`Light`, value: null, icon: "sun" },
+    { name: t`Dark`, value: "night", icon: "moon" }
 ];
 
 const DisplayOptionsPane = ({ className, displayOptions, onChangeDisplayOptions }: Props) =>
@@ -25,14 +25,14 @@ const DisplayOptionsPane = ({ className, displayOptions, onChangeDisplayOptions 
                 checked={displayOptions.bordered}
                 onChange={(e) => onChangeDisplayOptions({ ...displayOptions, bordered: e.target.checked })}
             />
-            <span className="ml1">Border</span>
+            <span className="ml1">{t`Border`}</span>
         </div>
         <div className="flex align-center my1">
             <CheckBox
                 checked={displayOptions.titled}
                 onChange={(e) => onChangeDisplayOptions({ ...displayOptions, titled: e.target.checked })}
             />
-            <span className="ml1">Title</span>
+            <span className="ml1">{t`Title`}</span>
         </div>
         <EmbedSelect
             value={displayOptions.theme}

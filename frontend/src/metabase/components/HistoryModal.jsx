@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import ActionButton from "metabase/components/ActionButton.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -10,9 +10,9 @@ import moment from "moment";
 function formatDate(date) {
     var m = moment(date);
     if (m.isSame(moment(), 'day')) {
-        return "Today, " + m.format("h:mm a");
+        return t`Today, ` + m.format("h:mm a");
     } else if (m.isSame(moment().subtract(1, "day"), "day")) {
-        return "Yesterday, " + m.format("h:mm a");
+        return t`Yesterday, ` + m.format("h:mm a");
     } else {
         return m.format("MMM D YYYY, h:mm a");
     }
@@ -61,9 +61,9 @@ export default class HistoryModal extends Component {
 
     revisionDescription(revision) {
         if (revision.is_creation) {
-            return "First revision.";
+            return t`First revision.`;
         } else if (revision.is_reversion) {
-            return "Reverted to an earlier revision and "+revision.description;
+            return t`Reverted to an earlier revision and ${revision.description}`;
         } else {
             return revision.description;
         }
@@ -73,16 +73,16 @@ export default class HistoryModal extends Component {
         var { revisions } = this.props;
         return (
             <ModalContent
-                title="Revision history"
+                title={t`Revision history`}
                 onClose={() => this.props.onClose()}
             >
                 <LoadingAndErrorWrapper className="flex flex-full flex-basis-auto" loading={!revisions} error={this.state.error}>
                 {() =>
                     <div className="pb4 flex-full">
                         <div className="border-bottom flex px4 py1 text-uppercase text-grey-3 text-bold h5">
-                            <span className="flex-half">When</span>
-                            <span className="flex-half">Who</span>
-                            <span className="flex-full">What</span>
+                            <span className="flex-half">{t`When`}</span>
+                            <span className="flex-half">{t`Who`}</span>
+                            <span className="flex-full">{t`What`}</span>
                         </div>
                         <div className="px2 scroll-y">
                             {revisions.map((revision, index) =>
@@ -96,10 +96,10 @@ export default class HistoryModal extends Component {
                                                 <ActionButton
                                                     actionFn={() => this.revert(revision)}
                                                     className="Button Button--small Button--danger text-uppercase"
-                                                    normalText="Revert"
-                                                    activeText="Reverting…"
-                                                    failedText="Revert failed"
-                                                    successText="Reverted"
+                                                    normalText={t`Revert`}
+                                                    activeText={t`Reverting…`}
+                                                    failedText={t`Revert failed`}
+                                                    successText={t`Reverted`}
                                                 />
                                             </div>
                                         : null}

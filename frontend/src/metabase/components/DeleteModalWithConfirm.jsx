@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import _ from "underscore";
 
@@ -56,12 +56,12 @@ export default class DeleteModalWithConfirm extends Component {
                 </ul>
             </div>
             <div className="Form-actions ml-auto">
-                <button className="Button" onClick={this.props.onClose}>Cancel</button>
+                <button className="Button" onClick={this.props.onClose}>{t`Cancel`}</button>
                 <button
                 className={cx("Button ml2", { disabled: !confirmed, "Button--danger": confirmed })}
                 onClick={this.onDelete}
                 >
-                    Delete this {objectType}
+                    {t`Delete this ${objectType}`}
                 </button>
             </div>
             </ModalContent>

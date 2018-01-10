@@ -5,7 +5,7 @@ import { createSelector } from 'reselect';
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-
+import { t } from 'c-3po';
 import { isDefaultGroup, isAdminGroup, isMetaBotGroup } from "metabase/lib/groups";
 
 import _ from "underscore";
@@ -43,11 +43,11 @@ const SPECIAL_GROUP_FILTERS = [isAdminGroup, isDefaultGroup, isMetaBotGroup].rev
 
 function getTooltipForGroup(group) {
     if (isAdminGroup(group)) {
-        return "Administrators always have the highest level of access to everything in Metabase."
+        return t`Administrators always have the highest level of access to everything in Metabase.`;
     } else if (isDefaultGroup(group)) {
-        return "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access.";
+        return t`Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access.`;
     } else if (isMetaBotGroup(group)) {
-        return "MetaBot is Metabase's Slack bot. You can choose what it has access to here.";
+        return t`MetaBot is Metabase's Slack bot. You can choose what it has access to here.`;
     }
     return null;
 }
@@ -91,10 +91,10 @@ function getPermissionWarning(getter, entityType, defaultGroup, permissions, gro
     let perm = value || getter(permissions, groupId, entityId);
     let defaultPerm = getter(permissions, defaultGroup.id, entityId);
     if (perm === "controlled" && defaultPerm === "controlled") {
-        return `The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+        return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
     }
     if (hasGreaterPermissions(defaultPerm, perm)) {
-        return `The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
+        return t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
     }
     return null;
 }
@@ -103,10 +103,10 @@ function getPermissionWarningModal(entityType, getter, defaultGroup, permissions
     let permissionWarning = getPermissionWarning(entityType, getter, defaultGroup, permissions, groupId, entityId, value);
     if (permissionWarning) {
         return {
-            title: `${value === "controlled" ? "Limit" : "Revoke"} access even though "${defaultGroup.name}" has greater access?`,
+            title: t`${value === "controlled" ? "Limit" : "Revoke"} access even though "${defaultGroup.name}" has greater access?`,
             message: permissionWarning,
-            confirmButtonText: (value === "controlled" ? "Limit" : "Revoke") + " access",
-            cancelButtonText: "Cancel"
+            confirmButtonText: (value === "controlled" ? t`Limit access` : t`Revoke access`),
+            cancelButtonText: t`Cancel`
         };
     }
 }
@@ -114,9 +114,9 @@ function getPermissionWarningModal(entityType, getter, defaultGroup, permissions
 function getControlledDatabaseWarningModal(permissions, groupId, entityId) {
     if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
         return {
-            title: "Change access to this database to limited?",
-            confirmButtonText: "Change",
-            cancelButtonText: "Cancel"
+            title: t`Change access to this database to limited?`,
+            confirmButtonText: t`Change`,
+            cancelButtonText: t`Cancel`
         };
     }
 }
@@ -127,10 +127,10 @@ function getRawQueryWarningModal(permissions, groupId, entityId, value) {
         getSchemasPermission(permissions, groupId, entityId) !== "all"
     ) {
         return {
-            title: "Allow Raw Query Writing?",
-            message: "This will also change this group's data access to Unrestricted for this database.",
-            confirmButtonText: "Allow",
-            cancelButtonText: "Cancel"
+            title: t`Allow Raw Query Writing?`,
+            message: t`This will also change this group's data access to Unrestricted for this database.`,
+            confirmButtonText: t`Allow`,
+            cancelButtonText: t`Cancel`
         };
     }
 }
@@ -156,10 +156,10 @@ function getRevokingAccessToAllTablesWarningModal(database, permissions, groupId
         );
         if (afterChangesNoAccessToAnyTable) {
             return {
-                title: "Revoke access to all tables?",
-                message: "This will also revoke this group's access to raw queries for this database.",
-                confirmButtonText: "Revoke access",
-                cancelButtonText: "Cancel"
+                title: t`Revoke access to all tables?`,
+                message: t`This will also revoke this group's access to raw queries for this database.`,
+                confirmButtonText: t`Revoke access`,
+                cancelButtonText: t`Cancel`
             };
         }
     }
@@ -185,52 +185,52 @@ const OPTION_RED = {
 const OPTION_ALL = {
     ...OPTION_GREEN,
     value: "all",
-    title: "Grant unrestricted access",
-    tooltip: "Unrestricted access",
+    title: t`Grant unrestricted access`,
+    tooltip: t`Unrestricted access`,
 };
 
 const OPTION_CONTROLLED = {
     ...OPTION_YELLOW,
     value: "controlled",
-    title: "Limit access",
-    tooltip: "Limited access",
+    title: t`Limit access`,
+    tooltip: t`Limited access`,
     icon: "permissionsLimited",
 };
 
 const OPTION_NONE = {
     ...OPTION_RED,
     value: "none",
-    title: "Revoke access",
-    tooltip: "No access",
+    title: t`Revoke access`,
+    tooltip: t`No access`,
 };
 
 const OPTION_NATIVE_WRITE = {
     ...OPTION_GREEN,
     value: "write",
-    title: "Write raw queries",
-    tooltip: "Can write raw queries",
+    title: t`Write raw queries`,
+    tooltip: t`Can write raw queries`,
     icon: "sql",
 };
 
 const OPTION_NATIVE_READ = {
     ...OPTION_YELLOW,
     value: "read",
-    title: "View raw queries",
-    tooltip: "Can view raw queries",
+    title: t`View raw queries`,
+    tooltip: t`Can view raw queries`,
 };
 
 const OPTION_COLLECTION_WRITE = {
     ...OPTION_GREEN,
     value: "write",
-    title: "Curate collection",
-    tooltip: "Can add and remove questions from this collection",
+    title: t`Curate collection`,
+    tooltip: t`Can add and remove questions from this collection`,
 };
 
 const OPTION_COLLECTION_READ = {
     ...OPTION_YELLOW,
     value: "read",
-    title: "View collection",
-    tooltip: "Can view questions in this collection",
+    title: t`View collection`,
+    tooltip: t`Can view questions in this collection`,
 };
 
 export const getTablesPermissionsGrid = createSelector(
@@ -249,17 +249,17 @@ export const getTablesPermissionsGrid = createSelector(
             type: "table",
             icon: "table",
             crumbs: database.schemaNames().length > 1 ? [
-                ["Databases", "/admin/permissions/databases"],
+                [t`Databases`, "/admin/permissions/databases"],
                 [database.name, "/admin/permissions/databases/"+database.id+"/schemas"],
                 [schemaName]
             ] : [
-                ["Databases", "/admin/permissions/databases"],
+                [t`Databases`, "/admin/permissions/databases"],
                 [database.name],
             ],
             groups,
             permissions: {
                 "fields": {
-                    header: "Data Access",
+                    header: t`Data Access`,
                     options(groupId, entityId) {
                         return [OPTION_ALL, OPTION_NONE]
                     },
@@ -312,13 +312,13 @@ export const getSchemasPermissionsGrid = createSelector(
             type: "schema",
             icon: "folder",
             crumbs: [
-                ["Databases", "/admin/permissions/databases"],
+                [t`Databases`, "/admin/permissions/databases"],
                 [database.name],
             ],
             groups,
             permissions: {
                 "tables": {
-                    header: "Data Access",
+                    header: t`Data Access`,
                     options(groupId, entityId) {
                         return [OPTION_ALL, OPTION_CONTROLLED, OPTION_NONE]
                     },
@@ -352,7 +352,7 @@ export const getSchemasPermissionsGrid = createSelector(
                     schemaName
                 },
                 name: schemaName,
-                link: { name: "View tables", url: `/admin/permissions/databases/${databaseId}/schemas/${encodeURIComponent(schemaName)}/tables`}
+                link: { name: t`View tables`, url: `/admin/permissions/databases/${databaseId}/schemas/${encodeURIComponent(schemaName)}/tables`}
             }))
         }
     }
@@ -374,7 +374,7 @@ export const getDatabasesPermissionsGrid = createSelector(
             groups,
             permissions: {
                 "schemas": {
-                    header: "Data Access",
+                    header: t`Data Access`,
                     options(groupId, entityId) {
                         return [OPTION_ALL, OPTION_CONTROLLED, OPTION_NONE]
                     },
@@ -408,7 +408,7 @@ export const getDatabasesPermissionsGrid = createSelector(
                     }
                 },
                 "native": {
-                    header: "SQL Queries",
+                    header: t`SQL Queries`,
                     options(groupId, entityId) {
                         if (getSchemasPermission(permissions, groupId, entityId) === "none") {
                             return [OPTION_NONE];
@@ -443,11 +443,11 @@ export const getDatabasesPermissionsGrid = createSelector(
                     name: database.name,
                     link:
                         schemas.length === 0 || (schemas.length === 1 && schemas[0] === "") ?
-                            { name: "View tables", url: `/admin/permissions/databases/${database.id}/tables` }
+                            { name: t`View tables`, url: `/admin/permissions/databases/${database.id}/tables` }
                         : schemas.length === 1 ?
-                            { name: "View tables", url: `/admin/permissions/databases/${database.id}/schemas/${schemas[0]}/tables` }
+                            { name: t`View tables`, url: `/admin/permissions/databases/${database.id}/schemas/${schemas[0]}/tables` }
                         :
-                            { name: "View schemas", url: `/admin/permissions/databases/${database.id}/schemas`}
+                            { name: t`View schemas`, url: `/admin/permissions/databases/${database.id}/schemas`}
                 }
             })
         }

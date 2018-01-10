@@ -7,7 +7,7 @@ import S from "./UndoListing.css";
 
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon";
 import BodyComponent from "metabase/components/BodyComponent";
 
@@ -50,7 +50,7 @@ export default class UndoListing extends Component {
 
                         { undo.actions &&
                             <div className={S.actions}>
-                                <a className={S.undoButton} onClick={() => performUndo(undo.id)}>Undo</a>
+                                <a className={S.undoButton} onClick={() => performUndo(undo.id)}>{t`Undo`}</a>
                                 <Icon className={S.dismissButton} name="close" onClick={() => dismissUndo(undo.id)} />
                             </div>
                         }
