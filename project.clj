@@ -47,9 +47,9 @@
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
-                  "v3-rev139-1.22.0"]
+                  "v3-rev142-1.23.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev342-1.22.0"]
+                   "v2-rev368-1.23.0"]
                  [com.jcraft/jsch "0.1.54"]                           ; SSH client for tunnels
                  [com.h2database/h2 "1.4.194"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
