@@ -18,6 +18,8 @@
   (and (nil? special_type)
        (or (isa? base_type :type/Integer)
            (isa? base_type :type/Text))
+       ;; Druid does not support group by on metrics so these should never be
+       ;; marked as category.
        (not= database_type "metric")))
 
 (s/defn infer-is-category :- (s/maybe i/FieldInstance)
