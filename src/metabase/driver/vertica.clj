@@ -36,10 +36,11 @@
 (defn- connection-details->spec [{:keys [host port db dbname]
                                   :or   {host "localhost", port 5433, db ""}
                                   :as   details}]
-  (merge {:classname   "com.vertica.jdbc.Driver"
-          :subprotocol "vertica"
-          :subname     (str "//" host ":" port "/" (or dbname db))}
-         (dissoc details :host :port :dbname :db :ssl)))
+  (-> (merge {:classname   "com.vertica.jdbc.Driver"
+              :subprotocol "vertica"
+              :subname     (str "//" host ":" port "/" (or dbname db))}
+             (dissoc details :host :port :dbname :db :ssl))
+      (sql/handle-additional-options details)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
@@ -136,7 +137,10 @@
                                             {:name         "password"
                                              :display-name "Database password"
                                              :type         :password
-                                             :placeholder  "*******"}]))
+                                             :placeholder  "*******"}
+                                            {:name         "additional-options"
+                                             :display-name "Additional JDBC connection string options"
+                                             :placeholder  "ConnectionLoadBalance=1"}]))
           :current-db-time   (driver/make-current-db-time-fn vertica-date-formatter vertica-db-time-query)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

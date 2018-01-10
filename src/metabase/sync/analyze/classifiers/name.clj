@@ -118,6 +118,7 @@
    [#"people"      :type/UserTable]
    [#"person"      :type/UserTable]
    [#"event"       :type/EventTable]
+   [#"checkin"     :type/EventTable]
    [#"log"         :type/EventTable]])
 
 (defn infer-entity-type
@@ -125,17 +126,18 @@
   [table]
   (let [table-name  (-> table :name str/lower-case)
         entity-type (or (some (fn [[pattern type]]
-                                (when (re-find pattern table-name)
-                                  type))
-                              entity-types-patterns)
-                        (when (-> table
-                                  :db_id
-                                  Database
-                                  :engine
-                                  (= :googleanalytics))
-                          :type/GoogleAnalyticsTable)
-                        :type/GenericTable)]
-    (log/debug (format "Based on the name of %s, we're giving it entity type of %s."
+                                          (when (re-find pattern table-name)
+                                            type))
+                                        entity-types-patterns)
+                                  (case (-> table
+                                            :db_id
+                                            Database
+                                            :engine)
+                                    :googleanalytics :type/GoogleAnalyticsTable
+                                    :druid           :type/EventTable
+                                    nil)
+                                  :type/GenericTable)]
+    (log/debug (format "Based on the name of %s, we're giving it entity type %s."
                        (-> (table/->TableInstance)
                            (merge table)
                            sync-util/name-for-logging)

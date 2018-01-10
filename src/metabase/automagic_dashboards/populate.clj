@@ -74,7 +74,7 @@
 
 (defn create-dashboard!
   "Create dashboard and populate it with cards."
-  [title description cards]
+  [{:keys [title description]} cards]
   (let [dashboard (db/insert! 'Dashboard
                     :name        title
                     :description description
@@ -84,8 +84,9 @@
                        (sort-by :score >)
                        (take max-cards))]
     (events/publish-event! :dashboard-create dashboard)
-    (log/info (format "Adding %s cards to dashboard:\n%s"
+    (log/info (format "Adding %s cards to dashboard %s:\n%s"
                       (count cards)
+                      (:id dashboard)
                       (str/join "; " (map :title cards))))
     (doseq [[idx card] (m/indexed cards)]
       (add-to-dashboard! dashboard card idx))

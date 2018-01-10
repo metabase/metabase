@@ -9,9 +9,11 @@
 (api/defendpoint GET "/database/:id"
   "Create automagic dashboards for all visible tables in database with id `ìd`."
   [id]
-  (keep magic/automagic-dashboard (db/select Table
-                                    :db_id id
-                                    :visibility_type nil)))
+  (->> (db/select Table
+         :db_id id
+         :visibility_type nil)
+       (remove magic/link-table?)
+       (keep magic/automagic-dashboard)))
 
 (api/defendpoint GET "/table/:id"
   "Create an automagic dashboard for table with id `ìd`."

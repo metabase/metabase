@@ -2,8 +2,8 @@
   "Automatically generate questions and dashboards based on predefined
    heuristics."
   (:require [clojure.math.combinatorics :as combo]
-            [clojure.tools.logging :as log]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [kixi.stats.core :as stats]
             [medley.core :as m]
@@ -17,8 +17,7 @@
              [permissions :as perms]
              [table :refer [Table]]]
             [metabase.util :as u]
-            [toucan
-             [db :as db]]))
+            [toucan.db :as db]))
 
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
@@ -29,11 +28,14 @@
                 [template-type (type model)]))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link]}]
-  (cond
-    link               [:fk-> link id]
-    fk_target_field_id [:fk-> id fk_target_field_id]
-    :else              [:field-id id]))
+  [_ {:keys [fk_target_field_id id link aggregation base_type]}]
+  (let [reference (cond
+                    link               [:fk-> link id]
+                    fk_target_field_id [:fk-> id fk_target_field_id]
+                    :else              [:field-id id])]
+    (if (isa? base_type :type/DateTime)
+      [:datetime-field reference (or aggregation :day)]
+      reference)))
 
 (defmethod ->reference [:string (type Field)]
   [_ {:keys [display_name]}]
@@ -55,14 +57,38 @@
   [_ form]
   form)
 
+(def ^:private field-filters
+  {:fieldspec (fn [fieldspec]
+                (if (and (string? fieldspec)
+                         (rules/ga-dimension? fieldspec))
+                  (comp #{fieldspec} :name)
+                  (fn [{:keys [base_type special_type]}]
+                    (some #(isa? % fieldspec) [special_type base_type]))))
+   :named     (fn [name-pattern]
+                (comp (->> name-pattern
+                           str/lower-case
+                           re-pattern
+                           (partial re-find))
+                      str/lower-case
+                      :name))})
+
+(defn- numeric-key?
+  "Workaround for our leaky type system which conflates types with properties."
+  [{:keys [base_type special_type name]}]
+  (and (isa? base_type :type/Number)
+       (or (#{:type/PK :type/FK} special_type)
+           (-> name str/lower-case (= "id")))))
+
 (defn- filter-fields
-  "Find all fields of type `fieldspec` belonging to table `table`."
-  [fieldspec table]
-  (filter (if (and (string? fieldspec)
-                   (rules/ga-dimension? fieldspec))
-            (comp #{fieldspec} :name)
-            (fn [{:keys [base_type special_type]}]
-              (isa? (or special_type base_type) fieldspec)))
+  "Find all fields belonging to table `table` for which all predicates in
+   `preds` are true."
+  [preds table]
+  (filter (every-pred (complement numeric-key?)
+                      (->> preds
+                           (keep (fn [[k v]]
+                                   (when-let [pred (field-filters k)]
+                                     (some-> v pred))))
+                           (apply every-pred)))
           (db/select Field :table_id (:id table))))
 
 (defn- filter-tables
@@ -81,7 +107,7 @@
                                                 identifier)))))
 
 (defn- field-candidates
-  [context {:keys [field_type links_to] :as constraints}]
+  [context {:keys [field_type links_to named] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to context)
                        (keep :link)
@@ -93,16 +119,20 @@
         (let [[table] (filter-tables tablespec context)]
           (mapcat (fn [table]
                     (some->> table
-                             (filter-fields fieldspec)
+                             (filter-fields {:fieldspec fieldspec
+                                             :named     named})
                              (map #(assoc % :link (:link table)))))
                   (filter-tables tablespec context)))
-        (filter-fields tablespec (:root-table context))))))
+        (filter-fields {:fieldspec tablespec
+                        :named     named}
+                       (:root-table context))))))
 
 (defn- make-binding
-  [context [identifier {:keys [field_type score] :as definition}]]
-  {(name identifier) {:matches    (field-candidates context definition)
-                      :field_type field_type
-                      :score      score}})
+  [context [identifier definition]]
+  {(name identifier) (->> definition
+                          (field-candidates context)
+                          (map #(merge % definition))
+                          (assoc definition :matches))})
 
 (defn- bind-dimensions
   [context dimensions]
@@ -184,11 +214,19 @@
                         (max-key :score a b)))
          definitions))
 
+(defn- instantate-visualization
+  [bindings v]
+  (let [identifier->name (comp :name bindings)]
+    (-> v
+        (u/update-in-when ["map" "map.latitude_column"] identifier->name)
+        (u/update-in-when ["map" "map.longitude_column"] identifier->name))))
+
 (defn- instantiate-metadata
   [context bindings x]
   (let [fill-template (partial fill-template :string context bindings)]
     (-> x
         (update :title fill-template)
+        (u/update-when :visualization (partial instantate-visualization bindings))
         (u/update-when :description fill-template))))
 
 (defn- card-candidates
@@ -248,18 +286,28 @@
          :table_id (:id table)
          :fk_target_field_id [:not= nil])))
 
+(defn link-table?
+  "Is table comprised only of foregin keys and maybe a primary key?"
+  [table]
+  (empty? (db/select Field
+            ;; :not-in returns false if field is nil, hence the workaround.
+            {:where [:and [:= :table_id (:id table)]
+                          [:or [:not-in :special_type ["type/FK" "type/PK"]]
+                               [:= :special_type nil]]]})))
+
 (defn automagic-dashboard
   "Create a dashboard for table `root` using the best matching heuristic."
   [root]
-  (let [rule    (best-matching-rule (rules/load-rules) root)
-        context (as-> {:root-table root
+  (let [rule      (best-matching-rule (rules/load-rules) root)
+        context   (as-> {:root-table root
                        :rule       (:table_type rule)
                        :tables     (concat [root] (linked-tables root))
                        :database   (:db_id root)} <>
-                  (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
-                  (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
-                  (assoc <> :filters (resolve-overloading <> (:filters rule))))
-        rule    (instantiate-metadata context {} rule)]
+                    (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
+                    (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
+                    (assoc <> :filters (resolve-overloading <> (:filters rule))))
+        dashboard (->> (select-keys rule [:title :description])
+                       (instantiate-metadata context {}))]
     (log/info (format "Applying heuristic %s to table %s."
                       (:table_type rule)
                       (:name root)))
@@ -282,5 +330,5 @@
              (apply merge-with (partial max-key (comp :score first)))
              vals
              (apply concat)
-             (populate/create-dashboard! (:title rule) (:description rule))
+             (populate/create-dashboard! dashboard)
              :id)))

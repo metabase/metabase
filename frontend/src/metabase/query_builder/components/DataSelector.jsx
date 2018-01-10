@@ -413,7 +413,7 @@ export default class DataSelector extends Component {
             if (database) {
                 content = <span className="text-grey no-decoration">{database.name}</span>;
             } else {
-                content = <span className="text-grey-4 no-decoration">t`Select a database`}</span>;
+                content = <span className="text-grey-4 no-decoration">{t`Select a database`}</span>;
             }
         }
 

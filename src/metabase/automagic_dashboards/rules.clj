@@ -55,9 +55,11 @@
 (def ^:private FieldSpec (s/either [FieldType]
                                    [(s/one TableType "table") FieldType]))
 
-(def ^:private Dimension {Identifier {(s/required-key :field_type) FieldSpec
-                                      (s/required-key :score)      Score
-                                      (s/optional-key :links_to)   TableType}})
+(def ^:private Dimension {Identifier {(s/required-key :field_type)  FieldSpec
+                                      (s/required-key :score)       Score
+                                      (s/optional-key :links_to)    TableType
+                                      (s/optional-key :aggregation) s/Str
+                                      (s/optional-key :named)       s/Str}})
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
@@ -82,11 +84,15 @@
   [k cards]
   (mapcat (comp k val first) cards))
 
-(defn dimension-form?
+(def ^:private DimensionForm
+  [(s/one (s/constrained (s/either s/Str s/Keyword)
+                         (comp #{"dimension"} str/lower-case name))
+          "dimension")
+   s/Str])
+
+(def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension referece?"
-  [form]
-  (and (sequential? form)
-       (#{:dimension "dimension" "DIMENSION"} (first form))))
+  (complement (s/checker DimensionForm)))
 
 (defn collect-dimensions
   "Return all dimension references in form."
