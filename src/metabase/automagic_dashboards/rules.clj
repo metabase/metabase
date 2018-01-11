@@ -83,7 +83,8 @@
                (s/optional-key :description)   s/Str
                (s/optional-key :query)         s/Str
                (s/optional-key :width)         Width
-               (s/optional-key :height)        Height}})
+               (s/optional-key :height)        Height
+               (s/optional-key :group)         s/Str}})
 
 (def ^:private ^{:arglists '([definitions])} identifiers
   (comp set (partial map (comp key first))))

@@ -105,6 +105,25 @@
                 y (range (count (first grid)))]
             [x y])))
 
+(defn- shown-cards
+  "Pick up to `max-cards` with the highest `:score`.
+   Keep groups together if possible by pulling all the cards within together and
+   using the same (highest) score for all.
+   Among cards with the same score those beloning to the largest group are
+   favourized, but it is still possible that not all cards in a group make it
+   (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
+   from the group will be picked)."
+  [cards]
+  (->> cards
+       (group-by (some-fn :group hash))
+       (map (fn [[_ group]]
+              {:cards group
+               :score (apply max (map :score group))
+               :size  (count group)}))
+       (sort-by (juxt :score :size) (comp (partial * -1) compare))
+       (mapcat :cards)
+       (take max-cards)))
+
 (defn create-dashboard!
   "Create dashboard and populate it with cards."
   [{:keys [title description]} cards]
@@ -113,9 +132,7 @@
                     :description description
                     :creator_id  api/*current-user-id*
                     :parameters  [])
-        cards     (->> cards
-                       (sort-by :score >)
-                       (take max-cards))
+        cards     (shown-cards cards)
         ;; Binding return value to make linter happy
         _         (reduce (fn [grid card]
                             (let [[xy grid] (place-card grid card)]
