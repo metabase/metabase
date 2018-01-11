@@ -138,8 +138,6 @@
                                     nil)
                                   :type/GenericTable)]
     (log/debug (format "Based on the name of %s, we're giving it entity type %s."
-                       (-> (table/->TableInstance)
-                           (merge table)
-                           sync-util/name-for-logging)
+                       (sync-util/name-for-logging (table/map->TableInstance map))
                        entity-type))
     (assoc table :entity_type entity-type)))

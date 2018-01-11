@@ -16,30 +16,8 @@
 (def ^:private fake-analysis-completion-date
   (u/->Timestamp "2017-08-01"))
 
-;; Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current
-(expect
-  ;; PK is ok because it gets marked as part of metadata sync
-  #{{:name "LONGITUDE",   :special_type :type/Longitude,      :last_analyzed fake-analysis-completion-date}
-    {:name "CATEGORY_ID", :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "PRICE",       :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "LATITUDE",    :special_type :type/Latitude,      :last_analyzed fake-analysis-completion-date}
-    {:name "NAME",        :special_type :type/Name,      :last_analyzed fake-analysis-completion-date}
-    {:name "ID",          :special_type :type/PK, :last_analyzed fake-analysis-completion-date}}
-  (tt/with-temp* [Database [db    {:engine "h2", :details (:details (data/db))}]
-                  Table    [table {:name "VENUES", :db_id (u/get-id db)}]]
-    ;; sync the metadata, but DON't do analysis YET
-    (sync-metadata/sync-table-metadata! table)
-    ;; now mark all the Tables as analyzed with so they won't be subject to analysis
-    (db/update-where! Field {:table_id (u/get-id table)}
-      :last_analyzed       fake-analysis-completion-date
-      :fingerprint_version Short/MAX_VALUE)
-    ;; ok, NOW run the analysis process
-    (analyze/analyze-table! table)
-    ;; check and make sure all the Fields don't have special types and their last_analyzed date didn't change
-    (set (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (u/get-id table))]
-           (into {} field)))))
 
-;; ...but they *SHOULD* get analyzed if they ARE newly created
+;; Check that Fields get analyzed if they ARE newly created
 (expect
   #{{:name "LATITUDE",    :special_type :type/Latitude,  :last_analyzed true}
     {:name "ID",          :special_type :type/PK,        :last_analyzed true}
