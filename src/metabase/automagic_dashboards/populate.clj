@@ -115,17 +115,18 @@
                     :parameters  [])
         cards     (->> cards
                        (sort-by :score >)
-                       (take max-cards))]
+                       (take max-cards))
+        ;; Binding return value to make linter happy
+        _         (reduce (fn [grid card]
+                            (let [[xy grid] (place-card grid card)]
+                              (add-to-dashboard! dashboard card xy)
+                              grid))
+                          ;; Height doesn't need to be precise, just a safe max.
+                          (make-grid grid-width (* max-cards grid-width))
+                          cards)]
     (events/publish-event! :dashboard-create dashboard)
     (log/info (format "Adding %s cards to dashboard %s:\n%s"
                       (count cards)
                       (:id dashboard)
                       (str/join "; " (map :title cards))))
-    (reduce (fn [grid card]
-              (let [[xy grid] (place-card grid card)]
-                (add-to-dashboard! dashboard card xy)
-                grid))
-            ;; Height doesn't need to be a precise number, just a safe max.
-            (make-grid grid-width (* max-cards grid-width))
-            cards)
     dashboard))
