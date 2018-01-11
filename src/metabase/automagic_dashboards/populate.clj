@@ -11,9 +11,15 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-(def ^:private ^Integer grid-width  18)
-(def ^:private ^Integer card-width   6)
-(def ^:private ^Integer card-height  4)
+(def ^Integer grid-width
+  "Total grid width."
+  18)
+(def ^Integer default-card-width
+  "Default card width."
+  6)
+(def ^Integer default-card-height
+  "Default card height"
+  4)
 
 (defn- create-collection!
   [title color description]
@@ -52,10 +58,10 @@
 (defn- add-to-dashboard!
   [dashboard card [x y]]
   (dashboard/add-dashcard! dashboard (create-card! card)
-    {:col   (* card-width y)
-     :row   (* card-height x)
-     :sizeX (* card-width (:width card))
-     :sizeY (* card-height (:height card))}))
+    {:col   y
+     :row   x
+     :sizeX (:width card)
+     :sizeY (:height card)}))
 
 (def ^:private ^Integer max-cards 9)
 
@@ -119,9 +125,7 @@
               (let [[xy grid] (place-card grid card)]
                 (add-to-dashboard! dashboard card xy)
                 grid))
-            ;; For placement we can assume cards of unit size (we calculate the
-            ;; actual, grid dimensions, in `add-to-dashboard!`).
             ;; Height doesn't need to be a precise number, just a safe max.
-            (make-grid (/ grid-width card-width) (* max-cards card-height))
+            (make-grid grid-width (* max-cards grid-width))
             cards)
     dashboard))

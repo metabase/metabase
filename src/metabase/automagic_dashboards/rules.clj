@@ -2,6 +2,7 @@
   "Validation, transformation to cannonical form, and loading of heuristics."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -65,8 +66,10 @@
 
 (def  ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
-(def ^:private Width  (s/constrained s/Int #(<= 1 % 3) "1 <= width <= 3"))
-(def ^:private Height (s/constrained s/Int #(<= 1 % 2) "1 <= height <= 2"))
+(def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
+                                     (format "1 <= width <= %s"
+                                             populate/grid-width)))
+(def ^:private Height (s/constrained s/Int pos?))
 
 (def ^:private Card
   {Identifier {(s/required-key :title)         s/Str
@@ -183,8 +186,8 @@
     Filter        (comp (with-defaults {:score max-score})
                         (shorthand-definition :filter))
     Card          (with-defaults {:score  max-score
-                                  :width  1
-                                  :height 1})
+                                  :width  populate/default-card-width
+                                  :height populate/default-card-height})
     TableType     ->type
     FieldType     ->type
     Identifier    (fn [x]

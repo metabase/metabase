@@ -54,7 +54,7 @@ cards:
       filters: Last30Days
       visualization: line
       score: 100
-      width: 3
+      width: 18
   - 1DayDAUOverTime:
       title: Daily active users
       description: The number of unique users per day
@@ -107,7 +107,7 @@ cards:
       dimensions: Page
       filters: Last30Days
       visualization: table
-      height: 2
+      height: 8
       score: 70
   - SessionsByLandingPage:
       title: Top landing pages
@@ -116,12 +116,11 @@ cards:
       dimensions: LandingPage
       filters: Last30Days
       visualization: table
-      height: 2
+      height: 8
       score: 70
 # MBQL does not support ordering by GA metric
 #      order_by:
 #        - Sessions: descending
-      score: 80
   - SessionsBySource:
       title: Top referral pages
       description: The top external pages that brought users to your site
@@ -129,7 +128,7 @@ cards:
       dimensions: Source
       filters: Last30Days
       visualization: table
-      height: 2
+      height: 8
       score: 70
 #  - CohortRetention:
 #    title:
