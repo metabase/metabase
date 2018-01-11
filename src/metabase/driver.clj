@@ -292,11 +292,19 @@
   [date-format-str]
   (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
 
+(defn- first-successful-parse
+  "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
+  successful parses throws the exception that the last formatter threw."
+  [date-formatters time-str]
+  (or (some #(u/ignore-exceptions (tformat/parse % time-str)) date-formatters)
+      (doseq [formatter (reverse date-formatters)]
+        (tformat/parse formatter time-str))))
+
 (defn make-current-db-time-fn
   "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
   for the current time. Returns a function that executes the query and
   parses the date returned preserving it's timezone"
-  [date-formatter native-query]
+  [native-query date-formatter & more-date-formatters]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
                      {:settings {:report-timezone report-tz}})
@@ -311,7 +319,7 @@
                          (format "Error querying database '%s' for current time" (:name database)) e))))]
       (try
         (when time-str
-          (tformat/parse date-formatter time-str))
+          (first-successful-parse (cons date-formatter more-date-formatters) time-str))
         (catch Exception e
           (throw
            (Exception.

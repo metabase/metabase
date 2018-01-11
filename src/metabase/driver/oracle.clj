@@ -287,7 +287,7 @@
                                                              :placeholder  "*******"}]))
           :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn oracle-date-formatter oracle-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn oracle-db-time-query oracle-date-formatter)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

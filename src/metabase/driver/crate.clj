@@ -110,7 +110,7 @@
                                          :display-name "Hosts"
                                          :default      "localhost:5432/"}])
           :features        (comp (u/rpartial disj :foreign-keys) sql/features)
-          :current-db-time (driver/make-current-db-time-fn crate-date-formatter crate-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn crate-db-time-query crate-date-formatter)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
