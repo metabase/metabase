@@ -65,6 +65,9 @@
 
 (def  ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
+(def ^:private Width  (s/constrained s/Int #(<= 1 % 3) "1 <= width <= 3"))
+(def ^:private Height (s/constrained s/Int #(<= 1 % 2) "1 <= height <= 2"))
+
 (def ^:private Card
   {Identifier {(s/required-key :title)         s/Str
                (s/required-key :visualization) Visualization
@@ -75,7 +78,9 @@
                (s/optional-key :limit)         su/IntGreaterThanZero
                (s/optional-key :order_by)      [OrderByPair]
                (s/optional-key :description)   s/Str
-               (s/optional-key :query)         s/Str}})
+               (s/optional-key :query)         s/Str
+               (s/optional-key :width)         Width
+               (s/optional-key :height)        Height}})
 
 (def ^:private ^{:arglists '([definitions])} identifiers
   (comp set (partial map (comp key first))))
@@ -177,7 +182,9 @@
                         (shorthand-definition :field_type))
     Filter        (comp (with-defaults {:score max-score})
                         (shorthand-definition :filter))
-    Card          (with-defaults {:score max-score})
+    Card          (with-defaults {:score  max-score
+                                  :width  1
+                                  :height 1})
     TableType     ->type
     FieldType     ->type
     Identifier    (fn [x]

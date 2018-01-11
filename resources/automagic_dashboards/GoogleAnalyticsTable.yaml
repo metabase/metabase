@@ -54,6 +54,7 @@ cards:
       filters: Last30Days
       visualization: line
       score: 100
+      width: 3
   - 1DayDAUOverTime:
       title: Daily active users
       description: The number of unique users per day
@@ -84,6 +85,13 @@ cards:
           map.type: region
           map.region: world_countries
       score: 80
+  - SessionsByTopChannels:
+      title: Top acquisition channels
+      description: Where most of your sessions originate from
+      metrics: Sessions
+      dimensions: Channel
+      filters: Last30Days
+      visualization: bar
   - SessionsByDeviceType:
       title: Sessions by device type
       description: Total sessions by desktop, mobile, or tablet
@@ -98,23 +106,18 @@ cards:
       metrics: Pageviews
       dimensions: Page
       filters: Last30Days
-      visualization: row
-      score: 80
+      visualization: table
+      height: 2
+      score: 70
   - SessionsByLandingPage:
       title: Top landing pages
       description: Sessions by page where the session began
       metrics: Sessions
       dimensions: LandingPage
       filters: Last30Days
-      visualization: row
-      score: 80
-  - SessionsByTopChannels:
-      title: Top acquisition channels
-      description: Where most of your sessions originate from
-      metrics: Sessions
-      dimensions: Channel
-      filters: Last30Days
-      visualization: bar
+      visualization: table
+      height: 2
+      score: 70
 # MBQL does not support ordering by GA metric
 #      order_by:
 #        - Sessions: descending
@@ -125,8 +128,9 @@ cards:
       metrics: Sessions
       dimensions: Source
       filters: Last30Days
-      visualization: bar
-      score: 80
+      visualization: table
+      height: 2
+      score: 70
 #  - CohortRetention:
 #    title:
 #    description:
