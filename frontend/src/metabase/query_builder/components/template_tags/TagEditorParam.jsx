@@ -5,21 +5,25 @@ import { t } from 'c-3po';
 import Toggle from "metabase/components/Toggle.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
+import DataSelector from '../DataSelector.jsx';
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
 
 import _ from "underscore";
 
-import type { TemplateTag } from "metabase/meta/types/Query"
+import type { TemplateTag } from "metabase/meta/types/Query";
+import type { Database } from "metabase/meta/types/Database"
 
 import Field from "metabase-lib/lib/metadata/Field";
 
 type Props = {
     tag: TemplateTag,
     onUpdate: (tag: TemplateTag) => void,
-    databaseFields: Field[]
-}
+    databaseFields: Field[],
+    database: Database,
+    databases: Database[],
+};
 
 export default class TagEditorParam extends Component {
     props: Props;
@@ -79,7 +83,7 @@ export default class TagEditorParam extends Component {
     }
 
     render() {
-        const { tag, databaseFields } = this.props;
+        const { tag, database, databases, databaseFields } = this.props;
 
         let dabaseHasSchemas = false;
         if (databaseFields) {
@@ -87,11 +91,12 @@ export default class TagEditorParam extends Component {
             dabaseHasSchemas = schemas.length > 1;
         }
 
-        let widgetOptions;
+        let widgetOptions, table;
         if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
             if (field) {
                 widgetOptions = parameterOptionsForField(new Field(field));
+                table = _.findWhere(database.tables, { display_name: field.table_name });
             }
         }
 
@@ -129,27 +134,18 @@ export default class TagEditorParam extends Component {
                 { tag.type === "dimension" &&
                     <div className="pb1">
                         <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
-                        <Select
-                            className="border-med bg-white block"
-                            value={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
-                            onChange={(e) => this.setDimension(e.target.value)}
-                            searchProp="name"
-                            searchCaseInsensitive
-                            isInitiallyOpen={!tag.dimension}
-                            placeholder={t`Select…`}
-                            rowHeight={60}
-                            width={280}
-                        >
-                            {databaseFields && databaseFields.map(field =>
-                                <Option key={field.id} value={field.id} name={field.name}>
-                                    <div className="cursor-pointer">
-                                        <div className="h6 text-bold text-uppercase text-grey-2">{dabaseHasSchemas && (field.schema + " > ")}{field.table_name}</div>
-                                        <div className="h4 text-bold text-default">{field.name}</div>
-                                    </div>
-                                </Option>
-                            )}
-                        </Select>
 
+                        <DataSelector
+                            ref="dataSection"
+                            databases={databases}
+                            selectedDatabaseId={database.id}
+                            selectedTableId={table ? table.id : null}
+                            selectedFieldId={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
+                            setFieldFn={(fieldId) => this.setDimension(fieldId)}
+                            renderAsSelect={true}
+                            skipDatabaseSelection={true}
+                            className="AdminSelect flex align-center"
+                        />
                     </div>
                 }
 
