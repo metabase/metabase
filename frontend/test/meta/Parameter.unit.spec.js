@@ -5,8 +5,14 @@ describe("metabase/meta/Parameter", () => {
         it ("should parse past30days", () => {
             expect(dateParameterValueToMBQL("past30days", null)).toEqual(["time-interval", null, -30, "day"])
         })
+        it ("should parse past30days~", () => {
+            expect(dateParameterValueToMBQL("past30days~", null)).toEqual(["time-interval", null, -30, "day", { "include-current": true }])
+        })
         it ("should parse next2years", () => {
             expect(dateParameterValueToMBQL("next2years", null)).toEqual(["time-interval", null, 2, "year"])
+        })
+        it ("should parse next2years~", () => {
+            expect(dateParameterValueToMBQL("next2years~", null)).toEqual(["time-interval", null, 2, "year", { "include-current": true }])
         })
         it ("should parse thisday", () => {
             expect(dateParameterValueToMBQL("thisday", null)).toEqual(["time-interval", null, "current", "day"])

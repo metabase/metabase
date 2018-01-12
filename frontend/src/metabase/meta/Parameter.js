@@ -60,11 +60,13 @@ type Deserializer = { testRegex: RegExp, deserialize: DeserializeFn}
 type DeserializeFn = (match: any[], fieldRef: LocalFieldReference | ForeignFieldReference) => FieldFilter;
 
 const timeParameterValueDeserializers: Deserializer[] = [
-    {testRegex: /^past([0-9]+)([a-z]+)s$/, deserialize: (matches, fieldRef) =>
-        ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]]
+    {testRegex: /^past([0-9]+)([a-z]+)s(~)?$/, deserialize: (matches, fieldRef) =>
+        // $FlowFixMe: not matching TimeIntervalFilter for some reason
+        ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]].concat(matches[2] ? [{ "include-current": true }] : [])
     },
-    {testRegex: /^next([0-9]+)([a-z]+)s$/, deserialize: (matches, fieldRef) =>
-        ["time-interval", fieldRef, parseInt(matches[0]), matches[1]]
+    {testRegex: /^next([0-9]+)([a-z]+)s(~)?$/, deserialize: (matches, fieldRef) =>
+        // $FlowFixMe: not matching TimeIntervalFilter for some reason
+        ["time-interval", fieldRef, parseInt(matches[0]), matches[1]].concat(matches[2] ? [{ "include-current": true }] : [])
     },
     {testRegex: /^this([a-z]+)$/, deserialize: (matches, fieldRef) =>
         ["time-interval", fieldRef, "current", matches[0]]

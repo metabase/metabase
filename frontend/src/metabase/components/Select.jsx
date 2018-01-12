@@ -48,6 +48,7 @@ class BrowserSelect extends Component {
         // TODO - @kdoh
         // we should not allow this
         className: PropTypes.string,
+        compact: PropTypes.bool,
     }
     static defaultProps = {
         className: "",
@@ -106,6 +107,18 @@ class BrowserSelect extends Component {
         // make sure we filter by the search query
         children = children.filter(filter)
 
+        let extraProps = {}
+        if (this.props.compact) {
+          extraProps = {
+            tetherOptions: {
+                attachment: `top left`,
+                targetAttachment: `bottom left`,
+                targetOffset: `0px 0px`
+            },
+            hasArrow: false
+          }
+        }
+
         return (
             <PopoverWithTrigger
                 ref="popover"
@@ -114,6 +127,7 @@ class BrowserSelect extends Component {
                 triggerClasses={className}
                 verticalAttachments={["top"]}
                 isInitiallyOpen={isInitiallyOpen}
+                {...extraProps}
             >
                 <div className="flex flex-column">
                     { searchProp &&
