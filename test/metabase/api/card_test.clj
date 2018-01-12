@@ -101,8 +101,8 @@
 (expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
 
 
-;; Make sure `id` is required when `f` is :database
-(expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
+;; Make sure `model_id` is required when `f` is :database
+(expect {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
   ((user->client :crowberto) :get 400 "card" :f :database))
 
 ;; Filter cards by table
@@ -124,8 +124,8 @@
      (card-returned? table-2-id card-1-id)
      (card-returned? table-2-id card-2-id)]))
 
-;; Make sure `id` is required when `f` is :table
-(expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
+;; Make sure `model_id` is required when `f` is :table
+(expect {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
         ((user->client :crowberto) :get 400 "card", :f :table))
 
 
@@ -444,7 +444,8 @@
           (rasta-alert-not-working {"the question was archived by Rasta Toucan" true}))
    nil]
   (et/with-fake-inbox
-    ((user->client :rasta) :put 200 (str "card/" card-id) {:archived true})
+    (et/with-expected-messages 2
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:archived true}))
     [(et/regex-email-bodies #"the question was archived by Rasta Toucan")
      (Pulse pulse-id)]))
 
@@ -468,7 +469,8 @@
 
    nil]
   (et/with-fake-inbox
-    ((user->client :rasta) :put 200 (str "card/" card-id) {:display :line})
+    (et/with-expected-messages 2
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:display :line}))
     [(et/regex-email-bodies #"the question was edited by Rasta Toucan")
      (Pulse pulse-id)]))
 
@@ -488,7 +490,8 @@
   [(rasta-alert-not-working {"the question was edited by Rasta Toucan" true})
    nil]
   (et/with-fake-inbox
-    ((user->client :rasta) :put 200 (str "card/" card-id) {:display :table})
+    (et/with-expected-messages 1
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:display :table}))
     [(et/regex-email-bodies #"the question was edited by Rasta Toucan")
      (Pulse pulse-id)]))
 
@@ -532,7 +535,8 @@
   [(rasta-alert-not-working {"the question was edited by Rasta Toucan" true})
    nil]
   (et/with-fake-inbox
-    ((user->client :rasta) :put 200 (str "card/" card-id) {:visualization_settings {:something "else"}})
+    (et/with-expected-messages 1
+      ((user->client :rasta) :put 200 (str "card/" card-id) {:visualization_settings {:something "else"}}))
     [(et/regex-email-bodies #"the question was edited by Rasta Toucan")
      (Pulse pulse-id)]))
 
@@ -556,9 +560,10 @@
   [(rasta-alert-not-working {"the question was edited by Crowberto Corv" true})
    nil]
   (et/with-fake-inbox
-    ((user->client :crowberto) :put 200 (str "card/" card-id) {:dataset_query (assoc-in (mbql-count-query database-id table-id)
-                                                                                        [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
-                                                                                                            ["datetime-field" (data/id :checkins :date) "second"]])})
+    (et/with-expected-messages 1
+      ((user->client :crowberto) :put 200 (str "card/" card-id) {:dataset_query (assoc-in (mbql-count-query database-id table-id)
+                                                                                          [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
+                                                                                                              ["datetime-field" (data/id :checkins :date) "second"]])}))
     [(et/regex-email-bodies #"the question was edited by Crowberto Corv")
      (Pulse pulse-id)]))
 

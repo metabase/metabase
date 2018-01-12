@@ -2,6 +2,7 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
+            [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [medley.core :as m]
             [metabase
@@ -177,55 +178,33 @@
       :message-type :html
       :message      message-body)))
 
-
-;; HACK: temporary workaround to postal requiring a file as the attachment
-(defn- write-byte-array-to-temp-file
-  [^bytes img-bytes]
-  (u/prog1 (doto (File/createTempFile "metabase_pulse_image_" ".png")
-             .deleteOnExit)
-    (with-open [fos (FileOutputStream. <>)]
-      (.write fos img-bytes))))
-
-(defn- hash-bytes
-  "Generate a hash to be used in a Content-ID"
-  [^bytes img-bytes]
-  (Math/abs ^Integer (Arrays/hashCode img-bytes)))
-
-(defn- render-image [images-atom, ^bytes image-bytes]
-  (let [content-id (str (hash-bytes image-bytes) "@metabase")]
-    (if-not (contains? @images-atom content-id)
-      (swap! images-atom assoc content-id image-bytes))
-    (str "cid:" content-id)))
-
-(defn- write-image-content [[content-id bytes]]
+(defn- make-message-attachment [[content-id url]]
   {:type         :inline
    :content-id   content-id
    :content-type "image/png"
-   :content      (write-byte-array-to-temp-file bytes)})
+   :content      url})
 
-(defn- pulse-context [body pulse]
+(defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
-          :pulse        (html body)
           :pulseName    (:name pulse)
           :sectionStyle render/section-style
           :colorGrey4   render/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
 
-(defn- render-message-body
-  [message-template message-context images]
-  (vec (cons {:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-context)}
-             (map write-image-content images))))
+(defn- render-message-body [message-template message-context timezone results]
+  (let [rendered-cards (binding [render/*include-title* true]
+                         ;; doall to ensure we haven't exited the binding before the valures are created
+                         (doall (map #(render/render-pulse-section timezone %) results)))
+        message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
+        attachments    (apply merge (map :attachments rendered-cards))]
+    (vec (cons {:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}
+               (map make-message-attachment attachments)))))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone pulse results]
-  (let [images       (atom {})
-        body         (binding [render/*include-title* true
-                               render/*render-img-fn* (partial render-image images)]
-                       (vec (cons :div (for [result results]
-                                         (render/render-pulse-section timezone result)))))]
-    (render-message-body "metabase/email/pulse" (pulse-context body pulse) (seq @images))))
+  (render-message-body "metabase/email/pulse" (pulse-context pulse) timezone results))
 
 (defn pulse->alert-condition-kwd
   "Given an `ALERT` return a keyword representing what kind of goal needs to be met."
@@ -266,27 +245,28 @@
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [timezone {:keys [alert_first_only] :as alert} results goal-value]
-  (let [images       (atom {})
-        body         (binding [render/*include-title* true
-                               render/*render-img-fn* (partial render-image images)]
-                       (html (vec (cons :div (for [result results]
-                                               (render/render-pulse-section timezone result))))))
-        message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
+  (let [message-ctx  (default-alert-context alert (alert-results-condition-text goal-value))]
     (render-message-body "metabase/email/alert"
-                         (assoc message-ctx :pulse body :firstRunOnly? alert_first_only)
-                         (seq @images))))
+                         (assoc message-ctx :firstRunOnly? alert_first_only)
+                         timezone results)))
 
 (def ^:private alert-condition-text
   {:meets "when this question meets its goal"
    :below "when this question goes below its goal"
    :rows  "whenever this question has any results"})
 
-(defn- send-email! [user subject template-path template-context]
-  (email/send-message!
-    :recipients   [(:email user)]
-    :message-type :html
-    :subject      subject
-    :message      (stencil/render-file template-path template-context)))
+(defn- send-email!
+  "Sends an email on a background thread, returning a future."
+  [user subject template-path template-context]
+  (future
+    (try
+      (email/send-message-or-throw!
+        {:recipients   [(:email user)]
+         :message-type :html
+         :subject      subject
+         :message      (stencil/render-file template-path template-context)})
+      (catch Exception e
+        (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
 
 (defn- template-path [template-name]
   (str "metabase/email/" template-name ".mustache"))

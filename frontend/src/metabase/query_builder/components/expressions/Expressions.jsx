@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -46,7 +46,7 @@ export default class Expressions extends Component {
                         <IconBorder borderRadius="3px">
                             <Icon name="add" size={14} />
                         </IconBorder>
-                        <span className="ml1">Add a custom field</span>
+                        <span className="ml1">{t`Add a custom field`}</span>
                     </a>
             </div>
         );

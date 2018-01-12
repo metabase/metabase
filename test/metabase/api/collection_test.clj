@@ -116,10 +116,10 @@
 ;; Archiving a collection should delete any alerts associated with questions in the collection
 (tt/expect-with-temp [Collection            [{collection-id :id}]
                       Card                  [{card-id :id :as card} {:collection_id collection-id}]
-                      Pulse                 [{pulse-id :id} {:alert_condition   "rows"
-                                                             :alert_first_only  false
-                                                             :creator_id        (user->id :rasta)
-                                                             :name              "Original Alert Name"}]
+                      Pulse                 [{pulse-id :id} {:alert_condition  "rows"
+                                                             :alert_first_only false
+                                                             :creator_id       (user->id :rasta)
+                                                             :name             "Original Alert Name"}]
 
                       PulseCard             [_              {:pulse_id pulse-id
                                                              :card_id  card-id
@@ -129,17 +129,15 @@
                                                              :pulse_channel_id pc-id}]
                       PulseChannelRecipient [{pcr-id-2 :id} {:user_id          (user->id :rasta)
                                                              :pulse_channel_id pc-id}]]
-  [{"crowberto@metabase.com" [{:from "notifications@metabase.com",
-                               :to ["crowberto@metabase.com"],
-                               :subject "One of your alerts has stopped working",
-                               :body {"the question was archived by Crowberto Corv" true}}],
-    "rasta@metabase.com" [{:from "notifications@metabase.com",
-                           :to ["rasta@metabase.com"],
-                           :subject "One of your alerts has stopped working",
-                           :body {"the question was archived by Crowberto Corv" true}}]}
+
+  [(merge (et/email-to :crowberto {:subject "One of your alerts has stopped working",
+                                   :body    {"the question was archived by Crowberto Corv" true}})
+          (et/email-to :rasta {:subject "One of your alerts has stopped working",
+                               :body    {"the question was archived by Crowberto Corv" true}}))
    nil]
   (et/with-fake-inbox
-    ((user->client :crowberto) :put 200 (str "collection/" collection-id)
-     {:name "My Beautiful Collection", :color "#ABCDEF", :archived true})
+    (et/with-expected-messages 2
+      ((user->client :crowberto) :put 200 (str "collection/" collection-id)
+       {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
     [(et/regex-email-bodies #"the question was archived by Crowberto Corv")
      (Pulse pulse-id)]))

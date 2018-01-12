@@ -3,7 +3,7 @@ import _ from "underscore";
 import { createAction } from "redux-actions";
 import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 import { push } from "react-router-redux";
-
+import { t } from 'c-3po';
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -152,7 +152,7 @@ export const proceedWithDbCreation = function (database) {
                         step: DB_EDIT_FORM_SCHEDULING_TAB
                     });
                 } else {
-                    dispatch.action(VALIDATE_DATABASE_FAILED, { error: { data: { message: "Couldn't connect to the database. Please check the connection details." } } });
+                    dispatch.action(VALIDATE_DATABASE_FAILED, { error: { data: { message: t`Couldn't connect to the database. Please check the connection details.` } } });
                 }
             } catch(error) {
                 dispatch.action(VALIDATE_DATABASE_FAILED, { error });
@@ -321,11 +321,11 @@ const formState = handleActions({
     [RESET]: { next: () => DEFAULT_FORM_STATE },
     [CREATE_DATABASE_STARTED]: () => ({ isSubmitting: true }),
     // not necessarily needed as the page is immediately redirected after db creation
-    [CREATE_DATABASE]: () => ({ formSuccess: { data: { message: "Successfully created!" } } }),
+    [CREATE_DATABASE]: () => ({ formSuccess: { data: { message: t`Successfully created!` } } }),
     [VALIDATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({ formError: error }),
     [CREATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({ formError: error }),
     [UPDATE_DATABASE_STARTED]: () => ({ isSubmitting: true }),
-    [UPDATE_DATABASE]: () => ({ formSuccess: { data: { message: "Successfully saved!" } } }),
+    [UPDATE_DATABASE]: () => ({ formSuccess: { data: { message: t`Successfully saved!` } } }),
     [UPDATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({ formError: error }),
     [CLEAR_FORM_STATE]: () => DEFAULT_FORM_STATE
 }, DEFAULT_FORM_STATE);

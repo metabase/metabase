@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import AddClauseButton from "./AddClauseButton.jsx";
 import Expressions from "./expressions/Expressions.jsx";
 import ExpressionWidget from './expressions/ExpressionWidget.jsx';
@@ -101,7 +101,7 @@ export default class ExtendedOptions extends Component {
 
             if (query.canAddSort()) {
                 addSortButton = (
-                    <AddClauseButton text="Pick a field to sort by" onClick={() => {
+                    <AddClauseButton text={t`Pick a field to sort by`} onClick={() => {
                         // $FlowFixMe: shouldn't be adding a sort with null field
                         query.addSort([null, "ascending"]).update(setDatasetQuery)
                     }} />
@@ -112,7 +112,7 @@ export default class ExtendedOptions extends Component {
         if ((sortList && sortList.length > 0) || addSortButton) {
             return (
                 <div className="pb3">
-                    <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Sort</div>
+                    <div className="pb1 h6 text-uppercase text-grey-3 text-bold">{t`Sort`}</div>
                     {sortList}
                     {addSortButton}
                 </div>
@@ -168,7 +168,7 @@ export default class ExtendedOptions extends Component {
 
                     { features.limit &&
                         <div>
-                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Row limit</div>
+                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">{t`Row limit`}</div>
                             <LimitWidget limit={query.limit()} onChange={this.setLimit} />
                         </div>
                     }

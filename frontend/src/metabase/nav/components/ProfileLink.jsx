@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { t } from 'c-3po'
 
 import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
-
+import { t } from 'c-3po';
 import cx from 'classnames';
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
@@ -97,7 +97,7 @@ export default class ProfileLink extends Component {
                                 { user.is_superuser && context === 'admin' ?
                                     <li>
                                         <Link to="/" data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
-                                            Exit Admin
+                                            {t`Exit Admin`}
                                         </Link>
                                     </li>
                                 : null }

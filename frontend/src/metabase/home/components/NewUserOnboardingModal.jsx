@@ -2,8 +2,7 @@
 import React, { Component } from "react";
 import StepIndicators from 'metabase/components/StepIndicators';
 import RetinaImage from 'react-retina-image'
-import { t } from 'c-3po'
-
+import { t } from 'c-3po';
 import MetabaseSettings from "metabase/lib/settings";
 
 type Props = {
@@ -95,7 +94,7 @@ export default class NewUserOnboardingModal extends Component {
                             className="link flex-align-right text-bold absolute right"
                             onClick={() => (this.nextStep())}
                         >
-                            { step === 3 ? t`Let\'s go` : t`Next` }
+                            { step === 3 ? t`Let's go` : t`Next` }
                         </a>
                     </div>
                 </div>

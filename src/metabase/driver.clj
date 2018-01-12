@@ -1,16 +1,33 @@
 (ns metabase.driver
-  (:require [clj-time.format :as tformat]
+  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+  introspecting their schemas and processing and running MBQL queries. Each Metabase driver lives in a namespace like
+  `metabase.driver.<driver>`, e.g. `metabase.driver.postgres`. Each driver must implement the `IDriver` protocol
+  below.
+
+  JDBC-based drivers for SQL databases can use the 'Generic SQL' driver which acts as a sort of base class and
+  implements most of this protocol. Instead, those drivers should implement the `ISQLDriver` protocol which can be
+  found in `metabase.driver.generic-sql`.
+
+  This namespace also contains various other functions for fetching drivers, testing database connections, and the
+  like."
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.models
              [database :refer [Database]]
-             [setting :refer [defsetting]]]
+             field
+             [setting :refer [defsetting]]
+             table]
             [metabase.sync.interface :as si]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
+           java.text.SimpleDateFormat
            metabase.models.database.DatabaseInstance
            metabase.models.field.FieldInstance
            metabase.models.table.TableInstance
@@ -99,7 +116,7 @@
 
       Is this property required? Defaults to `false`.")
 
-  (execute-query ^java.util.Map [this, ^java.util.Map query]
+  (^{:style/indent 1} execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
 
   The query passed in will contain:
@@ -177,7 +194,7 @@
          (fn [query]
            (qp query)))")
 
-  (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
+  (^{:style/indent 2} sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
      `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
      arguments.
@@ -194,7 +211,7 @@
      table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
      returned in any given order.")
 
-  (current-db-time ^DateTime [this ^DatabaseInstance database]
+  (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
     "Returns the current time and timezone from the perspective of `DATABASE`."))
 
 (def IDriverDefaultsMixin
@@ -272,18 +289,47 @@
       (when-not (empty? report-tz)
         report-tz))))
 
-(defn create-db-time-formatter
-  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
-  the offset/timezone information. Results of this are threadsafe and
-  can safely be def'd"
+(defprotocol ^:private ParseDateTimeString
+  (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
+
+(extend-protocol ParseDateTimeString
+  DateTimeFormatter
+  (parse [formatter date-time-str]
+    (tformat/parse formatter date-time-str)))
+
+;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
+;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
+;; dispatch parsing for SimpleDateFormat instances. Dispatching off of the SimpleDateFormat directly wouldn't be good
+;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
+;; date
+(defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+  ParseDateTimeString
+  (parse [_ date-time-str]
+    (let [sdf         (SimpleDateFormat. format-str)
+          parsed-date (.parse sdf date-time-str)
+          joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
+      (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
+
+(defn create-db-time-formatters
+  "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
+  JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
-  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
+  [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
+   (ThreadSafeSimpleDateFormat. date-format-str)])
+
+(defn- first-successful-parse
+  "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
+  successful parses throws the exception that the last formatter threw."
+  [date-formatters time-str]
+  (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
+      (doseq [formatter (reverse date-formatters)]
+        (parse formatter time-str))))
 
 (defn make-current-db-time-fn
   "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
   for the current time. Returns a function that executes the query and
   parses the date returned preserving it's timezone"
-  [date-formatter native-query]
+  [native-query date-formatters]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
                      {:settings {:report-timezone report-tz}})
@@ -298,7 +344,7 @@
                          (format "Error querying database '%s' for current time" (:name database)) e))))]
       (try
         (when time-str
-          (tformat/parse date-formatter time-str))
+          (first-successful-parse date-formatters time-str))
         (catch Exception e
           (throw
            (Exception.
@@ -324,7 +370,7 @@
              [java.sql.Date                  :type/Date]
              [java.sql.Timestamp             :type/DateTime]
              [java.util.Date                 :type/DateTime]
-             [org.joda.time.DateTime         :type/DateTime]
+             [DateTime                       :type/DateTime]
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
@@ -417,7 +463,7 @@
   10000)
 
 ;; TODO - move this to the metadata-queries namespace or something like that instead
-(s/defn ^:always-validate ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
+(s/defn ^{:style/indent 1} table-rows-sample :- (s/maybe si/TableSample)
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)

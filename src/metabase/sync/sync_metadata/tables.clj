@@ -16,7 +16,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-;;; ------------------------------------------------------------  "Crufty" Tables ------------------------------------------------------------
+;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
 ;; Crufty tables are ones we know are from frameworks like Rails or Django and thus automatically mark as `:cruft`
 
@@ -72,17 +72,17 @@
     ;; Lobos
     #"^lobos_migrations$"})
 
-(s/defn ^:private ^:always-validate is-crufty-table? :- s/Bool
+(s/defn ^:private is-crufty-table? :- s/Bool
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
   [table :- i/DatabaseMetadataTable]
   (boolean (some #(re-find % (str/lower-case (:name table))) crufty-table-patterns)))
 
 
-;;; ------------------------------------------------------------ Syncing ------------------------------------------------------------
+;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
-(s/defn ^:private ^:always-validate create-or-reactivate-tables!
+(s/defn ^:private create-or-reactivate-tables!
   "Create NEW-TABLES for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
   (log/info "Found new tables:"
@@ -108,7 +108,7 @@
                            :cruft)))))
 
 
-(s/defn ^:private ^:always-validate retire-tables!
+(s/defn ^:private retire-tables!
   "Mark any OLD-TABLES belonging to DATABASE as inactive."
   [database :- i/DatabaseInstance, old-tables :- #{i/DatabaseMetadataTable}]
   (log/info "Marking tables as inactive:"
@@ -121,14 +121,14 @@
       :active false)))
 
 
-(s/defn ^:private ^:always-validate db-metadata :- #{i/DatabaseMetadataTable}
+(s/defn ^:private db-metadata :- #{i/DatabaseMetadataTable}
   "Return information about DATABASE by calling its driver's implementation of `describe-database`."
   [database :- i/DatabaseInstance]
   (set (for [table (:tables (fetch-metadata/db-metadata database))
              :when (not (metabase-metadata/is-metabase-metadata-table? table))]
          table)))
 
-(s/defn ^:private ^:always-validate our-metadata :- #{i/DatabaseMetadataTable}
+(s/defn ^:private our-metadata :- #{i/DatabaseMetadataTable}
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
@@ -136,8 +136,9 @@
               :db_id  (u/get-id database)
               :active true))))
 
-(s/defn ^:always-validate sync-tables!
-  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling DATABASE's driver's implementation of `describe-database`."
+(s/defn sync-tables!
+  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling DATABASE's driver's
+  implementation of `describe-database`."
   [database :- i/DatabaseInstance]
   ;; determine what's changed between what info we have and what's in the DB
   (let [db-metadata             (db-metadata database)
@@ -145,7 +146,8 @@
         [new-tables old-tables] (data/diff db-metadata our-metadata)]
     ;; create new tables as needed or mark them as active again
     (when (seq new-tables)
-      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s" (sync-util/name-for-logging database))
+      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                             (sync-util/name-for-logging database))
         (create-or-reactivate-tables! database new-tables)))
     ;; mark old tables as inactive
     (when (seq old-tables)

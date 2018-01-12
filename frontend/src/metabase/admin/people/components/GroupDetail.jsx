@@ -6,7 +6,7 @@ import cx from "classnames";
 import { isAdminGroup, isDefaultGroup, canEditMembership } from "metabase/lib/groups";
 
 import { PermissionsApi } from "metabase/services";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
@@ -24,18 +24,18 @@ const GroupDescription = ({ group }) =>
     isDefaultGroup(group) ?
         <div className="px2 text-measure">
             <p>
-                All users belong to the {group.name} group and can't be removed from it. Setting permissions for this group is a great way to
-                make sure you know what new Metabase users will be able to see.
+                {t`All users belong to the {group.name} group and can't be removed from it. Setting permissions for this group is a great way to
+                make sure you know what new Metabase users will be able to see.`}
             </p>
         </div>
     : isAdminGroup(group) ?
         <div className="px2 text-measure">
             <p>
-                This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
-                settings in the Admin Panel, including changing permissions! So, add people to this group with care.
+                {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
+                settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
             </p>
             <p>
-                To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.
+                {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
             </p>
         </div>
     :
@@ -128,7 +128,7 @@ const MembersTable = ({
 
     return (
         <div>
-            <AdminContentTable columnTitles={["Members", "Email"]}>
+            <AdminContentTable columnTitles={[t`Members`, t`Email`]}>
                 { showAddUser && (
                     <AddUserRow
                         users={users}
@@ -147,7 +147,7 @@ const MembersTable = ({
             </AdminContentTable>
             { members.length === 0 && (
                 <div className="mt4 pt4 flex layout-centered">
-                    <AdminEmptyText message="A group is only as good as its members." />
+                    <AdminEmptyText message={t`A group is only as good as its members.`} />
                 </div>
             )}
         </div>

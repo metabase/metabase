@@ -5,7 +5,7 @@ import "./Calendar.css";
 
 import cx from 'classnames';
 import moment from 'moment';
-
+import { t } from 'c-3po';
 import Icon from 'metabase/components/Icon';
 
 export default class Calendar extends Component {
@@ -98,7 +98,7 @@ export default class Calendar extends Component {
     }
 
     renderDayNames() {
-        const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        const names = [t`Su`, t`Mo`, t`Tu`, t`We`, t`Th`, t`Fr`, t`Sa`];
         return (
             <div className="Calendar-day-names Calendar-week py1">
                 {names.map((name) => <span key={name} className="Calendar-day-name text-centered">{name}</span>)}

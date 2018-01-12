@@ -9,13 +9,13 @@
             [metabase.sync.interface :as i]
             [schema.core :as s]))
 
-(s/defn ^:private ^:always-validate basic-sample :- (s/maybe i/TableSample)
+(s/defn ^:private basic-sample :- (s/maybe i/TableSample)
   "Procure a sequence of table rows, up to `max-sample-rows` (10,000 at the time of this writing), for
    use in the fingerprinting sub-stage of analysis. Returns `nil` if no rows are available."
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (seq (driver/table-rows-sample table fields)))
 
-(s/defn ^:private ^:always-validate table-sample->field-sample :- (s/maybe i/FieldSample)
+(s/defn ^:private table-sample->field-sample :- (s/maybe i/FieldSample)
   "Fetch a sample for the Field whose values are at INDEX in the TABLE-SAMPLE.
    Filters out `nil` values; returns `nil` if a non-empty sample cannot be obtained."
   [table-sample :- i/TableSample, i :- s/Int]
@@ -24,7 +24,7 @@
        (filter (complement nil?))
        seq))
 
-(s/defn ^:always-validate sample-fields :- [(s/pair i/FieldInstance "Field", (s/maybe i/FieldSample) "FieldSample")]
+(s/defn sample-fields :- [(s/pair i/FieldInstance "Field", (s/maybe i/FieldSample) "FieldSample")]
   "Fetch samples for a series of FIELDS. Returns tuples of Field and sample.
    This may return `nil` if the sample could not be fetched for some other reason."
   [table :- i/TableInstance, fields :- [i/FieldInstance]]

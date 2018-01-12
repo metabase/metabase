@@ -46,6 +46,8 @@ export default class EmbedFrame extends Component {
     }
 
     componentWillMount() {
+        // Make iFrameResizer avaliable so that embed users can
+        // have their embeds autosize to their content
         if (window.iFrameResizer) {
             console.error("iFrameResizer resizer already defined.")
         } else {
@@ -56,9 +58,25 @@ export default class EmbedFrame extends Component {
                     this.setState({ innerScroll: false })
                 }
             }
-            // $FlowFixMe: flow doesn't know about require.ensure
-            require.ensure && require.ensure([], () => {
-                require("iframe-resizer/js/iframeResizer.contentWindow.js")
+
+
+            // FIXME: Crimes
+            // This is needed so the FE test framework which runs in node
+            // without the avaliability of require.ensure skips over this part
+            // which is for external purposes only.
+            //
+            // Ideally that should happen in the test config, but it doesn't
+            // seem to want to play nice when messing with require
+            if(typeof require.ensure !== "function") {
+                // $FlowFixMe: flow doesn't seem to like returning false here
+                return false
+            }
+
+            // Make iframe-resizer avaliable to the embed
+            // We only care about contentWindow so require that minified file
+
+            require.ensure([], (require) => {
+                require('iframe-resizer/js/iframeResizer.contentWindow.min.js')
             });
         }
     }

@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import { formatValue } from "metabase/lib/formatting";
@@ -21,7 +21,7 @@ import { TitleLegendHeader } from "metabase/visualizations/components/TitleLegen
 export default class Funnel extends Component {
     props: VisualizationProps;
 
-    static uiName = "Funnel";
+    static uiName = t`Funnel`;
     static identifier = "funnel";
     static iconName = "funnel";
 
@@ -46,31 +46,31 @@ export default class Funnel extends Component {
             throw new MinRowsError(1, rows.length);
         }
         if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
-            throw new ChartSettingsError("Which fields do you want to use?", "Data", "Choose fields");
+            throw new ChartSettingsError(t`Which fields do you want to use?`, t`Data`, t`Choose fields`);
         }
     }
 
     static settings = {
         "funnel.dimension": {
             section: "Data",
-            title: "Step",
+            title: t`Step`,
             ...dimensionSetting("funnel.dimension"),
             dashboard: false,
             useRawSeries: true,
         },
         "funnel.metric": {
             section: "Data",
-            title: "Measure",
+            title: t`Measure`,
             ...metricSetting("funnel.metric"),
             dashboard: false,
             useRawSeries: true,
         },
         "funnel.type": {
-            title: "Funnel type",
+            title: t`Funnel type`,
             section: "Display",
             widget: "select",
             props: {
-                options: [{ name: "Funnel", value: "funnel"}, { name: "Bar chart", value: "bar"}]
+                options: [{ name: t`Funnel`, value: "funnel"}, { name: t`Bar chart`, value: "bar"}]
             },
             // legacy "bar" funnel was only previously available via multiseries
             getDefault: (series) => series.length > 1 ? "bar" : "funnel",

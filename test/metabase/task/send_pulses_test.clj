@@ -33,5 +33,6 @@
                 :body    {"My Question Name.*has results" true}})
   (et/with-fake-inbox
     (data/with-db (data/get-or-create-database! defs/test-data)
-      (#'metabase.task.send-pulses/send-pulses! 0 "fri" :first :first)
+      (et/with-expected-messages 1
+        (#'metabase.task.send-pulses/send-pulses! 0 "fri" :first :first))
       (et/regex-email-bodies #"My Question Name.*has results"))))

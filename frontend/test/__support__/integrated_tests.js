@@ -10,7 +10,7 @@ import "./mocks";
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { CardApi, SessionApi } from "metabase/services";
+import { CardApi, DashboardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from 'metabase/reducers-main';
 import publicReducers from 'metabase/reducers-public';
@@ -351,6 +351,11 @@ export const createSavedQuestion = async (unsavedQuestion) => {
     const savedQuestion = unsavedQuestion.setCard(savedCard);
     savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
     return savedQuestion
+}
+
+export const createDashboard = async (details) => {
+    let savedDashboard = await DashboardApi.create(details)
+    return savedDashboard
 }
 
 /**

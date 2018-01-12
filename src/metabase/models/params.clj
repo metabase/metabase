@@ -1,6 +1,7 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [metabase.query-processor.middleware.expand :as ql]
+            metabase.query-processor.interface
             [metabase.util :as u]
             [toucan.db :as db])
   (:import metabase.query_processor.interface.FieldPlaceholder))

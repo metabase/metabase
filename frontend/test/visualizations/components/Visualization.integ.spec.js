@@ -7,9 +7,10 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import LegendHeader from "metabase/visualizations/components/LegendHeader";
 import LegendItem from "metabase/visualizations/components/LegendItem";
 
-import { ScalarCard, LineCard, MultiseriesLineCard } from "../__support__/visualizations";
+import { ScalarCard, LineCard, MultiseriesLineCard, TextCard } from "../__support__/visualizations";
 
 import { mount } from "enzyme";
+import { click } from "__support__/enzyme_utils"
 
 function renderVisualization(props) {
     return mount(<Visualization className="spread" {...props} />);
@@ -118,6 +119,57 @@ describe("Visualization", () => {
                 expect(getTitles(viz)).toEqual([
                     ["Foo_name: Foo_cat1", "Foo_name: Foo_cat2", "Bar_name: Bar_cat1", "Bar_name: Bar_cat2"]
                 ]);
+            });
+        });
+
+        describe("text card", () => {
+            describe("when not editing", () => {
+                it("should not render edit and preview actions", () => {
+                    let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: false});
+                    expect(viz.find(".Icon-editdocument").length).toEqual(0);
+                    expect(viz.find(".Icon-eye").length).toEqual(0);
+                });
+
+                it("should render in the view mode", () => {
+                    const textCard = TextCard("Foo", {
+                        card: {
+                            display: "text",
+                            visualization_settings: {
+                                text: "# Foobar"
+                            }
+                        },
+                    });
+                    let viz = renderVisualization({ series: [textCard], isEditing: false});
+                    expect(viz.find("textarea").length).toEqual(0);
+                    expect(viz.find(".text-card-markdown").find("h1").length).toEqual(1);
+                    expect(viz.find(".text-card-markdown").text()).toEqual("Foobar");
+                });
+            });
+
+            describe("when editing", () => {
+                it("should render edit and preview actions", () => {
+                    let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: true});
+                    expect(viz.find(".Icon-editdocument").length).toEqual(1);
+                    expect(viz.find(".Icon-eye").length).toEqual(1);
+                });
+
+                it("should render in the edit mode", () => {
+                    let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: true});
+                    expect(viz.find("textarea").length).toEqual(1);
+                });
+
+                describe("toggling edit/preview modes", () => {
+                    it("should switch between rendered markdown and textarea input", () => {
+                        let viz = renderVisualization({ series: [TextCard("Foo")], isEditing: true});
+                        expect(viz.find("textarea").length).toEqual(1);
+                        click(viz.find(".Icon-eye"));
+                        expect(viz.find("textarea").length).toEqual(0);
+                        expect(viz.find(".text-card-markdown").length).toEqual(1);
+                        click(viz.find(".Icon-editdocument"));
+                        expect(viz.find(".text-card-markdown").length).toEqual(0);
+                        expect(viz.find("textarea").length).toEqual(1);
+                    });
+                });
             });
         });
     });

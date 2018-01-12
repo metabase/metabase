@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
@@ -29,7 +29,7 @@ import * as metadataActions from "metabase/redux/metadata";
 
 
 const emptyStateData = {
-    message: `Tables in this database will appear here as they're added`,
+    message: t`Tables in this database will appear here as they're added`,
     icon: "table2"
 }
 
@@ -110,7 +110,7 @@ export default class TableList extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={`Tables in ${database.name}`}
+                    name={t`Tables in ${database.name}`}
                     type="tables"
                     headerIcon="database"
                 />

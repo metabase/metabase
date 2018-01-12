@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
-
+import { t } from 'c-3po';
 import DatePicker from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
@@ -23,6 +23,7 @@ import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Que
 import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
+    maxHeight?: number,
     query: StructuredQuery,
     filter?: Filter,
     onCommitFilter: (filter: Filter) => void,
@@ -227,7 +228,7 @@ export default class FilterPopover extends Component {
                     />
                 );
             }
-            return <span>not implemented {operatorField.type} {operator.multi ? "true" : "false"}</span>;
+            return <span>{t`not implemented ${operatorField.type}`} {operator.multi ? t`true` : t`false`}</span>;
         });
     }
 
@@ -246,6 +247,7 @@ export default class FilterPopover extends Component {
                 <div className="FilterPopover">
                     <FieldList
                         className="text-purple"
+                        maxHeight={this.props.maxHeight}
                         field={fieldRef}
                         fieldOptions={query.filterFieldOptions(filter)}
                         segmentOptions={query.filterSegmentOptions(filter)}
@@ -294,7 +296,7 @@ export default class FilterPopover extends Component {
                             className={cx("Button Button--purple full", { "disabled": !this.isValid() })}
                             onClick={() => this.commitFilter(this.state.filter)}
                         >
-                            {!this.props.filter ? "Add filter" : "Update filter"}
+                            {!this.props.filter ? t`Add filter` : t`Update filter`}
                         </button>
                     </div>
                 </div>

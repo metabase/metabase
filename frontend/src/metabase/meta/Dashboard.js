@@ -9,7 +9,7 @@ import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
 import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, DimensionTarget, VariableTarget } from "./types/Parameter";
-
+import { t } from 'c-3po';
 import { getTemplateTags } from "./Card";
 
 import { slugify, stripId } from "metabase/lib/formatting";
@@ -43,7 +43,7 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     {
         type: "date/relative",
         name: t`Relative Date`,
-        description: t`Like \"the last 7 days\" or \"this month\"`
+        description: t`Like "the last 7 days" or "this month"`
     },
     {
         type: "date/all-options",

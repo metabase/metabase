@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from 'react-redux';
-
+import { t, jt } from 'c-3po';
 import DirectionalButton from 'metabase/components/DirectionalButton';
 import ExpandableString from 'metabase/query_builder/components/ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
@@ -37,10 +37,10 @@ const mapDispatchToProps = {
 export class ObjectDetail extends Component {
     props: Props
 
-    static uiName = "Object Detail";
+    static uiName = t`Object Detail`;
     static identifier = "object";
     static iconName = "document";
-    static noun = "object";
+    static noun = t`object`;
 
     static hidden = true;
 
@@ -88,7 +88,7 @@ export class ObjectDetail extends Component {
             isLink = false;
         } else {
             if (value === null || value === undefined || value === "") {
-                cellValue = (<span className="text-grey-2">Empty</span>);
+                cellValue = (<span className="text-grey-2">{t`Empty`}</span>);
             } else if (isa(column.special_type, TYPE.SerializedJSON)) {
                 let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
@@ -147,7 +147,7 @@ export class ObjectDetail extends Component {
         tableForeignKeys = tableForeignKeys.filter(fk => isQueryable(fk.origin.table));
 
         if (tableForeignKeys.length < 1) {
-            return (<p className="my4 text-centered">No relationships found.</p>);
+            return (<p className="my4 text-centered">{t`No relationships found.`}</p>);
         }
 
         const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
@@ -176,7 +176,7 @@ export class ObjectDetail extends Component {
             );
 
             const relationName = inflect(fk.origin.table.display_name, fkCountValue);
-            const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-normal"> via {fk.origin.display_name}</span>) : null;
+            const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-normal"> {t`via ${fk.origin.display_name}`}</span>) : null;
 
             const info = (
                 <div>
@@ -233,7 +233,7 @@ export class ObjectDetail extends Component {
             return false;
         }
 
-        const tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : "Unknown";
+        const tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : t`Unknown`;
         // TODO: once we nail down the "title" column of each table this should be something other than the id
         const idValue = this.getIdValue();
 
@@ -250,7 +250,7 @@ export class ObjectDetail extends Component {
                         <div className="p4 flex align-center text-bold text-grey-3">
                             <Icon name="connections" size={17} />
                             <div className="ml2">
-                                This <span className="text-dark">{tableName}</span> is connected to:
+                                {jt`This ${<span className="text-dark">{tableName}</span>} is connected to:`}
                             </div>
                         </div>
                     </div>

@@ -396,7 +396,7 @@
             regularize (fn [penalty]
                          (fn [ssr]
                            (if (Double/isNaN ssr)
-                             Double/MAX_VALUE
+                             Double/POSITIVE_INFINITY
                              (+ ssr (* lambda penalty)))))
             best-fit   (transduce
                         identity
@@ -421,9 +421,10 @@
                                           (+ a (* b (Math/log x)))))
                               (regularize 1)))})
                          (fn [fits]
-                           (let [model (key (apply min-key val fits))]
-                             {:model  model
-                              :params (features model)})))
+                           (let [[model score] (apply min-key val fits)]
+                             (when-not (Double/isInfinite score)
+                               {:model  model
+                                :params (features model)}))))
                         series)
             resolution (infer-resolution query series)
             series     (if resolution
@@ -431,8 +432,10 @@
                          series)]
         (merge {:resolution             resolution
                 :series                 series
-                :linear-regression      (zipmap [:offset :slope]
-                                                linear-regression)
+                :linear-regression      (when (not-any? #(Double/isInfinite %)
+                                                        linear-regression)
+                                          (zipmap [:offset :slope]
+                                                  linear-regression))
                 :best-fit               best-fit
                 :growth-series          (when resolution
                                           (->> series
@@ -465,22 +468,23 @@
       ((get-method comparison-vector :default))))
 
 (defn- unpack-linear-regression
-  [keyfn x-field series {:keys [offset slope]}]
-  (series->dataset keyfn
-                   [x-field
-                    {:name         "TREND"
-                     :display_name "Linear regression trend"
-                     :base_type    :type/Float}]
-                   ; 2 points fully define a line
-                   (for [[x y] [(first series) (last series)]]
-                     [x (+ (* slope x) offset)])))
+  [keyfn x-field series {:keys [offset slope] :as model}]
+  (when model
+    (series->dataset keyfn
+                     [x-field
+                      {:name         "TREND"
+                       :display_name "Linear regression trend"
+                       :base_type    :type/Float}]
+                                        ; 2 points fully define a line
+                     (for [[x y] [(first series) (last series)]]
+                       [x (+ (* slope x) offset)]))))
 
 (defmethod x-ray [DateTime Num]
   [{:keys [field series] :as features}]
   (let [x-field (first field)]
     (-> features
         (update :series (partial series->dataset ts/from-double field))
-        (dissoc :series :autocorrelation :best-fit)
+        (dissoc :autocorrelation :best-fit)
         (assoc :insights ((merge-juxt insights/noisiness
                                       insights/variation-trend
                                       insights/autocorrelation

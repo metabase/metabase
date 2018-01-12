@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { t } from 'c-3po';
 
 import PulseListItem from "./PulseListItem.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
@@ -42,8 +43,8 @@ export default class PulseList extends Component {
             <div className="PulseList pt3">
                 <div className="border-bottom mb2">
                     <div className="wrapper wrapper--trim flex align-center mb2">
-                        <h1>Pulses</h1>
-                        <a onClick={this.create} className="PulseButton Button flex-align-right">Create a pulse</a>
+                        <h1>{t`Pulses`}</h1>
+                        <a onClick={this.create} className="PulseButton Button flex-align-right">{t`Create a pulse`}</a>
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!pulses}>
@@ -64,7 +65,7 @@ export default class PulseList extends Component {
                 :
                     <div className="mt4 ml-auto mr-auto">
                         <WhatsAPulse
-                            button={<a onClick={this.create} className="Button Button--primary">Create a pulse</a>}
+                            button={<a onClick={this.create} className="Button Button--primary">{t`Create a pulse`}</a>}
                         />
                     </div>
                 }

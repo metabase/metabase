@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
-
+import { t } from 'c-3po';
 import S from "./EditHeader.css";
 
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
@@ -17,7 +17,7 @@ const EditHeader = ({
 }) =>
     <div className={cx("EditHeader wrapper py1", S.editHeader)}>
         <div>
-            You are editing this page
+            {t`You are editing this page`}
         </div>
         <div className={S.editHeaderButtons}>
             <button
@@ -28,7 +28,7 @@ const EditHeader = ({
                     reinitializeForm();
                 }}
             >
-                Cancel
+                {t`Cancel`}
             </button>
 
             { hasRevisionHistory ?
@@ -42,7 +42,7 @@ const EditHeader = ({
                         type="button"
                         disabled={submitting}
                     >
-                        Save
+                        {t`Save`}
                     </button>
                 </RevisionMessageModal> :
                 <button
@@ -50,7 +50,7 @@ const EditHeader = ({
                     type="submit"
                     disabled={submitting}
                 >
-                    Save
+                    {t`Save`}
                 </button>
             }
         </div>

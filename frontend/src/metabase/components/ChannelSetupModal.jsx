@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import ModalContent from "metabase/components/ModalContent.jsx";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 
@@ -27,7 +27,7 @@ export default class ChannelSetupModal extends Component {
             <ModalContent
                 onClose={onClose}
                 fullPageModal={fullPageModal}
-                title={`To send ${entityNamePlural}, ${ user.is_superuser ? "you'll need" : "an admin needs"} to set up ${channels.join(" or ")} integration.`}
+                title={user.is_superuser ? t`To send ${entityNamePlural}, you'll need to set up ${channels.join(t` or `)} integration.` : t`To send ${entityNamePlural}, an admin needs to set up ${channels.join(t` or `)} integration.`}
             >
                 <div className={cx("ml-auto mb4", { "mr4": !fullPageModal, "mr-auto text-centered": fullPageModal })}>
                     <ChannelSetupMessage user={this.props.user} />

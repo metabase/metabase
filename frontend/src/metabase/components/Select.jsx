@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import { List } from 'react-virtualized'
 import "react-virtualized/styles.css";
-
+import { t } from 'c-3po';
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -126,7 +126,12 @@ class BrowserSelect extends Component {
                     }
                     <List
                         width={width}
-                        height={height}
+                        height={
+                            // check to see if the height of the number of rows is less than the provided (or default)
+                            // height. if so, set the height to the number of rows * the row height so that
+                            // large blank spaces at the bottom are prevented
+                            children.length * rowHeight < height ? children.length * rowHeight : height
+                        }
                         rowHeight={rowHeight}
                         rowCount={children.length}
                         rowRenderer={({index, key, style}) => {
@@ -228,7 +233,7 @@ class LegacySelect extends Component {
 
     static defaultProps = {
         placeholder: "",
-        emptyPlaceholder: "Nothing to select",
+        emptyPlaceholder: t`Nothing to select`,
         disabledOptionIds: [],
         optionNameFn: (option) => option.name,
         optionValueFn: (option) => option,

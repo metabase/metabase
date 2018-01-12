@@ -9,7 +9,7 @@ import { Link } from 'react-router'
 import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import Icon from 'metabase/components/Icon'
 import Input from 'metabase/components/Input'
 import Select from 'metabase/components/Select'
@@ -153,7 +153,7 @@ export default class FieldApp extends Component {
                                     crumbs={[
                                         [db.name, `/admin/datamodel/database/${db.id}`],
                                         [table.display_name, `/admin/datamodel/database/${db.id}/table/${table.id}`],
-                                        `${field.display_name} – Field Settings`,
+                                        t`${field.display_name} – Field Settings`,
                                     ]}
                                 />
                             </div>
@@ -170,8 +170,8 @@ export default class FieldApp extends Component {
                             </Section>
 
                             <Section>
-                                <SectionHeader title="Visibility"
-                                               description="Where this field will appear throughout Metabase"/>
+                                <SectionHeader title={t`Visibility`}
+                                               description={t`Where this field will appear throughout Metabase`}/>
                                 <FieldVisibilityPicker
                                     triggerClasses={SelectClasses}
                                     field={field.getPlainObject()}
@@ -180,7 +180,7 @@ export default class FieldApp extends Component {
                             </Section>
 
                             <Section>
-                                <SectionHeader title="Type" />
+                                <SectionHeader title={t`Type`} />
                                 <SpecialTypeAndTargetPicker
                                     triggerClasses={SelectClasses}
                                     field={field.getPlainObject()}
@@ -280,7 +280,7 @@ export class FieldHeader extends Component {
                     className="text AdminInput bordered input text-measure block full"
                     value={this.props.field.description}
                     onChange={this.onDescriptionChange}
-                    placeholder="No description for this field yet"
+                    placeholder={t`No description for this field yet`}
                 />
             </div>
         )
@@ -345,8 +345,8 @@ export class ValueRemappings extends Component {
         return (
             <div className="bordered rounded py2 px4 border-dark">
                 <div className="flex align-center my1 pb2 border-bottom">
-                    <h3>Original value</h3>
-                    <h3 className="ml-auto">Mapped value</h3>
+                    <h3>{t`Original value`}</h3>
+                    <h3 className="ml-auto">{t`Mapped value`}</h3>
                 </div>
                 <ol>
                     { [...editingRemappings].map(([original, mapped]) =>
@@ -365,7 +365,7 @@ export class ValueRemappings extends Component {
                         disabled={!this.customValuesAreNonEmpty()}
                         onClickOperation={this.onSaveClick}
                     >
-                        Save
+                        {t`Save`}
                     </ButtonWithStatus>
                 </div>
             </div>
@@ -387,7 +387,7 @@ export class FieldValueMapping extends Component {
                     className="AdminInput input ml-auto"
                     value={mapped}
                     onChange={this.onInputChange}
-                    placeholder={"Enter value"}
+                    placeholder={t`Enter value`}
                 />
             </div>
         )
@@ -403,9 +403,9 @@ export const SectionHeader = ({ title, description }) =>
     </div>
 
 const MAP_OPTIONS = {
-    original: { type: "original", name: 'Use original value' },
-    foreign:  { type: "foreign", name: 'Use foreign key' },
-    custom:   { type: "custom", name: 'Custom mapping' }
+    original: { type: "original", name: t`Use original value` },
+    foreign:  { type: "foreign", name: t`Use foreign key` },
+    custom:   { type: "custom", name: t`Custom mapping` }
 }
 
 export class FieldRemapping extends Component {
@@ -425,7 +425,7 @@ export class FieldRemapping extends Component {
         if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
         if (field.dimensions.type === "internal") return MAP_OPTIONS.custom;
 
-        throw new Error("Unrecognized mapping type");
+        throw new Error(t`Unrecognized mapping type`);
     }
 
     getAvailableMappingTypes = () => {
@@ -455,7 +455,7 @@ export class FieldRemapping extends Component {
             const nameField = fkTargetFields.find((field) => field.special_type === "type/Name")
             return nameField ? nameField.id : null;
         } else {
-            throw new Error("Current field isn't a foreign key or FK target table metadata is missing")
+            throw new Error(t`Current field isn't a foreign key or FK target table metadata is missing`)
         }
     }
 
@@ -501,7 +501,7 @@ export class FieldRemapping extends Component {
             })
             this.setState({ hasChanged: true })
         } else {
-            throw new Error("Unrecognized mapping type");
+            throw new Error(t`Unrecognized mapping type`);
         }
 
         // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
@@ -527,7 +527,7 @@ export class FieldRemapping extends Component {
 
             this.refs.fkPopover.close()
         } else {
-            throw new Error("The selected field isn't a foreign key")
+            throw new Error(t`The selected field isn't a foreign key`)
         }
 
     }
@@ -577,8 +577,8 @@ export class FieldRemapping extends Component {
         return (
             <div>
                 <SectionHeader
-                    title='Display values'
-                    description="Choose to show the original value from the database, or have this field display associated or custom information."
+                    title={t`Display values`}
+                    description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
                 />
                 <Select
                     triggerClasses={SelectClasses}
@@ -601,7 +601,7 @@ export class FieldRemapping extends Component {
                                     }
                                 )}
                             >
-                                {fkMappingField ? fkMappingField.display_name : <span className="text-grey-1">Choose a field</span>}
+                                {fkMappingField ? fkMappingField.display_name : <span className="text-grey-1">{t`Choose a field`}</span>}
                             </SelectButton>
                         }
                         isInitiallyOpen={isChoosingInitialFkTarget}
@@ -616,7 +616,7 @@ export class FieldRemapping extends Component {
                             hideSectionHeader
                         />
                     </PopoverWithTrigger>,
-                    dismissedInitialFkTargetPopover && <div className="text-danger my2">Please select a column to use for display.</div>,
+                    dismissedInitialFkTargetPopover && <div className="text-danger my2">{t`Please select a column to use for display.`}</div>,
                     hasChanged && hasFKMappingValue && <RemappingNamingTip />
                 ]}
                 { mappingType === MAP_OPTIONS.custom && (
@@ -635,8 +635,8 @@ export class FieldRemapping extends Component {
 
 export const RemappingNamingTip = () =>
     <div className="bordered rounded p1 mt1 mb2 border-brand">
-        <span className="text-brand text-bold">Tip:</span>
-        You might want to update the field name to make sure it still makes sense based on your remapping choices.
+        <span className="text-brand text-bold">{t`Tip:`}</span>
+        {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
     </div>
 
 
@@ -645,24 +645,24 @@ export class UpdateCachedFieldValues extends Component {
         return (
             <div>
                 <SectionHeader
-                    title="Cached field values"
-                    description="Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+                    title={t`Cached field values`}
+                    description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
                 />
                 <ActionButton
                     className="Button mr2"
                     actionFn={this.props.rescanFieldValues}
-                    normalText="Re-scan this field"
-                    activeText="Starting…"
-                    failedText="Failed to start scan"
-                    successText="Scan triggered!"
+                    normalText={t`Re-scan this field`}
+                    activeText={t`Starting…`}
+                    failedText={t`Failed to start scan`}
+                    successText={t`Scan triggered!`}
                 />
                 <ActionButton
                     className="Button Button--danger"
                     actionFn={this.props.discardFieldValues}
-                    normalText="Discard cached field values"
-                    activeText="Starting…"
-                    failedText="Failed to discard values"
-                    successText="Discard triggered!"
+                    normalText={t`Discard cached field values`}
+                    activeText={t`Starting…`}
+                    failedText={t`Failed to discard values`}
+                    successText={t`Discard triggered!`}
                 />
             </div>
         );

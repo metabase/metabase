@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -62,7 +62,7 @@ export default class SetUserPassword extends Component {
 
         // make sure new passwords match
         if (ReactDOM.findDOMNode(this.refs.password).value !== ReactDOM.findDOMNode(this.refs.password2).value) {
-            formErrors.data.errors.password2 = "Passwords do not match";
+            formErrors.data.errors.password2 = t`Passwords do not match`;
         }
 
         if (_.keys(formErrors.data.errors).length > 0) {
@@ -92,27 +92,27 @@ export default class SetUserPassword extends Component {
             <div>
                 <form className="Form-new bordered rounded shadowed" onSubmit={this.formSubmitted.bind(this)} noValidate>
                     <FormField fieldName="old_password" formError={formError}>
-                        <FormLabel title="Current password" fieldName="old_password" formError={formError}></FormLabel>
-                        <input ref="oldPassword" type="password" className="Form-input Form-offset full" name="old_password" placeholder="Shhh..." onChange={this.onChange.bind(this)} autoFocus={true} required />
+                        <FormLabel title={t`Current password`} fieldName="old_password" formError={formError}></FormLabel>
+                        <input ref="oldPassword" type="password" className="Form-input Form-offset full" name="old_password" placeholder={t`Shhh...`} onChange={this.onChange.bind(this)} autoFocus={true} required />
                         <span className="Form-charm"></span>
                     </FormField>
 
                     <FormField fieldName="password" formError={formError}>
                         <FormLabel title="New password" fieldName="password" formError={formError} ></FormLabel>
                         <span style={{fontWeight: "400"}} className="Form-label Form-offset">{passwordComplexity}</span>
-                        <input ref="password" type="password" className="Form-input Form-offset full" name="password" placeholder="Make sure its secure like the instructions above" onChange={this.onChange.bind(this)} required />
+                        <input ref="password" type="password" className="Form-input Form-offset full" name="password" placeholder={t`Make sure its secure like the instructions above`} onChange={this.onChange.bind(this)} required />
                         <span className="Form-charm"></span>
                     </FormField>
 
                     <FormField fieldName="password2" formError={formError}>
                         <FormLabel title="Confirm new password" fieldName="password2" formError={formError} ></FormLabel>
-                        <input ref="password2" type="password" className="Form-input Form-offset full" name="password" placeholder="Make sure it matches the one you just entered" required onChange={this.onChange.bind(this)} />
+                        <input ref="password2" type="password" className="Form-input Form-offset full" name="password" placeholder={t`Make sure it matches the one you just entered`} required onChange={this.onChange.bind(this)} />
                         <span className="Form-charm"></span>
                     </FormField>
 
                     <div className="Form-actions">
                         <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                            Save
+                            {t`Save`}
                         </button>
                         <FormMessage formError={(updatePasswordResult && !updatePasswordResult.success && !formError) ? updatePasswordResult : undefined} formSuccess={(updatePasswordResult && updatePasswordResult.success) ? updatePasswordResult : undefined} />
                     </div>

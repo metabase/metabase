@@ -9,7 +9,7 @@ import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
 import { PermissionsApi } from "metabase/services";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -33,7 +33,7 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
                 <AddRow
                     value={text}
                     isValid={textIsValid}
-                    placeholder='Something like "Marketing"'
+                    placeholder={t`Something like "Marketing"`}
                     onChange={(e) => onTextChange(e.target.value)}
                     onKeyDown={(e) => {
                         if (e.keyCode === KEYCODE_ENTER) {
@@ -53,17 +53,17 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
 
 function DeleteGroupModal({ group, onConfirm = () => {} , onClose = () => {} }) {
     return (
-        <ModalContent title="Remove this group?" onClose={onClose}>
+        <ModalContent title={t`Remove this group?`} onClose={onClose}>
             <p className="px4 pb4">
-                Are you sure? All members of this group will lose any permissions settings the have based on this group.
-                This can't be undone.
+                {t`Are you sure? All members of this group will lose any permissions settings the have based on this group.
+                This can't be undone.`}
             </p>
             <div className="Form-actions">
                 <button className="Button Button--danger" onClick={() => { onClose(); onConfirm(group); }}>
-                    Yes
+                    {t`Yes`}
                 </button>
                 <button className="Button ml1" onClick={onClose}>
-                    No
+                    {t`No`}
                 </button>
             </div>
         </ModalContent>
@@ -75,10 +75,10 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
         <PopoverWithTrigger className="block" triggerElement={<Icon className="text-grey-1" name="ellipsis" />}>
             <ul className="UserActionsSelect">
                 <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={onEditGroupClicked.bind(null, group)}>
-                    Edit Name
+                    {t`Edit Name`}
                 </li>
                 <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer text-error">
-                    <ModalWithTrigger triggerElement="Remove Group">
+                    <ModalWithTrigger triggerElement={t`Remove Group`}>
                         <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
                     </ModalWithTrigger>
                 </li>
@@ -102,7 +102,7 @@ function EditingGroupRow({ group, textHasChanged, onTextChange, onCancelClicked,
                     Cancel
                 </span>
                 <button className={cx("Button ml2", {"Button--primary": textIsValid && textHasChanged})} disabled={!textIsValid || !textHasChanged} onClick={onDoneClicked}>
-                    Done
+                    {t`Done`}
                 </button>
             </td>
         </tr>
@@ -152,7 +152,7 @@ function GroupsTable({ groups, text, groupBeingEdited, showAddGroupRow, onAddGro
                        onEditGroupClicked, onDeleteGroupClicked, onEditGroupTextChange, onEditGroupCancelClicked, onEditGroupDoneClicked }) {
 
     return (
-        <AdminContentTable columnTitles={["Group name", "Members"]}>
+        <AdminContentTable columnTitles={[t`Group name`, t`Members`]}>
             {showAddGroupRow ? (
                  <AddGroupRow text={text} onCancelClicked={onAddGroupCanceled} onCreateClicked={onAddGroupCreateButtonClicked} onTextChange={onAddGroupTextChanged} />
              ) : null}
@@ -307,10 +307,10 @@ export default class GroupsListing extends Component {
 
         return (
             <AdminPaneLayout
-                title="Groups"
-                buttonText="Create a group"
+                title={t`Groups`}
+                buttonText={t`Create a group`}
                 buttonAction={this.state.showAddGroupRow ? null : this.onCreateAGroupButtonClicked.bind(this)}
-                description="You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
+                description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
             >
                 <GroupsTable
                     groups={groups}

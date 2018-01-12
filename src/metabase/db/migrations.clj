@@ -1,8 +1,8 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
-   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
-   need to be repeatable, e.g.:
+  These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
+  H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
+  thus, all of these migrations need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
@@ -19,7 +19,7 @@
              [activity :refer [Activity]]
              [card :refer [Card]]
              [dashboard-card :refer [DashboardCard]]
-             [database :refer [Database]]
+             [database :refer [Database virtual-id]]
              [field :refer [Field]]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as perm-group]
@@ -54,7 +54,8 @@
 (def ^:private data-migrations (atom []))
 
 (defmacro ^:private defmigration
-  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that `data-migrations` atom."
+  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
+  `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
@@ -69,9 +70,9 @@
   (log/info "Finished running data migrations."))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       MIGRATIONS                                                       |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   MIGRATIONS                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
 ;;
@@ -150,9 +151,9 @@
       :visibility_type "normal")))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                     PERMISSIONS v1                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 PERMISSIONS v1                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-users-to-default-permissions-groups
@@ -179,7 +180,8 @@
         :group_id (:id (perm-group/admin))
         :object   "/"))))
 
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual DB
+;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
+;; DB
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
   (let [db-ids (db/select-ids Database)]
     (doseq [{group-id :id} [(perm-group/all-users)
@@ -191,9 +193,9 @@
           :group_id group-id)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                    NEW TYPE SYSTEM                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                NEW TYPE SYSTEM                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const old-special-type->new-type
     {"avatar"                 "type/AvatarURL"
@@ -240,9 +242,9 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-;; migrate all of the old base + special types to the new ones.
-;; This also takes care of any types that are already correct other than the fact that they're missing :type/ in the front.
-;; This was a bug that existed for a bit in 0.20.0-SNAPSHOT but has since been corrected
+;; migrate all of the old base + special types to the new ones.  This also takes care of any types that are already
+;; correct other than the fact that they're missing :type/ in the front.  This was a bug that existed for a bit in
+;; 0.20.0-SNAPSHOT but has since been corrected
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
@@ -259,24 +261,28 @@
     (db/update-where! 'Field {:base_type (name (keyword new-type))}
       :base_type new-type)))
 
-;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
+;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't
+;; blow up
 (defmigration ^{:author "camsaul", :added "0.20.0"} fix-invalid-field-types
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
 
-;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.
-;; (`site-url` used to be stored internally as `-site-url`; this was confusing, see #4188 for details)
-;; This has the side effect of making sure the `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
+;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
+;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
+;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
 (defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
 
 
-;;; ------------------------------------------------------------ Migrating QueryExecutions ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Migrating QueryExecutions                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522 and #4531 for details
+;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522
+;; and #4531 for details
 
 ;; model definition for the old table to facilitate the data copying process
 (models/defmodel ^:private ^:deprecated LegacyQueryExecution :query_queryexecution)
@@ -301,8 +307,8 @@
 
 ;; Migrate entries from the old query execution table to the new one. This might take a few minutes
 (defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
-  ;; migrate the most recent 100,000 entries
-  ;; make sure the DB doesn't get snippy by trying to insert too many records at once. Divide the INSERT statements into chunks of 1,000
+  ;; migrate the most recent 100,000 entries. Make sure the DB doesn't get snippy by trying to insert too many records
+  ;; at once. Divide the INSERT statements into chunks of 1,000
   (binding [query-execution/*validate-context* false]
     (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
       (db/insert-many! QueryExecution
@@ -329,8 +335,9 @@
 ;; There was a bug (#5998) preventing database_id from being persisted with
 ;; native query type cards. This migration populates all of the Cards
 ;; missing those database ids
-(defmigration ^{:author "senior", :added "0.26.1"} populate-card-database-id
+(defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))]
+                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))
+          :when (not= db-id virtual-id)]
     (db/update-where! Card {:id [:in (map :id cards)]}
       :database_id db-id)))

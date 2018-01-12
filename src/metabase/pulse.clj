@@ -19,7 +19,8 @@
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.TimeZone))
+  (:import java.util.TimeZone
+           metabase.models.card.CardInstance))
 
 ;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
 
@@ -46,7 +47,7 @@
 (s/defn defaulted-timezone :- TimeZone
   "Returns the timezone for the given `CARD`. Either the report
   timezone (if applicable) or the JVM timezone."
-  [card :- Card]
+  [card :- CardInstance]
   (let [^String timezone-str (or (some-> card database-id driver/database-id->driver driver/report-timezone-if-supported)
                                  (System/getProperty "user.timezone"))]
     (TimeZone/getTimeZone timezone-str)))
@@ -143,7 +144,7 @@
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
   (fn [pulse _ {:keys [channel_type] :as channel}]
-    [(alert-or-pulse pulse) channel_type]))
+    [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod create-notification [:pulse :email]
   [{:keys [id name] :as pulse} results {:keys [recipients] :as channel}]
@@ -171,11 +172,12 @@
                                  (first-question-name pulse)
                                  (get alert-notification-condition-text condition-kwd))
         email-recipients (filterv u/is-email? (map :email recipients))
-        timezone         (-> results first :card defaulted-timezone)]
+        first-result     (first results)
+        timezone         (-> first-result :card defaulted-timezone)]
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse results (ui/find-goal-value results))}))
+     :message      (messages/render-alert-email timezone pulse results (ui/find-goal-value first-result))}))
 
 (defmethod create-notification [:alert :slack]
   [pulse results {{channel-id :channel} :details :as channel}]
@@ -183,6 +185,11 @@
   {:channel-id channel-id
    :message (str "Alert: " (first-question-name pulse))
    :attachments (create-slack-attachment-data results)})
+
+(defmethod create-notification :default
+  [_ _ {:keys [channel_type] :as channel}]
+  (let [^String ex-msg (tru "Unrecognized channel type {0}" (pr-str channel_type))]
+    (throw (UnsupportedOperationException. ex-msg))))
 
 (defmulti ^:private send-notification!
   "Invokes the side-affecty function for sending emails/slacks depending on the notification type"

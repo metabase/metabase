@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { findDOMNode } from 'react-dom';
-
+import { t } from 'c-3po';
 import FilterWidget from './FilterWidget.jsx';
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -59,7 +59,7 @@ export default class FilterList extends Component {
                 {filters.map((filter, index) =>
                     <FilterWidget
                         key={index}
-                        placeholder="Item"
+                        placeholder={t`Item`}
                         // TODO: update widgets that are still passing tableMetadata instead of query
                         query={query || {
                             table: () => tableMetadata,

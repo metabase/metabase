@@ -10,9 +10,6 @@ export class Insights extends Component {
         const { features } = this.props;
 
         const parametrizedInsights = Object.entries(features["insights"])
-            // temporary hacks as we have two formats
-            .filter(([key, value]) => !key.includes(2))
-            .map(([key, value]) => [key.replace("1",""), value])
 
         return (
             <ol className="Grid Grid--gutters Grid--1of4">

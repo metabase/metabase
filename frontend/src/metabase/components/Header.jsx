@@ -5,7 +5,7 @@ import Input from "metabase/components/Input.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 import EditBar from "metabase/components/EditBar.jsx";
-
+import { t } from 'c-3po';
 import { getScrollY } from "metabase/lib/dom";
 
 export default class Header extends Component {
@@ -80,7 +80,7 @@ export default class Header extends Component {
             titleAndDescription = (
                 <div className="Header-title flex flex-column flex-full bordered rounded my1">
                     <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={this.props.item.name || ""} onChange={this.setItemAttribute.bind(this, "name")}/>
-                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.item.description || ""} onChange={this.setItemAttribute.bind(this, "description")} placeholder="No description yet" />
+                    <Input className="AdminInput rounded-bottom h4" type="text" value={this.props.item.description || ""} onChange={this.setItemAttribute.bind(this, "description")} placeholder={t`No description yet`} />
                 </div>
             );
         } else {
@@ -94,7 +94,7 @@ export default class Header extends Component {
             } else {
                 titleAndDescription = (
                     <TitleAndDescription
-                        title={`New ${this.props.objectType}`}
+                        title={t`New ${this.props.objectType}`}
                         description={this.props.item.description}
                     />
                 );
@@ -105,7 +105,7 @@ export default class Header extends Component {
         if (this.props.item && this.props.item.creator) {
             attribution = (
                 <div className="Header-attribution">
-                    Asked by {this.props.item.creator.common_name}
+                    {t`Asked by ${this.props.item.creator.common_name}`}
                 </div>
             );
         }

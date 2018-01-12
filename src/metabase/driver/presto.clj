@@ -14,13 +14,18 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import java.util.Date
-           [metabase.query_processor.interface DateTimeValue Value]))
+  (:import java.util.Date))
+
+(defrecord PrestoDriver []
+  clojure.lang.Named
+  (getName [_] "Presto"))
+
 
 ;;; Presto API helpers
 
@@ -163,19 +168,21 @@
     {:schema schema
      :name   table-name
      :fields (set (for [[name type] rows]
-                    {:name name, :base-type (presto-type->base-type type)}))}))
+                    {:name          name
+                     :database-type type
+                     :base-type     (presto-type->base-type type)}))}))
 
-(defprotocol ^:private IPrepareValue
-  (^:private prepare-value [this]))
-(extend-protocol IPrepareValue
-  nil           (prepare-value [_] nil)
-  DateTimeValue (prepare-value [{:keys [value]}] (prepare-value value))
-  Value         (prepare-value [{:keys [value]}] (prepare-value value))
-  String        (prepare-value [this] (hx/literal (str/replace this "'" "''")))
-  Boolean       (prepare-value [this] (hsql/raw (if this "TRUE" "FALSE")))
-  Date          (prepare-value [this] (hsql/call :from_iso8601_timestamp (hx/literal (u/date->iso-8601 this))))
-  Number        (prepare-value [this] this)
-  Object        (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
+(defmethod sqlqp/->honeysql [PrestoDriver String]
+  [_ s]
+  (hx/literal (str/replace s "'" "''")))
+
+(defmethod sqlqp/->honeysql [PrestoDriver Boolean]
+  [_ bool]
+  (hsql/raw (if bool "TRUE" "FALSE")))
+
+(defmethod sqlqp/->honeysql [PrestoDriver Date]
+  [_ date]
+  (hsql/call :from_iso8601_timestamp (hx/literal (u/date->iso-8601 date))))
 
 (defn- execute-query [{:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
   (let [sql                    (str "-- " (qputil/query->remark outer-query) "\n"
@@ -254,11 +261,7 @@
 
 ;;; Driver implementation
 
-(defrecord PrestoDriver []
-  clojure.lang.Named
-  (getName [_] "Presto"))
-
-(def ^:private presto-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
+(def ^:private presto-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
 (def ^:private presto-db-time-query "select to_iso8601(current_timestamp)")
 
 (u/strict-extend PrestoDriver
@@ -305,7 +308,7 @@
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn presto-date-formatter presto-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn presto-db-time-query presto-date-formatters)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -315,7 +318,6 @@
           :current-datetime-fn       (constantly :%now)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"information_schema"})
-          :prepare-value             (u/drop-first-arg prepare-value)
           :quote-style               (constantly :ansi)
           :stddev-fn                 (constantly :stddev_samp)
           :string-length-fn          (u/drop-first-arg string-length-fn)
