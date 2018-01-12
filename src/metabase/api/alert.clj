@@ -53,13 +53,16 @@
 (defn- key-by [key-fn coll]
   (zipmap (map key-fn coll) coll))
 
-(defn- notify-recipient-changes!
-  "This function compares `OLD-ALERT` and `UPDATED-ALERT` to determine if there have been any recipient related
-  changes. Recipients that have been added or removed will be notified."
-  [old-alert updated-alert]
-  (let [{old-recipients :recipients} (email-channel old-alert)
-        {new-recipients :recipients} (email-channel updated-alert)
-        old-ids->users (key-by :id old-recipients)
+(defn- notify-email-disabled! [alert recipients]
+  (doseq [user recipients]
+    (messages/send-admin-unsubscribed-alert-email! alert user @api/*current-user*)))
+
+(defn- notify-email-enabled! [alert recipients]
+  (doseq [user recipients]
+    (messages/send-you-were-added-alert-email! alert user @api/*current-user*)))
+
+(defn- notify-email-recipient-diffs! [old-alert old-recipients new-alert new-recipients]
+  (let [old-ids->users (key-by :id old-recipients)
         new-ids->users (key-by :id new-recipients)
         [removed-ids added-ids _] (data/diff (set (keys old-ids->users))
                                              (set (keys new-ids->users)))]
@@ -69,7 +72,26 @@
 
     (doseq [new-id added-ids
             :let [added-user (get new-ids->users new-id)]]
-      (messages/send-you-were-added-alert-email! updated-alert added-user @api/*current-user*))))
+      (messages/send-you-were-added-alert-email! new-alert added-user @api/*current-user*))))
+
+(defn- notify-recipient-changes!
+  "This function compares `OLD-ALERT` and `UPDATED-ALERT` to determine if there have been any channel or recipient
+  related changes. Recipients that have been added or removed will be notified."
+  [old-alert updated-alert]
+  (let [{old-recipients :recipients, old-enabled :enabled} (email-channel old-alert)
+        {new-recipients :recipients, new-enabled :enabled} (email-channel updated-alert)]
+    (cond
+      ;; Did email notifications just get disabled?
+      (and old-enabled (not new-enabled))
+      (notify-email-disabled! old-alert old-recipients)
+
+      ;; Did a disabled email notifications just get re-enabled?
+      (and (not old-enabled) new-enabled)
+      (notify-email-enabled! updated-alert new-recipients)
+
+      ;; No need to notify recipients if emails are disabled
+      new-enabled
+      (notify-email-recipient-diffs! old-alert old-recipients updated-alert new-recipients))))
 
 (defn- collect-alert-recipients [alert]
   (set (:recipients (email-channel alert))))

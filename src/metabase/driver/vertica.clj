@@ -141,7 +141,7 @@
                                             {:name         "additional-options"
                                              :display-name "Additional JDBC connection string options"
                                              :placeholder  "ConnectionLoadBalance=1"}]))
-          :current-db-time   (driver/make-current-db-time-fn vertica-date-formatter vertica-db-time-query)})
+          :current-db-time   (driver/make-current-db-time-fn vertica-db-time-query vertica-date-formatter)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)

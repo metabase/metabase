@@ -534,7 +534,7 @@
                                                              #{:foreign-keys})))
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
           :mbql->native             (u/drop-first-arg mbql->native)
-          :current-db-time          (driver/make-current-db-time-fn bigquery-date-formatter bigquery-db-time-query)}))
+          :current-db-time          (driver/make-current-db-time-fn  bigquery-db-time-query bigquery-date-formatter)}))
 
 (defn -init-driver
   "Register the BigQuery driver"

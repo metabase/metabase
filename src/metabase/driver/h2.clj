@@ -222,7 +222,7 @@
                                                            :required     true}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
-          :current-db-time                   (driver/make-current-db-time-fn h2-date-formatter h2-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn h2-db-time-query h2-date-formatter)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
