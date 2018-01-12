@@ -135,6 +135,7 @@
     "postcss-url": "^6.0.4",
     "prettier": "^0.22.0",
     "promise-loader": "^1.0.0",
+    "raf": "^3.4.0",
     "react-test-renderer": "16",
     "sauce-connect-launcher": "^1.1.1",
     "selenium-webdriver": "^2.53.3",
