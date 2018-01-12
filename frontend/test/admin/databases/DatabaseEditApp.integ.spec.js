@@ -40,6 +40,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             const editForm = dbEditApp.find(DatabaseEditForms)
             expect(editForm.length).toBe(1)
@@ -55,6 +56,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             const editForm = dbEditApp.find(DatabaseEditForms)
             const letUserControlSchedulingField =
@@ -68,6 +70,7 @@ describe("DatabaseEditApp", () => {
             clickButton(editForm.find('button[children="Save"]'));
 
             await store.waitForActions([UPDATE_DATABASE])
+            dbEditApp.update()
 
             // Tabs should be now visible as user-controlled scheduling is enabled
             expect(dbEditApp.find(Tab).length).toBe(2)
@@ -87,6 +90,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
             await store.waitForActions([INITIALIZE_DATABASE, MIGRATE_TO_NEW_SCHEDULING_SETTINGS])
+            dbEditApp.update()
 
             const editForm = dbEditApp.find(DatabaseEditForms)
             expect(editForm.length).toBe(1)
@@ -117,6 +121,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp/>));
             await store.waitForActions([INITIALIZE_DATABASE, MIGRATE_TO_NEW_SCHEDULING_SETTINGS])
+            dbEditApp.update()
 
             const editForm = dbEditApp.find(DatabaseEditForms)
             const letUserControlSchedulingField =
@@ -159,6 +164,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             const editForm = dbEditApp.find(DatabaseEditForms)
             expect(editForm.length).toBe(1)
@@ -182,13 +188,14 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             click(dbEditApp.find(Tab).last());
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             const dbSyncSelect = schedulingForm.find(Select).first()
             click(dbSyncSelect)
 
-            const dailyOption = schedulingForm.find(ColumnarSelector).find("li").at(1).children();
+            const dailyOption = dbEditApp.find(ColumnarSelector).find("li").at(1).children();
             expect(dailyOption.text()).toEqual("Daily")
             click(dailyOption);
 
@@ -204,6 +211,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             click(dbEditApp.find(Tab).last())
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
@@ -227,8 +235,11 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             click(dbEditApp.find(Tab).last())
+            dbEditApp.update()
+
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
@@ -262,6 +273,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             clickButton(dbEditApp.find(".Button--syncDbSchema"))
             await store.waitForActions([SYNC_DATABASE_SCHEMA])
@@ -273,6 +285,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             clickButton(dbEditApp.find(".Button--rescanFieldValues"))
             await store.waitForActions([RESCAN_DATABASE_FIELDS])
@@ -287,6 +300,7 @@ describe("DatabaseEditApp", () => {
             store.pushPath("/admin/databases/1");
             const dbEditApp = mount(store.connectContainer(<DatabaseEditApp />));
             await store.waitForActions([INITIALIZE_DATABASE])
+            dbEditApp.update()
 
             click(dbEditApp.find(".Button--discardSavedFieldValues"))
             clickButton(dbEditApp.find(TestModal).find(".Button--danger"))
