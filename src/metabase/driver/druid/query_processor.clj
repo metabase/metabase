@@ -73,9 +73,10 @@
 (extend-protocol IDimensionOrMetric
   Field         (dimension-or-metric? [{:keys [base-type]}]
                   (cond
-                    (isa? base-type :type/Text)    :dimension
-                    (isa? base-type :type/Float)   :metric
-                    (isa? base-type :type/Integer) :metric))
+                    (isa? base-type :type/Text)             :dimension
+                    (isa? base-type :type/Float)            :metric
+                    (isa? base-type :type/Integer)          :metric
+                    (isa? base-type :type/DruidHyperUnique) :metric))
 
   DateTimeField (dimension-or-metric? [this]
                   (dimension-or-metric? (:field this))))
@@ -217,6 +218,16 @@
 
 (defn- ag:filtered  [filtr aggregator] {:type :filtered, :filter filtr, :aggregator aggregator})
 
+(defn- ag:distinct [field output-name]
+  (if (= (:base-type field) :type/DruidHyperUnique)
+    {:type      :hyperUnique
+     :name      output-name
+     :fieldName (->rvalue field)}
+    {:type       :cardinality
+     :name       output-name
+     :fieldNames [(->rvalue field)]}))
+
+
 (defn- ag:count
   ([output-name]       {:type :count, :name output-name})
   ([field output-name] (ag:filtered (filter:not (filter:nil? field))
@@ -243,9 +254,7 @@
                                             :fields [{:type :fieldAccess, :fieldName sum-name}
                                                      {:type :fieldAccess, :fieldName count-name}]}]}])
       [:distinct _] [[(or output-name-kwd :distinct___count)]
-                     {:aggregations [{:type       :cardinality
-                                      :name       (or output-name :distinct___count)
-                                      :fieldNames [(->rvalue ag-field)]}]}]
+                     {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
       [:sum      _] [[(or output-name-kwd :sum)] {:aggregations [(ag:doubleSum ag-field (or output-name :sum))]}]
       [:min      _] [[(or output-name-kwd :min)] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
       [:max      _] [[(or output-name-kwd :max)] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
