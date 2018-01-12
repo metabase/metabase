@@ -71,11 +71,11 @@
 ;;; ### Sync
 
 (defn- do-segment-metadata-query [details datasource]
-  (do-query details {"queryType" "segmentMetadata"
-                     "dataSource" datasource
-                     "intervals" ["1999-01-01/2114-01-01"]
+  (do-query details {"queryType"     "segmentMetadata"
+                     "dataSource"    datasource
+                     "intervals"     ["1999-01-01/2114-01-01"]
                      "analysisTypes" []
-                     "merge" true}))
+                     "merge"         true}))
 
 (defn- druid-type->base-type [field-type]
   (case field-type
