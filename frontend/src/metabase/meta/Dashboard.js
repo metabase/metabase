@@ -1,5 +1,4 @@
 /* @flow */
-import { t } from 'c-3po'
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Table from "metabase-lib/lib/metadata/Table";
