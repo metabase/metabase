@@ -15,17 +15,12 @@ export default class Calendar extends Component {
         this.state = {
             current: moment(props.initial || undefined)
         };
-
-        this.previous = this.previous.bind(this);
-        this.next = this.next.bind(this);
-        this.onClickDay = this.onClickDay.bind(this);
     }
 
     static propTypes = {
         selected: PropTypes.object,
+        selectedEnd: PropTypes.object,
         onChange: PropTypes.func.isRequired,
-        onAfterClick: PropTypes.func,
-        onBeforeClick: PropTypes.func,
         isRangePicker: PropTypes.bool,
         isDual: PropTypes.bool,
     };
@@ -35,22 +30,26 @@ export default class Calendar extends Component {
     };
 
     componentWillReceiveProps(nextProps) {
-        let resetCurrent = false;
-        if (nextProps.selected && nextProps.selectedEnd) {
-            resetCurrent =
-                nextProps.selected.isAfter(this.state.current, "month") &&
-                nextProps.selectedEnd.isBefore(this.state.current, "month");
-        } else if (nextProps.selected) {
-            resetCurrent =
-                nextProps.selected.isAfter(this.state.current, "month") ||
-                nextProps.selected.isBefore(this.state.current, "month");
-        }
-        if (resetCurrent) {
-            this.setState({ current: nextProps.selected });
+        if (!moment(nextProps.selected).isSame(this.props.selected, "day") ||
+            !moment(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day")
+        ) {
+            let resetCurrent = false;
+            if (nextProps.selected && nextProps.selectedEnd) {
+                resetCurrent =
+                    nextProps.selected.isAfter(this.state.current, "month") &&
+                    nextProps.selectedEnd.isBefore(this.state.current, "month");
+            } else if (nextProps.selected) {
+                resetCurrent =
+                    nextProps.selected.isAfter(this.state.current, "month") ||
+                    nextProps.selected.isBefore(this.state.current, "month");
+            }
+            if (resetCurrent) {
+                this.setState({ current: nextProps.selected });
+            }
         }
     }
 
-    onClickDay(date, e) {
+    onClickDay = (date) => {
         let { selected, selectedEnd, isRangePicker } = this.props;
         if (!isRangePicker || !selected || selectedEnd) {
             this.props.onChange(date.format("YYYY-MM-DD"), null);
@@ -63,16 +62,12 @@ export default class Calendar extends Component {
         }
     }
 
-    previous() {
-        let month = this.state.current;
-        month.add(-1, "M");
-        this.setState({ month: month });
+    previous = () => {
+        this.setState({ current: moment(this.state.current).add(-1, "M") });
     }
 
-    next() {
-        let month = this.state.current;
-        month.add(1, "M");
-        this.setState({ month: month });
+    next = () => {
+        this.setState({ current: moment(this.state.current).add(1, "M") });
     }
 
     renderMonthHeader(current, side) {
@@ -109,7 +104,7 @@ export default class Calendar extends Component {
     renderWeeks(current) {
         var weeks = [],
             done = false,
-            date = moment(current).startOf("month").add("w" -1).day("Sunday"),
+            date = moment(current).startOf("month").day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
@@ -174,11 +169,7 @@ class Week extends Component {
         let { date, month, selected, selectedEnd } = this.props;
 
         for (let i = 0; i < 7; i++) {
-            let classes = cx({
-                'p1': true,
-                'cursor-pointer': true,
-                'text-centered': true,
-                "Calendar-day": true,
+            let classes = cx("Calendar-day p1 cursor-pointer text-centered", {
                 "Calendar-day--today": date.isSame(new Date(), "day"),
                 "Calendar-day--this-month": date.month() === month.month(),
                 "Calendar-day--selected": selected && date.isSame(selected, "day"),
@@ -195,8 +186,7 @@ class Week extends Component {
                     {date.date()}
                 </span>
             );
-            date = moment(date);
-            date.add(1, "d");
+            date = moment(date).add(1, "d");
         }
 
         return (
