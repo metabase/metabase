@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from 'c-3po'
 
 import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
 import { t } from 'c-3po';
