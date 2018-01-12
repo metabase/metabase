@@ -85,12 +85,12 @@
     "hyperUnique" :type/DruidHyperUnique
     :type/Float))
 
-(defn- describe-table-field [[field-kw {:keys [type]}]]
+(defn- describe-table-field [field-name {field-type :type, :as info}]
   ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
   ;; string-encoded booleans + dates are treated as strings (!)
-  {:name      (name field-kw)
-   :base-type (druid-type->base-type type)
-:database-type type})
+  {:name          (name field-name)
+   :base-type     (druid-type->base-type field-type)
+   :database-type field-type})
 
 (defn- describe-table [database table]
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
@@ -98,12 +98,13 @@
       {:schema nil
        :name   (:name table)
        :fields (set (concat
-                      ;; every Druid table is an event stream w/ a timestamp field
-                      [{:name      "timestamp"
-                        :database-type "timestamp"
-                        :base-type :type/DateTime
-                        :pk?       true}]
-                      (map describe-table-field (dissoc columns :__time))))})))
+                     ;; every Druid table is an event stream w/ a timestamp field
+                     [{:name          "timestamp"
+                       :database-type "timestamp"
+                       :base-type     :type/DateTime
+                       :pk?           true}]
+                     (for [[field-name field-info] (dissoc columns :__time)]
+                       (describe-table-field field-name field-info))))})))
 
 (defn- describe-database [database]
   {:pre [(map? (:details database))]}
