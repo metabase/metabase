@@ -6,13 +6,14 @@
              [util :as u]]
             [metabase.driver.google :as google]
             [metabase.driver.googleanalytics.query-processor :as qp]
-            [metabase.models.database :refer [Database]])
+            [metabase.models.database :refer [Database]]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes]
            [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]
            [java.util Collections Date Map]))
 
-;;; ---------------------------------------- Client ----------------------------------------
+;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Analytics credential->client [^GoogleCredential credential]
   (.build (doto (Analytics$Builder. google/http-transport google/json-factory credential)
@@ -25,7 +26,7 @@
   (comp credential->client database->credential))
 
 
-;;; ---------------------------------------- describe-database ----------------------------------------
+;;; ----------------------------------------------- describe-database ------------------------------------------------
 
 (defn- fetch-properties
   ^Webproperties [^Analytics client, ^String account-id]
@@ -223,6 +224,15 @@
 
 ;;; ----------------------------------------------------- Driver -----------------------------------------------------
 
+(defn- humanize-connection-error-message [message]
+  ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
+  ;; how we need to enable the API
+  (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
+    (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
+         enable-api-url)
+    message))
+
+
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named
   (getName [_] "Google Analytics"))
@@ -230,29 +240,30 @@
 (u/strict-extend GoogleAnalyticsDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?             (u/drop-first-arg can-connect?)
-          :describe-database        (u/drop-first-arg describe-database)
-          :describe-table           (u/drop-first-arg describe-table)
-          :details-fields           (constantly [{:name         "account-id"
-                                                  :display-name "Google Analytics Account ID"
-                                                  :placeholder  "1234567"
-                                                  :required     true}
-                                                 {:name         "client-id"
-                                                  :display-name "Client ID"
-                                                  :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-                                                  :required     true}
-                                                 {:name         "client-secret"
-                                                  :display-name "Client Secret"
-                                                  :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-                                                  :required     true}
-                                                 {:name         "auth-code"
-                                                  :display-name "Auth Code"
-                                                  :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                                  :required     true}])
-          :execute-query            (u/drop-first-arg (partial qp/execute-query do-query))
-          :process-query-in-context (u/drop-first-arg process-query-in-context)
-          :mbql->native             (u/drop-first-arg qp/mbql->native)
-          :table-rows-seq           (u/drop-first-arg table-rows-seq)}))
+         {:can-connect?                      (u/drop-first-arg can-connect?)
+          :describe-database                 (u/drop-first-arg describe-database)
+          :describe-table                    (u/drop-first-arg describe-table)
+          :details-fields                    (constantly [{:name         "account-id"
+                                                           :display-name "Google Analytics Account ID"
+                                                           :placeholder  "1234567"
+                                                           :required     true}
+                                                          {:name         "client-id"
+                                                           :display-name "Client ID"
+                                                           :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
+                                                           :required     true}
+                                                          {:name         "client-secret"
+                                                           :display-name "Client Secret"
+                                                           :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
+                                                           :required     true}
+                                                          {:name         "auth-code"
+                                                           :display-name "Auth Code"
+                                                           :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
+                                                           :required     true}])
+          :execute-query                     (u/drop-first-arg (partial qp/execute-query do-query))
+          :process-query-in-context          (u/drop-first-arg process-query-in-context)
+          :mbql->native                      (u/drop-first-arg qp/mbql->native)
+          :table-rows-seq                    (u/drop-first-arg table-rows-seq)
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)}))
 
 (defn -init-driver
   "Register the Google Analytics driver"

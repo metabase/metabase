@@ -5,8 +5,7 @@
              [email :as email]
              [events :as events]
              [public-settings :as public-settings]
-             [setup :as setup]
-             [util :as u]]
+             [setup :as setup]]
             [metabase.api
              [common :as api]
              [database :as database-api :refer [DBEngineString]]]
@@ -16,7 +15,7 @@
              [session :refer [Session]]
              [user :as user :refer [User]]]
             [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
