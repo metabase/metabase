@@ -126,7 +126,12 @@ export type StringFilter       = ["starts-with"|"contains"|"does-not-contain"|"e
 export type NullFilter         = ["is-null", ConcreteField];
 export type NotNullFilter      = ["not-null", ConcreteField];
 export type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
-export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
+export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit] |
+                                 ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit, FilterOptions];
+
+export type FilterOptions = {
+  "include-current"?: bool
+}
 
 // NOTE: currently the backend expects SEGMENT to be uppercase
 export type SegmentFilter      = ["SEGMENT", SegmentId];

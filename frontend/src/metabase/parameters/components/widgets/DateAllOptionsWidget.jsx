@@ -4,6 +4,7 @@ import React, {Component} from "react";
 import cx from "classnames";
 import { t } from 'c-3po';
 import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import FilterOptions from "metabase/query_builder/components/filters/FilterOptions.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
 
@@ -18,18 +19,18 @@ const noopRef: LocalFieldReference = null;
 
 function getFilterValueSerializer(func: ((val1: string, val2: string) => UrlEncoded)) {
     // $FlowFixMe
-    return filter => func(filter[2], filter[3])
+    return filter => func(filter[2], filter[3], filter[4] || {})
 }
 
 const serializersByOperatorName: { [id: OperatorName]: (FieldFilter) => UrlEncoded } = {
     // $FlowFixMe
-    "Previous": getFilterValueSerializer((value, unit) => `past${-value}${unit}s`),
-    "Next": getFilterValueSerializer((value, unit) => `next${value}${unit}s`),
-    "Current": getFilterValueSerializer((_, unit) => `this${unit}`),
-    "Before": getFilterValueSerializer((value) => `~${value}`),
-    "After": getFilterValueSerializer((value) => `${value}~`),
-    "On": getFilterValueSerializer((value) => `${value}`),
-    "Between": getFilterValueSerializer((from, to) => `${from}~${to}`)
+    "previous": getFilterValueSerializer((value, unit, options = {}) => `past${-value}${unit}s${options['include-current'] ? "~" : ""}`),
+    "next": getFilterValueSerializer((value, unit, options = {}) => `next${value}${unit}s${options['include-current'] ? "~" : ""}`),
+    "current": getFilterValueSerializer((_, unit) => `this${unit}`),
+    "before": getFilterValueSerializer((value) => `~${value}`),
+    "after": getFilterValueSerializer((value) => `${value}~`),
+    "on": getFilterValueSerializer((value) => `${value}`),
+    "between": getFilterValueSerializer((from, to) => `${from}~${to}`)
 };
 
 function getFilterOperator(filter) {
@@ -46,11 +47,11 @@ function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
 }
 
 
-const prefixedOperators: [OperatorName] = ["Before", "After", "On", "Is Empty", "Not Empty"];
+const prefixedOperators: Set<OperatorName> = new Set(["before", "after", "on", "empty", "not-empty"]);
 function getFilterTitle(filter) {
     const desc = generateTimeFilterValuesDescriptions(filter).join(" - ")
     const op = getFilterOperator(filter);
-    const prefix = op && prefixedOperators.indexOf(op.name) !== -1 ? `${op.name} ` : "";
+    const prefix = op && prefixedOperators.has(op.name) ? `${op.displayName} ` : "";
     return prefix + desc;
 }
 
@@ -99,6 +100,7 @@ export default class DateAllOptionsWidget extends Component {
     }
 
     render() {
+        const { filter } = this.state;
         return (<div style={{minWidth: "300px"}}>
             <DatePicker
                 filter={this.state.filter}
@@ -106,9 +108,10 @@ export default class DateAllOptionsWidget extends Component {
                 hideEmptinessOperators
                 hideTimeSelectors
             />
-            <div className="FilterPopover-footer p1">
+            <div className="FilterPopover-footer border-top flex align-center p2">
+                <FilterOptions filter={filter} onFilterChange={this.setFilter} />
                 <button
-                    className={cx("Button Button--purple full", {"disabled": !this.isValid()})}
+                    className={cx("Button Button--purple ml-auto", {"disabled": !this.isValid()})}
                     onClick={this.commitAndClose}
                 >
                     {t`Update filter`}

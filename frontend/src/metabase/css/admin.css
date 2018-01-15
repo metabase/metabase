@@ -208,7 +208,6 @@
     border-radius: var(--default-border-radius);
     font-size: 14px;
     font-weight: 700;
-    margin-bottom: 3px;
     min-width: 90px;
 }
 
@@ -267,6 +266,7 @@
 
 .TableEditor-field-special-type,
 .TableEditor-field-target {
+    margin-top: 3px;
     /*color: var(--green-color);*/
 }
 

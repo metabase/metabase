@@ -53,7 +53,7 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["TIME_INTERVAL" ["field-id" 123] -30 "day"]
+   :query      {:filter   ["TIME_INTERVAL" ["field-id" 123] -30 "day" {:include-current false}]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -63,6 +63,20 @@
                                     :type   "date"
                                     :target ["dimension" ["field-id" 123]]
                                     :value  "past30days"}]}))
+
+(expect
+  {:database   1
+   :type       :query
+   :query      {:filter   ["TIME_INTERVAL" ["field-id" 123] -30 "day" {:include-current true}]
+                :breakout [17]}}
+  (expand-parameters {:database   1
+                      :type       :query
+                      :query      {:breakout [17]}
+                      :parameters [{:hash   "abc123"
+                                    :name   "foo"
+                                    :type   "date"
+                                    :target ["dimension" ["field-id" 123]]
+                                    :value  "past30days~"}]}))
 
 (expect
   {:database   1

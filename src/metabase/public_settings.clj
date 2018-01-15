@@ -59,7 +59,7 @@
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
-  (tru "Enable admins to create publically viewable links (and embeddable iframes) for Questions and Dashboards?")
+  (tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type    :boolean
   :default false)
 
