@@ -66,9 +66,17 @@ const SECTIONS = [
                 type: "boolean"
             },
             {
-                key: "enable-advanced-humanization",
+                key: "humanization-strategy",
                 display_name: t`Friendly Table and Field Names`,
-                type: "boolean"
+                type: "select",
+                options: [
+                    { value: "advanced", name: t`Enabled` },
+                    { value: "simple",   name: t`Only replace underscores and dashes with spaces` },
+                    { value: "none",     name: t`Disabled` }
+                ],
+                // this needs to be here because 'advanced' is the default value, so if you select 'advanced' the
+                // widget will always show the placeholder instead of the 'name' defined above :(
+                placeholder: t`Enabled`
             },
             {
                 key: "enable-nested-queries",
@@ -154,7 +162,7 @@ const SECTIONS = [
                 key: "metabot-enabled",
                 display_name: "MetaBot",
                 type: "boolean",
-                // TODO: why do we have "defaultValue" in addition to "default" in the backend?
+                // TODO: why do we have "defaultValue" here in addition to the "default" specified by the backend?
                 defaultValue: false,
                 required: true,
                 autoFocus: false
