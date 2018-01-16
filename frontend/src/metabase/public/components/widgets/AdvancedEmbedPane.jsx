@@ -5,7 +5,7 @@ import React from "react";
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/components/Button";
 import ActionButton from "metabase/components/ActionButton";
-
+import { t } from 'c-3po';
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";
@@ -75,15 +75,15 @@ const AdvancedEmbedPane = ({
                 <div className="mb2 p2 bordered rounded flex align-center flex-no-shrink">
                     <div className="flex-full mr1">
                         { resource.enable_embedding ?
-                            `You’ve made changes that need to be published before they will be reflected in your application embed.` :
-                            `You will need to publish this ${resourceType} before you can embed it in another application.`
+                            t`You’ve made changes that need to be published before they will be reflected in your application embed.` :
+                            t`You will need to publish this ${resourceType} before you can embed it in another application.`
                         }
                     </div>
                     <div className="flex-no-shrink">
                         { resource.enable_embedding && !_.isEqual(resource.embedding_params, embeddingParams) ?
-                            <Button className="ml1" medium onClick={onDiscard}>Discard Changes</Button>
+                            <Button className="ml1" medium onClick={onDiscard}>{t`Discard Changes`}</Button>
                         : null }
-                        <ActionButton className="ml1" primary medium actionFn={onSave} activeText="Updating..." successText="Updated" failedText="Failed!">Publish</ActionButton>
+                        <ActionButton className="ml1" primary medium actionFn={onSave} activeText={t`Updating...`} successText={t`Updated`} failedText={t`Failed!`}>{t`Publish`}</ActionButton>
                     </div>
                 </div>
             : null }
@@ -91,8 +91,8 @@ const AdvancedEmbedPane = ({
                 className="mb2 flex-no-shrink"
                 style={{ width: 244, height: 34 }}
                 value={pane === "preview"}
-                textLeft="Preview"
-                textRight="Code"
+                textLeft={t`Preview`}
+                textRight={t`Code`}
                 onChange={() => onChangePane(pane === "preview" ? "code" : "preview")}
             />
             { pane === "preview" ?

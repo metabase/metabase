@@ -158,7 +158,7 @@
 
 
 ;; SQLite defaults everything to UTC
-(def ^:private sqlite-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss"))
+(def ^:private sqlite-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss"))
 (def ^:private sqlite-db-time-query "select cast(datetime('now') as text);")
 
 (u/strict-extend SQLiteDriver
@@ -178,7 +178,7 @@
                                              ;; the foreign key stuff in the tests.
                                              (when config/is-test?
                                                #{:foreign-keys})))
-          :current-db-time (driver/make-current-db-time-fn sqlite-date-formatter sqlite-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn sqlite-db-time-query sqlite-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables

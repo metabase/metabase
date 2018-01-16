@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
-
+import { t } from 'c-3po';
 import { slugify } from "metabase/lib/formatting";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
 import {
@@ -16,84 +16,83 @@ import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
 
 import { UtilApi } from "metabase/services";
-import { t } from "c-3po";
 
 const SECTIONS = [
     {
-        name: "Setup",
+        name: t`Setup`,
         settings: []
     },
     {
-        name: "General",
+        name: t`General`,
         settings: [
             {
                 key: "site-name",
-                display_name: "Site Name",
+                display_name: t`Site Name`,
                 type: "string"
             },
             {
                 key: "site-url",
-                display_name: "Site URL",
+                display_name: t`Site URL`,
                 type: "string"
             },
             {
                 key: "admin-email",
-                display_name: "Email Address for Help Requests",
+                display_name: t`Email Address for Help Requests`,
                 type: "string"
             },
             {
                 key: "report-timezone",
-                display_name: "Report Timezone",
+                display_name: t`Report Timezone`,
                 type: "select",
                 options: [
-                    { name: "Database Default", value: "" },
+                    { name: t`Database Default`, value: "" },
                     ...MetabaseSettings.get('timezones')
                 ],
-                placeholder: "Select a timezone",
-                note: "Not all databases support timezones, in which case this setting won't take effect.",
+                placeholder: t`Select a timezone`,
+                note: t`Not all databases support timezones, in which case this setting won't take effect.`,
                 allowValueCollection: true
             },
             {
                 key: "site-locale",
-                display_name: "Language",
+                display_name: t`Language`,
                 type: "select",
                 options:  (MetabaseSettings.get("available_locales") || []).map(([value, name]) => ({ name, value })),
-                placeholder: "Select a language",
+                placeholder: t`Select a language`,
                 getHidden: () => MetabaseSettings.get("available_locales").length < 2
             },
             {
                 key: "anon-tracking-enabled",
-                display_name: "Anonymous Tracking",
+                display_name: t`Anonymous Tracking`,
                 type: "boolean"
             },
             {
                 key: "enable-advanced-humanization",
-                display_name: "Friendly Table and Field Names",
+                display_name: t`Friendly Table and Field Names`,
                 type: "boolean"
             },
             {
                 key: "enable-nested-queries",
-                display_name: "Enable Nested Queries",
+                display_name: t`Enable Nested Queries`,
                 type: "boolean"
             }
         ]
     },
     {
-        name: "Updates",
+        name: t`Updates`,
         settings: [
             {
                 key: "check-for-updates",
-                display_name: "Check for updates",
+                display_name: t`Check for updates`,
                 type: "boolean"
             }
         ]
     },
     {
-        name: "Email",
+        name: t`Email`,
         settings: [
             {
                 key: "email-smtp-host",
-                display_name: "SMTP Host",
+                display_name: t`SMTP Host`,
                 placeholder: "smtp.yourservice.com",
                 type: "string",
                 required: true,
@@ -101,15 +100,15 @@ const SECTIONS = [
             },
             {
                 key: "email-smtp-port",
-                display_name: "SMTP Port",
+                display_name: t`SMTP Port`,
                 placeholder: "587",
                 type: "number",
                 required: true,
-                validations: [["integer", "That's not a valid port number"]]
+                validations: [["integer", t`That's not a valid port number`]]
             },
             {
                 key: "email-smtp-security",
-                display_name: "SMTP Security",
+                display_name: t`SMTP Security`,
                 description: null,
                 type: "radio",
                 options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
@@ -117,25 +116,25 @@ const SECTIONS = [
             },
             {
                 key: "email-smtp-username",
-                display_name: "SMTP Username",
+                display_name: t`SMTP Username`,
                 description: null,
                 placeholder: "youlooknicetoday",
                 type: "string"
             },
             {
                 key: "email-smtp-password",
-                display_name: "SMTP Password",
+                display_name: t`SMTP Password`,
                 description: null,
                 placeholder: "Shh...",
                 type: "password"
             },
             {
                 key: "email-from-address",
-                display_name: "From Address",
+                display_name: t`From Address`,
                 placeholder: "metabase@yourcompany.com",
                 type: "string",
                 required: true,
-                validations: [["email", "That's not a valid email address"]]
+                validations: [["email", t`That's not a valid email address`]]
             }
         ]
     },
@@ -144,9 +143,9 @@ const SECTIONS = [
         settings: [
             {
                 key: "slack-token",
-                display_name: "Slack API Token",
+                display_name: t`Slack API Token`,
                 description: "",
-                placeholder: "Enter the token you received from Slack",
+                placeholder: t`Enter the token you received from Slack`,
                 type: "string",
                 required: false,
                 autoFocus: true
@@ -163,7 +162,7 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Single Sign-On",
+        name: t`Single Sign-On`,
         sidebar: false,
         settings: [
             {
@@ -175,22 +174,22 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Authentication",
+        name: t`Authentication`,
         settings: []
     },
     {
-        name: "LDAP",
+        name: t`LDAP`,
         sidebar: false,
         settings: [
             {
                 key: "ldap-enabled",
-                display_name: "LDAP Authentication",
+                display_name: t`LDAP Authentication`,
                 description: null,
                 type: "boolean"
             },
             {
                 key: "ldap-host",
-                display_name: "LDAP Host",
+                display_name: t`LDAP Host`,
                 placeholder: "ldap.yourdomain.org",
                 type: "string",
                 required: true,
@@ -198,14 +197,14 @@ const SECTIONS = [
             },
             {
                 key: "ldap-port",
-                display_name: "LDAP Port",
+                display_name: t`LDAP Port`,
                 placeholder: "389",
                 type: "string",
-                validations: [["integer", "That's not a valid port number"]]
+                validations: [["integer", t`That's not a valid port number`]]
             },
             {
                 key: "ldap-security",
-                display_name: "LDAP Security",
+                display_name: t`LDAP Security`,
                 description: null,
                 type: "radio",
                 options: { none: "None", ssl: "SSL", starttls: "StartTLS" },
@@ -213,50 +212,50 @@ const SECTIONS = [
             },
             {
                 key: "ldap-bind-dn",
-                display_name: "Username or DN",
+                display_name: t`Username or DN`,
                 type: "string"
             },
             {
                 key: "ldap-password",
-                display_name: "Password",
+                display_name: t`Password`,
                 type: "password"
             },
             {
                 key: "ldap-user-base",
-                display_name: "User search base",
+                display_name: t`User search base`,
                 type: "string",
                 required: true
             },
             {
                 key: "ldap-user-filter",
-                display_name: "User filter",
+                display_name: t`User filter`,
                 type: "string",
-                validations: [["ldap_filter", "Check your parentheses"]]
+                validations: [["ldap_filter", t`Check your parentheses`]]
             },
             {
                 key: "ldap-attribute-email",
-                display_name: "Email attribute",
+                display_name: t`Email attribute`,
                 type: "string"
             },
             {
                 key: "ldap-attribute-firstname",
-                display_name: "First name attribute",
+                display_name: t`First name attribute`,
                 type: "string"
             },
             {
                 key: "ldap-attribute-lastname",
-                display_name: "Last name attribute",
+                display_name: t`Last name attribute`,
                 type: "string"
             },
             {
                 key: "ldap-group-sync",
-                display_name: "Synchronize group memberships",
+                display_name: t`Synchronize group memberships`,
                 description: null,
                 widget: LdapGroupMappingsWidget
             },
             {
                 key: "ldap-group-base",
-                display_name: "Group search base",
+                display_name:t`"Group search base`,
                 type: "string"
             },
             {
@@ -265,17 +264,17 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Maps",
+        name: t`Maps`,
         settings: [
             {
                 key: "map-tile-server-url",
-                display_name: "Map tile server URL",
-                note: "Metabase uses OpenStreetMaps by default.",
+                display_name: t`Map tile server URL`,
+                note: t`Metabase uses OpenStreetMaps by default.`,
                 type: "string"
             },
             {
                 key: "custom-geojson",
-                display_name: "Custom Maps",
+                display_name: t`Custom Maps`,
                 description: t`Add your own GeoJSON files to enable different region map visualizations`,
                 widget: CustomGeoJSONWidget,
                 noHeader: true
@@ -283,29 +282,29 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Public Sharing",
+        name: t`Public Sharing`,
         settings: [
             {
                 key: "enable-public-sharing",
-                display_name: "Enable Public Sharing",
+                display_name: t`Enable Public Sharing`,
                 type: "boolean"
             },
             {
                 key: "-public-sharing-dashboards",
-                display_name: "Shared Dashboards",
+                display_name: t`Shared Dashboards`,
                 widget: PublicLinksDashboardListing,
                 getHidden: (settings) => !settings["enable-public-sharing"]
             },
             {
                 key: "-public-sharing-questions",
-                display_name: "Shared Questions",
+                display_name: t`Shared Questions`,
                 widget: PublicLinksQuestionListing,
                 getHidden: (settings) => !settings["enable-public-sharing"]
             }
         ]
     },
     {
-        name: "Embedding in other Applications",
+        name: t`Embedding in other Applications`,
         settings: [
             {
                 key: "enable-embedding",
@@ -321,7 +320,7 @@ const SECTIONS = [
                 }
             }, {
                 key: "enable-embedding",
-                display_name: "Enable Embedding Metabase in other Applications",
+                display_name: t`Enable Embedding Metabase in other Applications`,
                 type: "boolean",
                 getHidden: (settings) => !settings["enable-embedding"]
             },
@@ -331,49 +330,49 @@ const SECTIONS = [
             },
             {
                 key: "embedding-secret-key",
-                display_name: "Embedding secret key",
+                display_name: t`Embedding secret key`,
                 widget: SecretKeyWidget,
                 getHidden: (settings) => !settings["enable-embedding"]
             },
             {
                 key: "-embedded-dashboards",
-                display_name: "Embedded Dashboards",
+                display_name: t`Embedded Dashboards`,
                 widget: EmbeddedDashboardListing,
                 getHidden: (settings) => !settings["enable-embedding"]
             },
             {
                 key: "-embedded-questions",
-                display_name: "Embedded Questions",
+                display_name: t`Embedded Questions`,
                 widget: EmbeddedQuestionListing,
                 getHidden: (settings) => !settings["enable-embedding"]
             }
         ]
     },
     {
-        name: "Caching",
+        name: t`Caching`,
         settings: [
             {
                 key: "enable-query-caching",
-                display_name: "Enable Caching",
+                display_name: t`Enable Caching`,
                 type: "boolean"
             },
             {
                 key: "query-caching-min-ttl",
-                display_name: "Minimum Query Duration",
+                display_name: t`Minimum Query Duration`,
                 type: "number",
                 getHidden: (settings) => !settings["enable-query-caching"],
                 allowValueCollection: true
             },
             {
                 key: "query-caching-ttl-ratio",
-                display_name: "Cache Time-To-Live (TTL) multiplier",
+                display_name: t`Cache Time-To-Live (TTL) multiplier`,
                 type: "number",
                 getHidden: (settings) => !settings["enable-query-caching"],
                 allowValueCollection: true
             },
             {
                 key: "query-caching-max-kb",
-                display_name: "Max Cache Entry Size",
+                display_name: t`Max Cache Entry Size`,
                 type: "number",
                 getHidden: (settings) => !settings["enable-query-caching"],
                 allowValueCollection: true
@@ -381,11 +380,11 @@ const SECTIONS = [
         ]
     },
     {
-        name: "X-Rays",
+        name: t`X-Rays`,
         settings: [
             {
                 key: "enable-xrays",
-                display_name: "Enable X-Rays",
+                display_name: t`Enable X-Rays`,
                 type: "boolean",
                 allowValueCollection: true
             },

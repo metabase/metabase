@@ -11,11 +11,10 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
+import { t } from 'c-3po';
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
-import { t } from "c-3po";
 
 import SettingToggle from './SettingToggle';
 

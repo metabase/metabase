@@ -2,6 +2,7 @@ import React, { Component } from "react";
 
 import BodyComponent from "metabase/components/BodyComponent";
 import cx from "classnames";
+import { t } from 'c-3po';
 
 @BodyComponent
 export default class HeaderModal extends Component {
@@ -26,9 +27,9 @@ export default class HeaderModal extends Component {
             >
                     <h2 className="text-white pb2">{title}</h2>
                     <div className="flex layout-centered">
-                        <button className="Button Button--borderless text-brand bg-white text-bold" onClick={onDone}>Done</button>
+                        <button className="Button Button--borderless text-brand bg-white text-bold" onClick={onDone}>{t`Done`}</button>
                         { onCancel && <span className="text-white mx1">or</span> }
-                        { onCancel && <a className="cursor-pointer text-white text-bold" onClick={onCancel}>Cancel</a> }
+                        { onCancel && <a className="cursor-pointer text-white text-bold" onClick={onCancel}>{t`Cancel`}</a> }
                     </div>
             </div>
         );

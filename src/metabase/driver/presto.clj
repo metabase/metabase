@@ -261,7 +261,7 @@
 
 ;;; Driver implementation
 
-(def ^:private presto-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
+(def ^:private presto-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
 (def ^:private presto-db-time-query "select to_iso8601(current_timestamp)")
 
 (u/strict-extend PrestoDriver
@@ -308,7 +308,7 @@
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn presto-date-formatter presto-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn presto-db-time-query presto-date-formatters)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

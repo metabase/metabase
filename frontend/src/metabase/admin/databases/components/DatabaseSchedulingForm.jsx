@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import _ from "underscore";
 import { assocIn } from "icepick";
-
+import { t } from 'c-3po';
 import FormMessage from "metabase/components/form/FormMessage";
 
 import SchedulePicker from "metabase/components/SchedulePicker";
@@ -92,15 +92,15 @@ export default class DatabaseSchedulingForm extends Component {
                         <div className="Form-offset mr4 mt4">
                             <div style={{maxWidth: 600}} className="border-bottom pb2">
                                 <p className="text-paragraph text-measure">
-                                  To do some of its magic, Metabase needs to scan your database. We will also <em>re</em>scan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.
+                                  {t`To do some of its magic, Metabase needs to scan your database. We will also <em>re</em>scan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.`}
                                 </p>
                             </div>
 
                             <div className="border-bottom pb4">
-                                <h4 className="mt4 text-bold text-uppercase">Database syncing</h4>
-                                <p className="text-paragraph text-measure">This is a lightweight process that checks for
+                                <h4 className="mt4 text-bold text-uppercase">{t`Database syncing`}</h4>
+                                <p className="text-paragraph text-measure">{t`This is a lightweight process that checks for
                                     updates to this database’s schema. In most cases, you should be fine leaving this
-                                    set to sync hourly.</p>
+                                    set to sync hourly.`}</p>
                                 <SchedulePicker
                                     schedule={!_.isString(unsavedDatabase.schedules && unsavedDatabase.schedules.metadata_sync)
                                             ? unsavedDatabase.schedules.metadata_sync
@@ -113,23 +113,23 @@ export default class DatabaseSchedulingForm extends Component {
                                     }
                                     scheduleOptions={["hourly", "daily"]}
                                     onScheduleChange={this.updateSchemaSyncSchedule}
-                                    textBeforeInterval="Scan"
+                                    textBeforeInterval={t`Scan`}
                                 />
                             </div>
 
                             <div className="mt4">
-                                <h4 className="text-bold text-default text-uppercase">Scanning for Filter Values</h4>
-                                <p className="text-paragraph text-measure">Metabase can scan the values present in each
+                                <h4 className="text-bold text-default text-uppercase">{t`Scanning for Filter Values`}</h4>
+                                <p className="text-paragraph text-measure">{t`Metabase can scan the values present in each
                                     field in this database to enable checkbox filters in dashboards and questions. This
                                     can be a somewhat resource-intensive process, particularly if you have a very large
-                                    database.</p>
+                                    database.`}</p>
 
-                                <h3>When should Metabase automatically scan and cache field values?</h3>
+                                <h3>{t`When should Metabase automatically scan and cache field values?`}</h3>
                                 <ol className="bordered shadowed mt3">
                                     <li className="border-bottom">
                                         <SyncOption
                                             selected={unsavedDatabase.is_full_sync}
-                                            name="Regularly, on a schedule"
+                                            name={t`Regularly, on a schedule`}
                                             select={() => this.setIsFullSyncIsOnDemand(true, false)}
                                         >
 
@@ -146,7 +146,7 @@ export default class DatabaseSchedulingForm extends Component {
                                                     }
                                                     scheduleOptions={["daily", "weekly", "monthly"]}
                                                     onScheduleChange={this.updateFieldScanSchedule}
-                                                    textBeforeInterval="Scan"
+                                                    textBeforeInterval={t`Scan`}
                                                 />
                                             </div>
                                         </SyncOption>
@@ -154,19 +154,19 @@ export default class DatabaseSchedulingForm extends Component {
                                     <li className="border-bottom pr2">
                                         <SyncOption
                                             selected={!unsavedDatabase.is_full_sync && unsavedDatabase.is_on_demand}
-                                            name="Only when adding a new filter widget"
+                                            name={t`Only when adding a new filter widget`}
                                             select={() => this.setIsFullSyncIsOnDemand(false, true)}
                                         >
                                             <p className="text-paragraph text-measure">
-                                                When a user adds a new filter to a dashboard or a SQL question, Metabase will
-                                                scan the field(s) mapped to that filter in order to show the list of selectable values.
+                                                {t`When a user adds a new filter to a dashboard or a SQL question, Metabase will
+                                                scan the field(s) mapped to that filter in order to show the list of selectable values.`}
                                             </p>
                                         </SyncOption>
                                     </li>
                                     <li>
                                         <SyncOption
                                             selected={!unsavedDatabase.is_full_sync && !unsavedDatabase.is_on_demand}
-                                            name="Never, I'll do this manually if I need to"
+                                            name={t`Never, I'll do this manually if I need to`}
                                             select={() => this.setIsFullSyncIsOnDemand(false, false)}
                                         />
                                     </li>
@@ -176,7 +176,7 @@ export default class DatabaseSchedulingForm extends Component {
                         </div>
                         <div className="Form-actions mt4">
                             <button className={"Button Button--primary"} disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : submitButtonText }
+                                {isSubmitting ? t`Saving...` : submitButtonText }
                             </button>
                             <FormMessage formError={formError} formSuccess={formSuccess}/>
                         </div>

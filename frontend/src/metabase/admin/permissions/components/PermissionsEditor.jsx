@@ -8,7 +8,7 @@ import PermissionsConfirm from "../components/PermissionsConfirm.jsx";
 import EditBar from "metabase/components/EditBar.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import Button from "metabase/components/Button";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 import _ from "underscore";
@@ -16,26 +16,26 @@ import _ from "underscore";
 const PermissionsEditor = ({ title = "Permissions", modal, admin, grid, onUpdatePermission, onSave, onCancel, confirmCancel, isDirty, saveError, diff, location }) => {
     const saveButton =
         <Confirm
-            title="Save permissions?"
+            title={t`Save permissions?`}
             action={onSave}
             content={<PermissionsConfirm diff={diff} />}
             triggerClasses={cx({ disabled: !isDirty })}
             key="save"
         >
-            <Button primary small={!modal}>Save Changes</Button>
+            <Button primary small={!modal}>{t`Save Changes`}</Button>
         </Confirm>;
 
     const cancelButton = confirmCancel ?
         <Confirm
-            title="Discard changes?"
+            title={t`Discard changes?`}
             action={onCancel}
-            content="No changes to permissions will be made."
+            content={t`No changes to permissions will be made.`}
             key="discard"
         >
-            <Button small={!modal}>Cancel</Button>
+            <Button small={!modal}>{t`Cancel`}</Button>
         </Confirm>
     :
-        <Button small={!modal} onClick={onCancel} key="cancel">Cancel</Button>;
+        <Button small={!modal} onClick={onCancel} key="cancel">{t`Cancel`}</Button>;
 
     return (
         <LoadingAndErrorWrapper loading={!grid} className="flex-full flex flex-column">
@@ -54,7 +54,7 @@ const PermissionsEditor = ({ title = "Permissions", modal, admin, grid, onUpdate
                 { isDirty &&
                     <EditBar
                         admin={admin}
-                        title="You've made changes to permissions."
+                        title={t`You've made changes to permissions.`}
                         buttons={[cancelButton, saveButton]}
                     />
                 }

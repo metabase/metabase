@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 
 export default class Unauthorized extends Component {
@@ -7,7 +7,7 @@ export default class Unauthorized extends Component {
         return (
             <div className="flex layout-centered flex-full flex-column text-grey-2">
                 <Icon name="key" size={100} />
-                <h1 className="mt4">Sorry, you don’t have permission to see that.</h1>
+                <h1 className="mt4">{t`Sorry, you don’t have permission to see that.`}</h1>
             </div>
         );
     }
