@@ -13,7 +13,7 @@ describe("Calendar", () => {
 
     it("should render correctly", () => {
         // set the system clock to the snapshot's current date
-        mockDate.set('2018-01-12T00:00:00z', 0);
+        mockDate.set('2018-01-12T12:00:00Z', 0);
         const tree = renderer.create(
             <Calendar selected={moment("2018-01-01")} onChange={() => {}}/>
         ).toJSON();
