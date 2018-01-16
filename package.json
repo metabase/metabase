@@ -131,6 +131,7 @@
     "karma-nyan-reporter": "^0.2.2",
     "karma-webpack": "^2.0.5",
     "lint-staged": "^3.3.1",
+    "mockdate": "^2.0.2",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
