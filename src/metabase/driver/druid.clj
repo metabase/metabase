@@ -81,7 +81,7 @@
   (case field-type
     "STRING"      :type/Text
     "FLOAT"       :type/Float
-    "LONG"        :type/Float
+    "LONG"        :type/Integer
     "hyperUnique" :type/DruidHyperUnique
     :type/Float))
 
