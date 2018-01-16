@@ -48,7 +48,7 @@
      :fingerprint_version $
      :table               (tu/match-$ (Table (id :users))
                             {:description             nil
-                             :entity_type             "type/UserTable"
+                             :entity_type             "entity/UserTable"
                              :visibility_type         nil
                              :db                      (db-details)
                              :schema                  "PUBLIC"

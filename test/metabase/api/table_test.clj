@@ -64,7 +64,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :show_in_getting_started false
-   :entity_type             "type/GenericTable"
+   :entity_type             "entity/GenericTable"
    :visibility_type         nil
    :db                      (db-details)
    :entity_name             nil
@@ -114,22 +114,22 @@
      :display_name "Categories"
      :rows         75
      :id           (data/id :categories)
-     :entity_type  "type/GenericTable"}
+     :entity_type  "entity/GenericTable"}
     {:name         (data/format-name "checkins")
      :display_name "Checkins"
      :rows         1000
      :id           (data/id :checkins)
-     :entity_type  "type/EventTable"}
+     :entity_type  "entity/EventTable"}
     {:name         (data/format-name "users")
      :display_name "Users"
      :rows         15
      :id           (data/id :users)
-     :entity_type  "type/UserTable"}
+     :entity_type  "entity/UserTable"}
     {:name         (data/format-name "venues")
      :display_name "Venues"
      :rows         100
      :id           (data/id :venues)
-     :entity_type  "type/GenericTable"}}
+     :entity_type  "entity/GenericTable"}}
   (->> ((user->client :rasta) :get 200 "table")
        (filter #(= (:db_id %) (data/id))) ; prevent stray tables from affecting unit test results
        (map #(dissoc %
@@ -226,7 +226,7 @@
            {:schema       "PUBLIC"
             :name         "USERS"
             :display_name "Users"
-            :entity_type  "type/UserTable"
+            :entity_type  "entity/UserTable"
             :fields       [(assoc (field-details (Field (data/id :users :id)))
                              :special_type    "type/PK"
                              :table_id        (data/id :users)
@@ -278,7 +278,7 @@
            {:schema       "PUBLIC"
             :name         "USERS"
             :display_name "Users"
-            :entity_type  "type/UserTable"
+            :entity_type  "entity/UserTable"
             :fields       [(assoc (field-details (Field (data/id :users :id)))
                              :table_id      (data/id :users)
                              :special_type  "type/PK"
@@ -409,7 +409,7 @@
                                                          {:schema       "PUBLIC"
                                                           :name         "CHECKINS"
                                                           :display_name "Checkins"
-                                                          :entity_type  "type/EventTable"
+                                                          :entity_type  "entity/EventTable"
                                                           :rows         1000
                                                           :updated_at   $
                                                           :id           $
@@ -428,7 +428,7 @@
                                                         {:schema       "PUBLIC"
                                                          :name         "USERS"
                                                          :display_name "Users"
-                                                         :entity_type  "type/UserTable"
+                                                         :entity_type  "entity/UserTable"
                                                          :rows         15
                                                          :updated_at   $
                                                          :id           $

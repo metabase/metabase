@@ -103,17 +103,17 @@
     (assoc field :special_type inferred-special-type)))
 
 (def ^:private entity-types-patterns
-  [[#"order"       :type/TransactionTable]
-   [#"transaction" :type/TransactionTable]
-   [#"sale"        :type/TransactionTable]
-   [#"product"     :type/ProductTable]
-   [#"user"        :type/UserTable]
-   [#"account"     :type/UserTable]
-   [#"people"      :type/UserTable]
-   [#"person"      :type/UserTable]
-   [#"event"       :type/EventTable]
-   [#"checkin"     :type/EventTable]
-   [#"log"         :type/EventTable]])
+  [[#"order"       :entity/TransactionTable]
+   [#"transaction" :entity/TransactionTable]
+   [#"sale"        :entity/TransactionTable]
+   [#"product"     :entity/ProductTable]
+   [#"user"        :entity/UserTable]
+   [#"account"     :entity/UserTable]
+   [#"people"      :entity/UserTable]
+   [#"person"      :entity/UserTable]
+   [#"event"       :entity/EventTable]
+   [#"checkin"     :entity/EventTable]
+   [#"log"         :entity/EventTable]])
 
 (s/defn ^:always-validate infer-entity-type :- i/TableInstance
   [table :- i/TableInstance]
@@ -126,7 +126,7 @@
                                             :db_id
                                             Database
                                             :engine)
-                                    :googleanalytics :type/GoogleAnalyticsTable
-                                    :druid           :type/EventTable
+                                    :googleanalytics :entity/GoogleAnalyticsTable
+                                    :druid           :entity/EventTable
                                     nil)
-                                  :type/GenericTable))))
+                                  :entity/GenericTable))))

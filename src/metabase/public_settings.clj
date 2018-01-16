@@ -164,7 +164,7 @@
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
-   :types                 (types/types->parents :type/Field)
-   :entities              (types/types->parents :type/Table)
+   :types                 (types/types->parents :type/*)
+   :entities              (types/types->parents :entity/*)
    :version               config/mb-version-info
    :xray_max_cost         (setting/get :xray-max-cost)})

@@ -5,9 +5,6 @@
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
    continue to treat it as such until further notice.")
 
-(derive :type/Field :type/*)
-(derive :type/Table :type/*)
-
 (derive :type/Collection :type/*)
 
 (derive :type/Dictionary :type/Collection)
@@ -16,17 +13,17 @@
 
 ;;; Table (entitiy) Types
 
-(derive :type/GenericTable :type/Table)
-(derive :type/UserTable :type/GenericTable)
-(derive :type/TransactionTable :type/GenericTable)
-(derive :type/ProductTable :type/GenericTable)
-(derive :type/EventTable :type/GenericTable)
-(derive :type/GoogleAnalyticsTable :type/GenericTable)
+(derive :entity/GenericTable :entity/*)
+(derive :entity/UserTable :entity/GenericTable)
+(derive :entity/TransactionTable :entity/GenericTable)
+(derive :entity/ProductTable :entity/GenericTable)
+(derive :entity/EventTable :entity/GenericTable)
+(derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
 
 ;;; Numeric Types
 
-(derive :type/Number :type/Field)
+(derive :type/Number :type/*)
 
 (derive :type/Integer :type/Number)
 (derive :type/BigInteger :type/Integer)
@@ -47,7 +44,7 @@
 
 ;;; Text Types
 
-(derive :type/Text :type/Field)
+(derive :type/Text :type/*)
 
 (derive :type/UUID :type/Text)
 
@@ -71,7 +68,7 @@
 
 ;;; DateTime Types
 
-(derive :type/DateTime :type/Field)
+(derive :type/DateTime :type/*)
 
 (derive :type/Time :type/DateTime)
 (derive :type/Date :type/DateTime)
@@ -87,19 +84,19 @@
 
 ;;; Other
 
-(derive :type/Boolean :type/Field)
-(derive :type/Enum :type/Field)
+(derive :type/Boolean :type/*)
+(derive :type/Enum :type/*)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 
-(derive :type/TextLike :type/Field)
+(derive :type/TextLike :type/*)
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
 
 ;;; "Virtual" Types
 
-(derive :type/Address :type/Field)
+(derive :type/Address :type/*)
 (derive :type/City :type/Address)
 (derive :type/State :type/Address)
 (derive :type/Country :type/Address)
@@ -109,7 +106,7 @@
 ;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
 ;;; `:cardinality`
 
-(derive :type/Special :type/Field)
+(derive :type/Special :type/*)
 
 (derive :type/FK :type/Special)
 (derive :type/PK :type/Special)
@@ -121,10 +118,10 @@
 (derive :type/Country :type/Category)
 (derive :type/Name :type/Category)
 
-(derive :type/User :type/Field)
-(derive :type/Product :type/Field)
+(derive :type/User :type/*)
+(derive :type/Product :type/*)
 
-(derive :type/Source :type/Field)
+(derive :type/Source :type/*)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

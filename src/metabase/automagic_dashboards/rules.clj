@@ -41,13 +41,21 @@
     (ga-dimension? x) x
     :else             (keyword "type" x)))
 
+(defn ->entity
+  "Turn `x` into proper entity name."
+  [x]
+  (cond
+    (keyword? x)      x
+    (ga-dimension? x) x
+    :else             (keyword "entity" x)))
+
 (defn- field-type?
   [t]
-  (isa? t :type/Field))
+  (isa? t :type/*))
 
 (defn- table-type?
   [t]
-  (isa? t :type/Table))
+  (isa? t :entity/*))
 
 (def ^:private TableType (s/constrained s/Keyword table-type?))
 (def ^:private FieldType (s/either (s/constrained s/Str ga-dimension?)
@@ -129,7 +137,7 @@
          (every? defined-dimensions (all-references :dimensions cards))
          (every? (comp (into defined-dimensions defined-metrics) key first)
                  (all-references :order_by cards))
-         (every? (some-fn defined-dimensions (comp table-type? ->type))
+         (every? (some-fn defined-dimensions (comp table-type? ->entity))
                  (collect-dimensions rule)))))
 
 (def ^:private Rules
@@ -171,7 +179,10 @@
    {[s/Str]       ensure-seq
     [OrderByPair] ensure-seq
     FieldSpec     (fn [x]
-                    (map ->type (str/split x #"\.")))
+                    (let [[table-type field-type] (str/split x #"\.")]
+                      (if field-type
+                        [(->entity table-type) (->type field-type)]
+                        [(->type table-type)])))
     OrderByPair   (fn [x]
                     (if (string? x)
                       {x "ascending"}
@@ -189,7 +200,7 @@
     Card          (with-defaults {:score  max-score
                                   :width  populate/default-card-width
                                   :height populate/default-card-height})
-    TableType     ->type
+    TableType     ->entity
     FieldType     ->type
     Identifier    (fn [x]
                     (if (keyword? x)

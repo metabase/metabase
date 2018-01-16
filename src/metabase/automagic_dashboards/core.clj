@@ -101,7 +101,7 @@
                (fn [[_ identifier]]
                  (->reference template-type (or (bindings identifier)
                                                 (-> identifier
-                                                    rules/->type
+                                                    rules/->entity
                                                     (filter-tables context)
                                                     first)
                                                 identifier)))))
@@ -247,7 +247,7 @@
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
     (->> used-dimensions
          (map (some-fn (comp :matches (partial get (:dimensions context)))
-                       (comp #(filter-tables % context) rules/->type)))
+                       (comp #(filter-tables % context) rules/->entity)))
          (apply combo/cartesian-product)
          (keep (fn [instantiations]
                  (let [bindings (zipmap used-dimensions instantiations)
@@ -269,7 +269,7 @@
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules table]
-  (let [entity-type (or (:entity_type table) :type/GenericTable)]
+  (let [entity-type (or (:entity_type table) :entity/GenericTable)]
     (some->> rules
              (filter #(isa? entity-type (:table_type %)))
              not-empty
