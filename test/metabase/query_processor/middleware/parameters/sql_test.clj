@@ -42,7 +42,6 @@
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
     {:toucans_are_cool true}))
 
-
 ;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
 
 (expect
@@ -80,6 +79,13 @@
    :params []}
   (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
     {:toucans_are_cool true}))
+
+;; Two parameters in an optional
+(expect
+  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+   :params ["toucan"]}
+  (substitute "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
+    {:toucans_are_cool true, :bird_type "toucan"}))
 
 (expect
   {:query  "SELECT * FROM bird_facts"
