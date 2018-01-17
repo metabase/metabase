@@ -13,7 +13,7 @@ export function question(cardId, hash = "", query = "") {
         query = Object.entries(query)
             .map(kv => {
                 if (Array.isArray(kv[1])) {
-                    return kv[1].map(v => `${kv[0]}=${v}`).join('&');
+                    return kv[1].map(v => `${encodeURIComponent(kv[0])}=${encodeURIComponent(v)}`).join('&');
                 } else {
                     return kv.map(encodeURIComponent).join("=");
                 }

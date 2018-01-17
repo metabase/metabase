@@ -130,7 +130,6 @@ export default class SelectPicker extends Component {
                                    <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked.has(option.key))}>
                                        <CheckBox
                                            checked={checked.has(option.key)}
-                                           onChange={() => {}}
                                            color='purple'
                                        />
                                        <h4 className="ml1">{this.nameForOption(option)}</h4>
