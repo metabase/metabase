@@ -120,6 +120,46 @@ export const field_special_types = [{
     'id': TYPE.JoinTimestamp,
     'name': 'Join timestamp',
     'section': 'Common'
+}, {
+    'id': TYPE.Share,
+    'name': 'Share',
+    'section': 'Common'
+}, {
+    'id': TYPE.Owner,
+    'name': 'Owner',
+    'section': 'Common'
+}, {
+    'id': TYPE.Company,
+    'name': 'Company',
+    'section': 'Common'
+}, {
+    'id': TYPE.Subscription,
+    'name': 'Subscription',
+    'section': 'Common'
+}, {
+    'id': TYPE.Score,
+    'name': 'Score',
+    'section': 'Common'
+}, {
+    'id': TYPE.Description,
+    'name': 'Description',
+    'section': 'Common'
+}, {
+    'id': TYPE.Title,
+    'name': 'Title',
+    'section': 'Common'
+}, {
+    'id': TYPE.Comment,
+    'name': 'Comment',
+    'section': 'Common'
+}, {
+    'id': TYPE.Cost,
+    'name': 'Cost',
+    'section': 'Common'
+}, {
+    'id': TYPE.GrossMargin,
+    'name': 'Gross margin',
+    'section': 'Common'
 }];
 
 export const field_special_types_map = field_special_types

@@ -269,11 +269,10 @@
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules table]
-  (let [entity-type (or (:entity_type table) :entity/GenericTable)]
-    (some->> rules
-             (filter #(isa? entity-type (:table_type %)))
-             not-empty
-             (apply max-key (comp count ancestors :table_type)))))
+  (some->> rules
+           (filter #(isa? (:entity_type table) (:table_type %)))
+           not-empty
+           (apply max-key (comp count ancestors :table_type))))
 
 (defn- linked-tables
   "Return all tables accessable from a given table with the paths to get there.

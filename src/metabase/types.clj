@@ -15,8 +15,10 @@
 
 (derive :entity/GenericTable :entity/*)
 (derive :entity/UserTable :entity/GenericTable)
+(derive :entity/CompanyTable :entity/GenericTable)
 (derive :entity/TransactionTable :entity/GenericTable)
 (derive :entity/ProductTable :entity/GenericTable)
+(derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
 (derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
@@ -32,15 +34,20 @@
 
 (derive :type/Float :type/Number)
 (derive :type/Decimal :type/Float)
+(derive :type/Share :type/Float)
 
 (derive :type/Income :type/Number)
 (derive :type/Discount :type/Number)
 (derive :type/Price :type/Number)
+(derive :type/GrossMargin :type/Number)
+(derive :type/Cost :type/Number)
 
 (derive :type/Coordinate :type/Float)
 (derive :type/Latitude :type/Coordinate)
 (derive :type/Longitude :type/Coordinate)
 
+(derive :type/Score :type/Number)
+(derive :type/Duration :type/Number)
 
 ;;; Text Types
 
@@ -59,7 +66,9 @@
 (derive :type/Country :type/Text)
 
 (derive :type/Name :type/Text)
+(derive :type/Title :type/Text)
 (derive :type/Description :type/Text)
+(derive :type/Comment :type/Text)
 
 (derive :type/SerializedJSON :type/Text)
 (derive :type/SerializedJSON :type/Collection)
@@ -119,9 +128,14 @@
 (derive :type/Name :type/Category)
 
 (derive :type/User :type/*)
-(derive :type/Product :type/*)
+(derive :type/Author :type/User)
+(derive :type/Owner :type/User)
 
-(derive :type/Source :type/*)
+(derive :type/Product :type/Category)
+(derive :type/Company :type/Category)
+(derive :type/Subscription :type/Category)
+
+(derive :type/Source :type/Category)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
