@@ -3,25 +3,25 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "c-3po";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
-import { t } from 'c-3po';
 import { getHumanReadableValue } from "metabase/lib/query/field";
 
-import ListSearchField from "metabase/components/ListSearchField.jsx";
-
-import cx from "classnames";
+import SelectPicker
+    from "../../../query_builder/components/filters/pickers/SelectPicker.jsx";
 
 type Props = {
     value: any,
     values: any[],
     setValue: () => void,
     onClose: () => void
-}
+};
 type State = {
     searchText: string,
     searchRegex: ?RegExp,
-}
+    selectedValues: Array<string>
+};
 
 export default class CategoryWidget extends Component {
     props: Props;
@@ -32,7 +32,10 @@ export default class CategoryWidget extends Component {
 
         this.state = {
             searchText: "",
-            searchRegex: null
+            searchRegex: null,
+            selectedValues: Array.isArray(props.value)
+                ? props.value
+                : [props.value]
         };
     }
 
@@ -54,53 +57,59 @@ export default class CategoryWidget extends Component {
             searchText: value,
             searchRegex: regex
         });
+    };
+
+    static format(values, fieldValues) {
+        if (Array.isArray(values) && values.length > 1) {
+            return `${values.length} selections`;
+        } else {
+            return getHumanReadableValue(values, fieldValues);
+        }
     }
 
-    static format(value, fieldValues) {
-        return getHumanReadableValue(value, fieldValues);
+    getOptions() {
+        return this.props.values.slice().map(value => {
+            return {
+                name: value[0],
+                key: value[0]
+            };
+        });
     }
+
+    commitValues = (values: ?Array<string>) => {
+        if (values && values.length === 0) {
+            values = null;
+        }
+        this.props.setValue(values);
+        this.props.onClose();
+    };
+
+    onSelectedValuesChange = (values: Array<string>) => {
+        this.setState({ selectedValues: values });
+    };
 
     render() {
-        let { value, values, setValue, onClose } = this.props;
-
-        let filteredValues = [];
-        let regex = this.state.searchRegex;
-
-        if (regex) {
-            for (const value of values) {
-                if (regex.test(value[0]) || regex.test(value[1])) {
-                    filteredValues.push(value);
-                }
-            }
-        } else {
-            filteredValues = values.slice();
-        }
+        const options = this.getOptions();
+        const selectedValues = this.state.selectedValues;
 
         return (
-            <div style={{ maxWidth: 200 }}>
-                { values.length > 10 &&
-                  <div className="p1">
-                      <ListSearchField
-                          onChange={this.updateSearchText}
-                          searchText={this.state.searchText}
-                          placeholder={t`Find a value`}
-                          autoFocus={true}
-                      />
-                  </div>
-                }
-                <ul className="scroll-y scroll-show" style={{ maxHeight: 300 }}>
-                    {filteredValues.map(([rawValue, humanReadableValue]) =>
-                        <li
-                            key={rawValue}
-                            className={cx("px2 py1 bg-brand-hover text-white-hover cursor-pointer", {
-                                "text-white bg-brand": rawValue === value
-                            })}
-                            onClick={() => { setValue(rawValue); onClose(); }}
-                        >
-                            {humanReadableValue || String(rawValue)}
-                        </li>
-                     )}
-                </ul>
+            <div style={{ minWidth: 182 }}>
+                <SelectPicker
+                    options={options}
+                    values={(selectedValues: Array<string>)}
+                    onValuesChange={this.onSelectedValuesChange}
+                    multi={true}
+                />
+                <div className="p1">
+                    <button
+                        data-ui-tag="add-category-filter"
+                        className="Button Button--purple full"
+                        onClick={() =>
+                            this.commitValues(this.state.selectedValues)}
+                    >
+                        {t`Done`}
+                    </button>
+                </div>
             </div>
         );
     }

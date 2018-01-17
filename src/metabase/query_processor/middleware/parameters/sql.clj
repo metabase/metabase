@@ -86,15 +86,23 @@
    :target                 s/Any
    (s/optional-key :value) s/Any}) ; not specified if the param has no value. TODO - make this stricter
 
+(def ^:private SingleValue
+  "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
+  (s/cond-pre NoValue
+              CommaSeparatedNumbers
+              Dimension
+              Date
+              s/Num
+              s/Str
+              s/Bool))
+
+;; Sequence of multiple values for generating a SQL IN() clause. vales
+(s/defrecord ^:private MultipleValues [values :- [SingleValue]])
+
 (def ^:private ParamValue
-  (s/named (s/maybe (s/cond-pre NoValue
-                                CommaSeparatedNumbers
-                                Dimension
-                                Date
-                                s/Num
-                                s/Str
-                                s/Bool))
-           "Valid param value"))
+  "Schema for valid param value(s). Params can have one or more values."
+  (s/named (s/maybe (s/cond-pre SingleValue MultipleValues))
+           "Valid param value(s)"))
 
 (def ^:private ParamValues
   {s/Keyword ParamValue})
@@ -199,11 +207,11 @@
   (cond
     ;; if not a string it's already been parsed
     (number? value) value
-    ;; same goes for an instance of CommanSepe
+    ;; same goes for an instance of CommaSeperated values
     (instance? CommaSeparatedNumbers value) value
-    value
     ;; if the value is a string, then split it by commas in the string. Usually there should be none.
     ;; Parse each part as a number.
+    (string? value)
     (let [parts (for [part (str/split value #",")]
                   (parse-number part))]
       (if (> (count parts) 1)
@@ -220,6 +228,9 @@
     (= param-type "date")                            (map->Date {:s value})
     (and (= param-type "dimension")
          (= (get-in value [:param :type]) "number")) (update-in value [:param :value] value->number)
+    (sequential? value)                              (map->MultipleValues
+                                                      {:values (for [v value]
+                                                                 (parse-value-for-type param-type v))})
     :else                                            value))
 
 (s/defn ^:private value-for-tag :- ParamValue
@@ -268,25 +279,43 @@
       (->replacement-snippet-info \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"))
 
 
-(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative" "date/all-options"} param-type))
-(defn- date-param-type?          [param-type] (str/starts-with? param-type "date/"))
+(defn- relative-date-param-type? [param-type]
+  (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative" "date/all-options"} param-type))
+
+(defn- date-param-type? [param-type]
+  (str/starts-with? param-type "date/"))
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
-  (->replacement-snippet-info (map->DateRange (date-params/date-string->range value *timezone*)))) ; TODO - get timezone from query dict
+  ;; TODO - get timezone from query dict
+  (-> (date-params/date-string->range value *timezone*)
+      map->DateRange
+      ->replacement-snippet-info))
 
 (s/defn ^:private dimension-value->equals-clause-sql :- ParamSnippetInfo
   [value]
-  (update (->replacement-snippet-info value) :replacement-snippet (partial str "= ")))
+  (-> (->replacement-snippet-info value)
+      (update :replacement-snippet (partial str "= "))))
+
+(s/defn ^:private dimension-multiple-values->in-clause-sql :- ParamSnippetInfo
+  [values]
+  (-> (map->MultipleValues {:values values})
+      ->replacement-snippet-info
+      (update :replacement-snippet (partial format "IN (%s)"))))
 
 (s/defn ^:private dimension->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a DIMENSION parameter."
   [{param-type :type, value :value} :- DimensionValue]
   (cond
-    (relative-date-param-type? param-type) (relative-date-dimension-value->replacement-snippet-info value) ; convert relative dates to approprate date range representations
-    (date-param-type? param-type)          (dimension-value->equals-clause-sql (map->Date {:s value}))     ; convert all other dates to `= <date>`
-    :else                                  (dimension-value->equals-clause-sql value)))                    ; convert everything else to `= <value>`
+    ;; convert relative dates to approprate date range representations
+    (relative-date-param-type? param-type) (relative-date-dimension-value->replacement-snippet-info value)
+    ;; convert all other dates to `= <date>`
+    (date-param-type? param-type)          (dimension-value->equals-clause-sql (map->Date {:s value}))
+    ;; for sequences of multiple values we want to generate an `IN (...)` clause
+    (sequential? value)                    (dimension-multiple-values->in-clause-sql value)
+    ;; convert everything else to `= <value>`
+    :else                                  (dimension-value->equals-clause-sql value)))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
@@ -325,6 +354,12 @@
   (->replacement-snippet-info [{:keys [numbers]}]
     {:replacement-snippet (str/join ", " numbers)})
 
+  MultipleValues
+  (->replacement-snippet-info [{:keys [values]}]
+    (let [values (map ->replacement-snippet-info values)]
+      {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
+       :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
+
   Date
   (->replacement-snippet-info [{:keys [s]}]
     (honeysql->replacement-snippet-info (u/->Timestamp s)))
@@ -344,6 +379,8 @@
       ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1 = 1`)
       (nil? param) {:replacement-snippet "1 = 1"}
       ;; if we have a vector of multiple params recursively convert them to SQL and combine into an `AND` clause
+      ;; (This is multiple params in the sense that the frontend provided multiple maps with param values for the same
+      ;; Dimension, not in the sense that we have a single map with multiple values for `:value`.)
       (vector? param)
       (combine-replacement-snippet-maps (for [p param]
                                           (->replacement-snippet-info (assoc dimension :param p))))
