@@ -216,3 +216,4 @@ Modal.defaultProps = {
 };
 
 export default Modal;
+

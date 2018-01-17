@@ -66,6 +66,10 @@ export default class DashboardApp extends Component {
     }
 
     render() {
-        return <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />;
+        return <div>
+            <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />;
+            {/* For rendering modal urls */}
+            {this.props.children}
+        </div>
     }
 }
