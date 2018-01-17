@@ -79,27 +79,17 @@
               (vals (methods name->human-readable-name)))))
 
 (defn- re-humanize-names!
-  "Update all non-custom display names of all instances of `model` (e.g. Table or Field). To prevent explosions on very
-  large instances this is done in chunks of 10000 IDs at a time"
-  ;; TODO - once Toucan has the new streaming SELECT functions we can use those instead of manually chunking
-  ;; TODO - Alternatively, just make this chunking pattern generic and add to Toucan. Could be useful elsewhere!
-  ([model] (re-humanize-names! model 0))
-  ([model starting-id]
-   (let [chunk-size 10000]
-     (when-let [instances (seq (db/select [model :id :name :display_name]
-                                 :id [:>= starting-id]
-                                 {:limit chunk-size}))]
-       (doseq [{id :id, internal-name :name, display-name :display_name} instances
-               :let  [new-display-name (name->human-readable-name internal-name)]
-               :when (and (not= display-name new-display-name)
-                          (not (custom-display-name? internal-name display-name)))]
-         (log/info (format "Updating display name for %s '%s': '%s' -> '%s'"
-                           (name model) internal-name display-name new-display-name))
-         (db/update! model id
-           :display_name new-display-name))
-       ;; if we got a full chunk, do the next chunk, starting at one past the ID of the last object
-       (when (>= (count instances) chunk-size)
-         (recur model (inc (:id (last instances)))))))))
+  "Update all non-custom display names of all instances of `model` (e.g. Table or Field)."
+  [model]
+  (run! (fn [{id :id, internal-name :name, display-name :display_name}]
+          (let [new-display-name (name->human-readable-name internal-name)]
+            (when (and (not= display-name new-display-name)
+                       (not (custom-display-name? internal-name display-name)))
+              (log/info (format "Updating display name for %s '%s': '%s' -> '%s'"
+                                (name model) internal-name display-name new-display-name))
+              (db/update! model id
+                :display_name new-display-name))))
+        (db/select-reducible [model :id :name :display_name])))
 
 (defn- re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
