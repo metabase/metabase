@@ -32,22 +32,22 @@
   mainly for the internal implementation):
 
      (humanization-strategy :advanced)
-     (name->human-readable-name \"cooltoucans\") ;-> \"Cool Toucans\"
+     (name->human-readable-name \"cooltoucans\")                         ;-> \"Cool Toucans\"
      ;; this is the same as:
      (name->human-readable-name (humanization-strategy) \"cooltoucans\") ;-> \"Cool Toucans\"
      ;; specifiy a different strategy:
-     (name->human-readable-name :none \"cooltoucans\") ;-> \"cooltoucans\""
+     (name->human-readable-name :none \"cooltoucans\")                   ;-> \"cooltoucans\""
   {:arglists '([s] [strategy s])}
   (fn
     ([_] (keyword (humanization-strategy)))
     ([strategy _] (keyword strategy))))
 
-;; :advanced is the default implementation
+;; :advanced is the default implementation; splits words with cost-based fn
 (defmethod name->human-readable-name :advanced
   ([s] (name->human-readable-name :advanced s))
   ([_, ^String s]
+   ;; explode string on hyphens, underscores, spaces, and camelCase
    (when (seq s)
-     ;; explode string on spaces, underscores, hyphens, and camelCase
      (str/join " " (for [part  (str/split s #"[-_\s]+|(?<=[a-z])(?=[A-Z])")
                          :when (not (str/blank? part))
                          word  (dedupe (flatten (infer-spaces part)))]
@@ -78,19 +78,32 @@
   (nil? (some #(= display-name (% internal-name))
               (vals (methods name->human-readable-name)))))
 
-(defn- re-humanize-names! [model]
-  (doseq [{id :id, internal-name :name, display-name :display_name} (db/select [model :id :name :display_name])
-          :let  [new-display-name (name->human-readable-name internal-name)]
-          :when (and (not= display-name new-display-name)
-                     (not (custom-display-name? internal-name display-name)))]
-    (log/info (format "Updating display name for %s '%s': '%s' -> '%s'"
-                      (name model) internal-name display-name new-display-name))
-    (db/update! model id
-      :display_name new-display-name)))
+(defn- re-humanize-names!
+  "Update all non-custom display names of all instances of `model` (e.g. Table or Field). To prevent explosions on very
+  large instances this is done in chunks of 10000 IDs at a time"
+  ;; TODO - once Toucan has the new streaming SELECT functions we can use those instead of manually chunking
+  ;; TODO - Alternatively, just make this chunking pattern generic and add to Toucan. Could be useful elsewhere!
+  ([model] (re-humanize-names! model 0))
+  ([model starting-id]
+   (let [chunk-size 10000]
+     (when-let [instances (seq (db/select [model :id :name :display_name]
+                                 :id [:>= starting-id]
+                                 {:limit chunk-size}))]
+       (doseq [{id :id, internal-name :name, display-name :display_name} instances
+               :let  [new-display-name (name->human-readable-name internal-name)]
+               :when (and (not= display-name new-display-name)
+                          (not (custom-display-name? internal-name display-name)))]
+         (log/info (format "Updating display name for %s '%s': '%s' -> '%s'"
+                           (name model) internal-name display-name new-display-name))
+         (db/update! model id
+           :display_name new-display-name))
+       ;; if we got a full chunk, do the next chunk, starting at one past the ID of the last object
+       (when (>= (count instances) chunk-size)
+         (recur model (inc (:id (last instances)))))))))
 
 (defn- re-humanize-table-and-field-names!
-  "Update the display names of all tables in the database using new values obtained from the (obstensibly toggled
-  implementation of) `name->human-readable-name`."
+  "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
+  the (obstensibly swapped implementation of) `name->human-readable-name`."
   []
   (re-humanize-names! 'Table)
   (re-humanize-names! 'Field))
@@ -104,7 +117,7 @@
   ;; ok, now set the new value
   (setting/set-string! :humanization-strategy (name new-strategy))
   ;; now rehumanize all the Tables and Fields using the new strategy.
-  ;; TODO: do this in a background thread because it is potentially slow?
+  ;; TODO: Should we do this in a background thread because it is potentially slow?
   (log/info (format "Now using %s table name humanization." new-strategy))
   (re-humanize-table-and-field-names!))
 
