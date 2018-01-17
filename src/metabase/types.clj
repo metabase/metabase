@@ -67,6 +67,7 @@
 
 (derive :type/Boolean :type/*)
 (derive :type/Enum :type/*)
+(derive :type/DruidHyperUnique :type/*)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
