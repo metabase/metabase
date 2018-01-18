@@ -3,12 +3,17 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.api.database :as database-api]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
              [database :as database :refer [Database]]
              [field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [table :refer [Table]]]
+            [metabase.sync
+             [field-values :as field-values]
+             [sync-metadata :as sync-metadata]]
             [metabase.test
              [data :as data :refer :all]
              [util :as tu :refer [match-$]]]
@@ -53,14 +58,17 @@
          (second @~result)))))
 
 (def ^:private default-db-details
-  {:engine             "h2"
-   :name               "test-data"
-   :is_sample          false
-   :is_full_sync       true
-   :description        nil
-   :caveats            nil
-   :points_of_interest nil})
-
+  {:engine                      "h2"
+   :name                        "test-data"
+   :is_sample                   false
+   :is_full_sync                true
+   :is_on_demand                false
+   :description                 nil
+   :caveats                     nil
+   :points_of_interest          nil
+   :cache_field_values_schedule "0 50 0 * * ? *"
+   :metadata_sync_schedule      "0 50 * * * ? *"
+   :timezone                    nil})
 
 (defn- db-details
   "Return default column values for a database (either the test database, via `(db)`, or optionally passed in)."
@@ -73,20 +81,31 @@
              :id         $
              :details    $
              :updated_at $
-             :features   (mapv name (driver/features (driver/engine->driver (:engine db))))}))))
+             :timezone   $
+             :features   (map name (driver/features (driver/engine->driver (:engine db))))}))))
 
 
 ;; # DB LIFECYCLE ENDPOINTS
 
+(defn- add-schedules [db]
+  (assoc db :schedules {:cache_field_values {:schedule_day   nil
+                                             :schedule_frame nil
+                                             :schedule_hour  0
+                                             :schedule_type  "daily"}
+                        :metadata_sync      {:schedule_day   nil
+                                             :schedule_frame nil
+                                             :schedule_hour  nil
+                                             :schedule_type  "hourly"}}))
+
 ;; ## GET /api/database/:id
 ;; regular users *should not* see DB details
 (expect
-  (dissoc (db-details) :details)
+  (add-schedules (dissoc (db-details) :details))
   ((user->client :rasta) :get 200 (format "database/%d" (id))))
 
 ;; superusers *should* see DB details
 (expect
-  (db-details)
+  (add-schedules (db-details))
   ((user->client :crowberto) :get 200 (format "database/%d" (id))))
 
 ;; ## POST /api/database
@@ -94,14 +113,14 @@
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (merge default-db-details
          (match-$ db
-           {:created_at         $
-            :engine             :postgres
-            :is_full_sync       false
-            :id                 $
-            :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-            :updated_at         $
-            :name               $
-            :features           (driver/features (driver/engine->driver :postgres))}))
+           {:created_at   $
+            :engine       :postgres
+            :is_full_sync false
+            :id           $
+            :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+            :updated_at   $
+            :name         $
+            :features     (driver/features (driver/engine->driver :postgres))}))
   (Database (:id db)))
 
 
@@ -156,16 +175,24 @@
 
 
 ;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!
-;; If you're writing a test that needs this, fix your brain and your test
+;; If you're writing a NEW test that needs this, fix your brain and your test!
+;; To reïterate, this is BAD BAD BAD BAD BAD BAD! It will break tests if you use it! Don't use it!
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
-  (db/delete! Database :id [:not-in (into (set skip)
-                                          (for [engine datasets/all-valid-engines
-                                                :let   [id (datasets/when-testing-engine engine
-                                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
-                                                :when  id]
-                                            id))]))
+  (let [ids-to-skip (into (set skip)
+                          (for [engine datasets/all-valid-engines
+                                :let   [id (datasets/when-testing-engine engine
+                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
+                                :when  id]
+                            id))]
+    (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
+      (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+                                         "WARNING: deleting randomly created databases:\n%s"
+                                         "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
+                 (u/pprint-to-str (for [db dbs]
+                                    (dissoc db :features))))))
+    (db/delete! Database :id [:not-in ids-to-skip])))
 
 
 ;; ## GET /api/database
@@ -180,6 +207,7 @@
                                             :engine             (name $engine)
                                             :id                 $
                                             :updated_at         $
+                                            :timezone           $
                                             :name               "test-data"
                                             :native_permissions "write"
                                             :features           (map name (driver/features (driver/engine->driver engine)))}))))
@@ -190,6 +218,7 @@
                                         :id                 $
                                         :updated_at         $
                                         :name               $
+                                        :timezone           $
                                         :native_permissions "write"
                                         :features           (map name (driver/features (driver/engine->driver :postgres)))})))))
   (do
@@ -207,6 +236,7 @@
                        :id                 $
                        :updated_at         $
                        :name               $
+                       :timezone           $
                        :native_permissions "write"
                        :tables             []
                        :features           (map name (driver/features (driver/engine->driver :postgres)))}))
@@ -219,6 +249,7 @@
                                               :engine             (name $engine)
                                               :id                 $
                                               :updated_at         $
+                                              :timezone           $
                                               :name               "test-data"
                                               :native_permissions "write"
                                               :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
@@ -238,6 +269,20 @@
    :preview_display    true
    :parent_id          nil})
 
+(defn- field-details [field]
+  (merge
+   default-field-details
+   (match-$ (hydrate/hydrate field :values)
+     {:updated_at          $
+      :id                  $
+      :raw_column_id       $
+      :created_at          $
+      :last_analyzed       $
+      :fingerprint         $
+      :fingerprint_version $
+      :fk_target_field_id  $
+      :values              $})))
+
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
 (expect
@@ -248,42 +293,29 @@
             :id         $
             :updated_at $
             :name       "test-data"
+            :timezone   $
             :features   (mapv name (driver/features (driver/engine->driver :h2)))
             :tables     [(merge default-table-details
                                 (match-$ (Table (id :categories))
                                   {:schema       "PUBLIC"
                                    :name         "CATEGORIES"
                                    :display_name "Categories"
-                                   :fields       [(merge default-field-details
-                                                         (match-$ (hydrate/hydrate (Field (id :categories :id)) :values)
-                                                           {:table_id           (id :categories)
-                                                            :special_type       "type/PK"
-                                                            :name               "ID"
-                                                            :display_name       "ID"
-                                                            :updated_at         $
-                                                            :id                 $
-                                                            :raw_column_id      $
-                                                            :created_at         $
-                                                            :last_analyzed      $
-                                                            :base_type          "type/BigInteger"
-                                                            :visibility_type    "normal"
-                                                            :fk_target_field_id $
-                                                            :values             $}))
-                                                  (merge default-field-details
-                                                         (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
-                                                           {:table_id           (id :categories)
-                                                            :special_type       "type/Name"
-                                                            :name               "NAME"
-                                                            :display_name       "Name"
-                                                            :updated_at         $
-                                                            :id                 $
-                                                            :raw_column_id      $
-                                                            :created_at         $
-                                                            :last_analyzed      $
-                                                            :base_type          "type/Text"
-                                                            :visibility_type    "normal"
-                                                            :fk_target_field_id $
-                                                            :values             $}))]
+                                   :fields       [(assoc (field-details (Field (id :categories :id)))
+                                                    :table_id        (id :categories)
+                                                    :special_type    "type/PK"
+                                                    :name            "ID"
+                                                    :display_name    "ID"
+                                                    :database_type   "BIGINT"
+                                                    :base_type       "type/BigInteger"
+                                                    :visibility_type "normal")
+                                                  (assoc (field-details (Field (id :categories :name)))
+                                                    :table_id           (id :categories)
+                                                    :special_type       "type/Name"
+                                                    :name               "NAME"
+                                                    :display_name       "Name"
+                                                    :database_type      "VARCHAR"
+                                                    :base_type          "type/Text"
+                                                    :visibility_type    "normal")]
                                    :segments     []
                                    :metrics      []
                                    :rows         75
@@ -356,6 +388,20 @@
     ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
 
+;; Make sure saved questions are NOT included if the setting is disabled
+(expect
+  nil
+  (tt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+    (tu/with-temporary-setting-values [enable-nested-queries false]
+      ;; run the Card which will populate its result_metadata column
+      ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+      ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+      (some (fn [database]
+              (when (= (u/get-id database) database/virtual-id)
+                database))
+            ((user->client :crowberto) :get 200 "database" :include_cards true)))))
+
+
 ;; make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS
 (tt/expect-with-temp [Collection [stamp-collection {:name "Stamps"}]
                       Collection [coin-collection  {:name "Coins"}]
@@ -368,7 +414,8 @@
     ;; run the Cards which will populate their result_metadata columns
     (doseq [card [stamp-card coin-card]]
       ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
-    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their Collection name as their Schema
+    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
+    ;; Collection name as their Schema
     (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
 
 (defn- fetch-virtual-database []
@@ -383,8 +430,24 @@
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))
 
+;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
+;; nested queries
+(tt/expect-with-temp [Database [druid-db   {:engine :druid, :details {}}]
+                      Card     [druid-card {:name             "Druid Card"
+                                            :dataset_query    {:database (u/get-id druid-db)
+                                                               :type     :native
+                                                               :native   {:query "[DRUID QUERY GOES HERE]"}}
+                                            :result_metadata [{:name "sparrows"}]
+                                            :database_id     (u/get-id druid-db)}]
+                      Card     [ok-card (assoc (card-with-native-query "OK Card")
+                                          :result_metadata [{:name "finches"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
 
-;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count aggregations
+
+;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count
+;; aggregations
 (defn- ok-mbql-card []
   (assoc (card-with-mbql-query "OK Card"
            :source-table (data/id :checkins))
@@ -414,7 +477,8 @@
 
 
 ;; make sure that GET /api/database/:id/metadata works for the Saved Questions 'virtual' database
-(tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card") :result_metadata [{:name "age_in_bird_years"}])]]
+(tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card")
+                                   :result_metadata [{:name "age_in_bird_years"}])]]
   (saved-questions-virtual-db
     (assoc (virtual-table-for-card card)
       :fields [{:name         "age_in_bird_years"
@@ -427,3 +491,141 @@
 (expect
   nil
   ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                CRON SCHEDULES!                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private schedule-map-for-last-friday-at-11pm
+  {:schedule_day   "fri"
+   :schedule_frame "last"
+   :schedule_hour  23
+   :schedule_type  "monthly"})
+
+(def ^:private schedule-map-for-hourly
+  {:schedule_day   nil
+   :schedule_frame nil
+   :schedule_hour  nil
+   :schedule_type  "hourly"})
+
+;; Can we create a NEW database and give it custom schedules?
+(expect
+  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+   :metadata_sync_schedule      "0 0 * * * ? *"}
+  (do-with-temp-db-created-via-api {:schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
+                                                :metadata_sync      schedule-map-for-hourly}}
+    (fn [db]
+      (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db)))))
+
+;; Can we UPDATE the schedules for an existing database?
+(expect
+  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+   :metadata_sync_schedule      "0 0 * * * ? *"}
+  (tt/with-temp Database [db {:engine "h2"}]
+    ((user->client :crowberto) :put 200 (format "database/%d" (u/get-id db))
+     (assoc db
+       :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
+                   :metadata_sync      schedule-map-for-hourly}))
+    (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))
+
+;; If we FETCH a database will it have the correct 'expanded' schedules?
+(expect
+  {:cache_field_values_schedule "0 0 23 ? * 6L *"
+   :metadata_sync_schedule      "0 0 * * * ? *"
+   :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
+                                 :metadata_sync      schedule-map-for-hourly}}
+  (tt/with-temp Database [db {:metadata_sync_schedule      "0 0 * * * ? *"
+                              :cache_field_values_schedule "0 0 23 ? * 6L *"}]
+    (-> ((user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
+        (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules]))))
+
+;; Can we trigger a metadata sync for a DB?
+(expect
+  (let [sync-called? (atom false)]
+    (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
+      (with-redefs [sync-metadata/sync-db-metadata! (fn [synced-db]
+                                                      (when (= (u/get-id synced-db) (u/get-id db))
+                                                        (reset! sync-called? true)))]
+        ((user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
+        @sync-called?))))
+
+;; (Non-admins should not be allowed to trigger sync)
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "database/%d/sync_schema" (data/id))))
+
+;; Can we RESCAN all the FieldValues for a DB?
+(expect
+  (let [update-field-values-called? (atom false)]
+    (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
+      (with-redefs [field-values/update-field-values! (fn [synced-db]
+                                                        (when (= (u/get-id synced-db) (u/get-id db))
+                                                          (reset! update-field-values-called? true)))]
+        ((user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
+        @update-field-values-called?))))
+
+;; (Non-admins should not be allowed to trigger re-scan)
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "database/%d/rescan_values" (data/id))))
+
+;; Can we DISCARD all the FieldValues for a DB?
+(expect
+  {:values-1-still-exists? false
+   :values-2-still-exists? false}
+  (tt/with-temp* [Database    [db       {:engine "h2", :details (:details (data/db))}]
+                  Table       [table-1  {:db_id (u/get-id db)}]
+                  Table       [table-2  {:db_id (u/get-id db)}]
+                  Field       [field-1  {:table_id (u/get-id table-1)}]
+                  Field       [field-2  {:table_id (u/get-id table-2)}]
+                  FieldValues [values-1 {:field_id (u/get-id field-1), :values [1 2 3 4]}]
+                  FieldValues [values-2 {:field_id (u/get-id field-2), :values [1 2 3 4]}]]
+    ((user->client :crowberto) :post 200 (format "database/%d/discard_values" (u/get-id db)))
+    {:values-1-still-exists? (db/exists? FieldValues :id (u/get-id values-1))
+     :values-2-still-exists? (db/exists? FieldValues :id (u/get-id values-2))}))
+
+;; (Non-admins should not be allowed to discard all FieldValues)
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "database/%d/discard_values" (data/id))))
+
+
+;;; Tests for /POST /api/database/validate
+
+;; For some stupid reason the *real* version of `test-database-connection` is set up to do nothing for tests. I'm
+;; guessing it's done that way so we can save invalid DBs for some silly tests. Instead of doing it the right way
+;; and using `with-redefs` to disable it in the few tests where it makes sense, we actually have to use `with-redefs`
+;; here to simulate its *normal* behavior. :unamused:
+(defn- test-database-connection [engine details]
+  (if (driver/can-connect-with-details? (keyword engine) details)
+    nil
+    {:valid false, :message "Error!"}))
+
+(expect
+  "You don't have permissions to do that."
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :rasta) :post 403 "database/validate"
+     {:details {:engine :h2, :details (:details (data/db))}})))
+
+(expect
+  (:details (data/db))
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (#'database-api/test-connection-details "h2" (:details (data/db)))))
+
+(expect
+  {:valid true}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :crowberto) :post 200 "database/validate"
+     {:details {:engine :h2, :details (:details (data/db))}})))
+
+(expect
+  {:valid false, :message "Error!"}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (#'database-api/test-connection-details "h2" {:db "ABC"})))
+
+(expect
+  {:valid false}
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    ((user->client :crowberto) :post 200 "database/validate"
+     {:details {:engine :h2, :details {:db "ABC"}}})))

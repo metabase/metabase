@@ -9,7 +9,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-
+import { t, jt } from 'c-3po';
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -97,6 +97,8 @@ export default class Visualization extends Component {
     state: State;
     props: Props;
 
+    _resetHoverTimer: ?number;
+
     constructor(props: Props) {
         super(props);
 
@@ -145,7 +147,7 @@ export default class Visualization extends Component {
         if (state.series[0].card.display !== "table") {
             warnings = warnings.concat(props.series
                 .filter(s => s.data && s.data.rows_truncated != null)
-                .map(s => `Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
+                .map(s => t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
         }
         return warnings;
     }
@@ -168,15 +170,28 @@ export default class Visualization extends Component {
     }
 
     handleHoverChange = (hovered) => {
-        const { yAxisSplit } = this.state;
         if (hovered) {
+            const { yAxisSplit } = this.state;
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (yAxisSplit) {
                 const axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
                 hovered = assoc(hovered, "axisIndex", axisIndex);
             }
+            this.setState({ hovered });
+            // If we previously set a timeout for clearing the hover clear it now since we received
+            // a new hover.
+            if (this._resetHoverTimer !== null) {
+                clearTimeout(this._resetHoverTimer);
+                this._resetHoverTimer = null;
+            }
+        } else {
+            // When reseting the hover wait in case we're simply transitioning from one
+            // element to another. This allows visualizations to use mouseleave events etc.
+            this._resetHoverTimer = setTimeout(() => {
+                this.setState({ hovered: null });
+                this._resetHoverTimer = null;
+            }, 0);
         }
-        this.setState({ hovered });
     }
 
     getClickActions(clicked: ?ClickObject) {
@@ -189,7 +204,7 @@ export default class Visualization extends Component {
         const card = series[seriesIndex].card;
         const question = new Question(metadata, card);
         const mode = question.mode();
-        return mode ? mode.actionsForClick(clicked) : [];
+        return mode ? mode.actionsForClick(clicked, {}) : [];
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
@@ -255,7 +270,7 @@ export default class Visualization extends Component {
         }
 
         let error = this.props.error || this.state.error;
-        let loading = !(series && series.length > 0 && _.every(series, (s) => s.data));
+        let loading = !(series && series.length > 0 && _.every(series, (s) => s.data || _.isObject(s.card.visualization_settings.virtual_card)));
         let noResults = false;
 
         // don't try to load settings unless data is loaded
@@ -264,14 +279,14 @@ export default class Visualization extends Component {
         if (!loading && !error) {
             settings = this.props.settings || getSettings(series);
             if (!CardVisualization) {
-                error = "Could not find visualization";
+                error = t`Could not find visualization`;
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
                         CardVisualization.checkRenderable(series, settings);
                     }
                 } catch (e) {
-                    error = e.message || "Could not display this chart with this data.";
+                    error = e.message || t`Could not display this chart with this data.`;
                     if (e instanceof ChartSettingsError && this.props.onOpenChartSettings) {
                         error = (
                             <div>
@@ -338,8 +353,8 @@ export default class Visualization extends Component {
                 // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
                 : isDashboard && noResults ?
                     <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
-                        <Tooltip tooltip="No results!" isEnabled={small}>
-                            <img src="app/assets/img/no_results.svg" />
+                        <Tooltip tooltip={t`No results!`} isEnabled={small}>
+                            <img src="../app/assets/img/no_results.svg" />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
@@ -362,16 +377,16 @@ export default class Visualization extends Component {
                     <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
                         { isSlow ?
                             <div className="text-slate">
-                                <div className="h4 text-bold mb1">Still Waiting...</div>
+                                <div className="h4 text-bold mb1">{t`Still Waiting...`}</div>
                                 { isSlow === "usually-slow" ?
                                     <div>
-                                        This usually takes an average of <span style={{whiteSpace: "nowrap"}}>{duration(expectedDuration)}</span>.
+                                        {jt`This usually takes an average of ${<span style={{whiteSpace: "nowrap"}}>{duration(expectedDuration)}</span>}.`}
                                         <br />
-                                        (This is a bit long for a dashboard)
+                                        {t`(This is a bit long for a dashboard)`}
                                     </div>
                                 :
                                     <div>
-                                        This is usually pretty fast, but seems to be taking awhile right now.
+                                        {t`This is usually pretty fast, but seems to be taking awhile right now.`}
                                     </div>
                                 }
                             </div>

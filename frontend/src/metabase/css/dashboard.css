@@ -44,11 +44,14 @@
   background-color: rgb(34, 37, 39);
 }
 
+.Dashboard.Dashboard--night .Card {
+  color: #fff;
+}
+
 .Dashboard.Dashboard--night .Header-button,
 .Dashboard.Dashboard--night .Header-button svg {
     color: rgba(151, 151, 151, 0.3);
 }
-
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
   color: #3f3a3a;
@@ -102,13 +105,6 @@
 
 .DashCard .Card.Card--slow {
     border-color: var(--gold-color);
-}
-
-.DashCard .Card > * {
-    transition: opacity 0.5s linear;
-}
-.DashCard .Card.Card--unmapped > * {
-    opacity: 0.25;
 }
 
 .Dash--editing .DashCard .Card {
@@ -191,6 +187,10 @@
   transition: opacity .3s linear;
 }
 
+.DashCard .DashCard-actions-persistent {
+  pointer-events: all;
+}
+
 .Dash--editing .DashCard:hover .DashCard-actions {
   height: initial;
   opacity: 1;
@@ -233,6 +233,7 @@
     bottom: 0;
     right: 0;
     cursor: nwse-resize;
+    z-index: 1; /* ensure the handle is above the card contents */
 }
 
 .Dash--editing .DashCard .react-resizable-handle:after {
@@ -339,3 +340,13 @@
 }
 
 @page { margin: 1cm; }
+
+/* when in night mode goal lines should be more visible */
+.Dashboard--night .goal .line {
+  stroke: white;
+}
+
+/* when in night mode code snippets should have a more readable background-color */
+.Dashboard--night pre code {
+  background-color: rgba(255, 255, 255, 0.14);
+}

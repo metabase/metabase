@@ -6,7 +6,8 @@
              [util :as u]]
             [metabase.models.database :refer [Database]]
             [toucan.db :as db])
-  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
+  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow
+            GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
            com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
            [com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException]
            com.google.api.client.googleapis.services.AbstractGoogleClientRequest
@@ -25,8 +26,8 @@
 (def ^:private ^:const ^String redirect-uri "urn:ietf:wg:oauth:2.0:oob")
 
 (defn execute-no-auto-retry
-  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
-  throws, converting them to `ExceptionInfo` and rethrowing them."
+  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
+  rethrowing them."
   [^AbstractGoogleClientRequest request]
   (try (.execute request)
        (catch GoogleJsonResponseException e
@@ -36,8 +37,8 @@
                            (into {} error)))))))
 
 (defn execute
-  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
-  throws, converting them to `ExceptionInfo` and rethrowing them.
+  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
+  rethrowing them.
 
   This automatically retries any failed requests up to 2 times."
   [^AbstractGoogleClientRequest request]
@@ -61,10 +62,10 @@
     {:access-token (.getAccessToken response), :refresh-token (.getRefreshToken response)}))
 
 (def ^{:arglists '([scopes client-id client-secret auth-code])} fetch-access-and-refresh-tokens
-  "Fetch Google access and refresh tokens.
-   This function is memoized because you're only allowed to redeem an auth-code once.
-   This way we can redeem it the first time when `can-connect?` checks to see if the DB details are viable;
-   then the second time we go to redeem it we can save the access token and refresh token with the newly created `Database` <3"
+  "Fetch Google access and refresh tokens. This function is memoized because you're only allowed to redeem an
+  auth-code once. This way we can redeem it the first time when `can-connect?` checks to see if the DB details are
+  viable; then the second time we go to redeem it we can save the access token and refresh token with the newly
+  created `Database` <3"
   (memoize fetch-access-and-refresh-tokens*))
 
 
@@ -90,3 +91,8 @@
                     (.setTransport http-transport)))
       (.setAccessToken  access-token)
       (.setRefreshToken refresh-token))))
+
+(defn -init-driver
+  "Nothing to init as this is code used by the google drivers, but is not a driver itself"
+  []
+  true)

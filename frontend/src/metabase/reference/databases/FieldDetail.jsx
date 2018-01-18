@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
-
+import { t } from 'c-3po';
 import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
@@ -36,37 +36,40 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 
-const interestingQuestions = (database, table, field) => {
+const interestingQuestions = (database, table, field, metadata) => {
     return [
         {
-            text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+            text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
             icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
             link: getQuestionUrl({
                 dbId: database.id,
                 tableId: table.id,
                 fieldId: field.id,
                 getCount: true,
-                visualization: 'bar'
+                visualization: 'bar',
+                metadata
             })
         },
         {
-            text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+            text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
             icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
             link: getQuestionUrl({
                 dbId: database.id,
                 tableId: table.id,
                 fieldId: field.id,
                 getCount: true,
-                visualization: 'pie'
+                visualization: 'pie',
+                metadata
             })
         },
         {
-            text: `All distinct values of ${field.display_name}`,
+            text: t`All distinct values of ${field.display_name}`,
             icon: "table2",
             link: getQuestionUrl({
                 dbId: database.id,
                 tableId: table.id,
-                fieldId: field.id
+                fieldId: field.id,
+                metadata
             })
         }
     ]
@@ -128,6 +131,7 @@ export default class FieldDetail extends Component {
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
+        metadata: PropTypes.object
     };
 
     render() {
@@ -146,6 +150,7 @@ export default class FieldDetail extends Component {
             handleSubmit,
             resetForm,
             submitting,
+            metadata
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
@@ -187,9 +192,9 @@ export default class FieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="description"
-                                    name="Description"
+                                    name={t`Description`}
                                     description={entity.description}
-                                    placeholder="No description yet"
+                                    placeholder={t`No description yet`}
                                     isEditing={isEditing}
                                     field={description}
                                 />
@@ -198,7 +203,7 @@ export default class FieldDetail extends Component {
                                 <li className="relative">
                                     <Detail
                                         id="name"
-                                        name="Actual name in database"
+                                        name={t`Actual name in database`}
                                         description={entity.name}
                                         subtitleClass={S.tableActualName}
                                     />
@@ -207,9 +212,9 @@ export default class FieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this field is interesting`}
+                                    name={t`Why this field is interesting`}
                                     description={entity.points_of_interest}
-                                    placeholder="Nothing interesting yet"
+                                    placeholder={t`Nothing interesting yet`}
                                     isEditing={isEditing}
                                     field={points_of_interest}
                                     />
@@ -217,20 +222,20 @@ export default class FieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this field`}
+                                    name={t`Things to be aware of about this field`}
                                     description={entity.caveats}
-                                    placeholder="Nothing to be aware of yet"
+                                    placeholder={t`Nothing to be aware of yet`}
                                     isEditing={isEditing}
                                     field={caveats}
                                 />
                             </li>
 
 
-                            { !isEditing && 
+                            { !isEditing &&
                                 <li className="relative">
                                     <Detail
                                         id="base_type"
-                                        name={`Data type`}
+                                        name={t`Data type`}
                                         description={entity.base_type}
                                     />
                                 </li>
@@ -246,7 +251,16 @@ export default class FieldDetail extends Component {
                                 </li>
                             { !isEditing &&
                                 <li className="relative">
-                                    <UsefulQuestions questions={interestingQuestions(this.props.database, this.props.table, this.props.field)} />
+                                    <UsefulQuestions
+                                        questions={
+                                            interestingQuestions(
+                                                this.props.database,
+                                                this.props.table,
+                                                this.props.field,
+                                                metadata
+                                            )
+                                        }
+                                    />
                                 </li>
                             }
 

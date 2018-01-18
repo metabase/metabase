@@ -109,12 +109,15 @@
                :end   (t/minus dt (t/days 1))})
     :filter (fn [_ field] ["=" field ["relative_datetime" -1 "day"]])}
 
-   {:parser (regex->parser #"past([0-9]+)(day|week|month|year)s", [:int-value :unit])
+   ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
+   ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
+   ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
+   {:parser (regex->parser #"past([0-9]+)(day|week|month|year)s(~?)", [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period]} dt]
               (unit-range (t/minus dt (to-period int-value))
                           (t/minus dt (to-period 1))))
-    :filter (fn [{:keys [unit int-value]} field]
-              ["TIME_INTERVAL" field (- int-value) unit])}
+    :filter (fn [{:keys [unit int-value include-current?]} field]
+              ["TIME_INTERVAL" field (- int-value) unit {:include-current (boolean (seq include-current?))}])}
 
    {:parser (regex->parser #"next([0-9]+)(day|week|month|year)s" [:int-value :unit])
     :range  (fn [{:keys [unit int-value unit-range to-period]} dt]
@@ -199,10 +202,10 @@
   "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    return a MAP with `:start` and `:end` as iso8601 string formatted dates, respecting the given timezone."
   [date-string report-timezone]
-  (let [tz (t/time-zone-for-id report-timezone)
+  (let [tz                 (t/time-zone-for-id report-timezone)
         formatter-local-tz (tf/formatter "yyyy-MM-dd" tz)
-        formatter-no-tz (tf/formatter "yyyy-MM-dd")
-        today (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
+        formatter-no-tz    (tf/formatter "yyyy-MM-dd")
+        today              (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of days
     ;; depending on the user timezone
     (or (->> (execute-decoders relative-date-string-decoders :range today date-string)

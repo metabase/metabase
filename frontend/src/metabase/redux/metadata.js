@@ -81,7 +81,6 @@ export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPOR
     };
 });
 
-
 export const FETCH_SEGMENTS = "metabase/metadata/FETCH_SEGMENTS";
 export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) => {
     return async (dispatch, getState) => {
@@ -278,7 +277,7 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
     };
 });
 
-const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
+export const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
 export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(fieldId, reload) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", fieldId];

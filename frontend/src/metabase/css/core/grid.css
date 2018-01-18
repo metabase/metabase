@@ -239,6 +239,9 @@
   .large-Grid--guttersXXl > .Grid-cell {
     padding: 5em 0 0 5em;
   }
+  .large-Grid--normal > .Grid-cell {
+    flex: 1;
+  }
 }
 
 .Grid-cell.Cell--1of3 {

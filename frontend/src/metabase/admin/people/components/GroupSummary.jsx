@@ -1,7 +1,7 @@
 import React from "react";
 
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import { inflect } from "metabase/lib/formatting";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
@@ -11,7 +11,7 @@ const GroupSummary = ({ groups, selectedGroups }) => {
     if (selectedGroups[adminGroup.id]) {
         return (
             <span>
-                <span className="text-purple">Admin</span>
+                <span className="text-purple">{t`Admin`}</span>
                 { otherGroups.length > 0 && " and " }
                 { otherGroups.length > 0 && <span className="text-brand">{otherGroups.length + " other " + inflect("group", otherGroups.length)}</span> }
             </span>
@@ -21,7 +21,7 @@ const GroupSummary = ({ groups, selectedGroups }) => {
     } else if (otherGroups.length > 1) {
         return <span className="text-brand">{otherGroups.length + " " + inflect("group", otherGroups.length)}</span>;
     } else {
-        return <span>Default</span>;
+        return <span>{t`Default`}</span>;
     }
 }
 

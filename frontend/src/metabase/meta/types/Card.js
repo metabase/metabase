@@ -31,7 +31,7 @@ export type Card = {
     public_uuid: string,
 
     // Not part of the card API contract, a field used by query builder for showing lineage
-    original_card_id?: CardId
+    original_card_id?: CardId,
 };
 
 export type StructuredDatasetQuery = {

@@ -34,6 +34,10 @@
 .block,
 :local(.block)        { display: block; }
 
+@media screen and (--breakpoint-min-lg) {
+.lg-block { display: block; }
+}
+
 .inline,
 :local(.inline)       { display: inline; }
 
@@ -74,6 +78,18 @@
     :local(.wrapper.wrapper--small) {
         max-width: var(--sm-width);
     }
+}
+
+@media screen and (--breakpoint-min-lg) {
+  .wrapper.lg-wrapper--trim {
+        max-width: var(--lg-width);
+  }
+}
+
+@media screen and (--breakpoint-min-xl) {
+  .wrapper.lg-wrapper--trim {
+        max-width: var(--xl-width);
+  }
 }
 
 /* fully fit the parent element - use as a base for app-y pages like QB or settings */

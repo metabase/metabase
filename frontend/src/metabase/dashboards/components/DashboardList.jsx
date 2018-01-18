@@ -5,6 +5,9 @@ import PropTypes from "prop-types";
 import {Link} from "react-router";
 import cx from "classnames";
 import moment from "moment";
+import { t } from 'c-3po'
+
+import { withBackground } from "metabase/hoc/Background";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -19,7 +22,7 @@ type DashboardListItemProps = {
     setArchived: (dashId: number, archived: boolean) => void
 }
 
-class DashboardListItem extends Component {
+export class DashboardListItem extends Component {
     props: DashboardListItemProps
 
     state = {
@@ -34,7 +37,7 @@ class DashboardListItem extends Component {
         const {id, name, created_at, archived, favorite} = dashboard
 
         const archivalButton =
-            <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
+            <Tooltip tooltip={archived ? t`Unarchive` : t`Archive`}>
                 <Icon
                     className="flex cursor-pointer text-light-blue text-brand-hover ml2 archival-button"
                     name={archived ? "unarchive" : "archive"}
@@ -50,7 +53,7 @@ class DashboardListItem extends Component {
             </Tooltip>
 
         const favoritingButton =
-            <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
+            <Tooltip tooltip={favorite ? t`Unfavorite` : t`Favorite`}>
                 <Icon
                     className={cx(
                         "flex cursor-pointer ml2 favoriting-button",
@@ -146,7 +149,7 @@ class DashboardListItem extends Component {
 
 }
 
-export default class DashboardList extends Component {
+class DashboardList extends Component {
     static propTypes = {
         dashboards: PropTypes.array.isRequired
     };
@@ -166,3 +169,5 @@ export default class DashboardList extends Component {
         );
     }
 }
+
+export default withBackground('bg-slate-extra-light')(DashboardList)

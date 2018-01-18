@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
-
+import { t } from 'c-3po';
 import DateSingleWidget from "./widgets/DateSingleWidget.jsx";
 import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
 import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
@@ -31,17 +31,21 @@ const DATE_WIDGETS = {
 }
 
 import { fetchFieldValues } from "metabase/redux/metadata";
-import { getParameterFieldValues } from "metabase/selectors/metadata";
+import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 
-const mapStateToProps = (state, props) => ({
-    values: getParameterFieldValues(state, props),
-})
+const makeMapStateToProps = () => {
+    const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
+    const mapStateToProps = (state, props) => ({
+        values: getMergedParameterFieldValues(state, props),
+    })
+    return mapStateToProps;
+}
 
 const mapDispatchToProps = {
     fetchFieldValues
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
 
     static propTypes = {
@@ -158,19 +162,21 @@ export default class ParameterValueWidget extends Component {
                 </div>
             );
         } else {
-            let placeholderText = isEditing ? "Select a default value…" : (placeholder || "Select…");
+            let placeholderText = isEditing ? t`Select a default value…` : (placeholder || t`Select…`);
 
             return (
                 <PopoverWithTrigger
                     ref="valuePopover"
                     triggerElement={
-                    <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
-                        { getParameterTypeIcon() }
-                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
-                        { getWidgetStatusIcon() }
-                    </div>
-                }
+                        <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
+                            { getParameterTypeIcon() }
+                            <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
+                            { getWidgetStatusIcon() }
+                        </div>
+                    }
                     target={() => this.refs.trigger} // not sure why this is necessary
+                    // make sure the full date picker will expand to fit the dual calendars
+                    autoWidth={parameter.type === "date/all-options"}
                 >
                     <Widget value={value} values={values} setValue={setValue}
                             onClose={() => this.refs.valuePopover.close()}/>

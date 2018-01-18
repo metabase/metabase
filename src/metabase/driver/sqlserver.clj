@@ -1,14 +1,23 @@
 (ns metabase.driver.sqlserver
+  "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [honeysql.core :as hsql]
             [metabase
+             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh]))
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
+
+(defrecord SQLServerDriver []
+  clojure.lang.Named
+  (getName [_] "SQL Server"))
 
 (defn- column->base-type
-  "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
+  "Mappings for SQLServer types to Metabase types.
+   See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types"
   [column-type]
   ({:bigint           :type/BigInteger
     :binary           :type/*
@@ -48,24 +57,34 @@
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
 
-(defn- connection-details->spec [{:keys [user password db host port instance domain ssl]
-                                  :or   {user "dbuser", password "dbpassword", db "", host "localhost", port 1433}
-                                  :as   details}]
-  {:classname    "net.sourceforge.jtds.jdbc.Driver"
-   :subprotocol  "jtds:sqlserver"
-   :loginTimeout 5 ; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
-   :subname      (str "//" host ":" port "/" db)
-   ;; everything else gets passed as `java.util.Properties` to the JDBC connection. See full list of properties here: `http://jtds.sourceforge.net/faq.html#urlFormat`
-   ;; (passing these as Properties instead of part of the `:subname` is preferable because they support things like passwords with special characters)
-   :user         user
-   :password     password
-   :instance     instance
-   :domain       domain
-   :useNTLMv2    (boolean domain) ; if domain is specified, send LMv2/NTLMv2 responses when using Windows authentication
-   ;; for whatever reason `ssl=request` doesn't work with RDS (it hangs indefinitely), so just set ssl=off (disabled) if SSL isn't being used
-   :ssl          (if ssl
-                   "require"
-                   "off")})
+(defn- connection-details->spec
+  "Build the connection spec for a SQL Server database from the DETAILS set in the admin panel.
+   Check out the full list of options here: `https://technet.microsoft.com/en-us/library/ms378988(v=sql.105).aspx`"
+  [{:keys [user password db host port instance domain ssl]
+    :or   {user "dbuser", password "dbpassword", db "", host "localhost", port 1433}
+    :as   details}]
+  (-> {:applicationName config/mb-app-id-string
+       :classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+       :subprotocol     "sqlserver"
+       ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
+       ;; can be passed as part of the Properties
+       :subname         (str "//" host)
+       ;; everything else gets passed as `java.util.Properties` to the JDBC connection.  (passing these as Properties
+       ;; instead of part of the `:subname` is preferable because they support things like passwords with special
+       ;; characters)
+       :database        db
+       :port            port
+       :password        password
+       ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
+       :loginTimeout    10
+       ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
+       ;; to specifying them seperately as with jTDS see also:
+       ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
+       :user            (str (when domain (str domain "\\"))
+                             user)
+       :instanceName    instance
+       :encrypt         (boolean ssl)}
+      (sql/handle-additional-options details, :seperator-style :semicolon)))
 
 
 (defn- date-part [unit expr]
@@ -75,7 +94,8 @@
   (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
 
 (defn- date
-  "See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)"
+  "Wrap a HoneySQL datetime EXPRession in appropriate forms to cast/bucket it as UNIT.
+  See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details on the functions we're using."
   [unit expr]
   (case unit
     :default         expr
@@ -83,8 +103,11 @@
     :minute-of-hour  (date-part :minute expr)
     :hour            (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr))
     :hour-of-day     (date-part :hour expr)
-    ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates
-    ;; like every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the type we want
+    ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like
+    ;; every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we
+    ;; get the type we want.
+    ;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we
+    ;; can simplify this now?
     :day             (hx/->datetime (hx/->date expr))
     :day-of-week     (date-part :weekday expr)
     :day-of-month    (date-part :day expr)
@@ -128,19 +151,16 @@
                                                  items))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
-(defn- prepare-value [{value :value}]
-  (cond
-    (true? value)  1
-    (false? value) 0
-    :else          value))
+(defmethod sqlqp/->honeysql [SQLServerDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
 
 (defn- string-length-fn [field-key]
   (hsql/call :len (hx/cast :VARCHAR field-key)))
 
 
-(defrecord SQLServerDriver []
-  clojure.lang.Named
-  (getName [_] "SQL Server"))
+(def ^:private sqlserver-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
+(def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
 
 (u/strict-extend SQLServerDriver
   driver/IDriver
@@ -175,7 +195,12 @@
                                          {:name         "ssl"
                                           :display-name "Use a secure connection (SSL)?"
                                           :type         :boolean
-                                          :default      false}]))})
+                                          :default      false}
+                                         {:name         "additional-options"
+                                          :display-name "Additional JDBC connection string options"
+                                          :placeholder  "trustServerCertificate=false"}]))
+          :current-db-time (driver/make-current-db-time-fn sqlserver-db-time-query sqlserver-date-formatters)})
+
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -186,8 +211,6 @@
           :current-datetime-fn       (constantly :%getutcdate)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
-          :field-percent-urls        sql/slow-field-percent-urls
-          :prepare-value             (u/drop-first-arg prepare-value)
           :stddev-fn                 (constantly :stdev)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))

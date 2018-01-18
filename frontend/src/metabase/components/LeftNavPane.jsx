@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, IndexLink } from "react-router";
+import { t } from 'c-3po';
 
 export function LeftNavPaneItem({ name, path, index = false }) {
     return (
@@ -21,7 +22,7 @@ export function LeftNavPaneItemBack({ path }) {
     return (
         <li>
             <Link to={path} className="AdminList-item flex align-center justify-between no-decoration link text-bold">
-                &lt; Back
+                &lt; {t`Back`}
             </Link>
         </li>
     );

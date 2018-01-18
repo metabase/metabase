@@ -18,6 +18,7 @@ import {
     isMetric,
     isPK,
     isFK,
+    isCoordinate,
     getIconForField,
     getFieldType
 } from "metabase/lib/schema_metadata";
@@ -83,6 +84,10 @@ export default class Field extends Base {
     }
     isFK() {
         return isFK(this);
+    }
+
+    isCoordinate() {
+        return isCoordinate(this);
     }
 
     fieldValues(): FieldValues {

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push, replace, goBack } from "react-router-redux";
 import title from "metabase/hoc/Title";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon";
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 
@@ -50,14 +50,14 @@ export default class CollectionPage extends Component {
                     <div className="ml-auto">
                         <CollectionActions>
                             { canEdit && <ArchiveCollectionWidget collectionId={this.props.collection.id} onArchived={this.props.goToQuestions}/> }
-                            { canEdit && <Icon size={18} name="pencil" tooltip="Edit collection" onClick={() => this.props.editCollection(this.props.collection.id)} /> }
-                            { canEdit && <Icon size={18} name="lock" tooltip="Set permissions" onClick={() => this.props.editPermissions(this.props.collection.id)} /> }
+                            { canEdit && <Icon size={18} name="pencil" tooltip={t`Edit collection`} onClick={() => this.props.editCollection(this.props.collection.id)} /> }
+                            { canEdit && <Icon size={18} name="lock" tooltip={t`Set permissions`} onClick={() => this.props.editPermissions(this.props.collection.id)} /> }
                         </CollectionActions>
                     </div>
                 </div>
                 <div className="mt4">
                     <EntityList
-                        defaultEmptyState="No questions have been added to this collection yet."
+                        defaultEmptyState={t`No questions have been added to this collection yet.`}
                         entityType="cards"
                         entityQuery={{ f: "all", collection: params.collectionSlug, ...location.query }}
                         // use replace when changing sections so back button still takes you back to collections page

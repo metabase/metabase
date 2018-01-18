@@ -6,6 +6,8 @@ import { withRouter } from "react-router";
 import { IFRAMED } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import Parameters from "metabase/parameters/components/Parameters";
 import LogoBadge from "./LogoBadge";
 
@@ -44,6 +46,8 @@ export default class EmbedFrame extends Component {
     }
 
     componentWillMount() {
+        // Make iFrameResizer avaliable so that embed users can
+        // have their embeds autosize to their content
         if (window.iFrameResizer) {
             console.error("iFrameResizer resizer already defined.")
         } else {
@@ -54,9 +58,25 @@ export default class EmbedFrame extends Component {
                     this.setState({ innerScroll: false })
                 }
             }
-            // $FlowFixMe: flow doesn't know about require.ensure
-            require.ensure([], () => {
-                require("iframe-resizer/js/iframeResizer.contentWindow.js")
+
+
+            // FIXME: Crimes
+            // This is needed so the FE test framework which runs in node
+            // without the avaliability of require.ensure skips over this part
+            // which is for external purposes only.
+            //
+            // Ideally that should happen in the test config, but it doesn't
+            // seem to want to play nice when messing with require
+            if(typeof require.ensure !== "function") {
+                // $FlowFixMe: flow doesn't seem to like returning false here
+                return false
+            }
+
+            // Make iframe-resizer avaliable to the embed
+            // We only care about contentWindow so require that minified file
+
+            require.ensure([], (require) => {
+                require('iframe-resizer/js/iframeResizer.contentWindow.min.js')
             });
         }
     }
@@ -102,7 +122,9 @@ export default class EmbedFrame extends Component {
                 </div>
                 { footer &&
                     <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
-                        <LogoBadge dark={theme} />
+                        {!MetabaseSettings.hideEmbedBranding() &&
+                            <LogoBadge dark={theme} />
+                        }
                         {actionButtons &&
                             <div className="flex-align-right text-grey-3">{actionButtons}</div>
                         }

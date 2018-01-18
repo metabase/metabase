@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';
 import Popover from "metabase/components/Popover.jsx";
@@ -112,7 +112,7 @@ export default class FilterWidget extends Component {
             <div onClick={this.open}>
                 <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
                     <div className="Filter-section Filter-section-field">
-                        <span className="QueryOption">Matches</span>
+                        <span className="QueryOption">{t`Matches`}</span>
                     </div>
                 </div>
                 <div className="flex align-center flex-wrap">
@@ -135,6 +135,7 @@ export default class FilterWidget extends Component {
                     isInitiallyOpen={this.props.filter[1] === null}
                     onClose={this.close}
                     horizontalAttachments={["left"]}
+                    autoWidth
                 >
                     <FilterPopover
                         query={query}

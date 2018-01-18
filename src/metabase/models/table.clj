@@ -15,7 +15,7 @@
              [db :as db]
              [models :as models]]))
 
-;;; ------------------------------------------------------------ Constants + Entity ------------------------------------------------------------
+;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
 ;; TODO - I don't think this is used for anything anymore
 (def ^:const ^:deprecated entity-types
@@ -31,7 +31,7 @@
 (models/defmodel Table :metabase_table)
 
 
-;;; ------------------------------------------------------------ Lifecycle ------------------------------------------------------------
+;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
@@ -62,7 +62,7 @@
           :perms-objects-set  perms-objects-set}))
 
 
-;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn fields
   "Return the `FIELDS` belonging to a single TABLE."
@@ -94,7 +94,10 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/select-one-id Field, :table_id id, :special_type (mdb/isa :type/PK), :visibility_type [:not-in ["sensitive" "retired"]]))
+  (db/select-one-id Field
+    :table_id        id
+    :special_type    (mdb/isa :type/PK)
+    :visibility_type [:not-in ["sensitive" "retired"]]))
 
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
@@ -128,14 +131,18 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (db/select Field :table_id [:in table-ids], :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+      (db/select Field
+        :table_id        [:in table-ids]
+        :visibility_type [:not= "retired"]
+        {:order-by [[:position :asc] [:name :asc]]}))
     tables))
 
 
-;;; ------------------------------------------------------------ Convenience Fns ------------------------------------------------------------
+;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
 (defn qualified-identifier
-  "Return a keyword identifier for TABLE in the form `:schema.table-name` (if the Table has a non-empty `:schema` field) or `:table-name` (if the Table has no `:schema`)."
+  "Return a keyword identifier for TABLE in the form `:schema.table-name` (if the Table has a non-empty `:schema` field)
+  or `:table-name` (if the Table has no `:schema`)."
   ^clojure.lang.Keyword [{schema :schema, table-name :name}]
   (keyword (str (when (seq schema)
                   (str schema \.))
@@ -151,48 +158,3 @@
   [table-id]
   {:pre [(integer? table-id)]}
   (db/select-one-field :db_id Table, :id table-id))
-
-
-;;; ------------------------------------------------------------ Persistence Functions ------------------------------------------------------------
-
-(defn retire-tables!
-  "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
-  [table-ids]
-  {:pre [(u/maybe? set? table-ids) (every? integer? table-ids)]}
-  (when (seq table-ids)
-    ;; retire the tables
-    (db/update-where! Table {:id [:in table-ids]}
-      :active false)
-    ;; retire the fields of retired tables
-    (db/update-where! Field {:table_id [:in table-ids]}
-      :visibility_type "retired")))
-
-(defn update-table-from-tabledef!
-  "Update `Table` with the data from TABLE-DEF."
-  [{:keys [id display_name], :as existing-table} {table-name :name}]
-  {:pre [(integer? id)]}
-  (let [updated-table (assoc existing-table
-                        :display_name (or display_name (humanization/name->human-readable-name table-name)))]
-    ;; the only thing we need to update on a table is the :display_name, if it never got set
-    (when (nil? display_name)
-      (db/update! Table id
-        :display_name (:display_name updated-table)))
-    ;; always return the table when we are done
-    updated-table))
-
-(defn create-table-from-tabledef!
-  "Create `Table` with the data from TABLE-DEF."
-  [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
-  (if-let [existing-id (db/select-one-id Table :db_id database-id, :raw_table_id raw-table-id, :schema schema-name, :name table-name, :active false)]
-    ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (db/update! Table existing-id
-      :active true)
-    ;; otherwise create a new Table
-    (db/insert! Table
-      :db_id           database-id
-      :raw_table_id    raw-table-id
-      :schema          schema-name
-      :name            table-name
-      :visibility_type visibility-type
-      :display_name    (humanization/name->human-readable-name table-name)
-      :active          true)))

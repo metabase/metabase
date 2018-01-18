@@ -9,7 +9,7 @@ import { fetchRealDatabases } from "metabase/redux/metadata";
 @connect(null, { fetchRealDatabases })
 export default class DataPermissionsApp extends Component {
     componentWillMount() {
-        this.props.fetchRealDatabases();
+        this.props.fetchRealDatabases(true);
     }
     render() {
         return (

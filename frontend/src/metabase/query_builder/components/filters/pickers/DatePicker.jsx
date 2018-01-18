@@ -1,20 +1,20 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
+import { t } from 'c-3po';
+import cx from 'classnames';
+import moment from "moment";
+import _ from "underscore";
 
 import SpecificDatePicker from "./SpecificDatePicker";
-import RelativeDatePicker, { DATE_PERIODS, UnitPicker } from "./RelativeDatePicker";
+import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
+import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
-
-import moment from "moment";
 
 import Query from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
-import cx from "classnames";
 
-import _ from "underscore";
 
 import type {
     FieldFilter, TimeIntervalFilter,
@@ -24,24 +24,32 @@ import type {
 } from "metabase/meta/types/Query";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange, hideTimeSelectors }) =>
-    <SpecificDatePicker
-        value={value}
-        onChange={(value) => onFilterChange([op, field, value])}
-        hideTimeSelectors={hideTimeSelectors}
-        calendar />
+    <div className="mx2">
+        <SpecificDatePicker
+            value={value}
+            onChange={(value) => onFilterChange([op, field, value])}
+            hideTimeSelectors={hideTimeSelectors}
+            calendar
+        />
+    </div>
 
 const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange , hideTimeSelectors}) =>
     <div className="mx2 mb1">
-        <div className="flex">
-            <SpecificDatePicker
-                value={startValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, value, endValue])}  />
-            <span className="mx2 mt2">&ndash;</span>
-            <SpecificDatePicker
-                value={endValue}
-                hideTimeSelectors={hideTimeSelectors}
-                onChange={(value) => onFilterChange([op, field, startValue, value])} />
+        <div className="Grid Grid--1of2 Grid--gutters">
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={startValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, value, endValue])}
+                />
+            </div>
+            <div className="Grid-cell">
+                <SpecificDatePicker
+                    value={endValue}
+                    hideTimeSelectors={hideTimeSelectors}
+                    onChange={(value) => onFilterChange([op, field, startValue, value])}
+                />
+            </div>
         </div>
         <div className="Calendar--noContext">
             <Calendar
@@ -73,16 +81,15 @@ class CurrentPicker extends Component {
     props: CurrentPickerProps;
     state: CurrentPickerState;
 
-    constructor(props) {
-        super(props);
-        this.state = { showUnits: false };
-    }
+    state = {
+        showUnits: false
+    };
 
     render() {
         const { filter: [operator, field, intervals, unit], onFilterChange } = this.props
         return (
-            <div className="mx2">
-                <UnitPicker
+            <div className="flex-full mr2 mb2">
+                <DateUnitSelector
                     value={unit}
                     open={this.state.showUnits}
                     onChange={(value) => {
@@ -101,6 +108,7 @@ class CurrentPicker extends Component {
 
 const getIntervals = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && typeof value === "number" ? Math.abs(value) : 30;
 const getUnit      = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && unit ? unit : "day";
+const getOptions   = ([op, field, value, unit, options]) => mbqlEq(op, "time-interval") && options || {};
 
 const getDate = (value) => {
     if (typeof value !== "string" || !moment(value).isValid()) {
@@ -141,62 +149,74 @@ function getDateTimeFieldAndValues(filter: FieldFilter, count: number): [Concret
 }
 
 
-export type OperatorName = string;
+export type OperatorName = "all"|"previous"|"next"|"current"|"before"|"after"|"on"|"between"|"empty"|"not-empty";
 
 export type Operator = {
     name: OperatorName,
+    displayName: string,
     widget?: any,
     init: (filter: FieldFilter) => any,
-    test: (filter: FieldFilter) => boolean
+    test: (filter: FieldFilter) => boolean,
+    options?: { [key: string]: any }
 }
 
 const ALL_TIME_OPERATOR = {
-    name: "All Time",
+    name: "all",
+    displayName: t`All Time`,
     init: () => null,
     test: (op) => op === null
 }
 
 export const DATE_OPERATORS: Operator[] = [
     {
-        name: "Previous",
-        init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter)],
+        name: "previous",
+        displayName: t`Previous`,
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter), getOptions(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
+        options: { "include-current": true },
     },
     {
-        name: "Next",
-        init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter)],
+        name: "next",
+        displayName: t`Next`,
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter), getOptions(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
+        options: { "include-current": true },
     },
     {
-        name: "Current",
+        name: "current",
+        displayName: t`Current`,
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter)],
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
     {
-        name: "Before",
+        name: "before",
+        displayName: t`Before`,
         init: (filter) =>  ["<", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "<",
         widget: SingleDatePicker,
     },
     {
-        name: "After",
+        name: "after",
+        displayName: t`After`,
         init: (filter) => [">", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === ">",
         widget: SingleDatePicker,
     },
     {
-        name: "On",
+        name: "on",
+        displayName: t`On`,
         init: (filter) => ["=", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "=",
         widget: SingleDatePicker,
     },
     {
-        name: "Between",
+        name: "between",
+        displayName: t`Between`,
         init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter, 2)],
         test: ([op]) => mbqlEq(op, "between"),
         widget: MultiDatePicker,
@@ -206,18 +226,24 @@ export const DATE_OPERATORS: Operator[] = [
 
 export const EMPTINESS_OPERATORS: Operator[] = [
     {
-        name: "Is Empty",
+        name: "empty",
+        displayName: t`Is Empty`,
         init: (filter) => ["IS_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "IS_NULL"
     },
     {
-        name: "Not Empty",
+        name: "not-empty",
+        displayName: t`Not Empty`,
         init: (filter) => ["NOT_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "NOT_NULL"
     }
 ];
 
 export const ALL_OPERATORS: Operator[] = DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
+
+export function getOperator(filter: FieldFilter, operators?: Operator[] = ALL_OPERATORS) {
+    return _.find(operators, (o) => o.test(filter));
+}
 
 type Props = {
     className?: string,
@@ -238,39 +264,40 @@ export default class DatePicker extends Component {
         operators: []
     };
 
-    static propTypes = {
-        filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired,
-        className: PropTypes.string,
-        hideEmptinessOperators: PropTypes.bool,
-        hideTimeSelectors: PropTypes.bool
-    };
-
     componentWillMount() {
         const operators = this.props.hideEmptinessOperators ? DATE_OPERATORS : ALL_OPERATORS;
 
-        const operator = this._getOperator(operators) || operators[0];
+        const operator = getOperator(this.props.filter, operators) || operators[0];
         this.props.onFilterChange(operator.init(this.props.filter));
 
         this.setState({ operators })
     }
 
-    _getOperator(operators: Operator[]) {
-        return _.find(operators, (o) => o.test(this.props.filter));
-    }
-
     render() {
-        let { filter, onFilterChange, className, includeAllTime } = this.props;
+        const { filter, onFilterChange, includeAllTime } = this.props;
         let { operators } = this.state;
         if (includeAllTime) {
             operators = [ALL_TIME_OPERATOR, ...operators];
         }
 
-        const operator = this._getOperator(operators);
+        const operator = getOperator(this.props.filter, operators);
         const Widget = operator && operator.widget;
 
+        // certain types of operators need to have a horizontal layout
+        // where the value is chosen next to the operator selector
+        // TODO - there's no doubt a cleaner _ way to do this
+        const needsHorizontalLayout = operator && (
+            operator.name === "current"  ||
+            operator.name === "previous" ||
+            operator.name === "next"
+        );
+
         return (
-            <div className={cx("pt2", className)}>
+            <div
+              // apply flex to align the operator selector and the "Widget" if necessary
+              className={cx("border-top pt2", { "flex align-center": needsHorizontalLayout })}
+              style={{ minWidth: 380 }}
+            >
                 <DateOperatorSelector
                     operator={operator && operator.name}
                     operators={operators}

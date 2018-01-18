@@ -25,9 +25,6 @@
 
 (def-database-definition-edn geographical-tips)
 
-;; A tiny dataset where half the NON-NULL values are valid URLs
-(def-database-definition-edn half-valid-urls)
-
 ;; A very tiny dataset with a list of places and a booleans
 (def-database-definition-edn places-cam-likes)
 

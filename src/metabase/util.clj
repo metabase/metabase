@@ -16,25 +16,24 @@
             [clojure.tools.namespace.find :as ns-find]
             colorize.core ; this needs to be loaded for `format-color`
             [metabase.config :as config]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import clojure.lang.Keyword
            [java.net InetAddress InetSocketAddress Socket]
            [java.sql SQLException Timestamp]
            [java.text Normalizer Normalizer$Form]
            [java.util Calendar Date TimeZone]
-           javax.xml.bind.DatatypeConverter
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
-;; This is the very first log message that will get printed.
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-(log/info "Loading Metabase...")
+;; This is the very first log message that will get printed.  It's here because this is one of the very first
+;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
+;; the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+(log/info (trs "Loading Metabase..."))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
+;; for pprinting huge things like expanded queries
 (intern 'clojure.pprint '*print-right-margin* 200)
-
-(declare pprint-to-str)
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -42,13 +41,13 @@
   [& body]
   `(try ~@body (catch Throwable ~'_)))
 
-;;; ### Protocols
 
 (defprotocol ITimestampCoercible
   "Coerce object to a `java.sql.Timestamp`."
   (->Timestamp ^java.sql.Timestamp [this]
-    "Coerce this object to a `java.sql.Timestamp`.
-     Strings are parsed as ISO-8601."))
+    "Coerce this object to a `java.sql.Timestamp`. Strings are parsed as ISO-8601."))
+
+(declare str->date-time)
 
 (extend-protocol ITimestampCoercible
   nil       (->Timestamp [_]
@@ -64,7 +63,7 @@
               (->Timestamp (.getTime this)))
   ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
   String    (->Timestamp [this]
-              (->Timestamp (DatatypeConverter/parseDateTime this)))
+              (->Timestamp (str->date-time this)))
   DateTime  (->Timestamp [this]
               (->Timestamp (.getMillis this))))
 
@@ -74,18 +73,22 @@
   (->DateTimeFormatter ^org.joda.time.format.DateTimeFormatter [this]
     "Coerce object to a `DateTimeFormatter`."))
 
+(declare pprint-to-str)
+
 (extend-protocol IDateTimeFormatterCoercible
   ;; Specify a format string like "yyyy-MM-dd"
   String            (->DateTimeFormatter [this] (time/formatter this))
   DateTimeFormatter (->DateTimeFormatter [this] this)
   ;; Keyword will be used to get matching formatter from time/formatters
-  Keyword           (->DateTimeFormatter [this] (or (time/formatters this)
-                                                    (throw (Exception. (format "Invalid formatter name, must be one of:\n%s"
-                                                                               (pprint-to-str (sort (keys time/formatters)))))))))
+  Keyword           (->DateTimeFormatter [this]
+                      (or (time/formatters this)
+                          (throw (Exception. (format "Invalid formatter name, must be one of:\n%s"
+                                                     (pprint-to-str (sort (keys time/formatters)))))))))
+
 
 (defn parse-date
-  "Parse a datetime string S with a custom DATE-FORMAT, which can be a format string,
-   clj-time formatter keyword, or anything else that can be coerced to a `DateTimeFormatter`.
+  "Parse a datetime string S with a custom DATE-FORMAT, which can be a format string, clj-time formatter keyword, or
+  anything else that can be coerced to a `DateTimeFormatter`.
 
      (parse-date \"yyyyMMdd\" \"20160201\") -> #inst \"2016-02-01\"
      (parse-date :date-time \"2016-02-01T00:00:00.000Z\") -> #inst \"2016-02-01\""
@@ -112,9 +115,6 @@
   java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
   org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
 
-
-;;; ## Date Stuff
-
 (defn is-temporal?
   "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
   [v]
@@ -122,8 +122,8 @@
       (instance? org.joda.time.DateTime v)))
 
 (defn new-sql-timestamp
-  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
-   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
+  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current
+  date. (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   ^java.sql.Timestamp []
   (->Timestamp (System/currentTimeMillis)))
 
@@ -202,7 +202,8 @@
 
 
 (def ^:private ^:const date-extract-units
-  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year :year})
+  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year
+    :year})
 
 (defn date-extract
   "Extract UNIT from DATE. DATE defaults to now.
@@ -251,7 +252,7 @@
   (let [year    (date-extract :year date timezone-id)
         quarter (date-extract :quarter-of-year date timezone-id)
         month   (- (* 3 quarter) 2)]
-    (format "%d-%02d-01ZZ" year month)))
+    (format "%d-%02d-01'T'ZZ" year month)))
 
 (defn date-trunc
   "Truncate DATE to UNIT. DATE defaults to now.
@@ -267,11 +268,11 @@
      ;; For minute and hour truncation timezone should not be taken into account
      :minute  (trunc-with-floor date (* 60 1000))
      :hour    (trunc-with-floor date (* 60 60 1000))
-     :day     (trunc-with-format "yyyy-MM-ddZZ" date timezone-id)
-     :week    (trunc-with-format "yyyy-MM-ddZZ" (->first-day-of-week date timezone-id) timezone-id)
-     :month   (trunc-with-format "yyyy-MM-01ZZ" date timezone-id)
+     :day     (trunc-with-format "yyyy-MM-dd'T'ZZ" date timezone-id)
+     :week    (trunc-with-format "yyyy-MM-dd'T'ZZ" (->first-day-of-week date timezone-id) timezone-id)
+     :month   (trunc-with-format "yyyy-MM-01'T'ZZ" date timezone-id)
      :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
-     :year    (trunc-with-format "yyyy-01-01ZZ" date timezone-id))))
+     :year    (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
 
 
 (defn date-trunc-or-extract
@@ -333,18 +334,12 @@
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
   (jdbc-clob->str [this]
-    (jdbc-clob->str (.getCharacterStream this)))
-
-  ;; SQL Server -- See also http://jtds.sourceforge.net/doc/net/sourceforge/jtds/jdbc/ClobImpl.html
-  net.sourceforge.jtds.jdbc.ClobImpl
-  (jdbc-clob->str [this]
     (jdbc-clob->str (.getCharacterStream this))))
 
 
 (defn optional
-  "Helper function for defining functions that accept optional arguments.
-   If PRED? is true of the first item in ARGS, a pair like `[first-arg other-args]`
-   is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
+  "Helper function for defining functions that accept optional arguments. If PRED? is true of the first item in ARGS,
+  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
 
    If DEFAULT is not specified, `nil` will be returned when PRED? is false.
 
@@ -372,7 +367,8 @@
 
 ;; TODO - rename to `url?`
 (defn is-url?
-  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing IP addresses will return `false`.)"
+  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
+  IP addresses will return `false`.)"
   ^Boolean [^String s]
   (boolean (when (seq s)
              (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
@@ -449,26 +445,17 @@
     (apply f (concat args bound-args))))
 
 (defmacro pdoseq
-  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
+  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and
+  only supports a single binding </3"
   {:style/indent 1}
   [[binding collection] & body]
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
 
-(defn first-index-satisfying
-  "Return the index of the first item in COLL where `(pred item)` is logically `true`.
-
-     (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
-  {:style/indent 1}
-  [pred coll]
-  (loop [i 0, [item & more] coll]
-    (cond
-      (pred item) i
-      (seq more)  (recur (inc i) more))))
-
 (defmacro prog1
-  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of FIRST-FORM.
+  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of
+   FIRST-FORM.
 
      (def numbers (atom []))
 
@@ -539,36 +526,6 @@
      (with-out-str (pprint x))))
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
-
-(def emoji-progress-bar
-  "Create a string that shows progress for something, e.g. a database sync process.
-
-     (emoji-progress-bar 10 40)
-       -> \"[************······································] 😒   25%"
-  (let [^:const meter-width    50
-        ^:const progress-emoji ["😱"  ; face screaming in fear
-                                "😢"  ; crying face
-                                "😞"  ; disappointed face
-                                "😒"  ; unamused face
-                                "😕"  ; confused face
-                                "😐"  ; neutral face
-                                "😬"  ; grimacing face
-                                "😌"  ; relieved face
-                                "😏"  ; smirking face
-                                "😋"  ; face savouring delicious food
-                                "😊"  ; smiling face with smiling eyes
-                                "😍"  ; smiling face with heart shaped eyes
-                                "😎"] ; smiling face with sunglasses
-        percent-done->emoji    (fn [percent-done]
-                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
-    (fn [completed total]
-      (let [percent-done (float (/ completed total))
-            filleds      (int (* percent-done meter-width))
-            blanks       (- meter-width filleds)]
-        (str "["
-             (s/join (repeat filleds "*"))
-             (s/join (repeat blanks "·"))
-             (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
 
 
 (defprotocol ^:private IFilteredStacktrace
@@ -674,8 +631,8 @@
 
 
 (defn- check-protocol-impl-method-map
-  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are provided.
-   Used internally by `strict-extend`."
+  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are
+   provided. Used internally by `strict-extend`."
   [protocol method-map]
   (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]
     (when missing-methods
@@ -684,10 +641,12 @@
       (throw (Exception. (format "Methods implemented that are not in %s: %s " (:var protocol) extra-methods))))))
 
 (defn strict-extend
-  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any methods not
-   declared in the protocol are provided.
-   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and to
-   `extend-protocol`/ `extend-type` going forward." ; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
+  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any
+  methods not declared in the protocol are provided.
+
+  Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
+  to `extend-protocol`/ `extend-type` going forward."
+  ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
   {:style/indent 1}
   [atype protocol method-map & more]
   (check-protocol-impl-method-map protocol method-map)
@@ -700,11 +659,12 @@
   ^String [^String s]
   (when (seq s)
     (s/replace
-     ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER A' + 'COMBINING ACUTE ACCENT'
-     ;; See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
+     ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER
+     ;; A' + 'COMBINING ACUTE ACCENT' See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
      (Normalizer/normalize s Normalizer$Form/NFD)
-     ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best: http://stackoverflow.com/a/5697575/1198455
-     ;; The closest thing to a relevant JavaDoc I could find was http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
+     ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best:
+     ;; http://stackoverflow.com/a/5697575/1198455 The closest thing to a relevant JavaDoc I could find was
+     ;; http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
      #"\p{Block=CombiningDiacriticalMarks}+"
      "")))
 
@@ -760,8 +720,9 @@
 
 (defn key-by
   "Convert a sequential COLL to a map of `(f item)` -> `item`.
-   This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of items.
-   (Because only a single item is kept for each value of `f`,  items producing duplicate values will be discarded).
+  This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of
+  items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
+  discarded).
 
      (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
   {:style/indent 1}
@@ -797,22 +758,24 @@
   ([message & body]
    `(let [start-time# (System/nanoTime)]
       (prog1 (do ~@body)
-        (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+        (println (format-color '~'green "%s took %s"
+                   ~message
+                   (format-nanoseconds (- (System/nanoTime) start-time#))))))))
 
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
    This is intended for use by various routines that load related namespaces, such as task and events initialization.
-   Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand or so
-   namespaces that are part of the Metabase project; use this instead for a massive performance increase."
-  ;; Actually we can go ahead and start doing this in the background once the app launches while other stuff is loading, so use a future here
-  ;; This would be faster when running the *JAR* if we just did it at compile-time and made it ^:const, but that would inhibit the "plugin system"
-  ;; from loading "plugin" namespaces at launch if they're on the classpath
-  (future (vec (for [ns-symb (ns-find/find-namespaces (classpath/classpath))
-                     :when   (and (.startsWith (name ns-symb) "metabase.")
-                                  (not (.contains (name ns-symb) "test")))]
-                 ns-symb))))
+   Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand
+   or so namespaces that are part of the Metabase project; use this instead for a massive performance increase."
+  ;; We want to give JARs in the ./plugins directory a chance to load. At one point we have this as a future so it
+  ;; start looking for things in the background while other stuff is happening but that meant plugins couldn't
+  ;; introduce new Metabase namespaces such as drivers.
+  (delay (vec (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
+                    :when   (and (.startsWith (name ns-symb) "metabase.")
+                                 (not (.contains (name ns-symb) "test")))]
+                ns-symb))))
 
-(def ^:const ^java.util.regex.Pattern uuid-regex
+(def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
 
@@ -863,14 +826,13 @@
      ;; -> {:a 100}"
   [m ks]
   (into {} (for [k     ks
-                 :when (not (nil? (get m k)))]
+                 :when (some? (get m k))]
              {k (get m k)})))
 
 (defn select-keys-when
-  "Returns a map that only contains keys that are either `:present` or `:non-nil`.
-   Combines behavior of `select-keys` and `select-non-nil-keys`.
-   This is useful for API endpoints that update a model, which often have complex rules about what gets updated
-   (some keys are updated if `nil`, others only if non-nil).
+  "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`
+  and `select-non-nil-keys`. This is useful for API endpoints that update a model, which often have complex rules
+  about what gets updated (some keys are updated if `nil`, others only if non-nil).
 
      (select-keys-when {:a 100, :b nil, :d 200, :e nil}
        :present #{:a :b :c}
@@ -880,3 +842,47 @@
   [m & {:keys [present non-nil]}]
   (merge (select-keys m present)
          (select-non-nil-keys m non-nil)))
+
+(defn order-of-magnitude
+  "Return the order of magnitude as a power of 10 of a given number."
+  [x]
+  (if (zero? x)
+    0
+    (long (math/floor (/ (Math/log (math/abs x))
+                         (Math/log 10))))))
+
+(defn update-when
+  "Like clojure.core/update but does not create a new key if it does not exist."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
+(def ^:private date-time-with-millis-no-t
+  "This primary use for this formatter is for Dates formatted by the built-in SQLite functions"
+  (->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+
+(def ^:private ordered-date-parsers
+  "When using clj-time.format/parse without a formatter, it tries all default formatters, but not ordered by how
+  likely the date formatters will succeed. This leads to very slow parsing as many attempts fail before the right one
+  is found. Using this retains that flexibility but improves performance by trying the most likely ones first"
+  (let [most-likely-default-formatters [:mysql :date-hour-minute-second :date-time :date
+                                        :basic-date-time :basic-date-time-no-ms
+                                        :date-time :date-time-no-ms]]
+    (concat (map time/formatters most-likely-default-formatters)
+            [date-time-with-millis-no-t]
+            (vals (apply dissoc time/formatters most-likely-default-formatters)))))
+
+(defn str->date-time
+  "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date or nil if it
+  was unable to be parsed."
+  (^org.joda.time.DateTime [^String date-str]
+   (str->date-time date-str nil))
+  (^org.joda.time.DateTime [^String date-str, ^TimeZone tz]
+   (let [dtz (some-> tz .getID t/time-zone-for-id)]
+     (first
+      (for [formatter ordered-date-parsers
+            :let [formatter-with-tz (time/with-zone formatter dtz)
+                  parsed-date (ignore-exceptions (time/parse formatter-with-tz date-str))]
+            :when parsed-date]
+        parsed-date)))))

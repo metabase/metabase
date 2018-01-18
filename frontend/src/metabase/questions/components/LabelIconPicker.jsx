@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import S from "./LabelIconPicker.css";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -40,7 +40,7 @@ function pushIcons(icons) {
 
 // Colors
 const ALL_COLORS = [].concat(...[colors.saturated, colors.normal, colors.desaturated].map(o => Object.values(o)));
-pushHeader("Colors");
+pushHeader(t`Colors`);
 pushIcons(ALL_COLORS);
 
 // Emoji

@@ -6,6 +6,7 @@ import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
+import { t } from 'c-3po'
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
@@ -41,6 +42,9 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
+// new question
+import { NewQuestionStart, NewQuestionMetricSearch } from "metabase/new_query/router_wrappers";
+
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
@@ -51,13 +55,14 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx"
+import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
-// Reference Metrics 
+// Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
@@ -79,7 +84,15 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer.
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
 
+/* XRay */
+import FieldXRay from "metabase/xray/containers/FieldXray.jsx";
+import TableXRay from "metabase/xray/containers/TableXRay.jsx";
+import SegmentXRay from "metabase/xray/containers/SegmentXRay.jsx";
+import CardXRay from "metabase/xray/containers/CardXRay.jsx";
+import { SharedTypeComparisonXRay, TwoTypesComparisonXRay } from "metabase/xray/containers/TableLikeComparison";
+
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
+
 
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
@@ -159,7 +172,7 @@ export const getRoutes = (store) =>
             <Route path="/auth">
                 <IndexRedirect to="/auth/login" />
                 <Route component={IsNotAuthenticated}>
-                    <Route path="login" title="Login" component={LoginApp} />
+                    <Route path="login" title={t`Login`} component={LoginApp} />
                 </Route>
                 <Route path="logout" component={LogoutApp} />
                 <Route path="forgot_password" component={ForgotPasswordApp} />
@@ -173,21 +186,28 @@ export const getRoutes = (store) =>
                 <Route path="/" component={HomepageApp} />
 
                 {/* DASHBOARD LIST */}
-                <Route path="/dashboards" title="Dashboards" component={Dashboards} />
-                <Route path="/dashboards/archive" title="Dashboards" component={DashboardsArchive} />
+                <Route path="/dashboards" title={t`Dashboards`} component={Dashboards} />
+                <Route path="/dashboards/archive" title={t`Dashboards`} component={DashboardsArchive} />
 
                 {/* INDIVIDUAL DASHBOARDS */}
-                <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp} />
+                <Route path="/dashboard/:dashboardId" title={t`Dashboard`} component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
-                <Route path="/question" component={QueryBuilder} />
+                <Route path="/question">
+                    <IndexRoute component={QueryBuilder} />
+                    { /* NEW QUESTION FLOW */ }
+                    <Route path="new" title={t`New Question`}>
+                        <IndexRoute component={NewQuestionStart} />
+                        <Route path="metric" title={t`Metrics`} component={NewQuestionMetricSearch} />
+                    </Route>
+                </Route>
                 <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
-                <Route path="/questions" title="Questions">
+                <Route path="/questions" title={t`Questions`}>
                     <IndexRoute component={QuestionIndex} />
-                    <Route path="search" title={({ location: { query: { q } }}) => "Search: " + q} component={SearchResults} />
-                    <Route path="archive" title="Archive" component={Archive} />
+                    <Route path="search" title={({ location: { query: { q } }}) => t`Search` + ": " + q} component={SearchResults} />
+                    <Route path="archive" title={t`Archive`} component={Archive} />
                     <Route path="collections/:collectionSlug" component={CollectionPage} />
                 </Route>
 
@@ -208,9 +228,9 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* REFERENCE */}
-                <Route path="/reference" title="Data Reference">
+                <Route path="/reference" title={`Data Reference`}>
                     <IndexRedirect to="/reference/guide" />
-                    <Route path="guide" title="Getting Started" component={GettingStartedGuideContainer} />
+                    <Route path="guide" title={`Getting Started`} component={GettingStartedGuideContainer} />
                     <Route path="metrics" component={MetricListContainer} />
                     <Route path="metrics/:metricId" component={MetricDetailContainer} />
                     <Route path="metrics/:metricId/questions" component={MetricQuestionsContainer} />
@@ -230,8 +250,18 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
                 </Route>
 
+                {/* XRAY */}
+                <Route path="/xray" title={t`XRay`}>
+                    <Route path="segment/:segmentId/:cost" component={SegmentXRay} />
+                    <Route path="table/:tableId/:cost" component={TableXRay} />
+                    <Route path="field/:fieldId/:cost" component={FieldXRay} />
+                    <Route path="card/:cardId/:cost" component={CardXRay} />
+                    <Route path="compare/:modelTypePlural/:modelId1/:modelId2/:cost" component={SharedTypeComparisonXRay} />
+                    <Route path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost" component={TwoTypesComparisonXRay} />
+                </Route>
+
                 {/* PULSE */}
-                <Route path="/pulse" title="Pulses">
+                <Route path="/pulse" title={t`Pulses`}>
                     <IndexRoute component={PulseListApp} />
                     <Route path="create" component={PulseEditApp} />
                     <Route path=":pulseId" component={PulseEditApp} />
@@ -242,21 +272,22 @@ export const getRoutes = (store) =>
             </Route>
 
             {/* ADMIN */}
-            <Route path="/admin" title="Admin" component={IsAdmin}>
+            <Route path="/admin" title={t`Admin`} component={IsAdmin}>
                 <IndexRedirect to="/admin/settings" />
 
-                <Route path="databases" title="Databases">
+                <Route path="databases" title={t`Databases`}>
                     <IndexRoute component={DatabaseListApp} />
                     <Route path="create" component={DatabaseEditApp} />
                     <Route path=":databaseId" component={DatabaseEditApp} />
                 </Route>
 
-                <Route path="datamodel" title="Data Model">
+                <Route path="datamodel" title={t`Data Model`}>
                     <IndexRedirect to="database" />
                     <Route path="database" component={MetadataEditorApp} />
                     <Route path="database/:databaseId" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode/:tableId" component={MetadataEditorApp} />
+                    <Route path="database/:databaseId/:mode/:tableId/settings" component={TableSettingsApp} />
                     <Route path="database/:databaseId/:mode/:tableId/:fieldId" component={FieldApp} />
                     <Route path="metric/create" component={MetricApp} />
                     <Route path="metric/:id" component={MetricApp} />
@@ -266,16 +297,16 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* PEOPLE */}
-                <Route path="people" title="People" component={AdminPeopleApp}>
+                <Route path="people" title={t`People`} component={AdminPeopleApp}>
                     <IndexRoute component={PeopleListingApp} />
-                    <Route path="groups" title="Groups">
+                    <Route path="groups" title={t`Groups`}>
                         <IndexRoute component={GroupsListingApp} />
                         <Route path=":groupId" component={GroupDetailApp} />
                     </Route>
                 </Route>
 
                 {/* SETTINGS */}
-                <Route path="settings" title="Settings">
+                <Route path="settings" title={t`Settings`}>
                     <IndexRedirect to="/admin/settings/setup" />
                     {/* <IndexRoute component={SettingsEditorApp} /> */}
                     <Route path=":section/:authType" component={SettingsEditorApp} />

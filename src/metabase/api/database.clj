@@ -7,6 +7,7 @@
              [config :as config]
              [driver :as driver]
              [events :as events]
+             [public-settings :as public-settings]
              [sample-data :as sample-data]
              [util :as u]]
             [metabase.api
@@ -15,24 +16,31 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
-             [field :refer [Field]]
+             [field :refer [Field readable-fields-only]]
+             [field-values :refer [FieldValues]]
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.schema :as su]
+            [metabase.sync
+             [field-values :as sync-field-values]
+             [sync-metadata :as sync-metadata]]
+            [metabase.util
+             [cron :as cron-util]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]])
+  (:import metabase.models.database.DatabaseInstance))
 
-(def DBEngine
+(def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
   (su/with-api-error-message (s/constrained su/NonBlankString driver/is-engine? "Valid database engine")
     "value must be a valid database engine."))
 
 
-;;; ------------------------------------------------------------ GET /api/database ------------------------------------------------------------
+;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
@@ -43,8 +51,8 @@
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
 (defn- add-native-perms-info
-  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running native (e.g. SQL) queries.
-   Will be one of `:write`, `:read`, or `:none`."
+  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
+   native (e.g. SQL) queries. Will be one of `:write`, `:read`, or `:none`."
   [dbs]
   (for [db dbs]
     (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
@@ -56,8 +64,8 @@
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
     (when-let [driver (driver/database-id->driver database-id)]
-      (driver/driver-supports? driver :nested-queries)
-      (mi/can-read? card))))
+      (and (driver/driver-supports? driver :nested-queries)
+           (mi/can-read? card)))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -86,7 +94,8 @@
   (when (seq aggregations)
     (some (fn [[ag-type]]
             (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
-          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate over list of ags
+          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate
+          ;; over list of aggregations
           (if-not (sequential? (first aggregations))
             [aggregations]
             aggregations))))
@@ -104,18 +113,20 @@
 
 (defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
-   (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query Builder.)"
+   (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
+   Builder.)"
   [& {:keys [include-fields?]}]
   (for [card (source-query-cards)]
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
 (defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
-  (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
-    {:name               "Saved Questions"
-     :id                 database/virtual-id
-     :features           #{:basic-aggregations}
-     :tables             virtual-tables
-     :is_saved_questions true}))
+  (when (public-settings/enable-nested-queries)
+    (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
+      {:name               "Saved Questions"
+       :id                 database/virtual-id
+       :features           #{:basic-aggregations}
+       :tables             virtual-tables
+       :is_saved_questions true})))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-virtual-tables-for-saved-cards [dbs]
@@ -139,15 +150,35 @@
       []))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id ------------------------------------------------------------
+;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
+
+(def ExpandedSchedulesMap
+  "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
+   This same key is used in reverse to update the schedules."
+  (su/with-api-error-message
+      (s/named
+       {(s/optional-key :cache_field_values) cron-util/ScheduleMap
+        (s/optional-key :metadata_sync)      cron-util/ScheduleMap}
+       "Map of expanded schedule maps")
+    "value must be a valid map of schedule maps for a DB."))
+
+(s/defn ^:private expanded-schedules [db :- DatabaseInstance]
+  {:cache_field_values (cron-util/cron-string->schedule-map (:cache_field_values_schedule db))
+   :metadata_sync      (cron-util/cron-string->schedule-map (:metadata_sync_schedule db))})
+
+(defn- add-expanded-schedules
+  "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
+  consumption."
+  [db]
+  (assoc db :schedules (expanded-schedules db)))
 
 (api/defendpoint GET "/:id"
   "Get `Database` with ID."
   [id]
-  (api/read-check Database id))
+  (add-expanded-schedules (api/read-check Database id)))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/metadata ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
 ;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
@@ -163,12 +194,12 @@
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields :target :values] :segments :metrics])
-      (update :tables   (fn [tables]
-                          (for [table tables
-                                :when (mi/can-read? table)]
-                            (-> table
-                                (update :segments (partial filter mi/can-read?))
-                                (update :metrics  (partial filter mi/can-read?))))))))
+      (update :tables (fn [tables]
+                        (for [table tables
+                              :when (mi/can-read? table)]
+                          (-> table
+                              (update :segments (partial filter mi/can-read?))
+                              (update :metrics  (partial filter mi/can-read?))))))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
@@ -177,7 +208,7 @@
   (db-metadata id))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/autocomplete_suggestions ------------------------------------------------------------
+;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id prefix]
   (db/select [Table :id :db_id :schema :name]
@@ -209,7 +240,7 @@
 
 (defn- autocomplete-suggestions [db-id prefix]
   (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
-        fields (filter mi/can-read? (autocomplete-fields db-id prefix))]
+        fields (readable-fields-only (autocomplete-fields db-id prefix))]
     (autocomplete-results tables fields)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
@@ -228,35 +259,36 @@
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/fields ------------------------------------------------------------
+;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
 (api/defendpoint GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
   [id]
   (api/read-check Database id)
-  (for [{:keys [id display_name table base_type special_type]} (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :special_type]
-                                                                                                   :table_id        [:in (db/select-field :id Table, :db_id id)]
-                                                                                                   :visibility_type [:not-in ["sensitive" "retired"]])
-                                                                                        (hydrate :table)))]
-    {:id           id
-     :name         display_name
-     :base_type    base_type
-     :special_type special_type
-     :table_name   (:display_name table)
-     :schema       (:schema table)}))
+  (let [fields (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :special_type]
+                                          :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                          :visibility_type [:not-in ["sensitive" "retired"]])
+                                        (hydrate :table)))]
+    (for [{:keys [id display_name table base_type special_type]} fields]
+      {:id           id
+       :name         display_name
+       :base_type    base_type
+       :special_type special_type
+       :table_name   (:display_name table)
+       :schema       (:schema table)})))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/idfields ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
 (api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (api/read-check Database id)
   (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
-                                                                         (hydrate :table)))))
+                                                                       (hydrate :table)))))
 
 
-;;; ------------------------------------------------------------ POST /api/database ------------------------------------------------------------
+;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
 (defn- invalid-connection-response [field m]
   ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
@@ -264,21 +296,34 @@
    field    m
    :message m})
 
-(defn- test-database-connection
-  "Try out the connection details for a database and useful error message if connection fails, returns `nil` if connection succeeds."
-  [engine {:keys [host port] :as details}]
+(defn test-database-connection
+  "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
+   connection succeeds."
+  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
+                                              :or   {invalid-response-handler invalid-connection-response}}]
+  ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
   (when-not config/is-test?
     (let [engine  (keyword engine)
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
-          (and host port (u/host-port-up? host port))                           (invalid-connection-response :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-          (and host (u/host-up? host))                                          (invalid-connection-response :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-          host                                                                  (invalid-connection-response :host   (format "'%s' is not reachable" host))
-          :else                                                                 (invalid-connection-response :db     "Unable to connect to database."))
+          (driver/can-connect-with-details? engine details :rethrow-exceptions)
+          nil
+
+          (and host port (u/host-port-up? host port))
+          (invalid-response-handler :dbname (format "Connection to '%s:%d' successful, but could not connect to DB."
+                                                    host port))
+
+          (and host (u/host-up? host))
+          (invalid-response-handler :port (format "Connection to '%s' successful, but port %d is invalid." port))
+
+          host
+          (invalid-response-handler :host (format "'%s' is not reachable" host))
+
+          :else
+          (invalid-response-handler :db "Unable to connect to database."))
         (catch Throwable e
-          (invalid-connection-response :dbname (.getMessage e)))))))
+          (invalid-response-handler :dbname (.getMessage e)))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
@@ -289,44 +334,82 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(defn- test-connection-details
+(s/defn ^:private test-connection-details :- su/Map
   "Try a making a connection to database ENGINE with DETAILS.
-   Tries twice: once with SSL, and a second time without if the first fails.
-   If either attempt is successful, returns the details used to successfully connect.
-   Otherwise returns the connection error message."
-  [engine details]
-  (let [error (test-database-connection engine details)]
-    (if (and error
-             (true? (:ssl details)))
-      (recur engine (assoc details :ssl false))
-      (or error details))))
+   Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+   the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
+   will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
+  [engine :- DBEngineString, details :- su/Map]
+  (let [details (if (supports-ssl? engine)
+                  (assoc details :ssl true)
+                  details)]
+    ;; this loop tries connecting over ssl and non-ssl to establish a connection
+    ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
+    (loop [details details]
+      (let [error (test-database-connection engine details)]
+        (if (and error
+                 (true? (:ssl details)))
+          (recur (assoc details :ssl false))
+          (or error details))))))
+
+
+(def ^:private CronSchedulesMap
+  "Schema with values for a DB's schedules that can be put directly into the DB."
+  {(s/optional-key :metadata_sync_schedule)      cron-util/CronScheduleString
+   (s/optional-key :cache_field_values_schedule) cron-util/CronScheduleString})
+
+(s/defn schedule-map->cron-strings :- CronSchedulesMap
+  "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
+   Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
+   insert/update."
+  [{:keys [metadata_sync cache_field_values]} :- ExpandedSchedulesMap]
+  (cond-> {}
+    metadata_sync      (assoc :metadata_sync_schedule      (cron-util/schedule-map->cron-string metadata_sync))
+    cache_field_values (assoc :cache_field_values_schedule (cron-util/schedule-map->cron-string cache_field_values))))
+
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync]} :body}]
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules]} :body}]
   {name         su/NonBlankString
-   engine       DBEngine
+   engine       DBEngineString
    details      su/Map
-   is_full_sync (s/maybe s/Bool)}
+   is_full_sync (s/maybe s/Bool)
+   is_on_demand (s/maybe s/Bool)
+   schedules    (s/maybe ExpandedSchedulesMap)}
   (api/check-superuser)
-  ;; this function tries connecting over ssl and non-ssl to establish a connection
-  ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-  (let [details          (if (supports-ssl? engine)
-                           (assoc details :ssl true)
-                           details)
-        details-or-error (test-connection-details engine details)
-        is-full-sync?     (or (nil? is_full_sync)
-                              (boolean is_full_sync))]
+  (let [is-full-sync?    (or (nil? is_full_sync)
+                             (boolean is_full_sync))
+        details-or-error (test-connection-details engine details)]
     (if-not (false? (:valid details-or-error))
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event. Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is-full-sync?))
+      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; Throw a 500 if nothing is inserted
+      (u/prog1 (api/check-500 (db/insert! Database
+                                (merge
+                                 {:name         name
+                                  :engine       engine
+                                  :details      details-or-error
+                                  :is_full_sync is-full-sync?
+                                  :is_on_demand (boolean is_on_demand)}
+                                 (when schedules
+                                   (schedule-map->cron-strings schedules)))))
         (events/publish-event! :database-create <>))
       ;; failed to connect, return error
       {:status 400
        :body   details-or-error})))
 
+(api/defendpoint POST "/validate"
+  "Validate that we can connect to a database given a set of details."
+  ;; TODO - why do we pass the DB in under the key `details`?
+  [:as {{{:keys [engine details]} :details} :body}]
+  {engine  DBEngineString
+   details su/Map}
+  (api/check-superuser)
+  (let [details-or-error (test-connection-details engine details)]
+    {:valid (not (false? (:valid details-or-error)))}))
 
-;;; ------------------------------------------------------------ POST /api/database/sample_dataset ------------------------------------------------------------
+
+;;; --------------------------------------- POST /api/database/sample_dataset ----------------------------------------
 
 (api/defendpoint POST "/sample_dataset"
   "Add the sample dataset as a new `Database`."
@@ -336,41 +419,54 @@
   (Database :is_sample true))
 
 
-;;; ------------------------------------------------------------ PUT /api/database/:id ------------------------------------------------------------
+;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
-  {name    su/NonBlankString
-   engine  DBEngine
-   details su/Map}
+  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules]} :body}]
+  {name               (s/maybe su/NonBlankString)
+   engine             (s/maybe DBEngineString)
+   details            (s/maybe su/Map)
+   schedules          (s/maybe ExpandedSchedulesMap)
+   description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
+   caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
+   points_of_interest (s/maybe s/Str)}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
-    (let [details      (if-not (= protected-password (:password details))
-                         details
-                         (assoc details :password (get-in database [:details :password])))
-          conn-error   (test-database-connection engine details)
-          is_full_sync (when-not (nil? is_full_sync)
-                         (boolean is_full_sync))]
-      (if-not conn-error
-        ;; no error, proceed with update
-        (do
-          ;; TODO: is there really a reason to let someone change the engine on an existing database?
-          ;;       that seems like the kind of thing that will almost never work in any practical way
-          (api/check-500 (db/update-non-nil-keys! Database id
-                           :name               name
-                           :engine             engine
-                           :details            details
-                           :is_full_sync       is_full_sync
-                           :description        description
-                           :caveats            caveats
-                           :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
-          (events/publish-event! :database-update (Database id)))
+    (let [details    (if-not (= protected-password (:password details))
+                       details
+                       (assoc details :password (get-in database [:details :password])))
+          conn-error (test-database-connection engine details)
+          full-sync? (when-not (nil? is_full_sync)
+                       (boolean is_full_sync))]
+      (if conn-error
         ;; failed to connect, return error
         {:status 400
-         :body   conn-error}))))
+         :body   conn-error}
+        ;; no error, proceed with update
+        (do
+          ;; TODO - is there really a reason to let someone change the engine on an existing database?
+          ;;       that seems like the kind of thing that will almost never work in any practical way
+          ;; TODO - this means one cannot unset the description. Does that matter?
+          (api/check-500 (db/update-non-nil-keys! Database id
+                           (merge
+                            {:name               name
+                             :engine             engine
+                             :details            details
+                             :is_full_sync       full-sync?
+                             :is_on_demand       (boolean is_on_demand)
+                             :description        description
+                             :caveats            caveats
+                             :points_of_interest points_of_interest}
+                            (when schedules
+                              (schedule-map->cron-strings schedules)))))
+          (let [db (Database id)]
+            (events/publish-event! :database-update db)
+            ;; return the DB with the expanded schedules back in place
+            (add-expanded-schedules db)))))))
 
-;;; ------------------------------------------------------------ DELETE /api/database/:id ------------------------------------------------------------
+
+;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
@@ -382,14 +478,67 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
+;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
 
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
+;; NOTE Atte: This becomes maybe obsolete
 (api/defendpoint POST "/:id/sync"
-  "Update the metadata for this `Database`."
+  "Update the metadata for this `Database`. This happens asynchronously."
   [id]
   ;; just publish a message and let someone else deal with the logistics
+  ;; TODO - does this make any more sense having this extra level of indirection?
+  ;; Why not just use a future?
   (events/publish-event! :database-trigger-sync (api/write-check Database id))
+  {:status :ok})
+
+;; NOTE Atte Keinänen: If you think that these endpoints could have more descriptive names, please change them.
+;; Currently these match the titles of the admin UI buttons that call these endpoints
+
+;; Should somehow trigger sync-database/sync-database!
+(api/defendpoint POST "/:id/sync_schema"
+  "Trigger a manual update of the schema metadata for this `Database`."
+  [id]
+  (api/check-superuser)
+  ;; just wrap this in a future so it happens async
+  (api/let-404 [db (Database id)]
+    (future
+      (sync-metadata/sync-db-metadata! db)))
+  {:status :ok})
+
+;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
+
+;; Should somehow trigger cached-values/cache-field-values-for-database!
+(api/defendpoint POST "/:id/rescan_values"
+  "Trigger a manual scan of the field values for this `Database`."
+  [id]
+  (api/check-superuser)
+  ;; just wrap this is a future so it happens async
+  (api/let-404 [db (Database id)]
+    (future
+      (sync-field-values/update-field-values! db)))
+  {:status :ok})
+
+
+;; "Discard saved field values" action in db UI
+(defn- database->field-values-ids [database-or-id]
+  (map :id (db/query {:select    [[:fv.id :id]]
+                      :from      [[FieldValues :fv]]
+                      :left-join [[Field :f] [:= :fv.field_id :f.id]
+                                  [Table :t] [:= :f.table_id :t.id]]
+                      :where     [:= :t.db_id (u/get-id database-or-id)]})))
+
+(defn- delete-all-field-values-for-database! [database-or-id]
+  (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
+    (db/execute! {:delete-from FieldValues
+                  :where       [:in :id field-values-ids]})))
+
+
+;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
+(api/defendpoint POST "/:id/discard_values"
+  "Discards all saved field values for this `Database`."
+  [id]
+  (api/check-superuser)
+  (delete-all-field-values-for-database! id)
   {:status :ok})
 
 

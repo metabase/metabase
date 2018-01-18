@@ -2,14 +2,14 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRedirect } from 'react-router';
-
+import { t } from 'c-3po';
 import DataPermissionsApp from "./containers/DataPermissionsApp.jsx";
 import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp.jsx";
 import SchemasPermissionsApp from "./containers/SchemasPermissionsApp.jsx";
 import TablesPermissionsApp from "./containers/TablesPermissionsApp.jsx";
 
 const getRoutes = (store) =>
-    <Route title="Permissions" path="permissions" component={DataPermissionsApp}>
+    <Route title={t`Permissions`} path="permissions" component={DataPermissionsApp}>
         <IndexRedirect to="databases" />
         <Route path="databases" component={DatabasesPermissionsApp} />
         <Route path="databases/:databaseId/schemas" component={SchemasPermissionsApp} />

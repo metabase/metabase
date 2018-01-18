@@ -11,6 +11,8 @@ node-0() {
     MB_MYSQL_TEST_USER=ubuntu run_step lein-test
 }
 node-1() {
+    run_step lein with-profile +ci docstring-checker
+
     is_enabled "drivers" && export ENGINES="h2,sqlserver,oracle" || export ENGINES="h2"
     if is_engine_enabled "oracle"; then
         run_step install-oracle
@@ -19,6 +21,8 @@ node-1() {
         run_step lein-test
 }
 node-2() {
+    run_step lein with-profile +ci bikeshed
+
     is_enabled "drivers" && export ENGINES="h2,postgres,sqlite,presto" || export ENGINES="h2"
     if is_engine_enabled "crate"; then
         run_step install-crate
@@ -31,6 +35,9 @@ node-2() {
         run_step lein-test
 }
 node-3() {
+    run_step yarn run lint
+    run_step yarn run flow
+
     is_enabled "drivers" && export ENGINES="h2,redshift,druid,vertica" || export ENGINES="h2"
     if is_engine_enabled "vertica"; then
         run_step install-vertica
@@ -41,36 +48,47 @@ node-3() {
     fi
 }
 node-4() {
-    run_step lein bikeshed
-    run_step lein docstring-checker
     run_step ./bin/reflection-linter
+
+    run_step ./bin/build version frontend sample-dataset uberjar
+    report-frontend-size
+    report-uberjar-size
 }
 node-5() {
-    run_step lein eastwood
-    run_step yarn run lint
-    run_step yarn run test
-    run_step yarn run flow
+    run_step lein with-profile +ci eastwood
+
+    run_step yarn run test-karma
+    run_step yarn run test-unit
+    report-frontend-coverage
 }
 node-6() {
-    if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
-        run_step ./bin/build version frontend-fast sample-dataset uberjar
-    fi
-
-    # NOTE Atte Keinänen 6/23/17: Reuse the existing E2E infra for running integrated tests (they require the prebuild jar too)
-    if is_enabled "e2e"; then
-        run_step yarn run test-integrated
-    fi
-
-    # TODO Atte Keinänen 6/22/17: Disabled due to Sauce problems, all tests will be converted to use Jest and Enzyme
-    # if is_enabled "e2e" || is_enabled "compare_screenshots"; then
-    #     USE_SAUCE=true \
-    #         run_step yarn run test-e2e
-    # fi
-    # if is_enabled "screenshots"; then
-    #     run_step node_modules/.bin/babel-node ./bin/compare-screenshots
-    # fi
+    run_step ./bin/build version sample-dataset uberjar
+    run_step yarn run test-integrated
 }
 
+report() {
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  name="$1"
+  value="$2"
+  if ! [ -z ${STATS_DB+x} ]; then
+    psql "$STATS_DB" -c "INSERT INTO build_stats (timestamp, name, value, build_number, node_index, branch, hash) VALUES ('$timestamp', '$name', $value, $CIRCLE_BUILD_NUM, $CIRCLE_NODE_INDEX, '$CIRCLE_BRANCH', '$CIRCLE_SHA1');" > /dev/null
+  fi
+}
+
+report-frontend-coverage() {
+  report "frontend-coverage-lines" $(node -e "console.log(require('./coverage-summary.json').total.lines.pct)")
+  report "frontend-coverage-functions" $(node -e "console.log(require('./coverage-summary.json').total.functions.pct)")
+  report "frontend-coverage-branches" $(node -e "console.log(require('./coverage-summary.json').total.branches.pct)")
+  report "frontend-coverage-statements" $(node -e "console.log(require('./coverage-summary.json').total.statements.pct)")
+
+  report "frontend-loc" $(node -e "console.log(require('./coverage-summary.json').total.lines.total)")
+}
+report-frontend-size() {
+  report "frontend-size" "$(wc -c < resources/frontend_client/app/dist/app-main.bundle.js)"
+}
+report-uberjar-size() {
+  report "uberjar-size" "$(wc -c < target/uberjar/metabase.jar)"
+}
 
 install-crate() {
     sudo add-apt-repository ppa:crate/stable -y
@@ -102,12 +120,12 @@ install-vertica() {
 }
 
 install-presto() {
-    docker run --detach --publish 8080:8080 wiill/presto-mb-ci
+    docker run --detach --publish 8080:8080 metabase/presto-mb-ci
     sleep 10
 }
 
 lein-test() {
-    lein test
+    lein with-profile +ci test
 }
 
 if [ -z ${CIRCLE_BRANCH_REGEX+x} ]; then
@@ -137,6 +155,8 @@ run_step() {
     wait $! || status=$?
     elapsed=$(expr $(date +%s) - $start || true)
     summary="${summary}status=$status time=$elapsed command=$@\n"
+    report "run-status \"$*\"" "$status"
+    report "run-time \"$*\"" "$elapsed"
     return $status
 }
 
@@ -153,6 +173,10 @@ summary() {
 trap summary EXIT
 
 fail_fast() {
+  if [ -z ${CIRCLE_NODE_TOTAL+x} ]; then
+    return 0
+  fi
+
   echo -e "========================================"
   echo -e "Failing fast! Stopping other nodes..."
   # Touch a file to differentiate between a local failure and a
@@ -174,6 +198,10 @@ exit_early() {
 }
 
 trap exit_early SIGUSR1
+
+if [ -z ${CIRCLE_BUILD_NUM+x} ]; then
+    export CIRCLE_BUILD_NUM="-1"
+fi
 
 if [ -z ${CIRCLE_SHA1+x} ]; then
     export CIRCLE_SHA1="$(git rev-parse HEAD)"
@@ -198,7 +226,8 @@ if [ -z ${CIRCLE_NODE_INDEX+x} ]; then
     # If CIRCLE_NODE_INDEX isn't set, read node numbers from the args
     # Useful for testing locally.
     for i in "$@"; do
-        node-$i
+      export CIRCLE_NODE_INDEX="$i"
+      node-$i
     done
 else
     # Normal mode on CircleCI

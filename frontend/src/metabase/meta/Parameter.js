@@ -2,7 +2,7 @@
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TemplateTag, LocalFieldReference, ForeignFieldReference, FieldFilter } from "metabase/meta/types/Query";
-import type { Parameter, ParameterInstance, ParameterTarget, ParameterValue, ParameterValues } from "metabase/meta/types/Parameter";
+import type { Parameter, ParameterInstance, ParameterTarget, ParameterValue, ParameterValueOrArray, ParameterValues } from "metabase/meta/types/Parameter";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
@@ -60,11 +60,13 @@ type Deserializer = { testRegex: RegExp, deserialize: DeserializeFn}
 type DeserializeFn = (match: any[], fieldRef: LocalFieldReference | ForeignFieldReference) => FieldFilter;
 
 const timeParameterValueDeserializers: Deserializer[] = [
-    {testRegex: /^past([0-9]+)([a-z]+)s$/, deserialize: (matches, fieldRef) =>
-        ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]]
+    {testRegex: /^past([0-9]+)([a-z]+)s(~)?$/, deserialize: (matches, fieldRef) =>
+        // $FlowFixMe: not matching TimeIntervalFilter for some reason
+        ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]].concat(matches[2] ? [{ "include-current": true }] : [])
     },
-    {testRegex: /^next([0-9]+)([a-z]+)s$/, deserialize: (matches, fieldRef) =>
-        ["time-interval", fieldRef, parseInt(matches[0]), matches[1]]
+    {testRegex: /^next([0-9]+)([a-z]+)s(~)?$/, deserialize: (matches, fieldRef) =>
+        // $FlowFixMe: not matching TimeIntervalFilter for some reason
+        ["time-interval", fieldRef, parseInt(matches[0]), matches[1]].concat(matches[2] ? [{ "include-current": true }] : [])
     },
     {testRegex: /^this([a-z]+)$/, deserialize: (matches, fieldRef) =>
         ["time-interval", fieldRef, "current", matches[0]]
@@ -104,8 +106,13 @@ export function dateParameterValueToMBQL(parameterValue: ParameterValue, fieldRe
     }
 }
 
-export function stringParameterValueToMBQL(parameterValue: ParameterValue, fieldRef: LocalFieldReference|ForeignFieldReference): ?FieldFilter {
-    return ["=", fieldRef, parameterValue];
+export function stringParameterValueToMBQL(parameterValue: ParameterValueOrArray, fieldRef: LocalFieldReference|ForeignFieldReference): ?FieldFilter {
+    if (Array.isArray(parameterValue)) {
+        // $FlowFixMe: thinks we're returning a nested array which concat does not do
+        return ["=", fieldRef].concat(parameterValue);
+    } else {
+        return ["=", fieldRef, parameterValue];
+    }
 }
 
 export function numberParameterValueToMBQL(parameterValue: ParameterValue, fieldRef: LocalFieldReference|ForeignFieldReference): ?FieldFilter {

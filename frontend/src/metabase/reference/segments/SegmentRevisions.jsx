@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
@@ -26,7 +26,7 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 const emptyStateData =  {
-    message: "There are no revisions for this segment"
+    message: t`There are no revisions for this segment`
 }
 
 const mapStateToProps = (state, props) => {
@@ -82,7 +82,7 @@ export default class SegmentRevisions extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={`Revision history for ${this.props.segment.name}`}
+                    name={t`Revision history for ${this.props.segment.name}`}
                     headerIcon="segment"
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>

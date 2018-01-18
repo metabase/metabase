@@ -1,5 +1,5 @@
-
 import { createSelector } from 'reselect';
+import _ from "underscore";
 
 const pulsesSelector = state => state.pulse.pulses;
 const pulseIdListSelector = state => state.pulse.pulseList;
@@ -16,7 +16,20 @@ const cardIdListSelector   = state => state.pulse.cardList
 
 const usersSelector        = state => state.pulse.users
 
-const formInputSelector    = state => state.pulse.formInput
+export const formInputSelector    = state => state.pulse.formInput
+
+export const hasLoadedChannelInfoSelector = createSelector(
+    [formInputSelector],
+    (formInput) => !!formInput.channels
+)
+export const hasConfiguredAnyChannelSelector = createSelector(
+    [formInputSelector],
+    (formInput) => formInput.channels && _.some(Object.values(formInput.channels), (c) => c.configured) || false
+)
+export const hasConfiguredEmailChannelSelector = createSelector(
+    [formInputSelector],
+    (formInput) => formInput.channels && _.some(Object.values(formInput.channels), (c) => c.type === "email" && c.configured) || false
+)
 
 const cardPreviewsSelector = state => state.pulse.cardPreviews
 
@@ -25,7 +38,7 @@ const cardListSelector = createSelector(
     (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id])
 );
 
-const userListSelector = createSelector(
+export const userListSelector = createSelector(
     [usersSelector],
     (users) => Object.values(users)
 );
@@ -34,8 +47,8 @@ const getPulseId = (state, props) => props.params.pulseId ? parseInt(props.param
 
 // LIST
 export const listPulseSelectors = createSelector(
-    [getPulseId, pulseListSelector, formInputSelector],
-    (pulseId, pulses, formInput) => ({ pulseId, pulses, formInput })
+    [getPulseId, pulseListSelector, formInputSelector, hasConfiguredAnyChannelSelector],
+    (pulseId, pulses, formInput, hasConfiguredAnyChannel) => ({ pulseId, pulses, formInput, hasConfiguredAnyChannel })
 );
 
 // EDIT

@@ -1,10 +1,11 @@
 /* @flow */
 
 import React, { Component } from "react";
+import { t } from 'c-3po';
 
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
-
+import FilterOptions from "./FilterOptions";
 import DatePicker from "./pickers/DatePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
@@ -23,6 +24,7 @@ import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Que
 import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
+    maxHeight?: number,
     query: StructuredQuery,
     filter?: Filter,
     onCommitFilter: (filter: Filter) => void,
@@ -101,8 +103,10 @@ export default class FilterPopover extends Component {
 
     setValue(index: number, value: any) {
         let { filter } = this.state;
-        filter[index + 2] = value;
-        this.setState({ filter: filter });
+        // $FlowFixMe Flow doesn't like spread operator
+        let newFilter: FieldFilter = [...filter]
+        newFilter[index + 2] = value;
+        this.setState({ filter: newFilter });
     }
 
     setValues = (values: any[]) => {
@@ -225,7 +229,7 @@ export default class FilterPopover extends Component {
                     />
                 );
             }
-            return <span>not implemented {operatorField.type} {operator.multi ? "true" : "false"}</span>;
+            return <span>{t`not implemented ${operatorField.type}`} {operator.multi ? t`true` : t`false`}</span>;
         });
     }
 
@@ -238,13 +242,15 @@ export default class FilterPopover extends Component {
     render() {
         const { query } = this.props;
         const { filter } = this.state;
-        const [operator, field] = filter;
-        if (operator === "SEGMENT" || field == undefined) {
+        const [operator, fieldRef] = filter;
+
+        if (operator === "SEGMENT" || fieldRef == undefined) {
             return (
                 <div className="FilterPopover">
                     <FieldList
                         className="text-purple"
-                        field={field}
+                        maxHeight={this.props.maxHeight}
+                        field={fieldRef}
                         fieldOptions={query.filterFieldOptions(filter)}
                         segmentOptions={query.filterSegmentOptions(filter)}
                         tableMetadata={query.table()}
@@ -254,11 +260,13 @@ export default class FilterPopover extends Component {
                 </div>
             );
         } else {
-            let { table, field } = Query.getFieldTarget(filter[1], query.table());
-
+            let { table, field } = Query.getFieldTarget(fieldRef, query.table());
+            const dimension = query.parseFieldReference(fieldRef);
             return (
                 <div style={{
-                    minWidth: 300
+                    minWidth: 300,
+                    // $FlowFixMe
+                    maxWidth: dimension.field().isDate() ? null : 500
                 }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
                         <a className="cursor-pointer text-purple-hover transition-color flex align-center" onClick={this.clearField}>
@@ -284,13 +292,14 @@ export default class FilterPopover extends Component {
                             { this.renderPicker(filter, field) }
                         </div>
                     }
-                    <div className="FilterPopover-footer p1">
+                    <div className="FilterPopover-footer border-top flex align-center p2">
+                        <FilterOptions filter={filter} onFilterChange={this.setFilter} />
                         <button
                             data-ui-tag="add-filter"
-                            className={cx("Button Button--purple full", { "disabled": !this.isValid() })}
+                            className={cx("Button Button--purple ml-auto", { "disabled": !this.isValid() })}
                             onClick={() => this.commitFilter(this.state.filter)}
                         >
-                            {!this.props.filter ? "Add filter" : "Update filter"}
+                            {!this.props.filter ? t`Add filter` : t`Update filter`}
                         </button>
                     </div>
                 </div>

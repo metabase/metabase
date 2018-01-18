@@ -6,10 +6,6 @@
             [metabase.test.util :as tu]
             [toucan.db :as db]))
 
-(tu/resolve-private-vars metabase.query-processor.middleware.cache
-  is-cacheable?
-  results-are-below-max-byte-threshold?)
-
 (def ^:private mock-results
   {:row_count 8
    :status    :completed
@@ -41,48 +37,49 @@
   (cached? (maybe-return-cached-results (merge {:cache_ttl 60, :query :abc} query-kvs))))
 
 
-;;; ------------------------------------------------------------ tests for is-cacheable? ------------------------------------------------------------
+;;; -------------------------------------------- tests for is-cacheable? ---------------------------------------------
 
 ;; something is-cacheable? if it includes a cach_ttl and the caching setting is enabled
 (expect
   (tu/with-temporary-setting-values [enable-query-caching true]
-    (is-cacheable? {:cache_ttl 100})))
+    (#'cache/is-cacheable? {:cache_ttl 100})))
 
 (expect
   false
   (tu/with-temporary-setting-values [enable-query-caching false]
-    (is-cacheable? {:cache_ttl 100})))
+    (#'cache/is-cacheable? {:cache_ttl 100})))
 
 (expect
   false
   (tu/with-temporary-setting-values [enable-query-caching true]
-    (is-cacheable? {:cache_ttl nil})))
+    (#'cache/is-cacheable? {:cache_ttl nil})))
 
 
-;;; ------------------------------------------------------------ results-are-below-max-byte-threshold? ------------------------------------------------------------
+;;; ------------------------------------- results-are-below-max-byte-threshold? --------------------------------------
 
 (expect
   (tu/with-temporary-setting-values [query-caching-max-kb 128]
-    (results-are-below-max-byte-threshold? {:data {:rows [[1 "ABCDEF"]
-                                                          [3 "GHIJKL"]]}})))
+    (#'cache/results-are-below-max-byte-threshold? {:data {:rows [[1 "ABCDEF"]
+                                                                  [3 "GHIJKL"]]}})))
 
 (expect
   false
   (tu/with-temporary-setting-values [query-caching-max-kb 1]
-    (results-are-below-max-byte-threshold? {:data {:rows (repeat 500 [1 "ABCDEF"])}})))
+    (#'cache/results-are-below-max-byte-threshold? {:data {:rows (repeat 500 [1 "ABCDEF"])}})))
 
-;; check that `results-are-below-max-byte-threshold?` is lazy and fails fast if the query is over the threshold rather than serializing the entire thing
+;; check that `#'cache/results-are-below-max-byte-threshold?` is lazy and fails fast if the query is over the
+;; threshold rather than serializing the entire thing
 (expect
   false
   (let [lazy-seq-realized? (atom false)]
     (tu/with-temporary-setting-values [query-caching-max-kb 1]
-      (results-are-below-max-byte-threshold? {:data {:rows (lazy-cat (repeat 500 [1 "ABCDEF"])
-                                                                     (do (reset! lazy-seq-realized? true)
-                                                                         [2 "GHIJKL"]))}})
+      (#'cache/results-are-below-max-byte-threshold? {:data {:rows (lazy-cat (repeat 500 [1 "ABCDEF"])
+                                                                             (do (reset! lazy-seq-realized? true)
+                                                                                 [2 "GHIJKL"]))}})
       @lazy-seq-realized?)))
 
 
-;;; ------------------------------------------------------------ End-to-end middleware tests ------------------------------------------------------------
+;;; ------------------------------------------ End-to-end middleware tests -------------------------------------------
 
 ;; if there's nothing in the cache, cached results should *not* be returned
 (expect
@@ -133,9 +130,10 @@
     (run-query)
     (run-query)))
 
-;; check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should evict any entries older that `query-caching-max-ttl`.
-;; Set max-ttl to one second, run query `:abc`, then wait two seconds, and run `:def`. This should trigger the cache flush for entries past `:max-ttl`;
-;; and the cached entry for `:abc` should be deleted. Running `:abc` a subsequent time should not return cached results
+;; check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should evict any entries
+;; older that `query-caching-max-ttl`. Set max-ttl to one second, run query `:abc`, then wait two seconds, and run
+;; `:def`. This should trigger the cache flush for entries past `:max-ttl`; and the cached entry for `:abc` should be
+;; deleted. Running `:abc` a subsequent time should not return cached results
 (expect
   :not-cached
   (tu/with-temporary-setting-values [enable-query-caching  true

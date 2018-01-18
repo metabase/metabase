@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { jt } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
@@ -15,9 +15,10 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
         return [];
     }
 
-    return query.table().metrics.slice(0, 5).map(metric => ({
+    const activeMetrics = query.table().metrics.filter(m => m.isActive());
+    return activeMetrics.slice(0, 5).map(metric => ({
         name: "common-metric",
-        title: <span>View <strong>{metric.name}</strong></span>,
+        title: <span>{jt`View ${<strong>{metric.name}</strong>}`}</span>,
         question: () => question.summarize(["METRIC", metric.id])
     }));
 };

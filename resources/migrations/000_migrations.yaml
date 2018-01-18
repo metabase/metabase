@@ -3649,6 +3649,7 @@ databaseChangeLog:
   - changeSet:
       id: 56
       author: wwwiiilll
+      comment: 'Added 0.25.0'
       changes:
         - addColumn:
             tableName: core_user
@@ -3662,6 +3663,7 @@ databaseChangeLog:
   - changeSet:
       id: 57
       author: camsaul
+      comment: 'Added 0.25.0'
       changes:
         - addColumn:
             tableName: report_card
@@ -3673,6 +3675,7 @@ databaseChangeLog:
   - changeSet:
       id: 58
       author: senior
+      comment: 'Added 0.25.0'
       changes:
         - createTable:
             tableName: dimension
@@ -3741,3 +3744,257 @@ databaseChangeLog:
             columns:
               - column:
                   name: field_id
+  - changeSet:
+      id: 59
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint
+                  type: text
+                  remarks: 'Serialized JSON containing non-identifying information about this Field, such as min, max, and percent JSON. Used for classification.'
+  - changeSet:
+      id: 60
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: metadata_sync_schedule
+                  type: varchar(254)
+                  remarks: 'The cron schedule string for when this database should undergo the metadata sync process (and analysis for new fields).'
+                  defaultValue: '0 50 * * * ? *' # run at the end of every hour
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cache_field_values_schedule
+                  type: varchar(254)
+                  remarks: 'The cron schedule string for when FieldValues for eligible Fields should be updated.'
+                  defaultValue: '0 50 0 * * ? *' # run at 12:50 AM
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 61
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint_version
+                  type: int
+                  remarks: 'The version of the fingerprint for this Field. Used so we can keep track of which Fields need to be analyzed again when new things are added to fingerprints.'
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 62
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: timezone
+                  type: VARCHAR(254)
+                  remarks: 'Timezone identifier for the database, set by the sync process'
+  - changeSet:
+      id: 63
+      author: camsaul
+      comment: 'Added 0.26.0'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_on_demand
+                  type: boolean
+                  remarks: 'Whether we should do On-Demand caching of FieldValues for this DB. This means FieldValues are updated when their Field is used in a Dashboard or Card param.'
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 64
+      author: senior
+      comment: 'Added 0.26.0'
+      changes:
+      - dropForeignKeyConstraint:
+          baseTableName: raw_table
+          constraintName: fk_rawtable_ref_database
+          remarks: 'This FK prevents deleting databases even though RAW_TABLE is no longer used. The table is still around to support downgrades, but the FK reference is no longer needed.'
+# Changeset 65 was accidentally released in 0.26.0.RC2. The changeset has been removed from the migrations list so that
+# users that haven't ran the migration (i.e. they didn't run 0.26.0.RC2) won't waste time running it just to have it
+# reversed. For 0.26.0.RC2 users, the below changeset will remove those tables if they are present
+  - changeSet:
+      id: 66
+      author: senior
+      comment: 'Added 0.26.0'
+      validCheckSum: '7:e494c2c90fe5c377526da7a6e5ad63a2'
+      validCheckSum: '7:76d06b44a544105c2a613603b8bdf25f'
+      changes:
+        - sql:
+            sql: drop table if exists computation_job_result cascade
+        - sql:
+            sql: drop table if exists computation_job cascade
+# NOTE Atte Keinänen 9/28/17: This was originally in changeset 65 as explained above
+  - changeSet:
+      id: 67
+      author: attekei
+      comment: 'Added 0.27.0'
+      changes:
+        - createTable:
+            tableName: computation_job
+            remarks: 'Stores submitted async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_job_ref_user_id
+                    initiallyDeferred: false
+                    references: core_user(id)
+                  name: creator_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: computation_job_result
+            remarks: 'Stores results of async computation jobs.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  constraints:
+                    deferrable: false
+                    foreignKeyName: fk_computation_result_ref_job_id
+                    initiallyDeferred: false
+                    nullable: false
+                    references: computation_job(id)
+                  name: job_id
+                  type: int
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permanence
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+  - changeSet:
+    - id: 68
+    - author: sbelak
+    - comment: 'Added 0.27.0'
+    - changes:
+      - addColumn:
+            tableName: computation_job
+            columns:
+              - column:
+                  name: context
+                  type: text
+              - column:
+                  name: ended_at
+                  type: DATETIME
+  - changeSet:
+      id: 69
+      author: senior
+      comment: 'Added 0.27.0'
+      remarks: 'Add columns to the pulse table for alerts'
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: alert_condition
+                  type: varchar(254)
+                  remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+              - column:
+                  name: alert_first_only
+                  type: boolean
+                  remarks: 'True if the alert should be disabled after the first notification'
+              - column:
+                  name: alert_above_goal
+                  type: boolean
+                  remarks: 'For a goal condition, alert when above the goal'
+        # There is no name for an alert, so this column is only required for pulses
+        - dropNotNullConstraint:
+            tableName: pulse
+            columnName: name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: 70
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_type
+                  type: varchar(255)
+                  remarks: 'The actual type of this column in the database. e.g. VARCHAR or TEXT.'
+        # We want to enforce NOT NULL right away for all columns going forward so just put some sort of
+        # placeholder in place for existing columns.
+        - addNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_type
+            columnDataType: varchar(255)
+            defaultNullValue: '?'
+  - changeSet:
+      id: 71
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        # drop the NOT NULL constraint on DashboardCard.card_id since we're now letting you add things other than Cards
+        # to Dashboards, for example static text cards
+        - dropNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: card_id
+            columnDataType: int

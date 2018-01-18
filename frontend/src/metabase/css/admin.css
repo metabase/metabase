@@ -7,16 +7,9 @@
 }
 
 .AdminNav {
-    padding-top: 1.825em;
-    padding-bottom: 1.825em;
     background: var(--admin-nav-bg-color);
     color: #fff;
     font-size: 0.85rem;
-}
-
-.AdminGear {
-    margin-top: 0.25em;
-    margin-right: 0.5em;
 }
 
 .AdminNav .NavItem {
@@ -69,13 +62,8 @@
     margin-bottom: 0;
 }
 
-.Actions-group.Actions--dangerZone {
-    color: var(--error-color);
-}
-
-
 .Actions-groupLabel {
-    font-size: 0.85em;
+    font-size: 1em;
     margin-bottom: 1em;
 }
 
@@ -220,7 +208,6 @@
     border-radius: var(--default-border-radius);
     font-size: 14px;
     font-weight: 700;
-    margin-bottom: 3px;
     min-width: 90px;
 }
 
@@ -279,6 +266,7 @@
 
 .TableEditor-field-special-type,
 .TableEditor-field-target {
+    margin-top: 3px;
     /*color: var(--green-color);*/
 }
 

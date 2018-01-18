@@ -3,7 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./List.css";
-
+import { t } from 'c-3po';
 import Icon from "./Icon.jsx";
 import Ellipsified from "./Ellipsified.jsx";
 
@@ -26,7 +26,7 @@ const ListItem = ({ index, name, description, placeholder, url, icon }) =>
                 </Ellipsified>
             </div>
             <div className={cx(description ? S.itemSubtitle : S.itemSubtitleLight, { "mt1" : true })}>
-                {description || placeholder || 'No description yet'}
+                {description || placeholder || t`No description yet`}
             </div>
         </div>
     </div>

@@ -4,11 +4,11 @@ import { handleActions, combineReducers, createThunkAction } from "metabase/lib/
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";
 import { DashboardApi } from "metabase/services";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, createUndo } from "metabase/redux/undo";
 
-import React from "react";
 import { push } from "react-router-redux";
 import moment from 'moment';
+import React from "react";
 
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 
@@ -117,17 +117,6 @@ export const setFavorited: SetFavoritedAction = createThunkAction(SET_FAVORITED,
     }
 });
 
-// A simplified version of a similar method in questions/questions.js
-function createUndo(type, action) {
-    return {
-        type: type,
-        count: 1,
-        message: (undo) => // eslint-disable-line react/display-name
-                <div> { "Dashboard was " + type + "."} </div>,
-        actions: [action]
-    };
-}
-
 export type SetArchivedAction = (dashId: number, archived: boolean, undoable?: boolean) => void;
 export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, undoable = false) => {
     return async (dispatch, getState) => {
@@ -137,10 +126,12 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, un
         });
 
         if (undoable) {
-            dispatch(addUndo(createUndo(
-                archived ? "archived" : "unarchived",
-                setArchived(dashId, !archived)
-            )));
+            const type = archived ? "archived" : "unarchived"
+            dispatch(addUndo(createUndo({
+                type,
+                message: <div>{`Dashboard was ${type}.`}</div>,
+                action: setArchived(dashId, !archived)
+            })));
         }
 
         MetabaseAnalytics.trackEvent("Dashboard", archived ? "Archive" : "Unarchive");

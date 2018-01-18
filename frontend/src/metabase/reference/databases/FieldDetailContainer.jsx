@@ -9,6 +9,7 @@ import FieldDetail from "metabase/reference/databases/FieldDetail.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
+import { getMetadata } from "metabase/selectors/metadata";
 
 import {
     getDatabase,
@@ -18,12 +19,16 @@ import {
     getIsEditing
 } from '../selectors';
 
+import { getXrayEnabled } from 'metabase/xray/selectors'
+
 const mapStateToProps = (state, props) => ({
-    database: getDatabase(state, props),    
-    table: getTable(state, props),    
-    field: getField(state, props),    
+    database: getDatabase(state, props),
+    table: getTable(state, props),
+    field: getField(state, props),
     databaseId: getDatabaseId(state, props),
-    isEditing: getIsEditing(state, props)
+    isEditing: getIsEditing(state, props),
+    metadata: getMetadata(state, props),
+    showXray: getXrayEnabled(state)
 });
 
 const mapDispatchToProps = {
@@ -40,7 +45,9 @@ export default class FieldDetailContainer extends Component {
         databaseId: PropTypes.number.isRequired,
         table: PropTypes.object.isRequired,
         field: PropTypes.object.isRequired,
-        isEditing: PropTypes.bool
+        isEditing: PropTypes.bool,
+        metadata: PropTypes.object,
+        showXray: PropTypes.bool
     };
 
     async fetchContainerData(){
@@ -65,14 +72,15 @@ export default class FieldDetailContainer extends Component {
             database,
             table,
             field,
-            isEditing
+            isEditing,
+            showXray
         } = this.props;
 
         return (
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<FieldSidebar database={database} table={table} field={field}/>}
+                sidebar={<FieldSidebar database={database} table={table} field={field} showXray={showXray}/>}
             >
                 <FieldDetail {...this.props} />
             </SidebarLayout>

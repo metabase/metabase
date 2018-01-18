@@ -5,6 +5,7 @@ import {connect} from "react-redux";
 import {Link} from "react-router";
 import cx from "classnames";
 import _ from "underscore"
+import { t, jt } from "c-3po";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
@@ -42,19 +43,19 @@ const SECTION_ID_FAVORITES = 'fav';
 const SECTIONS: ListFilterWidgetItem[] = [
     {
         id: SECTION_ID_ALL,
-        name: 'All dashboards',
+        name: t`All dashboards`,
         icon: 'dashboard',
         // empty: 'No questions have been saved yet.',
     },
     {
         id: SECTION_ID_FAVORITES,
-        name: 'Favorites',
+        name: t`Favorites`,
         icon: 'star',
         // empty: 'You haven\'t favorited any questions yet.',
     },
     {
         id: SECTION_ID_MINE,
-        name: 'Saved by me',
+        name: t`Saved by me`,
         icon: 'mine',
         // empty:  'You haven\'t saved any questions yet.'
     },
@@ -145,25 +146,25 @@ export class Dashboards extends Component {
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading}
-                className={cx("relative px4 full-height bg-slate-extra-light", {"flex flex-full flex-column": noDashboardsCreated})}
+                className={cx("relative px4 full-height", {"flex flex-full flex-column": noDashboardsCreated})}
                 noBackground
             >
                 { modalOpen ? this.renderCreateDashboardModal() : null }
                 <div className="flex align-center pt4 pb1">
-                    <TitleAndDescription title="Dashboards"/>
+                    <TitleAndDescription title={t`Dashboards`}/>
 
                     <div className="flex-align-right cursor-pointer text-grey-5">
                         <Link to="/dashboards/archive">
                             <Icon name="viewArchive"
                                   className="mr2 text-brand-hover"
-                                  tooltip="View the archive"
+                                  tooltip={t`View the archive`}
                                   size={20}/>
                         </Link>
 
                         {!noDashboardsCreated &&
                         <Icon name="add"
                               className="text-brand-hover"
-                              tooltip="Add new dashboard"
+                              tooltip={t`Add new dashboard`}
                               size={20}
                               onClick={this.showCreateDashboard}/>
                         }
@@ -172,9 +173,9 @@ export class Dashboards extends Component {
                 { noDashboardsCreated ?
                     <div className="mt2 flex-full flex align-center justify-center">
                         <EmptyState
-                            message={<span>Put the charts and graphs you look at <br/>frequently in a single, handy place.</span>}
+                            message={<span>{jt`Put the charts and graphs you look at ${<br/>}frequently in a single, handy place.`}</span>}
                             image="/app/img/dashboard_illustration"
-                            action="Create a dashboard"
+                            action={t`Create a dashboard`}
                             onActionClick={this.showCreateDashboard}
                             className="mt2"
                             imageClassName="mln2"
@@ -199,14 +200,14 @@ export class Dashboards extends Component {
                                 <EmptyState
                                     message={
                                         <div className="mt4">
-                                            <h3 className="text-grey-5">No results found</h3>
-                                            <p className="text-grey-4">Try adjusting your filter to find what you’re
-                                                looking for.</p>
+                                            <h3 className="text-grey-5">{t`No results found`}</h3>
+                                            <p className="text-grey-4">{t`Try adjusting your filter to find what you’re
+                                                looking for.`}</p>
                                         </div>
                                     }
                                     image="/app/img/empty_dashboard"
                                     imageHeight="210px"
-                                    action="Create a dashboard"
+                                    action={t`Create a dashboard`}
                                     imageClassName="mln2"
                                     smallDescription
                                 />

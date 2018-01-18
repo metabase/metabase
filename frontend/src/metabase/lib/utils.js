@@ -37,7 +37,8 @@ var MetabaseUtils = {
     },
 
     isEmpty: function(str) {
-        return (str == null || 0 === str.length);
+        if (str != null) str = String(str); // make sure 'str' is actually a string
+        return (str == null || 0 === str.length || str.match(/^\s+$/) != null);
     },
 
     // pretty limited.  just does 0-9 for right now.
@@ -64,7 +65,7 @@ var MetabaseUtils = {
     },
 
     isJWT(string) {
-        return typeof string === "string" && /^[A-Za-z0-9]+\.[A-Za-z0-9]+\.[A-Za-z0-9_-]+$/.test(string);
+        return typeof string === "string" && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string);
     },
 
     validEmail: function(email) {

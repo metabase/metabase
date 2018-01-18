@@ -1,7 +1,9 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-
+import { connect } from 'react-redux';
+import { t, jt } from 'c-3po';
+import DirectionalButton from 'metabase/components/DirectionalButton';
 import ExpandableString from 'metabase/query_builder/components/ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
@@ -13,26 +15,43 @@ import { singularize, inflect } from 'inflection';
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isQueryable } from "metabase/lib/table";
 
+import { viewPreviousObjectDetail, viewNextObjectDetail } from 'metabase/query_builder/actions'
+
 import cx from "classnames";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-type Props = VisualizationProps;
+type Props = VisualizationProps & {
+    viewNextObjectDetail: () => void,
+    viewPreviousObjectDetail: () => void
+}
 
-export default class ObjectDetail extends Component {
-    props: Props;
+const mapStateToProps = () => ({})
 
-    static uiName = "Object Detail";
+const mapDispatchToProps = {
+    viewPreviousObjectDetail,
+    viewNextObjectDetail
+}
+
+export class ObjectDetail extends Component {
+    props: Props
+
+    static uiName = t`Object Detail`;
     static identifier = "object";
     static iconName = "document";
-    static noun = "object";
+    static noun = t`object`;
 
     static hidden = true;
 
     componentDidMount() {
         // load up FK references
         this.props.loadObjectDetailFKReferences();
+        window.addEventListener('keydown', this.onKeyDown, true)
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('keydown', this.onKeyDown, true)
     }
 
     componentWillReceiveProps(nextProps) {
@@ -69,8 +88,8 @@ export default class ObjectDetail extends Component {
             isLink = false;
         } else {
             if (value === null || value === undefined || value === "") {
-                cellValue = (<span className="text-grey-2">Empty</span>);
-            } else if (isa(value.special_type, TYPE.SerializedJSON)) {
+                cellValue = (<span className="text-grey-2">{t`Empty`}</span>);
+            } else if (isa(column.special_type, TYPE.SerializedJSON)) {
                 let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else if (typeof value === "object") {
@@ -108,7 +127,7 @@ export default class ObjectDetail extends Component {
     renderDetailsTable() {
         const { data: { cols, rows }} = this.props;
         return cols.map((column, columnIndex) =>
-            <div className="Grid mb2" key={columnIndex}>
+            <div className="Grid Grid--1of2 mb2" key={columnIndex}>
                 <div className="Grid-cell">
                     {this.cellRenderer(column, rows[0][columnIndex], true)}
                 </div>
@@ -128,7 +147,7 @@ export default class ObjectDetail extends Component {
         tableForeignKeys = tableForeignKeys.filter(fk => isQueryable(fk.origin.table));
 
         if (tableForeignKeys.length < 1) {
-            return (<p className="my4 text-centered">No relationships found.</p>);
+            return (<p className="my4 text-centered">{t`No relationships found.`}</p>);
         }
 
         const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
@@ -157,7 +176,7 @@ export default class ObjectDetail extends Component {
             );
 
             const relationName = inflect(fk.origin.table.display_name, fkCountValue);
-            const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-normal"> via {fk.origin.display_name}</span>) : null;
+            const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-normal"> {t`via ${fk.origin.display_name}`}</span>) : null;
 
             const info = (
                 <div>
@@ -200,12 +219,21 @@ export default class ObjectDetail extends Component {
         );
     }
 
+    onKeyDown = (event) => {
+        if(event.key === 'ArrowLeft') {
+            this.props.viewPreviousObjectDetail()
+        }
+        if(event.key === 'ArrowRight') {
+            this.props.viewNextObjectDetail()
+        }
+    }
+
     render() {
         if(!this.props.data) {
             return false;
         }
 
-        const tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : "Unknown";
+        const tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : t`Unknown`;
         // TODO: once we nail down the "title" column of each table this should be something other than the id
         const idValue = this.getIdValue();
 
@@ -222,7 +250,7 @@ export default class ObjectDetail extends Component {
                         <div className="p4 flex align-center text-bold text-grey-3">
                             <Icon name="connections" size={17} />
                             <div className="ml2">
-                                This <span className="text-dark">{tableName}</span> is connected to:
+                                {jt`This ${<span className="text-dark">{tableName}</span>} is connected to:`}
                             </div>
                         </div>
                     </div>
@@ -231,7 +259,27 @@ export default class ObjectDetail extends Component {
                     <div className="Grid-cell ObjectDetail-infoMain p4">{this.renderDetailsTable()}</div>
                     <div className="Grid-cell Cell--1of3 bg-alt">{this.renderRelationships()}</div>
                 </div>
+                <div
+                    className={cx("fixed left cursor-pointer text-brand-hover lg-ml2", { "disabled": idValue <= 1 })}
+                    style={{ top: '50%', left: '1em', transform: 'translate(0, -50%)' }}
+                >
+                    <DirectionalButton
+                        direction="back"
+                        onClick={this.props.viewPreviousObjectDetail}
+                    />
+                </div>
+                <div
+                    className="fixed right cursor-pointer text-brand-hover lg-ml2"
+                    style={{ top: '50%', right: '1em', transform: 'translate(0, -50%)' }}
+                >
+                    <DirectionalButton
+                        direction="forward"
+                        onClick={this.props.viewNextObjectDetail}
+                    />
+                </div>
             </div>
         );
     }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail)

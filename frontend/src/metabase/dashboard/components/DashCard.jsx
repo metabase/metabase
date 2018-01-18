@@ -56,7 +56,6 @@ export default class DashCard extends Component {
             dashcard,
             dashcardData,
             slowCards,
-            parameterValues,
             isEditing,
             isEditingParameter,
             onAddSeries,
@@ -82,14 +81,6 @@ export default class DashCard extends Component {
         const expectedDuration = Math.max(...series.map((s) => s.card.query_average_duration || 0));
         const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
         const isSlow = loading && _.some(series, (s) => s.isSlow) && (usuallyFast ? "usually-fast" : "usually-slow");
-
-        const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
-            .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
-
-        const isMappedToAllParameters = !parameterValues || Object.keys(parameterValues)
-            .filter(parameterId => parameterValues[parameterId] !== null)
-            .every(parameterId => parameterMap[parameterId]);
-
         const errors = series.map(s => s.error).filter(e => e);
 
         let errorMessage, errorIcon;
@@ -109,7 +100,6 @@ export default class DashCard extends Component {
             <div
                 className={cx("Card bordered rounded flex flex-column hover-parent hover--visibility", {
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
                 })}
             >
@@ -150,7 +140,7 @@ const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisu
         { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
-        { onReplaceAllVisualizationSettings &&
+        { onReplaceAllVisualizationSettings && !getVisualizationRaw(series).CardVisualization.disableSettingsConfig &&
             <ChartSettingsButton series={series} onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings} />
         }
         <RemoveButton onRemove={onRemove} />
@@ -160,7 +150,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     <ModalWithTrigger
         wide tall
         triggerElement={<Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />}
-        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer flex align-center flex-no-shrink"
+        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer flex align-center flex-no-shrink mr1"
     >
         <ChartSettings
             series={series}
@@ -177,17 +167,17 @@ const RemoveButton = ({ onRemove }) =>
 const AddSeriesButton = ({ series, onAddSeries }) =>
     <a
         data-metabase-event={"Dashboard;Edit Series Modal;open"}
-        className="text-grey-2 text-grey-4-hover cursor-pointer h3 flex-no-shrink relative"
+        className="text-grey-2 text-grey-4-hover cursor-pointer h3 flex-no-shrink relative mr1"
         onClick={onAddSeries}
         style={HEADER_ACTION_STYLE}
     >
         <span className="flex align-center">
-            <span className="flex" style={{ marginRight: 1 }}>
+            <span className="flex">
                 <Icon className="absolute" name="add" style={{ top: 0, left: 0 }} size={HEADER_ICON_SIZE / 2} />
                 <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE} />
             </span>
             <span className="flex-no-shrink text-bold">
-                { series.length > 1 ? "Edit" : "Add" }
+                &nbsp;{ series.length > 1 ? "Edit" : "Add" }
             </span>
         </span>
     </a>

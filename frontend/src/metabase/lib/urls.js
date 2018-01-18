@@ -1,16 +1,23 @@
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings"
+import Question from "metabase-lib/lib/Question";
 
 // provides functions for building urls to things we care about
 
+export const newQuestion = () => "/question/new";
 export function question(cardId, hash = "", query = "") {
     if (hash && typeof hash === "object") {
         hash = serializeCardForUrl(hash);
     }
     if (query && typeof query === "object") {
         query = Object.entries(query)
-            .map(kv => kv.map(encodeURIComponent).join("="))
-            .join("&");
+            .map(kv => {
+                if (Array.isArray(kv[1])) {
+                    return kv[1].map(v => `${encodeURIComponent(kv[0])}=${encodeURIComponent(v)}`).join('&');
+                } else {
+                    return kv.map(encodeURIComponent).join("=");
+                }
+            }).join("&");
     }
     if (hash && hash.charAt(0) !== "#") {
         hash = "#" + hash;
@@ -22,6 +29,10 @@ export function question(cardId, hash = "", query = "") {
     return cardId != null
         ? `/question/${cardId}${query}${hash}`
         : `/question${query}${hash}`;
+}
+
+export function plainQuestion() {
+    return Question.create({ metadata: null }).getUrl();
 }
 
 export function dashboard(dashboardId, {addCardWithId} = {}) {
@@ -62,7 +73,7 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 }
 
 export function collection(collection) {
-    return `/questions/collections/${encodeURIComponent(collection.slug)}`;
+    return `/questions/collections/${collection.slug}`;
 }
 
 export function label(label) {

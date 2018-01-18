@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
+import { t } from 'c-3po';
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
@@ -20,7 +20,7 @@ import SettingToggle from './SettingToggle';
 
 type Props = {
     setting: any,
-    updateSetting: (value: any) => void,
+    onChange: (value: any) => void,
     mappings: { [string]: number[] },
     updateMappings: (value: { [string]: number[] }) => void
 };
@@ -109,22 +109,22 @@ export default class LdapGroupMappingsWidget extends React.Component {
             <div className="flex align-center">
                 <SettingToggle {...this.props} />
                 <div className="flex align-center pt1">
-                    <Button type="button" className="ml1" medium onClick={this._showEditModal}>Edit Mappings</Button>
+                    <Button type="button" className="ml1" medium onClick={this._showEditModal}>{t`Edit Mappings`}</Button>
                 </div>
                 { showEditModal ? (
                     <Modal wide>
                         <div>
                             <div className="pt4 px4">
-                                <h2>Group Mappings</h2>
+                                <h2>{t`Group Mappings`}</h2>
                             </div>
                             <div className="px4">
-                                <Button className="float-right" primary onClick={this._showAddRow}>Create a mapping</Button>
+                                <Button className="float-right" primary onClick={this._showAddRow}>{t`Create a mapping`}</Button>
                                 <p className="text-measure">
-                                    Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
+                                    {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
                                     directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a
-                                    failsafe measure.
+                                    failsafe measure.`}
                                 </p>
-                                <AdminContentTable columnTitles={['Distinguished Name', 'Groups', '']}>
+                                <AdminContentTable columnTitles={[t`Distinguished Name`, t`Groups`, '']}>
                                     { showAddRow ? (
                                         <AddMappingRow mappings={mappings} onCancel={this._hideAddRow} onAdd={this._addMapping} />
                                     ) : null }
@@ -141,8 +141,8 @@ export default class LdapGroupMappingsWidget extends React.Component {
                                 </AdminContentTable>
                             </div>
                             <ModalFooter>
-                                <Button type="button" onClick={this._cancelClick}>Cancel</Button>
-                                <Button primary onClick={this._saveClick}>Save</Button>
+                                <Button type="button" onClick={this._cancelClick}>{t`Cancel`}</Button>
+                                <Button primary onClick={this._saveClick}>{t`Save`}</Button>
                             </ModalFooter>
                         </div>
                     </Modal>
@@ -204,8 +204,8 @@ class AddMappingRow extends React.Component {
                             autoFocus
                             onChange={(e) => this.setState({ value: e.target.value })}
                         />
-                        <span className="link no-decoration cursor-pointer" onClick={this._handleCancelClick}>Cancel</span>
-                        <Button className="ml2" primary={!!isValid} disabled={!isValid} onClick={this._handleAddClick}>Add</Button>
+                        <span className="link no-decoration cursor-pointer" onClick={this._handleCancelClick}>{t`Cancel`}</span>
+                        <Button className="ml2" primary={!!isValid} disabled={!isValid} onClick={this._handleAddClick}>{t`Add`}</Button>
                     </div>
                 </td>
             </tr>
@@ -272,7 +272,7 @@ class MappingRow extends React.Component {
                     />
                 </td>
                 <td className="Table-actions">
-                    <Button warning onClick={onDelete}>Remove</Button>
+                    <Button warning onClick={onDelete}>{t`Remove`}</Button>
                 </td>
             </tr>
         );

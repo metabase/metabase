@@ -176,10 +176,17 @@ export class InlineModal extends Component {
  * A modified version of Modal for Jest/Enzyme tests. Renders the modal content inline instead of document root.
  */
 export class TestModal extends Component {
+    static defaultProps = {
+        isOpen: true
+    }
+
     render() {
         if (this.props.isOpen) {
             return (
-                <div className="test-modal">
+                <div
+                    className="test-modal"
+                    onClick={e => e.stopPropagation()}
+                >
                     { getModalContent({
                         ...this.props,
                         fullPageModal: true,

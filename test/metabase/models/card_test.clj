@@ -186,3 +186,20 @@
   (tu/with-temporary-setting-values [enable-public-sharing false]
     (tt/with-temp Card [card {:public_uuid (str (java.util.UUID/randomUUID))}]
       (:public_uuid card))))
+
+(defn- dummy-dataset-query [database-id]
+  {:database (data/id)
+   :type     :native
+   :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
+
+(expect
+  [{:name "some name"    :database_id (data/id)}
+   {:name "another name" :database_id (data/id)}]
+  (tt/with-temp Card [{:keys [id] :as card} {:name          "some name"
+                                             :dataset_query (dummy-dataset-query (data/id))
+                                             :database_id   (data/id)}]
+    [(into {} (db/select-one [Card :name :database_id] :id id))
+     (do
+       (db/update! Card id {:name          "another name"
+                            :dataset_query (dummy-dataset-query (data/id))})
+       (into {} (db/select-one [Card :name :database_id] :id id)))]))

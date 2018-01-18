@@ -1,4 +1,3 @@
-
 import querystring from "querystring";
 
 export function parseHashOptions(hash) {
@@ -15,4 +14,15 @@ export function parseHashOptions(hash) {
 
 export function stringifyHashOptions(options) {
     return querystring.stringify(options).replace(/=true\b/g, "");
+}
+
+export function updateQueryString(location, optionsUpdater) {
+    const currentOptions = parseHashOptions(location.search.substring(1))
+    const queryString = stringifyHashOptions(optionsUpdater(currentOptions))
+
+    return {
+        pathname: location.pathname,
+        hash: location.hash,
+        search: queryString ? `?${queryString}` : null
+    };
 }

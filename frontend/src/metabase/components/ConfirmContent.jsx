@@ -1,18 +1,18 @@
 import React from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
-
+import { t } from 'c-3po';
 const nop = () => {};
 
 const ConfirmContent = ({
     title,
     content,
-    message = "Are you sure you want to do this?",
+    message = t`Are you sure you want to do this?`,
     onClose = nop,
     onAction = nop,
     onCancel = nop,
-    confirmButtonText = "Yes",
-    cancelButtonText = "No"
+    confirmButtonText = t`Yes`,
+    cancelButtonText = t`Cancel`
 }) =>
     <ModalContent
         title={title}
@@ -24,9 +24,9 @@ const ConfirmContent = ({
             <p>{message}</p>
         </div>
 
-        <div className="Form-actions">
-            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
-            <button className="Button ml1" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
+        <div className="Form-actions ml-auto">
+            <button className="Button" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
+            <button className="Button Button--danger ml2" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
         </div>
     </ModalContent>
 

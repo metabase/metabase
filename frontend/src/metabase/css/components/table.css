@@ -43,3 +43,13 @@ th { text-align: left; }
   padding: 1em;
   border: 1px solid var(--table-border-color);
 }
+
+.ComparisonTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.ComparisonTable th,
+.ComparisonTable td {
+  border-bottom: 1px solid var(--border-color);
+}
