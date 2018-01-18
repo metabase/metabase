@@ -264,15 +264,17 @@
                          (assoc :score score
                                 :query query)))))))))
 
-(defn- best-matching-rule
+(defn- matching-rules
   "Pick the most specific among applicable rules.
    Most specific is defined as entity type specification the longest ancestor
    chain."
   [rules table]
   (some->> rules
-           (filter #(isa? (:entity_type table) (:table_type %)))
+           (filter (comp (partial isa? (:entity_type table)) :table_type))
            not-empty
-           (apply max-key (comp count ancestors :table_type))))
+           (group-by (comp count ancestors :table_type))
+           (apply max-key key)
+           val))
 
 (defn- linked-tables
   "Return all tables accessable from a given table with the paths to get there.
@@ -295,39 +297,39 @@
                                [:= :special_type nil]]]})))
 
 (defn automagic-dashboard
-  "Create a dashboard for table `root` using the best matching heuristic."
+  "Create dashboards for table `root` using the best matching heuristics."
   [root]
-  (let [rule      (best-matching-rule (rules/load-rules) root)
-        context   (as-> {:root-table root
-                       :rule       (:table_type rule)
-                       :tables     (concat [root] (linked-tables root))
-                       :database   (:db_id root)} <>
-                    (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
-                    (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
-                    (assoc <> :filters (resolve-overloading <> (:filters rule))))
-        dashboard (->> (select-keys rule [:title :description])
-                       (instantiate-metadata context {}))]
-    (log/info (format "Applying heuristic %s to table %s."
-                      (:table_type rule)
-                      (:name root)))
-    (log/info (format "Dimensions bindings:\n%s"
-                      (->> context
-                           :dimensions
-                           (m/map-vals #(update % :matches (partial map :name)))
-                           u/pprint-to-str)))
-    (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                      (-> context :metrics u/pprint-to-str)
-                      (-> context :filters u/pprint-to-str)))
-    (some->> rule
-             :cards
-             (keep (comp (fn [[identifier card]]
-                           (some->> card
-                                    (card-candidates context)
-                                    not-empty
-                                    (hash-map (name identifier))))
-                         first))
-             (apply merge-with (partial max-key (comp :score first)))
-             vals
-             (apply concat)
-             (populate/create-dashboard! dashboard)
-             :id)))
+  (for [rule (matching-rules (rules/load-rules) root)]
+    (let [context   (as-> {:root-table root
+                           :rule       (:table_type rule)
+                           :tables     (concat [root] (linked-tables root))
+                           :database   (:db_id root)} <>
+                      (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
+                      (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
+                      (assoc <> :filters (resolve-overloading <> (:filters rule))))
+          dashboard (->> (select-keys rule [:title :description])
+                         (instantiate-metadata context {}))]
+      (log/info (format "Applying heuristic %s to table %s."
+                        (:table_type rule)
+                        (:name root)))
+      (log/info (format "Dimensions bindings:\n%s"
+                        (->> context
+                             :dimensions
+                             (m/map-vals #(update % :matches (partial map :name)))
+                             u/pprint-to-str)))
+      (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
+                        (-> context :metrics u/pprint-to-str)
+                        (-> context :filters u/pprint-to-str)))
+      (some->> rule
+               :cards
+               (keep (comp (fn [[identifier card]]
+                             (some->> card
+                                      (card-candidates context)
+                                      not-empty
+                                      (hash-map (name identifier))))
+                           first))
+               (apply merge-with (partial max-key (comp :score first)))
+               vals
+               (apply concat)
+               (populate/create-dashboard! dashboard)
+               :id))))
