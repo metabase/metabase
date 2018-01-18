@@ -228,6 +228,34 @@
      (send-pulse! (retrieve-pulse-or-alert pulse-id))
      (et/summarize-multipart-email #"Test card.*has reached its goal"))))
 
+;; Native query with user-specified x and y axis
+(expect
+  (rasta-alert-email "Metabase alert: Test card has reached its goal"
+                     [{"Test card.*has reached its goal" true}, png-attachment])
+  (tt/with-temp* [Card                  [{card-id :id}  {:name          "Test card"
+                                                         :dataset_query {:database (data/id)
+                                                                         :type     :native
+                                                                         :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                                "from checkins "
+                                                                                                "group by date")}}
+                                                         :display :line
+                                                         :visualization_settings {:graph.show_goal true
+                                                                                  :graph.goal_value 5.9
+                                                                                  :graph.dimensions ["the_day"]
+                                                                                  :graph.metrics ["total_per_day"]}}]
+                  Pulse                 [{pulse-id :id} {:alert_condition  "goal"
+                                                         :alert_first_only false
+                                                         :alert_above_goal true}]
+                  PulseCard             [_             {:pulse_id pulse-id
+                                                        :card_id  card-id
+                                                        :position 0}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (send-pulse! (retrieve-pulse-or-alert pulse-id))
+     (et/summarize-multipart-email #"Test card.*has reached its goal"))))
+
 ;; Above goal alert, with no data above goal
 (expect
   {}
