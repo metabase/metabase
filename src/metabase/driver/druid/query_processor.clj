@@ -586,28 +586,32 @@
 
 (defn- parse-filter-subclause:intervals [{:keys [filter-type field value] :as filter}]
   (when (instance? DateTimeField field)
-    (case filter-type
-      ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
-      :between  (let [{:keys [min-val max-val]} filter]
-                  (make-intervals min-val (i/add-date-time-units max-val 1)))
-      ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
-      :=        (make-intervals value (i/add-date-time-units value 1))
-      ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
-      :!=       (make-intervals nil value, (i/add-date-time-units value 1) nil)
-      ;; >  "2015-12-11" -> ["2015-12-12/5000"]
-      :>        (make-intervals (i/add-date-time-units value 1) nil)
-      ;; >= "2015-12-11" -> ["2015-12-11/5000"]
-      :>=       (make-intervals value nil)
-      ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
-      :<        (make-intervals nil value)
-      ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
-      :<=       (make-intervals nil (i/add-date-time-units value 1))
-      ;; This is technically allowed by the QL here but doesn't make sense since every Druid event has a timestamp.
-      ;; Just ignore it
-      :is-null  (log/warn (u/format-color 'red (str "WARNING: timestamps can never be nil. Ignoring IS_NULL filter "
-                                                    "for timestamp.")))
-      ;; :timestamp is always non-nil so nothing to do here
-      :not-null nil)))
+    (let [value (update-in value [:field :unit] (fn [unit]
+                                                  (if (= unit :default)
+                                                    :millisecond
+                                                    unit)))]
+      (case filter-type
+        ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
+        :between  (let [{:keys [min-val max-val]} filter]
+                    (make-intervals min-val (i/add-date-time-units max-val 1)))
+        ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
+        :=        (make-intervals value (i/add-date-time-units value 1))
+        ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
+        :!=       (make-intervals nil value, (i/add-date-time-units value 1) nil)
+        ;; >  "2015-12-11" -> ["2015-12-12/5000"]
+        :>        (make-intervals (i/add-date-time-units value 1) nil)
+        ;; >= "2015-12-11" -> ["2015-12-11/5000"]
+        :>=       (make-intervals value nil)
+        ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
+        :<        (make-intervals nil value)
+        ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
+        :<=       (make-intervals nil (i/add-date-time-units value 1))
+        ;; This is technically allowed by the QL here but doesn't make sense since every Druid event has a timestamp.
+        ;; Just ignore it
+        :is-null  (log/warn (u/format-color 'red (str "WARNING: timestamps can never be nil. Ignoring IS_NULL filter "
+                                                      "for timestamp.")))
+        ;; :timestamp is always non-nil so nothing to do here
+        :not-null nil))))
 
 (defn- parse-filter-clause:intervals [{:keys [compound-type subclauses], :as clause}]
   (if-not compound-type
