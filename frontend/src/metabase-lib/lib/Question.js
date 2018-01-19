@@ -315,7 +315,7 @@ export default class Question {
             // unit otherwise it will be bucketed by day
             let fieldRef = ["field-id", field.id];
             if (field.isDate()) {
-              fieldRef = ["datetime-field", fieldRef, "default"]
+                fieldRef = ["datetime-field", fieldRef, "default"];
             }
             return query
                 .reset()

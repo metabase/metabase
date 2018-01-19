@@ -64,9 +64,10 @@ export function getMode(
                         // uniqueness guarentee normally provided by primary key
                         // but if we're explicitly using the "default" unit then
                         // consider it a PK again
-                        (!isDate(field) || (
-                          Q_DEPRECATED.isDatetimeField(filter[1]) &&
-                          Q_DEPRECATED.getDatetimeUnit(filter[1]) === "default"))
+                        (!isDate(field) ||
+                            (Q_DEPRECATED.isDatetimeField(filter[1]) &&
+                                Q_DEPRECATED.getDatetimeUnit(filter[1]) ===
+                                    "default"))
                     ) {
                         return true;
                     }
@@ -74,7 +75,10 @@ export function getMode(
                 return false;
             };
             // if we know row count isn't 1 don't show ObjectMode
-            if (_.any(filters, isPKFilter) && (!result || result.row_count === 1)) {
+            if (
+                _.any(filters, isPKFilter) &&
+                (!result || result.row_count === 1)
+            ) {
                 return ObjectMode;
             } else {
                 return SegmentMode;

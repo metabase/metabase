@@ -537,7 +537,7 @@ describe("Question", () => {
 
             it("returns the correct query for a PK detail drill-through if the column is also a DateTime", () => {
                 // temporarily set the field's special_type to PK
-                cmetadata.fields[ORDERS_CREATED_DATE_FIELD_ID].special_type = "type/PK";
+                metadata.fields[ORDERS_CREATED_DATE_FIELD_ID].special_type = "type/PK";
 
                 const drilledQuestion = question.drillPK(
                     metadata.fields[ORDERS_CREATED_DATE_FIELD_ID],
