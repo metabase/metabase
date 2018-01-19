@@ -311,10 +311,16 @@ export default class Question {
     drillPK(field: Field, value: Value): ?Question {
         const query = this.query();
         if (query instanceof StructuredQuery) {
+            // NOTE: if it's a date we need to use a datetime-field with "default"
+            // unit otherwise it will be bucketed by day
+            let fieldRef = ["field-id", field.id];
+            if (field.isDate()) {
+              fieldRef = ["datetime-field", fieldRef, "default"]
+            }
             return query
                 .reset()
                 .setTable(field.table)
-                .addFilter(["=", ["field-id", field.id], value])
+                .addFilter(["=", fieldRef, value])
                 .question();
         }
     }

@@ -34,5 +34,6 @@ export type DatasetData = {
 
 export type Dataset = {
     data: DatasetData,
-    json_query: DatasetQuery
+    json_query: DatasetQuery,
+    row_count: number
 };

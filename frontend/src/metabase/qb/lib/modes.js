@@ -22,12 +22,14 @@ import DefaultMode from "../components/modes/DefaultMode";
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { QueryMode } from "metabase/meta/types/Visualization";
+import type { Dataset } from "metabase/meta/types/Dataset";
 
 import _ from "underscore";
 
 export function getMode(
     card: CardObject,
-    tableMetadata: ?TableMetadata
+    tableMetadata: ?TableMetadata,
+    result?: Dataset
 ): ?QueryMode {
     if (!card) {
         return null;
@@ -57,14 +59,22 @@ export function getMode(
                     if (
                         field &&
                         field.table.id === query.source_table &&
-                        isPK(field)
+                        isPK(field) &&
+                        // implicit bucketing by day effectively removes the
+                        // uniqueness guarentee normally provided by primary key
+                        // but if we're explicitly using the "default" unit then
+                        // consider it a PK again
+                        (!isDate(field) || (
+                          Q_DEPRECATED.isDatetimeField(filter[1]) &&
+                          Q_DEPRECATED.getDatetimeUnit(filter[1]) === "default"))
                     ) {
                         return true;
                     }
                 }
                 return false;
             };
-            if (_.any(filters, isPKFilter)) {
+            // if we know row count isn't 1 don't show ObjectMode
+            if (_.any(filters, isPKFilter) && (!result || result.row_count === 1)) {
                 return ObjectMode;
             } else {
                 return SegmentMode;

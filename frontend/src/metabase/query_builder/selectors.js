@@ -99,8 +99,8 @@ import { getMode as getMode_ } from "metabase/qb/lib/modes";
 import { getAlerts } from "metabase/alert/selectors";
 
 export const getMode = createSelector(
-    [getLastRunCard, getTableMetadata],
-    (card, tableMetadata) => getMode_(card, tableMetadata)
+    [getLastRunCard, getTableMetadata, getQueryResult],
+    (card, tableMetadata, result) => getMode_(card, tableMetadata, result)
 )
 
 export const getIsObjectDetail = createSelector(
