@@ -104,7 +104,7 @@
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   []
   (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-          :result_metadata [:not= nil]
+          :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
     (remove card-uses-unnestable-aggregation? <>)
