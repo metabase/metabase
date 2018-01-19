@@ -10,6 +10,12 @@ export function getAggregations(aggregation: ?AggregationClause): Aggregation[] 
     let aggregations: Aggregation[];
     if (Array.isArray(aggregation) && Array.isArray(aggregation[0])) {
         aggregations = (aggregation: any);
+
+        // If GA, then change format of aggregation
+        if (aggregations[0][1].includes('ga:')) {
+          aggregations = updateGAQuery(aggregations)
+        }
+
     } else if (Array.isArray(aggregation) && typeof aggregation[0] === "string") {
         // legacy
         aggregations = [(aggregation: any)];
@@ -27,6 +33,16 @@ function getAggregationClause(aggregations: Aggregation[]): ?AggregationClause {
     } else {
         return aggregations;
     }
+}
+
+function updateGAQuery(aggregations) {
+    let gaQuery = aggregations[0][1];
+    for (let i=1; i < aggregations.length; i ++) {
+      gaQuery += ", " + aggregations[i][1];
+    }
+
+    let gaAggregations = [aggregations[0][0], gaQuery]
+    return gaAggregations;
 }
 
 export function addAggregation(aggregation: ?AggregationClause, newAggregation: Aggregation): ?AggregationClause {
