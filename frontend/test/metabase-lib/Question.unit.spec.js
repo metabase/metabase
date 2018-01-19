@@ -531,6 +531,39 @@ describe("Question", () => {
                         filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 1]
                     }
                 });
+
+                expect(drilledQuestion.mode().name()).toBe("object")
+            });
+
+            it("returns the correct query for a PK detail drill-through if the column is also a DateTime", () => {
+                // temporarily set the field's special_type to PK
+                cmetadata.fields[ORDERS_CREATED_DATE_FIELD_ID].special_type = "type/PK";
+
+                const drilledQuestion = question.drillPK(
+                    metadata.fields[ORDERS_CREATED_DATE_FIELD_ID],
+                    "2013-01-19T15:00:00.000+07:00"
+                );
+
+                expect(drilledQuestion.canRun()).toBe(true);
+
+                // if I actually call the .query() method below, this blows up garbage collection =/
+                expect(drilledQuestion._card.dataset_query).toEqual({
+                    type: "query",
+                    database: DATABASE_ID,
+                    query: {
+                        source_table: ORDERS_TABLE_ID,
+                        filter: [
+                          "=",
+                          ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "default"],
+                          "2013-01-19T15:00:00.000+07:00"
+                        ]
+                    }
+                });
+
+                expect(drilledQuestion.mode().name()).toBe("object")
+
+                // restore the special_type
+                metadata.fields[ORDERS_CREATED_DATE_FIELD_ID].special_type = null;
             });
         });
     });

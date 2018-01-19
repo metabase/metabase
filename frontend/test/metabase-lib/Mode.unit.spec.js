@@ -2,6 +2,8 @@ import {
     metadata,
     DATABASE_ID,
     ORDERS_TABLE_ID,
+    ORDERS_PK_FIELD_ID,
+    ORDERS_CREATED_DATE_FIELD_ID,
     orders_raw_card
 } from "__support__/sample_dataset_fixture";
 
@@ -9,11 +11,12 @@ import Question from "metabase-lib/lib/Question";
 
 describe("Mode", () => {
     const rawDataQuestionMode = new Question(metadata, orders_raw_card).mode();
-    const timeBreakoutQuestionMode = Question.create({
+    const ordersQuestion = Question.create({
         databaseId: DATABASE_ID,
         tableId: ORDERS_TABLE_ID,
         metadata
     })
+    const timeBreakoutQuestionMode = ordersQuestion
         .query()
         .addAggregation(["count"])
         .addBreakout(["datetime-field", ["field-id", 1], "day"])
@@ -22,7 +25,7 @@ describe("Mode", () => {
         .mode();
 
     describe("forQuestion(question)", () => {
-        it("with structured query question", () => {
+        describe("with structured query question", () => {
             // testbed for generative testing? see http://leebyron.com/testcheck-js
 
             it("returns `segment` mode with raw data", () => {});
@@ -35,6 +38,51 @@ describe("Mode", () => {
             it("returns `geo` mode with >=1 aggregations and an address breakout", () => {});
 
             it("returns `pivot` mode with >=1 aggregations and 1-2 category breakouts", () => {});
+
+            it("returns `object` mode with 0 aggregations and filter on pk field", () => {
+              expect(ordersQuestion
+                  .query()
+                  .addFilter(["=", ["field-id", ORDERS_PK_FIELD_ID], 1])
+                  .question()
+                  .mode().name())
+              .toBe("object")
+            })
+
+            describe("with PK field that is also a DateTime field", () => {
+              beforeEach(() => {
+                metadata.fields[ORDERS_CREATED_DATE_FIELD_ID].special_type = "type/PK";
+              })
+              afterEach(() => {
+                metadata.fields[ORDERS_CREATED_DATE_FIELD_ID].special_type = null;
+              })
+
+              it("returns `object` mode with 0 aggregations and filter w/ 'default' unit", () => {
+                expect(ordersQuestion
+                    .query()
+                    .addFilter(["=", ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "default"], "2018-01-01"])
+                    .question()
+                    .mode().name())
+                .toBe("object")
+              })
+
+              it("returns `segment` mode with 0 aggregations and filter w/ no unit", () => {
+                expect(ordersQuestion
+                    .query()
+                    .addFilter(["=", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "2018-01-01"])
+                    .question()
+                    .mode().name())
+                .toBe("segment")
+              })
+
+              it("returns `segment` mode with 0 aggregations and filter w/ 'day' unit", () => {
+                expect(ordersQuestion
+                    .query()
+                    .addFilter(["=", ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "day"], "2018-01-01"])
+                    .question()
+                    .mode().name())
+                .toBe("segment")
+              })
+            })
 
             it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {});
             it("returns `default` mode with >=1 aggregations and >=1 breakouts when first neither date or category", () => {});
