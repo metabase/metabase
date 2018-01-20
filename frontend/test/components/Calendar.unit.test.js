@@ -1,12 +1,19 @@
 import React from "react";
 import renderer from "react-test-renderer";
 import moment from "moment";
+import mockDate from "mockdate";
 import { mount } from "enzyme";
 
 import Calendar from "../../src/metabase/components/Calendar";
 
 describe("Calendar", () => {
+    afterEach(() => {
+        mockDate.reset();
+    });
+
     it("should render correctly", () => {
+        // set the system clock to the snapshot's current date
+        mockDate.set('2018-01-12T12:00:00Z', 0);
         const tree = renderer.create(
             <Calendar selected={moment("2018-01-01")} onChange={() => {}}/>
         ).toJSON();
