@@ -193,7 +193,7 @@ export const getRoutes = (store) =>
                 <Route path="/dashboards/archive" title={t`Dashboards`} component={DashboardsArchive} />
 
                 {/* INDIVIDUAL DASHBOARDS */}
-                <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp}>
+                <Route path="/dashboard/:dashboardId" title={t`Dashboard`} component={DashboardApp}>
                     <ModalRoute path="history" modal={DashboardHistoryModal} />
                 </Route>
 
