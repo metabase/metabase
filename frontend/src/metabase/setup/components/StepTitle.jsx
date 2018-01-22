@@ -5,16 +5,16 @@ import Icon from "metabase/components/Icon.jsx";
 
 export default class StepTitle extends Component {
     static propTypes = {
-        number: PropTypes.number.isRequired,
+        circleText: PropTypes.string,
         title: PropTypes.string.isRequired
     };
 
     render() {
-        const { number, title } = this.props;
+        const { circleText, title } = this.props;
         return (
             <div className="flex align-center pt3 pb1">
                 <span className="SetupStep-indicator flex layout-centered absolute bordered">
-                    <span className="SetupStep-number">{number}</span>
+                    <span className="SetupStep-number">{circleText}</span>
                     <Icon name={'check'} className="SetupStep-check" size={16}></Icon>
                 </span>
                 <h3 style={{marginTop: 10}} className="SetupStep-title Form-offset">{title}</h3>

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# if nobody manually set a host to list on then go with $HOSTNAME
+# if nobody manually set a host to listen on then go with all available interfaces and host names
 if [ -z "$MB_JETTY_HOST" ]; then
-    export MB_JETTY_HOST=$HOSTNAME
+    export MB_JETTY_HOST=0.0.0.0
 fi
 
 
@@ -110,7 +110,14 @@ export MB_DB_FILE=$new_db_dir/$(basename $db_file)
 chown metabase:metabase $new_db_dir $new_db_dir/* 2>/dev/null  # all that fussing makes this safe
 
 # Setup Java Options
-JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -server"
+JAVA_OPTS="${JAVA_OPTS} -XX:+IgnoreUnrecognizedVMOptions"
+JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
+JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
+JAVA_OPTS="${JAVA_OPTS} -XX:+CMSClassUnloadingEnabled"              # These two needed for Java 7 to GC dynamically generated classes
+JAVA_OPTS="${JAVA_OPTS} -XX:+UseConcMarkSweepGC"
+JAVA_OPTS="${JAVA_OPTS} -server"
+JAVA_OPTS="${JAVA_OPTS} --add-opens=java.base/java.net=ALL-UNNAMED" # needed for Java 9 to allow dynamic classpath additions -- see https://github.com/tobias/dynapath
+JAVA_OPTS="${JAVA_OPTS} --add-modules=java.xml.bind"                # needed for Java 9 (Oracle VM only) because java.xml.bind is no longer on SE classpath by default since it's EE
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"

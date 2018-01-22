@@ -4,6 +4,7 @@
    as a checksum in the API response."
   (:require [buddy.core.hash :as hash]
             [cheshire.core :as json]
+            [clojure.tools.logging :as log]
             [metabase.models.humanization :as humanization]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]
@@ -32,7 +33,7 @@
                                       "Valid array of results column metadata maps")
     "value must be an array of valid results column metadata maps."))
 
-(s/defn ^:private ^:always-validate results->column-metadata :- (s/maybe ResultsMetadata)
+(s/defn ^:private results->column-metadata :- (s/maybe ResultsMetadata)
   "Return the desired storage format for the column metadata coming back from RESULTS, or `nil` if no columns were returned."
   [results]
   ;; rarely certain queries will return columns with no names, for example `SELECT COUNT(*)` in SQL Server seems to come back with no name
@@ -67,8 +68,8 @@
    write bad queries; the field literals can only refer to columns in the original 'source' query at any rate, so you
    wouldn't, for example, be able to give yourself access to columns in a different table.
 
-   However, if `MB_ENCRYPTION_SECRET_KEY` is set, we'll go ahead and use it to encypt the checksum so it becomes it becomes
-   impossible to alter the metadata and produce a correct checksum at any rate."
+   However, if `MB_ENCRYPTION_SECRET_KEY` is set, we'll go ahead and use it to encypt the checksum so it becomes it
+   becomes impossible to alter the metadata and produce a correct checksum at any rate."
   [metadata]
   (when metadata
     (encryption/maybe-encrypt (codec/base64-encode (hash/md5 (json/generate-string metadata))))))
@@ -85,14 +86,21 @@
   "Middleware that records metadata about the columns returned when running the query if it is associated with a Card."
   [qp]
   (fn [{{:keys [card-id nested?]} :info, :as query}]
-    (let [results  (qp query)
-          metadata (results->column-metadata results)]
-      ;; At the very least we can skip the Extra DB call to update this Card's metadata results
-      ;; if its DB doesn't support nested queries in the first place
-      (when (i/driver-supports? :nested-queries)
-        (when (and card-id
-                   (not nested?))
-          (record-metadata! card-id metadata)))
-      ;; add the metadata and checksum to the response
-      (assoc results :results_metadata {:checksum (metadata-checksum metadata)
-                                        :columns  metadata}))))
+    (let [results (qp query)]
+      (try
+        (let [metadata (results->column-metadata results)]
+          ;; At the very least we can skip the Extra DB call to update this Card's metadata results
+          ;; if its DB doesn't support nested queries in the first place
+          (when (i/driver-supports? :nested-queries)
+            (when (and card-id
+                       (not nested?))
+              (record-metadata! card-id metadata)))
+          ;; add the metadata and checksum to the response
+          (assoc results :results_metadata {:checksum (metadata-checksum metadata)
+                                            :columns  metadata}))
+        ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
+        ;; rather than failing the entire query
+        (catch Throwable e
+          (log/error "Error recording results metadata for query:" (.getMessage e) "\n"
+                     (u/pprint-to-str (u/filtered-stacktrace e)))
+          results)))))

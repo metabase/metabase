@@ -73,7 +73,6 @@
 /* text weight */
 .text-light  { font-weight: 300; }
 .text-normal { font-weight: 400; }
-.text-strong { font-weight: 570; }
 .text-bold, :local(.text-bold)   { font-weight: 700; }
 
 /* text style */

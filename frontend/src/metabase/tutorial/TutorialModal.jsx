@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Icon from "metabase/components/Icon.jsx";
 
 const ENABLE_BACK_BUTTON = false; // disabled due to possibility of getting in inconsistent states
@@ -21,7 +21,7 @@ export default class TutorialModal extends Component {
                 </div>
                 <div className="flex">
                     { showBackButton && <a className="text-grey-4 cursor-pointer" onClick={this.props.onBack}>back</a> }
-                    { showStepCount && <span className="text-grey-4 flex-align-right">{modalStepIndex + 1} of {modalStepCount}</span> }
+                    { showStepCount && <span className="text-grey-4 flex-align-right">{modalStepIndex + 1} {t`of`} {modalStepCount}</span> }
                 </div>
             </div>
         );

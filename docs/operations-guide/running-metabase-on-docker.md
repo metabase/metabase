@@ -25,7 +25,7 @@ To persist your data outside of the container and make it available for use betw
 
     docker run -d -p 3000:3000 -v ~/metabase-data:/metabase-data -e "MB_DB_FILE=/metabase-data/metabase.db" --name metabase metabase/metabase
 
-Now when you launch your container we are telling Metabase to use the database file at `/tmp/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
+Now when you launch your container we are telling Metabase to use the database file at `~/metabase-data/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
 
 ### Getting your config back if you stopped your container
 

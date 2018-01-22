@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import { Motion, spring } from "react-motion";
 
@@ -71,14 +71,14 @@ export default class ExpandingSearchField extends Component {
             <div
                 className={cx(
                     className,
-                    'bordered border-dark flex align-center pr2 transition-border',
+                    'bordered border-grey-1 flex align-center pr2 transition-border',
                     { 'border-brand' : active }
                 )}
                 onClick={this.setActive}
                 style={{borderRadius: 99}}
             >
                 <Icon
-                    className={cx('ml2', { 'text-brand': active })}
+                    className={cx('ml2 text-grey-3', { 'text-brand': active })}
                     name="search"
                 />
                 <Motion
@@ -87,8 +87,8 @@ export default class ExpandingSearchField extends Component {
                     { interpolatingStyle =>
                         <input
                             ref={(search) => this.searchInput = search}
-                            className="input text-bold borderless"
-                            placeholder="Search for a question..."
+                            className="input borderless text-bold"
+                            placeholder={t`Search for a question`}
                             style={Object.assign({}, interpolatingStyle, { fontSize: '1em'})}
                             onFocus={() => this.setState({ active: true })}
                             onBlur={() => this.setState({ active: false })}

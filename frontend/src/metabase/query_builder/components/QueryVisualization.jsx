@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { Link } from "react-router";
-
+import { t, jt } from 'c-3po';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -105,7 +105,7 @@ export default class QueryVisualization extends Component {
 
         let runButtonTooltip;
         if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
-            runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
+            runButtonTooltip = t`This question will take approximately ${duration(result.average_execution_time)} to refresh`;
         }
 
         const messages = [];
@@ -114,7 +114,7 @@ export default class QueryVisualization extends Component {
                 icon: "clock",
                 message: (
                     <div>
-                        Updated {moment(result.updated_at).fromNow()}
+                        {t`Updated ${moment(result.updated_at).fromNow()}`}
                     </div>
                 )
             })
@@ -123,10 +123,9 @@ export default class QueryVisualization extends Component {
             messages.push({
                 icon: "table2",
                 message: (
-                    <div>
-                        { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
-                        <strong>{formatNumber(result.row_count)}</strong>
-                        { " " + inflect("row", result.data.rows.length) }
+                    // class name is included for the sake of making targeting the element in tests easier
+                    <div className="ShownRowCount">
+                        {jt`${ result.data.rows_truncated != null ? (t`Showing first`) : (t`Showing`)} ${<strong>{formatNumber(result.row_count)}</strong>} ${inflect("row", result.data.rows.length)}`}
                     </div>
                 )
             })
@@ -231,7 +230,7 @@ export default class QueryVisualization extends Component {
                 { isRunning && (
                     <div className="Loading spread flex flex-column layout-centered text-brand z2">
                         <LoadingSpinner />
-                        <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
+                        <h2 className="Loading-message text-brand text-uppercase my3">{t`Doing science`}...</h2>
                     </div>
                 )}
                 <div className={visualizationClasses}>
@@ -244,6 +243,6 @@ export default class QueryVisualization extends Component {
 
 export const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
-        <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-        { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">How do I use this thing?</Link> }
+        <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
+        { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">{t`How do I use this thing?`}</Link> }
     </div>;

@@ -144,8 +144,4 @@
   query). Then delegates to `remap-results` to munge the results after
   query execution."
   [qp]
-  (fn [query]
-    (-> query
-        add-fk-remaps
-        qp
-        remap-results)))
+  (comp remap-results qp add-fk-remaps))

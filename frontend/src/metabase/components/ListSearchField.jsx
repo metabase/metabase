@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
-
+import { t } from 'c-3po';
 
 export default class ListSearchField extends Component {
 
@@ -16,7 +16,7 @@ export default class ListSearchField extends Component {
     static defaultProps = {
         className: "bordered rounded text-grey-2 flex flex-full align-center",
         inputClassName: "p1 h4 input--borderless text-default flex-full",
-        placeholder: "Find...",
+        placeholder: t`Find...`,
         searchText: "",
         autoFocus: false
     };
@@ -26,7 +26,7 @@ export default class ListSearchField extends Component {
             // Call focus() with a small delay because instant input focus causes an abrupt scroll to top of page
             // when ListSearchField is used inside a popover. It seems that it takes a while for Tether library
             // to correctly position the popover.
-            setTimeout(() => this.refs.input.focus(), 50);
+            setTimeout(() => this._input && this._input.focus(), 50);
         }
     }
 
@@ -44,7 +44,7 @@ export default class ListSearchField extends Component {
                     placeholder={placeholder}
                     value={searchText}
                     onChange={(e) => onChange(e.target.value)}
-                    ref="input"
+                    ref={input => this._input = input}
                 />
             </div>
         );

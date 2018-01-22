@@ -1,16 +1,21 @@
 (ns metabase.api.embed-test
+  "Tests for /api/embed endpoints."
   (:require [buddy.sign.jwt :as jwt]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
+             [config :as config]
              [http-client :as http]
              [util :as u]]
-            [metabase.api.public-test :as public-test]
+            [metabase.api
+             [embed :as embed-api]
+             [public-test :as public-test]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -45,7 +50,9 @@
 (defmacro with-temp-dashcard {:style/indent 1} [[dashcard-binding {:keys [dash card dashcard]}] & body]
   `(with-temp-card [card# ~card]
      (tt/with-temp* [Dashboard     [dash# ~dash]
-                     DashboardCard [~dashcard-binding (merge {:card_id (u/get-id card#), :dashboard_id (u/get-id dash#)} ~dashcard)]]
+                     DashboardCard [~dashcard-binding (merge {:card_id      (u/get-id card#)
+                                                              :dashboard_id (u/get-id dash#)}
+                                                             ~dashcard)]]
        ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
@@ -56,9 +63,9 @@
 (defn successful-query-results
   ([]
    {:data       {:columns ["count"]
-                 :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count", :source "aggregation",
-                            :extra_info {}, :id nil, :target nil, :display_name "count", :base_type "type/Integer"
-                            :remapped_from nil, :remapped_to nil}]
+                 :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count",
+                            :source "aggregation", :extra_info {}, :id nil, :target nil, :display_name "count",
+                            :base_type "type/Integer", :remapped_from nil, :remapped_to nil}]
                  :rows    [[100]]}
     :json_query {:parameters []}
     :status     "completed"})
@@ -92,7 +99,7 @@
   {:description nil, :parameters (), :ordered_cards (), :param_values nil})
 
 
-;; ------------------------------------------------------------ GET /api/embed/card/:token ------------------------------------------------------------
+;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
 (defn- card-url [card & [additional-token-params]] (str "embed/card/" (card-token card additional-token-params)))
 
@@ -119,7 +126,8 @@
     (with-temp-card [card]
       (http/client :get 400 (card-url card)))))
 
-;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong key
+;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong
+;; key
 (expect
   "Message seems corrupt or manipulated."
   (with-embedding-enabled-and-new-secret-key
@@ -139,7 +147,7 @@
       (:parameters (http/client :get 200 (card-url card {:params {:c 100}}))))))
 
 
-;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants)  ------------------------------------------------------------
+;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
 (defn- card-query-url [card response-format & [additional-token-params]]
   (str "embed/card/"
@@ -147,7 +155,9 @@
        "/query"
        response-format))
 
-(defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding request-options-binding] expected actual]
+(defmacro ^:private expect-for-response-formats
+  {:style/indent 1}
+  [[response-format-binding request-options-binding] expected actual]
   `(do
      ~@(for [[response-format request-options] [[""] ["/json"] ["/csv"] ["/xlsx" {:as :byte-array}]]]
          `(expect
@@ -165,11 +175,14 @@
     (with-temp-card [card {:enable_embedding true}]
       (http/client :get 200 (card-query-url card response-format) request-options))))
 
-;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking query info)
+;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking
+;; query info)
 (expect-for-response-formats [response-format]
   "An error occurred while running the query."
   (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id), :type :native, :native {:query "SELECT * FROM XYZ"}}}]
+    (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
+                                                                   :type     :native
+                                                                   :native   {:query "SELECT * FROM XYZ"}}}]
       (http/client :get 400 (card-query-url card response-format)))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
@@ -187,16 +200,19 @@
     (with-temp-card [card]
       (http/client :get 400 (card-query-url card response-format)))))
 
-;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong key
+;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong
+;; key
 (expect-for-response-formats [response-format]
   "Message seems corrupt or manipulated."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
       (http/client :get 400 (with-new-secret-key (card-query-url card response-format))))))
 
+
 ;;; LOCKED params
 
-;; check that if embedding is enabled globally and for the object requests fail if the token is missing a `:locked` parameter
+;; check that if embedding is enabled globally and for the object requests fail if the token is missing a `:locked`
+;; parameter
 (expect-for-response-formats [response-format]
   "You must specify a value for :abc in the JWT."
   (with-embedding-enabled-and-new-secret-key
@@ -216,6 +232,7 @@
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "locked"}}]
       (http/client :get 400 (str (card-query-url card response-format {:params {:abc 100}}) "?abc=100")))))
+
 
 ;;; DISABLED params
 
@@ -257,9 +274,40 @@
       (http/client :get 200 (str (card-query-url card response-format) "?abc=200") request-options))))
 
 
-;; ------------------------------------------------------------ GET /api/embed/dashboard/:token ------------------------------------------------------------
+;; make sure CSV (etc.) downloads take editable params into account (#6407)
 
-(defn- dashboard-url [dashboard & [additional-token-params]] (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
+(defn- card-with-date-field-filter []
+  {:dataset_query    {:database (data/id)
+                      :type     :native
+                      :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
+                                 :template_tags {:date {:name         "date"
+                                                        :display_name "Date"
+                                                        :type         "dimension"
+                                                        :dimension    [:field-id (data/id :checkins :date)]
+                                                        :widget_type  "date/quarter-year"}}}}
+   :enable_embedding true
+   :embedding_params {:date :enabled}})
+
+(expect
+  "count\n107\n"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [card (card-with-date-field-filter)]
+      (http/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014")))))
+
+;; make sure it also works with the forwarded URL
+(expect
+  "count\n107\n"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [card (card-with-date-field-filter)]
+      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
+        (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))
+
+
+;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
+
+(defn- dashboard-url [dashboard & [additional-token-params]]
+  (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
 
 ;; it should be possible to call this endpoint successfully
 (expect
@@ -284,7 +332,8 @@
     (tt/with-temp Dashboard [dash]
       (http/client :get 400 (dashboard-url dash)))))
 
-;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong key
+;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong
+;; key
 (expect
   "Message seems corrupt or manipulated."
   (with-embedding-enabled-and-new-secret-key
@@ -304,7 +353,7 @@
       (:parameters (http/client :get 200 (dashboard-url dash {:params {:c 100}}))))))
 
 
-;; ------------------------------------------------------------ GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id ------------------------------------------------------------
+;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
 (defn- dashcard-url [dashcard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
@@ -318,12 +367,15 @@
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
       (http/client :get 200 (dashcard-url dashcard)))))
 
-;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking query info)
+;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking
+;; query info)
 (expect
   "An error occurred while running the query."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                   :card {:dataset_query {:database (data/id), :type :native, :native {:query "SELECT * FROM XYZ"}}}}]
+                                   :card {:dataset_query {:database (data/id)
+                                                          :type     :native,
+                                                          :native   {:query "SELECT * FROM XYZ"}}}}]
       (http/client :get 400 (dashcard-url dashcard)))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
@@ -341,7 +393,8 @@
     (with-temp-dashcard [dashcard]
       (http/client :get 400 (dashcard-url dashcard)))))
 
-;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong key
+;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong
+;; key
 (expect
   "Message seems corrupt or manipulated."
   (with-embedding-enabled-and-new-secret-key
@@ -350,7 +403,8 @@
 
 ;;; LOCKED params
 
-;; check that if embedding is enabled globally and for the object requests fail if the token is missing a `:locked` parameter
+;; check that if embedding is enabled globally and for the object requests fail if the token is missing a `:locked`
+;; parameter
 (expect
   "You must specify a value for :abc in the JWT."
   (with-embedding-enabled-and-new-secret-key
@@ -411,12 +465,23 @@
       (http/client :get 200 (str (dashcard-url dashcard) "?abc=200")))))
 
 
-;;; ------------------------------------------------------------ Other Tests ------------------------------------------------------------
+;;; -------------------------------------------------- Other Tests ---------------------------------------------------
 
-(tu/resolve-private-vars metabase.api.embed
-  remove-locked-and-disabled-params)
-
-;; parameters that are not in the `embedding-params` map at all should get removed by `remove-locked-and-disabled-params`
+;; parameters that are not in the `embedding-params` map at all should get removed by
+;; `remove-locked-and-disabled-params`
 (expect
   {:parameters []}
-  (remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))
+  (#'embed-api/remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))
+
+;; make sure that multiline series word as expected (#4768)
+(expect
+  "completed"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Card [series-card {:dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}}}]
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (tt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/get-id dashcard)
+                                                   :card_id          (u/get-id series-card)
+                                                   :position         0}]
+          (:status (http/client :get 200 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card)))))))))))

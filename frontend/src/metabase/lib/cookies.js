@@ -4,6 +4,7 @@ import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 import Cookies from "js-cookie";
 
 export const METABASE_SESSION_COOKIE = 'metabase.SESSION_ID';
+export const METABASE_SEEN_ALERT_SPLASH_COOKIE = 'metabase.SEEN_ALERT_SPLASH'
 
 // Handles management of Metabase cookie work
 var MetabaseCookies = {
@@ -30,6 +31,29 @@ var MetabaseCookies = {
             }
         } catch (e) {
             console.error("setSessionCookie:", e);
+        }
+    },
+
+    setHasSeenAlertSplash: (hasSeen) => {
+        const options = {
+            path: window.MetabaseRoot || '/',
+            expires: 365,
+            secure: window.location.protocol === "https:"
+        };
+
+        try {
+            Cookies.set(METABASE_SEEN_ALERT_SPLASH_COOKIE, hasSeen, options);
+        } catch (e) {
+            console.error("setSeenAlertSplash:", e);
+        }
+    },
+
+    getHasSeenAlertSplash: () => {
+        try {
+            return Cookies.get(METABASE_SEEN_ALERT_SPLASH_COOKIE) || false;
+        } catch(e) {
+            console.error("getSeenAlertSplash:", e);
+            return false;
         }
     }
 }

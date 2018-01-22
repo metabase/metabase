@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
-
+import { t } from 'c-3po';
 import AdminLayout from "metabase/components/AdminLayout.jsx";
 
 import SettingsSetting from "../components/SettingsSetting.jsx";
@@ -16,6 +16,7 @@ import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
 import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
+import SettingsXrayForm from "../components/SettingsXrayForm.jsx";
 
 import { prepareAnalyticsValue } from 'metabase/admin/settings/utils'
 
@@ -48,6 +49,8 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
+    layout = null // the reference to AdminLayout
+
     static propTypes = {
         sections: PropTypes.array.isRequired,
         activeSection: PropTypes.object,
@@ -63,9 +66,9 @@ export default class SettingsEditorApp extends Component {
     }
 
     updateSetting = async (setting, newValue) => {
-        const { settings, settingValues, updateSetting } = this.props;
+        const { settingValues, updateSetting } = this.props;
 
-        this.refs.layout.setSaving();
+        this.layout.setSaving();
 
         const oldValue = setting.value;
 
@@ -75,17 +78,10 @@ export default class SettingsEditorApp extends Component {
             await updateSetting(setting);
 
             if (setting.onChanged) {
-                await setting.onChanged(oldValue, newValue, settingValues, (key, value) => {
-                    let setting = _.findWhere(settings, { key });
-                    if (!setting) {
-                        throw new Error("Unknown setting " + key);
-                    }
-                    setting.value = value;
-                    return updateSetting(setting);
-                })
+                await setting.onChanged(oldValue, newValue, settingValues, this.handleChangeSetting)
             }
 
-            this.refs.layout.setSaved();
+            this.layout.setSaved();
 
             const value = prepareAnalyticsValue(setting);
 
@@ -98,9 +94,18 @@ export default class SettingsEditorApp extends Component {
             );
         } catch (error) {
             let message = error && (error.message || (error.data && error.data.message));
-            this.refs.layout.setSaveError(message);
+            this.layout.setSaveError(message);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         }
+    }
+
+    handleChangeSetting = (key, value) => {
+        const { settings, updateSetting } = this.props;
+        const setting = _.findWhere(settings, { key });
+        if (!setting) {
+            throw new Error(t`Unknown setting ${key}`);
+        }
+        return updateSetting({ ...setting, value });
     }
 
     renderSettingsPane() {
@@ -165,6 +170,14 @@ export default class SettingsEditorApp extends Component {
             } else {
                 return (<SettingsAuthenticationOptions />)
             }
+        } else if (activeSection.name === "X-Rays") {
+            return (
+                <SettingsXrayForm
+                    settings={this.props.settings}
+                    elements={activeSection.settings}
+                    updateSetting={this.updateSetting.bind(this)}
+                />
+            )
         } else {
             return (
                 <ul>
@@ -176,7 +189,8 @@ export default class SettingsEditorApp extends Component {
                         <SettingsSetting
                             key={setting.key}
                             setting={setting}
-                            updateSetting={this.updateSetting.bind(this, setting)}
+                            onChange={this.updateSetting.bind(this, setting)}
+                            onChangeSetting={this.handleChangeSetting}
                             reloadSettings={this.props.reloadSettings}
                             autoFocus={index === 0}
                             settingValues={settingValues}
@@ -232,8 +246,8 @@ export default class SettingsEditorApp extends Component {
     render() {
         return (
             <AdminLayout
-                ref="layout"
-                title="Settings"
+                ref={(layout) => this.layout = layout}
+                title={t`Settings`}
                 sidebar={this.renderSettingsSections()}
             >
                 {this.renderSettingsPane()}

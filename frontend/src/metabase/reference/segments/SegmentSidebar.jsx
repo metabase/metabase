@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import S from "metabase/components/Sidebar.css";
-
+import { t } from 'c-3po';
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import SidebarItem from "metabase/components/SidebarItem.jsx"
 
@@ -20,30 +20,34 @@ const SegmentSidebar = ({
             <div className={S.breadcrumbs}>
                 <Breadcrumbs
                     className="py4"
-                    crumbs={[["Segments","/reference/segments"],
+                    crumbs={[[t`Segments`,"/reference/segments"],
                              [segment.name]]}
                     inSidebar={true}
-                    placeholder="Data Reference"
+                    placeholder={t`Data Reference`}
                 />
             </div>
-                <SidebarItem key={`/reference/segments/${segment.id}`} 
-                             href={`/reference/segments/${segment.id}`} 
-                             icon="document" 
-                             name="Details" />
-                <SidebarItem key={`/reference/segments/${segment.id}/fields`} 
-                             href={`/reference/segments/${segment.id}/fields`} 
-                             icon="fields" 
-                             name="Fields in this segment" />
-                <SidebarItem key={`/reference/segments/${segment.id}/questions`} 
-                             href={`/reference/segments/${segment.id}/questions`} 
-                             icon="all" 
-                             name={`Questions about this segment`} />
+                <SidebarItem key={`/reference/segments/${segment.id}`}
+                             href={`/reference/segments/${segment.id}`}
+                             icon="document"
+                             name={t`Details`} />
+                <SidebarItem key={`/reference/segments/${segment.id}/fields`}
+                             href={`/reference/segments/${segment.id}/fields`}
+                             icon="fields"
+                             name={t`Fields in this segment`} />
+                <SidebarItem key={`/reference/segments/${segment.id}/questions`}
+                             href={`/reference/segments/${segment.id}/questions`}
+                             icon="all"
+                             name={t`Questions about this segment`} />
+                <SidebarItem key={`/xray/segment/${segment.id}/approximate`}
+                             href={`/xray/segment/${segment.id}/approximate`}
+                             icon="all"
+                             name={t`X-ray this segment`} />
              { user && user.is_superuser &&
 
                 <SidebarItem key={`/reference/segments/${segment.id}/revisions`}
                              href={`/reference/segments/${segment.id}/revisions`}
-                             icon="history" 
-                             name={`Revision history`} />
+                             icon="history"
+                             name={t`Revision history`} />
              }
         </ul>
     </div>
@@ -56,4 +60,3 @@ SegmentSidebar.propTypes = {
 };
 
 export default pure(SegmentSidebar);
-

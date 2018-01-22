@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
@@ -103,7 +103,7 @@ class ChartSettings extends Component {
         const { series } = this.state;
 
         const tabs = {};
-        for (let widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
+        for (const widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
             tabs[widget.section] = tabs[widget.section] || [];
             tabs[widget.section].push(widget);
         }
@@ -118,11 +118,10 @@ class ChartSettings extends Component {
         const tabNames = Object.keys(tabs);
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
-        const isDirty = !_.isEqual(this.props.series[0].card.visualization_settings, this.state.settings);
 
         return (
             <div className="flex flex-column spread p4">
-                <h2 className="my2">Customize this {this.getChartTypeName()}</h2>
+                <h2 className="my2">{t`Customize this ${this.getChartTypeName()}`}</h2>
 
                 { tabNames.length > 1 &&
                     <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
@@ -152,11 +151,14 @@ class ChartSettings extends Component {
                     </div>
                 </div>
                 <div className="pt1">
-                  <a className={cx("Button Button--primary", { disabled: !isDirty })} onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
-                  <a className="text-grey-2 ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
-                  { !_.isEqual(this.state.settings, {}) &&
-                      <a className="Button Button--warning float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
-                  }
+                    { !_.isEqual(this.state.settings, {}) &&
+                        <a className="Button Button--danger float-right" onClick={this.onResetSettings} data-metabase-event="Chart Settings;Reset">{t`Reset to defaults`}</a>
+                    }
+
+                    <div className="float-left">
+                      <a className="Button Button--primary ml2" onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">{t`Done`}</a>
+                      <a className="Button ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">{t`Cancel`}</a>
+                    </div>
                 </div>
             </div>
         );

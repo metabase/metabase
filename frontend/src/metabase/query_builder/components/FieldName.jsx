@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";
 
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { AggregationDimension } from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -15,7 +15,8 @@ export default class FieldName extends Component {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         onClick: PropTypes.func,
         removeField: PropTypes.func,
-        tableMetadata: PropTypes.object.isRequired
+        tableMetadata: PropTypes.object.isRequired,
+        query: PropTypes.object
     };
 
     static defaultProps = {
@@ -30,14 +31,20 @@ export default class FieldName extends Component {
     }
 
     render() {
-        let { field, tableMetadata, className } = this.props;
+        let { field, tableMetadata, query, className } = this.props;
 
         let parts = [];
 
         if (field) {
             const dimension = Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
             if (dimension) {
-                parts = dimension.render();
+                if (dimension instanceof AggregationDimension) {
+                    // Aggregation dimension doesn't know about its relation to the current query
+                    // so we have to infer the display name of aggregation here
+                    parts = <span key="field">{query.aggregations()[dimension.aggregationIndex()][0]}</span>
+                } else {
+                    parts = <span key="field">{dimension.render()}</span>;
+                }
             }
             // TODO Atte Keinänen 6/23/17: Move nested queries logic to Dimension subclasses
             // if the Field in question is a field literal, e.g. ["field-literal", <name>, <type>] just use name as-is
@@ -49,10 +56,10 @@ export default class FieldName extends Component {
             else if (Query.isLocalField(field) && Query.isFieldLiteral(field[1])) {
                 parts.push(<span key="field">{this.displayNameForFieldLiteral(tableMetadata, field[1])}</span>);
             } else {
-                parts.push(<span key="field">Unknown Field</span>);
+                parts.push(<span key="field">{t`Unknown Field`}</span>);
             }
         } else {
-            parts.push(<span key="field" className={"text-grey-2"}>field</span>)
+            parts.push(<span key="field" className={"text-grey-2"}>{t`field`}</span>)
         }
 
         return (

@@ -2,7 +2,7 @@ import React from "react";
 
 import inflection from "inflection";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
@@ -13,6 +13,7 @@ import { format as formatExpression } from "metabase/lib/expressions/formatter";
 import * as Table from "./query/table";
 
 import * as Q from "./query/query";
+import * as F from "./query/field";
 import { mbql, mbqlEq } from "./query/util";
 
 export const NEW_QUERY_TEMPLATES = {
@@ -323,6 +324,8 @@ var Query = {
         return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
     },
 
+    isBinningStrategy: F.isBinningStrategy,
+
     isExpressionField(field) {
         return Array.isArray(field) && field.length === 2 && mbqlEq(field[0], "expression");
     },
@@ -371,6 +374,8 @@ var Query = {
             return Query.getFieldTargetId(field[2]);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTargetId(field[1]);
+        } else if (Query.isBinningStrategy(field)) {
+            return Query.getFieldTargetId(field[1]);
         } else if (Query.isFieldLiteral(field)) {
             return field;
         }
@@ -392,6 +397,8 @@ var Query = {
                 ...Query.getFieldTarget(field[1], tableDef, path),
                 unit: Query.getDatetimeUnit(field)
             };
+        } else if (Query.isBinningStrategy(field)) {
+            return Query.getFieldTarget(field[1], tableDef, path);
         } else if (Query.isExpressionField(field)) {
             // hmmm, since this is a dynamic field we'll need to build this here
             let fieldDef = {
@@ -509,16 +516,16 @@ var Query = {
                 return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
             }
             switch (aggregation[0]) {
-                case "rows":      return           ["Raw data"];
-                case "count":     return              ["Count"];
-                case "cum_count": return   ["Cumulative count"];
-                case "avg":       return            ["Average of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "distinct":  return    ["Distinct values of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "stddev":    return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "sum":       return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "cum_sum":   return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "max":       return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "min":       return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "rows":      return           [t`Raw data`];
+                case "count":     return              [t`Count`];
+                case "cum_count": return   [t`Cumulative count`];
+                case "avg":       return            [t`Average of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "distinct":  return    [t`Distinct values of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "stddev":    return [t`Standard deviation of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "sum":       return                [t`Sum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "cum_sum":   return     [t`Cumulative sum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "max":       return            [t`Maximum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "min":       return            [t`Minimum of `, Query.getFieldName(tableMetadata, aggregation[1], options)];
                 default:          return [formatExpression(aggregation, { tableMetadata })]
             }
         }), "and");
@@ -526,7 +533,7 @@ var Query = {
 
     getBreakoutDescription(tableMetadata, { breakout }, options) {
         if (breakout && breakout.length > 0) {
-            return ["Grouped by ", joinList(breakout.map((b) => Query.getFieldName(tableMetadata, b, options)), " and ")];
+            return [t`Grouped by `, joinList(breakout.map((b) => Query.getFieldName(tableMetadata, b, options)), " and ")];
         }
     },
 
@@ -534,7 +541,7 @@ var Query = {
         // getFilters returns list of filters without the implied "AND"
         let filters = ["AND"].concat(Query.getFilters(query));
         if (filters && filters.length > 1) {
-            return ["Filtered by ", Query.getFilterClauseDescription(tableMetadata, filters, options)];
+            return [t`Filtered by `, Query.getFilterClauseDescription(tableMetadata, filters, options)];
         }
     },
 
@@ -553,7 +560,7 @@ var Query = {
 
     getOrderByDescription(tableMetadata, { order_by }, options) {
         if (order_by && order_by.length > 0) {
-            return ["Sorted by ", joinList(order_by.map(o => Query.getFieldName(tableMetadata, o[0], options) + " " + o[1]), " and ")];
+            return [t`Sorted by `, joinList(order_by.map(o => Query.getFieldName(tableMetadata, o[0], options) + " " + o[1]), " and ")];
         }
     },
 

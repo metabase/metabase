@@ -76,7 +76,9 @@ export default (ComposedComponent: ReactClass<any>) =>
             }
 
             loadDashboardParams = () => {
-                let options = parseHashOptions(window.location.hash);
+                const { location } = this.props;
+
+                let options = parseHashOptions(location.hash);
                 this.setRefreshPeriod(
                     Number.isNaN(options.refresh) || options.refresh === 0
                         ? null
@@ -87,7 +89,9 @@ export default (ComposedComponent: ReactClass<any>) =>
             };
 
             updateDashboardParams = () => {
-                let options = parseHashOptions(window.location.hash);
+                const { location, replace } = this.props;
+
+                let options = parseHashOptions(location.hash);
                 const setValue = (name, value) => {
                     if (value) {
                         options[name] = value;
@@ -109,7 +113,6 @@ export default (ComposedComponent: ReactClass<any>) =>
                 let hash = stringifyHashOptions(options);
                 hash = hash ? "#" + hash : "";
 
-                const { location, replace } = this.props;
                 if (hash !== location.hash) {
                     replace({
                         pathname: location.pathname,
@@ -184,11 +187,15 @@ export default (ComposedComponent: ReactClass<any>) =>
             }
 
             _showNav(show) {
-                const nav = document.querySelector(".Nav");
-                if (show && nav) {
-                    nav.classList.remove("hide");
-                } else if (!show && nav) {
-                    nav.classList.add("hide");
+                // NOTE Atte Keinänen 8/10/17: For some reason `document` object isn't present in Jest tests
+                // when _showNav is called for the first time
+                if (window.document) {
+                    const nav = window.document.querySelector(".Nav");
+                    if (show && nav) {
+                        nav.classList.remove("hide");
+                    } else if (!show && nav) {
+                        nav.classList.add("hide");
+                    }
                 }
             }
 

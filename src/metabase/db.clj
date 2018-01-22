@@ -21,9 +21,9 @@
            liquibase.Liquibase
            liquibase.resource.ClassLoaderResourceAccessor))
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                              DB FILE & CONNECTION DETAILS                                              |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          DB FILE & CONNECTION DETAILS                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
@@ -42,7 +42,8 @@
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
 (defn- parse-connection-string
-  "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
+  "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory`
+  and return a broken-out map."
   [uri]
   (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
     (merge {:type     (case (keyword protocol)
@@ -101,9 +102,9 @@
      :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details))))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                        MIGRATE!                                                        |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    MIGRATE!                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const ^String changelog-file "liquibase.yaml")
 
@@ -117,9 +118,10 @@
 (defn- migrations-lines
   "Return a sequnce of DDL statements that should be used to perform migrations for LIQUIBASE.
 
-   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run one statement at a time;
-   Liquibase puts each DDL statement on its own line automatically so just split by lines and filter out blank / comment lines. Even though this
-   is not neccesary for H2 or Postgres go ahead and do it anyway because it keeps the code simple and doesn't make a significant performance difference."
+   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
+   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
+   filter out blank / comment lines. Even though this is not neccesary for H2 or Postgres go ahead and do it anyway
+   because it keeps the code simple and doesn't make a significant performance difference."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))
         :when (not (or (s/blank? line)
@@ -129,8 +131,9 @@
 (defn- has-unrun-migrations?
   "Does LIQUIBASE have migration change sets that haven't been run yet?
 
-   It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because `migrations-sql` will
-   always contain SQL to create and release migration locks, which is both slightly dangerous and a waste of time when we won't be using them."
+   It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
+   `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous
+   and a waste of time when we won't be using them."
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil))))
 
@@ -146,14 +149,16 @@
   (u/auto-retry 5
     (when (has-migration-lock? liquibase)
       (Thread/sleep 2000)
-      (throw (Exception. "Database has migration lock; cannot run migrations. You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))
+      (throw (Exception. (str "Database has migration lock; cannot run migrations. You can force-release these locks "
+                              "by running `java -jar metabase.jar migrate release-locks`."))))))
 
 (defn- migrate-up-if-needed!
   "Run any unrun LIQUIBASE migrations, if needed.
 
    This creates SQL for the migrations to be performed, then executes each DDL statement.
-   Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at
-   the end of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do the trick."
+   Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they
+   can't be rolled back at the end of the transaction block. Converting the migration to SQL string and running that
+   via `jdbc/execute!` seems to do the trick."
   [conn, ^Liquibase liquibase]
   (log/info "Checking if Database has unrun migrations...")
   (when (has-unrun-migrations? liquibase)
@@ -169,11 +174,14 @@
    1.  This doesn't check to make sure the DB locks are cleared
    2.  Any DDL statements that fail are ignored
 
-   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in #3295.
+   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
+   #3295.
 
-   Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back without rolling back the entirety of changes
-   that were made. (If a single statement in a transaction fails you can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
+   Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
+   without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you
+   can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [conn, ^Liquibase liquibase]
+  (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
     (doseq [line (migrations-lines liquibase)]
       (log/info line)
@@ -185,7 +193,8 @@
                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
-  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because otherwise it adds 2 seconds to startup time."
+  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
+   otherwise it adds 2 seconds to startup time."
   (partial deref (future (DatabaseFactory/getInstance))))
 
 (defn- conn->liquibase
@@ -198,13 +207,13 @@
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
 (defn consolidate-liquibase-changesets
-  "Consolidate all previous DB migrations so they came from single file.
-   Previous migrations where stored in many small files which added seconds
-   per file to the startup time because liquibase was checking the jar
-   signature for each file. This function is required to correct the liquibase
-   tables to reflect that these migrations where moved to a single file.
+  "Consolidate all previous DB migrations so they come from single file.
 
-   see https://github.com/metabase/metabase/issues/3715"
+  Previously migrations where stored in many small files which added seconds per file to the startup time because
+  liquibase was checking the jar signature for each file. This function is required to correct the liquibase tables to
+  reflect that these migrations where moved to a single file.
+
+  see https://github.com/metabase/metabase/issues/3715"
   [conn]
   (let [liquibases-table-name (if (#{:h2 :mysql} (db-type))
                                 "DATABASECHANGELOG"
@@ -216,17 +225,19 @@
       (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
 
 (defn migrate!
-  "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
+  "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
+  migrate up`):
 
-   *  `:up`            - Migrate up
-   *  `:force`         - Force migrate up, ignoring locks and any DDL statements that fail.
-   *  `:down-one`      - Rollback a single migration
-   *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
-   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
-                         (This shouldn't be necessary now that we run migrations inside a transaction, but is available just in case).
+  *  `:up`            - Migrate up
+  *  `:force`         - Force migrate up, ignoring locks and any DDL statements that fail.
+  *  `:down-one`      - Rollback a single migration
+  *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
+  *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
+                        (This shouldn't be necessary now that we run migrations inside a transaction, but is
+                        available just in case).
 
-   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by `metabase.db.migrations/run-all!`.
-   (`setup-db!`, below, calls both this function and `run-all!`)."
+  Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by
+  `metabase.db.migrations/run-all!`. (`setup-db!`, below, calls both this function and `run-all!`)."
   ([]
    (migrate! :up))
   ([direction]
@@ -254,14 +265,15 @@
        :done
        ;; If for any reason any part of the migrations fail then rollback all changes
        (catch Throwable e
-         ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so better safe than sorry
+         ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
+         ;; better safe than sorry
          (.rollback (jdbc/get-connection conn))
          (throw e))))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                          CONNECTION POOLS & TRANSACTION STUFF                                          |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn connection-pool
   "Create a C3P0 connection pool for the given database SPEC."
@@ -283,8 +295,10 @@
                  (.setTestConnectionOnCheckout     false)
                  (.setPreferredTestQuery           nil)
                  (.setProperties                   (u/prog1 (Properties.)
-                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname :naming :delimiters :alias-delimiter
-                                                                                :excess-timeout :minimum-pool-size :idle-connection-test-period)]
+                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname
+                                                                                :naming :delimiters :alias-delimiter
+                                                                                :excess-timeout :minimum-pool-size
+                                                                                :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
 
 (defn- create-connection-pool! [spec]
@@ -295,10 +309,9 @@
   (db/set-default-db-connection! (connection-pool spec)))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       DB SETUP                                                         |
-;;; +------------------------------------------------------------------------------------------------------------------------+
-
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    DB SETUP                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private setup-db-has-been-called?
   (atom false))
@@ -309,19 +322,21 @@
   @setup-db-has-been-called?)
 
 (def ^:dynamic *allow-potentailly-unsafe-connections*
-  "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists, etc.
-   At the same time, we'd like to be able to use driver functionality like `can-connect-with-details?` to check whether we can
-   connect to the Metabase database, in which case we'd like to allow connections to databases that don't exist.
+  "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists,
+  etc.  At the same time, we'd like to be able to use driver functionality like `can-connect-with-details?` to check
+  whether we can connect to the Metabase database, in which case we'd like to allow connections to databases that
+  don't exist.
 
-   So we need some way to distinguish the Metabase database from other databases. We could add a key to the details map
-   specifying that it's the Metabase DB, but what if some shady user added that key to another database?
+  So we need some way to distinguish the Metabase database from other databases. We could add a key to the details
+  map specifying that it's the Metabase DB, but what if some shady user added that key to another database?
 
-   We could check if a database details map matched `db-connection-details` above, but what if a shady user went Meta-Metabase
-   and added the Metabase DB to Metabase itself? Then when they used it they'd have potentially unsafe access.
+  We could check if a database details map matched `db-connection-details` above, but what if a shady user went
+  Meta-Metabase and added the Metabase DB to Metabase itself? Then when they used it they'd have potentially unsafe
+  access.
 
-   So this is where dynamic variables come to the rescue. We'll make this one `true` when we use `can-connect?` for the
-   Metabase DB, in which case we'll allow connection to non-existent H2 (etc.) files, and leave it `false` happily and
-   forever after, making all other connnections \"safe\"."
+  So this is where dynamic variables come to the rescue. We'll make this one `true` when we use `can-connect?` for the
+  Metabase DB, in which case we'll allow connection to non-existent H2 (etc.) files, and leave it `false` happily and
+  forever after, making all other connnections \"safe\"."
   false)
 
 (defn- verify-db-connection
@@ -340,8 +355,9 @@
 
 (def ^:dynamic ^Boolean *disable-data-migrations*
   "Should we skip running data migrations when setting up the DB? (Default is `false`).
-   There are certain places where we don't want to do this; for example, none of the migrations should be ran when Metabase is launched via `load-from-h2`.
-   That's because they will end up doing things like creating duplicate entries for the \"magic\" groups and permissions entries. "
+  There are certain places where we don't want to do this; for example, none of the migrations should be ran when
+  Metabase is launched via `load-from-h2`.  That's because they will end up doing things like creating duplicate
+  entries for the \"magic\" groups and permissions entries. "
   false)
 
 (defn- print-migrations-and-quit!
@@ -397,8 +413,8 @@
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
 
-     (db/select-ids Table
-       (mdb/join [Table :raw_table_id] [RawTable :id])
+     (db/select-ids FieldValues
+       (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(db/resolve-model dest-entity) [:= (db/qualify source-entity fk)

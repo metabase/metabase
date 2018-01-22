@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from 'c-3po';
 
 export default class MetadataSchema extends Component {
     static propTypes = {
@@ -34,9 +35,9 @@ export default class MetadataSchema extends Component {
                 </div>
                 <div className="mt2 ">
                     <div className="text-uppercase text-grey-3 py1 flex">
-                        <div className="flex-full px1">Column</div>
-                        <div className="flex-half px1">Data Type</div>
-                        <div className="flex-half px1">Additional Info</div>
+                        <div className="flex-full px1">{t`Column`}</div>
+                        <div className="flex-half px1">{t`Data Type`}</div>
+                        <div className="flex-half px1">{t`Additional Info`}</div>
                     </div>
                     <ol className="border-top border-bottom">
                         {fields}

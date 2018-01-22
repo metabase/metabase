@@ -5,10 +5,12 @@
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
   "testPathIgnorePatterns": [
-    "<rootDir>/frontend/test/",
+    "<rootDir>/frontend/test/legacy-karma",
+    "<rootDir>/frontend/test/legacy-selenium",
     "integ.spec.js"
   ],
   "modulePaths": [
+    "<rootDir>/frontend/test",
     "<rootDir>/frontend/src"
   ],
   "setupFiles": [
@@ -18,5 +20,8 @@
     "ace": {},
     "ga": {},
     "document": {}
-  }
+  },
+  "coverageDirectory": "./",
+  "coverageReporters": ["text", "json-summary"],
+  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"]
 }

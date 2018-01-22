@@ -42,6 +42,10 @@ export default class Dimension {
     _args: any;
     _metadata: ?Metadata;
 
+    // Display names provided by the backend
+    _subDisplayName: ?String;
+    _subTriggerDisplayName: ?String;
+
     /**
      * Dimension constructor
      */
@@ -108,17 +112,15 @@ export default class Dimension {
      */
     // TODO Atte Keinänen 5/21/17: Rename either this or the static method with the same name
     // Also making it clear in the method name that we're working with sub-dimensions would be good
-    dimensions(
-        DimensionTypes: typeof Dimension[] = DIMENSION_TYPES
-    ): Dimension[] {
+    dimensions(DimensionTypes?: typeof Dimension[]): Dimension[] {
         const dimensionOptions = this.field().dimension_options;
-        if (dimensionOptions) {
+        if (!DimensionTypes && dimensionOptions) {
             return dimensionOptions.map(option =>
                 this._dimensionForOption(option));
         } else {
             return [].concat(
-                ...DimensionTypes.map(DimensionType =>
-                    DimensionType.dimensions(this))
+                ...(DimensionTypes || [])
+                    .map(DimensionType => DimensionType.dimensions(this))
             );
         }
     }
@@ -155,8 +157,8 @@ export default class Dimension {
         }
         let dimension = Dimension.parseMBQL(mbql, this._metadata);
         if (option.name) {
-            dimension.subDisplayName = () => option.name;
-            dimension.subTriggerDisplayName = () => option.name;
+            dimension._subDisplayName = option.name;
+            dimension._subTriggerDisplayName = option.name;
         }
         return dimension;
     }
@@ -255,7 +257,7 @@ export default class Dimension {
      * @abstract
      */
     subDisplayName(): string {
-        return "";
+        return this._subDisplayName || "";
     }
 
     /**
@@ -263,7 +265,7 @@ export default class Dimension {
      * @abstract
      */
     subTriggerDisplayName(): string {
-        return "";
+        return this._subTriggerDisplayName || "";
     }
 
     /**
@@ -304,13 +306,23 @@ export class FieldDimension extends Dimension {
     }
 
     subDisplayName(): string {
-        if (this._parent) {
+        if (this._subDisplayName) {
+            return this._subTriggerDisplayName;
+        } else if (this._parent) {
+            // TODO Atte Keinänen 8/1/17: Is this used at all?
             // foreign key, show the field name
             return this.field().display_name;
-        } else if (this.field().isNumber()) {
-            return "Continuous (no binning)";
         } else {
+            // TODO Atte Keinänen 8/1/17: Is this used at all?
             return "Default";
+        }
+    }
+
+    subTriggerDisplayName(): string {
+        if (this.defaultDimension() instanceof BinnedDimension) {
+            return "Unbinned";
+        } else {
+            return "";
         }
     }
 
@@ -465,11 +477,7 @@ export class BinnedDimension extends FieldDimension {
     }
 
     static dimensions(parent: Dimension): Dimension[] {
-        if (isFieldDimension(parent) && parent.field().isNumber()) {
-            return [5, 10, 25, 100].map(
-                bins => new BinnedDimension(parent, ["default", bins])
-            );
-        }
+        // Subdimensions are are provided by the backend through the dimension_options field property
         return [];
     }
 
@@ -481,18 +489,20 @@ export class BinnedDimension extends FieldDimension {
         return this._parent.baseDimension();
     }
 
-    subDisplayName(): string {
-        if (this._args[0] === "default") {
-            return `Quantized into ${this._args[1]} ${inflect("bins", this._args[1])}`;
+    subTriggerDisplayName(): string {
+        if (this._args[0] === "num-bins") {
+            return `${this._args[1]} ${inflect("bins", this._args[1])}`;
+        } else if (this._args[0] === "bin-width") {
+            const binWidth = this._args[1];
+            const units = this.field().isCoordinate() ? "°" : "";
+            return `${binWidth}${units}`;
+        } else {
+            return "Auto binned";
         }
-        return JSON.stringify(this._args);
     }
 
-    subTriggerDisplayName(): string {
-        if (this._args[0] === "default") {
-            return `${this._args[1]} ${inflect("bins", this._args[1])}`;
-        }
-        return "";
+    render() {
+        return [...super.render(), ": ", this.subTriggerDisplayName()];
     }
 }
 
@@ -539,6 +549,10 @@ export class AggregationDimension extends Dimension {
 
     displayName(): string {
         return this._displayName;
+    }
+
+    aggregationIndex(): number {
+        return this._args[0];
     }
 
     mbql() {

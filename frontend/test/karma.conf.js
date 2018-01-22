@@ -1,6 +1,7 @@
 var webpackConfig = require('../../webpack.config');
-webpackConfig.module.loaders.forEach(function(loader) {
-    loader.loader = loader.loader.replace(/^.*extract-text-webpack-plugin[^!]+!/, "");
+console.dir(webpackConfig.module.rules, { depth: null })
+webpackConfig.module.rules.forEach(function(loader) {
+    loader.use = loader.use.filter((item) => !item.loader.includes("extract-text-webpack-plugin"));
 });
 
 module.exports = function(config) {
@@ -9,13 +10,13 @@ module.exports = function(config) {
         files: [
             'test/metabase-bootstrap.js',
             // prevent tests from running twice: https://github.com/nikku/karma-browserify/issues/67#issuecomment-84448491
-            { pattern: 'test/unit/**/*.spec.js', watched: false, included: true, served: true }
+            { pattern: 'test/legacy-karma/**/*.spec.js', watched: false, included: true, served: true }
         ],
         exclude: [
         ],
         preprocessors: {
             'test/metabase-bootstrap.js': ['webpack'],
-            'test/unit/**/*.spec.js': ['webpack']
+            'test/legacy-karma/**/*.spec.js': ['webpack']
         },
         frameworks: [
             'jasmine'

@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.test.util :refer :all]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db]))
 
 ;; ## TEST SETTINGS DEFINITIONS
@@ -16,11 +17,11 @@
   "Test setting - this only shows up in dev (2)"
   :default "[Default Value]")
 
-(defsetting test-boolean-setting
+(defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
   :type :boolean)
 
-(defsetting test-json-setting
+(defsetting ^:private test-json-setting
   "Test setting - this only shows up in dev (4)"
   :type :json)
 
@@ -110,55 +111,56 @@
    (setting-exists-in-db? :test-setting-2)])
 
 
-;;; ------------------------------------------------------------ all & user-facing-info ------------------------------------------------------------
+;;; --------------------------------------------- all & user-facing-info ---------------------------------------------
 
-(resolve-private-vars metabase.models.setting resolve-setting user-facing-info)
-
-;; these tests are to check that settings get returned with the correct information; these functions are what feed into the API
+;; these tests are to check that settings get returned with the correct information; these functions are what feed
+;; into the API
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (do-with-temporary-setting-value setting db-value
     (fn []
       (with-redefs [environ.core/env {(keyword (str "mb-" (name setting))) env-var-value}]
-        (dissoc (user-facing-info (resolve-setting setting))
+        (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
                 :key :description)))))
 
-;; user-facing-info w/ no db value, no env var value, no default value
+;; #'setting/user-facing-info w/ no db value, no env var value, no default value
 (expect
   {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 nil nil))
 
-;; user-facing-info w/ no db value, no env var value, default value
+;; #'setting/user-facing-info w/ no db value, no env var value, default value
 (expect
   {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 nil nil))
 
-;; user-facing-info w/ no db value, env var value, no default value -- shouldn't leak env var value
+;; #'setting/user-facing-info w/ no db value, env var value, no default value -- shouldn't leak env var value
 (expect
   {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using $MB_TEST_SETTING_1"}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 nil "TOUCANS"))
 
-;; user-facing-info w/ no db value, env var value, default value
+;; #'setting/user-facing-info w/ no db value, env var value, default value
 (expect
   {:value nil,  :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using $MB_TEST_SETTING_2"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 nil "TOUCANS"))
 
-;; user-facing-info w/ db value, no env var value, no default value
+;; #'setting/user-facing-info w/ db value, no env var value, no default value
 (expect
   {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" nil))
 
-;; user-facing-info w/ db value, no env var value, default value
+;; #'setting/user-facing-info w/ db value, no env var value, default value
 (expect
   {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))
 
-;; user-facing-info w/ db value, env var value, no default value -- the DB value should take precedence over the env var
+;; #'setting/user-facing-info w/ db value, env var value, no default value -- the DB value should take precedence over
+;; #the env var
 (expect
   {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using $MB_TEST_SETTING_1"}
   (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))
 
-;; user-facing-info w/ db value, env var value, default value -- env var should take precedence over default value
+;; #'setting/user-facing-info w/ db value, env var value, default value -- env var should take precedence over default
+;; #value
 (expect
   {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using $MB_TEST_SETTING_2"}
   (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR"))
@@ -181,8 +183,18 @@
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
         setting)))
 
+(defsetting ^:private test-i18n-setting
+  (tru "Test setting - with i18n"))
 
-;;; ------------------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------------------
+;; Validate setting description with i18n string
+(expect
+  ["Test setting - with i18n"]
+  (for [{:keys [key description]} (setting/all)
+        :when (= :test-i18n-setting key)]
+    description))
+
+
+;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
 (expect
   {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
@@ -226,7 +238,7 @@
   (do (test-boolean-setting false)
       (test-boolean-setting)))
 
-;;; ------------------------------------------------------------ JSON SETTINGS ------------------------------------------------------------
+;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
 (expect
   "{\"a\":100,\"b\":200}"
@@ -238,7 +250,8 @@
       (test-json-setting)))
 
 
-;;; make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)
+;; make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values
+;; (#4178)
 
 (setting/defsetting ^:private toucan-name
   "Name for the Metabase Toucan mascot.")

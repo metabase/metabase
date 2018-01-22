@@ -8,10 +8,12 @@ import React from "react";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 
-import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import { isDate, isNumber, isCoordinate, isLatitude, isLongitude } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
+import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { Field } from "metabase/meta/types/Field";
@@ -31,6 +33,12 @@ const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
+const BINNING_DEGREES_FORMATTER       = (value, binWidth) => {
+    return d3.format(`.0${decimalCount(binWidth)}f`)(value)
+}
+
+// use en dashes, for Maz
+const RANGE_SEPARATOR = ` – `;
 
 export function formatNumber(number: number, options: FormattingOptions = {}) {
     options = { comma: true, ...options};
@@ -62,6 +70,25 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     }
 }
 
+export function formatCoordinate(value: number, options: FormattingOptions = {}) {
+    const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
+    let direction = "";
+    if (isLatitude(options.column)) {
+        direction = " " + (value < 0 ? "S" : "N");
+        value = Math.abs(value);
+    } else if (isLongitude(options.column)) {
+        direction = " " + (value < 0 ? "W" : "E");
+        value = Math.abs(value);
+    }
+
+    const formattedValue = binWidth ? BINNING_DEGREES_FORMATTER(value, binWidth) : DECIMAL_DEGREES_FORMATTER(value)
+    return formattedValue + "°" + direction;
+}
+
+export function formatRange(range: [number, number], formatter: (value: number) => string, options: FormattingOptions = {}) {
+    return range.map(value => formatter(value, options)).join(` ${RANGE_SEPARATOR} `);
+}
+
 function formatMajorMinor(major, minor, options = {}) {
     options = {
         jsx: false,
@@ -91,18 +118,16 @@ export function formatTimeRangeWithUnit(value: Value, unit: DatetimeUnit, option
     // Tooltips should show full month name, but condense "MMMM D, YYYY - MMMM D, YYYY" to "MMMM D - D, YYYY" etc
     const monthFormat = options.type === "tooltip" ? "MMMM" : "MMM";
     const condensed = options.type === "tooltip";
-    // use en dashes, for Maz
-    const separator = ` – `;
 
     const start = m.clone().startOf(unit);
     const end = m.clone().endOf(unit);
     if (start.isValid() && end.isValid()) {
         if (!condensed || start.year() !== end.year()) {
-            return start.format(`${monthFormat} D, YYYY`) + separator + end.format(`${monthFormat} D, YYYY`);
+            return start.format(`${monthFormat} D, YYYY`) + RANGE_SEPARATOR + end.format(`${monthFormat} D, YYYY`);
         } else if (start.month() !== end.month()) {
-            return start.format(`${monthFormat} D`) + separator + end.format(`${monthFormat} D, YYYY`);
+            return start.format(`${monthFormat} D`) + RANGE_SEPARATOR + end.format(`${monthFormat} D, YYYY`);
         } else {
-            return start.format(`${monthFormat} D`) + separator + end.format(`D, YYYY`);
+            return start.format(`${monthFormat} D`) + RANGE_SEPARATOR + end.format(`D, YYYY`);
         }
     } else {
         return formatWeek(m, options);
@@ -184,7 +209,7 @@ const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:
 export function formatUrl(value: Value, { jsx }: FormattingOptions = {}) {
     const url = String(value);
     if (jsx && URL_WHITELIST_REGEX.test(url)) {
-        return <ExternalLink href={url}>{url}</ExternalLink>;
+        return <ExternalLink className="link link--wrappable" href={url}>{url}</ExternalLink>;
     } else {
         return url;
     }
@@ -246,10 +271,14 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     } else if (typeof value === "string") {
         return formatStringFallback(value, options);
     } else if (typeof value === "number") {
-        if (isCoordinate(column)) {
-            return DECIMAL_DEGREES_FORMATTER(value);
+        const formatter = isCoordinate(column) ?
+            formatCoordinate :
+            formatNumber;
+        const range = rangeForValue(value, options.column);
+        if (range) {
+            return formatRange(range, formatter, options);
         } else {
-            return formatNumber(value, options);
+            return formatter(value, options);
         }
     } else if (typeof value === "object") {
         // no extra whitespace for table cells

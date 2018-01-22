@@ -2,14 +2,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 
 import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -22,15 +21,7 @@ import {
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
-
-const emptyStateData = {
-    title: "Metabase is no fun without any data",
-    adminMessage: "Your databases will appear here once you connect one",
-    message: "Databases will appear here once your admins have added some",
-    image: "app/assets/img/databases-list",
-    adminAction: "Connect a database",
-    adminLink: "/admin/databases/create"
-}
+import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 const mapStateToProps = (state, props) => ({
     entities: getDatabases(state, props),
@@ -62,14 +53,14 @@ export default class DatabaseList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader 
-                    name="Databases and tables"
+                <ReferenceHeader
+                    name={t`Databases and tables`}
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { 
+                            {
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
                                           <li className="relative" key={entity.id}>
@@ -88,7 +79,7 @@ export default class DatabaseList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        <AdminAwareEmptyState {...emptyStateData}/>
+                        <NoDatabasesEmptyState />
                     </div>
                 }
                 </LoadingAndErrorWrapper>

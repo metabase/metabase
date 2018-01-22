@@ -1,12 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
+import { t, jt } from 'c-3po';
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 
+import { shallowEqual } from "recompose";
 
 // TODO - this should be somewhere more centralized
 function isEmpty(str) {
@@ -17,6 +18,10 @@ const AUTH_URL_PREFIXES = {
     bigquery: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=',
     bigquery_with_drive: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery%20https://www.googleapis.com/auth/drive&client_id=',
     googleanalytics: 'https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=',
+};
+
+const ENABLE_API_PREFIXES = {
+    googleanalytics: 'https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project='
 };
 
 const CREDENTIALS_URL_PREFIXES = {
@@ -47,8 +52,10 @@ export default class DatabaseDetailsForm extends Component {
         engines: PropTypes.object.isRequired,
         formError: PropTypes.object,
         hiddenFields: PropTypes.object,
+        isNewDatabase: PropTypes.boolean,
         submitButtonText: PropTypes.string.isRequired,
-        submitFn: PropTypes.func.isRequired
+        submitFn: PropTypes.func.isRequired,
+        submitting: PropTypes.boolean
     };
 
     validateForm() {
@@ -78,6 +85,12 @@ export default class DatabaseDetailsForm extends Component {
         }
     }
 
+    componentWillReceiveProps(nextProps) {
+        if (!shallowEqual(this.props.details, nextProps.details)) {
+            this.setState({ details: nextProps.details })
+        }
+    }
+
     componentDidMount() {
         this.validateForm();
     }
@@ -100,6 +113,7 @@ export default class DatabaseDetailsForm extends Component {
             engine: engine,
             name: details.name,
             details: {},
+            // use the existing is_full_sync setting in case that "let user control scheduling" setting is enabled
             is_full_sync: details.is_full_sync
         };
 
@@ -111,6 +125,10 @@ export default class DatabaseDetailsForm extends Component {
 
             request.details[field.name] = val;
         }
+
+        // NOTE Atte Keinänen 8/15/17: Is it a little hacky approach or not to add to the `details` field property
+        // that are not part of the details schema of current db engine?
+        request.details["let-user-control-scheduling"] = details["let-user-control-scheduling"];
 
         submitFn(request);
     }
@@ -161,11 +179,11 @@ export default class DatabaseDetailsForm extends Component {
                             <Toggle value={on} onChange={(val) => this.onChange("tunnel-enabled", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>Use an SSH-tunnel for database connections</h3>
+                            <h3>{t`Use an SSH-tunnel for database connections`}</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
-                                 Some database installations can only be accessed by connecting through an SSH bastion host.
+                                 {t`Some database installations can only be accessed by connecting through an SSH bastion host.
                                  This option also provides an extra layer of security when a VPN is not available.
-                                 Enabling this is usually slower than a direct connection.
+                                 Enabling this is usually slower than a direct connection.`}
                             </div>
                         </div>
                     </div>
@@ -174,19 +192,19 @@ export default class DatabaseDetailsForm extends Component {
         } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
             // don't show tunnel fields if tunnel isn't enabled
             return null;
-        } else if (field.name === "is_full_sync") {
-            let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
+        } else if (field.name === "let-user-control-scheduling") {
+            let on = (this.state.details["let-user-control-scheduling"] == undefined) ? false : this.state.details["let-user-control-scheduling"];
             return (
                 <FormField key={field.name} fieldName={field.name}>
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <Toggle value={on} onChange={(val) => this.onChange("is_full_sync", val)}/>
+                            <Toggle value={on} onChange={(val) => this.onChange("let-user-control-scheduling", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>Enable in-depth database analysis</h3>
+                            <h3>{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
-                                This allows us to present you with better metadata for your tables and is required for some features of Metabase.
-                                We recommend leaving this on unless your database is large and you're concerned about performance.
+                                {t`By default, Metabase does a lightweight hourly sync, and an intensive daily scan of field values.
+                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
                             </div>
                         </div>
                     </div>
@@ -201,8 +219,8 @@ export default class DatabaseDetailsForm extends Component {
                 credentialsURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <a href={credentialsURL} target='_blank'>Click here</a> to generate a Client ID and Client Secret for your project.
-                            Choose "Other" as the application type. Name it whatever you'd like.
+                            {jt`${<a href={credentialsURL} target='_blank'>Click here</a>} to generate a Client ID and Client Secret for your project.`}
+                            {t`Choose "Other" as the application type. Name it whatever you'd like.`}
                         </div>
                     </div>);
             // }
@@ -216,19 +234,40 @@ export default class DatabaseDetailsForm extends Component {
             );
         } else if (field.name === 'auth-code' && AUTH_URL_PREFIXES[engine]) {
             let { details } = this.state;
-            let clientID = details && details['client-id'];
+            const clientID = details && details['client-id'];
             var authURLLink;
             if (clientID) {
                 let authURL = AUTH_URL_PREFIXES[engine] + clientID;
                 authURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <a href={authURL} target='_blank'>Click here</a> to get an auth code
+                            {jt`${<a href={authURL} target='_blank'>Click here</a>} to get an auth code`}
                             { engine === "bigquery" &&
-                                <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>with Google Drive permissions</a>)</span>
+                                <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>{t`with Google Drive permissions`}</a>)</span>
                             }
                         </div>
                     </div>);
+            }
+
+            // for Google Analytics we need to show a link for people to go to the Console to enable the GA API
+            let enableAPILink;
+            // projectID is just the first numeric part of the clientID.
+            // e.g. clientID might be 123436115855-q8z42hilmjf8iplnnu49n7jbudmxxdf.apps.googleusercontent.com
+            // then projecID would be 12343611585
+            const projectID = clientID && (clientID.match(/^\d+/) || [])[0];
+            if (ENABLE_API_PREFIXES[engine] && projectID) {
+                // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
+                const enableAPIURL = ENABLE_API_PREFIXES[engine] + projectID;
+                enableAPILink = (
+                    <div className="flex align-center Form-offset">
+                        <div className="Grid-cell--top">
+                            {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}
+                        </div>
+                        <div className="Grid-cell--top ml1">
+                            {jt`${<a href={enableAPIURL} target='_blank'>Click here</a>} to go to the console if you haven't already done so.`}
+                        </div>
+                    </div>
+                );
             }
 
             return (
@@ -236,6 +275,7 @@ export default class DatabaseDetailsForm extends Component {
                     <FormLabel title={field['display-name']} field-name='auth-code'></FormLabel>
                     {authURLLink}
                     {this.renderFieldInput(field, fieldIndex)}
+                    {enableAPILink}
                 </FormField>
             );
         } else {
@@ -250,19 +290,21 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     render() {
-        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText } = this.props;
-        let { valid } = this.state;
+        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText, isNewDatabase, submitting } = this.props;
+        let { valid, details } = this.state;
+
+        const willProceedToNextDbCreationStep = isNewDatabase && details["let-user-control-scheduling"];
 
         let fields = [
             {
                 name: 'name',
-                'display-name': 'Name',
-                placeholder: "How would you like to refer to this database?",
+                'display-name': t`Name`,
+                placeholder: t`How would you like to refer to this database?`,
                 required: true
             },
             ...engines[engine]['details-fields'],
             {
-                name: "is_full_sync",
+                name: "let-user-control-scheduling",
                 required: true
             }
         ];
@@ -278,8 +320,8 @@ export default class DatabaseDetailsForm extends Component {
                 </div>
 
                 <div className="Form-actions">
-                    <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                        {submitButtonText}
+                    <button className={cx("Button", {"Button--primary": valid})} disabled={!valid || submitting}>
+                        {submitting ? t`Saving...` : (willProceedToNextDbCreationStep ? t`Next` : submitButtonText)}
                     </button>
                     <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
                 </div>

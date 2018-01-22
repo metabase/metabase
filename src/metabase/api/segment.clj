@@ -34,7 +34,7 @@
   "Fetch *all* `Segments`."
   []
   (filter mi/can-read? (-> (db/select Segment, :is_active true, {:order-by [[:%lower.name :asc]]})
-                               (hydrate :creator))))
+                           (hydrate :creator))))
 
 
 (api/defendpoint PUT "/:id"
@@ -46,7 +46,8 @@
   (api/check-superuser)
   (api/write-check Segment id)
   (segment/update-segment!
-   (assoc (select-keys body #{:name :description :caveats :points_of_interest :show_in_getting_started :definition :revision_message})
+   (assoc (select-keys body #{:name :description :caveats :points_of_interest :show_in_getting_started :definition
+                              :revision_message})
      :id id)
    api/*current-user-id*))
 

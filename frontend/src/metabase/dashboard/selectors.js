@@ -161,7 +161,7 @@ export const getParameters = createSelector(
                 .value();
             return {
                 ...parameter,
-                field_id: fieldIds.length === 1 ? fieldIds[0] : null
+                field_ids: fieldIds
             }
         })
 )

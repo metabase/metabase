@@ -23,7 +23,7 @@
                                 (dissoc :database :driver)
                                 u/ignore-exceptions))}
          (when-let [data (ex-data e)]
-           {:ex-data data})
+           {:ex-data (dissoc data :schema)})
          additional-info))
 
 (defn- explain-schema-validation-error

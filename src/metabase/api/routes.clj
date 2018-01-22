@@ -4,6 +4,8 @@
              [route :as route]]
             [metabase.api
              [activity :as activity]
+             [alert    :as alert]
+             [async :as async]
              [card :as card]
              [collection :as collection]
              [dashboard :as dashboard]
@@ -31,16 +33,18 @@
              [table :as table]
              [tiles :as tiles]
              [user :as user]
-             [util :as util]]
+             [util :as util]
+             [x-ray :as x-ray]]
             [metabase.middleware :as middleware]))
 
 (def ^:private +generic-exceptions
-  "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public endpoints."
+  "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
+  endpoints."
   middleware/genericize-exceptions)
 
 (def ^:private +message-only-exceptions
-  "Wrap ROUTES so any Exception thrown is just returned as a 400 with only the message from the original Exception (i.e., remove
-   the original stacktrace), to prevent details from leaking in public endpoints."
+  "Wrap ROUTES so any Exception thrown is just returned as a 400 with only the message from the original
+  Exception (i.e., remove the original stacktrace), to prevent details from leaking in public endpoints."
   middleware/message-only-exceptions)
 
 (def ^:private +apikey
@@ -53,6 +57,8 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"        [] (+auth activity/routes))
+  (context "/alert"           [] (+auth alert/routes))
+  (context "/async"           [] (+auth async/routes))
   (context "/card"            [] (+auth card/routes))
   (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))
@@ -61,6 +67,7 @@
   (context "/email"           [] (+auth email/routes))
   (context "/embed"           [] (+message-only-exceptions embed/routes))
   (context "/field"           [] (+auth field/routes))
+  (context "/x-ray"           [] (+auth x-ray/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
   (context "/geojson"         [] (+auth geojson/routes))
   (context "/label"           [] (+auth label/routes))

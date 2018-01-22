@@ -1,7 +1,8 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [pprint :as pprint]
              [string :as s]]
             [clojure.tools.logging :as log]
@@ -21,19 +22,55 @@
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models.user :refer [User]]
+            [metabase.models
+             [setting :as setting]
+             [user :refer [User]]]
+            [metabase.util.i18n :refer [set-locale]]
+            [puppetlabs.i18n.core :refer [locale-negotiator]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
              [gzip :refer [wrap-gzip]]
-             [json :refer [wrap-json-body wrap-json-response]]
+             [json :refer [wrap-json-body]]
              [keyword-params :refer [wrap-keyword-params]]
              [params :refer [wrap-params]]
              [session :refer [wrap-session]]]
+            [ring.util
+             [io :as rui]
+             [response :as rr]]
             [toucan.db :as db])
-  (:import org.eclipse.jetty.server.Server))
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [java.nio.charset Charset StandardCharsets]
+           org.eclipse.jetty.server.Server))
 
 ;;; CONFIG
+
+(defn- streamed-json-response
+  "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
+  [response-seq options]
+  (rui/piped-input-stream
+   (fn [^OutputStream output-stream]
+     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+                 buffered-writer (BufferedWriter. output-writer)]
+       (json/generate-stream response-seq buffered-writer)))))
+
+(defn- wrap-streamed-json-response
+  "Similar to ring.middleware/wrap-json-response in that it will serialize the response's body to JSON if it's a
+  collection. Rather than generating a string it will stream the response using a PipedOutputStream.
+
+  Accepts the following options (same as `wrap-json-response`):
+
+  :pretty            - true if the JSON should be pretty-printed
+  :escape-non-ascii  - true if non-ASCII characters should be escaped with \\u"
+  [handler & [{:as opts}]]
+  (fn [request]
+    (let [response (handler request)]
+      (if-let [json-response (and (coll? (:body response))
+                                  (update-in response [:body] streamed-json-response opts))]
+        (if (contains? (:headers json-response) "Content-Type")
+          json-response
+          (rr/content-type json-response "application/json; charset=utf-8"))
+        response))))
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
@@ -42,7 +79,7 @@
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response                 ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
       wrap-keyword-params                ; converts string keys in :params to keyword keys
       wrap-params                        ; parses GET and POST params as :query-params/:form-params and both as :params
       mb-middleware/bind-current-user    ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
@@ -50,6 +87,7 @@
       mb-middleware/wrap-api-key         ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
       mb-middleware/wrap-session-id      ; looks for a Metabase Session ID and assoc as :metabase-session-id
       mb-middleware/maybe-set-site-url   ; set the value of `site-url` if it hasn't been set yet
+      locale-negotiator                  ; Binds *locale* for i18n
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
       wrap-gzip))                        ; GZIP response if client can handle it
@@ -133,6 +171,8 @@
     ;; start the metabot thread
     (metabot/start-metabot!))
 
+  (set-locale (setting/get :site-locale))
+
   (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
 
@@ -175,12 +215,34 @@
     (.stop ^Server @jetty-instance)
     (reset! jetty-instance nil)))
 
+(defn- wrap-with-asterisk [strings-to-wrap]
+  ;; Adding 4 extra asterisks so that we account for the leading asterisk and space, and add two more after the end of the sentence
+  (let [string-length (+ 4 (apply max (map count strings-to-wrap)))]
+    (str (apply str (repeat string-length \* ))
+         "\n"
+         "*\n"
+         (apply str (map #(str "* " % "\n") strings-to-wrap))
+         "*\n"
+         (apply str (repeat string-length \* )))))
+
+(defn- check-jdk-version []
+  (let [java-spec-version (System/getProperty "java.specification.version")]
+    ;; Note for java 7, this is 1.7, but newer versions drop the 1. Java 9 just returns "9" here.
+    (when (= "1.7" java-spec-version)
+      (let [java-version (System/getProperty "java.version")
+            deprecation-messages [(str "DEPRECATION WARNING: You are currently running JDK '" java-version "'. "
+                                       "Support for Java 7 has been deprecated and will be dropped from a future release.")
+                                  (str "See the operation guide for more information: https://metabase.com/docs/latest/operations-guide/start.html.")]]
+        (binding [*out* *err*]
+          (println (wrap-with-asterisk deprecation-messages))
+          (log/warn deprecation-messages))))))
 
 ;;; ## ---------------------------------------- Normal Start ----------------------------------------
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
+    (check-jdk-version)
     ;; launch embedded webserver async
     (start-jetty!)
     ;; run our initialization process
@@ -215,6 +277,12 @@
   ;; override env var that would normally make Jetty block forever
   (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
   (u/profile "start-normally" (start-normally)))
+
+(defn ^:command reset-password
+  "Reset the password for a user with EMAIL-ADDRESS."
+  [email-address]
+  (require 'metabase.cmd.reset-password)
+  ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
 (defn ^:command help
   "Show this help message listing valid Metabase commands."

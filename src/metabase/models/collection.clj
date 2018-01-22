@@ -114,20 +114,20 @@
   (into {} (for [[group-id perms] (group-by :group_id (db/select 'Permissions))]
              {group-id (set (map :object perms))})))
 
-(s/defn ^:private ^:always-validate perms-type-for-collection :- CollectionPermissions
+(s/defn ^:private perms-type-for-collection :- CollectionPermissions
   [permissions-set collection-id]
   (cond
     (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-id)) :write
     (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-id))      :read
     :else                                                                                             :none))
 
-(s/defn ^:private ^:always-validate group-permissions-graph :- GroupPermissionsGraph
+(s/defn ^:private group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having PERMISSIONS-SET."
   [permissions-set collection-ids]
   (into {} (for [collection-id collection-ids]
              {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
-(s/defn ^:always-validate graph :- PermissionsGraph
+(s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections.
    This works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that function."
   []
@@ -140,7 +140,7 @@
 
 ;;; ---------------------------------------- Update Graph ----------------------------------------
 
-(s/defn ^:private ^:always-validate update-collection-permissions! [group-id :- su/IntGreaterThanZero, collection-id :- su/IntGreaterThanZero, new-collection-perms :- CollectionPermissions]
+(s/defn ^:private update-collection-permissions! [group-id :- su/IntGreaterThanZero, collection-id :- su/IntGreaterThanZero, new-collection-perms :- CollectionPermissions]
   ;; remove whatever entry is already there (if any) and add a new entry if applicable
   (perms/revoke-collection-permissions! group-id collection-id)
   (case new-collection-perms
@@ -148,7 +148,7 @@
     :read  (perms/grant-collection-read-permissions! group-id collection-id)
     :none  nil))
 
-(s/defn ^:private ^:always-validate update-group-permissions! [group-id :- su/IntGreaterThanZero, new-group-perms :- GroupPermissionsGraph]
+(s/defn ^:private update-group-permissions! [group-id :- su/IntGreaterThanZero, new-group-perms :- GroupPermissionsGraph]
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! group-id collection-id new-perms)))
 
@@ -163,7 +163,7 @@
       :after   new
       :user_id *current-user-id*)))
 
-(s/defn ^:always-validate update-graph!
+(s/defn update-graph!
   "Update the collections permissions graph.
    This works just like the function of the same name in `metabase.models.permissions`, but for `Collections`;
    refer to that function's extensive documentation to get a sense for how this works."

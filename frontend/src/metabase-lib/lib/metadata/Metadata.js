@@ -38,4 +38,9 @@ export default class Metadata extends Base {
         // $FlowFixMe
         return (Object.values(this.metrics): Metric[]);
     }
+
+    segmentsList(): Metric[] {
+        // $FlowFixMe
+        return (Object.values(this.segments): Segment[]);
+    }
 }

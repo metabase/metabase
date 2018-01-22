@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-
+import { t } from "c-3po";
 import DatePicker
     from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -103,16 +103,16 @@ export default class TimeseriesFilterWidget extends Component {
                 currentFilter
             ).join(" - ");
             if (currentFilter[0] === ">") {
-                currentDescription = "After " + currentDescription;
+                currentDescription = t`After ${currentDescription}`;
             } else if (currentFilter[0] === "<") {
-                currentDescription = "Before " + currentDescription;
+                currentDescription = t`Before ${currentDescription}`;
             } else if (currentFilter[0] === "IS_NULL") {
-                currentDescription = "Is Empty";
+                currentDescription = t`Is Empty`;
             } else if (currentFilter[0] === "NOT_NULL") {
-                currentDescription = "Not Empty";
+                currentDescription = t`Not Empty`;
             }
         } else {
-            currentDescription = "All Time";
+            currentDescription = t`All Time`;
         }
 
         return (
@@ -125,6 +125,8 @@ export default class TimeseriesFilterWidget extends Component {
                 triggerClasses={cx(className, "my2")}
                 ref={ref => this._popover = ref}
                 sizeToFit
+                // accomodate dual calendar size
+                autoWidth={true}
             >
                 <DatePicker
                     filter={this.state.filter}

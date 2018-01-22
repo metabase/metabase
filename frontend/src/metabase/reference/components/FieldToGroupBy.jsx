@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import pure from "recompose/pure";
-
+import { t } from 'c-3po';
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
@@ -20,7 +20,7 @@ const FieldToGroupBy = ({
         <a className={Q.queryButton} onClick={onClick}>
             <span className={S.fieldToGroupByText}>
                 <span>
-                    {`${metric.name} by `}
+                    {`${metric.name} ` + t`by` + ` `}
                 </span>
                 <span className="ml1 text-brand">
                     {field.display_name}

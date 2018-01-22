@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-
+import { t } from 'c-3po';
 import CopyToClipboard from 'react-copy-to-clipboard';
 
 type Props = {
@@ -34,7 +34,7 @@ export default class CopyWidget extends Component {
     render() {
         const { value, className, ...props } = this.props;
         return (
-            <Tooltip tooltip="Copied!" isOpen={this.state.copied}>
+            <Tooltip tooltip={t`Copied!`} isOpen={this.state.copied}>
                 <CopyToClipboard text={value} onCopy={this.onCopy}>
                     <div className={className}>
                         <Icon name="copy" {...props} />

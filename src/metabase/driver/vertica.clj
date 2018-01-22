@@ -12,8 +12,7 @@
              [ssh :as ssh]]))
 
 (def ^:private ^:const column->base-type
-  "Map of Vertica column types -> Field base types.
-   Add more mappings here as you come across them."
+  "Map of Vertica column types -> Field base types. Add more mappings here as you come across them."
   {:Boolean        :type/Boolean
    :Integer        :type/Integer
    :Bigint         :type/BigInteger
@@ -37,10 +36,11 @@
 (defn- connection-details->spec [{:keys [host port db dbname]
                                   :or   {host "localhost", port 5433, db ""}
                                   :as   details}]
-  (merge {:classname   "com.vertica.jdbc.Driver"
-          :subprotocol "vertica"
-          :subname     (str "//" host ":" port "/" (or dbname db))}
-         (dissoc details :host :port :dbname :db :ssl)))
+  (-> (merge {:classname   "com.vertica.jdbc.Driver"
+              :subprotocol "vertica"
+              :subname     (str "//" host ":" port "/" (or dbname db))}
+             (dissoc details :host :port :dbname :db :ssl))
+      (sql/handle-additional-options details)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
@@ -48,10 +48,9 @@
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
 (defn- cast-timestamp
-  "Vertica requires stringified timestamps (what
-  Date/DateTime/Timestamps are converted to) to be cast as timestamps
-  before date operations can be performed. This function will add that
-  cast if it is a timestamp, otherwise this is a noop."
+  "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
+  before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
+  noop."
   [expr]
   (if (u/is-temporal? expr)
     (hx/cast :timestamp expr)
@@ -111,6 +110,9 @@
   clojure.lang.Named
   (getName [_] "Vertica"))
 
+(def ^:private vertica-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
+(def ^:private vertica-db-time-query "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
+
 (u/strict-extend VerticaDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -135,7 +137,11 @@
                                             {:name         "password"
                                              :display-name "Database password"
                                              :type         :password
-                                             :placeholder  "*******"}]))})
+                                             :placeholder  "*******"}
+                                            {:name         "additional-options"
+                                             :display-name "Additional JDBC connection string options"
+                                             :placeholder  "ConnectionLoadBalance=1"}]))
+          :current-db-time   (driver/make-current-db-time-fn vertica-db-time-query vertica-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)

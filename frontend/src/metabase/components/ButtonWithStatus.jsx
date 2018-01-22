@@ -1,11 +1,12 @@
 import React, { Component } from "react";
 import cx from "classnames";
+import { t } from 'c-3po';
 
 let defaultTitleForState = {
-    default: "Save",
-    inProgress: "Saving...",
-    completed: "Saved!",
-    failed: "Saving failed."
+    default: t`Save`,
+    inProgress: t`Saving...`,
+    completed: t`Saved!`,
+    failed: t`Saving failed.`
 };
 
 
@@ -21,7 +22,7 @@ export default class ButtonWithStatus extends Component {
         onClickOperation: (any) => Promise<void>,
         titleForState?: string[],
         disabled?: boolean,
-        className?: string
+        className?: string,
     }
 
     state = {
@@ -44,7 +45,7 @@ export default class ButtonWithStatus extends Component {
 
     render() {
         const { progressState } = this.state;
-        const titleForState =  this.props.titleForState || defaultTitleForState
+        const titleForState =  {...defaultTitleForState, ...(this.props.titleForState || {})}
         const title = titleForState[progressState];
         const disabled = this.props.disabled || progressState !== "default";
 

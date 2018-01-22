@@ -29,6 +29,10 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getQueryResult     = state => state.qb.queryResult;
 export const getQueryResults    = state => state.qb.queryResults;
 
+// get instance settings, used for determining whether to display certain actions,
+// currently used only for xrays
+export const getSettings        = state => state.settings.values
+
 export const getIsDirty = createSelector(
     [getCard, getOriginalCard],
     (card, originalCard) => {
@@ -92,6 +96,7 @@ export const getDatabaseFields = createSelector(
 
 
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
+import { getAlerts } from "metabase/alert/selectors";
 
 export const getMode = createSelector(
     [getLastRunCard, getTableMetadata],
@@ -152,3 +157,8 @@ export const getQuery = createSelector(
 )
 
 export const getIsRunnable = createSelector([getQuestion], (question) => question && question.canRun())
+
+export const getQuestionAlerts = createSelector(
+    [getAlerts, getCard],
+    (alerts, card) => card && card.id && _.pick(alerts, (alert) => alert.card.id === card.id) || {}
+)

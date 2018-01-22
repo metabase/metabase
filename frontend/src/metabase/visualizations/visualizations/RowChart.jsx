@@ -1,8 +1,8 @@
 /* @flow */
 
-
+import { t } from 'c-3po';
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
-import { rowRenderer } from "../lib/LineAreaBarRenderer";
+import rowRenderer from "../lib/RowRenderer.js";
 
 import {
     GRAPH_DATA_SETTINGS,
@@ -10,10 +10,10 @@ import {
 } from "metabase/visualizations/lib/settings/graph";
 
 export default class RowChart extends LineAreaBarChart {
-    static uiName = "Row Chart";
+    static uiName = t`Row Chart`;
     static identifier = "row";
     static iconName = "horizontal_bar";
-    static noun = "row chart";
+    static noun = t`row chart`;
 
     static supportsSeries = false;
 
@@ -28,9 +28,9 @@ export default class RowChart extends LineAreaBarChart {
 // rename these settings
 RowChart.settings["graph.metrics"] = {
     ...RowChart.settings["graph.metrics"],
-    title: "X-axis"
+    title: t`X-axis`
 }
 RowChart.settings["graph.dimensions"] = {
     ...RowChart.settings["graph.dimensions"],
-    title: "Y-axis"
+    title: t`Y-axis`
 }

@@ -2,6 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import { List } from 'react-virtualized'
+import "react-virtualized/styles.css";
+import { t } from 'c-3po';
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -23,24 +26,35 @@ export default class Select extends Component {
 }
 
 class BrowserSelect extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            inputValue: ""
-        };
+
+    state = {
+        inputValue: ""
     }
+
     static propTypes = {
         children: PropTypes.array.isRequired,
-        className: PropTypes.string,
-        value: PropTypes.any,
         onChange: PropTypes.func.isRequired,
+        value: PropTypes.any,
         searchProp: PropTypes.string,
         searchCaseInsensitive: PropTypes.bool,
         isInitiallyOpen: PropTypes.bool,
-        placeholder: PropTypes.string
+        placeholder: PropTypes.string,
+        // NOTE - @kdoh
+        // seems too generic for us?
+        triggerElement: PropTypes.any,
+        height: PropTypes.number,
+        width: PropTypes.number,
+        rowHeight: PropTypes.number,
+        // TODO - @kdoh
+        // we should not allow this
+        className: PropTypes.string,
+        compact: PropTypes.bool,
     }
     static defaultProps = {
         className: "",
+        width: 320,
+        height: 320,
+        rowHeight: 40,
     }
 
     isSelected(otherValue) {
@@ -49,7 +63,21 @@ class BrowserSelect extends Component {
     }
 
     render() {
-        const { className, children, value, onChange, searchProp, searchCaseInsensitive, isInitiallyOpen, placeholder } = this.props;
+        const {
+            className,
+            value,
+            onChange,
+            searchProp,
+            searchCaseInsensitive,
+            isInitiallyOpen,
+            placeholder,
+            triggerElement,
+            width,
+            height,
+            rowHeight
+        } = this.props;
+
+        let children = this.props.children
 
         let selectedName;
         for (const child of children) {
@@ -76,14 +104,30 @@ class BrowserSelect extends Component {
             }
         }
 
+        // make sure we filter by the search query
+        children = children.filter(filter)
+
+        let extraProps = {}
+        if (this.props.compact) {
+          extraProps = {
+            tetherOptions: {
+                attachment: `top left`,
+                targetAttachment: `bottom left`,
+                targetOffset: `0px 0px`
+            },
+            hasArrow: false
+          }
+        }
+
         return (
             <PopoverWithTrigger
                 ref="popover"
                 className={className}
-                triggerElement={<SelectButton hasValue={!!value}>{selectedName}</SelectButton>}
+                triggerElement={triggerElement || <SelectButton hasValue={!!value}>{selectedName}</SelectButton>}
                 triggerClasses={className}
                 verticalAttachments={["top"]}
                 isInitiallyOpen={isInitiallyOpen}
+                {...extraProps}
             >
                 <div className="flex flex-column">
                     { searchProp &&
@@ -94,19 +138,39 @@ class BrowserSelect extends Component {
                             autoFocus
                         />
                     }
-                    <div className="ColumnarSelector-column scroll-y" onClick={(e) => e.stopPropagation()}>
-                        {children.filter(filter).map(child =>
-                            React.cloneElement(child, {
-                                selected: this.isSelected(child.props.value),
-                                onClick: () => {
-                                    if (!child.props.disabled) {
-                                        onChange({ target: { value: child.props.value }});
-                                    }
-                                    this.refs.popover.close()
-                                }
-                            })
-                        )}
-                    </div>
+                    <List
+                        width={width}
+                        height={
+                            // check to see if the height of the number of rows is less than the provided (or default)
+                            // height. if so, set the height to the number of rows * the row height so that
+                            // large blank spaces at the bottom are prevented
+                            children.length * rowHeight < height ? children.length * rowHeight : height
+                        }
+                        rowHeight={rowHeight}
+                        rowCount={children.length}
+                        rowRenderer={({index, key, style}) => {
+                            const child = children[index]
+
+                            /*
+                             * for each child we need to add props based on
+                             * the parent's onClick and the current selection
+                             * status, so we use cloneElement here
+                            * */
+                            return (
+                                <div key={key} style={style} onClick={e => e.stopPropagation()}>
+                                    {React.cloneElement(children[index], {
+                                        selected: this.isSelected(child.props.value),
+                                        onClick: () => {
+                                            if (!child.props.disabled) {
+                                                onChange({ target: { value: child.props.value }});
+                                            }
+                                            this.refs.popover.close()
+                                        }
+                                    })}
+                                </div>
+                            )
+                        }}
+                    />
                 </div>
             </PopoverWithTrigger>
         );
@@ -157,7 +221,7 @@ export class Option extends Component {
                         }}
                     />
                 }
-                <span className="ml4">{children}</span>
+                <span className="ml4 no-decoration">{children}</span>
             </div>
         );
     }
@@ -183,7 +247,7 @@ class LegacySelect extends Component {
 
     static defaultProps = {
         placeholder: "",
-        emptyPlaceholder: "Nothing to select",
+        emptyPlaceholder: t`Nothing to select`,
         disabledOptionIds: [],
         optionNameFn: (option) => option.name,
         optionValueFn: (option) => option,

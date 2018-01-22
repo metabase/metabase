@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 export default class DeleteDatabaseModal extends Component {
@@ -35,7 +35,7 @@ export default class DeleteDatabaseModal extends Component {
 
         var formError;
         if (this.state.error) {
-            var errorMessage = "Server error encountered";
+            var errorMessage = t`Server error encountered`;
             if (this.state.error.data &&
                 this.state.error.data.message) {
                 errorMessage = this.state.error.data.message;
@@ -53,22 +53,25 @@ export default class DeleteDatabaseModal extends Component {
 
         return (
             <ModalContent
-                title="Delete Database"
+                title={t`Delete this database?`}
                 onClose={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
                     { database.is_sample &&
-                        <p><strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, though.</p>
+                        <p className="text-paragraph">{t`<strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost.`}</p>
                     }
-                    <p>
-                        Are you sure you want to delete this database? All saved questions that rely on this database will be lost. <strong>This cannot be undone</strong>. If you're sure, please type <strong>DELETE</strong> in this box:
+                    <p className="text-paragraph">
+                      {t`All saved questions, metrics, and segments that rely on this database will be lost. <strong>This cannot be undone</strong>.`}
+                    </p>
+                    <p className="text-paragraph">
+                      {t`If you're sure, please type <strong>DELETE</strong> in this box:`}
                     </p>
                     <input className="Form-input" type="text" onChange={(e) => this.setState({ confirmValue: e.target.value })} autoFocus />
                 </div>
 
-                <div className="Form-actions">
-                    <button className={cx("Button Button--danger", { "disabled": !confirmed })} onClick={() => this.deleteDatabase()}>Delete</button>
-                    <button className="Button Button--primary ml1" onClick={this.props.onClose}>Cancel</button>
+                <div className="Form-actions ml-auto">
+                    <button className="Button" onClick={this.props.onClose}>{t`Cancel`}</button>
+                    <button className={cx("Button Button--danger ml2", { "disabled": !confirmed })} onClick={() => this.deleteDatabase()}>{t`Delete`}</button>
                     {formError}
                 </div>
             </ModalContent>

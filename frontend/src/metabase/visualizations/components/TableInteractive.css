@@ -1,9 +1,22 @@
-.PagingButtons {
-    border: 1px solid #ddd;
+:root {
+    --table-border-radius: 6px;
+}
+
+.TableInteractive {
+  border-radius: var(--table-border-radius);
+  overflow: hidden;
 }
 
 .TableInteractive-headerCellData {
   font-weight: 700;
+}
+
+.TableInteractive-headerCellData.TableInteractive-cellWrapper--firstColumn {
+  border-top-left-radius: var(--table-border-radius);
+}
+
+.TableInteractive-headerCellData.TableInteractive-cellWrapper--lastColumn {
+  border-top-right-radius: var(--table-border-radius);
 }
 
 .TableInteractive-headerCellData .Icon {
@@ -11,59 +24,48 @@
 }
 
 .TableInteractive-headerCellData--sorted .Icon {
-    opacity: 1;
-    transition: opacity .3s linear;
+  opacity: 1;
+  transition: opacity .3s linear;
 }
 
 /* if the column is the one that is being sorted*/
 .TableInteractive-headerCellData--sorted {
-     color: var(--brand-color);
+  color: var(--brand-color);
 }
 
-/* what follows is a war crime but such is the state of FE development */
-.TableInteractive {
-    border: 1px solid rgb(205, 205, 205);
-}
+
 .TableInteractive-header {
-    border-bottom: 1px solid rgb(205, 205, 205);
-    border-right: 1px solid rgb(205, 205, 205);
-    box-sizing: border-box;
+  box-sizing: border-box;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
-    border-right: 1px solid #e8e8e8;
-    border-bottom: 1px solid #e8e8e8;
-    border-top: 1px solid transparent;
-    border-left: 1px solid transparent;
+  padding: 1em 1.25em;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
 
-    padding: 8px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
+  border-top: 1px solid transparent;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid var(--table-border-color);
 }
 
-.TableInteractive.TableInteractive--pivot .TableInteractive-cellWrapper--firstColumn {
-    border-right: 1px solid rgb(205, 205, 205);
-}
 
 .TableInteractive .TableInteractive-cellWrapper:hover {
-    border-color: var(--brand-color);
-    color: var(--brand-color);
+  border-color: var(--brand-color);
+  color: var(--brand-color);
 }
 
 .TableInteractive .TableInteractive-header,
 .TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
-    background-color: #fff;
-    background-image: none;
+  background-color: #fff;
+  background-image: none;
 }
 
 .TableInteractive .TableInteractive-header,
 .TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
-    background-color: #fff;
-}
-
-.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper:hover {
-    border-color: #e8e8e8;
+  background-color: #fff;
 }
 
 /* cell overflow ellipsis */
@@ -72,4 +74,18 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
+}
+
+/* pivot */
+.TableInteractive.TableInteractive--pivot .TableInteractive-cellWrapper--firstColumn {
+  border-right: 1px solid rgb(205, 205, 205);
+}
+
+.PagingButtons {
+  border: 1px solid #ddd;
+}
+
+.TableInteractive .TableInteractive-cellWrapper.tether-enabled {
+  background-color: var(--brand-color);
+  color: white;
 }

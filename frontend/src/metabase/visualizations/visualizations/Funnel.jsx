@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import { formatValue } from "metabase/lib/formatting";
@@ -16,11 +16,12 @@ import _ from "underscore";
 import cx from "classnames";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import { TitleLegendHeader } from "metabase/visualizations/components/TitleLegendHeader";
 
 export default class Funnel extends Component {
     props: VisualizationProps;
 
-    static uiName = "Funnel";
+    static uiName = t`Funnel`;
     static identifier = "funnel";
     static iconName = "funnel";
 
@@ -45,31 +46,31 @@ export default class Funnel extends Component {
             throw new MinRowsError(1, rows.length);
         }
         if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
-            throw new ChartSettingsError("Which fields do you want to use?", "Data", "Choose fields");
+            throw new ChartSettingsError(t`Which fields do you want to use?`, t`Data`, t`Choose fields`);
         }
     }
 
     static settings = {
         "funnel.dimension": {
             section: "Data",
-            title: "Step",
+            title: t`Step`,
             ...dimensionSetting("funnel.dimension"),
             dashboard: false,
             useRawSeries: true,
         },
         "funnel.metric": {
             section: "Data",
-            title: "Measure",
+            title: t`Measure`,
             ...metricSetting("funnel.metric"),
             dashboard: false,
             useRawSeries: true,
         },
         "funnel.type": {
-            title: "Funnel type",
+            title: t`Funnel type`,
             section: "Display",
             widget: "select",
             props: {
-                options: [{ name: "Funnel", value: "funnel"}, { name: "Bar chart", value: "bar"}]
+                options: [{ name: t`Funnel`, value: "funnel"}, { name: t`Bar chart`, value: "bar"}]
             },
             // legacy "bar" funnel was only previously available via multiseries
             getDefault: (series) => series.length > 1 ? "bar" : "funnel",
@@ -108,17 +109,27 @@ export default class Funnel extends Component {
     render() {
         const { settings } = this.props;
 
+        const hasTitle = settings["card.title"];
+
         if (settings["funnel.type"] === "bar") {
             return <FunnelBar {...this.props} />
         } else {
             const { actionButtons, className, onChangeCardAndRun, series } = this.props;
             return (
                 <div className={cx(className, "flex flex-column p1")}>
+                    { hasTitle &&
+                        <TitleLegendHeader
+                            series={series}
+                            settings={settings}
+                            onChangeCardAndRun={onChangeCardAndRun}
+                            actionButtons={actionButtons}
+                        />
+                    }
                     <LegendHeader
                         className="flex-no-shrink"
                         // $FlowFixMe
                         series={series._raw || series}
-                        actionButtons={actionButtons}
+                        actionButtons={!hasTitle && actionButtons}
                         onChangeCardAndRun={onChangeCardAndRun}
                     />
                     <FunnelNormal {...this.props} className="flex-full" />

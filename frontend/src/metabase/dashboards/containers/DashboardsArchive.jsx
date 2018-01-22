@@ -4,6 +4,7 @@ import React, {Component} from 'react';
 import {connect} from "react-redux";
 import cx from "classnames";
 import _ from "underscore"
+import { t, jt } from "c-3po";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
@@ -69,7 +70,7 @@ export class Dashboards extends Component {
 
         const headerWithBackContainer =
             <div className="flex align-center pt4 pb1">
-                <HeaderWithBack name="Archive"/>
+                <HeaderWithBack name={t`Archive`}/>
             </div>
 
         return (
@@ -82,7 +83,7 @@ export class Dashboards extends Component {
                         {headerWithBackContainer}
                         <div className="full flex justify-center" style={{marginTop: "75px"}}>
                             <EmptyState
-                                message={<span>No dashboards have been<br />archived yet</span>}
+                                message={<span>{jt`No dashboards have been ${<br />} archived yet`}</span>}
                                 icon="viewArchive"
                             />
                         </div>
@@ -100,9 +101,8 @@ export class Dashboards extends Component {
                                 <EmptyState
                                     message={
                                         <div className="mt4">
-                                            <h3 className="text-grey-5">No results found</h3>
-                                            <p className="text-grey-4">Try adjusting your filter to find what you’re
-                                                looking for.</p>
+                                            <h3 className="text-grey-5">{t`No results found`}</h3>
+                                            <p className="text-grey-4">{t`Try adjusting your filter to find what you’re looking for.`}</p>
                                         </div>
                                     }
                                     image="/app/img/empty_dashboard"

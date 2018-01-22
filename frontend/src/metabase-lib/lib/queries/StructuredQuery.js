@@ -33,6 +33,7 @@ import type {
 } from "metabase/meta/types/Metadata";
 
 import Dimension, {
+    FKDimension,
     ExpressionDimension,
     AggregationDimension
 } from "metabase-lib/lib/Dimension";
@@ -633,7 +634,7 @@ export default class StructuredQuery extends AtomicQuery {
             );
             for (const dimension of fkDimensions) {
                 const fkDimensions = dimension
-                    .dimensions()
+                    .dimensions([FKDimension])
                     .filter(dimensionFilter);
 
                 if (fkDimensions.length > 0) {

@@ -22,60 +22,66 @@
 
 (defn- db-details []
   (tu/match-$ (db)
-    {:created_at         $
-     :engine             "h2"
-     :caveats            nil
-     :points_of_interest nil
-     :id                 $
-     :updated_at         $
-     :name               "test-data"
-     :is_sample          false
-     :is_full_sync       true
-     :description        nil
-     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
-
+    {:created_at                  $
+     :engine                      "h2"
+     :caveats                     nil
+     :points_of_interest          nil
+     :id                          $
+     :updated_at                  $
+     :name                        "test-data"
+     :is_sample                   false
+     :is_full_sync                true
+     :is_on_demand                false
+     :description                 nil
+     :features                    (mapv name (driver/features (driver/engine->driver :h2)))
+     :cache_field_values_schedule "0 50 0 * * ? *"
+     :metadata_sync_schedule      "0 50 * * * ? *"
+     :timezone                    $}))
 
 ;; ## GET /api/field/:id
 (expect
   (tu/match-$ (Field (id :users :name))
-    {:description        nil
-     :table_id           (id :users)
-     :raw_column_id      $
-     :table              (tu/match-$ (Table (id :users))
-                           {:description             nil
-                            :entity_type             nil
-                            :visibility_type         nil
-                            :db                      (db-details)
-                            :schema                  "PUBLIC"
-                            :name                    "USERS"
-                            :display_name            "Users"
-                            :rows                    15
-                            :updated_at              $
-                            :entity_name             nil
-                            :active                  true
-                            :id                      (id :users)
-                            :db_id                   (id)
-                            :caveats                 nil
-                            :points_of_interest      nil
-                            :show_in_getting_started false
-                            :raw_table_id            $
-                            :created_at              $})
-     :special_type       "type/Name"
-     :name               "NAME"
-     :display_name       "Name"
-     :caveats            nil
-     :points_of_interest nil
-     :updated_at         $
-     :last_analyzed      $
-     :active             true
-     :id                 (id :users :name)
-     :visibility_type    "normal"
-     :position           0
-     :preview_display    true
-     :created_at         $
-     :base_type          "type/Text"
-     :fk_target_field_id nil
-     :parent_id          nil})
+    {:description         nil
+     :table_id            (id :users)
+     :raw_column_id       $
+     :fingerprint         $
+     :fingerprint_version $
+     :table               (tu/match-$ (Table (id :users))
+                            {:description             nil
+                             :entity_type             nil
+                             :visibility_type         nil
+                             :db                      (db-details)
+                             :schema                  "PUBLIC"
+                             :name                    "USERS"
+                             :display_name            "Users"
+                             :rows                    15
+                             :updated_at              $
+                             :entity_name             nil
+                             :active                  true
+                             :id                      (id :users)
+                             :db_id                   (id)
+                             :caveats                 nil
+                             :points_of_interest      nil
+                             :show_in_getting_started false
+                             :raw_table_id            $
+                             :created_at              $})
+     :special_type        "type/Name"
+     :name                "NAME"
+     :display_name        "Name"
+     :caveats             nil
+     :points_of_interest  nil
+     :updated_at          $
+     :last_analyzed       $
+     :active              true
+     :id                  (id :users :name)
+     :visibility_type     "normal"
+     :position            0
+     :preview_display     true
+     :created_at          $
+     :database_type       "VARCHAR"
+     :base_type           "type/Text"
+     :fk_target_field_id  nil
+     :parent_id           nil})
   ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 

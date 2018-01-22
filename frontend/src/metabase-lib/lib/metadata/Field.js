@@ -19,6 +19,7 @@ import {
     isPK,
     isFK,
     isEntityName,
+    isCoordinate,
     getIconForField,
     getFieldType
 } from "metabase/lib/schema_metadata";
@@ -89,6 +90,10 @@ export default class Field extends Base {
     }
     isEntityName() {
         return isEntityName(this);
+    }
+
+    isCoordinate() {
+        return isCoordinate(this);
     }
 
     fieldValues(): FieldValues {

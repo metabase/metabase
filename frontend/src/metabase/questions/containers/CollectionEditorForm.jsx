@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import Button from "metabase/components/Button";
 import ColorPicker from "metabase/components/ColorPicker";
 import FormField from "metabase/components/FormField";
@@ -16,12 +16,12 @@ const formConfig = {
     validate: (values) => {
         const errors = {};
         if (!values.name) {
-            errors.name = "Name is required";
+            errors.name = t`Name is required`;
         } else if (values.name.length > 100) {
-            errors.name = "Name must be 100 characters or less";
+            errors.name = t`Name must be 100 characters or less`;
         }
         if (!values.color) {
-            errors.color = "Color is required";
+            errors.color = t`Color is required`;
         }
         return errors;
     },
@@ -34,10 +34,10 @@ const formConfig = {
 }
 
 export const getFormTitle = ({ id, name }) =>
-    id.value ? name.value : "New collection"
+    id.value ? name.value : t`New collection`
 
 export const getActionText = ({ id }) =>
-    id.value ? "Update": "Create"
+    id.value ? t`Update`: t`Create`
 
 
 export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fields}) =>
@@ -70,28 +70,28 @@ export class CollectionEditorForm extends Component {
             >
                 <div className="NewForm ml-auto mr-auto mt4 pt2" style={{ width: 540 }}>
                     <FormField
-                        displayName="Name"
+                        displayName={t`Name`}
                         {...fields.name}
                     >
                         <Input
                             className="Form-input full"
-                            placeholder="My new fantastic collection"
+                            placeholder={t`My new fantastic collection`}
                             autoFocus
                             {...fields.name}
                         />
                     </FormField>
                     <FormField
-                        displayName="Description"
+                        displayName={t`Description`}
                         {...fields.description}
                     >
                         <textarea
                             className="Form-input full"
-                            placeholder="It's optional but oh, so helpful"
+                            placeholder={t`It's optional but oh, so helpful`}
                             {...fields.description}
                         />
                     </FormField>
                     <FormField
-                        displayName="Color"
+                        displayName={t`Color`}
                         {...fields.color}
                     >
                         <ColorPicker {...fields.color} />

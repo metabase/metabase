@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { assocIn } from "icepick";
 
 import SettingHeader from "./SettingHeader.jsx";
-
+import { t } from 'c-3po';
 import SettingInput from "./widgets/SettingInput.jsx";
 import SettingNumber from "./widgets/SettingNumber.jsx";
 import SettingPassword from "./widgets/SettingPassword.jsx";
@@ -22,17 +22,18 @@ const SETTING_WIDGET_MAP = {
 
 const updatePlaceholderForEnvironmentVars = (props) => {
     if (props && props.setting && props.setting.is_env_setting){
-        return assocIn(props, ["setting", "placeholder"], "Using " + props.setting.env_name) 
+        return assocIn(props, ["setting", "placeholder"], t`Using ` + props.setting.env_name)
     }
     return props
 }
 
 export default class SettingsSetting extends Component {
-    
+
 
     static propTypes = {
         setting: PropTypes.object.isRequired,
-        updateSetting: PropTypes.func.isRequired,
+        onChange: PropTypes.func.isRequired,
+        onChangeSetting: PropTypes.func,
         autoFocus: PropTypes.bool,
         disabled: PropTypes.bool,
     };
@@ -50,7 +51,7 @@ export default class SettingsSetting extends Component {
                     <SettingHeader setting={setting} />
                 }
                 <div className="flex">
-                    <Widget {...updatePlaceholderForEnvironmentVars(this.props)} 
+                    <Widget {...updatePlaceholderForEnvironmentVars(this.props)}
                     />
                 </div>
                 { errorMessage &&

@@ -46,14 +46,15 @@ type Props = {
 
     parametersWidget:       React$Element<*>,
 
-    addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
-    archiveDashboard:        (dashboardId: DashboardId) => void,
-    fetchCards:             (filterMode?: string) => void,
-    fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-    fetchRevisions:         ({ entity: string, id: number }) => void,
-    revertToRevision:       ({ entity: string, id: number, revision_id: RevisionId }) => void,
-    saveDashboardAndCards:  () => Promise<void>,
-    setDashboardAttribute:  (attribute: string, value: any) => void,
+    addCardToDashboard:         ({ dashId: DashCardId, cardId: CardId }) => void,
+    addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
+    archiveDashboard:           (dashboardId: DashboardId) => void,
+    fetchCards:                 (filterMode?: string) => void,
+    fetchDashboard:             (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
+    fetchRevisions:             ({ entity: string, id: number }) => void,
+    revertToRevision:           ({ entity: string, id: number, revision_id: RevisionId }) => void,
+    saveDashboardAndCards:      () => Promise<void>,
+    setDashboardAttribute:      (attribute: string, value: any) => void,
 
     addParameter:           (option: ParameterOption) => Promise<Parameter>,
     setEditingParameter:    (parameterId: ?ParameterId) => void,
@@ -88,6 +89,7 @@ export default class DashboardHeader extends Component {
         refreshElapsed: PropTypes.number,
 
         addCardToDashboard: PropTypes.func.isRequired,
+        addTextDashCardToDashboard: PropTypes.func.isRequired,
         archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
@@ -104,6 +106,10 @@ export default class DashboardHeader extends Component {
 
     onEdit() {
         this.props.onEditingChange(true);
+    }
+
+    onAddTextBox() {
+        this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
     }
 
     onDoneEditing() {
@@ -188,6 +194,32 @@ export default class DashboardHeader extends Component {
             buttons.push(parametersWidget);
         }
 
+        if (!isFullscreen && canEdit) {
+            buttons.push(
+                <ModalWithTrigger
+                    full
+                    key="add"
+                    ref="addQuestionModal"
+                    triggerElement={
+                        <Tooltip tooltip="Add a question">
+                            <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
+                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
+                            </span>
+                        </Tooltip>
+                    }
+                >
+                    <AddToDashSelectQuestionModal
+                        dashboard={dashboard}
+                        cards={this.props.cards}
+                        fetchCards={this.props.fetchCards}
+                        addCardToDashboard={this.props.addCardToDashboard}
+                        onEditingChange={this.props.onEditingChange}
+                        onClose={() => this.refs.addQuestionModal.toggle()}
+                    />
+                </ModalWithTrigger>
+            );
+        }
+
         if (isEditing) {
             // Parameters
             buttons.push(
@@ -214,6 +246,15 @@ export default class DashboardHeader extends Component {
                 </span>
             );
 
+            // Add text card button
+            buttons.push(
+                <Tooltip tooltip="Add a text box">
+                    <a data-metabase-event="Dashboard;Add Text Box" key="add-text" title="Add a text box" className="text-brand-hover cursor-pointer" onClick={() => this.onAddTextBox()}>
+                        <Icon name="string" size={20} />
+                    </a>
+                </Tooltip>
+            );
+
             buttons.push(
                 <ModalWithTrigger
                     key="history"
@@ -221,7 +262,7 @@ export default class DashboardHeader extends Component {
                     triggerElement={
                         <Tooltip tooltip="Revision history">
                             <span data-metabase-event={"Dashboard;Revisions"}>
-                                <Icon className="text-brand-hover" name="history" size={16} />
+                                <Icon className="text-brand-hover" name="history" size={18} />
                             </span>
                         </Tooltip>
                     }
@@ -246,32 +287,6 @@ export default class DashboardHeader extends Component {
                         <Icon name="pencil" size={16} />
                     </a>
                 </Tooltip>
-            );
-        }
-
-        if (!isFullscreen && canEdit) {
-            buttons.push(
-                <ModalWithTrigger
-                    full
-                    key="add"
-                    ref="addQuestionModal"
-                    triggerElement={
-                        <Tooltip tooltip="Add a question">
-                            <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
-                            </span>
-                        </Tooltip>
-                    }
-                >
-                    <AddToDashSelectQuestionModal
-                        dashboard={dashboard}
-                        cards={this.props.cards}
-                        fetchCards={this.props.fetchCards}
-                        addCardToDashboard={this.props.addCardToDashboard}
-                        onEditingChange={this.props.onEditingChange}
-                        onClose={() => this.refs.addQuestionModal.toggle()}
-                    />
-                </ModalWithTrigger>
             );
         }
 

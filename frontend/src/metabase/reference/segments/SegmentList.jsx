@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-
+import { t } from 'c-3po';
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
@@ -24,13 +24,13 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
-            title: "Segments are interesting subsets of tables",
-            adminMessage: "Defining common segments for your team makes it even easier to ask questions",
-            message: "Segments will appear here once your admins have created some",
-            image: "app/assets/img/segments-list",
-            adminAction: "Learn how to create segments",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
-        }
+    title: t`Segments are interesting subsets of tables`,
+    adminMessage: t`Defining common segments for your team makes it even easier to ask questions`,
+    message: t`Segments will appear here once your admins have created some`,
+    image: "app/assets/img/segments-list",
+    adminAction: t`Learn how to create segments`,
+    adminLink: "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
+}
 
 const mapStateToProps = (state, props) => ({
     entities: getSegments(state, props),
@@ -62,8 +62,8 @@ export default class SegmentList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader 
-                    name="Segments"
+                <ReferenceHeader
+                    name={t`Segments`}
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
@@ -88,8 +88,7 @@ export default class SegmentList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        <AdminAwareEmptyState {...emptyStateData}/>
-                        }
+                        <AdminAwareEmptyState {...emptyStateData} />
                     </div>
                 }
                 </LoadingAndErrorWrapper>

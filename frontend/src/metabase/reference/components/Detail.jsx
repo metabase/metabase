@@ -3,7 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./Detail.css";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 import pure from "recompose/pure";
 
@@ -21,12 +21,12 @@ const Detail = ({ name, description, placeholder, subtitleClass, url, icon, isEd
                     <textarea
                         className={S.detailTextarea}
                         placeholder={placeholder}
-                        {...field}
+                        onChange={field.onChange}
                         //FIXME: use initialValues from redux forms instead of default value
-                        // to allow for reinitializing on cancel (see ReferenceGettingStartedGuide.jsx)
+                        // to allow for reinitializing on cancel (see GettingStartedGuide.jsx)
                         defaultValue={description}
                     /> :
-                    <span className={subtitleClass}>{description || placeholder || 'No description yet'}</span>
+                    <span className={subtitleClass}>{description || placeholder || t`No description yet`}</span>
                 }
                 { isEditing && field.error && field.touched &&
                     <span className="text-error">{field.error}</span>

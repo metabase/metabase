@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import _ from "underscore";
-
+import { t } from 'c-3po';
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -72,9 +72,9 @@ export default class SettingsEmailForm extends Component {
 
         switch (validationType) {
             case "email":
-                return !MetabaseUtils.validEmail(value) ? (validationMessage || "That's not a valid email address") : null;
+                return !MetabaseUtils.validEmail(value) ? (validationMessage || t`That's not a valid email address`) : null;
             case "integer":
-                return isNaN(parseInt(value)) ? (validationMessage || "That's not a valid integer") : null;
+                return isNaN(parseInt(value)) ? (validationMessage || t`That's not a valid integer`) : null;
         }
     }
 
@@ -117,7 +117,7 @@ export default class SettingsEmailForm extends Component {
         if (error.data && error.data.message) {
             formErrors.message = error.data.message;
         } else {
-            formErrors.message = "Looks like we ran into some problems";
+            formErrors.message = t`Looks like we ran into some problems`;
         }
 
         if (error.data && error.data.errors) {
@@ -195,22 +195,22 @@ export default class SettingsEmailForm extends Component {
                 <SettingsSetting
                     key={element.key}
                     setting={{ ...element, value }}
-                    updateSetting={this.handleChangeEvent.bind(this, element)}
+                    onChange={this.handleChangeEvent.bind(this, element)}
                     errorMessage={errorMessage}
                 />
             );
         });
 
         let sendTestButtonStates = {
-            default: "Send test email",
-            working: "Sending...",
-            success: "Sent!"
+            default: t`Send test email`,
+            working: t`Sending...`,
+            success: t`Sent!`
         };
 
         let saveSettingsButtonStates = {
-            default: "Save changes",
-            working: "Saving...",
-            success: "Changes saved!"
+            default: t`Save changes`,
+            working: t`Saving...`,
+            success: t`Changes saved!`
         };
 
         let disabled = (!valid || submitting !== "default" || sendingEmail !== "default"),

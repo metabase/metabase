@@ -6,13 +6,14 @@
              [util :as u]]
             [metabase.driver.google :as google]
             [metabase.driver.googleanalytics.query-processor :as qp]
-            [metabase.models.database :refer [Database]])
+            [metabase.models.database :refer [Database]]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes]
            [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]
            [java.util Collections Date Map]))
 
-;;; ------------------------------------------------------------ Client ------------------------------------------------------------
+;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Analytics credential->client [^GoogleCredential credential]
   (.build (doto (Analytics$Builder. google/http-transport google/json-factory credential)
@@ -25,7 +26,7 @@
   (comp credential->client database->credential))
 
 
-;;; ------------------------------------------------------------ describe-database ------------------------------------------------------------
+;;; ----------------------------------------------- describe-database ------------------------------------------------
 
 (defn- fetch-properties
   ^Webproperties [^Analytics client, ^String account-id]
@@ -50,14 +51,14 @@
          (.getId profile))))
 
 (defn- describe-database [database]
+  ;; Include a `_metabase_metadata` table in the list of Tables so we can provide custom metadata. See below.
   {:tables (set (for [table-id (cons "_metabase_metadata" (profile-ids database))]
                   {:name   table-id
                    :schema nil}))})
 
 
-;;; ------------------------------------------------------------ describe-table ------------------------------------------------------------
+;;; ------------------------------------------------- describe-table -------------------------------------------------
 
-;; This is the
 (def ^:private ^:const redundant-date-fields
   "Set of column IDs covered by `unit->ga-dimension` in the GA QP.
    We don't need to present them because people can just use date bucketing on the `ga:date` field."
@@ -71,7 +72,8 @@
     "ga:yearMonth"
     "ga:month"
     "ga:year"
-    ;; leave these out as well because their display names are things like "Month" but they're not dates so they're not really useful
+    ;; leave these out as well because their display names are things like "Month" but they're not dates so they're
+    ;; not really useful
     "ga:cohortNthDay"
     "ga:cohortNthMonth"
     "ga:cohortNthWeek"})
@@ -101,11 +103,13 @@
           column))))
 
 (defn- describe-columns [database]
-  (set (for [^Column column (columns database)]
-         {:name      (.getId column)
-          :base-type (if (= (.getId column) "ga:date")
-                       :type/Date
-                       (qp/ga-type->base-type (column-attribute column :dataType)))})))
+  (set (for [^Column column (columns database)
+             :let [ga-type (column-attribute column :dataType)]]
+         {:name          (.getId column)
+          :base-type     (if (= (.getId column) "ga:date")
+                           :type/Date
+                           (qp/ga-type->base-type ga-type))
+          :database-type ga-type})))
 
 (defn- describe-table [database table]
   {:name   (:name table)
@@ -113,7 +117,11 @@
    :fields (describe-columns database)})
 
 
-;;; ------------------------------------------------------------ _metabase_metadata ------------------------------------------------------------
+;;; ----------------------------------------------- _metabase_metadata -----------------------------------------------
+
+;; The following is provided so we can specify custom display_names for Tables and Fields since there's not yet a way
+;; to do it directly in `describe-database` or `describe-table`. Just fake results for the Table in `table-rows-seq`
+;; (rows in `_metabase_metadata` are just property -> value, e.g. `<table>.display_name` -> `<display-name>`.)
 
 (defn- property+profile->display-name
   "Format a table name for a GA property and GA profile"
@@ -143,14 +151,14 @@
                                    :value   (column-attribute column :description)}]))))))
 
 
-;;; ------------------------------------------------------------ can-connect? ------------------------------------------------------------
+;;; -------------------------------------------------- can-connect? --------------------------------------------------
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
   (boolean (profile-ids {:details details-map})))
 
 
-;;; ------------------------------------------------------------ execute-query ------------------------------------------------------------
+;;; ------------------------------------------------- execute-query --------------------------------------------------
 
 (defn- column-with-name ^Column [database-or-id column-name]
   (some (fn [^Column column]
@@ -170,7 +178,8 @@
                               (= data-type "STRING")    :type/Text)]
          {:base_type base-type})))))
 
-;; memoize this because the display names and other info isn't going to change and fetching this info from GA can take around half a second
+;; memoize this because the display names and other info isn't going to change and fetching this info from GA can take
+;; around half a second
 (def ^:private ^{:arglists '([database-id column-name])} memoized-column-metadata
   (memoize column-metadata))
 
@@ -213,7 +222,16 @@
   (google/execute (mbql-query->request query)))
 
 
-;;; ------------------------------------------------------------ Driver ------------------------------------------------------------
+;;; ----------------------------------------------------- Driver -----------------------------------------------------
+
+(defn- humanize-connection-error-message [message]
+  ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
+  ;; how we need to enable the API
+  (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
+    (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
+         enable-api-url)
+    message))
+
 
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named
@@ -222,30 +240,30 @@
 (u/strict-extend GoogleAnalyticsDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?             (u/drop-first-arg can-connect?)
-          :describe-database        (u/drop-first-arg describe-database)
-          :describe-table           (u/drop-first-arg describe-table)
-          :details-fields           (constantly [{:name         "account-id"
-                                                  :display-name "Google Analytics Account ID"
-                                                  :placeholder  "1234567"
-                                                  :required     true}
-                                                 {:name         "client-id"
-                                                  :display-name "Client ID"
-                                                  :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-                                                  :required     true}
-                                                 {:name         "client-secret"
-                                                  :display-name "Client Secret"
-                                                  :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-                                                  :required     true}
-                                                 {:name         "auth-code"
-                                                  :display-name "Auth Code"
-                                                  :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                                  :required     true}])
-          :execute-query            (u/drop-first-arg (partial qp/execute-query do-query))
-          :field-values-lazy-seq    (constantly [])
-          :process-query-in-context (u/drop-first-arg process-query-in-context)
-          :mbql->native             (u/drop-first-arg qp/mbql->native)
-          :table-rows-seq           (u/drop-first-arg table-rows-seq)}))
+         {:can-connect?                      (u/drop-first-arg can-connect?)
+          :describe-database                 (u/drop-first-arg describe-database)
+          :describe-table                    (u/drop-first-arg describe-table)
+          :details-fields                    (constantly [{:name         "account-id"
+                                                           :display-name "Google Analytics Account ID"
+                                                           :placeholder  "1234567"
+                                                           :required     true}
+                                                          {:name         "client-id"
+                                                           :display-name "Client ID"
+                                                           :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
+                                                           :required     true}
+                                                          {:name         "client-secret"
+                                                           :display-name "Client Secret"
+                                                           :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
+                                                           :required     true}
+                                                          {:name         "auth-code"
+                                                           :display-name "Auth Code"
+                                                           :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
+                                                           :required     true}])
+          :execute-query                     (u/drop-first-arg (partial qp/execute-query do-query))
+          :process-query-in-context          (u/drop-first-arg process-query-in-context)
+          :mbql->native                      (u/drop-first-arg qp/mbql->native)
+          :table-rows-seq                    (u/drop-first-arg table-rows-seq)
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)}))
 
 (defn -init-driver
   "Register the Google Analytics driver"

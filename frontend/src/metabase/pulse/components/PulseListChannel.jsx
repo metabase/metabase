@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from 'c-3po';
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -52,11 +53,12 @@ export default class PulseListChannel extends Component {
 
         if (channel.channel_type === "email") {
             channelIcon = "mail";
-            channelVerb = "Emailed";
+            channelVerb = t`Emailed`;
         } else if (channel.channel_type === "slack") {
             channelIcon = "slack";
-            channelVerb = "Slack'd";
-            channelTarget = channel.details.channel;
+            channelVerb = t`Slack'd`;
+            // Address #5799 where `details` object is missing for some reason
+            channelTarget = channel.details ? channel.details.channel : t`No channel`;
         }
 
         return (
@@ -65,7 +67,7 @@ export default class PulseListChannel extends Component {
                 <span>
                     {channelVerb + " "}
                     <strong>{channelSchedule}</strong>
-                    {channelTarget && <span>{" to "}<strong>{channelTarget}</strong></span>}
+                    {channelTarget && <span>{" " + t`to` + " "}<strong>{channelTarget}</strong></span>}
                 </span>
             </div>
         );
@@ -79,7 +81,6 @@ export default class PulseListChannel extends Component {
         if (subscribable) {
             subscribed = _.any(channel.recipients, r => r.id === user.id);
         }
-
         return (
             <div className="py2 flex align-center">
                 { this.renderChannelSchedule() }
@@ -87,13 +88,13 @@ export default class PulseListChannel extends Component {
                     <div className="flex-align-right">
                         { subscribed ?
                             <div className="flex align-center rounded bg-green text-white text-bold">
-                                <div className="pl2">You get this {channel.channel_type}</div>
+                                <div className="pl2">{t`You get this ${channel.channel_type}`}</div>
                                 <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" size={12} onClick={this.unsubscribe}/>
                             </div>
                         : !pulse.read_only ?
                             <div className="flex align-center rounded bordered bg-white text-default text-bold cursor-pointer" onClick={this.subscribe}>
                                 <Icon className="p2" name="add" size={12}/>
-                                <div className="pr2">Get this {channel.channel_type}</div>
+                                <div className="pr2">{t`Get this ${channel.channel_type}`}</div>
                             </div>
                         : null }
                     </div>

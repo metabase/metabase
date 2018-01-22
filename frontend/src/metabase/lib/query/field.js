@@ -3,6 +3,7 @@ import { mbqlEq } from "./util";
 
 import type { Field as FieldReference } from "metabase/meta/types/Query";
 import type { Field, FieldId, FieldValues } from "metabase/meta/types/Field";
+import type { Value } from "metabase/meta/types/Dataset";
 
 // gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
 export function getFieldTargetId(field: FieldReference): ?FieldId {
@@ -16,6 +17,9 @@ export function getFieldTargetId(field: FieldReference): ?FieldId {
         // $FlowFixMe
         return getFieldTargetId(field[2]);
     } else if (isDatetimeField(field)) {
+        // $FlowFixMe
+        return getFieldTargetId(field[1]);
+    } else if (isBinningStrategy(field)) {
         // $FlowFixMe
         return getFieldTargetId(field[1]);
     } else if (isFieldLiteral(field)) {
@@ -38,6 +42,10 @@ export function isForeignKeyField(field: FieldReference): boolean {
 
 export function isDatetimeField(field: FieldReference): boolean {
     return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
+}
+
+export function isBinningStrategy(field: FieldReference): boolean {
+    return Array.isArray(field) && mbqlEq(field[0], "binning-strategy");
 }
 
 export function isFieldLiteral(field: FieldReference): boolean {
@@ -85,5 +93,5 @@ export function getFieldValues(field: ?Field): FieldValues {
 
 export function getHumanReadableValue(value: Value, fieldValues?: FieldValues = []) {
     const fieldValue = _.findWhere(fieldValues, { [0]: value });
-    return fieldValue && fieldValue.length === 2 ? fieldValue[1] : value;
+    return fieldValue && fieldValue.length === 2 ? fieldValue[1] : String(value);
 }

@@ -1,6 +1,7 @@
 import { getVisualizationRaw } from "metabase/visualizations";
-
+import { t } from 'c-3po';
 import {
+    columnsAreValid,
     getChartTypeFromData,
     DIMENSION_DIMENSION_METRIC,
     DIMENSION_METRIC,
@@ -12,6 +13,7 @@ import {
 import { isDate, isMetric, isDimension } from "metabase/lib/schema_metadata";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
+import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
@@ -23,6 +25,7 @@ import ChartSettingColorsPicker from "metabase/visualizations/components/setting
 
 const WIDGETS = {
     input: ChartSettingInput,
+    inputGroup: ChartSettingInputGroup,
     number: ChartSettingInputNumeric,
     radio: ChartSettingRadio,
     select: ChartSettingSelect,
@@ -31,22 +34,6 @@ const WIDGETS = {
     fields: ChartSettingFieldsPicker,
     color: ChartSettingColorPicker,
     colors: ChartSettingColorsPicker,
-}
-
-export function columnsAreValid(colNames, data, filter = () => true) {
-    if (typeof colNames === "string") {
-        colNames = [colNames]
-    }
-    if (!data || !Array.isArray(colNames)) {
-        return false;
-    }
-    const colsByName = {};
-    for (const col of data.cols) {
-        colsByName[col.name] = col;
-    }
-    return colNames.reduce((acc, name) =>
-        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
-    , true);
 }
 
 export function getDefaultColumns(series) {
@@ -116,6 +103,11 @@ export function getDefaultDimensionAndMetric([{ data: { cols, rows } }]) {
             dimension: cols[0].name,
             metric: cols[1].name
         };
+    } else if (type === DIMENSION_DIMENSION_METRIC) {
+        return {
+            dimension: null,
+            metric: cols[2].name
+        };
     } else {
         return {
             dimension: null,
@@ -153,14 +145,14 @@ export function fieldSetting(id, filter, getDefault) {
 
 const COMMON_SETTINGS = {
     "card.title": {
-        title: "Title",
+        title: t`Title`,
         widget: "input",
         getDefault: (series) => series.length === 1 ? series[0].card.name : null,
         dashboard: true,
         useRawSeries: true
     },
     "card.description": {
-        title: "Description",
+        title: t`Description`,
         widget: "input",
         getDefault: (series) => series.length === 1 ? series[0].card.description : null,
         dashboard: true,
@@ -173,7 +165,7 @@ function getSetting(settingDefs, id, vizSettings, series) {
         return;
     }
 
-    const settingDef = settingDefs[id];
+    const settingDef = settingDefs[id] || {};
     const [{ card }] = series;
     const visualization_settings = card.visualization_settings || {};
 
