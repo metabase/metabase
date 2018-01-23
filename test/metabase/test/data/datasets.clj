@@ -88,6 +88,7 @@
   "Bind `*engine*` and `*driver*` as appropriate for ENGINE and execute F, a function that takes no args."
   {:style/indent 1}
   [engine f]
+  {:pre [(keyword? engine)]}
   (binding [*engine* engine
             *driver* (engine->driver engine)]
     (f)))

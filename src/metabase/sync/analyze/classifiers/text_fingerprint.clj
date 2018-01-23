@@ -22,14 +22,15 @@
 
 
 (def ^:private percent-key->special-type
-  "Map of keys inside the `TextFingerprint` to the corresponding special types we should mark a Field as if the value of the key
-   is over `percent-valid-thresold`."
+  "Map of keys inside the `TextFingerprint` to the corresponding special types we should mark a Field as if the value of
+  the key is over `percent-valid-thresold`."
   {:percent-json  :type/SerializedJSON
    :percent-url   :type/URL
    :percent-email :type/Email})
 
 (s/defn ^:private infer-special-type-for-text-fingerprint :- (s/maybe su/FieldType)
-  "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding special type to mark the Field as if the percent passes the threshold."
+  "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding special type to mark the Field
+  as if the percent passes the threshold."
   [text-fingerprint :- i/TextFingerprint]
   (some (fn [[percent-key special-type]]
           (when (percent-key-below-threshold? text-fingerprint percent-key)
@@ -45,6 +46,7 @@
     (when-not (:special_type field)
       (when-let [text-fingerprint (get-in fingerprint [:type :type/Text])]
         (when-let [inferred-special-type (infer-special-type-for-text-fingerprint text-fingerprint)]
-          (log/debug (format "Based on the fingerprint of %s, we're marking it as %s." (sync-util/name-for-logging field) inferred-special-type))
+          (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
+                             (sync-util/name-for-logging field) inferred-special-type))
           (assoc field
             :special_type inferred-special-type))))))
