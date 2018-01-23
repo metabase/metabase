@@ -47,6 +47,8 @@ import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils"
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getTransformedSeries } from "metabase/query_builder/selectors";
+import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
 
 type UiControls = {
     isEditing?: boolean,
@@ -1027,15 +1029,37 @@ export const getDisplayTypeForCard = (card, queryResults) => {
 };
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResults) => {
+export const queryCompleted = (card, queryResults) => {
     return async (dispatch, getState) => {
-        return {
+        dispatch.action(QUERY_COMPLETED, {
             card,
             cardDisplay: getDisplayTypeForCard(card, queryResults),
             queryResults
-        }
+        })
+
+        dispatch(persistDefaultVisualizationSettings())
     };
-});
+};
+
+/**
+ * Saves to `visualization_settings` property of a question those visualization settings that
+ * 1) don't have a value yet and 2) have `persistDefault` flag enabled.
+ */
+export const persistDefaultVisualizationSettings = () => {
+    return (dispatch, getState) => {
+        const question = getQuestion(getState())
+        const series = getTransformedSeries(getState())
+
+        const updatedQuestion = getQuestionWithDefaultVisualizationSettings(question, series)
+        dispatch(updateQuestion(updatedQuestion))
+    }
+}
+
+const getQuestionWithDefaultVisualizationSettings = (question, series) => {
+    const oldVizSettings = question.visualizationSettings()
+    const newVizSettings = { ...getPersistableDefaultSettings(series), oldVizSettings }
+    return question.setVisualizationSettings(newVizSettings)
+}
 
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) => {

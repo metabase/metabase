@@ -23,7 +23,7 @@ const store = createTestStore()
 const getVisualization = (question, results, onChangeCardAndRun) =>
     store.connectContainer(
         <Visualization
-            series={[{card: question.card(), data: results[0].data}]}
+            rawSeries={[{card: question.card(), data: results[0].data}]}
             onChangeCardAndRun={navigateToNewCardInsideQB}
             metadata={metadata}
         />
