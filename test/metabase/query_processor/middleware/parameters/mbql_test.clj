@@ -3,11 +3,12 @@
   (:require [expectations :refer :all]
             [metabase
              [query-processor :as qp]
-             [query-processor-test :refer [first-row format-rows-by non-timeseries-engines]]]
+             [query-processor-test :refer [first-row rows format-rows-by non-timeseries-engines]]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util :as u]))
 
 (defn- expand-parameters [query]
   (expand (dissoc query :parameters) (:parameters query)))
@@ -17,7 +18,7 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["=" ["field-id" 123] "666"]
+   :query      {:filter   [:= ["field-id" 123] "666"]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -32,7 +33,7 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:filter   ["AND" ["AND" ["AND" ["=" 456 12]] ["=" ["field-id" 123] "666"]] ["=" ["field-id" 456] "999"]]
+   :query      {:filter   ["AND" ["AND" ["AND" ["=" 456 12]] [:= ["field-id" 123] "666"]] [:= ["field-id" 456] "999"]]
                 :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -159,3 +160,79 @@
                                        :type   "number"
                                        :target ["dimension" ["field-id" (data/id :checkins :id)]]
                                        :value  "100"}]}))))
+
+;; test that we can injuect a basic `WHERE id = 9` type param (`id` type)
+(datasets/expect-with-engines params-test-engines
+  [[9 "Nils Gotam"]]
+  (format-rows-by [int str]
+    (let [inner-query (data/query users)
+          outer-query (-> (data/wrap-inner-query inner-query)
+                          (assoc :parameters [{:name   "id"
+                                               :type   "id"
+                                               :target ["field-id" (data/id :users :id)]
+                                               :value  9}]))]
+      (rows (qp/process-query outer-query)))))
+
+;; test that we can do the same thing but with a `category` type
+(datasets/expect-with-engines params-test-engines
+  [[6]]
+  (format-rows-by [int]
+    (let [inner-query (data/query venues
+                        (ql/aggregation (ql/count)))
+          outer-query (-> (data/wrap-inner-query inner-query)
+                          (assoc :parameters [{:name   "price"
+                                               :type   "category"
+                                               :target ["field-id" (data/id :venues :price)]
+                                               :value  4}]))]
+      (rows (qp/process-query outer-query)))))
+
+
+;; Make sure that *multiple* values work. This feature was added in 0.28.0. You are now allowed to pass in an array of
+;; parameter values instead of a single value, which should stick them together in a single MBQL `:=` clause, which
+;; ends up generating a SQL `*or*` clause
+(datasets/expect-with-engines params-test-engines
+  [[19]]
+  (format-rows-by [int]
+    (let [inner-query (data/query venues
+                        (ql/aggregation (ql/count)))
+          outer-query (-> (data/wrap-inner-query inner-query)
+                          (assoc :parameters [{:name   "price"
+                                               :type   "category"
+                                               :target ["field-id" (data/id :venues :price)]
+                                               :value  [3 4]}]))]
+      (rows (qp/process-query outer-query)))))
+
+;; now let's make sure the correct query is actually being generated for the same thing above...
+(datasets/expect-with-engines params-test-engines
+  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"VENUES\" "
+                "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
+   :params nil}
+  (let [inner-query (data/query venues
+                      (ql/aggregation (ql/count)))
+        outer-query (-> (data/wrap-inner-query inner-query)
+                        (assoc :parameters [{:name   "price"
+                                             :type   "category"
+                                             :target ["field-id" (data/id :venues :price)]
+                                             :value  [3 4]}]))]
+    (-> (qp/process-query outer-query)
+        :data :native_form)))
+
+;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
+;; can't handle it on the backend
+(datasets/expect-with-engines params-test-engines
+  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
+                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
+                "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+   :params [(u/->Timestamp #inst "2014-06-01")
+            (u/->Timestamp #inst "2014-06-30")
+            (u/->Timestamp #inst "2015-06-01")
+            (u/->Timestamp #inst "2015-06-30")]}
+  (let [inner-query (data/query checkins
+                      (ql/aggregation (ql/count)))
+        outer-query (-> (data/wrap-inner-query inner-query)
+                        (assoc :parameters [{:name   "date"
+                                             :type   "date/month"
+                                             :target ["field-id" (data/id :checkins :date)]
+                                             :value  ["2014-06" "2015-06"]}]))]
+    (-> (qp/process-query outer-query)
+        :data :native_form)))

@@ -83,7 +83,7 @@ export default class ExpressionWidget extends Component {
                     </div>
                     <div>
                         {this.props.expression ?
-                         <a className="pr2 text-warning link" onClick={() => this.props.onRemoveExpression(this.props.name)}>{t`Remove`}</a>
+                         <a className="pr2 ml2 text-warning link" onClick={() => this.props.onRemoveExpression(this.props.name)}>{t`Remove`}</a>
                          : null }
                     </div>
                 </div>

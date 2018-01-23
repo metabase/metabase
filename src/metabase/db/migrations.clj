@@ -21,6 +21,7 @@
              [dashboard-card :refer [DashboardCard]]
              [database :refer [Database virtual-id]]
              [field :refer [Field]]
+             [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as perm-group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
@@ -341,3 +342,21 @@
           :when (not= db-id virtual-id)]
     (db/update-where! Card {:id [:in (map :id cards)]}
       :database_id db-id)))
+
+;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+;; between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+(defmigration ^{:author "camsaul", :added "0.28.0"} migrate-humanization-setting
+  (when-let [enable-advanced-humanization-str (db/select-one-field :value Setting, :key "enable-advanced-humanization")]
+    (when (seq enable-advanced-humanization-str)
+      ;; if an entry exists for the old Setting, it will be a boolean string, either "true" or "false". Try inserting
+      ;; a record for the new setting with the appropriate new value. This might fail if for some reason
+      ;; humanization-strategy has been set already, or enable-advanced-humanization has somehow been set to an
+      ;; invalid value. In that case, fail silently.
+      (u/ignore-exceptions
+        (humanization/humanization-strategy (if (Boolean/parseBoolean enable-advanced-humanization-str)
+                                              "advanced"
+                                              "simple"))))
+    ;; either way, delete the old value from the DB since we'll never be using it again.
+    (db/delete! Setting, :key "enable-advanced-humanization")))

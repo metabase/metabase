@@ -158,7 +158,8 @@ describe("parameters", () => {
 
             // test the parameter
             click(app.find(Parameters).find("a").first());
-            click(app.find(CategoryWidget).find('li[children="Doohickey"]'));
+            click(app.find(CategoryWidget).find('li h4[children="Doohickey"]'));
+            clickButton(app.find(CategoryWidget).find(".Button"));
             click(app.find(RunButton));
             await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
             expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);
@@ -222,7 +223,8 @@ describe("parameters", () => {
 
                 // manually click parameter (sadly the query results loading happens inline again)
                 click(app.find(Parameters).find("a").first());
-                click(app.find(CategoryWidget).find('li[children="Doohickey"]'));
+                click(app.find(CategoryWidget).find('li h4[children="Doohickey"]'));
+                clickButton(app.find(CategoryWidget).find(".Button"));
 
                 await waitForRequestToComplete("GET", apiRegex)
                 expect(app.update().find(Scalar).text()).toBe(COUNT_DOOHICKEY + "sql parametrized");

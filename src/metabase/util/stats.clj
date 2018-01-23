@@ -141,7 +141,7 @@
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
    :report_timezone      (driver/report-timezone)
-   :friendly_names       (humanization/enable-advanced-humanization)
+   :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
    :sso_configured       (boolean (session-api/google-auth-client-id))

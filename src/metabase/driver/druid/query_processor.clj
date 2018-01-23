@@ -14,7 +14,8 @@
              [interface :as i]]
             [metabase.util :as u])
   (:import java.util.TimeZone
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field RelativeDateTimeValue Value]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field
+            RelativeDateTimeValue Value]
            org.joda.time.DateTimeZone))
 
 (def ^:private ^:const topN-max-results
@@ -73,9 +74,10 @@
 (extend-protocol IDimensionOrMetric
   Field         (dimension-or-metric? [{:keys [base-type]}]
                   (cond
-                    (isa? base-type :type/Text)    :dimension
-                    (isa? base-type :type/Float)   :metric
-                    (isa? base-type :type/Integer) :metric))
+                    (isa? base-type :type/Text)             :dimension
+                    (isa? base-type :type/Float)            :metric
+                    (isa? base-type :type/Integer)          :metric
+                    (isa? base-type :type/DruidHyperUnique) :metric))
 
   DateTimeField (dimension-or-metric? [this]
                   (dimension-or-metric? (:field this))))
@@ -151,7 +153,8 @@
 (defn- ag:doubleSum [field output-name]
   (if (instance? Expression field)
     (ag:doubleSum:expression field output-name)
-    ;; metrics can use the built-in :doubleSum aggregator, but for dimensions we have to roll something that does the same thing in JS
+    ;; metrics can use the built-in :doubleSum aggregator, but for dimensions we have to roll something that does the
+    ;; same thing in JS
     (case (dimension-or-metric? field)
       :metric    {:type      :doubleSum
                   :name      output-name
@@ -217,6 +220,15 @@
 
 (defn- ag:filtered  [filtr aggregator] {:type :filtered, :filter filtr, :aggregator aggregator})
 
+(defn- ag:distinct [field output-name]
+  (if (isa? (:base-type field) :type/DruidHyperUnique)
+    {:type      :hyperUnique
+     :name      output-name
+     :fieldName (->rvalue field)}
+    {:type       :cardinality
+     :name       output-name
+     :fieldNames [(->rvalue field)]}))
+
 (defn- ag:count
   ([output-name]       {:type :count, :name output-name})
   ([field output-name] (ag:filtered (filter:not (filter:nil? field))
@@ -225,7 +237,8 @@
 (defn- create-aggregation-clause [output-name ag-type ag-field]
   (let [output-name-kwd (keyword output-name)]
     (match [ag-type ag-field]
-      ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
+      ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name
+      ;; it :___count so it gets discarded automatically
       [nil     nil] [[(or output-name-kwd :___count)] {:aggregations [(ag:count (or output-name :___count))]}]
 
       [:count  nil] [[(or output-name-kwd :count)] {:aggregations [(ag:count (or output-name :count))]}]
@@ -243,14 +256,15 @@
                                             :fields [{:type :fieldAccess, :fieldName sum-name}
                                                      {:type :fieldAccess, :fieldName count-name}]}]}])
       [:distinct _] [[(or output-name-kwd :distinct___count)]
-                     {:aggregations [{:type       :cardinality
-                                      :name       (or output-name :distinct___count)
-                                      :fieldNames [(->rvalue ag-field)]}]}]
+                     {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
       [:sum      _] [[(or output-name-kwd :sum)] {:aggregations [(ag:doubleSum ag-field (or output-name :sum))]}]
       [:min      _] [[(or output-name-kwd :min)] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
       [:max      _] [[(or output-name-kwd :max)] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
-(defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field, output-name :output-name, custom-name :custom-name, :as ag} query-context]
+(defn- handle-aggregation
+  [query-type
+   {ag-type :aggregation-type, ag-field :field, output-name :output-name, custom-name :custom-name, :as ag}
+   query-context]
   (let [output-name (or custom-name output-name)]
     (if-not (isa? query-type ::ag-query)
       query-context
@@ -263,10 +277,15 @@
 (defn- add-expression-aggregation-output-names [args]
   (for [arg args]
     (cond
-      (number? arg)              arg
-      (:aggregation-type arg)    (assoc arg :output-name (or (:output-name arg)
-                                                             (name (gensym (str "___" (name (:aggregation-type arg)) "_")))))
-      (instance? Expression arg) (update arg :args add-expression-aggregation-output-names))))
+      (number? arg)
+      arg
+
+      (:aggregation-type arg)
+      (assoc arg :output-name (or (:output-name arg)
+                                  (name (gensym (str "___" (name (:aggregation-type arg)) "_")))))
+
+      (instance? Expression arg)
+      (update arg :args add-expression-aggregation-output-names))))
 
 (defn- expression-post-aggregation [{:keys [operator args], :as expression}]
   {:type   :arithmetic
@@ -316,7 +335,8 @@
    "Format `Field` for use in a `:dimension` or `:dimensions` clause."))
 
 (defn- extract:timeFormat
-  "Create a time format extraction. Returns a string. See http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#time-format-extraction-function"
+  "Create a time format extraction. Returns a string. See
+  http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#time-format-extraction-function"
   [format-str]
   {:pre [(string? format-str)]}
   {:type     :timeFormat
@@ -326,7 +346,8 @@
    :locale   "en-US"})
 
 (defn- extract:js
-  "Create an extraction function from JavaScript -- see http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#javascript-extraction-function"
+  "Create an extraction function from JavaScript -- see
+  http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#javascript-extraction-function"
   [& function-str-parts]
   {:pre [(every? string? function-str-parts)]}
   {:type     :javascript
@@ -388,10 +409,11 @@
           {:origin "1970-01-04T00:00:00Z"})))
 
 (def ^:private ^:const units-that-need-post-processing-int-parsing
-  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
-   There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction functions with `:cascade`, but we're still supporting 0.8.x.
-   Instead, we will perform the conversions in Clojure-land during post-processing. If we need to perform the extra post-processing step, we'll name the resulting
-   column `:timestamp___int`; otherwise we'll keep the name `:timestamp`."
+  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as
+  `:day-of-month`. There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction
+  functions with `:cascade`, but we're still supporting 0.8.x. Instead, we will perform the conversions in
+  Clojure-land during post-processing. If we need to perform the extra post-processing step, we'll name the resulting
+  column `:timestamp___int`; otherwise we'll keep the name `:timestamp`."
   #{:minute-of-hour
     :hour-of-day
     :day-of-week
@@ -405,7 +427,8 @@
 (extend-protocol IDimension
   nil    (->dimension-rvalue [this] (->rvalue this))
   Object (->dimension-rvalue [this] (->rvalue this))
-  ;; :timestamp is a special case, and we need to do an 'extraction' against the secret special value :__time to get at it
+  ;; :timestamp is a special case, and we need to do an 'extraction' against the secret special value :__time to get
+  ;; at it
   DateTimeField
   (->dimension-rvalue [{:keys [unit]}]
     {:type         :extraction
@@ -479,7 +502,10 @@
 (defn- check-filter-fields [filter-type & fields]
   (doseq [field fields]
     (when (= (dimension-or-metric? field) :metric)
-      (throw (IllegalArgumentException. (u/format-color 'red "WARNING: Filtering only works on dimensions! '%s' is a metric. Ignoring %s filter." (->rvalue field) filter-type))))))
+      (throw
+       (IllegalArgumentException.
+        (u/format-color 'red "WARNING: Filtering only works on dimensions! '%s' is a metric. Ignoring %s filter."
+          (->rvalue field) filter-type))))))
 
 (defn- parse-filter-subclause:filter [{:keys [filter-type field value] :as filter}]
   {:pre [filter]}
@@ -489,26 +515,45 @@
            (check-filter-fields filter-type field))
          (let [value (->rvalue value)]
            (case filter-type
-             :inside      (let [lat       (:lat filter)
-                                lon       (:lon filter)
-                                lat-field (:field lat)
-                                lon-field (:field lon)]
-                            (check-filter-fields :inside lat-field lon-field)
-                            {:type   :and
-                             :fields [(filter:js lat-field "function (x) { return x >= %s && x <= %s; }" (num (->rvalue (:min lat))) (num (->rvalue (:max lat))))
-                                      (filter:js lon-field "function (x) { return x >= %s && x <= %s; }" (num (->rvalue (:min lon))) (num (->rvalue (:max lon))))]})
-             :between     (let [{:keys [min-val max-val]} filter]
-                            (filter:js field "function (x) { return x >= %s && x <= %s; }" (num (->rvalue (:value min-val))) (num (->rvalue (:value max-val)))))
-             :is-null     (filter:nil? field)
-             :not-null    (filter:not (filter:nil? field))
-             :contains    {:type      :search
-                           :dimension (->rvalue field)
-                           :query     {:type  :insensitive_contains
-                                       :value value}}
-             :starts-with (filter:js field "function (x) { return typeof x === 'string' && x.length >= %d && x.slice(0, %d) === '%s'; }"
-                                     (count value) (count value) (s/replace value #"'" "\\\\'"))
-             :ends-with   (filter:js field "function (x) { return typeof x === 'string' && x.length >= %d && x.slice(-%d) === '%s'; }"
-                                     (count value) (count value) (s/replace value #"'" "\\\\'"))
+             :inside
+             (let [lat       (:lat filter)
+                   lon       (:lon filter)
+                   lat-field (:field lat)
+                   lon-field (:field lon)]
+               (check-filter-fields :inside lat-field lon-field)
+               {:type   :and
+                :fields [(filter:js lat-field "function (x) { return x >= %s && x <= %s; }"
+                                    (num (->rvalue (:min lat))) (num (->rvalue (:max lat))))
+                         (filter:js lon-field "function (x) { return x >= %s && x <= %s; }"
+                                    (num (->rvalue (:min lon))) (num (->rvalue (:max lon))))]})
+
+             :between
+             (let [{:keys [min-val max-val]} filter]
+               (filter:js field "function (x) { return x >= %s && x <= %s; }"
+                          (num (->rvalue (:value min-val))) (num (->rvalue (:value max-val)))))
+
+             :is-null
+             (filter:nil? field)
+
+             :not-null
+             (filter:not (filter:nil? field))
+
+             :contains
+             {:type      :search
+              :dimension (->rvalue field)
+              :query     {:type  :insensitive_contains
+                          :value value}}
+
+             :starts-with
+             (filter:js field
+                        "function (x) { return typeof x === 'string' && x.length >= %d && x.slice(0, %d) === '%s'; }"
+                        (count value) (count value) (s/replace value #"'" "\\\\'"))
+
+             :ends-with
+             (filter:js field
+                        "function (x) { return typeof x === 'string' && x.length >= %d && x.slice(-%d) === '%s'; }"
+                        (count value) (count value) (s/replace value #"'" "\\\\'"))
+
              :=           (filter:= field value)
              :!=          (filter:not (filter:= field value))
              :<           (filter:js field "function (x) { return x < %s; }"  (num value))
@@ -557,8 +602,10 @@
       :<        (make-intervals nil value)
       ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
       :<=       (make-intervals nil (i/add-date-time-units value 1))
-      ;; This is technically allowed by the QL here but doesn't make sense since every Druid event has a timestamp. Just ignore it
-      :is-null  (log/warn (u/format-color 'red "WARNING: timestamps can never be nil. Ignoring IS_NULL filter for timestamp."))
+      ;; This is technically allowed by the QL here but doesn't make sense since every Druid event has a timestamp.
+      ;; Just ignore it
+      :is-null  (log/warn (u/format-color 'red (str "WARNING: timestamps can never be nil. Ignoring IS_NULL filter "
+                                                    "for timestamp.")))
       ;; :timestamp is always non-nil so nothing to do here
       :not-null nil)))
 
@@ -568,14 +615,17 @@
     (let [subclauses (filterv identity (mapcat parse-filter-clause:intervals subclauses))]
       (when (seq subclauses)
         (case compound-type
-          ;; A date can't be in more than one interval, so ANDing them together doesn't really make sense. In this situation, just ignore all intervals after the first
+          ;; A date can't be in more than one interval, so ANDing them together doesn't really make sense. In this
+          ;; situation, just ignore all intervals after the first
           :and (do (when (> (count subclauses) 1)
-                     (log/warn (u/format-color 'red (str "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense.\n"
+                     (log/warn (u/format-color 'red (str "WARNING: A date can't belong to multiple discrete "
+                                                         "intervals, so ANDing them together doesn't make sense.\n"
                                                          "Ignoring these intervals: %s") (rest subclauses))))
                    [(first subclauses)])
           ;; Ok to specify multiple intervals for OR
           :or  subclauses
-          ;; We should never get to this point since the all non-string negations should get automatically rewritten by the query expander.
+          ;; We should never get to this point since the all non-string negations should get automatically rewritten
+          ;; by the query expander.
           :not (log/warn (u/format-color 'red "WARNING: Don't know how to negate: %s" clause)))))))
 
 
@@ -594,11 +644,15 @@
 (defmulti ^:private handle-order-by query-type-dispatch-fn)
 
 (defmethod handle-order-by ::query [_ _ query-context]
-  (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause."))
+  (log/warn (u/format-color 'red (str "Sorting with Druid is only allowed in queries that have one or more breakout "
+                                      "columns. Ignoring :order-by clause.")))
   query-context)
 
 
-(defmethod handle-order-by ::topN [_ {[{ag-type :aggregation-type}] :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} query-context]
+(defmethod handle-order-by ::topN
+  [_
+   {[{ag-type :aggregation-type}] :aggregation, [breakout-field] :breakout, [{:keys [field direction]}] :order-by}
+   query-context]
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
@@ -631,7 +685,8 @@
 
 (defmethod handle-fields ::query [_ {fields :fields} query-context]
   (when fields
-    (log/warn (u/format-color 'red "WARNING: It only makes sense to specify :fields for a bare rows query. Ignoring the clause.")))
+    (log/warn (u/format-color 'red (str "WARNING: It only makes sense to specify :fields for a bare rows query. "
+                                        "Ignoring the clause."))))
   query-context)
 
 (defmethod handle-fields ::select [_ {fields :fields} query-context]
@@ -639,16 +694,24 @@
     query-context
     (loop [dimensions [], metrics [], projections (:projections query-context), [field & more] fields]
       (cond
-        ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available. In cases where we don't
-        ;; want anything to be returned in one or the other, we'll ask for a `:___dummy` column instead. Druid happily returns `nil` for the
-        ;; column in every row, and it will get auto-filtered out of the results so the User will never see it.
-        (not field)                                 (-> query-context
-                                                        (assoc :projections (conj projections :timestamp))
-                                                        (assoc-in [:query :dimensions] (or (seq dimensions) [:___dummy]))
-                                                        (assoc-in [:query :metrics]    (or (seq metrics)    [:___dummy])))
-        (instance? DateTimeField field)             (recur dimensions metrics projections more)
-        (= (dimension-or-metric? field) :dimension) (recur (conj dimensions (->rvalue field)) metrics (conj projections (keyword (name field))) more)
-        (= (dimension-or-metric? field) :metric)    (recur dimensions (conj metrics (->rvalue field)) (conj projections (keyword (name field))) more)))))
+        ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
+        ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
+        ;; column instead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
+        ;; of the results so the User will never see it.
+        (not field)
+        (-> query-context
+            (assoc :projections (conj projections :timestamp))
+            (assoc-in [:query :dimensions] (or (seq dimensions) [:___dummy]))
+            (assoc-in [:query :metrics]    (or (seq metrics)    [:___dummy])))
+
+        (instance? DateTimeField field)
+        (recur dimensions metrics projections more)
+
+        (= (dimension-or-metric? field) :dimension)
+        (recur (conj dimensions (->rvalue field)) metrics (conj projections (keyword (name field))) more)
+
+        (= (dimension-or-metric? field) :metric)
+        (recur dimensions (conj metrics (->rvalue field)) (conj projections (keyword (name field))) more)))))
 
 
 ;;; ### handle-limit
@@ -662,7 +725,8 @@
 
 (defmethod handle-limit ::timeseries [_ {limit :limit} query-context]
   (when limit
-    (log/warn (u/format-color 'red "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the LIMIT clause.")))
+    (log/warn (u/format-color 'red (str "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the "
+                                        "LIMIT clause."))))
   query-context)
 
 (defmethod handle-limit ::topN [_ {limit :limit} query-context]
@@ -792,8 +856,8 @@
                         (conj {:timestamp (ts-getter event)} (:result event))))))
 
 (defn post-process-native
-  "Post-process the results of a *native* Druid query.
-   The appropriate ns-qualified query type keyword (e.g. `::select`, used for mutlimethod dispatch) is inferred from the query itself."
+  "Post-process the results of a *native* Druid query. The appropriate ns-qualified query type keyword (e.g. `::select`,
+  used for mutlimethod dispatch) is inferred from the query itself."
   [{:keys [queryType], :as query} results]
   {:pre [queryType]}
   (post-process (keyword "metabase.driver.druid.query-processor" (name queryType))
@@ -822,10 +886,12 @@
 
 
 (defn- columns->getter-fns
-  "Given a sequence of COLUMNS keywords, return a sequence of appropriate getter functions to get values from a single result row. Normally,
-   these are just the keyword column names themselves, but for `:timestamp___int`, we'll also parse the result as an integer (for further
-   explanation, see the docstring for `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an
-   integer since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding cardinality and HLL)."
+  "Given a sequence of COLUMNS keywords, return a sequence of appropriate getter functions to get values from a single
+  result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
+  parse the result as an integer (for further explanation, see the docstring for
+  `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an integer
+  since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding
+  cardinality and HLL)."
   [columns]
   (vec (for [k columns]
          (case k
@@ -837,17 +903,15 @@
             k))))
 
 (defn- utc?
-  "There are several timezone ids that mean UTC. This will create a
-  TimeZone object from `TIMEZONE` and check to see if it's a UTC
-  timezone"
+  "There are several timezone ids that mean UTC. This will create a TimeZone object from `TIMEZONE` and check to see if
+  it's a UTC timezone"
   [^DateTimeZone timezone]
   (.hasSameRules (TimeZone/getTimeZone "UTC")
                  (.toTimeZone timezone)))
 
 (defn- resolve-timezone
-  "Returns the timezone object (either report-timezone or JVM
-  timezone). Returns nil if the timezone is UTC as the timestamps from
-  Druid are already in UTC and don't need to be converted"
+  "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
+  timestamps from Druid are already in UTC and don't need to be converted"
   [{:keys [settings]}]
   (let [tz (time/time-zone-for-id (:report-timezone settings (System/getProperty "user.timezone")))]
     (when-not (utc? tz)
@@ -855,7 +919,11 @@
 
 (defn execute-query
   "Execute a query for a Druid DB."
-  [do-query {database :database, {:keys [query query-type mbql? projections]} :native, middleware :middleware :as query-ctx}]
+  [do-query
+   {database                                     :database
+    {:keys [query query-type mbql? projections]} :native
+    middleware                                   :middleware
+    :as                                          query-context}]
   {:pre [database query]}
   (let [details       (:details database)
         query         (if (string? query)
@@ -865,7 +933,7 @@
         post-proc-map (->> query
                            (do-query details)
                            (post-process query-type projections
-                                         {:timezone   (resolve-timezone query-ctx)
+                                         {:timezone   (resolve-timezone query-context)
                                           :middleware middleware}))
         columns       (if mbql?
                         (->> post-proc-map
@@ -874,8 +942,9 @@
                              vec)
                         (-> post-proc-map :results first keys))
         getters       (columns->getter-fns columns)]
-    ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our behind-the-scenes conversion
-    ;; and apply any other post-processing on the value such as parsing some units to int and rounding up approximate cardinality values.
+    ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our
+    ;; behind-the-scenes conversion and apply any other post-processing on the value such as parsing some units to int
+    ;; and rounding up approximate cardinality values.
     {:columns   (vec (replace {:timestamp___int :timestamp :distinct___count :count} columns))
      :rows      (for [row (:results post-proc-map)]
                   (for [getter getters]
