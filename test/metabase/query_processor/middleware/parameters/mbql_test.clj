@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require [expectations :refer :all]
+            [honeysql.core :as hsql]
             [metabase
              [query-processor :as qp]
              [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]
              [util :as u]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
@@ -207,29 +209,13 @@
       (rows (qp/process-query outer-query)))))
 
 ;; now let's make sure the correct query is actually being generated for the same thing above...
-;;
-;; TODO - the util function below is similar to a few other ones that are used elsewhere in the tests. It would be
-;; nice to unifiy those at some point or possibly move them into a shared utility namespace. Something to consider!
-(defn- mbql-param-quoted-and-qualified-name
-  "Generate a quoted and qualified identifier for a Table or Field for the current driver that will be used for MBQL
-  param subsitution below. e.g.
-
-    ;; with SQLServer
-    (mbql-param-quoted-and-qualified-name :venues) ;-> :dbo.venues
-    (mbql-param-quoted-and-qualified-name :venues :price) ;-> :dbo.venues.price"
-  ([table-kw]
-   (let [table (Table (data/id table-kw))]
-     (hx/qualify-and-escape-dots (:schema table) (:name table))))
-  ([table-kw field-kw]
-   (let [table (Table (data/id table-kw))
-         field (Field (data/id table-kw field-kw))]
-     (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field)))))
-
-(datasets/expect-with-engines params-test-engines
-  {:query  (format "SELECT count(*) AS \"count\" FROM %s WHERE (%s = 3 OR %s = 4)"
-                   (mbql-param-quoted-and-qualified-name :venues)
-                   (mbql-param-quoted-and-qualified-name :venues :price)
-                   (mbql-param-quoted-and-qualified-name :venues :price))
+;; (NOTE: We're only testing this with H2 because the SQL generated is simply too different between various SQL drivers.
+;; we know the features are still working correctly because we're actually checking that we get the right result from
+;; running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
+(datasets/expect-with-engine :h2
+  {:query  (str "SELECT count(*) AS \"count\" "
+                "FROM \"PUBLIC\".\"VENUES\" "
+                "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
    :params nil}
   (let [inner-query (data/query venues
                       (ql/aggregation (ql/count)))
@@ -243,13 +229,10 @@
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
-(datasets/expect-with-engines params-test-engines
-  {:query  (format (str "SELECT count(*) AS \"count\" FROM %s "
-                        "WHERE (CAST(%s AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
-                        "OR CAST(%s date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
-                   (mbql-param-quoted-and-qualified-name :checkins)
-                   (mbql-param-quoted-and-qualified-name :checkins :date)
-                   (mbql-param-quoted-and-qualified-name :checkins :date))
+(datasets/expect-with-engine :h2
+  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
+                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
+                "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
    :params [(u/->Timestamp #inst "2014-06-01")
             (u/->Timestamp #inst "2014-06-30")
             (u/->Timestamp #inst "2015-06-01")
