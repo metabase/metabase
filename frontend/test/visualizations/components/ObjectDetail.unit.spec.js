@@ -1,7 +1,11 @@
 import React from 'react'
 import { mount } from 'enzyme'
-import { ObjectDetail } from 'metabase/visualizations/visualizations/ObjectDetail'
 
+// Needed due to wrong dependency resolution order
+// eslint-disable-next-line no-unused-vars
+import Visualization from "metabase/visualizations/components/Visualization";
+
+import { ObjectDetail } from 'metabase/visualizations/visualizations/ObjectDetail'
 import { TYPE } from "metabase/lib/types";
 
 const objectDetailCard = {
@@ -25,6 +29,7 @@ const objectDetailCard = {
 describe('ObjectDetail', () => {
     describe('json field rendering', () => {
         it('should properly display JSON special type data as JSON', () => {
+
             const detail = mount(
                 <ObjectDetail
                     data={objectDetailCard.data}

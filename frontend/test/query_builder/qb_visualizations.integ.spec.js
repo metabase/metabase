@@ -11,10 +11,6 @@ import {
     QUERY_COMPLETED,
 } from "metabase/query_builder/actions";
 
-import QueryHeader from "metabase/query_builder/components/QueryHeader";
-
-import Visualization from "metabase/visualizations/components/Visualization";
-
 import Question from "metabase-lib/lib/Question";
 import { getCard } from "metabase/query_builder/selectors";
 
@@ -34,7 +30,7 @@ describe("Query Builder visualization logic", () => {
     it("should save the default x axis and y axis to `visualization_settings` on query completion", async () => {
         const store = await createTestStore()
         store.pushPath(timeBreakoutQuestion.getUrl());
-        const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+        mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB]);
 
         expect(getCard(store.getState()).visualization_settings).toEqual({})
