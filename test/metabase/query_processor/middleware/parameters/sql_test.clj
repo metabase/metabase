@@ -292,7 +292,7 @@
 ;;; ------------------------------------------ expansion tests: dimensions -------------------------------------------
 
 (defn- expand-with-dimension-param [dimension-param]
-  (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
+  (with-redefs [t/now (constantly (t/date-time 2016 06 07 12 0 0))]
     (expand* {:native     {:query "SELECT * FROM checkins WHERE {{date}};"
                            :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
               :parameters (when dimension-param
@@ -563,7 +563,7 @@
                                   :dimension    ["field-id" (data/id :checkins :date)]}}
    :params        [#inst "2017-10-31T00:00:00.000000000-00:00"
                    #inst "2017-11-04T00:00:00.000000000-00:00"]}
-  (with-redefs [t/now (fn [] (t/date-time 2017 11 05 12 0 0))]
+  (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
     (:native (expand {:driver     (driver/engine->driver :h2)
                       :native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                        "FROM CHECKINS "
@@ -607,7 +607,7 @@
                     :widget_type  "date/all-options"}}
    :params        [#inst "2017-10-31T00:00:00.000000000-00:00"
                    #inst "2017-11-04T00:00:00.000000000-00:00"]}
-  (with-redefs [t/now (fn [] (t/date-time 2017 11 05 12 0 0))]
+  (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
     (:native (expand {:driver (driver/engine->driver :h2)
                       :native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                    "FROM CHECKINS "

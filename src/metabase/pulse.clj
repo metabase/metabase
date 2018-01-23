@@ -22,7 +22,7 @@
   (:import java.util.TimeZone
            metabase.models.card.CardInstance))
 
-;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
+;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 
 ;; TODO: this is probably something that could live somewhere else and just be reused

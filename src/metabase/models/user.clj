@@ -14,7 +14,7 @@
              [models :as models]])
   (:import java.util.UUID))
 
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel User :core_user)
 
@@ -108,7 +108,7 @@
           :pre-delete     pre-delete}))
 
 
-;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (declare form-password-reset-url set-password-reset-token!)
 
@@ -131,7 +131,8 @@
     (send-welcome-email! <> invitor)))
 
 (defn create-new-google-auth-user!
-  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active admins will recieve an email right away."
+  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
+  admins will recieve an email right away."
   [first-name last-name email-address]
   {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
   (u/prog1 (db/insert! User
@@ -144,7 +145,8 @@
     (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
 
 (defn create-new-ldap-auth-user!
-  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins will recieve an email right away."
+  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
+  will recieve an email right away."
   [first-name last-name email-address password]
   {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
   (db/insert! User :email      email-address
@@ -181,7 +183,7 @@
   (str (public-settings/site-url) "/auth/reset_password/" reset-token))
 
 
-;;; ------------------------------------------------------------ Permissions ------------------------------------------------------------
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
   "Return a set of all permissions object paths that USER-OR-ID has been granted access to."
