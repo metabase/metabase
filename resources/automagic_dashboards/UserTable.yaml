@@ -1,5 +1,5 @@
-title: Useres
-description: Some useful metrics about the [[GenericTable]] table to get you started.
+title: Users
+description: Some useful metrics about the [[UserTable]] table to get you started.
 metrics:
 - Count:
     metric: [count]
