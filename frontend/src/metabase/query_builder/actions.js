@@ -1057,7 +1057,7 @@ export const persistDefaultVisualizationSettings = () => {
 
 const getQuestionWithDefaultVisualizationSettings = (question, series) => {
     const oldVizSettings = question.visualizationSettings()
-    const newVizSettings = { ...getPersistableDefaultSettings(series), oldVizSettings }
+    const newVizSettings = { ...getPersistableDefaultSettings(series), ...oldVizSettings }
     return question.setVisualizationSettings(newVizSettings)
 }
 
