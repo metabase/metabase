@@ -3,12 +3,16 @@
   (:require [expectations :refer :all]
             [metabase
              [query-processor :as qp]
-             [query-processor-test :refer [first-row rows format-rows-by non-timeseries-engines]]]
+             [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]
+             [util :as u]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- expand-parameters [query]
   (expand (dissoc query :parameters) (:parameters query)))
@@ -203,9 +207,29 @@
       (rows (qp/process-query outer-query)))))
 
 ;; now let's make sure the correct query is actually being generated for the same thing above...
+;;
+;; TODO - the util function below is similar to a few other ones that are used elsewhere in the tests. It would be
+;; nice to unifiy those at some point or possibly move them into a shared utility namespace. Something to consider!
+(defn- mbql-param-quoted-and-qualified-name
+  "Generate a quoted and qualified identifier for a Table or Field for the current driver that will be used for MBQL
+  param subsitution below. e.g.
+
+    ;; with SQLServer
+    (mbql-param-quoted-and-qualified-name :venues) ;-> :dbo.venues
+    (mbql-param-quoted-and-qualified-name :venues :price) ;-> :dbo.venues.price"
+  ([table-kw]
+   (let [table (Table (data/id table-kw))]
+     (hx/qualify-and-escape-dots (:schema table) (:name table))))
+  ([table-kw field-kw]
+   (let [table (Table (data/id table-kw))
+         field (Field (data/id table-kw field-kw))]
+     (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field)))))
+
 (datasets/expect-with-engines params-test-engines
-  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"VENUES\" "
-                "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
+  {:query  (format "SELECT count(*) AS \"count\" FROM %s WHERE (%s = 3 OR %s = 4)"
+                   (mbql-param-quoted-and-qualified-name :venues)
+                   (mbql-param-quoted-and-qualified-name :venues :price)
+                   (mbql-param-quoted-and-qualified-name :venues :price))
    :params nil}
   (let [inner-query (data/query venues
                       (ql/aggregation (ql/count)))
@@ -220,9 +244,12 @@
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (datasets/expect-with-engines params-test-engines
-  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
-                "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+  {:query  (format (str "SELECT count(*) AS \"count\" FROM %s "
+                        "WHERE (CAST(%s AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
+                        "OR CAST(%s date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+                   (mbql-param-quoted-and-qualified-name :checkins)
+                   (mbql-param-quoted-and-qualified-name :checkins :date)
+                   (mbql-param-quoted-and-qualified-name :checkins :date))
    :params [(u/->Timestamp #inst "2014-06-01")
             (u/->Timestamp #inst "2014-06-30")
             (u/->Timestamp #inst "2015-06-01")

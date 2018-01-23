@@ -45,9 +45,16 @@
   values in the queries themselves)."
   [query-dict [{:keys [target value], :as param} & rest]]
   (cond
-    (not param)      query-dict
+    (not param)
+    query-dict
+
     (or (not target)
-        (not value)) (recur query-dict rest)
-    :else            (let [filter-subclause (build-filter-clause param)
-                           query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
-                       (recur query rest))))
+        (not value))
+    (recur query-dict rest)
+
+    :else
+    (let [filter-subclause (build-filter-clause param)
+          query            (assoc-in query-dict [:query :filter] (merge-filter-clauses
+                                                                  (get-in query-dict [:query :filter])
+                                                                  filter-subclause))]
+      (recur query rest))))

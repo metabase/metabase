@@ -142,6 +142,7 @@
                (name (hx/qualify-and-escape-dots (quote-name driver n))))))
 
 (defn- default-qualify+quote-name
+  ;; TODO - what about schemas?
   ([driver db-name]
    (quote+combine-names driver (qualified-name-components driver db-name)))
   ([driver db-name table-name]
