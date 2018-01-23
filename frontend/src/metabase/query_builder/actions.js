@@ -31,7 +31,8 @@ import {
     getOriginalQuestion,
     getOriginalCard,
     getIsEditing,
-    getIsShowingDataReference
+    getIsShowingDataReference,
+    getTransformedSeries
 } from "./selectors";
 
 import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
@@ -47,7 +48,6 @@ import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils"
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getTransformedSeries } from "metabase/query_builder/selectors";
 import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
 
 type UiControls = {
