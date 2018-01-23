@@ -43,7 +43,7 @@ export default class SelectPicker extends Component {
     }
 
     static propTypes = {
-        options: PropTypes.object.isRequired,
+        options: PropTypes.array.isRequired,
         values: PropTypes.array.isRequired,
         onValuesChange: PropTypes.func.isRequired,
         placeholder: PropTypes.string,

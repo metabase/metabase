@@ -70,17 +70,31 @@
 
 ;;; ### Sync
 
-(defn- describe-table-field [druid-field-type field-name]
+(defn- do-segment-metadata-query [details datasource]
+  (do-query details {"queryType"     "segmentMetadata"
+                     "dataSource"    datasource
+                     "intervals"     ["1999-01-01/2114-01-01"]
+                     "analysisTypes" []
+                     "merge"         true}))
+
+(defn- druid-type->base-type [field-type]
+  (case field-type
+    "STRING"      :type/Text
+    "FLOAT"       :type/Float
+    "LONG"        :type/Integer
+    "hyperUnique" :type/DruidHyperUnique
+    :type/Float))
+
+(defn- describe-table-field [field-name {field-type :type, :as info}]
   ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
   ;; string-encoded booleans + dates are treated as strings (!)
-  (assoc (case druid-field-type
-           :metric    {:database-type "metric",    :base-type :type/Float}
-           :dimension {:database-type "dimension", :base-type :type/Text})
-    :name field-name))
+  {:name          (name field-name)
+   :base-type     (druid-type->base-type field-type)
+   :database-type field-type})
 
 (defn- describe-table [database table]
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
-    (let [{:keys [dimensions metrics]} (GET (details->url details-with-tunnel "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
+    (let [{:keys [columns]} (first (do-segment-metadata-query details-with-tunnel (:name table)))]
       {:schema nil
        :name   (:name table)
        :fields (set (concat
@@ -89,8 +103,8 @@
                        :database-type "timestamp"
                        :base-type     :type/DateTime
                        :pk?           true}]
-                     (map (partial describe-table-field :dimension) dimensions)
-                     (map (partial describe-table-field :metric) metrics)))})))
+                     (for [[field-name field-info] (dissoc columns :__time)]
+                       (describe-table-field field-name field-info))))})))
 
 (defn- describe-database [database]
   {:pre [(map? (:details database))]}
