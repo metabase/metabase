@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import SettingInput from "./SettingInput";
 import Button from "metabase/components/Button";
 import Confirm from "metabase/components/Confirm";
-
+import { t } from 'c-3po';
 import { UtilApi } from "metabase/services";
 
 type Props = {
@@ -29,14 +29,14 @@ export default class SecretKeyWidget extends Component {
                 <SettingInput {...this.props} />
                 { setting.value ?
                     <Confirm
-                        title="Regenerate embedding key?"
-                        content="This will cause existing embeds to stop working until they are updated with the new key."
+                        title={t`Regenerate embedding key?`}
+                        content={t`This will cause existing embeds to stop working until they are updated with the new key.`}
                         action={this._generateToken}
                     >
-                        <Button className="ml1" primary medium>Regenerate key</Button>
+                        <Button className="ml1" primary medium>{t`Regenerate key`}</Button>
                     </Confirm>
                 :
-                    <Button className="ml1" primary medium onClick={this._generateToken}>Generate Key</Button>
+                    <Button className="ml1" primary medium onClick={this._generateToken}>{t`Generate Key`}</Button>
                 }
             </div>
         );

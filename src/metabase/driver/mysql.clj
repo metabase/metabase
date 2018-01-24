@@ -213,8 +213,11 @@
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
 
-(def ^:private mysql-date-formatter
-  (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS zzz"))
+(def ^:private mysql-date-formatters
+  (concat (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSS zzz")
+          ;;In some timezones, MySQL doesn't return a timezone description but rather a truncated offset, such as '-02'. That
+          ;;offset will fail to parse using a regular formatter
+          (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSS Z")))
 
 (def ^:private mysql-db-time-query
   "select CONCAT(DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%f' ), ' ', @@system_time_zone)")
@@ -252,7 +255,7 @@
                                                              :display-name "Additional JDBC connection string options"
                                                              :placeholder  "tinyInt1isBit=false"}]))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :current-db-time                   (driver/make-current-db-time-fn mysql-date-formatter mysql-db-time-query)})
+          :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatters)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

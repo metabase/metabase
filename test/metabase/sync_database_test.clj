@@ -31,7 +31,8 @@
                         :base-type     :type/Integer}
                        {:name          "title"
                         :database-type "VARCHAR"
-                        :base-type     :type/Text}
+                        :base-type     :type/Text
+                        :special-type  :type/Title}
                        {:name          "studio"
                         :database-type "VARCHAR"
                         :base-type     :type/Text}}}
@@ -99,7 +100,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :show_in_getting_started false
-   :entity_type             :type/GenericTable
+   :entity_type             :entity/GenericTable
    :entity_name             nil
    :visibility_type         nil
    :rows                    1000
@@ -146,11 +147,11 @@
                                   :base_type          :type/Text
                                   :fk_target_field_id true})
                           (merge field-defaults
-                                 {:special_type  nil
-                                  :name          "title"
+                                 {:name          "title"
                                   :display_name  "Title"
                                   :database_type "VARCHAR"
-                                  :base_type     :type/Text})]})
+                                  :base_type     :type/Text
+                                  :special_type  :type/Title})]})
    (merge table-defaults
           {:name         "studio"
            :display_name "Studio"
@@ -194,11 +195,11 @@
                                  :database_type "VARCHAR"
                                  :base_type     :type/Text})
                          (merge field-defaults
-                                {:special_type  nil
-                                 :name          "title"
+                                {:name          "title"
                                  :display_name  "Title"
                                  :database_type "VARCHAR"
-                                 :base_type     :type/Text})]})
+                                 :base_type     :type/Text
+                                 :special_type  :type/Title})]})
   (tt/with-temp* [Database [db    {:engine :sync-test}]
                   Table    [table {:name   "movie"
                                    :schema "default"

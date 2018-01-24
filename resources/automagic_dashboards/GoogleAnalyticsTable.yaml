@@ -3,13 +3,10 @@ description: Some useful metrics about your GA stats to get you started.
 metrics:
   - Sessions:
       metric: [METRIC, "ga:sessions"]
-      score: 100
   - Pageviews:
       metric: [METRIC, "ga:pageviews"]
-      score: 100
   - 1DayActiveUsers:
       metric: [METRIC, "ga:1dayUsers"]
-      score: 100
 # This metric would be used by the cohort table if we could create it.
 #  - Retention:
 #    metric: ["ga:cohortRetentionRate"]
@@ -26,25 +23,18 @@ filters:
 dimensions:
   - Day:
       field_type: ga:date
-      score: 100
   - Country:
       field_type: ga:country
-      score: 100
   - DeviceType:
       field_type: ga:deviceCategory
-      score: 100
   - LandingPage:
       field_type: ga:landingPagePath
-      score: 100
   - Page:
       field_type: ga:pagePath
-      score: 100
   - Channel:
       field_type: ga:channelGrouping
-      score: 100
   - Source:
       field_type: ga:source
-      score: 100
 cards:
   - SessionsOverTime:
       title: Sessions per day
@@ -54,6 +44,7 @@ cards:
       filters: Last30Days
       visualization: line
       score: 100
+      width: 18
   - 1DayDAUOverTime:
       title: Daily active users
       description: The number of unique users per day
@@ -61,7 +52,7 @@ cards:
       dimensions: Day
       filters: Last30Days
       visualization: line
-      score: 100
+      score: 85
   # I don't know if I can do this, but I'd like to have a multi-metric card here
   # made up of two scalars, new user sessions and returning user sessions, so that
   # it's displayed as a bar chart.
@@ -83,6 +74,16 @@ cards:
         map:
           map.type: region
           map.region: world_countries
+      score: 90
+      group: SessionsBreakdown
+  - SessionsByTopChannels:
+      title: Top acquisition channels
+      description: Where most of your sessions originate from
+      metrics: Sessions
+      dimensions: Channel
+      filters: Last30Days
+      visualization: bar
+      group: SessionsBreakdown
       score: 80
   - SessionsByDeviceType:
       title: Sessions by device type
@@ -92,41 +93,37 @@ cards:
       filters: Last30Days
       visualization: bar
       score: 80
+      group: SessionsBreakdown
   - PageviewsByPage:
       title: Most-viewed pages
       description: The pages with the most pageviews
       metrics: Pageviews
       dimensions: Page
       filters: Last30Days
-      visualization: row
-      score: 80
+      visualization: table
+      height: 8
+      score: 70
   - SessionsByLandingPage:
       title: Top landing pages
       description: Sessions by page where the session began
       metrics: Sessions
       dimensions: LandingPage
       filters: Last30Days
-      visualization: row
-      score: 80
-  - SessionsByTopChannels:
-      title: Top acquisition channels
-      description: Where most of your sessions originate from
-      metrics: Sessions
-      dimensions: Channel
-      filters: Last30Days
-      visualization: bar
+      visualization: table
+      height: 8
+      score: 70
 # MBQL does not support ordering by GA metric
 #      order_by:
 #        - Sessions: descending
-      score: 80
   - SessionsBySource:
       title: Top referral pages
       description: The top external pages that brought users to your site
       metrics: Sessions
       dimensions: Source
       filters: Last30Days
-      visualization: bar
-      score: 80
+      visualization: table
+      height: 8
+      score: 70
 #  - CohortRetention:
 #    title:
 #    description:

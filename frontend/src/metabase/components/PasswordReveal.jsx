@@ -1,6 +1,7 @@
 /* flow */
 import React, { Component } from "react";
 import CopyButton from 'metabase/components/CopyButton';
+import { t } from 'c-3po';
 
 type State = {
     visible: boolean
@@ -22,7 +23,7 @@ const styles = {
 const Label = () =>
     <div style={{ top: -12 }} className="absolute text-centered left right">
         <span className="px1 bg-white h6 text-bold text-grey-3 text-uppercase">
-            Temporary Password
+            {t`Temporary Password`}
         </span>
     </div>
 
@@ -59,7 +60,7 @@ export default class PasswordReveal extends Component {
                         className="link text-bold mr2"
                         onClick={() => this.setState({ visible: !visible })}
                     >
-                        { visible ? 'Hide' : 'Show' }
+                        { visible ? t`Hide` : t`Show` }
                     </a>
 
                     <CopyButton

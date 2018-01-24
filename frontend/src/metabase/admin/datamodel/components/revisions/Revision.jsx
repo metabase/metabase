@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import RevisionDiff from "./RevisionDiff.jsx";
-
+import { t } from 'c-3po';
 import UserAvatar from "metabase/components/UserAvatar.jsx"
 
 import moment from "moment";
@@ -21,29 +21,29 @@ export default class Revision extends Component {
     getAction() {
         const { revision, objectName } = this.props;
         if (revision.is_creation) {
-            return "created \"" + revision.diff.name.after + "\"";
+            return t`created` + " \"" + revision.diff.name.after + "\"";
         }
         if (revision.is_reversion) {
-            return "reverted to a previous version";
+            return t`reverted to a previous version`;
         }
         let changedKeys = Object.keys(revision.diff);
         if (changedKeys.length === 1) {
             switch (changedKeys[0]) {
                 case "name":
-                    return "edited the title";
+                    return t`edited the title`;
                 case "description":
-                    return "edited the description";
+                    return t`edited the description`;
                 case "defintion":
-                    return "edited the " + objectName;
+                    return t`edited the ` + objectName;
             }
         }
-        return "made some changes";
+        return t`made some changes`;
     }
 
     getName() {
         const { revision: { user }, currentUser } = this.props;
         if (user.id === currentUser.id) {
-            return "You"
+            return t`You`
         } else {
             return user.first_name;
         }

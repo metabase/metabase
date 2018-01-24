@@ -97,7 +97,7 @@
   clojure.lang.Named
   (getName [_] "Crate"))
 
-(def ^:private crate-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSSZ"))
+(def ^:private crate-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSSZ"))
 (def ^:private crate-db-time-query "select DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%fZ')")
 
 (u/strict-extend CrateDriver
@@ -110,7 +110,7 @@
                                          :display-name "Hosts"
                                          :default      "localhost:5432/"}])
           :features        (comp (u/rpartial disj :foreign-keys) sql/features)
-          :current-db-time (driver/make-current-db-time-fn crate-date-formatter crate-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn crate-db-time-query crate-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)

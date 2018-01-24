@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Revision from "./Revision.jsx";
-
+import { t } from 'c-3po';
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx"
 
@@ -28,11 +28,11 @@ export default class RevisionHistory extends Component {
             {() =>
                 <div className="wrapper">
                     <Breadcrumbs className="py4" crumbs={[
-                        ["Datamodel", "/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id],
-                        [this.props.objectType + " History"]
+                        [t`Datamodel`, "/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id],
+                        [this.props.objectType + t` History`]
                     ]}/>
                     <div className="wrapper py4" style={{maxWidth: 950}}>
-                        <h2 className="mb4">Revision History for "{object.name}"</h2>
+                        <h2 className="mb4">{t`Revision History for`} "{object.name}"</h2>
                         <ol>
                         {revisions.map(revision =>
                             <Revision

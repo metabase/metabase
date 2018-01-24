@@ -161,7 +161,7 @@
 ;; TODO - do we need to hydrate the cards' collections as well?
 (defn- cards-for-filter-option [filter-option model-id label collection-slug]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
-                  (hydrate :creator :collection)
+                  (hydrate :creator :collection :in_public_dashboard)
                   hydrate-labels
                   hydrate-favorites)]
     ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply
@@ -216,11 +216,10 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (-> (api/read-check Card id)
-      (hydrate :creator :dashboard_count :labels :can_write :collection)
-      (assoc :actor_id api/*current-user-id*)
-      (->> (events/publish-event! :card-read))
-      (dissoc :actor_id)))
+  (u/prog1 (-> (Card id)
+               (hydrate :creator :dashboard_count :labels :can_write :collection :in_public_dashboard)
+               api/read-check)
+    (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
@@ -598,7 +597,7 @@
               :or   {constraints dataset-api/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [card    (api/read-check Card card-id)
+  (let [card    (api/read-check (hydrate (Card card-id) :in_public_dashboard))
         query   (query-for-card card parameters constraints)
         options {:executed-by  api/*current-user-id*
                  :context      context
@@ -631,7 +630,7 @@
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:card-id/public_link"
-  "Generate publically-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
+  "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [card-id]
@@ -645,7 +644,7 @@
                  :made_public_by_id api/*current-user-id*)))})
 
 (api/defendpoint DELETE "/:card-id/public_link"
-  "Delete the publically-accessible link to this Card."
+  "Delete the publicly-accessible link to this Card."
   [card-id]
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -656,7 +655,7 @@
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
-  "Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled."
+  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (api/check-superuser)
   (api/check-public-sharing-enabled)

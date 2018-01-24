@@ -87,6 +87,16 @@
   "America/Los_Angeles"
   (tu/db-timezone-id))
 
+(expect-with-engine :mysql
+  "-02:00"
+  (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-09 18:39:08.000000 -02"]]})]
+    (tu/db-timezone-id)))
+
+(expect-with-engine :mysql
+  "Europe/Paris"
+  (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
+    (tu/db-timezone-id)))
+
 (expect (#'mysql/timezone-id->offset-str "US/Pacific")          "-08:00")
 (expect (#'mysql/timezone-id->offset-str "UTC")                 "+00:00")
 (expect (#'mysql/timezone-id->offset-str "America/Los_Angeles") "-08:00")

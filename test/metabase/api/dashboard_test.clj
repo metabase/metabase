@@ -118,7 +118,6 @@
   (merge dashboard-defaults
          {:name          "Test Dashboard"
           :creator_id    (user->id :rasta)
-          :creator       (user-details (fetch-user :rasta))
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -130,12 +129,12 @@
                            :card                   (merge card-api-test/card-defaults
                                                           {:name                   "Dashboard Test Card"
                                                            :creator_id             (user->id :rasta)
-                                                           :creator                (user-details (fetch-user :rasta))
                                                            :display                "table"
                                                            :query_type             nil
                                                            :dataset_query          {}
                                                            :visualization_settings {}
                                                            :query_average_duration nil
+                                                           :in_public_dashboard    false
                                                            :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
@@ -536,7 +535,7 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     ((user->client :crowberto) :delete 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE))))
 
-;; Test that we can fetch a list of publically-accessible dashboards
+;; Test that we can fetch a list of publicly-accessible dashboards
 (expect
   [{:name true, :id true, :public_uuid true}]
   (tu/with-temporary-setting-values [enable-public-sharing true]

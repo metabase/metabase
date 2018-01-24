@@ -9,7 +9,7 @@ import {
 
 import { withBackground } from 'metabase/hoc/Background'
 import { determineWhichOptionsToShow, resetQuery } from '../new_query'
-
+import { t } from 'c-3po'
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
 import Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -122,8 +122,8 @@ export class NewQueryOptions extends Component {
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/questions_illustration"
-                                        title="Metrics"
-                                        description="See data over time, as a map, or pivoted to help you understand trends or changes."
+                                        title={t`Metrics`}
+                                        description={t`See data over time, as a map, or pivoted to help you understand trends or changes.`}
                                         to={metricSearchUrl}
                                     />
                                 </li>
@@ -132,8 +132,8 @@ export class NewQueryOptions extends Component {
                                 {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                                 <NewQueryOption
                                     image="/app/img/query_builder_illustration"
-                                    title={ showCustomInsteadOfNewQuestionText ? "Custom" : "New question"}
-                                    description="Use the simple question builder to see trends, lists of things, or to create your own metrics."
+                                    title={ showCustomInsteadOfNewQuestionText ? t`Custom` : t`New question`}
+                                    description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
                                     width={180}
                                     to={this.getGuiQueryUrl}
                                 />
@@ -142,8 +142,8 @@ export class NewQueryOptions extends Component {
                                 <li className="Grid-cell">
                                     <NewQueryOption
                                         image="/app/img/sql_illustration"
-                                        title="Native query"
-                                        description="For more complicated questions, you can write your own SQL or native query."
+                                        title={t`Native query`}
+                                        description={t`For more complicated questions, you can write your own SQL or native query.`}
                                         to={this.getNativeQueryUrl}
                                     />
                                 </li>

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
-
+import { t } from 'c-3po';
 
 export default class ListSearchField extends Component {
 
@@ -16,7 +16,7 @@ export default class ListSearchField extends Component {
     static defaultProps = {
         className: "bordered rounded text-grey-2 flex flex-full align-center",
         inputClassName: "p1 h4 input--borderless text-default flex-full",
-        placeholder: "Find...",
+        placeholder: t`Find...`,
         searchText: "",
         autoFocus: false
     };

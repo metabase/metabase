@@ -1,6 +1,6 @@
 (ns metabase.permissions-test
   "A test suite around permissions. Nice!"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
@@ -21,9 +21,11 @@
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.util.UUID))
 
 ;; 3 users:
 ;; crowberto, member of Admin, All Users
@@ -59,7 +61,7 @@
 
 (defn table [db table-name]
   (db/select-one Table
-    :%lower.name (s/lower-case (name table-name))
+    :%lower.name (str/lower-case (name table-name))
     :db_id       (u/get-id db)))
 
 (defn- field
@@ -67,23 +69,23 @@
    (field (table db table-name) field-name))
   ([table field-name]
    (db/select-one Field
-     :%lower.name (s/lower-case (name field-name))
+     :%lower.name (str/lower-case (name field-name))
      :table_id    (u/get-id table))))
 
 (defn- with-db [db-name f]
   (fn []
     (tt/with-temp Database [db (test-db db-name)]
       ;; syncing is slow as f**k so just manually insert the Tables
-      (doseq [table-name ["venues" "users" "checkins"]]
-        (db/insert! Table :db_id (u/get-id db), :active true, :name table-name))
+      (doseq [table-name ["VENUES" "USERS" "CHECKINS"]]
+        (db/insert! Table :db_id (u/get-id db), :active true, :name (str/upper-case table-name)))
       ;; do the same for Fields
-      (doseq [field [{:table_id      (u/get-id (table db :venues)),
-                      :name          "price"
+      (doseq [field [{:table_id      (u/get-id (table db :venues))
+                      :name          "PRICE"
                       :database_type "INT"
                       :base_type     :type/Integer
                       :special_type  :type/Category}
                      {:table_id      (u/get-id (table db :users))
-                      :name          "last_login"
+                      :name          "LAST_LOGIN"
                       :database_type "TIMESTAMP"
                       :base_type     :type/DateTime}]]
         (db/insert! Field field))
@@ -136,7 +138,7 @@
      :table_id      (u/get-id table)
      :dataset_query {:database (u/get-id db)
                      :type     "native"
-                     :native   {:query (format "SELECT count(*) FROM \"%s\";" (:name table))}}}))
+                     :native   {:query (format "SELECT count(*) FROM \"%s\";" (str/upper-case (:name table)))}}}))
 
 
 (def ^:dynamic *card:db1-count-of-venues*)
@@ -147,16 +149,20 @@
 (def ^:dynamic *card:db2-count-of-users*)     ; ops (lucky) has access to venues and reading SQL (deprecated)
 (def ^:dynamic *card:db2-count-of-checkins*)
 (def ^:dynamic *card:db2-sql-count-of-users*)
+(def ^:dynamic *card:db2-public*)             ; a publicly shared Card
+(def ^:dynamic *card:db2-in-public-dash*)     ; a private Card that is in a public Dashboard
 
-(defn- all-cards []
-  #{*card:db1-count-of-venues*
-    *card:db1-count-of-users*
-    *card:db1-count-of-checkins*
-    *card:db1-sql-count-of-users*
-    *card:db2-count-of-venues*
-    *card:db2-count-of-users*
-    *card:db2-count-of-checkins*
-    *card:db2-sql-count-of-users*})
+(defn- all-cards []               ; Crowberto [Admin] | Lucky [Ops] | Rasta [Default]
+  #{*card:db1-count-of-venues*    ;         ✓         |      ✓      |        ✓
+    *card:db1-count-of-users*     ;         ✓         |      ✓      |        ✓
+    *card:db1-count-of-checkins*  ;         ✓         |      ✓      |        ✓
+    *card:db1-sql-count-of-users* ;         ✓         |      ✓      |        ✓
+    *card:db2-count-of-venues*    ;         ✓         |      ✓      |        x
+    *card:db2-count-of-users*     ;         ✓         |      x      |        x
+    *card:db2-count-of-checkins*  ;         ✓         |      x      |        x
+    *card:db2-sql-count-of-users* ;         ✓         |      ✓      |        x
+    *card:db2-public*             ;         ✓         |      ✓      |        ✓
+    *card:db2-in-public-dash*})   ;         ✓         |      ✓      |        ✓
 
 (defn- all-card-ids []
   (set (map :id (all-cards))))
@@ -170,7 +176,11 @@
                     Card [db2-count-of-venues    (count-card     *db2* :venues   "DB 2 Count of Venues")]
                     Card [db2-count-of-users     (count-card     *db2* :users    "DB 2 Count of Users")]
                     Card [db2-count-of-checkins  (count-card     *db2* :checkins "DB 2 Count of Checkins")]
-                    Card [db2-sql-count-of-users (sql-count-card *db2* :venues   "DB 2 SQL Count of Users")]]
+                    Card [db2-sql-count-of-users (sql-count-card *db2* :users    "DB 2 SQL Count of Users")]
+                    Card [db2-public             (assoc (count-card *db2* :users "DB 2 Public")
+                                                            :made_public_by_id (test-users/user->id :crowberto)
+                                                            :public_uuid       (str (UUID/randomUUID)))]
+                    Card [db2-in-public-dash     (count-card *db2* :users "DB 2 In Public Dash")]]
       (binding [*card:db1-count-of-venues*    db1-count-of-venues
                 *card:db1-count-of-users*     db1-count-of-users
                 *card:db1-count-of-checkins*  db1-count-of-checkins
@@ -178,18 +188,22 @@
                 *card:db2-count-of-venues*    db2-count-of-venues
                 *card:db2-count-of-users*     db2-count-of-users
                 *card:db2-count-of-checkins*  db2-count-of-checkins
-                *card:db2-sql-count-of-users* db2-sql-count-of-users]
+                *card:db2-sql-count-of-users* db2-sql-count-of-users
+                *card:db2-public*             db2-public
+                *card:db2-in-public-dash*     db2-in-public-dash]
         (f)))))
 
 ;;; --------------------------------------------------- Dashboards ---------------------------------------------------
 
-(def ^:dynamic *dash:db1-all*)
-(def ^:dynamic *dash:db2-all*)
-(def ^:dynamic *dash:db2-public*)
+(def ^:dynamic *dash:db1-all*)     ; Dash containing all the non-public cards for DB 1
+(def ^:dynamic *dash:db2-all*)     ; Dash containing all the non-public cards for DB 2
+(def ^:dynamic *dash:db2-private*) ; Dash containing only DB 2 Count of Users card. Only admin can see
+(def ^:dynamic *dash:db2-public*)  ; Public dash containing DB 2 In Public Dash Card (count of Users), normally private
 
 (defn- all-dashboards []
   #{*dash:db1-all*
     *dash:db2-all*
+    *dash:db2-private*
     *dash:db2-public*})
 
 (defn- all-dashboard-ids []
@@ -205,7 +219,10 @@
   (fn []
     (tt/with-temp* [Dashboard [db1-all    {:name "All DB 1"}]
                     Dashboard [db2-all    {:name "All DB 2"}]
-                    Dashboard [db2-public {:name "Public DB 2"}]]
+                    Dashboard [db2-private {:name "Private DB 2"}]
+                    Dashboard [db2-public {:name              "Public DB 2"
+                                           :made_public_by_id (test-users/user->id :crowberto)
+                                           :public_uuid       (str (UUID/randomUUID))}]]
       (add-cards-to-dashboard! db1-all
         *card:db1-count-of-venues*
         *card:db1-count-of-users*
@@ -216,10 +233,13 @@
         *card:db2-count-of-users*
         *card:db2-count-of-checkins*
         *card:db2-sql-count-of-users*)
-      (add-cards-to-dashboard! db2-public
+      (add-cards-to-dashboard! db2-private
         *card:db2-count-of-users*)
+      (add-cards-to-dashboard! db2-public
+        *card:db2-in-public-dash*)
       (binding [*dash:db1-all*    db1-all
                 *dash:db2-all*    db2-all
+                *dash:db2-private* db2-private
                 *dash:db2-public* db2-public]
         (f)))))
 
@@ -229,14 +249,14 @@
 (def ^:dynamic *pulse:all*)
 (def ^:dynamic *pulse:db1-all*)
 (def ^:dynamic *pulse:db2-all*)
-(def ^:dynamic *pulse:db2-public*)
+(def ^:dynamic *pulse:db2-private*)
 (def ^:dynamic *pulse:db2-restricted*)
 
 (defn- all-pulse-ids []
   #{(u/get-id *pulse:all*)
     (u/get-id *pulse:db1-all*)
     (u/get-id *pulse:db2-all*)
-    (u/get-id *pulse:db2-public*)
+    (u/get-id *pulse:db2-private*)
     (u/get-id *pulse:db2-restricted*)})
 
 (defn- add-cards-to-pulse! {:style/indent 1} [pulse & cards]
@@ -262,7 +282,7 @@
     (tt/with-temp* [Pulse [all            {:name "All of Everything"}]
                     Pulse [db1-all        {:name "All DB 1"}]
                     Pulse [db2-all        {:name "All DB 2"}]
-                    Pulse [db2-public     {:name "Public DB 2"}]
+                    Pulse [db2-private    {:name "Private DB 2"}]
                     Pulse [db2-restricted {:name "Restricted DB 2"}]]
       ;; add cards
       (add-cards-to-pulse! all
@@ -284,7 +304,7 @@
         *card:db2-count-of-users*
         *card:db2-count-of-checkins*
         *card:db2-sql-count-of-users*)
-      (add-cards-to-pulse! db2-public
+      (add-cards-to-pulse! db2-private
         *card:db2-count-of-venues*)
       (add-cards-to-pulse! db2-restricted
         *card:db2-count-of-users*
@@ -298,7 +318,7 @@
       (binding [*pulse:all*            all
                 *pulse:db1-all*        db1-all
                 *pulse:db2-all*        db2-all
-                *pulse:db2-public*     db2-public
+                *pulse:db2-private*     db2-private
                 *pulse:db2-restricted* db2-restricted]
         (f)))))
 
@@ -375,15 +395,20 @@
 
 ;;; ------------------------------------------------ with everything! ------------------------------------------------
 
+
+
 (defn -do-with-test-data [f]
-  (((comp with-ops-group
-          with-db-2
-          with-db-1
-          with-cards
-          with-dashboards
-          with-pulses
-          with-metrics
-          with-segments) f)))
+  ((comp
+     ;; run everything with enable-public-sharing set to true, needed for some public perms tests
+     (partial tu/do-with-temporary-setting-value :enable-public-sharing true)
+     with-ops-group
+     with-db-2
+     with-db-1
+     with-cards
+     with-dashboards
+     with-pulses
+     with-metrics
+     with-segments) f))
 
 (defmacro with-test-data {:style/indent 0} [& body]
   `(-do-with-test-data (fn []
@@ -404,24 +429,24 @@
 
 (defn- GET-database [username]
   (vec (for [db    ((test-users/user->client username) :get 200 "database", :include_tables true)
-             :when (contains? (all-db-ids) (u/get-id db))]
+             :when ((all-db-ids) (u/get-id db))]
          [(:name db) (mapv :name (:tables db))])))
 
 ;; admin should be able to see everything
 (expect-with-test-data
-  [["DB One" ["checkins" "users" "venues"]]
-   ["DB Two" ["checkins" "users" "venues"]]]
+  [["DB One" ["CHECKINS" "USERS" "VENUES"]]
+   ["DB Two" ["CHECKINS" "USERS" "VENUES"]]]
   (GET-database :crowberto))
 
 ;; basic user should only see DB 1
 (expect-with-test-data
-  [["DB One" ["checkins" "users" "venues"]]]
+  [["DB One" ["CHECKINS" "USERS" "VENUES"]]]
   (GET-database :rasta))
 
 ;; ops user should see DB 1 and venues in DB 2
 (expect-with-test-data
-  [["DB One" ["checkins" "users" "venues"]]
-   ["DB Two" ["venues"]]]
+  [["DB One" ["CHECKINS" "USERS" "VENUES"]]
+   ["DB Two" ["VENUES"]]]
   (GET-database :lucky))
 
 
@@ -488,10 +513,10 @@
 
 (defn- GET-card [username]
   (vec (for [card  ((test-users/user->client username) :get 200 "card")
-             :when (contains? (all-card-ids) (u/get-id card))]
+             :when ((all-card-ids) (u/get-id card))]
          (:name card))))
 
-;; Admin should be able to see all 8 questions
+;; Admin should be able to see all 10 questions
 (expect-with-test-data
   ["DB 1 Count of Checkins"
    "DB 1 Count of Users"
@@ -500,24 +525,30 @@
    "DB 2 Count of Checkins"
    "DB 2 Count of Users"
    "DB 2 Count of Venues"
+   "DB 2 In Public Dash"
+   "DB 2 Public"
    "DB 2 SQL Count of Users"]
   (GET-card :crowberto))
 
-;; All Users should only be able to see questions in DB 1
+;; All Users should only be able to see questions in DB 1, and Public Cards
 (expect-with-test-data
   ["DB 1 Count of Checkins"
    "DB 1 Count of Users"
    "DB 1 Count of Venues"
-   "DB 1 SQL Count of Users"]
+   "DB 1 SQL Count of Users"
+   "DB 2 In Public Dash"
+   "DB 2 Public"]
   (GET-card :rasta))
 
-;; Ops should be able to see questions in DB 1, and DB 2 venues & SQL questions
+;; Ops should be able to see questions in DB 1; DB 2 venues & SQL questions; Public Cards
 (expect-with-test-data
   ["DB 1 Count of Checkins"
    "DB 1 Count of Users"
    "DB 1 Count of Venues"
    "DB 1 SQL Count of Users"
    "DB 2 Count of Venues"
+   "DB 2 In Public Dash"
+   "DB 2 Public"
    "DB 2 SQL Count of Users"]
   (GET-card :lucky))
 
@@ -529,7 +560,7 @@
   (not= ((test-users/user->client username) :get (str "card/" (u/get-id card)))
         "You don't have permissions to do that."))
 
-;; admin can fetch all 8 cards
+;; admin can fetch all 10 cards
 (expect-with-test-data true  (GET-card-id :crowberto *card:db1-count-of-venues*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db1-count-of-users*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db1-count-of-checkins*))
@@ -538,8 +569,10 @@
 (expect-with-test-data true  (GET-card-id :crowberto *card:db2-count-of-users*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db2-count-of-checkins*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db2-sql-count-of-users*))
+(expect-with-test-data true  (GET-card-id :crowberto *card:db2-public*))
+(expect-with-test-data true  (GET-card-id :crowberto *card:db2-in-public-dash*))
 
-;; regular user can only fetch Cards for DB 1
+;; regular user can only fetch Cards for DB 1 or public Cards
 (expect-with-test-data true  (GET-card-id :rasta *card:db1-count-of-venues*))
 (expect-with-test-data true  (GET-card-id :rasta *card:db1-count-of-users*))
 (expect-with-test-data true  (GET-card-id :rasta *card:db1-count-of-checkins*))
@@ -548,8 +581,10 @@
 (expect-with-test-data false (GET-card-id :rasta *card:db2-count-of-users*))
 (expect-with-test-data false (GET-card-id :rasta *card:db2-count-of-checkins*))
 (expect-with-test-data false (GET-card-id :rasta *card:db2-sql-count-of-users*))
+(expect-with-test-data true  (GET-card-id :rasta *card:db2-public*))
+(expect-with-test-data true  (GET-card-id :rasta *card:db2-in-public-dash*))
 
-;; ops user can fetch DB 1 cards of DB 2 Venues cards
+;; ops user can fetch DB 1 cards, DB 2 Venues cards, or Public cards
 (expect-with-test-data true  (GET-card-id :lucky *card:db1-count-of-venues*))
 (expect-with-test-data true  (GET-card-id :lucky *card:db1-count-of-users*))
 (expect-with-test-data true  (GET-card-id :lucky *card:db1-count-of-checkins*))
@@ -558,6 +593,53 @@
 (expect-with-test-data false (GET-card-id :lucky *card:db2-count-of-users*))
 (expect-with-test-data false (GET-card-id :lucky *card:db2-count-of-checkins*))
 (expect-with-test-data true  (GET-card-id :lucky *card:db2-sql-count-of-users*))
+(expect-with-test-data true  (GET-card-id :lucky *card:db2-public*))
+(expect-with-test-data true  (GET-card-id :lucky *card:db2-in-public-dash*))
+
+
+;;; -------------------------------------------- POST /api/card/:id/query --------------------------------------------
+
+;; Check whether we're allowed to run the cards as well
+(defn- POST-card-id-query [username card]
+  (let [results ((test-users/user->client username) :post (str "card/" (u/get-id card) "/query"))]
+    (and (map? results)
+         (= (:status results) "completed"))))
+
+;; admin can run all 10 cards
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db1-count-of-venues*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db1-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db1-count-of-checkins*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db1-sql-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db2-count-of-venues*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db2-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db2-count-of-checkins*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db2-sql-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db2-public*))
+(expect-with-test-data true  (POST-card-id-query :crowberto *card:db2-in-public-dash*))
+
+;; regular user can only run Cards for DB 1 or public Card
+(expect-with-test-data true  (POST-card-id-query :rasta *card:db1-count-of-venues*))
+(expect-with-test-data true  (POST-card-id-query :rasta *card:db1-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :rasta *card:db1-count-of-checkins*))
+(expect-with-test-data true  (POST-card-id-query :rasta *card:db1-sql-count-of-users*))
+(expect-with-test-data false (POST-card-id-query :rasta *card:db2-count-of-venues*))
+(expect-with-test-data false (POST-card-id-query :rasta *card:db2-count-of-users*))
+(expect-with-test-data false (POST-card-id-query :rasta *card:db2-count-of-checkins*))
+(expect-with-test-data false (POST-card-id-query :rasta *card:db2-sql-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :rasta *card:db2-public*))
+(expect-with-test-data true  (POST-card-id-query :rasta *card:db2-in-public-dash*))
+
+;; ops user can run DB 1 cards, DB 2 Venues cards, or Public card
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db1-count-of-venues*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db1-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db1-count-of-checkins*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db1-sql-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db2-count-of-venues*))
+(expect-with-test-data false (POST-card-id-query :lucky *card:db2-count-of-users*))
+(expect-with-test-data false (POST-card-id-query :lucky *card:db2-count-of-checkins*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db2-sql-count-of-users*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db2-public*))
+(expect-with-test-data true  (POST-card-id-query :lucky *card:db2-in-public-dash*))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -568,47 +650,118 @@
 
 (defn- GET-dashboard [username]
   (vec (for [dashboard ((test-users/user->client username) :get 200 "dashboard")
-             :when     (contains? (all-dashboard-ids) (u/get-id dashboard))]
+             :when     ((all-dashboard-ids) (u/get-id dashboard))]
          (:name dashboard))))
 
 ;; Admin should be able to see all dashboards
 (expect-with-test-data
   ["All DB 1"
    "All DB 2"
+   "Private DB 2"
    "Public DB 2"]
   (GET-dashboard :crowberto))
 
-;; All Users should only be able to see All DB 1.
-;; Shouldn't see either one of the DB 2 dashboards because they have no access to DB 2
+;; All Users should only be able to see All DB 1 and Public DB 2.
+;; Shouldn't see the other DB 2 dashboards because they have no access to DB 2
 (expect-with-test-data
-  ["All DB 1"]
+  ["All DB 1"
+   "Public DB 2"]
   (GET-dashboard :rasta))
 
-;; Ops should be able to see All DB 1 & All DB 2
+;; Ops should be able to see All DB 1 & All DB 2 & Public DB 2
 ;; Shouldn't see DB 2 Private because they have no access to the db2-count-of-users card, its only card
 (expect-with-test-data
   ["All DB 1"
-   "All DB 2"]
+   "All DB 2"
+   "Public DB 2"]
   (GET-dashboard :lucky))
 
 
 ;;; --------------------------------------------- GET /api/dashboard/:id ---------------------------------------------
 
-(defn- GET-dashboard-id [username dashboard]
-  (not= ((test-users/user->client username) :get (str "dashboard/" (u/get-id dashboard)))
-        "You don't have permissions to do that."))
+(defn- GET-dashboard-id
+  "Fetch a `dashboard` with credentials for `username`.
 
-(expect-with-test-data true  (GET-dashboard-id :crowberto *dash:db1-all*))
-(expect-with-test-data true  (GET-dashboard-id :crowberto *dash:db2-all*))
-(expect-with-test-data true  (GET-dashboard-id :crowberto *dash:db2-public*))
+  Return `false` if unable to fetch the dashboard; otherwise return a sequence of names of Cards returned. For Cards
+  without proper read permissions, i.e. those whose presence was acknowledged, but whose data has been removed, will
+  be returned as `nil` since the name should not be available. (The endpoint will strip data from Cards you're not
+  allowed to see but leave display info in place (so a placeholder can be shown) for Dashboards for which you have
+  partial permissions; if you're not allowed to see *any* Cards in the Dashboard, you're not allowed to see the
+  Dashboard; it should return a 403 Forbidden response.)"
+  [username dashboard]
+  (let [response ((test-users/user->client username) :get (str "dashboard/" (u/get-id dashboard)))]
+    (and
+     (map? response)
+     (for [dashcard (sort-by :card_id (:ordered_cards response))]
+       (get-in dashcard [:card :name])))))
 
-(expect-with-test-data true  (GET-dashboard-id :rasta *dash:db1-all*))
-(expect-with-test-data false (GET-dashboard-id :rasta *dash:db2-all*))
-(expect-with-test-data false (GET-dashboard-id :rasta *dash:db2-public*))
+;; admin
+(expect-with-test-data
+  ["DB 1 Count of Venues"
+   "DB 1 Count of Users"
+   "DB 1 Count of Checkins"
+   "DB 1 SQL Count of Users"]
+  (GET-dashboard-id :crowberto *dash:db1-all*))
 
-(expect-with-test-data true  (GET-dashboard-id :lucky *dash:db1-all*))
-(expect-with-test-data true  (GET-dashboard-id :lucky *dash:db2-all*))
-(expect-with-test-data false (GET-dashboard-id :lucky *dash:db2-public*))
+(expect-with-test-data
+  ["DB 2 Count of Venues"
+   "DB 2 Count of Users"
+   "DB 2 Count of Checkins"
+   "DB 2 SQL Count of Users"]
+  (GET-dashboard-id :crowberto *dash:db2-all*))
+
+(expect-with-test-data
+  ["DB 2 Count of Users"]
+  (GET-dashboard-id :crowberto *dash:db2-private*))
+
+(expect-with-test-data
+  ["DB 2 In Public Dash"]
+  (GET-dashboard-id :crowberto *dash:db2-public*))
+
+
+;; normal user
+(expect-with-test-data
+  ["DB 1 Count of Venues"
+   "DB 1 Count of Users"
+   "DB 1 Count of Checkins"
+   "DB 1 SQL Count of Users"]
+  (GET-dashboard-id :rasta *dash:db1-all*))
+
+(expect-with-test-data
+  false
+  (GET-dashboard-id :rasta *dash:db2-all*))
+
+(expect-with-test-data
+  false
+  (GET-dashboard-id :rasta *dash:db2-private*))
+
+(expect-with-test-data
+  ["DB 2 In Public Dash"]
+  (GET-dashboard-id :rasta *dash:db2-public*))
+
+
+;; ops user
+(expect-with-test-data
+  ["DB 1 Count of Venues"
+   "DB 1 Count of Users"
+   "DB 1 Count of Checkins"
+   "DB 1 SQL Count of Users"]
+  (GET-dashboard-id :lucky *dash:db1-all*))
+
+(expect-with-test-data
+  ["DB 2 Count of Venues"
+   nil
+   nil
+   "DB 2 SQL Count of Users"]
+  (GET-dashboard-id :lucky *dash:db2-all*))
+
+(expect-with-test-data
+  false
+  (GET-dashboard-id :lucky *dash:db2-private*))
+
+(expect-with-test-data
+  ["DB 2 In Public Dash"]
+  (GET-dashboard-id :lucky *dash:db2-public*))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -619,7 +772,7 @@
 
 (defn- GET-pulse [username]
   (vec (for [pulse ((test-users/user->client username) :get 200 "pulse")
-             :when (contains? (all-pulse-ids) (u/get-id pulse))]
+             :when ((all-pulse-ids) (u/get-id pulse))]
          (:name pulse))))
 
 ;; admin
@@ -627,7 +780,7 @@
   ["All DB 1"
    "All DB 2"
    "All of Everything"
-   "Public DB 2"
+   "Private DB 2"
    "Restricted DB 2"]
   (GET-pulse :crowberto))
 
@@ -641,7 +794,7 @@
 (expect-with-test-data
   ["All DB 1"
    "All of Everything"
-   "Public DB 2"]
+   "Private DB 2"]
   (GET-pulse :lucky))
 
 
@@ -655,21 +808,21 @@
 (expect-with-test-data true (GET-pulse-id :crowberto *pulse:all*))
 (expect-with-test-data true (GET-pulse-id :crowberto *pulse:db1-all*))
 (expect-with-test-data true (GET-pulse-id :crowberto *pulse:db2-all*))
-(expect-with-test-data true (GET-pulse-id :crowberto *pulse:db2-public*))
+(expect-with-test-data true (GET-pulse-id :crowberto *pulse:db2-private*))
 (expect-with-test-data true (GET-pulse-id :crowberto *pulse:db2-restricted*))
 
 ;; normal user
 (expect-with-test-data true  (GET-pulse-id :rasta *pulse:all*))
 (expect-with-test-data true  (GET-pulse-id :rasta *pulse:db1-all*))
 (expect-with-test-data false (GET-pulse-id :rasta *pulse:db2-all*))
-(expect-with-test-data false (GET-pulse-id :rasta *pulse:db2-public*))
+(expect-with-test-data false (GET-pulse-id :rasta *pulse:db2-private*))
 (expect-with-test-data false (GET-pulse-id :rasta *pulse:db2-restricted*))
 
 ;; ops user
 (expect-with-test-data true  (GET-pulse-id :lucky *pulse:all*))
 (expect-with-test-data true  (GET-pulse-id :lucky *pulse:db1-all*))
 (expect-with-test-data false (GET-pulse-id :lucky *pulse:db2-all*))
-(expect-with-test-data true  (GET-pulse-id :lucky *pulse:db2-public*))
+(expect-with-test-data true  (GET-pulse-id :lucky *pulse:db2-private*))
 (expect-with-test-data false (GET-pulse-id :lucky *pulse:db2-restricted*))
 
 
@@ -681,7 +834,7 @@
 
 (defn- GET-metric [username]
   (vec (for [metric ((test-users/user->client username) :get 200 "metric")
-             :when  (contains? (all-metric-ids) (u/get-id metric))]
+             :when  ((all-metric-ids) (u/get-id metric))]
          (:name metric))))
 
 ;; admin should see all 3
@@ -707,7 +860,7 @@
 
 (defn- GET-segment [username]
   (vec (for [segment ((test-users/user->client username) :get 200 "segment")
-             :when   (contains? (all-segment-ids) (u/get-id segment))]
+             :when   ((all-segment-ids) (u/get-id segment))]
          (:name segment))))
 
 ;; admin should see all 3
@@ -738,13 +891,13 @@
       (mapv :name (:tables db)))))
 
 ;; admin should be able to see everything
-(expect-with-test-data ["checkins" "users" "venues"] (GET-database-id-metadata :crowberto *db1*))
-(expect-with-test-data ["checkins" "users" "venues"] (GET-database-id-metadata :crowberto *db2*))
+(expect-with-test-data ["CHECKINS" "USERS" "VENUES"] (GET-database-id-metadata :crowberto *db1*))
+(expect-with-test-data ["CHECKINS" "USERS" "VENUES"] (GET-database-id-metadata :crowberto *db2*))
 
 ;; regular user should only be able to see DB 1
-(expect-with-test-data ["checkins" "users" "venues"]            (GET-database-id-metadata :rasta *db1*))
+(expect-with-test-data ["CHECKINS" "USERS" "VENUES"]            (GET-database-id-metadata :rasta *db1*))
 (expect-with-test-data "You don't have permissions to do that." (GET-database-id-metadata :rasta *db2*))
 
 ;; ops user should be able to see DB 1 + venues in DB 2
-(expect-with-test-data ["checkins" "users" "venues"] (GET-database-id-metadata :lucky *db1*))
-(expect-with-test-data ["venues"]                    (GET-database-id-metadata :lucky *db2*))
+(expect-with-test-data ["CHECKINS" "USERS" "VENUES"] (GET-database-id-metadata :lucky *db1*))
+(expect-with-test-data ["VENUES"]                    (GET-database-id-metadata :lucky *db2*))

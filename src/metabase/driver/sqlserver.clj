@@ -159,7 +159,7 @@
   (hsql/call :len (hx/cast :VARCHAR field-key)))
 
 
-(def ^:private sqlserver-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
+(def ^:private sqlserver-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
 (def ^:private sqlserver-db-time-query "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
 
 (u/strict-extend SQLServerDriver
@@ -199,7 +199,7 @@
                                          {:name         "additional-options"
                                           :display-name "Additional JDBC connection string options"
                                           :placeholder  "trustServerCertificate=false"}]))
-          :current-db-time (driver/make-current-db-time-fn sqlserver-date-formatter sqlserver-db-time-query)})
+          :current-db-time (driver/make-current-db-time-fn sqlserver-db-time-query sqlserver-date-formatters)})
 
 
   sql/ISQLDriver

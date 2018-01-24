@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import * as metadataActions from "metabase/redux/metadata";
 
 import { getMetadata } from "metabase/selectors/metadata";
-
+import { t } from 'c-3po';
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { BackButton, Section, SectionHeader } from "metabase/admin/datamodel/containers/FieldApp";
@@ -77,7 +77,7 @@ class Nav extends Component {
                         crumbs={[
                             db && [db.name, `/admin/datamodel/database/${db.id}`],
                             table && [table.display_name, `/admin/datamodel/database/${db.id}/table/${table.id}`],
-                            "Settings"
+                            t`Settings`
                         ]}
                     />
                 </div>
@@ -91,24 +91,24 @@ class UpdateFieldValues extends Component {
         return (
             <Section>
                 <SectionHeader
-                    title="Cached field values"
-                    description="Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
+                    title={t`Cached field values`}
+                    description={t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
                 />
                 <ActionButton
                     className="Button mr2"
                     actionFn={this.props.rescanTableFieldValues}
-                    normalText="Re-scan this table"
-                    activeText="Starting…"
-                    failedText="Failed to start scan"
-                    successText="Scan triggered!"
+                    normalText={t`Re-scan this table`}
+                    activeText={t`Starting…`}
+                    failedText={t`Failed to start scan`}
+                    successText={t`Scan triggered!`}
                 />
                 <ActionButton
                     className="Button Button--danger"
                     actionFn={this.props.discardTableFieldValues}
-                    normalText="Discard cached field values"
-                    activeText="Starting…"
-                    failedText="Failed to discard values"
-                    successText="Discard triggered!"
+                    normalText={t`Discard cached field values`}
+                    activeText={t`Starting…`}
+                    failedText={t`Failed to discard values`}
+                    successText={t`Discard triggered!`}
                 />
             </Section>
         );

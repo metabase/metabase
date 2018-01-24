@@ -31,11 +31,10 @@
         42]))
 
 (expect
-  [:type/GenericTable
-   :type/UserTable]
-  (map (comp :table_type (partial #'magic/best-matching-rule (rules/load-rules)))
-       [{}
-        {:entity_type :type/UserTable}]))
+  [[:entity/UserTable]]
+  (map (comp (partial map :table_type)
+             (partial #'magic/matching-rules (rules/load-rules)))
+       [{:entity_type :entity/UserTable}]))
 
 (expect
   true

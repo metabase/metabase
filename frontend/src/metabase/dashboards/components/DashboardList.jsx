@@ -5,6 +5,8 @@ import PropTypes from "prop-types";
 import {Link} from "react-router";
 import cx from "classnames";
 import moment from "moment";
+import { t } from 'c-3po'
+
 import { withBackground } from "metabase/hoc/Background";
 
 import * as Urls from "metabase/lib/urls";
@@ -35,7 +37,7 @@ export class DashboardListItem extends Component {
         const {id, name, created_at, archived, favorite} = dashboard
 
         const archivalButton =
-            <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
+            <Tooltip tooltip={archived ? t`Unarchive` : t`Archive`}>
                 <Icon
                     className="flex cursor-pointer text-light-blue text-brand-hover ml2 archival-button"
                     name={archived ? "unarchive" : "archive"}
@@ -51,7 +53,7 @@ export class DashboardListItem extends Component {
             </Tooltip>
 
         const favoritingButton =
-            <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
+            <Tooltip tooltip={favorite ? t`Unfavorite` : t`Favorite`}>
                 <Icon
                     className={cx(
                         "flex cursor-pointer ml2 favoriting-button",

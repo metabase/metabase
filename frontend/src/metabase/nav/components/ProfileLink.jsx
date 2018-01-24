@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
-
+import { t } from 'c-3po';
 import cx from 'classnames';
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
@@ -80,7 +80,7 @@ export default class ProfileLink extends Component {
                                 { !user.google_auth && !user.ldap_auth ?
                                     <li>
                                         <Link to="/user/edit_current" data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
-                                            Account Settings
+                                            {t`Account Settings`}
                                         </Link>
                                     </li>
                                 : null }
@@ -88,7 +88,7 @@ export default class ProfileLink extends Component {
                                 { user.is_superuser && context !== 'admin' ?
                                     <li>
                                         <Link to="/admin" data-metabase-event={"Navbar;Profile Dropdown;Enter Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
-                                            Admin Panel
+                                            {t`Admin Panel`}
                                         </Link>
                                     </li>
                                 : null }
@@ -96,28 +96,28 @@ export default class ProfileLink extends Component {
                                 { user.is_superuser && context === 'admin' ?
                                     <li>
                                         <Link to="/" data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
-                                            Exit Admin
+                                            {t`Exit Admin`}
                                         </Link>
                                     </li>
                                 : null }
 
                                 <li>
                                     <a data-metabase-event={"Navbar;Profile Dropdown;Help "+tag} className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
-                                        Help
+                                        {t`Help`}
                                     </a>
                                 </li>
 
                                 { user.is_superuser &&
                                     <li>
                                         <a data-metabase-event={"Navbar;Profile Dropdown;Debugging "+tag} onClick={this.openModal.bind(this, "logs")} className="Dropdown-item block text-white no-decoration">
-                                            Logs
+                                            {t`Logs`}
                                         </a>
                                     </li>
                                 }
 
                                 <li>
                                     <a data-metabase-event={"Navbar;Profile Dropdown;About "+tag} onClick={this.openModal.bind(this, "about")} className="Dropdown-item block text-white no-decoration">
-                                        About Metabase
+                                        {t`About Metabase`}
                                     </a>
                                 </li>
 
@@ -127,7 +127,7 @@ export default class ProfileLink extends Component {
                                         data-metabase-event={"Navbar;Profile Dropdown;Logout"}
                                         className="Dropdown-item block text-white no-decoration"
                                     >
-                                        Sign out
+                                        {t`Sign out`}
                                     </Link>
                                 </li>
                             </ul>
@@ -144,10 +144,10 @@ export default class ProfileLink extends Component {
                             <div className="text-brand pb2">
                                 <LogoIcon width={48} height={48} />
                             </div>
-                            <h2 style={{fontSize: "1.75em"}} className="text-dark">Thanks for using Metabase!</h2>
+                            <h2 style={{fontSize: "1.75em"}} className="text-dark">{t`Thanks for using`} Metabase!</h2>
                             <div className="pt2">
-                                <h3 className="text-dark mb1">You're on version {tag}</h3>
-                                <p className="text-grey-3 text-bold">Built on {date}</p>
+                                <h3 className="text-dark mb1">{t`You're on version`} {tag}</h3>
+                                <p className="text-grey-3 text-bold">{t`Built on`} {date}</p>
                                 { !/^v\d+\.\d+\.\d+$/.test(tag) &&
                                     <div>
                                     { _.map(versionExtra, (value, key) =>
@@ -158,8 +158,8 @@ export default class ProfileLink extends Component {
                             </div>
                         </div>
                         <div style={{borderWidth: "2px"}} className="p2 h5 text-centered text-grey-3 border-top">
-                            <span className="block"><span className="text-bold">Metabase</span> is a Trademark of Metabase, Inc</span>
-                            <span>and is built with care in San Francisco, CA</span>
+                            <span className="block"><span className="text-bold">Metabase</span> {t`is a Trademark of`} Metabase, Inc</span>
+                            <span>{t`and is built with care in San Francisco, CA`}</span>
                         </div>
                     </Modal>
                 : modalOpen === "logs" ?

@@ -20,7 +20,6 @@ dimensions:
 - Discount: Discount
 - Quantity:
     field_type: Quantity
-- ProductCategory: ProductTable.Category
 - Source: UserTable.Source
 - Cohort:
     field_type: UserTable.JoinTimestamp
@@ -31,6 +30,16 @@ dimensions:
 - Cohort:
     field_type: UserTable.DateTime
     score: 80
+- Product:
+    field_type: ProductTable.Name
+- Product:
+    field_type: ProductTable.Title
+- Product:
+    field_type: Product
+    score: 90
+- ProductCategory:
+    field_type: ProductTable.Category
+    named: category
 cards:
 - IncomeByMonth:
     visualization: line
@@ -70,8 +79,16 @@ cards:
     title: Sales by state
     dimensions: Country
     metrics: TotalOrders
+- OrdersByProduct:
+    title: Sales by product
+    visualization: row
+    dimensions:
+      - Product
+    metrics: TotalOrders
+    order_by: TotalOrders
+    score: 90
 - OrdersByProductCategory:
-    title: Sales by product [[ProductCategory]]
+    title: Sales by product category
     visualization: row
     dimensions:
       - ProductCategory

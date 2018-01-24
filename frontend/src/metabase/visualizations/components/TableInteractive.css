@@ -1,10 +1,22 @@
+:root {
+    --table-border-radius: 6px;
+}
+
 .TableInteractive {
-  border-radius: 6px;
+  border-radius: var(--table-border-radius);
   overflow: hidden;
 }
 
 .TableInteractive-headerCellData {
   font-weight: 700;
+}
+
+.TableInteractive-headerCellData.TableInteractive-cellWrapper--firstColumn {
+  border-top-left-radius: var(--table-border-radius);
+}
+
+.TableInteractive-headerCellData.TableInteractive-cellWrapper--lastColumn {
+  border-top-right-radius: var(--table-border-radius);
 }
 
 .TableInteractive-headerCellData .Icon {
@@ -77,4 +89,3 @@
   background-color: var(--brand-color);
   color: white;
 }
-

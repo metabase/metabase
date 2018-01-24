@@ -148,7 +148,7 @@
 (def ^:private default-table-details
   {:description             nil
    :entity_name             nil
-   :entity_type             "type/GenericTable"
+   :entity_type             "entity/GenericTable"
    :caveats                 nil
    :points_of_interest      nil
    :visibility_type         nil
@@ -172,7 +172,7 @@
                 :db_id           $
                 :raw_table_id    $
                 :created_at      $}))
-      (update :entity_type (comp (partial str "type/") name))))
+      (update :entity_type (comp (partial str "entity/") name))))
 
 
 ;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!

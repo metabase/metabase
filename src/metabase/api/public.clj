@@ -1,5 +1,5 @@
 (ns metabase.api.public
-  "Metabase API endpoints for viewing publically-accessible Cards and Dashboards."
+  "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
             [compojure.core :refer [GET]]
             [metabase
@@ -47,7 +47,7 @@
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
 (api/defendpoint GET "/card/:uuid"
-  "Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid]
   (api/check-public-sharing-enabled)
@@ -75,14 +75,14 @@
 
 
 (api/defendpoint GET "/card/:uuid/query"
-  "Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid uuid parameters))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
-  "Fetch a publically-accessible Card and return query results in the specified format. Does not require auth
+  "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid export-format parameters]
   {parameters    (s/maybe su/JSONString)
@@ -112,7 +112,7 @@
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
 (api/defendpoint GET "/dashboard/:uuid"
-  "Fetch a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
+  "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
   (api/check-public-sharing-enabled)
   (dashboard-with-uuid uuid))
@@ -133,7 +133,7 @@
   (run-query-for-card-with-id card-id parameters, :context context, :dashboard-id dashboard-id))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
-  "Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public
+  "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id parameters]
   {parameters (s/maybe su/JSONString)}

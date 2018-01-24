@@ -2,6 +2,7 @@
   "Validation, transformation to cannonical form, and loading of heuristics."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -40,13 +41,21 @@
     (ga-dimension? x) x
     :else             (keyword "type" x)))
 
+(defn ->entity
+  "Turn `x` into proper entity name."
+  [x]
+  (cond
+    (keyword? x)      x
+    (ga-dimension? x) x
+    :else             (keyword "entity" x)))
+
 (defn- field-type?
   [t]
-  (isa? t :type/Field))
+  (isa? t :type/*))
 
 (defn- table-type?
   [t]
-  (isa? t :type/Table))
+  (isa? t :entity/*))
 
 (def ^:private TableType (s/constrained s/Keyword table-type?))
 (def ^:private FieldType (s/either (s/constrained s/Str ga-dimension?)
@@ -65,6 +74,11 @@
 
 (def  ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
+(def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
+                                     (format "1 <= width <= %s"
+                                             populate/grid-width)))
+(def ^:private Height (s/constrained s/Int pos?))
+
 (def ^:private Card
   {Identifier {(s/required-key :title)         s/Str
                (s/required-key :visualization) Visualization
@@ -75,7 +89,10 @@
                (s/optional-key :limit)         su/IntGreaterThanZero
                (s/optional-key :order_by)      [OrderByPair]
                (s/optional-key :description)   s/Str
-               (s/optional-key :query)         s/Str}})
+               (s/optional-key :query)         s/Str
+               (s/optional-key :width)         Width
+               (s/optional-key :height)        Height
+               (s/optional-key :group)         s/Str}})
 
 (def ^:private ^{:arglists '([definitions])} identifiers
   (comp set (partial map (comp key first))))
@@ -120,7 +137,7 @@
          (every? defined-dimensions (all-references :dimensions cards))
          (every? (comp (into defined-dimensions defined-metrics) key first)
                  (all-references :order_by cards))
-         (every? (some-fn defined-dimensions (comp table-type? ->type))
+         (every? (some-fn defined-dimensions (comp table-type? ->entity))
                  (collect-dimensions rule)))))
 
 (def ^:private Rules
@@ -162,7 +179,10 @@
    {[s/Str]       ensure-seq
     [OrderByPair] ensure-seq
     FieldSpec     (fn [x]
-                    (map ->type (str/split x #"\.")))
+                    (let [[table-type field-type] (str/split x #"\.")]
+                      (if field-type
+                        [(->entity table-type) (->type field-type)]
+                        [(->type table-type)])))
     OrderByPair   (fn [x]
                     (if (string? x)
                       {x "ascending"}
@@ -177,8 +197,10 @@
                         (shorthand-definition :field_type))
     Filter        (comp (with-defaults {:score max-score})
                         (shorthand-definition :filter))
-    Card          (with-defaults {:score max-score})
-    TableType     ->type
+    Card          (with-defaults {:score  max-score
+                                  :width  populate/default-card-width
+                                  :height populate/default-card-height})
+    TableType     ->entity
     FieldType     ->type
     Identifier    (fn [x]
                     (if (keyword? x)

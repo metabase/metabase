@@ -1,18 +1,18 @@
 import React from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
-
+import { t } from 'c-3po';
 const nop = () => {};
 
 const ConfirmContent = ({
     title,
     content,
-    message = "Are you sure you want to do this?",
+    message = t`Are you sure you want to do this?`,
     onClose = nop,
     onAction = nop,
     onCancel = nop,
-    confirmButtonText = "Yes",
-    cancelButtonText = "Cancel"
+    confirmButtonText = t`Yes`,
+    cancelButtonText = t`Cancel`
 }) =>
     <ModalContent
         title={title}

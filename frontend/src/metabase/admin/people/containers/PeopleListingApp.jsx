@@ -15,7 +15,7 @@ import UserAvatar from "metabase/components/UserAvatar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
-
+import { t, jt } from 'c-3po';
 import EditUserForm from "../components/EditUserForm.jsx";
 import UserActionsSelect from "../components/UserActionsSelect.jsx";
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
@@ -182,9 +182,9 @@ export default class PeopleListingApp extends Component {
 
     renderAddPersonModal(modalDetails) {
         return (
-            <Modal title="Who do you want to add?" onClose={this.onCloseModal}>
+            <Modal title={t`Who do you want to add?`} onClose={this.onCloseModal}>
                 <EditUserForm
-                    buttonText="Add"
+                    buttonText={t`Add`}
                     submitFn={this.onAddPerson.bind(this)}
                     groups={this.props.groups}
                 />
@@ -196,7 +196,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal full form title={"Edit " + user.first_name + "'s details"} onClose={this.onCloseModal}>
+            <Modal full form title={t`Edit ${user.first_name}'s details`} onClose={this.onCloseModal}>
                 <EditUserForm
                     user={user}
                     submitFn={this.onEditDetails.bind(this)}
@@ -210,21 +210,21 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={user.first_name+" has been added"}
+                title={t`${user.first_name} has been added`}
                 footer={[
-                    <Button onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</Button>,
-                    <Button primary onClick={this.onCloseModal}>Done</Button>
+                    <Button onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>{t`Add another person`}</Button>,
+                    <Button primary onClick={this.onCloseModal}>{t`Done`}</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    <div className="pb4">We couldn’t send them an email invitation,
-                    so make sure to tell them to log in using <span className="text-bold">{user.email} </span>
-                    and this password we’ve generated for them:</div>
+                    <div className="pb4">{jt`We couldn’t send them an email invitation,
+                    so make sure to tell them to log in using ${<span className="text-bold">{user.email}</span>}
+                    and this password we’ve generated for them:`}</div>
 
                     <PasswordReveal password={user.password} />
 
-                    <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <Link to="/admin/settings/email" className="link text-bold">Email Settings</Link> page.</div>
+                    <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">{jt`If you want to be able to send email invites, just go to the ${<Link to="/admin/settings/email" className="link text-bold">Email Settings</Link>} page.`}</div>
                 </div>
             </Modal>
         );
@@ -235,14 +235,14 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={user.first_name+" has been added"}
+                title={t`${user.first_name} has been added`}
                 footer={[
-                    <Button onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</Button>,
-                    <Button primary onClick={this.onCloseModal}>Done</Button>
+                    <Button onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>{t`Add another person`}</Button>,
+                    <Button primary onClick={this.onCloseModal}>{t`Done`}</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
-                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</div>
+                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{jt`We’ve sent an invite to ${<span className="text-bold">${user.email}</span>} with instructions to set their password.`}</div>
             </Modal>
         );
     }
@@ -252,13 +252,13 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small form
-                title={"We've re-sent "+user.first_name+"'s invite"}
+                title={t`We've re-sent ${user.first_name}'s invite`}
                 footer={[
-                    <Button primary onClick={this.onCloseModal}>Okay</Button>
+                    <Button primary onClick={this.onCloseModal}>{t`Okay`}</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
-                <p className="text-paragraph pb2">Any previous email invites they have will no longer work.</p>
+                <p className="text-paragraph pb2">{t`Any previous email invites they have will no longer work.`}</p>
             </Modal>
         );
     }
@@ -268,15 +268,15 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={"Remove " + user.common_name + "?"}
+                title={t`Remove ${user.common_name}?`}
                 footer={[
-                    <Button onClick={this.onCloseModal}>Cancel</Button>,
-                    <Button className="Button--danger" onClick={() => this.onRemoveUserConfirm(user)}>Remove</Button>
+                    <Button onClick={this.onCloseModal}>{t`Cancel`}</Button>,
+                    <Button className="Button--danger" onClick={() => this.onRemoveUserConfirm(user)}>{t`Remove`}</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    {user.first_name} won't be able to log in anymore.  This can't be undone.
+                    {t`${user.first_name} won't be able to log in anymore. This can't be undone.`}
                 </div>
             </Modal>
         );
@@ -287,15 +287,15 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={"Reset "+user.first_name+"'s password?"}
+                title={t`Reset ${user.first_name}'s password?`}
                 footer={[
-                    <Button onClick={this.onCloseModal}>Cancel</Button>,
-                    <Button warning onClick={() => this.onPasswordResetConfirm(user)}>Reset</Button>
+                    <Button onClick={this.onCloseModal}>{t`Cancel`}</Button>,
+                    <Button warning onClick={() => this.onPasswordResetConfirm(user)}>{t`Reset`}</Button>
                 ]}
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    Are you sure you want to do this?
+                    {t`Are you sure you want to do this?`}
                 </div>
             </Modal>
         );
@@ -306,12 +306,12 @@ export default class PeopleListingApp extends Component {
 
         return (
             <Modal small
-                title={user.first_name+"'s password has been reset"}
-                footer={<button className="Button Button--primary mr2" onClick={this.onCloseModal}>Done</button>}
+                title={t`${user.first_name}'s password has been reset`}
+                footer={<button className="Button Button--primary mr2" onClick={this.onCloseModal}>{t`Done`}</button>}
                 onClose={this.onCloseModal}
             >
                 <div className="px4 pb4">
-                    <span className="pb3 block">Here’s a temporary password they can use to log in and then change their password.</span>
+                    <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
 
                     <PasswordReveal password={password} />
                 </div>
@@ -325,11 +325,11 @@ export default class PeopleListingApp extends Component {
         return (
             <Modal
                 small
-                title={user.first_name+"'s password has been reset"}
-                footer={<Button primary onClick={this.onCloseModal}>Done</Button>}
+                title={t`${user.first_name}'s password has been reset`}
+                footer={<Button primary onClick={this.onCloseModal}>{t`Done`}</Button>}
                 onClose={this.onCloseModal}
             >
-                <div className="px4 pb4">We've sent them an email with instructions for creating a new password.</div>
+                <div className="px4 pb4">{t`We've sent them an email with instructions for creating a new password.`}</div>
             </Modal>
         );
     }
@@ -361,19 +361,19 @@ export default class PeopleListingApp extends Component {
             <LoadingAndErrorWrapper loading={!users} error={error}>
             {() =>
                 <AdminPaneLayout
-                    title="People"
-                    buttonText="Add someone"
+                    title={t`People`}
+                    buttonText={t`Add someone`}
                     buttonAction={() => this.props.showModal({type: MODAL_ADD_PERSON})}
                 >
                     <section className="pb4">
                         <table className="ContentTable">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
+                                    <th>{t`Name`}</th>
                                     <th></th>
-                                    <th>Email</th>
-                                    <th>Groups</th>
-                                    <th>Last Login</th>
+                                    <th>{t`Email`}</th>
+                                    <th>{t`Groups`}</th>
+                                    <th>{t`Last Login`}</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -383,11 +383,11 @@ export default class PeopleListingApp extends Component {
                                     <td><span className="text-white inline-block"><UserAvatar background={(user.is_superuser) ? "bg-purple" : "bg-brand"} user={user} /></span> <span className="ml2 text-bold">{user.common_name}</span></td>
                                     <td>
                                       {user.google_auth ?
-                                        <Tooltip tooltip="Signed up via Google">
+                                        <Tooltip tooltip={t`Signed up via Google`}>
                                             <Icon name='google' />
                                         </Tooltip> : null}
                                       {user.ldap_auth ?
-                                        <Tooltip tooltip="Signed up via LDAP">
+                                        <Tooltip tooltip={t`Signed up via LDAP`}>
                                             <Icon name='ldap' />
                                         </Tooltip> : null }
                                     </td>
@@ -400,7 +400,7 @@ export default class PeopleListingApp extends Component {
                                             deleteMembership={this.props.deleteMembership}
                                         />
                                     </td>
-                                    <td>{ user.last_login ? user.last_login.fromNow() : "Never" }</td>
+                                    <td>{ user.last_login ? user.last_login.fromNow() : t`Never` }</td>
                                     <td className="text-right">
                                         <UserActionsSelect user={user} showModal={this.props.showModal} resendInvite={this.props.resendInvite} isActiveUser={this.props.user.id === user.id} />
                                     </td>

@@ -465,7 +465,7 @@
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
-(def ^:private bigquery-date-formatter (driver/create-db-time-formatter "yyyy-MM-dd HH:mm:ss.SSSSSS"))
+(def ^:private bigquery-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSS"))
 (def ^:private bigquery-db-time-query "select CAST(CURRENT_TIMESTAMP() AS STRING)")
 
 (def ^:private driver (BigQueryDriver.))
@@ -534,7 +534,7 @@
                                                              #{:foreign-keys})))
           :format-custom-field-name (u/drop-first-arg format-custom-field-name)
           :mbql->native             (u/drop-first-arg mbql->native)
-          :current-db-time          (driver/make-current-db-time-fn bigquery-date-formatter bigquery-db-time-query)}))
+          :current-db-time          (driver/make-current-db-time-fn  bigquery-db-time-query bigquery-date-formatters)}))
 
 (defn -init-driver
   "Register the BigQuery driver"

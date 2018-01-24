@@ -59,7 +59,7 @@
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
-  (tru "Enable admins to create publically viewable links (and embeddable iframes) for Questions and Dashboards?")
+  (tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type    :boolean
   :default false)
 
@@ -164,7 +164,7 @@
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
-   :types                 (types/types->parents :type/Field)
-   :entities              (types/types->parents :type/Table)
+   :types                 (types/types->parents :type/*)
+   :entities              (types/types->parents :entity/*)
    :version               config/mb-version-info
    :xray_max_cost         (setting/get :xray-max-cost)})

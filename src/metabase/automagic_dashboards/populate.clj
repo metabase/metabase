@@ -2,7 +2,6 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [medley.core :as m]
             [metabase.api
              [common :as api]
              [card :as card.api]]
@@ -12,22 +11,15 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-(def ^:private ^Integer grid-width  18)
-(def ^:private ^Integer card-width   6)
-(def ^:private ^Integer card-height  4)
-
-(defn- next-card-position
-  "Return `:row` x `:col` coordinates for the next card to be placed on
-   dashboard `dashboard`.
-   Assumes a grid `grid-width` cells wide with cards sized
-   `card-width` x `card-height`."
-  [num-cards]
-  {:row (int (* (Math/floor (/ (* card-width num-cards)
-                               grid-width))
-                card-height))
-   :col (int (* (Math/floor (/ (mod (* card-width num-cards) grid-width)
-                               card-width))
-                card-width))})
+(def ^Integer grid-width
+  "Total grid width."
+  18)
+(def ^Integer default-card-width
+  "Default card width."
+  6)
+(def ^Integer default-card-height
+  "Default card height"
+  4)
 
 (defn- create-collection!
   [title color description]
@@ -64,13 +56,73 @@
     card))
 
 (defn- add-to-dashboard!
-  [dashboard card idx]
+  [dashboard card [x y]]
   (dashboard/add-dashcard! dashboard (create-card! card)
-    (merge (next-card-position idx)
-           {:sizeX card-width
-            :sizeY card-height})))
+    {:col   y
+     :row   x
+     :sizeX (:width card)
+     :sizeY (:height card)}))
 
 (def ^:private ^Integer max-cards 9)
+
+(defn- make-grid
+  [width height]
+  (vec (repeat height (vec (repeat width false)))))
+
+(defn- fill-grid
+  "Mark a rectangular area starting at [`x`, `y`] of size [`width`, `height`] as
+   occupied."
+  [grid [x y] {:keys [width height]}]
+  (reduce (fn [grid xy]
+            (assoc-in grid xy true))
+          grid
+          (for [x (range x (+ x height))
+                y (range y (+ y width))]
+            [x y])))
+
+(defn- accomodates?
+  "Can we place card on grid starting at [x y] (top left corner)?
+   Since we are filling the grid top to bottom and the cards are rectangulard,
+   it suffices to check just the first (top) row."
+  [grid [x y] {:keys [width height]}]
+  (and (<= (+ x height) (count grid))
+       (<= (+ y width) (-> grid first count))
+       (every? false? (subvec (grid x) y (+ y width)))))
+
+(defn- place-card
+  "Place card on grid.
+   We use the dumbest possible algorithm (the grid size is relatively small, so
+   we should be fine): startting at top left move along the grid from left to
+   right, row by row and try to place the card at each position until we find an
+   unoccupied area. Mark the area as occupied."
+  [grid card]
+  (reduce (fn [grid xy]
+            (if (accomodates? grid xy card)
+              (reduced [xy (fill-grid grid xy card)])
+              grid))
+          grid
+          (for [x (range (count grid))
+                y (range (count (first grid)))]
+            [x y])))
+
+(defn- shown-cards
+  "Pick up to `max-cards` with the highest `:score`.
+   Keep groups together if possible by pulling all the cards within together and
+   using the same (highest) score for all.
+   Among cards with the same score those beloning to the largest group are
+   favourized, but it is still possible that not all cards in a group make it
+   (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
+   from the group will be picked)."
+  [cards]
+  (->> cards
+       (group-by (some-fn :group hash))
+       (map (fn [[_ group]]
+              {:cards group
+               :score (apply max (map :score group))
+               :size  (count group)}))
+       (sort-by (juxt :score :size) (comp (partial * -1) compare))
+       (mapcat :cards)
+       (take max-cards)))
 
 (defn create-dashboard!
   "Create dashboard and populate it with cards."
@@ -80,14 +132,18 @@
                     :description description
                     :creator_id  api/*current-user-id*
                     :parameters  [])
-        cards     (->> cards
-                       (sort-by :score >)
-                       (take max-cards))]
+        cards     (shown-cards cards)
+        ;; Binding return value to make linter happy
+        _         (reduce (fn [grid card]
+                            (let [[xy grid] (place-card grid card)]
+                              (add-to-dashboard! dashboard card xy)
+                              grid))
+                          ;; Height doesn't need to be precise, just a safe max.
+                          (make-grid grid-width (* max-cards grid-width))
+                          cards)]
     (events/publish-event! :dashboard-create dashboard)
     (log/info (format "Adding %s cards to dashboard %s:\n%s"
                       (count cards)
                       (:id dashboard)
                       (str/join "; " (map :title cards))))
-    (doseq [[idx card] (m/indexed cards)]
-      (add-to-dashboard! dashboard card idx))
     dashboard))

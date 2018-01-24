@@ -10,7 +10,10 @@
 
   This namespace also contains various other functions for fetching drivers, testing database connections, and the
   like."
-  (:require [clj-time.format :as tformat]
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
@@ -24,6 +27,7 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
+           java.text.SimpleDateFormat
            metabase.models.database.DatabaseInstance
            metabase.models.field.FieldInstance
            metabase.models.table.TableInstance
@@ -285,18 +289,47 @@
       (when-not (empty? report-tz)
         report-tz))))
 
-(defn create-db-time-formatter
-  "Creates a date formatter from `DATE-FORMAT-STR` that will preserve
-  the offset/timezone information. Results of this are threadsafe and
-  can safely be def'd"
+(defprotocol ^:private ParseDateTimeString
+  (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
+
+(extend-protocol ParseDateTimeString
+  DateTimeFormatter
+  (parse [formatter date-time-str]
+    (tformat/parse formatter date-time-str)))
+
+;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
+;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
+;; dispatch parsing for SimpleDateFormat instances. Dispatching off of the SimpleDateFormat directly wouldn't be good
+;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
+;; date
+(defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+  ParseDateTimeString
+  (parse [_ date-time-str]
+    (let [sdf         (SimpleDateFormat. format-str)
+          parsed-date (.parse sdf date-time-str)
+          joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
+      (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
+
+(defn create-db-time-formatters
+  "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
+  JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
-  (.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str)))
+  [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
+   (ThreadSafeSimpleDateFormat. date-format-str)])
+
+(defn- first-successful-parse
+  "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
+  successful parses throws the exception that the last formatter threw."
+  [date-formatters time-str]
+  (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
+      (doseq [formatter (reverse date-formatters)]
+        (parse formatter time-str))))
 
 (defn make-current-db-time-fn
   "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
   for the current time. Returns a function that executes the query and
   parses the date returned preserving it's timezone"
-  [date-formatter native-query]
+  [native-query date-formatters]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
                      {:settings {:report-timezone report-tz}})
@@ -311,7 +344,7 @@
                          (format "Error querying database '%s' for current time" (:name database)) e))))]
       (try
         (when time-str
-          (tformat/parse date-formatter time-str))
+          (first-successful-parse date-formatters time-str))
         (catch Exception e
           (throw
            (Exception.

@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-
+import { t } from 'c-3po';
 import RetinaImage from "react-retina-image";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/components/Toggle";
@@ -66,12 +66,12 @@ export default class SharingPane extends Component {
             <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
                 { isAdmin && isPublicSharingEnabled &&
                     <div className="pb2 mb4 border-bottom flex align-center">
-                        <h4>Enable sharing</h4>
+                        <h4>{t`Enable sharing`}</h4>
                         <div className="ml-auto">
                             { resource.public_uuid ?
                                 <Confirm
-                                    title="Disable this public link?"
-                                    content="This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link."
+                                    title={t`Disable this public link?`}
+                                    content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
                                     action={() => {
                                         MetabaseAnalytics.trackEvent("Sharing Modal", "Public Link Disabled", resourceType);
                                         onDisablePublicLink();
@@ -93,8 +93,8 @@ export default class SharingPane extends Component {
                         <Icon name="link" size={32} />
                     </div>
                     <div className="ml2 flex-full">
-                        <h3 className="text-brand mb1">Public link</h3>
-                        <div className="mb1">Share this {resourceType} with people who don't have a Metabase account using the URL below:</div>
+                        <h3 className="text-brand mb1">{t`Public link`}</h3>
+                        <div className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</div>
                         <CopyWidget value={publicLink} />
                         { extensions && extensions.length > 0 &&
                             <div className="mt1">
@@ -119,8 +119,8 @@ export default class SharingPane extends Component {
                         forceOriginalDimensions={false}
                     />
                     <div className="ml2 flex-full">
-                        <h3 className="text-green mb1">Public embed</h3>
-                        <div className="mb1">Embed this {resourceType} in blog posts or web pages by copying and pasting this snippet:</div>
+                        <h3 className="text-green mb1">{t`Public embed`}</h3>
+                        <div className="mb1">{t`Embed this ${resourceType} in blog posts or web pages by copying and pasting this snippet:`}</div>
                         <CopyWidget value={iframeSource} />
                     </div>
                 </div>
@@ -135,8 +135,8 @@ export default class SharingPane extends Component {
                             forceOriginalDimensions={false}
                         />
                         <div className="ml2 flex-full">
-                            <h3 className="text-purple mb1">Embed this {resourceType} in an application</h3>
-                            <div className="">By integrating with your application server code, you can provide a secure stats {resourceType} limited to a specific user, customer, organization, etc.</div>
+                            <h3 className="text-purple mb1">{t`Embed this ${resourceType} in an application`}</h3>
+                            <div className="">{t`By integrating with your application server code, you can provide a secure stats ${resourceType} limited to a specific user, customer, organization, etc.`}</div>
                         </div>
                     </div>
                 }

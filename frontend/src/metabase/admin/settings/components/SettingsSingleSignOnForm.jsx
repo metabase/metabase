@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import cx from "classnames";
 import _ from "underscore";
 import { t, jt } from "c-3po";
@@ -108,8 +107,8 @@ export default class SettingsSingleSignOnForm extends Component {
                 >
                     <Breadcrumbs
                         crumbs={[
-                            ["Authentication", "/admin/settings/authentication"],
-                            ["Google Sign-In"]
+                            [t`Authentication`, "/admin/settings/authentication"],
+                            [t`Google Sign-In`]
                         ]}
                         className="mb2"
                     />
@@ -124,7 +123,7 @@ export default class SettingsSingleSignOnForm extends Component {
                         className="SettingsInput AdminInput bordered rounded h3"
                         type="text"
                         value={this.state.clientIDValue}
-                        placeholder="Your Google client ID"
+                        placeholder={t`Your Google client ID`}
                         onChange={(event) => this.updateClientID(event.target.value)}
                     />
                     <div className="py3">
