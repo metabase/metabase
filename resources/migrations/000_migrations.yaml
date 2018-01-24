@@ -3998,3 +3998,24 @@ databaseChangeLog:
             tableName: report_dashboardcard
             columnName: card_id
             columnDataType: int
+  - changeSet:
+      id: 72
+      author: camsaul
+      comment: 'Added 0.28.0'
+      changes:
+        # We often search for Fields and Tables that match a certain lowercased name. Add an index to facilitate those queries,
+        # which otherwise can get quite slow with 1M+ rows.
+        - createIndex:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: lower(name)
+                  type: varchar(254)
+            indexName: idx_metabase_table_name_lowercase
+        - createIndex:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: lower(name)
+                  type: varchar(254)
+            indexName: idx_metabase_field_name_lowercase
