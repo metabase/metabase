@@ -54,7 +54,7 @@ const initQbWithAlertMenuItemClicked = async (question, { hasSeenAlertSplash = t
 
     const store = await createTestStore()
     store.pushPath(Urls.question(question.id()))
-    const app = mount(store.getAppContainer());
+    const app = store.mountApp();
 
     await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
     await delay(500);
@@ -137,7 +137,7 @@ describe("Alerts", () => {
 
                 const store = await createTestStore()
                 store.pushPath(Urls.question(rawDataQuestion.id()))
-                const app = mount(store.getAppContainer());
+                const app = store.mountApp();
 
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
 
@@ -176,7 +176,7 @@ describe("Alerts", () => {
             useSharedAdminLogin()
             const store = await createTestStore()
             store.pushPath(Urls.question(rawDataQuestion.id()))
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
 
@@ -196,7 +196,7 @@ describe("Alerts", () => {
             useSharedNormalLogin()
             const store = await createTestStore()
             store.pushPath(Urls.question(rawDataQuestion.id()))
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, FETCH_ALERTS_FOR_QUESTION])
 

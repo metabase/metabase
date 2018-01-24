@@ -21,7 +21,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 const store = createTestStore()
 
 const getVisualization = (question, results, onChangeCardAndRun) =>
-    store.connectContainer(
+    store.mountContainer(
         <Visualization
             series={[{card: question.card(), data: results[0].data}]}
             onChangeCardAndRun={navigateToNewCardInsideQB}

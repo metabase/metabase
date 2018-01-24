@@ -23,7 +23,7 @@ describe("admin/settings", () => {
             const store = await createTestStore();
 
             store.pushPath('/admin/settings/general');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -41,7 +41,7 @@ describe("admin/settings", () => {
             const store = await createTestStore();
 
             store.pushPath('/admin/settings/general');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 

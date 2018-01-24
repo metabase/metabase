@@ -23,7 +23,7 @@ describe('Admin Auth Options', () => {
 
         store.pushPath("/admin/settings");
 
-        const app = mount(store.getAppContainer())
+        const app = store.mountApp()
         await store.waitForActions([INITIALIZE_SETTINGS])
         const settingsWrapper = app.find(SettingsEditorApp)
         const authListItem = settingsWrapper.find('span[children="Authentication"]')

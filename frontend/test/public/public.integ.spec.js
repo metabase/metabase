@@ -41,7 +41,7 @@ describe('public pages', () => {
         it('should be possible to view a public dashboard', async () => {
             store.pushPath(Urls.publicDashboard(publicDash.uuid));
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([FETCH_DASHBOARD])
 

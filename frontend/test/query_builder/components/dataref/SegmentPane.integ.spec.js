@@ -36,7 +36,7 @@ describe("SegmentPane", () => {
         store = await createTestStore()
 
         store.pushPath(Urls.plainQuestion());
-        queryBuilder = mount(store.connectContainer(<QueryBuilder />));
+        queryBuilder = store.mountContainer(<QueryBuilder />);
         await store.waitForActions([INITIALIZE_QB]);
     })
 

@@ -52,7 +52,7 @@ describe("The Reference Section", () => {
         it("should see databases", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
-            var container = mount(store.connectContainer(<DatabaseListContainer />));
+            var container = store.mountContainer(<DatabaseListContainer />);
             await store.waitForActions([FETCH_REAL_DATABASES, END_LOADING])
             
             expect(container.find(ReferenceHeader).length).toBe(1)
@@ -68,7 +68,7 @@ describe("The Reference Section", () => {
             var card = await CardApi.create(cardDef)
             const store = await createTestStore()
             store.pushPath("/reference/databases/");
-            var container = mount(store.connectContainer(<DatabaseListContainer />));
+            var container = store.mountContainer(<DatabaseListContainer />);
             await store.waitForActions([FETCH_REAL_DATABASES, END_LOADING])
             
             expect(container.find(ReferenceHeader).length).toBe(1)
@@ -89,7 +89,7 @@ describe("The Reference Section", () => {
         it("should see a the detail view for the sample database", async ()=>{
             const store = await createTestStore()
             store.pushPath("/reference/databases/1");
-            mount(store.connectContainer(<DatabaseDetailContainer />));
+            store.mountContainer(<DatabaseDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
 
         })
@@ -98,7 +98,7 @@ describe("The Reference Section", () => {
        it("should see the 4 tables in the sample database",async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables");
-            mount(store.connectContainer(<TableListContainer />));
+            store.mountContainer(<TableListContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
         // table detail
@@ -106,33 +106,33 @@ describe("The Reference Section", () => {
        it("should see the Orders table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1");
-            mount(store.connectContainer(<TableDetailContainer />));
+            store.mountContainer(<TableDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
 
        it("should see the Reviews table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/2");
-            mount(store.connectContainer(<TableDetailContainer />));
+            store.mountContainer(<TableDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
        it("should see the Products table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/3");
-            mount(store.connectContainer(<TableDetailContainer />));
+            store.mountContainer(<TableDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
        it("should see the People table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/4");
-            mount(store.connectContainer(<TableDetailContainer />));
+            store.mountContainer(<TableDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
         // field list
        it("should see the fields for the orders table", async  () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields");
-            mount(store.connectContainer(<FieldListContainer />));
+            store.mountContainer(<FieldListContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
 
         })
@@ -140,7 +140,7 @@ describe("The Reference Section", () => {
 
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/questions");
-            mount(store.connectContainer(<TableQuestionsContainer />));
+            store.mountContainer(<TableQuestionsContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
             
             var card = await CardApi.create(cardDef)
@@ -155,7 +155,7 @@ describe("The Reference Section", () => {
        it("should see the orders created_at timestamp field", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/1");
-            mount(store.connectContainer(<FieldDetailContainer />));
+            store.mountContainer(<FieldDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
 
@@ -163,7 +163,7 @@ describe("The Reference Section", () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/1");
 
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
             const fieldDetails = app.find(FieldDetailContainer);
@@ -184,7 +184,7 @@ describe("The Reference Section", () => {
        it("should see the orders id field", async () => {
             const store = await createTestStore()
             store.pushPath("/reference/databases/1/tables/1/fields/25");
-            mount(store.connectContainer(<FieldDetailContainer />));
+            store.mountContainer(<FieldDetailContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING])
         })
     });

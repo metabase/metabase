@@ -34,7 +34,7 @@ describe("admin/people", () => {
         it("should allow admin to create new users", async () => {
             const store = await createTestStore();
             store.pushPath("/admin/people");
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_USERS, LOAD_GROUPS, LOAD_MEMBERSHIPS])
 
             const email = "testy" + Math.round(Math.random()*10000) + "@metabase.com";

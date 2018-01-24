@@ -45,7 +45,7 @@ describe('dashboard list', () => {
         const store = await createTestStore()
         store.pushPath("/admin/databases");
 
-        const app = mount(store.getAppContainer())
+        const app = store.mountApp()
 
         await store.waitForActions([FETCH_DATABASES])
 
@@ -60,7 +60,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const listAppBeforeAdd = app.find(DatabaseListApp)
@@ -104,7 +104,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const listAppBeforeAdd = app.find(DatabaseListApp)
@@ -150,7 +150,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const listAppBeforeAdd = app.find(DatabaseListApp)
@@ -221,7 +221,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const listAppBeforeAdd = app.find(DatabaseListApp)
@@ -266,7 +266,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const wrapper = app.find(DatabaseListApp)
@@ -309,7 +309,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const wrapper = app.find(DatabaseListApp)
@@ -349,7 +349,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([FETCH_DATABASES])
 
             const wrapper = app.find(DatabaseListApp)
@@ -383,7 +383,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([INITIALIZE_DATABASE]);
 
             const dbDetailsForm = app.find(DatabaseEditApp);
@@ -397,7 +397,7 @@ describe('dashboard list', () => {
             const store = await createTestStore()
             store.pushPath("/admin/databases/1");
 
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([INITIALIZE_DATABASE]);
 
             const dbDetailsForm = app.find(DatabaseEditApp);

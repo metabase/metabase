@@ -36,7 +36,7 @@ describe("dashboards list", () => {
     it("should let you create a dashboard when there are no existing dashboards", async () => {
         const store = await createTestStore();
         store.pushPath("/dashboards")
-        const app = mount(store.getAppContainer());
+        const app = store.mountApp();
 
         await store.waitForActions([FETCH_DASHBOARDS])
 
@@ -59,7 +59,7 @@ describe("dashboards list", () => {
         // Return to the dashboard list and check that we see an expected list item
         const store = await createTestStore();
         store.pushPath("/dashboards")
-        const app = mount(store.getAppContainer());
+        const app = store.mountApp();
 
         await store.waitForActions([FETCH_DASHBOARDS])
         expect(app.find(DashboardListItem).length).toBe(1)
@@ -77,7 +77,7 @@ describe("dashboards list", () => {
     it("should let you search form both title and description", async () => {
         const store = await createTestStore();
         store.pushPath("/dashboards")
-        const app = mount(store.getAppContainer());
+        const app = store.mountApp();
         await store.waitForActions([FETCH_DASHBOARDS])
 
         setInputValue(app.find(SearchHeader).find("input"), "this should produce no results")
@@ -91,7 +91,7 @@ describe("dashboards list", () => {
     it("should let you favorite and unfavorite dashboards", async () => {
         const store = await createTestStore();
         store.pushPath("/dashboards")
-        const app = mount(store.getAppContainer());
+        const app = store.mountApp();
         await store.waitForActions([FETCH_DASHBOARDS])
 
         click(app.find(DashboardListItem).first().find(".Icon-staroutline"));
@@ -108,7 +108,7 @@ describe("dashboards list", () => {
     it("should let you archive and unarchive dashboards", async () => {
         const store = await createTestStore();
         store.pushPath("/dashboards")
-        const app = mount(store.getAppContainer());
+        const app = store.mountApp();
         await store.waitForActions([FETCH_DASHBOARDS])
 
         click(app.find(DashboardListItem).first().find(".Icon-archive"));

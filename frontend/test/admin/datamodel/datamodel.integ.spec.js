@@ -43,7 +43,7 @@ describe("admin/datamodel", () => {
             const store = await createTestStore();
 
             store.pushPath('/admin/datamodel/database');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
 
@@ -101,7 +101,7 @@ describe("admin/datamodel", () => {
 
             // Open the People table admin page
             store.pushPath('/admin/datamodel/database/1/table/2');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
 
@@ -145,7 +145,7 @@ describe("admin/datamodel", () => {
 
             // Open the People table admin page
             store.pushPath('/admin/datamodel/database/1/table/2');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([INITIALIZE_METADATA, FETCH_IDFIELDS]);
 

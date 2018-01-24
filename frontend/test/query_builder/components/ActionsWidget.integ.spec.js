@@ -68,7 +68,7 @@ describe('ActionsWidget', () => {
 
             const store = await createTestStore()
             store.pushPath(url)
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED, LOAD_TABLE_METADATA])
 

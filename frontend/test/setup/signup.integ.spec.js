@@ -47,7 +47,7 @@ describe("setup wizard", () => {
         switchToPlainDatabase();
         store = await createTestStore()
         store.pushPath("/");
-        app = mount(store.getAppContainer())
+        app = store.mountApp()
     })
 
     it("should start from the welcome page", async () => {

@@ -108,7 +108,7 @@ describe("Dashboard", () => {
 
             const store = await createTestStore();
             store.pushPath(Urls.dashboard(dashboardId));
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
 
             await store.waitForActions([FETCH_DASHBOARD])
 
@@ -133,7 +133,7 @@ describe("Dashboard", () => {
 
             const store = await createTestStore();
             store.pushPath(Urls.dashboard(dashboardId));
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([FETCH_DASHBOARD])
 
             // Test parameter filter creation

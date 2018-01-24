@@ -77,7 +77,7 @@ describe("parameters", () => {
 
             // load public sharing settings
             store.pushPath('/admin/settings/public_sharing');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -100,7 +100,7 @@ describe("parameters", () => {
 
             // load public sharing settings
             store.pushPath('/admin/settings/embedding_in_other_applications');
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
 
             await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS])
 
@@ -123,7 +123,7 @@ describe("parameters", () => {
 
             // load public sharing settings
             store.pushPath(Urls.plainQuestion());
-            const app = mount(store.getAppContainer())
+            const app = store.mountApp()
             await store.waitForActions([INITIALIZE_QB]);
 
             click(app.find(".Icon-sql"));
@@ -212,7 +212,7 @@ describe("parameters", () => {
 
             async function runSharedQuestionTests(store, questionUrl, apiRegex) {
                 store.pushPath(questionUrl);
-                const app = mount(store.getAppContainer())
+                const app = store.mountApp()
 
                 await store.waitForActions([ADD_PARAM_VALUES]);
 

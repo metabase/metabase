@@ -44,7 +44,7 @@ describe("The Reference Section", () => {
         it("Should show an empty guide for non-admin users", async () => {
             const store = await createTestStore()    
             store.pushPath("/reference/");
-            mount(store.connectContainer(<GettingStartedGuideContainer />));
+            store.mountContainer(<GettingStartedGuideContainer />);
             await store.waitForActions([FETCH_DATABASE_METADATA, FETCH_SEGMENTS, FETCH_METRICS])
         })
         

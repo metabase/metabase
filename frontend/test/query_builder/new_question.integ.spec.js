@@ -75,7 +75,7 @@ describe("new question flow", async () => {
             useSharedNormalLogin()
             const store = await createTestStore()
             store.pushPath("/question");
-            mount(store.getAppContainer());
+            store.mountApp();
             await store.waitForActions([REDIRECT_TO_NEW_QUESTION_FLOW])
             expect(store.getPath()).toBe("/question/new")
         })
@@ -85,7 +85,7 @@ describe("new question flow", async () => {
                 const store = await createTestStore()
 
                 store.pushPath(Urls.newQuestion());
-                const app = mount(store.getAppContainer());
+                const app = store.mountApp();
                 await store.waitForActions([DETERMINE_OPTIONS]);
 
                 expect(app.find(NewQueryOption).length).toBe(3)
@@ -101,7 +101,7 @@ describe("new question flow", async () => {
                 const store = await createTestStore()
 
                 store.pushPath(Urls.newQuestion());
-                const app = mount(store.getAppContainer());
+                const app = store.mountApp();
                 await store.waitForActions([DETERMINE_OPTIONS]);
 
                 expect(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics").length).toBe(0)
@@ -123,7 +123,7 @@ describe("new question flow", async () => {
                 const store = await createTestStore()
 
                 store.pushPath(Urls.newQuestion());
-                const app = mount(store.getAppContainer());
+                const app = store.mountApp();
                 await store.waitForActions([DETERMINE_OPTIONS]);
 
                 expect(app.find(NewQueryOption).length).toBe(2)
@@ -144,7 +144,7 @@ describe("new question flow", async () => {
             ], async () => {
                 const store = await createTestStore()
                 store.pushPath(Urls.newQuestion());
-                mount(store.getAppContainer());
+                store.mountApp();
                 await store.waitForActions(BROWSER_HISTORY_REPLACE, INITIALIZE_QB);
             })
         })
@@ -157,7 +157,7 @@ describe("new question flow", async () => {
                     const store = await createTestStore()
 
                     store.pushPath(Urls.newQuestion());
-                    const app = mount(store.getAppContainer());
+                    const app = store.mountApp();
                     await store.waitForActions([DETERMINE_OPTIONS]);
 
                     expect(app.find(NewQueryOption).length).toBe(0)
@@ -171,7 +171,7 @@ describe("new question flow", async () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Custom"))
@@ -188,7 +188,7 @@ describe("new question flow", async () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Native query"))
@@ -208,7 +208,7 @@ describe("new question flow", async () => {
             const store = await createTestStore()
 
             store.pushPath(Urls.newQuestion());
-            const app = mount(store.getAppContainer());
+            const app = store.mountApp();
             await store.waitForActions([DETERMINE_OPTIONS]);
 
             click(app.find(NewQueryOption).filterWhere((c) => c.prop('title') === "Metrics"))

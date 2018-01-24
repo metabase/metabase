@@ -74,7 +74,7 @@ const initQbWithDbAndTable = (dbId, tableId) => {
     return async () => {
         const store = await createTestStore()
         store.pushPath(Urls.plainQuestion());
-        const qb = mount(store.connectContainer(<QueryBuilder />));
+        const qb = store.mountContainer(<QueryBuilder />);
         await store.waitForActions([INITIALIZE_QB]);
 
         // Use Products table
@@ -138,7 +138,7 @@ describe("QueryBuilder", () => {
         it("renders normally on page load", async () => {
             const store = await createTestStore()
             store.pushPath(savedQuestion.getUrl(savedQuestion));
-            const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+            const qbWrapper = store.mountContainer(<QueryBuilder />);
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe(savedQuestion.displayName())
@@ -148,7 +148,7 @@ describe("QueryBuilder", () => {
 
             await whenOffline(async () => {
                 store.pushPath(savedQuestion.getUrl());
-                mount(store.connectContainer(<QueryBuilder />));
+                store.mountContainer(<QueryBuilder />);
                 // only test here that the error page action is dispatched
                 // (it is set on the root level of application React tree)
                 await store.waitForActions([INITIALIZE_QB, SET_ERROR_PAGE]);
@@ -157,7 +157,7 @@ describe("QueryBuilder", () => {
         it("doesn't execute the query if user cancels it", async () => {
             const store = await createTestStore()
             store.pushPath(savedQuestion.getUrl());
-            const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+            const qbWrapper = store.mountContainer(<QueryBuilder />);
             await store.waitForActions([INITIALIZE_QB, RUN_QUERY]);
 
             const runButton = qbWrapper.find(RunButton);
@@ -176,7 +176,7 @@ describe("QueryBuilder", () => {
             it("renders normally on page load", async () => {
                 const store = await createTestStore()
                 store.pushPath(unsavedOrderCountQuestion.getUrl());
-                const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+                const qbWrapper = store.mountContainer(<QueryBuilder />);
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 
                 expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("New question")
@@ -189,7 +189,7 @@ describe("QueryBuilder", () => {
 
                 const store = await createTestStore()
                 store.pushPath(invalidQuestion.getUrl());
-                const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+                const qbWrapper = store.mountContainer(<QueryBuilder />);
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 
                 // TODO: How to get rid of the delay? There is asynchronous initialization in some of VisualizationError parent components
@@ -203,7 +203,7 @@ describe("QueryBuilder", () => {
 
                 await whenOffline(async () => {
                     store.pushPath(unsavedOrderCountQuestion.getUrl());
-                    const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+                    const qbWrapper = store.mountContainer(<QueryBuilder />);
                     await store.waitForActions([INITIALIZE_QB, QUERY_ERRORED]);
 
                     expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("New question")
@@ -214,7 +214,7 @@ describe("QueryBuilder", () => {
             it("doesn't execute the query if user cancels it", async () => {
                 const store = await createTestStore()
                 store.pushPath(unsavedOrderCountQuestion.getUrl());
-                const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+                const qbWrapper = store.mountContainer(<QueryBuilder />);
                 await store.waitForActions([INITIALIZE_QB, RUN_QUERY]);
 
                 const runButton = qbWrapper.find(RunButton);
@@ -237,7 +237,7 @@ describe("QueryBuilder", () => {
                     .question()
 
                 store.pushPath(dirtyQuestion.getUrl(savedQuestion));
-                const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+                const qbWrapper = store.mountContainer(<QueryBuilder />);
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 
                 const title = qbWrapper.find(QueryHeader).find("h1")
