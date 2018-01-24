@@ -39,9 +39,7 @@
   keys for :project, :json-path, and :service-account"
   [{:keys [project json-path service-account additional-projects],
     :as   opts}]
-  (merge {:read-only? true
-          :auto-commit? true
-          :classname   "com.simba.googlebigquery.jdbc42.Driver" ; must be in classpath
+  (merge {:classname   "com.simba.googlebigquery.jdbc42.Driver" ; must be in classpath
           :subprotocol "bigquery"
           :subname     (str "//https://www.googleapis.com/bigquery/v2:443;ProjectId=" project ";OAuthType=0;OAuthPvtKeyPath=" json-path ";OAuthServiceAcctEmail=" service-account ";AdditionalProjects=" additional-projects)}
          (dissoc opts :project :json-path :service-account :additional-projects)))
