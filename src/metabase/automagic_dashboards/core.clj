@@ -90,7 +90,7 @@
                                  (partial re-find))
                             str/lower-case
                             :name))
-   :max_cardinality (fn [cardinality]
+   :max-cardinality (fn [cardinality]
                       (fn [field]
                         (some-> field
                                 (get-in [:fingerprint :global :distinct-count])
@@ -100,11 +100,11 @@
   "Find all fields belonging to table `table` for which all predicates in
    `preds` are true."
   [preds table]
-  (filter (every-pred (->> preds
-                           (keep (fn [[k v]]
-                                   (when-let [pred (field-filters k)]
-                                     (some-> v pred))))
-                           (apply every-pred)))
+  (filter (->> preds
+               (keep (fn [[k v]]
+                       (when-let [pred (field-filters k)]
+                         (some-> v pred))))
+               (apply every-pred))
           (db/select Field :table_id (:id table))))
 
 (defn- filter-tables
@@ -123,7 +123,7 @@
                                                 identifier)))))
 
 (defn- field-candidates
-  [context {:keys [field_type links_to named] :as constraints}]
+  [context {:keys [field_type links_to named max_cardinality] :as constraints}]
   (if links_to
     (filter (comp (->> (filter-tables links_to context)
                        (keep :link)
@@ -135,12 +135,14 @@
         (let [[table] (filter-tables tablespec context)]
           (mapcat (fn [table]
                     (some->> table
-                             (filter-fields {:fieldspec fieldspec
-                                             :named     named})
+                             (filter-fields {:fieldspec       fieldspec
+                                             :named           named
+                                             :max-cardinality max_cardinality})
                              (map #(assoc % :link (:link table)))))
                   (filter-tables tablespec context)))
-        (filter-fields {:fieldspec tablespec
-                        :named     named}
+        (filter-fields {:fieldspec       tablespec
+                        :named           named
+                        :max-cardinality max_cardinality}
                        (:root-table context))))))
 
 (defn- make-binding

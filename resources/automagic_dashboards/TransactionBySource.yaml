@@ -14,6 +14,9 @@ dimensions:
 - Timestamp:
     field_type: DateTime
 - Source: UserTable.Source
+- SourceSmall:
+    field_type: UserTable.Source
+    max_cardinality: 10
 - Income: Income
 - Quantity:
     field_type: Quantity
@@ -44,56 +47,68 @@ cards:
     visualization: area
     dimensions:
       - Timestamp
-      - Source
+      - SourceSmall
     metrics: TotalOrders
     width: 18
     score: 100
 - OrderBySource:
-    title: Total orders by source
+    title: Total orders by source (top 10)
     visualization: row
     dimensions: Source
     metrics: TotalOrders
     order_by:
       - TotalOrders: descending
+    limit: 10
     score: 80
+    height: 8
 - IncomeBySource:
-    title: Total income by source
+    title: Total income by source (top 10)
     visualization: row
     dimensions: Source
     metrics: TotalIncome
     order_by:
       - TotalIncome: descending
+    limit: 10
     score: 80
+    height: 8
 - AvgQuantityBySource:
-    title: Average qunatity by source
+    title: Average qunatity by source (top 10)
     visualization: row
     dimensions: Source
     metrics: AvgQuantity
+    limit: 10
     order_by:
       - AvgQuantity: descending
     score: 80
+    height: 8
 - AvgIncomeBySource:
-   title: Average income by source
+   title: Average income by source (top 10)
    visualization: row
    dimensions: Source
    metrics: AvgIncome
+   limit: 10
    order_by:
      - AvgIncome: descending
    score: 80
+   height: 8
 - UsersBySource:
     visualization: row
-    title: Number of users by source
+    title: Number of users by source (top 10)
     dimensions: Source
     metrics: TotalUsers
+    limit: 10
     order_by:
       - TotalUsers: descending
     score: 90
+    height: 8
 - NewUsersBySource:
     visualization: row
-    title: New users in the last 30 days by source
+    title: New users in the last 30 days by source (top 10)
     dimensions: Source
     metrics: TotalUsers
     filters: NewUsers
     score: 90
+    limit: 10
+    height: 8
     order_by:
       - TotalUsers: descending

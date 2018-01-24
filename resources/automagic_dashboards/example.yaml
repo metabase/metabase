@@ -83,7 +83,9 @@ dimensions:
 - UserPK: UserTable.PK
 # Match fields of type State from a joined table of type UserTable
 - State: UserTable.State
-- ProductCategory: ProductTable.Category
+- ProductCategory:
+    field_type: ProductTable.Category
+    max_cardinality: 10    # only capture fields with 10 or less distinct values
 - BatchNum:
     field_type: Integer
     named: batch           # name pattern (regex)

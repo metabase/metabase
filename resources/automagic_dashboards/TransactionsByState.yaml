@@ -41,7 +41,7 @@ filters:
       filter: ["time-interval", [dimension, Cohort], -30, day]
 cards:
 - TopStatesBySales:
-    title: Top states by sales
+    title: Top states by sales (top 10)
     visualization: row
     dimensions: State
     metrics: TotalOrders
@@ -49,8 +49,9 @@ cards:
       - TotalOrders: descending
     limit: 10
     score: 100
+    height: 8
 - TopStatesBySalesLast30Days:
-    title: Top states by sales in the last 30 days
+    title: Top states by sales in the last 30 days (top 10)
     visualization: row
     dimensions: State
     metrics: TotalOrders
@@ -59,6 +60,7 @@ cards:
     filters: Last30Days
     limit: 10
     score: 100
+    height: 8
 - OrdersByState:
     visualization:
       map:

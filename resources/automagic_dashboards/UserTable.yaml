@@ -18,7 +18,21 @@ dimensions:
 - State:
     field_type: State
 - Country: Country
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinDate], -30, day]
 cards:
+- Rowcount:
+    title: Total number of users
+    visualization: scalar
+    metrics: Count
+    score: 30
+- RowcountLast30Days:
+    title: New entries in the last 30 days
+    visualization: scalar
+    metrics: Count
+    score: 25
+    filters: Last30Days
 - NewUsersByMonth:
     visualization: line
     title: New users by month
@@ -42,9 +56,11 @@ cards:
     dimensions: Country
     metrics: Count
 - UsersBySource:
-    title: Users by source
+    title: Users by source (top 10)
     dimensions: Source
     metrics: Count
     visualization: row
     order_by:
       - Count: descending
+    limit: 10
+    height: 8

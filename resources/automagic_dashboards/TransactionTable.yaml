@@ -20,7 +20,11 @@ dimensions:
 - Discount: Discount
 - Quantity:
     field_type: Quantity
-- Source: UserTable.Source
+- SourceSmall:
+    field_type: UserTable.Source
+    max_cardinality: 10
+- Source:
+    field_type: UserTable.Source
 - Cohort:
     field_type: UserTable.JoinTimestamp
     score: 100
@@ -41,6 +45,11 @@ dimensions:
     field_type: ProductTable.Category
     named: category
 cards:
+- Rowcount:
+    title: Total number of transactions
+    visualization: scalar
+    metrics: Count
+    score: 30
 - IncomeByMonth:
     visualization: line
     title: Sales by month
@@ -80,25 +89,42 @@ cards:
     dimensions: Country
     metrics: TotalOrders
 - OrdersByProduct:
-    title: Sales by product
+    title: Sales by product (top 10)
     visualization: row
     dimensions:
       - Product
     metrics: TotalOrders
-    order_by: TotalOrders
+    order_by:
+      - TotalOrders: descending
+    limit: 10
+    height: 8
     score: 90
 - OrdersByProductCategory:
-    title: Sales by product category
+    title: Sales by product category (top 10)
     visualization: row
     dimensions:
       - ProductCategory
     metrics: TotalOrders
-    order_by: TotalOrders
+    order_by:
+      - TotalOrders: descending
     score: 90
+    limit: 10
+    height: 8
 - OrdersBySource:
     title: Sales by source
     visualization: area
     dimensions:
       - Timestamp
-      - Source
+      - SourceSmall
     metrics: TotalOrders
+    score: 100
+- OrdersBySource:
+    title: Sales by source (top 10)
+    visualization: row
+    dimensions: Source
+    metrics: TotalOrders
+    order_by:
+      - TotalOrders: descending
+    limit: 10
+    score: 90
+    height: 8

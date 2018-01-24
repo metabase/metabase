@@ -5,21 +5,37 @@ metrics:
 dimensions:
   - Timestamp: DateTime
   - Category: Category
+  - CategorySmall:
+      field_type: Category
+      max_cardinality: 10
   - State: State
   - Country: Country
   - Long: Longitude
   - Lat: Latitude
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
 cards:
-# disabled until high cardinality categories stop blowing up area charts
-#  - EventsByDay:
-#      title: Events by [[Category]]
-#      description: Count of events by [[Category]] through time.
-#      metrics: Count
-#      dimensions:
-#        - Timestamp
-#        - Category
-#      visualization: area
-#      score: 100
+  - Rowcount:
+      title: Total number of event
+      visualization: scalar
+      metrics: Count
+      score: 30
+  - RowcountLast30Days:
+      title: Events in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 25
+      filters: Last30Days
+  - EventsByDay:
+     title: Events by [[CategorySmall]]
+     description: Count of events by [[CategorySmall]] through time.
+     metrics: Count
+     dimensions:
+       - Timestamp
+       - CategorySmall
+     visualization: area
+     score: 100
   - EventsByDay:
       title: Events by time
       metrics: Count
@@ -58,8 +74,4 @@ cards:
         - Lat
         - Long
       score: 80
-      visualization:
-        map:
-          map.type: pin
-          map.latitude_column: Lat
-          map.longitude_column: Long
+      visualization: map
