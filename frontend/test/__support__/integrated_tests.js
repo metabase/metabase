@@ -23,6 +23,7 @@ import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
 import chalk from "chalk";
+import { mount } from "enzyme";
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
@@ -53,6 +54,7 @@ global.jt = jt;
 
 // set the locale before loading anything else
 import { setLocalization } from "metabase/lib/i18n";
+
 if (window.MetabaseLocalization) {
     setLocalization(window.MetabaseLocalization)
 }
@@ -185,6 +187,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             _allDispatchedActions: [],
             _latestDispatchedActions: [],
             _finalStoreInstance: null,
+            _enzymeWrapper: null,
 
             /**
              * Redux dispatch method middleware that records all dispatched actions
@@ -229,6 +232,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                 if (allActionsAreTriggered()) {
                     // Short-circuit if all action types are already in the history of dispatched actions
                     store._latestDispatchedActions = getRemainingActions();
+                    if (store._enzymeWrapper) store._enzymeWrapper.update()
                     return Promise.resolve();
                 } else {
                     return new Promise((resolve, reject) => {
@@ -252,6 +256,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                                 store._latestDispatchedActions = getRemainingActions();
                                 store._onActionDispatched = null;
                                 clearTimeout(timeoutID);
+                                // Enzyme wrapper doesn't know that the internal state of
+                                // React components has changed so this will trigger the update
+                                if (store._enzymeWrapper) store._enzymeWrapper.update()
                                 resolve()
                             }
                         };
@@ -295,33 +302,45 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
              * For testing an individual component that is rendered to the router context.
              * The component will receive the same router props as it would if it was part of the complete app component tree.
              *
-             * This is usually a lot faster than `getAppContainer` but doesn't work well with react-router links.
+             * This is usually a lot faster than `mountAppContainer` but doesn't work well with react-router links.
              */
-            connectContainer: (reactContainer) => {
+            mountContainer: (reactContainer) => {
                 store.warnIfStoreCreationNotComplete();
 
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
-                return store._connectWithStore(
-                    <Router
-                        routes={routes}
-                        history={history}
-                        render={(props) => React.cloneElement(reactContainer, props)}
-                    />
+                const enzymeWrapper = mount(
+                    store._connectWithStore(
+                        <Router
+                            routes={routes}
+                            history={history}
+                            render={(props) => React.cloneElement(reactContainer, props)}
+                        />
+                    )
                 );
+
+                store._enzymeWrapper = enzymeWrapper
+
+                return enzymeWrapper
             },
 
             /**
              * Renders the whole app tree.
              * Useful if you want to navigate between different sections of your app in your tests.
              */
-            getAppContainer: () => {
+            mountApp: () => {
                 store.warnIfStoreCreationNotComplete();
 
-                return store._connectWithStore(
-                    <Router history={history}>
-                        {getRoutes(store._finalStoreInstance)}
-                    </Router>
+                const enzymeWrapper = mount(
+                    store._connectWithStore(
+                        <Router history={history}>
+                            {getRoutes(store._finalStoreInstance)}
+                        </Router>
+                    )
                 )
+
+                store._enzymeWrapper = enzymeWrapper
+
+                return enzymeWrapper
             },
 
             /** For having internally access to the store with all middlewares included **/
