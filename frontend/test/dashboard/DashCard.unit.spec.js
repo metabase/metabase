@@ -31,15 +31,15 @@ describe("DashCard", () => {
     it("should render slow card with Card--slow className", () => {
         const props = assocIn(DEFAULT_PROPS, ["slowCards", 1], true);
         const dashCard = render(<DashCard {...props} />);
-        expect(dashCard.find(".Card--recent")).toHaveLength(0);
-        expect(dashCard.find(".Card--unmapped")).toHaveLength(0);
-        expect(dashCard.find(".Card--slow")).toHaveLength(1);
+        expect(dashCard.hasClass("Card--recent")).toBe(false);
+        expect(dashCard.hasClass("Card--unmapped")).toBe(false);
+        expect(dashCard.hasClass("Card--slow")).toBe(true);
     });
     it("should render new card with Card--recent className", () => {
         const props = assocIn(DEFAULT_PROPS, ["dashcard", "isAdded"], true);
         const dashCard = render(<DashCard {...props} />);
-        expect(dashCard.find(".Card--recent")).toHaveLength(1);
-        expect(dashCard.find(".Card--unmapped")).toHaveLength(0);
-        expect(dashCard.find(".Card--slow")).toHaveLength(0);
+        expect(dashCard.hasClass("Card--recent")).toBe(true);
+        expect(dashCard.hasClass("Card--unmapped")).toBe(false);
+        expect(dashCard.hasClass("Card--slow")).toBe(false);
     });
 });

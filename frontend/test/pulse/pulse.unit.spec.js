@@ -187,6 +187,7 @@ describe('recipient picker', () => {
                 const user = picker.find(UserAvatar).closest('li')
                 user.simulate('click', { target: {}})
 
+                wrapper.update();
 
                 // there should be one user selected
                 expect(wrapper.state().recipients.length).toBe(1)
