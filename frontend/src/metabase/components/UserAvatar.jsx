@@ -46,7 +46,7 @@ export default class UserAvatar extends Component {
         classes[background] = true;
 
         return (
-            <div className={cx(classes)} style={Object.assign(this.styles, this.props.style)}>
+            <div className={cx(classes)} style={{ ...this.styles, ...this.props.style }}>
                 {this.userInitials()}
             </div>
         )

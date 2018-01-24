@@ -29,8 +29,21 @@ const getErrorComponent = ({status, data, context}) => {
 
 @connect(mapStateToProps)
 export default class App extends Component {
+    state = {
+        hasError: false
+    }
+
+    componentDidCatch(error, info) {
+        console.error("Error caught in <App>", error, info);
+        this.setState({ hasError: true });
+    }
+
     render() {
         const { children, location, errorPage } = this.props;
+
+        if (this.state.hasError) {
+            return <div>😢</div>
+        }
 
         return (
             <div className="spread flex flex-column">
