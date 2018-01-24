@@ -189,6 +189,9 @@ export function addCSSRule(selector, rules, index = 0) {
 }
 
 export function constrainToScreen(element, direction, padding) {
+    if (!element) {
+        return false;
+    }
     if (direction === "bottom") {
         let screenBottom = window.innerHeight + getScrollY();
         let overflowY = element.getBoundingClientRect().bottom - screenBottom;

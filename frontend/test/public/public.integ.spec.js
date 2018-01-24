@@ -44,6 +44,7 @@ describe('public pages', () => {
             const app = mount(store.getAppContainer());
 
             await store.waitForActions([FETCH_DASHBOARD])
+            app.update();
 
             const headerText = app.find('.EmbedFrame-header .h4').text()
 

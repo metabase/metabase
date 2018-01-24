@@ -30,6 +30,6 @@ describe('Button', () => {
             </Button>
         )
 
-        expect(button.find('button.Button--primary').length).toEqual(1)
+        expect(button.hasClass('Button--primary')).toBe(true)
     })
 })

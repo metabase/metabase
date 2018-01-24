@@ -10,29 +10,24 @@ export default ComposedComponent => class extends Component {
     }
 
     componentDidMount() {
-        this._render();
+        this._element.className = this.props.className || "";
     }
 
     componentDidUpdate() {
-        this._render();
+        this._element.className = this.props.className || "";
     }
 
     componentWillUnmount() {
-        ReactDOM.unmountComponentAtNode(this._element);
         if (this._element.parentNode) {
             this._element.parentNode.removeChild(this._element);
         }
     }
 
-    _render() {
-        this._element.className = this.props.className || "";
-        ReactDOM.unstable_renderSubtreeIntoContainer(this,
-            <ComposedComponent {...this.props} className={undefined} />
-        , this._element);
-    }
-
     render() {
-        return null;
+        return ReactDOM.createPortal(
+            <ComposedComponent {...this.props} className={undefined} />
+            , this._element
+        );
     }
 };
 

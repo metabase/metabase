@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 const NoDatabasesEmptyState = (user) =>

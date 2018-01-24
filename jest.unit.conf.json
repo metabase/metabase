@@ -14,6 +14,7 @@
     "<rootDir>/frontend/src"
   ],
   "setupFiles": [
+    "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js"
   ],
   "globals": {
