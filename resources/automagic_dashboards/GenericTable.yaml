@@ -4,6 +4,8 @@ metrics:
   - Count:
       metric: ["count"]
       score: 100
+  - CountDistinctFKs:
+      metric: [distinct, [dimension, FK]]
   - Sum: [sum, [dimension, GenericNumber]]
   - Avg: [avg, [dimension, GenericNumber]]
 dimensions:
@@ -40,6 +42,7 @@ dimensions:
   - QuarterOfYear:
       field_type: DateTime
       aggregation: quarter-of-year
+  - FK: FK
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, CreateDate], -30, day]
@@ -59,6 +62,11 @@ cards:
       metrics: Count
       score: 25
       filters: Last30Days
+  - DistinctFKCounts:
+      title: Distinct [[FK]] (foregin key)
+      visualization: scalar
+      metrics: CountDistinctFKs
+      score: 50
   - CountByCountry:
       title: Distribution by country
       metrics: Count
