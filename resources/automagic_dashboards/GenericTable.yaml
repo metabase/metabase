@@ -77,6 +77,12 @@ cards:
       dimensions: CreateDate
       metrics: Count
       score: 100
+  - CountByTimestamp:
+      title: Nuber of events over time
+      visualization: line
+      dimensions: Timestamp
+      metrics: Count
+      score: 20
   - NumberOverTime:
       title: "[[GenericNumber]] over time"
       visualization: line

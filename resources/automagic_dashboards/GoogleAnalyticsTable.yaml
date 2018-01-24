@@ -24,7 +24,7 @@ dimensions:
   - Day:
       field_type: ga:date
   - Country:
-      field_type: ga:country
+      field_type: ga:countryIsoCode
   - DeviceType:
       field_type: ga:deviceCategory
   - LandingPage:
@@ -69,7 +69,8 @@ cards:
       description: Total sessions in each country
       metrics: Sessions
       dimensions: Country
-      filters: Last30Days
+      filters:
+       - Last30Days
       visualization:
         map:
           map.type: region
