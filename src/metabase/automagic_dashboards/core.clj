@@ -69,9 +69,18 @@
                 (if (and (string? fieldspec)
                          (rules/ga-dimension? fieldspec))
                   (comp #{fieldspec} :name)
-                  (fn [{:keys [base_type special_type] :as field}]
-                    (and (or #{:type/PK :type/FK} (not (numeric-key? field)))
-                         (some #(isa? % fieldspec) [special_type base_type])))))
+                  (fn [{:keys [base_type special_type fk_target_field_id] :as field}]
+                    (cond
+                      ; This case is mostly relevant for native queries
+                      (#{:type/PK :type/FK} fieldspec)
+                      (isa? special_type fieldspec)
+
+                      fk_target_field_id
+                      (recur (Field fk_target_field_id))
+
+                      :else
+                      (and (not (numeric-key? field))
+                           (some #(isa? % fieldspec) [special_type base_type]))))))
    :named     (fn [name-pattern]
                 (comp (->> name-pattern
                            str/lower-case

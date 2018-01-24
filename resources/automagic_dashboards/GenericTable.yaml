@@ -28,6 +28,18 @@ dimensions:
   - DayOfWeek:
       field_type: DateTime
       aggregation: day-of-week
+  - HourOfDay:
+      field_type: DateTime
+      aggregation: hour-of-day
+  - DayOfMonth:
+      field_type: DateTime
+      aggregation: day-of-month
+  - MonthOfYear:
+      field_type: DateTime
+      aggregation: month-of-year
+  - QuarterOfYear:
+      field_type: DateTime
+      aggregation: quarter-of-year
 cards:
   - CountByCountry:
       title: Distribution by country
@@ -79,3 +91,27 @@ cards:
       dimensions: DayOfWeek
       metrics: Count
       score: 60
+  - HourOfDay:
+      title: Distribution by hour of day
+      visualization: bar
+      dimensions: HourOfDay
+      metrics: Count
+      score: 50
+  - DayOfMonth:
+      title: Distribution by day of month
+      visualization: bar
+      dimensions: DayOfMonth
+      metrics: Count
+      score: 40
+  - MonthOfYear:
+      title: Distribution by month of year
+      visualization: bar
+      dimensions: MonthOfYear
+      metrics: Count
+      score: 40
+  - QuerterOfYear:
+      title: Distribution by quarter of year
+      visualization: bar
+      dimensions: QuarterOfYear
+      metrics: Count
+      score: 40
