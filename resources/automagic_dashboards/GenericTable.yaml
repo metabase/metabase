@@ -40,7 +40,25 @@ dimensions:
   - QuarterOfYear:
       field_type: DateTime
       aggregation: quarter-of-year
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, CreateDate], -30, day]
+      score: 100
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+      score: 90
 cards:
+  - Rowcount:
+      title: Number of rows
+      visualization: scalar
+      metrics: Count
+      score: 30
+  - RowcountLast30Days:
+      title: New entries in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 25
+      filters: Last30Days
   - CountByCountry:
       title: Distribution by country
       metrics: Count

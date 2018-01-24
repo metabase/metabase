@@ -65,29 +65,36 @@
            (-> name str/lower-case (= "id")))))
 
 (def ^:private field-filters
-  {:fieldspec (fn [fieldspec]
-                (if (and (string? fieldspec)
-                         (rules/ga-dimension? fieldspec))
-                  (comp #{fieldspec} :name)
-                  (fn [{:keys [base_type special_type fk_target_field_id] :as field}]
-                    (cond
-                      ; This case is mostly relevant for native queries
-                      (#{:type/PK :type/FK} fieldspec)
-                      (isa? special_type fieldspec)
+  {:fieldspec       (fn [fieldspec]
+                      (if (and (string? fieldspec)
+                               (rules/ga-dimension? fieldspec))
+                        (comp #{fieldspec} :name)
+                        (fn [{:keys [base_type special_type fk_target_field_id]
+                              :as field}]
+                          (cond
+                            ; This case is mostly relevant for native queries
+                            (#{:type/PK :type/FK} fieldspec)
+                            (isa? special_type fieldspec)
 
-                      fk_target_field_id
-                      (recur (Field fk_target_field_id))
+                            fk_target_field_id
+                            (recur (Field fk_target_field_id))
 
-                      :else
-                      (and (not (numeric-key? field))
-                           (some #(isa? % fieldspec) [special_type base_type]))))))
-   :named     (fn [name-pattern]
-                (comp (->> name-pattern
-                           str/lower-case
-                           re-pattern
-                           (partial re-find))
-                      str/lower-case
-                      :name))})
+                            :else
+                            (and (not (numeric-key? field))
+                                 (some #(isa? % fieldspec)
+                                       [special_type base_type]))))))
+   :named           (fn [name-pattern]
+                      (comp (->> name-pattern
+                                 str/lower-case
+                                 re-pattern
+                                 (partial re-find))
+                            str/lower-case
+                            :name))
+   :max_cardinality (fn [cardinality]
+                      (fn [field]
+                        (some-> field
+                                (get-in [:fingerprint :global :distinct-count])
+                                (<= cardinality))))})
 
 (defn- filter-fields
   "Find all fields belonging to table `table` for which all predicates in
@@ -217,7 +224,7 @@
    referenced dimensions have at least one matching field."
   [{:keys [dimensions]} definitions]
   (apply merge-with (fn [a b]
-                      (case (map has-matches? [a b])
+                      (case (map (partial has-matches? dimensions) [a b])
                         [true false] a
                         [false true] b
                         (max-key :score a b)))
@@ -336,12 +343,13 @@
                          (-> context :filters u/pprint-to-str)))
        (or (some->> rule
                     :cards
-                    (keep (comp (fn [[identifier card]]
-                                  (some->> card
-                                           (card-candidates context)
-                                           not-empty
-                                           (hash-map (name identifier))))
-                                first))
+                    (map first)
+                    (map-indexed (fn [position [identifier card]]
+                                   (some->> (assoc card :position position)
+                                            (card-candidates context)
+                                            not-empty
+                                            (hash-map (name identifier)))))
+                    not-empty
                     (apply merge-with (partial max-key (comp :score first)))
                     vals
                     (apply concat)

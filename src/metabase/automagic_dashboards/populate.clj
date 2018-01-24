@@ -132,7 +132,7 @@
                     :description description
                     :creator_id  api/*current-user-id*
                     :parameters  [])
-        cards     (shown-cards cards)
+        cards     (sort-by :position (shown-cards cards))
         ;; Binding return value to make linter happy
         _         (reduce (fn [grid card]
                             (let [[xy grid] (place-card grid card)]

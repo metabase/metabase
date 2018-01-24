@@ -64,11 +64,12 @@
 (def ^:private FieldSpec (s/either [FieldType]
                                    [(s/one TableType "table") FieldType]))
 
-(def ^:private Dimension {Identifier {(s/required-key :field_type)  FieldSpec
-                                      (s/required-key :score)       Score
-                                      (s/optional-key :links_to)    TableType
-                                      (s/optional-key :aggregation) s/Str
-                                      (s/optional-key :named)       s/Str}})
+(def ^:private Dimension {Identifier {(s/required-key :field_type)      FieldSpec
+                                      (s/required-key :score)           Score
+                                      (s/optional-key :links_to)        TableType
+                                      (s/optional-key :aggregation)     s/Str
+                                      (s/optional-key :named)           s/Str
+                                      (s/optional-key :max_cardinality) s/Int}})
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
