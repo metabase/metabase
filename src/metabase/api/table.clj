@@ -214,7 +214,7 @@
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
   (let [table (api/read-check Table id)
-        driver (driver/engine->driver (db/select-one-field :engine Database :id (:db_id table)))]
+        driver (driver/database-id->driver (:db_id table))]
     (-> table
         (hydrate :db [:fields :target :dimensions] :segments :metrics)
         (update :fields with-normal-values)
@@ -231,22 +231,26 @@
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
-  [card-id metadata]
-  (for [col metadata]
-    (assoc col
-      :table_id     (str "card__" card-id)
-      :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-      ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be
-      ;; used that way IRL
-      :special_type (when-let [special-type (keyword (:special_type col))]
-                      (when-not (or (isa? special-type :type/PK)
-                                    (isa? special-type :type/FK))
-                        special-type)))))
+  [card-id database-id metadata]
+  (let [add-field-dimension-options #(assoc-field-dimension-options (driver/database-id->driver database-id) %)]
+    (for [col metadata]
+      (-> col
+          (update :base_type keyword)
+          (assoc
+              :table_id     (str "card__" card-id)
+              :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
+              ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be
+              ;; used that way IRL
+              :special_type (when-let [special-type (keyword (:special_type col))]
+                              (when-not (or (isa? special-type :type/PK)
+                                            (isa? special-type :type/FK))
+                                special-type)))
+          add-field-dimension-options))))
 
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a CARD in the Saved Questions 'virtual' database. Optionally include
    'virtual' fields as well."
-  [card & {:keys [include-fields?]}]
+  [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :colllection)]
     (cond-> {:id           (str "card__" (u/get-id card))
@@ -254,14 +258,17 @@
              :display_name (:name card)
              :schema       (get-in card [:collection :name] "Everything else")
              :description  (:description card)}
-      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card) (:result_metadata card))))))
+      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card) database_id (:result_metadata card))))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (-> (db/select-one [Card :id :dataset_query :result_metadata :name :description :collection_id], :id id)
-      api/read-check
-      (card->virtual-table :include-fields? true)))
+  (let [{:keys [database_id] :as card } (db/select-one [Card :id :dataset_query :result_metadata :name :description :collection_id :database_id]
+                                          :id id)]
+    (-> card
+        api/read-check
+        (card->virtual-table :include-fields? true)
+        (assoc-dimension-options (driver/database-id->driver database_id)))))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
