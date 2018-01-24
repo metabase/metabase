@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.classifiers.name
   "Classifier that infers the special type of a Field based on its name and base type."
-  (:require [clojure.string :as str]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -84,15 +85,20 @@
     (assert (every? (u/rpartial isa? :type/*) base-types))
     (assert (isa? special-type :type/*))))
 
-(s/defn ^:private special-type-for-name-and-base-type :- (s/maybe su/FieldType)
-  "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
-  [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (or (when (= "id" (str/lower-case field-name)) :type/PK)
-      (some (fn [[name-pattern valid-base-types special-type]]
-              (when (and (some (partial isa? base-type) valid-base-types)
-                         (re-find name-pattern (str/lower-case field-name)))
-                special-type))
-            pattern+base-types+special-type)))
+(def ^:private ^{:arglists '([field-name base-type])} special-type-for-name-and-base-type
+  "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it.
+   We memoize results primarily to make cases where there are a lot of schemas
+   with identical structure (say one per user account) bearable."
+  (memoize/lu
+   (s/fn :- (s/maybe su/FieldType)
+     [field-name :- su/NonBlankString, base-type :- su/FieldType]
+     (or (when (= "id" (str/lower-case field-name)) :type/PK)
+         (some (fn [[name-pattern valid-base-types special-type]]
+                 (when (and (some (partial isa? base-type) valid-base-types)
+                            (re-find name-pattern (str/lower-case field-name)))
+                   special-type))
+               pattern+base-types+special-type)))
+   :lu/threshold 10000))
 
 (defn infer-special-type
   "Classifer that infers the special type of a FIELD based on its name and base type."
@@ -121,23 +127,32 @@
    [#"checkin"     :type/EventTable]
    [#"log"         :type/EventTable]])
 
+(def ^:private ^{:arglists '([table-name])} entity-type-for-name
+  "If `table-name` matches a known pattern, return the `entity_type` we should assign to it.
+   We memoize results primarily to make cases where there are a lot of schemas
+   with identical structure (say one per user account) bearable."
+  (memoize/lu
+   (fn [table-name]
+     (let [table-name (str/lower-case table-name)]
+       (some (fn [[pattern type]]
+               (when (re-find pattern table-name)
+                 type))
+             entity-types-patterns)))
+   :lu/threshold 1000))
+
 (defn infer-entity-type
   "Classifer that infers the entity type of a TABLE based on its name."
   [table]
-  (let [table-name  (-> table :name str/lower-case)
-        entity-type (or (some (fn [[pattern type]]
-                                          (when (re-find pattern table-name)
-                                            type))
-                                        entity-types-patterns)
-                                  (case (-> table
-                                            :db_id
-                                            Database
-                                            :engine)
-                                    :googleanalytics :type/GoogleAnalyticsTable
-                                    :druid           :type/EventTable
-                                    nil)
-                                  :type/GenericTable)]
+  (let [entity-type (or (-> table :name entity-type-for-name)
+                        (case (-> table
+                                  :db_id
+                                  Database
+                                  :engine)
+                          :googleanalytics :type/GoogleAnalyticsTable
+                          :druid           :type/EventTable
+                          nil)
+                        :type/GenericTable)]
     (log/debug (format "Based on the name of %s, we're giving it entity type %s."
-                       (sync-util/name-for-logging (table/map->TableInstance map))
+                       (sync-util/name-for-logging (table/map->TableInstance table))
                        entity-type))
     (assoc table :entity_type entity-type)))
