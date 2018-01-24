@@ -48,7 +48,7 @@ cards:
 - Rowcount:
     title: Total number of transactions
     visualization: scalar
-    metrics: Count
+    metrics: TotalOrders
     score: 30
 - IncomeByMonth:
     visualization: line
