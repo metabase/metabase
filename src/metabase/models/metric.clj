@@ -2,12 +2,12 @@
   (:require [medley.core :as m]
             [metabase
              [events :as events]
-             [query :as q]
              [util :as u]]
             [metabase.models
              [dependency :as dependency]
              [interface :as i]
              [revision :as revision]]
+            [metabase.util.query :as q]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]

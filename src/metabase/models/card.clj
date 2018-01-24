@@ -6,7 +6,6 @@
             [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]
-             [query :as q]
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api :refer [*current-user-id*]]
@@ -22,6 +21,7 @@
              [revision :as revision]]
             [metabase.query-processor.middleware.permissions :as qp-perms]
             [metabase.query-processor.util :as qputil]
+            [metabase.util.query :as q]
             [toucan
              [db :as db]
              [models :as models]]))
