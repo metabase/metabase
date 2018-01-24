@@ -33,8 +33,14 @@
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
                     :else              [:field-id id])]
-    (if (isa? base_type :type/DateTime)
+    (cond
+      (isa? base_type :type/DateTime)
       [:datetime-field reference (or aggregation :day)]
+
+      aggregation
+      [:binning-strategy reference aggregation]
+
+      :else
       reference)))
 
 (defmethod ->reference [:string (type Field)]
@@ -271,6 +277,8 @@
          (map (some-fn (comp :matches (partial get (:dimensions context)))
                        (comp #(filter-tables % context) rules/->entity)))
          (apply combo/cartesian-product)
+         ; distinct? doesn't have a 0-arity, hence the :dummy
+         (filter (partial apply distinct? :dummy))
          (keep (fn [instantiations]
                  (let [bindings (zipmap used-dimensions instantiations)
                        query    (if query
