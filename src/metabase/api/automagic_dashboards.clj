@@ -12,7 +12,7 @@
   (->> (db/select Table
          :db_id id
          :visibility_type nil)
-       (remove magic/link-table?)
+       (remove (some-fn magic/link-table? magic/single-field-table?))
        (keep magic/automagic-dashboard)))
 
 (api/defendpoint GET "/table/:id"

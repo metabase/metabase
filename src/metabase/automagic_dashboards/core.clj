@@ -321,13 +321,21 @@
          :fk_target_field_id [:not= nil])))
 
 (defn link-table?
-  "Is table comprised only of foregin keys and maybe a primary key?"
+  "Is the table comprised only of foregin keys and maybe a primary key?"
   [table]
   (empty? (db/select Field
             ;; :not-in returns false if field is nil, hence the workaround.
             {:where [:and [:= :table_id (:id table)]
                           [:or [:not-in :special_type ["type/FK" "type/PK"]]
-                               [:= :special_type nil]]]})))
+                           [:= :special_type nil]]]})))
+
+(defn single-field-table?
+  "Is the table comprised of only primary key and single field?"
+  [table]
+  (= 1 (db/count Field
+         ;; :not-in returns false if field is nil, hence the workaround.
+         {:where [:and [:= :table_id (:id table)]
+                  [:not= :special_type "type/PK"]]})))
 
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
