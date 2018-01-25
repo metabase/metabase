@@ -50,12 +50,13 @@
          (.getId profile))))
 
 (defn- describe-database [database]
+  ;; Include a `_metabase_metadata` table in the list of Tables so we can provide custom metadata. See below.
   {:tables (set (for [table-id (cons "_metabase_metadata" (profile-ids database))]
                   {:name   table-id
                    :schema nil}))})
 
 
-;;; ---------------------------------------- describe-table ----------------------------------------
+;;; ------------------------------------------------- describe-table -------------------------------------------------
 
 (def ^:private ^:const redundant-date-fields
   "Set of column IDs covered by `unit->ga-dimension` in the GA QP.
@@ -101,11 +102,13 @@
           column))))
 
 (defn- describe-columns [database]
-  (set (for [^Column column (columns database)]
-         {:name      (.getId column)
-          :base-type (if (= (.getId column) "ga:date")
-                       :type/Date
-                       (qp/ga-type->base-type (column-attribute column :dataType)))})))
+  (set (for [^Column column (columns database)
+             :let [ga-type (column-attribute column :dataType)]]
+         {:name          (.getId column)
+          :base-type     (if (= (.getId column) "ga:date")
+                           :type/Date
+                           (qp/ga-type->base-type ga-type))
+          :database-type ga-type})))
 
 (defn- describe-table [database table]
   {:name   (:name table)
@@ -113,15 +116,48 @@
    :fields (describe-columns database)})
 
 
+;;; ----------------------------------------------- _metabase_metadata -----------------------------------------------
 
-;;;---------------------------------------- can-connect?----------------------------------------
+;; The following is provided so we can specify custom display_names for Tables and Fields since there's not yet a way
+;; to do it directly in `describe-database` or `describe-table`. Just fake results for the Table in `table-rows-seq`
+;; (rows in `_metabase_metadata` are just property -> value, e.g. `<table>.display_name` -> `<display-name>`.)
+
+(defn- property+profile->display-name
+  "Format a table name for a GA property and GA profile"
+  [^Webproperty property, ^Profile profile]
+  (let [property-name (s/replace (.getName property) #"^https?://" "")
+        profile-name  (s/replace (.getName profile)  #"^https?://" "")]
+    ;; don't include the profile if it's the same as property-name or is the default "All Web Site Data"
+    (if (or (.contains property-name profile-name)
+            (= profile-name "All Web Site Data"))
+      property-name
+      (str property-name " (" profile-name ")"))))
+
+(defn- table-rows-seq [database table]
+  ;; this method is only supposed to be called for _metabase_metadata, make sure that's the case
+  {:pre [(= (:name table) "_metabase_metadata")]}
+  ;; now build a giant sequence of all the things we want to set
+  (apply concat
+         ;; set display_name for all the tables
+         (for [[^Webproperty property, ^Profile profile] (properties+profiles database)]
+           (cons {:keypath (str (.getId profile) ".display_name")
+                  :value   (property+profile->display-name property profile)}
+                 ;; set display_name and description for each column for this table
+                 (apply concat (for [^Column column (columns database)]
+                                 [{:keypath (str (.getId profile) \. (.getId column) ".display_name")
+                                   :value   (column-attribute column :uiName)}
+                                  {:keypath (str (.getId profile) \. (.getId column) ".description")
+                                   :value   (column-attribute column :description)}]))))))
+
+
+;;; -------------------------------------------------- can-connect? --------------------------------------------------
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
   (boolean (profile-ids {:details details-map})))
 
 
-;;;---------------------------------------- execute-query----------------------------------------
+;;; ------------------------------------------------- execute-query --------------------------------------------------
 
 (defn- column-with-name ^Column [database-or-id column-name]
   (some (fn [^Column column]
@@ -185,7 +221,7 @@
   (google/execute (mbql-query->request query)))
 
 
-;;; ---------------------------------------- Driver ----------------------------------------
+;;; ----------------------------------------------------- Driver -----------------------------------------------------
 
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named
@@ -215,7 +251,8 @@
                                                   :required     true}])
           :execute-query            (u/drop-first-arg (partial qp/execute-query do-query))
           :process-query-in-context (u/drop-first-arg process-query-in-context)
-          :mbql->native             (u/drop-first-arg qp/mbql->native)}))
+          :mbql->native             (u/drop-first-arg qp/mbql->native)
+          :table-rows-seq           (u/drop-first-arg table-rows-seq)}))
 
 (defn -init-driver
   "Register the Google Analytics driver"

@@ -1,4 +1,6 @@
 (ns metabase.routes
+  "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
+   how these work. `/api/` routes are in `metabase.api.routes`."
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -47,7 +49,9 @@
       (fallback-localization *locale*)))
     (fallback-localization *locale*)))
 
-(defn- entrypoint [entry embeddable? {:keys [uri]}]
+(defn- entrypoint
+  "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
+  [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
         (load-template (str "frontend_client/" entry ".html")
                        {:bootstrap_json    (escape-script (json/generate-string (public-settings/public-settings)))
@@ -95,7 +99,8 @@
                           {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
-                       ;; if Metabase is not finished initializing, return a generic error message rather than something potentially confusing like "DB is not set up"
+                       ;; if Metabase is not finished initializing, return a generic error message rather than
+                       ;; something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)
                          {:status 503, :body "Metabase is still initializing. Please sit tight..."}
                          (apply api/routes args))))

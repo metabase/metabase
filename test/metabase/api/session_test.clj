@@ -5,13 +5,13 @@
              [http-client :refer :all]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.session :refer :all]
+            [metabase.api.session :as session-api :refer :all]
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
             [metabase.test
              [data :refer :all]
-             [util :as tu :refer [resolve-private-vars with-temporary-setting-values]]]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
             [metabase.test.integrations.ldap :refer [expect-with-ldap-server]]
             [toucan.db :as db]
@@ -41,8 +41,8 @@
   (client :post 400 "session" (-> (user->credentials :rasta)
                                   (assoc :password "something else"))))
 
-;; Test that people get blocked from attempting to login if they try too many times
-;; (Check that throttling works at the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
+;; Test that people get blocked from attempting to login if they try too many times (Check that throttling works at
+;; the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
 (expect
     [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
      {:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}]
@@ -184,29 +184,27 @@
   (keys ((user->client :rasta) :get 200 "session/properties")))
 
 
-;;; ------------------------------------------------------------ TESTS FOR GOOGLE AUTH STUFF ------------------------------------------------------------
-
-(resolve-private-vars metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
+;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------
 
 ;;; tests for email->domain
-(expect "metabase.com"   (email->domain "cam@metabase.com"))
-(expect "metabase.co.uk" (email->domain "cam@metabase.co.uk"))
-(expect "metabase.com"   (email->domain "cam.saul+1@metabase.com"))
+(expect "metabase.com"   (#'session-api/email->domain "cam@metabase.com"))
+(expect "metabase.co.uk" (#'session-api/email->domain "cam@metabase.co.uk"))
+(expect "metabase.com"   (#'session-api/email->domain "cam.saul+1@metabase.com"))
 
 ;;; tests for email-in-domain?
-(expect true  (email-in-domain? "cam@metabase.com"          "metabase.com"))
-(expect false (email-in-domain? "cam.saul+1@metabase.co.uk" "metabase.com"))
-(expect true  (email-in-domain? "cam.saul+1@metabase.com"   "metabase.com"))
+(expect true  (#'session-api/email-in-domain? "cam@metabase.com"          "metabase.com"))
+(expect false (#'session-api/email-in-domain? "cam.saul+1@metabase.co.uk" "metabase.com"))
+(expect true  (#'session-api/email-in-domain? "cam.saul+1@metabase.com"   "metabase.com"))
 
 ;;; tests for autocreate-user-allowed-for-email?
 (expect
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-    (autocreate-user-allowed-for-email? "cam@metabase.com")))
+    (#'session-api/autocreate-user-allowed-for-email? "cam@metabase.com")))
 
 (expect
   false
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-    (autocreate-user-allowed-for-email? "cam@expa.com")))
+    (#'session-api/autocreate-user-allowed-for-email? "cam@expa.com")))
 
 
 ;;; tests for google-auth-create-new-user!
@@ -214,15 +212,15 @@
 (expect
   clojure.lang.ExceptionInfo
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
-    (google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
+    (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
 
 ;; should totally work if the email domains match up
 (expect
   {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                  admin-email                             "rasta@toucans.com"]
-    (select-keys (u/prog1 (google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
-                   (db/delete! User :id (:id <>)))                                          ; make sure we clean up after ourselves !
+                                     admin-email                             "rasta@toucans.com"]
+    (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+                   (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
                  [:first_name :last_name :email])))
 
 
@@ -232,29 +230,31 @@
   (u/ignore-exceptions
     (tu/is-uuid-string? (:id session))))
 
-;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from their account
-;; should return a Session
+;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from
+;; their account should return a Session
 (expect
   (tt/with-temp User [user {:email "cam@sf-toucannery.com"}]
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-      (is-session? (google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
+      (is-session? (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
 
-;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception
+;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an
+;; exception
 (expect
   clojure.lang.ExceptionInfo
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
-                                  admin-email                             "rasta@toucans.com"]
-    (google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))
+                                     admin-email                             "rasta@toucans.com"]
+    (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))
 
-;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created
+;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets
+;; created
 (expect
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                      admin-email                             "rasta@toucans.com"]
-    (u/prog1 (is-session? (google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
-      (db/delete! User :email "rasta@sf-toucannery.com"))))                                       ; clean up after ourselves
+    (u/prog1 (is-session? (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
+      (db/delete! User :email "rasta@sf-toucannery.com")))) ; clean up after ourselves
 
 
-;;; ------------------------------------------------------------ TESTS FOR LDAP AUTH STUFF ------------------------------------------------------------
+;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
 ;; Test that we can login with LDAP
 (expect-with-ldap-server

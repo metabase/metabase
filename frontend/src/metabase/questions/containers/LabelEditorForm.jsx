@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import S from "./LabelEditorForm.css";
-
+import { t } from 'c-3po';
 import LabelIconPicker from "../components/LabelIconPicker.jsx";
 
 import { reduxForm } from "redux-form";
@@ -18,7 +18,7 @@ import cx from "classnames";
             errors.name = true;
         }
         if (!values.icon) {
-            errors.icon = "Icon is required";
+            errors.icon = t`Icon is required`;
         }
         return errors;
     }
@@ -43,7 +43,7 @@ export default class LabelEditorForm extends Component {
                     <LabelIconPicker {...icon} />
                     <div className="full">
                         <div className="flex">
-                          <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
+                          <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder={t`Name`} {...name}/>
                           <button className={cx("Button", "ml1", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
                         </div>
                         { nameInvalid && errorMessage && <div className={S.errorMessage}>{errorMessage}</div> }

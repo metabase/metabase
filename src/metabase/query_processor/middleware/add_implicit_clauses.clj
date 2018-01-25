@@ -13,8 +13,10 @@
 
 (defn- fetch-fields-for-souce-table-id [source-table-id]
   (map resolve/rename-mb-field-keys
-       (-> (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description :fingerprint]
+       (-> (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position
+                       :description :fingerprint]
              :table_id        source-table-id
+             :active          true
              :visibility_type [:not-in ["sensitive" "retired"]]
              :parent_id       nil
              {:order-by [[:position :asc]

@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-
+import { t } from 'c-3po';
 import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -35,7 +35,7 @@ import * as actions from 'metabase/reference/reference';
 const interestingQuestions = (table, segment) => {
     return [
         {
-            text: `Number of ${segment.name}`,
+            text: t`Number of ${segment.name}`,
             icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
             link: getQuestionUrl({
                 dbId: table && table.db_id,
@@ -45,7 +45,7 @@ const interestingQuestions = (table, segment) => {
             })
         },
         {
-            text: `See all ${segment.name}`,
+            text: t`See all ${segment.name}`,
             icon: "table2",
             link: getQuestionUrl({
                 dbId: table && table.db_id,
@@ -90,7 +90,7 @@ const mapDispatchToProps = {
 };
 
 const validate = (values, props) =>  !values.revision_message ? 
-    { revision_message: "Please enter a revision message" } : {} 
+    { revision_message: t`Please enter a revision message` } : {} 
 
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -167,7 +167,7 @@ export default class SegmentDetail extends Component {
                     type="segment"
                     headerIcon="segment"
                     headerLink={getQuestionUrl({ dbId: table&&table.db_id, tableId: entity.table_id, segmentId: entity.id})}
-                    name="Details"
+                    name={t`Details`}
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={false}
@@ -183,9 +183,9 @@ export default class SegmentDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="description"
-                                    name="Description"
+                                    name={t`Description`}
                                     description={entity.description}
-                                    placeholder="No description yet"
+                                    placeholder={t`No description yet`}
                                     isEditing={isEditing}
                                     field={description}
                                 />
@@ -193,9 +193,9 @@ export default class SegmentDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this Segment is interesting`}
+                                    name={t`Why this Segment is interesting`}
                                     description={entity.points_of_interest}
-                                    placeholder="Nothing interesting yet"
+                                    placeholder={t`Nothing interesting yet`}
                                     isEditing={isEditing}
                                     field={points_of_interest}
                                     />
@@ -203,9 +203,9 @@ export default class SegmentDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this Segment`}
+                                    name={t`Things to be aware of about this Segment`}
                                     description={entity.caveats}
-                                    placeholder="Nothing to be aware of yet"
+                                    placeholder={t`Nothing to be aware of yet`}
                                     isEditing={isEditing}
                                     field={caveats}
                                 />

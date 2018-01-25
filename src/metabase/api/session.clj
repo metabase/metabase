@@ -38,10 +38,12 @@
 
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
-   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by username
+   ;; IP Address doesn't have an actual UI field so just show error by username
+   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
 (defn- ldap-login
-  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be authenticated."
+  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
+  authenticated."
   [username password]
   (when (ldap/ldap-configured?)
     (try
@@ -86,10 +88,10 @@
   (db/delete! Session :id session_id)
   api/generic-204-no-content)
 
-;; Reset tokens:
-;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
-;; So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g. "100_8a266560-e3a8-4dc1-9cd1-b4471dcd56d7", before hashing it.
-;; "Leaking" the ID this way is ok because the plaintext token is only sent in the password reset email to the user in question.
+;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
+;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
+;; "100_8a266560-e3a8-4dc1-9cd1-b4471dcd56d7", before hashing it. "Leaking" the ID this way is ok because the
+;; plaintext token is only sent in the password reset email to the user in question.
 ;;
 ;; There's also no need to salt the token because it's already random <3
 
@@ -120,7 +122,8 @@
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered :reset_token], :id user-id, :is_active true)]
+      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered :reset_token]
+                                                                   :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
                 (creds/bcrypt-verify token reset_token))
@@ -159,10 +162,11 @@
   (public-settings/public-settings))
 
 
-;;; ------------------------------------------------------------ GOOGLE AUTH ------------------------------------------------------------
+;;; -------------------------------------------------- GOOGLE AUTH ---------------------------------------------------
 
-;; TODO - The more I look at all this code the more I think it should go in its own namespace. `metabase.integrations.google-auth` would be appropriate,
-;; or `metabase.integrations.auth.google` if we decide to add more 3rd-party SSO options
+;; TODO - The more I look at all this code the more I think it should go in its own namespace.
+;; `metabase.integrations.google-auth` would be appropriate, or `metabase.integrations.auth.google` if we decide to
+;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
   "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
@@ -192,14 +196,16 @@
 
 (defn- check-autocreate-user-allowed-for-email [email]
   (when-not (autocreate-user-allowed-for-email? email)
-    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific to this situation
+    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
+    ;; to this situation
     (throw (ex-info "You'll need an administrator to create a Metabase account before you can use Google to log in."
              {:status-code 428}))))
 
 (defn- google-auth-create-new-user! [first-name last-name email]
   (check-autocreate-user-allowed-for-email email)
-  ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
-  ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
+  ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
+  ;; log in without Google Auth; this lets us keep the NOT NULL constraints on password / salt without having to make
+  ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! first-name last-name email))
 
 (defn- google-auth-fetch-or-create-user! [first-name last-name email]

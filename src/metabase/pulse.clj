@@ -19,7 +19,8 @@
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.TimeZone))
+  (:import java.util.TimeZone
+           metabase.models.card.CardInstance))
 
 ;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
 
@@ -46,7 +47,7 @@
 (s/defn defaulted-timezone :- TimeZone
   "Returns the timezone for the given `CARD`. Either the report
   timezone (if applicable) or the JVM timezone."
-  [card :- Card]
+  [card :- CardInstance]
   (let [^String timezone-str (or (some-> card database-id driver/database-id->driver driver/report-timezone-if-supported)
                                  (System/getProperty "user.timezone"))]
     (TimeZone/getTimeZone timezone-str)))

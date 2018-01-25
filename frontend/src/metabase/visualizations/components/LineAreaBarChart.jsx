@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { t } from 'c-3po';
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
@@ -68,7 +68,7 @@ export default class LineAreaBarChart extends Component {
         const dimensions = (settings["graph.dimensions"] || []).filter(name => name);
         const metrics = (settings["graph.metrics"] || []).filter(name => name);
         if (dimensions.length < 1 || metrics.length < 1) {
-            throw new ChartSettingsError("Which fields do you want to use for the X and Y axes?", "Data", "Choose fields");
+            throw new ChartSettingsError(t`Which fields do you want to use for the X and Y axes?`, t`Data`, t`Choose fields`);
         }
     }
 

@@ -8,6 +8,7 @@
              [http-client :as http]
              [query-processor-test :as qp-test]
              [util :as u]]
+            [metabase.api.public :as public-api]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -23,7 +24,7 @@
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
-;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn count-of-venues-card []
   {:dataset_query {:database (data/id)
@@ -63,7 +64,7 @@
 
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid ------------------------------------------------------------
+;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
 ;; Check that we *cannot* fetch a PublicCard if the setting is disabled
 (expect
@@ -92,15 +93,16 @@
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
-(tu/resolve-private-vars metabase.api.public public-card)
-
 ;; make sure :param_values get returned as expected
 (expect
   {(data/id :categories :name) {:values                75
                                 :human_readable_values {}
                                 :field_id              (data/id :categories :name)}}
   (tt/with-temp Card [card {:dataset_query {:type   :native
-                                            :native {:query         "SELECT COUNT(*) FROM venues LEFT JOIN categories ON venues.category_id = categories.id WHERE {{category}}"
+                                            :native {:query         (str "SELECT COUNT(*) "
+                                                                         "FROM venues "
+                                                                         "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                                         "WHERE {{category}}")
                                                      :collection    "CATEGORIES"
                                                      :template_tags {:category {:name         "category"
                                                                                 :display_name "Category"
@@ -108,11 +110,11 @@
                                                                                 :dimension    ["field-id" (data/id :categories :name)]
                                                                                 :widget_type  "category"
                                                                                 :required     true}}}}}]
-    (-> (:param_values (public-card :id (u/get-id card)))
+    (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
+;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
 ;; Check that we *cannot* execute a PublicCard if the setting is disabled
 (expect
@@ -174,8 +176,8 @@
       (get-in (http/client :get 200 (str "public/card/" uuid "/query"), :parameters (json/encode [{:type "category", :value 2}]))
               [:json_query :parameters]))))
 
+;; make sure CSV (etc.) downloads take editable params into account (#6407)
 
-;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid ------------------------------------------------------------
 (defn- card-with-date-field-filter []
   (assoc (shared-obj)
     :dataset_query {:database (data/id)
@@ -209,6 +211,7 @@
                                               :value  "Q1-2014"}]))))))
 
 
+;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
 ;; Check that we *cannot* fetch PublicDashboard if setting is disabled
 (expect
@@ -245,7 +248,7 @@
       (fetch-public-dashboard dash))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/dashboard/:uuid/card/:card-id ------------------------------------------------------------
+;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
 (defn- dashcard-url-path [dash card]
   (str "public/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
@@ -315,7 +318,7 @@
           (qp-test/rows (http/client :get 200 (dashcard-url-path dash card-2))))))))
 
 
-;;; ------------------------------------------------------------ Check that parameter information comes back with Dashboard ------------------------------------------------------------
+;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
 ;; double-check that the Field has FieldValues
 (expect

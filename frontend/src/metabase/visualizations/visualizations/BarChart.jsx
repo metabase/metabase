@@ -1,6 +1,6 @@
 /* @flow */
 
-
+import { t } from 'c-3po';
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { barRenderer } from "../lib/LineAreaBarRenderer";
 
@@ -13,10 +13,10 @@ import {
 } from "../lib/settings/graph";
 
 export default class BarChart extends LineAreaBarChart {
-    static uiName = "Bar";
+    static uiName = t`Bar`;
     static identifier = "bar";
     static iconName = "bar";
-    static noun = "bar chart";
+    static noun = t`bar chart`;
 
     static settings = {
         ...GRAPH_DATA_SETTINGS,

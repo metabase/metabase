@@ -11,33 +11,45 @@
                    :schema nil
                    :fields #{{:name          "id"
                               :pk?           true
+                              :database-type "SERIAL"
                               :base-type     :type/Integer}
                              {:name          "ts"
+                              :database-type "BIGINT"
                               :base-type     :type/BigInteger
                               :special-type  :type/UNIXTimestampMilliseconds}
                              {:name          "toucan"
+                              :database-type "OBJECT"
                               :base-type     :type/Dictionary
                               :nested-fields #{{:name          "name"
+                                                :database-type "VARCHAR"
                                                 :base-type     :type/Text}
                                                {:name          "details"
+                                                :database-type "OBJECT"
                                                 :base-type     :type/Dictionary
-                                                :nested-fields #{{:name         "age"
-                                                                  :base-type    :type/Integer}
-                                                                 {:name         "weight"
-                                                                  :special-type :type/Category
-                                                                  :base-type    :type/Decimal}}}}}
+                                                :nested-fields #{{:name          "age"
+                                                                  :database-type "INT"
+                                                                  :base-type     :type/Integer}
+                                                                 {:name          "weight"
+                                                                  :database-type "DECIMAL"
+                                                                  :special-type  :type/Category
+                                                                  :base-type     :type/Decimal}}}}}
                              {:name          "buyer"
+                              :database-type "OBJECT"
                               :base-type     :type/Dictionary
-                              :nested-fields #{{:name      "name"
-                                                :base-type :type/Text}
-                                               {:name      "cc"
-                                                :base-type :type/Text}}}}}
-   "employees" {:name "employees"
-                :schema nil
-                :fields #{{:name      "id"
-                           :base-type :type/Integer}
-                          {:name      "name"
-                           :base-type :type/Text}}}})
+                              :nested-fields #{{:name          "name"
+                                                :database-type "VARCHAR"
+                                                :base-type     :type/Text}
+                                               {:name          "cc"
+                                                :database-type "VARCHAR"
+                                                :base-type     :type/Text}}}}}
+   "employees"    {:name   "employees"
+                   :schema nil
+                   :fields #{{:name          "id"
+                              :database-type "SERIAL"
+                              :base-type     :type/Integer}
+                             {:name          "name"
+                              :database-type "VARCHAR"
+                              :base-type     :type/Text}}}})
 
 
 (defn- describe-database [_ {:keys [exclude-tables]}]
@@ -75,67 +87,79 @@
   [(merge mock-util/table-defaults
           {:name         "employees"
            :fields       [(merge mock-util/field-defaults
-                                 {:name         "id"
-                                  :display_name "ID"
-                                  :base_type    :type/Integer
-                                  :special_type :type/PK})
+                                 {:name          "id"
+                                  :display_name  "ID"
+                                  :database_type "SERIAL"
+                                  :base_type     :type/Integer
+                                  :special_type  :type/PK})
                           (merge mock-util/field-defaults
-                                 {:name         "name"
-                                  :display_name "Name"
-                                  :base_type    :type/Text
-                                  :special_type :type/Name})]
+                                 {:name          "name"
+                                  :display_name  "Name"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text
+                                  :special_type  :type/Name})]
            :display_name "Employees"})
    (merge mock-util/table-defaults
           {:name         "transactions"
            :fields       [(merge mock-util/field-defaults
-                                 {:name         "age"
-                                  :display_name "Age"
-                                  :base_type    :type/Integer
-                                  :parent_id    true})
+                                 {:name          "age"
+                                  :display_name  "Age"
+                                  :database_type "INT"
+                                  :base_type     :type/Integer
+                                  :parent_id     true})
                           (merge mock-util/field-defaults
-                                 {:name         "buyer"
-                                  :display_name "Buyer"
-                                  :base_type    :type/Dictionary})
+                                 {:name          "buyer"
+                                  :display_name  "Buyer"
+                                  :database_type "OBJECT"
+                                  :base_type     :type/Dictionary})
                           (merge mock-util/field-defaults
-                                 {:name         "cc"
-                                  :display_name "Cc"
-                                  :base_type    :type/Text
-                                  :parent_id    true})
+                                 {:name          "cc"
+                                  :display_name  "Cc"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text
+                                  :parent_id     true})
                           (merge mock-util/field-defaults
-                                 {:name         "details"
-                                  :display_name "Details"
-                                  :base_type    :type/Dictionary
-                                  :parent_id    true})
+                                 {:name          "details"
+                                  :display_name  "Details"
+                                  :database_type "OBJECT"
+                                  :base_type     :type/Dictionary
+                                  :parent_id     true})
                           (merge mock-util/field-defaults
-                                 {:name         "id"
-                                  :display_name "ID"
-                                  :base_type    :type/Integer
-                                  :special_type :type/PK})
+                                 {:name          "id"
+                                  :display_name  "ID"
+                                  :database_type "SERIAL"
+                                  :base_type     :type/Integer
+                                  :special_type  :type/PK})
                           (merge mock-util/field-defaults
-                                 {:name         "name"
-                                  :display_name "Name"
-                                  :base_type    :type/Text
-                                  :parent_id    true
-                                  :special_type :type/Name})
+                                 {:name          "name"
+                                  :display_name  "Name"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text
+                                  :parent_id     true
+                                  :special_type  :type/Name})
                           (merge mock-util/field-defaults
-                                 {:name         "name"
-                                  :display_name "Name"
-                                  :base_type    :type/Text
-                                  :parent_id    true
-                                  :special_type :type/Name})
+                                 {:name          "name"
+                                  :display_name  "Name"
+                                  :database_type "VARCHAR"
+                                  :base_type     :type/Text
+                                  :parent_id     true
+                                  :special_type  :type/Name})
                           (merge mock-util/field-defaults
-                                 {:name         "toucan"
-                                  :display_name "Toucan"
-                                  :base_type    :type/Dictionary})
+                                 {:name          "toucan"
+                                  :display_name  "Toucan"
+                                  :database_type "OBJECT"
+                                  :base_type     :type/Dictionary})
                           (merge mock-util/field-defaults
-                                 {:name         "ts"
-                                  :display_name "Ts"
-                                  :base_type    :type/BigInteger
-                                  :special_type :type/UNIXTimestampMilliseconds})
+                                 {:name          "ts"
+                                  :display_name  "Ts"
+                                  :database_type "BIGINT"
+                                  :base_type     :type/BigInteger
+                                  :special_type  :type/UNIXTimestampMilliseconds})
                           (merge mock-util/field-defaults
-                                 {:name         "weight"
-                                  :display_name "Weight"
-                                  :base_type    :type/Decimal
-                                  :parent_id    true
-                                  :special_type :type/Category})]
+                                 {:name          "weight"
+                                  :display_name  "Weight"
+                                  :database_type "DECIMAL"
+                                  :base_type     :type/Decimal
+                                  :parent_id     true
+                                  :special_type  :type/Category})]
            :display_name "Transactions"})])

@@ -65,7 +65,7 @@ var MetabaseUtils = {
     },
 
     isJWT(string) {
-        return typeof string === "string" && /^[A-Za-z0-9]+\.[A-Za-z0-9]+\.[A-Za-z0-9_-]+$/.test(string);
+        return typeof string === "string" && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(string);
     },
 
     validEmail: function(email) {

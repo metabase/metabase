@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import { t } from 'c-3po';
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
@@ -21,18 +22,18 @@ const EXPORT_FORMATS = ["csv", "xlsx", "json"];
 const QueryDownloadWidget = ({ className, card, result, uuid, token }) =>
     <PopoverWithTrigger
         triggerElement={
-            <Tooltip tooltip="Download full results">
-                <Icon title="Download this data" name="downarrow" size={16} />
+            <Tooltip tooltip={t`Download full results`}>
+                <Icon title={t`Download this data`} name="downarrow" size={16} />
             </Tooltip>
         }
         triggerClasses={cx(className, "text-brand-hover")}
     >
         <div className="p2" style={{ maxWidth: 320 }}>
-            <h4>Download full results</h4>
+            <h4>{t`Download full results`}</h4>
             { result.data.rows_truncated != null &&
-                <FieldSet className="my2 text-gold border-gold" legend="Warning">
-                    <div className="my1">Your answer has a large number of rows so it could take awhile to download.</div>
-                    <div>The maximum download size is 1 million rows.</div>
+                <FieldSet className="my2 text-gold border-gold" legend={t`Warning`}>
+                    <div className="my1">{t`Your answer has a large number of rows so it could take a while to download.`}</div>
+                    <div>{t`The maximum download size is 1 million rows.`}</div>
                 </FieldSet>
             }
             <div className="flex flex-row mt2">

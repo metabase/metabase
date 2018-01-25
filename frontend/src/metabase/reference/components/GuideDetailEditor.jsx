@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 // FIXME: using pure seems to mess with redux form updates
 // import pure from "recompose/pure";
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
@@ -78,7 +78,7 @@ const GuideDetailEditor = ({
                                 );
                             }
                         }}
-                        placeholder={'Select...'}
+                        placeholder={t`Select...`}
                     /> :
                     <DataSelector
                         className={cx(selectClasses, 'inline-block', 'rounded', 'text-bold')}
@@ -133,7 +133,7 @@ const GuideDetailEditor = ({
                 }
             </div>
             <div className="ml-auto cursor-pointer text-grey-2">
-                <Tooltip tooltip="Remove item">
+                <Tooltip tooltip={t`Remove item`}>
                     <Icon
                         name="close"
                         width={16}
@@ -147,13 +147,13 @@ const GuideDetailEditor = ({
             <div className={cx('mb2', { 'disabled' : disabled })}>
                 <EditLabel>
                     { type === 'dashboard' ?
-                            `Why is this dashboard the most important?` :
-                            `What is useful or interesting about this ${type}?`
+                            t`Why is this dashboard the most important?` :
+                            t`What is useful or interesting about this ${type}?`
                     }
                 </EditLabel>
                 <textarea
                     className={S.guideDetailEditorTextarea}
-                    placeholder="Write something helpful here"
+                    placeholder={t`Write something helpful here`}
                     {...formField.points_of_interest}
                     disabled={disabled}
                 />
@@ -162,13 +162,13 @@ const GuideDetailEditor = ({
             <div className={cx('mb2', { 'disabled' : disabled })}>
                 <EditLabel>
                     { type === 'dashboard' ?
-                            `Is there anything users of this dashboard should be aware of?` :
-                            `Anything users should be aware of about this ${type}?`
+                            t`Is there anything users of this dashboard should be aware of?` :
+                            t`Anything users should be aware of about this ${type}?`
                     }
                 </EditLabel>
                 <textarea
                     className={S.guideDetailEditorTextarea}
-                    placeholder="Write something helpful here"
+                    placeholder={t`Write something helpful here`}
                     {...formField.caveats}
                     disabled={disabled}
                 />
@@ -176,12 +176,12 @@ const GuideDetailEditor = ({
             { type === 'metric' &&
                 <div className={cx('mb2', { 'disabled' : disabled })}>
                     <EditLabel key="metricFieldsLabel">
-                        Which 2-3 fields do you usually group this metric by?
+                        {t`Which 2-3 fields do you usually group this metric by?`}
                     </EditLabel>
                     <Select
                         options={fieldsByMetric}
                         optionNameFn={option => option.display_name || option.name}
-                        placeholder="Select..."
+                        placeholder={t`Select...`}
                         values={formField.important_fields.value || []}
                         disabledOptionIds={formField.important_fields.value && formField.important_fields.value.length === 3 ?
                             fieldsByMetric
