@@ -23,7 +23,7 @@ import { getStore } from "metabase/store";
 import { createRoutes, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
 import chalk from "chalk";
-import { mount } from "enzyme";
+import { mount } from 'enzyme'
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
@@ -308,7 +308,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                 store.warnIfStoreCreationNotComplete();
 
                 const routes = createRoutes(getRoutes(store._finalStoreInstance))
-                const enzymeWrapper = mount(
+                const enzymeWrapper = store._augmentEnzymeWrapper(mount(
                     store._connectWithStore(
                         <Router
                             routes={routes}
@@ -316,7 +316,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
                             render={(props) => React.cloneElement(reactContainer, props)}
                         />
                     )
-                );
+                ));
 
                 store._enzymeWrapper = enzymeWrapper
 
@@ -330,17 +330,36 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
             mountApp: () => {
                 store.warnIfStoreCreationNotComplete();
 
-                const enzymeWrapper = mount(
+                const enzymeWrapper = store._augmentEnzymeWrapper(mount(
                     store._connectWithStore(
                         <Router history={history}>
                             {getRoutes(store._finalStoreInstance)}
                         </Router>
                     )
-                )
+                ))
 
                 store._enzymeWrapper = enzymeWrapper
 
                 return enzymeWrapper
+            },
+
+            _getChainedCallByNameObject: (getObject, augmenter) =>
+                (...props) => new Proxy(getObject(...props), {
+                    get: function(target, propKey, receiver) {
+                        return augmenter(getObject(...props))[propKey]
+                    }
+                }),
+
+            _augmentEnzymeWrapper: (enzymeWrapper) => {
+                const originalFind = enzymeWrapper.find.bind(enzymeWrapper)
+                const augmentedWrapper = Object.assign(enzymeWrapper, {
+                    find: store._getChainedCallByNameObject(
+                        (selector) => originalFind(selector),
+                        store._augmentEnzymeWrapper
+                    )
+                });
+
+                return augmentedWrapper
             },
 
             /** For having internally access to the store with all middlewares included **/
