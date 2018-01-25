@@ -138,6 +138,9 @@
 
 (derive :type/Source :type/Category)
 
+(derive :type/Boolean :type/Category)
+(derive :type/Enum :type/Category)
+
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (defn types->parents

@@ -28,7 +28,7 @@ cards:
     metrics: Count
     score: 30
 - RowcountLast30Days:
-    title: New entries in the last 30 days
+    title: New users in the last 30 days
     visualization: scalar
     metrics: Count
     score: 25

@@ -37,7 +37,10 @@
       (isa? base_type :type/DateTime)
       [:datetime-field reference (or aggregation :day)]
 
-      aggregation
+      (and aggregation
+           ; We don't handle binning on non-analyzed fields gracefully
+           (or (not (isa? base_type :type/Number))
+               (-> field :fingerprint :type :type/Number :min)))
       [:binning-strategy reference aggregation]
 
       :else

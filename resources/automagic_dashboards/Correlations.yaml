@@ -1,10 +1,6 @@
 title: Correlation analysis for [[GenericTable]]
 table_type: GenericTable
 
-metrics:
-  - Count:
-      metric: ["count"]
-      score: 100
 dimensions:
   - Number1:
       field_type: Number
@@ -19,4 +15,3 @@ cards:
     dimensions:
       - Number1
       - Number2
-    metrics: Count
