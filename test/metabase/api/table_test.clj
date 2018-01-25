@@ -19,6 +19,7 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
+            [metabase.query-processor-test :as qpt]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -162,11 +163,14 @@
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
-(defn- query-metadata-defaults []
+(defn- default-dimension-options []
   (->> #'table-api/dimension-options-for-response
        var-get
-       walk/keywordize-keys
-       (assoc (table-defaults) :dimension_options)))
+       walk/keywordize-keys))
+
+(defn- query-metadata-defaults []
+  (-> (table-defaults)
+      (assoc :dimension_options (default-dimension-options))))
 
 ;; ## GET /api/table/:id/query_metadata
 (expect
@@ -443,21 +447,59 @@
                                                   :type     :native
                                                   :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
-    {:display_name "Go Dubs!"
-     :schema       "Everything else"
-     :db_id        database/virtual-id
-     :id           card-virtual-table-id
-     :description  nil
-     :fields       (for [[field-name display-name base-type] [["NAME"     "Name"     "type/Text"]
-                                                              ["ID"       "ID"       "type/Integer"]
-                                                              ["PRICE"    "Price"    "type/Integer"]
-                                                              ["LATITUDE" "Latitude" "type/Float"]]]
-                     {:name         field-name
-                      :display_name display-name
-                      :base_type    base-type
-                      :table_id     card-virtual-table-id
-                      :id           ["field-literal" field-name base-type]
-                      :special_type nil})})
+    {:display_name      "Go Dubs!"
+     :schema            "Everything else"
+     :db_id             database/virtual-id
+     :id                card-virtual-table-id
+     :description       nil
+     :dimension_options (default-dimension-options)
+     :fields            (for [[field-name display-name base-type] [["NAME"     "Name"     "type/Text"]
+                                                                   ["ID"       "ID"       "type/Integer"]
+                                                                   ["PRICE"    "Price"    "type/Integer"]
+                                                                   ["LATITUDE" "Latitude" "type/Float"]]]
+                          {:name                     field-name
+                           :display_name             display-name
+                           :base_type                base-type
+                           :table_id                 card-virtual-table-id
+                           :id                       ["field-literal" field-name base-type]
+                           :special_type             nil
+                           :default_dimension_option nil
+                           :dimension_options        []})})
+  (do
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ;; Now fetch the metadata for this "table"
+    ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+
+;; Test date dimensions being included with a nested query
+(tt/expect-with-temp [Card [card {:name          "Users"
+                                  :database_id   (data/id)
+                                  :dataset_query {:database (data/id)
+                                                  :type     :native
+                                                  :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]]
+  (let [card-virtual-table-id (str "card__" (u/get-id card))]
+    {:display_name      "Users"
+     :schema            "Everything else"
+     :db_id             database/virtual-id
+     :id                card-virtual-table-id
+     :description       nil
+     :dimension_options (default-dimension-options)
+     :fields            [{:name                     "NAME"
+                          :display_name             "Name"
+                          :base_type                "type/Text"
+                          :table_id                 card-virtual-table-id
+                          :id                       ["field-literal" "NAME" "type/Text"]
+                          :special_type             nil
+                          :default_dimension_option nil
+                          :dimension_options        []}
+                         {:name                     "LAST_LOGIN"
+                          :display_name             "Last Login"
+                          :base_type                "type/DateTime"
+                          :table_id                 card-virtual-table-id
+                          :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
+                          :special_type             nil
+                          :default_dimension_option (var-get #'table-api/date-default-index)
+                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)}]})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))

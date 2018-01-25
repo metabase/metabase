@@ -58,18 +58,22 @@
   (if-not collection-name
     collection
     (assoc collection :slug (u/prog1 (slugify collection-name)
-                              (or (db/exists? Collection, :slug <>, :id id) ; if slug hasn't changed no need to check for uniqueness
-                                  (assert-unique-slug <>))))))              ; otherwise check to make sure the new slug is unique
+                              ;; if slug hasn't changed no need to check for uniqueness otherwise check to make sure
+                              ;; the new slug is unique
+                              (or (db/exists? Collection, :slug <>, :id id)
+                                  (assert-unique-slug <>))))))
 
 (defn- pre-delete [collection]
-  ;; unset the collection_id for Cards in this collection. This is mostly for the sake of tests since IRL we shouldn't be deleting collections, but rather archiving them instead
+  ;; unset the collection_id for Cards in this collection. This is mostly for the sake of tests since IRL we shouldn't
+  ;; be deleting collections, but rather archiving them instead
   (db/update-where! 'Card {:collection_id (u/get-id collection)}
     :collection_id nil))
 
 (defn perms-objects-set
   "Return the required set of permissions to READ-OR-WRITE COLLECTION-OR-ID."
   [collection-or-id read-or-write]
-  ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its name) but if you have write perms you can add/remove cards
+  ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
+  ;; name) but if you have write perms you can add/remove cards
   #{(case read-or-write
       :read  (perms/collection-read-path collection-or-id)
       :write (perms/collection-readwrite-path collection-or-id))})
@@ -90,11 +94,11 @@
           :perms-objects-set perms-objects-set}))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                       PERMISSIONS GRAPH                                                                        |
-;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               PERMISSIONS GRAPH                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ---------------------------------------- Schemas ----------------------------------------
+;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def ^:private CollectionPermissions
   (s/enum :write :read :none))
@@ -108,7 +112,7 @@
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
 
-;;; ---------------------------------------- Fetch Graph ----------------------------------------
+;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
   (into {} (for [[group-id perms] (group-by :group_id (db/select 'Permissions))]
@@ -128,8 +132,9 @@
              {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
 (s/defn graph :- PermissionsGraph
-  "Fetch a graph representing the current permissions status for every group and all permissioned collections.
-   This works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that function."
+  "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
+  works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
+  function."
   []
   (let [group-id->perms (group-id->permissions-set)
         collection-ids  (db/select-ids 'Collection)]
@@ -138,9 +143,10 @@
                           {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))}))
 
 
-;;; ---------------------------------------- Update Graph ----------------------------------------
+;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(s/defn ^:private update-collection-permissions! [group-id :- su/IntGreaterThanZero, collection-id :- su/IntGreaterThanZero, new-collection-perms :- CollectionPermissions]
+(s/defn ^:private update-collection-permissions!
+  [group-id :- su/IntGreaterThanZero, collection-id :- su/IntGreaterThanZero, new-collection-perms :- CollectionPermissions]
   ;; remove whatever entry is already there (if any) and add a new entry if applicable
   (perms/revoke-collection-permissions! group-id collection-id)
   (case new-collection-perms
@@ -157,16 +163,18 @@
    This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
   [current-revision old new]
   (when *current-user-id*
+    ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+    ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
     (db/insert! CollectionRevision
-      :id     (inc current-revision) ; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second
-      :before  old                   ; since we called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+      :id     (inc current-revision)
+      :before  old
       :after   new
       :user_id *current-user-id*)))
 
 (s/defn update-graph!
-  "Update the collections permissions graph.
-   This works just like the function of the same name in `metabase.models.permissions`, but for `Collections`;
-   refer to that function's extensive documentation to get a sense for how this works."
+  "Update the collections permissions graph. This works just like the function of the same name in
+  `metabase.models.permissions`, but for `Collections`; refer to that function's extensive documentation to get a
+  sense for how this works."
   ([new-graph :- PermissionsGraph]
    (let [old-graph (graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))]

@@ -37,6 +37,7 @@
   "Update the cached FieldValues (distinct values for categories and certain other fields that are shown
    in widgets like filters) for the Tables in DATABASE (as needed)."
   [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s" (sync-util/name-for-logging database))
+  (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
+                                                                 (sync-util/name-for-logging database))
     (doseq [table (sync-util/db->sync-tables database)]
       (update-field-values-for-table! table))))
