@@ -91,6 +91,15 @@ export function getFieldValues(field: ?Field): FieldValues {
     }
 }
 
+export function getRemappings(field: ?Field) {
+  const remappings = (field && field.remappings) || [];
+  const fieldValues = getFieldValues(field);
+  return [
+    ...fieldValues,
+    ...remappings
+  ];
+}
+
 export function getHumanReadableValue(value: Value, fieldValues?: FieldValues = []) {
     const fieldValue = _.findWhere(fieldValues, { [0]: value });
     return fieldValue && fieldValue.length === 2 ? fieldValue[1] : String(value);

@@ -527,7 +527,7 @@ const fields = handleActions({
         return state;
     }},
     [ADD_REMAPPINGS]: (state, { payload: { fieldId, remappings }}) =>
-        updateIn(state, [fieldId, "values"], (existing = []) =>
+        updateIn(state, [fieldId, "remappings"], (existing = []) =>
             Array.from(new Map(existing.concat(remappings)))
         ),
 }, {});
