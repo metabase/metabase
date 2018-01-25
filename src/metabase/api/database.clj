@@ -210,13 +210,20 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
+(def ^:private ^:const ^Integer autocomplete-results-limit
+  "Maximum number of results of a given model (either Table or Field) we should fetch from the DB. Fetching too many
+  results will result in the queries, and thus calls to the endpoint, taking *forever* to finish. So this number should
+  be a good balance between providing enough results to be useful but not too much to be super-slow."
+  (int 50))
+
 (defn- autocomplete-tables [db-id prefix]
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
-                     [:= :active true]
-                     [:like :%lower.name (str (str/lower-case prefix) "%")]
-                     [:= :visibility_type nil]]
-     :order-by [[:%lower.name :asc]]}))
+                [:= :active true]
+                [:like :%lower.name (str (str/lower-case prefix) "%")]
+                [:= :visibility_type nil]]
+     :order-by [[:%lower.name :asc]]
+     :limit    autocomplete-results-limit}))
 
 (defn- autocomplete-fields [db-id prefix]
   (db/select [Field :name :base_type :special_type :id :table_id [:table.name :table_name]]
@@ -226,7 +233,8 @@
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
                  [:%lower.table.name :asc]]
-     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]}))
+     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
+     :limit     autocomplete-results-limit}))
 
 (defn- autocomplete-results [tables fields]
   (concat (for [{table-name :name} tables]
