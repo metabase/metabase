@@ -1,5 +1,8 @@
 (ns metabase.driver.sqlite
-  (:require [clojure
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [format :as tformat]]
+            [clojure
              [set :as set]
              [string :as s]]
             [honeysql
@@ -11,7 +14,8 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx])
+  (:import [java.sql Time Timestamp]))
 
 (defrecord SQLiteDriver []
   clojure.lang.Named
@@ -45,7 +49,8 @@
    [#"DECIMAL"  :type/Decimal]
    [#"BOOLEAN"  :type/Boolean]
    [#"DATETIME" :type/DateTime]
-   [#"DATE"     :type/Date]])
+   [#"DATE"     :type/Date]
+   [#"TIME"     :type/Time]])
 
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
@@ -63,7 +68,7 @@
    See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html)."
   [unit expr]
   ;; Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly
-  (let [v (if (instance? java.sql.Timestamp expr)
+  (let [v (if (instance? Timestamp expr)
             (hx/literal (u/date->iso-8601 expr))
             expr)]
     (case unit
@@ -152,6 +157,13 @@
 (defmethod sqlqp/->honeysql [SQLiteDriver Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sqlqp/->honeysql [SQLiteDriver Time]
+  [_ time-value]
+  (->> time-value
+       tcoerce/to-date-time
+       (tformat/unparse (tformat/formatters :hour-minute-second-ms))
+       (hsql/call :time)))
 
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))

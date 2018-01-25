@@ -134,6 +134,7 @@
 (defn ->timestamp                "CAST X to a `timestamp`."                [x] (cast :timestamp x))
 (defn ->timestamp-with-time-zone "CAST X to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
 (defn ->integer                  "CAST X to a `integer`."                  [x] (cast :integer x))
+(defn ->time                     "CAST X to a `time` datatype"             [x] (cast :time x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))
