@@ -119,7 +119,7 @@
   (let [new-alert (api/check-500
                    (-> req
                        only-alert-keys
-                       (pulse/create-alert! api/*current-user-id* (u/get-id card) channels)))]
+                       (pulse/create-alert! api/*current-user-id* (pulse/create-card-ref card) channels)))]
 
     (notify-new-alert-created! new-alert)
 
@@ -153,7 +153,7 @@
         _             (check-alert-update-permissions old-alert)
         updated-alert (-> req
                           only-alert-keys
-                          (assoc :id id :card (u/get-id card) :channels channels)
+                          (assoc :id id :card (pulse/create-card-ref card) :channels channels)
                           pulse/update-alert!)]
 
     ;; Only admins can update recipients

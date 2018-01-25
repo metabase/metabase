@@ -221,7 +221,7 @@
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
     (when (should-send-notification? pulse results)
 
-      (when  (:alert_first_only pulse)
+      (when (:alert_first_only pulse)
         (db/delete! Pulse :id (:id pulse)))
 
       (for [channel-id channel-ids

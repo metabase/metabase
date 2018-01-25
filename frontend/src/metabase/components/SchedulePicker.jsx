@@ -47,7 +47,7 @@ export default class SchedulePicker extends Component {
         schedule: PropTypes.object.isRequired,
         // TODO: hourly option?
         // available schedules, e.g. [ "daily", "weekly", "monthly"]
-        scheduleOptions: PropTypes.object.isRequired,
+        scheduleOptions: PropTypes.array.isRequired,
         // text before Daily/Weekly/Monthly... option
         textBeforeInterval: PropTypes.string,
         // text prepended to "12:00 PM PST, your Metabase timezone"
