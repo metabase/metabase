@@ -4,7 +4,6 @@ import {
 } from "__support__/integrated_tests";
 
 import React from 'react';
-import { mount } from 'enzyme';
 
 import { SegmentApi, MetricApi } from 'metabase/services'
 

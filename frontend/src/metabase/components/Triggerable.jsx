@@ -118,7 +118,7 @@ export default ComposedComponent => class extends Component {
                     event.preventDefault()
                     !this.props.disabled && this.toggle()
                 }}
-                className={cx(triggerClasses, "no-decoration", {
+                className={cx(triggerClasses, isOpen && triggerClassesOpen, "no-decoration", {
                     'cursor-default': this.props.disabled
                 })}
                 style={triggerStyle}

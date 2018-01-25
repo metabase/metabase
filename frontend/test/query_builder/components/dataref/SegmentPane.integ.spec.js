@@ -5,7 +5,6 @@ import {
 import { click } from "__support__/enzyme_utils";
 
 import React from 'react';
-import { mount } from "enzyme";
 
 import {
     INITIALIZE_QB, LOAD_TABLE_METADATA, QUERY_COMPLETED, setQuerySourceTable,

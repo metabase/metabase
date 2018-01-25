@@ -1,6 +1,6 @@
 
 import React from 'react'
-import { mount } from 'enzyme'
+import { mount } from 'enzyme';
 
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
 import DateOperatorSelector from "metabase/query_builder/components/filters/DateOperatorSelector";

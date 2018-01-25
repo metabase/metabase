@@ -4,7 +4,6 @@ import {
 } from "__support__/integrated_tests";
 import { click } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp"
 import SettingsAuthenticationOptions from "metabase/admin/settings/components/SettingsAuthenticationOptions"

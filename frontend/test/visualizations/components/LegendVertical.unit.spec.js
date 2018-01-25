@@ -1,6 +1,6 @@
 import React from "react";
 import LegendVertical from "metabase/visualizations/components/LegendVertical.jsx";
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 describe("LegendVertical", () => {
     it("should render string titles correctly", () => {

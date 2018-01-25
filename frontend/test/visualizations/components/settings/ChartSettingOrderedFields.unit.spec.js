@@ -2,7 +2,7 @@ import React from "react";
 
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields";
 
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 function renderChartSettingOrderedFields(props) {
     return mount(<ChartSettingOrderedFields {...props} onChange={(() => {})} />);

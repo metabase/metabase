@@ -8,7 +8,7 @@ import {
 import { click } from "__support__/enzyme_utils"
 import Question from "metabase-lib/lib/Question";
 import SummarizeBySegmentMetricAction from "metabase/qb/components/actions/SummarizeBySegmentMetricAction";
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 const question = Question.create({
     databaseId: DATABASE_ID,

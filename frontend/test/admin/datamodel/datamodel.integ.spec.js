@@ -8,7 +8,6 @@ import {
     clickButton,
     setInputValue
 } from "__support__/enzyme_utils"
-import { mount } from "enzyme";
 import {
     CREATE_METRIC,
     CREATE_SEGMENT,

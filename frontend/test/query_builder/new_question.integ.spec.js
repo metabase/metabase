@@ -1,4 +1,3 @@
-import { mount } from "enzyme"
 
 import {
     useSharedAdminLogin,
@@ -227,7 +226,8 @@ describe("new question flow", async () => {
 
             const metricSearchResult = group.find(SearchResultListItem)
                 .filterWhere((item) => /A Metric/.test(item.text()))
-            click(metricSearchResult.childAt(0))
+            console.log(metricSearchResult.debug())
+            click(metricSearchResult.childAt(0).find("a"))
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             await delay(100); // Trying to address random CI failures with a small delay

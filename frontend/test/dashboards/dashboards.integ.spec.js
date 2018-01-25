@@ -8,7 +8,6 @@ import {
     setInputValue
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 import { FETCH_ARCHIVE, FETCH_DASHBOARDS, SET_ARCHIVED, SET_FAVORITED } from "metabase/dashboards/dashboards";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";

@@ -11,7 +11,6 @@ import {
     setInputValue
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
 import { INITIALIZE_SETTINGS, UPDATE_SETTING, updateSetting } from "metabase/admin/settings/settings";

@@ -11,7 +11,6 @@ import {
 
 import React from 'react';
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
-import { mount } from "enzyme";
 import {
     INITIALIZE_QB,
     QUERY_COMPLETED,
@@ -116,7 +115,7 @@ describe("QueryBuilder", () => {
             const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox)
             expect(fieldsToIncludeCheckboxes.length).toBe(7)
 
-            click(fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parent().find("span").text() === "Created At"))
+            click(fieldsToIncludeCheckboxes.filterWhere((checkbox) => checkbox.parents().at(0).find("span").text() === "Created At"))
 
             expect(table.find('div[children="Created At"]').length).toBe(0);
 
@@ -242,7 +241,7 @@ describe("QueryBuilder", () => {
 
                 const title = qbWrapper.find(QueryHeader).find("h1")
                 expect(title.text()).toBe("New question")
-                expect(title.parent().children().at(1).text()).toBe(`started from ${savedQuestion.displayName()}`)
+                expect(title.parents().at(0).children().at(1).text()).toBe(`started from ${savedQuestion.displayName()}`)
 
                 // Click "SAVE" button
                 click(qbWrapper.find(".Header-buttonSection a").first().find("a"))

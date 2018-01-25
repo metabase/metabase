@@ -1,7 +1,7 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 import React from "react";
 import TimeseriesFilterWidget from "metabase/qb/components/TimeseriesFilterWidget";
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 import Question from "metabase-lib/lib/Question";
 import {

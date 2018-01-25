@@ -10,7 +10,6 @@ import {
 } from "__support__/enzyme_utils"
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
-import { mount } from "enzyme";
 import { setIn } from "icepick";
 import { AlertApi, CardApi, PulseApi, UserApi } from "metabase/services";
 import Question from "metabase-lib/lib/Question";

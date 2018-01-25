@@ -5,7 +5,6 @@ import {
 import { click } from "__support__/enzyme_utils"
 
 import React from 'react';
-import { mount } from "enzyme";
 
 import { INITIALIZE_QB, QUERY_COMPLETED, TOGGLE_DATA_REFERENCE } from "metabase/query_builder/actions";
 import { delay } from "metabase/lib/promise"

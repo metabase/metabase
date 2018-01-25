@@ -2,7 +2,7 @@ import React from "react";
 import renderer from "react-test-renderer";
 import moment from "moment";
 import mockDate from "mockdate";
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 
 import Calendar from "../../src/metabase/components/Calendar";
 

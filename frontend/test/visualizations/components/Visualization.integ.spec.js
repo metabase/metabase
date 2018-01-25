@@ -9,7 +9,7 @@ import LegendItem from "metabase/visualizations/components/LegendItem";
 
 import { ScalarCard, LineCard, MultiseriesLineCard, TextCard } from "../__support__/visualizations";
 
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 import { click } from "__support__/enzyme_utils"
 
 function renderVisualization(props) {

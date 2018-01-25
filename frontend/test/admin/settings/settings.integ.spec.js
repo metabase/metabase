@@ -3,7 +3,6 @@ import {
     useSharedAdminLogin,
     createTestStore,
 } from "__support__/integrated_tests";
-import { mount } from "enzyme";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import { INITIALIZE_SETTINGS, UPDATE_SETTING } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";

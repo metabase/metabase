@@ -2,7 +2,7 @@
 import { createTestStore, useSharedAdminLogin } from "__support__/integrated_tests";
 
 import React from 'react'
-import { mount } from 'enzyme'
+import { mount } from 'enzyme';
 
 import FieldList from '../../../src/metabase/query_builder/components/FieldList';
 import Question from "metabase-lib/lib/Question";

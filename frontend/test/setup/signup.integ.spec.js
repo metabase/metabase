@@ -21,7 +21,6 @@ import {
 } from "metabase/setup/actions";
 
 import path from "path";
-import { mount } from "enzyme";
 import Setup from "metabase/setup/components/Setup";
 import { delay } from "metabase/lib/promise";
 import UserStep from "metabase/setup/components/UserStep";
@@ -197,7 +196,7 @@ describe("setup wizard", () => {
         // redirect to `?new` caused some trouble in tests so create a new store for testing the modal interaction
         const loggedInStore = await createTestStore();
         loggedInStore.pushPath("/?new")
-        const loggedInApp = mount(loggedInStore.getAppContainer());
+        const loggedInApp = loggedInStore.mountApp();
 
         await loggedInStore.waitForActions([FETCH_ACTIVITY])
 

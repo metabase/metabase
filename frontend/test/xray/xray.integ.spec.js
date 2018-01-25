@@ -7,7 +7,6 @@ import {
     click
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme";
 import {
     CardApi,
     SegmentApi,

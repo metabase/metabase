@@ -11,7 +11,6 @@ import { DashboardApi, PublicApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 import { makeGetMergedParameterFieldValues } from "metabase/selectors/metadata";
 import { ADD_PARAM_VALUES } from "metabase/redux/metadata";
-import { mount } from "enzyme";
 import {
     fetchDashboard,
     ADD_PARAMETER,
@@ -120,7 +119,7 @@ describe("Dashboard", () => {
             setInputValue(headerInputs.first(), "Customer Analysis Paralysis")
             setInputValue(headerInputs.at(1), "")
 
-            clickButton(app.find(EditBar).find(".Button--primary.Button"));
+            clickButton(app.find(EditBar).find("button.Button--primary.Button"));
             await store.waitForActions([SAVE_DASHBOARD_AND_CARDS, FETCH_DASHBOARD])
 
             await delay(500)

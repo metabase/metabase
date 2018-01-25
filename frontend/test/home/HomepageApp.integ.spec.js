@@ -6,7 +6,6 @@ import {
 import { click } from "__support__/enzyme_utils"
 
 import React from 'react';
-import { mount } from "enzyme";
 import {
     orders_past_300_days_segment,
     unsavedOrderCountQuestion,

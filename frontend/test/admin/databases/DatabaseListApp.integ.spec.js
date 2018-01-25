@@ -8,7 +8,6 @@ import {
     setInputValue
 } from "__support__/enzyme_utils";
 
-import { mount } from "enzyme";
 import {
     FETCH_DATABASES,
     initializeDatabase,

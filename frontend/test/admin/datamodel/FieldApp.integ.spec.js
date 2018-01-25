@@ -38,11 +38,10 @@ import {
     SpecialTypeAndTargetPicker
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import { TestPopover } from "metabase/components/Popover";
-import Select, { LegacySelect } from "metabase/components/Select";
+import Select  from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
-import Triggerable from "metabase/components/Triggerable";
 
 const getRawFieldWithId = (store, fieldId) => store.getState().metadata.fields[fieldId];
 

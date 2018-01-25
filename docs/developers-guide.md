@@ -138,7 +138,6 @@ import {
     click
 } from "__support__/enzyme_utils"
 
-import { mount } from "enzyme"
 
 import { FETCH_DATABASES } from "metabase/redux/metadata";
 import { INITIALIZE_QB } from "metabase/query_builder/actions";

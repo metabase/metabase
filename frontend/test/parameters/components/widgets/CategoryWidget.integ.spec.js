@@ -4,7 +4,7 @@ import React from "react";
 
 import CategoryWidget from "metabase/parameters/components/widgets/CategoryWidget";
 
-import { mount } from "enzyme";
+import { mount } from 'enzyme';
 import {
     click, clickButton
 } from "__support__/enzyme_utils"
