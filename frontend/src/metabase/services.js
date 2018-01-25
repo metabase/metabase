@@ -168,6 +168,7 @@ export const XRayApi = {
     table_xray:                  GET("/api/x-ray/table/:tableId"),
     segment_xray:                GET("/api/x-ray/segment/:segmentId"),
     card_xray:                   GET("/api/x-ray/card/:cardId"),
+    unsaved_card_xray:          POST("/api/x-ray/query"),
 
     compare_shared_type:         GET("/api/x-ray/compare/:modelTypePlural/:modelId1/:modelId2"),
     compare_two_types:           GET("/api/x-ray/compare/:modelType1/:modelId1/:modelType2/:modelId2"),

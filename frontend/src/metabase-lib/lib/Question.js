@@ -361,7 +361,7 @@ export default class Question {
             this.isDirtyComparedTo(originalQuestion);
 
         return isDirty
-            ? Urls.question(null, this._serializeForUrl())
+            ? Urls.question(null, this.getUrlHash())
             : Urls.question(this.id(), "");
     }
 
@@ -454,19 +454,17 @@ export default class Question {
                 return false;
             }
         } else {
-            const origCardSerialized = originalQuestion._serializeForUrl({
+            const origCardSerialized = originalQuestion.getUrlHash({
                 includeOriginalCardId: false
             });
-            const currentCardSerialized = this._serializeForUrl({
+            const currentCardSerialized = this.getUrlHash({
                 includeOriginalCardId: false
             });
             return currentCardSerialized !== origCardSerialized;
         }
     }
 
-    // Internal methods
-
-    _serializeForUrl({ includeOriginalCardId = true } = {}) {
+    getUrlHash({ includeOriginalCardId = true } = {}) {
         // TODO Atte Keinänen 5/31/17: Remove code mutation and unnecessary copying
         const dataset_query = Utils.copy(this._card.dataset_query);
         if (dataset_query.query) {
@@ -488,5 +486,9 @@ export default class Question {
         };
 
         return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
+    }
+
+    static deserializeUrlHash(urlHash) {
+        return Card_DEPRECATED.deserializeCardFromUrl(urlHash)
     }
 }

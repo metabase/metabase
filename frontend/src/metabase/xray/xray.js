@@ -5,12 +5,15 @@ import {
     createThunkAction,
     handleActions
 } from 'metabase/lib/redux'
-import { BackgroundJobRequest/*, RestfulRequest*/ } from "metabase/lib/request";
+import { BackgroundJobRequest } from "metabase/lib/request";
 
 import { XRayApi } from 'metabase/services'
+import Question from "metabase-lib/lib/Question";
 
 export const INITIALIZE = 'metabase/xray/INITIALIZE'
 export const initialize = createAction(INITIALIZE);
+export const SET_XRAY_ERROR = 'metabase/xray/SET_XRAY_ERROR'
+export const setXrayError = createAction(SET_XRAY_ERROR)
 
 export const FETCH_FIELD_XRAY = 'metabase/xray/FETCH_FIELD_XRAY'
 const fieldXrayRequest = new BackgroundJobRequest({
@@ -56,6 +59,25 @@ export const fetchCardXray = createThunkAction(FETCH_CARD_XRAY, (cardId, cost) =
         dispatch(cardXrayRequest.trigger({ cardId, ...COSTS[cost].method }))
 )
 
+export const FETCH_UNSAVED_CARD_XRAY = 'metabase/xray/FETCH_UNSAVED_CARD_XRAY';
+const unsavedCardXrayRequest = new BackgroundJobRequest({
+    creationEndpoint: XRayApi.unsaved_card_xray,
+    resultPropName: 'xray',
+    actionPrefix: FETCH_UNSAVED_CARD_XRAY
+})
+export const fetchUnsavedCardXray = createThunkAction(FETCH_UNSAVED_CARD_XRAY, (questionUrlHash) =>
+    (dispatch) => {
+        let datasetQuery = null
+        try {
+            datasetQuery = Question.deserializeUrlHash(questionUrlHash).dataset_query
+        } catch(e) {
+            dispatch(setXrayError({ message: "Question hash is invalid" }))
+            return
+        }
+        dispatch(unsavedCardXrayRequest.trigger(datasetQuery))
+    }
+)
+
 export const FETCH_SHARED_TYPE_COMPARISON_XRAY = 'metabase/xray/FETCH_SHARED_TYPE_COMPARISON_XRAY';
 const sharedTypeComparisonXrayRequest = new BackgroundJobRequest({
     creationEndpoint: XRayApi.compare_shared_type,
@@ -83,7 +105,9 @@ export default handleActions({
     ...tableXrayRequest.getReducers(),
     ...segmentXrayRequest.getReducers(),
     ...cardXrayRequest.getReducers(),
+    ...unsavedCardXrayRequest.getReducers(),
     ...sharedTypeComparisonXrayRequest.getReducers(),
     ...twoTypesComparisonXrayRequest.getReducers(),
     [INITIALIZE]: () => tableXrayRequest.getDefaultState(),
+    [SET_XRAY_ERROR]: (state, { payload: error }) => ({ ...state, error })
 }, tableXrayRequest.getDefaultState())

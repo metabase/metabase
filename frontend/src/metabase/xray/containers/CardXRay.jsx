@@ -4,7 +4,7 @@ import { connect } from 'react-redux'
 import { t } from 'c-3po';
 import { saturated } from 'metabase/lib/colors'
 
-import { fetchCardXray, initialize } from 'metabase/xray/xray'
+import { fetchCardXray, fetchUnsavedCardXray, initialize } from 'metabase/xray/xray'
 import {
     getLoadingStatus,
     getError,
@@ -33,13 +33,15 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = {
     initialize,
-    fetchCardXray
+    fetchCardXray,
+    fetchUnsavedCardXray
 }
 
 type Props = {
     initialize: () => void,
     initialize: () => {},
     fetchCardXray: () => void,
+    fetchUnsavedCardXray: () => void,
     isLoading: boolean,
     xray: {}
 }
@@ -69,9 +71,15 @@ class CardXRay extends Component {
     props: Props
 
     componentWillMount () {
-        const { cardId, cost } = this.props.params
+        const { location: { hash: questionUrlHash }, params: { cardId, cost } } = this.props
+
         this.props.initialize()
-        this.props.fetchCardXray(cardId, cost)
+
+        if (cardId) {
+            this.props.fetchCardXray(cardId, cost)
+        } else if (questionUrlHash) {
+            this.props.fetchUnsavedCardXray(questionUrlHash)
+        }
     }
 
     componentWillUnmount() {
@@ -106,16 +114,16 @@ class CardXRay extends Component {
                         <Heading heading="Growth rate" />
                         <div className="bg-white bordered rounded shadowed">
                             <div className="Grid Grid--1of4 border-bottom">
-                                { xray.features.DoD.value && (
+                                { xray.features.DoD && (
                                     <GrowthRateDisplay period={xray.features.DoD} />
                                 )}
-                                { xray.features.WoW.value && (
+                                { xray.features.WoW && (
                                     <GrowthRateDisplay period={xray.features.WoW} />
                                 )}
-                                { xray.features.MoM.value && (
+                                { xray.features.MoM && (
                                     <GrowthRateDisplay period={xray.features.MoM} />
                                 )}
-                                { xray.features.YoY.value && (
+                                { xray.features.YoY && (
                                     <GrowthRateDisplay period={xray.features.YoY} />
                                 )}
                             </div>
@@ -124,7 +132,11 @@ class CardXRay extends Component {
                                     <Visualization
                                         series={[
                                             {
-                                                card: xray.features.model,
+                                                card: {
+                                                    ...xray.features.model,
+                                                    visualization_settings: xray.features.model.visualization_settings || {},
+                                                    name: t`Question`
+                                                },
                                                 data: xray.features.series
                                             },
                                             {
@@ -144,71 +156,76 @@ class CardXRay extends Component {
                             </div>
                         </div>
 
-                        <Heading heading={xray.features['growth-series'].label} />
-                        <div className="full">
-                            <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
-                                <Visualization
-                                    series={[
-                                        {
-                                            card: {
-                                                display: 'line',
-                                                name: t`Trend`,
-                                                visualization_settings: {
+                        { xray.features['growth-series'] && <div>
+                            <Heading heading={xray.features['growth-series'].label} />
+                            <div className="full">
+                                <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
+                                    <Visualization
+                                        series={[
+                                            {
+                                                card: {
+                                                    display: 'line',
+                                                    name: t`Trend`,
+                                                    visualization_settings: {
 
+                                                    }
+                                                },
+                                                data: {
+                                                    ...xray.features['growth-series'].value,
+                                                    // multiple row value by 100 to display as a %
+                                                    rows: xray.features['growth-series'].value.rows.map(row =>
+                                                        [row[0], row[1]*100]
+                                                    )
                                                 }
-                                            },
-                                            data: {
-                                                ...xray.features['growth-series'].value,
-                                                // multiple row value by 100 to display as a %
-                                                rows: xray.features['growth-series'].value.rows.map(row =>
-                                                    [row[0], row[1]*100]
-                                                )
                                             }
-                                        }
-                                    ]}
-                                    className="full-height"
-                                />
+                                        ]}
+                                        className="full-height"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        </div> }
 
                         { xray.constituents[0] && (
                             <Periodicity xray={Object.values(xray.constituents)[0]} />
                         )}
 
-                        <Heading heading={xray.features['seasonal-decomposition'].label} />
-                        <div className="full">
-                            <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
-                                <Visualization
-                                    series={[
-                                        {
-                                            card: {
-                                                display: 'line',
-                                                name: t`Trend`,
-                                                visualization_settings: {}
+                        { xray.features['seasonal-decomposition'] && <div>
+                            <Heading heading={xray.features['seasonal-decomposition'].label} />
+                            <div className="full">
+                                <div className="bg-white bordered rounded shadowed" style={{ height: 220}}>
+                                    <Visualization
+                                        series={[
+                                            {
+                                                card: {
+                                                    display: 'line',
+                                                    name: t`Trend`,
+                                                    visualization_settings: {}
+                                                },
+                                                data: xray.features['seasonal-decomposition'].value.trend
                                             },
-                                            data: xray.features['seasonal-decomposition'].value.trend
-                                        },
-                                        {
-                                            card: {
-                                                display: 'line',
-                                                name: t`Seasonal`,
-                                                visualization_settings: {}
+                                            {
+                                                card: {
+                                                    display: 'line',
+                                                    name: t`Seasonal`,
+                                                    visualization_settings: {}
+                                                },
+                                                data: xray.features['seasonal-decomposition'].value.seasonal
                                             },
-                                            data: xray.features['seasonal-decomposition'].value.seasonal
-                                        },
-                                        {
-                                            card: {
-                                                display: 'line',
-                                                name: t`Residual`,
-                                                visualization_settings: {}
-                                            },
-                                            data: xray.features['seasonal-decomposition'].value.residual
-                                        }
-                                    ]}
-                                    className="full-height"
-                                />
+                                            {
+                                                card: {
+                                                    display: 'line',
+                                                    name: t`Residual`,
+                                                    visualization_settings: {}
+                                                },
+                                                data: xray.features['seasonal-decomposition'].value.residual
+                                            }
+                                        ]}
+                                        className="full-height"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        </div> }
+
                     </XRayPageWrapper>
                 }
             </LoadingAndErrorWrapper>

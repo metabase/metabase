@@ -256,6 +256,7 @@ export const getRoutes = (store) =>
                     <Route path="table/:tableId/:cost" component={TableXRay} />
                     <Route path="field/:fieldId/:cost" component={FieldXRay} />
                     <Route path="card/:cardId/:cost" component={CardXRay} />
+                    <Route path="card/:cost" component={CardXRay} />
                     <Route path="compare/:modelTypePlural/:modelId1/:modelId2/:cost" component={SharedTypeComparisonXRay} />
                     <Route path="compare/:modelType1/:modelId1/:modelType2/:modelId2/:cost" component={TwoTypesComparisonXRay} />
                 </Route>
