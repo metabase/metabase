@@ -1,0 +1,22 @@
+* { box-sizing: border-box; }
+
+html,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    height: 100%;
+}
+
+ol {
+    margin: 0;
+    padding: 0;
+}
+
+ol > li { 
+    list-style-type: none;
+}

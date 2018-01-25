@@ -39,6 +39,8 @@ import * as pulse from "metabase/pulse/reducers";
 /* xrays */
 import xray from "metabase/xray/xray";
 
+/* spaces */
+import spaces from "metabase/spaces/spaces";
 
 export default {
     ...commonReducers,
@@ -56,6 +58,7 @@ export default {
     labels,
     reference,
     xray,
+    _spaces: spaces, // name "_spaces" for now so it's easy to find uses if we want to move state around
     setup: combineReducers(setup),
     user: combineReducers(user),
     admin,
