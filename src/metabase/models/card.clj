@@ -64,7 +64,8 @@
                                          (map :id)
                                          set))]
     (for [card cards]
-      (assoc card :in_public_dashboard (contains? public-dashboard-card-ids (u/get-id card))))))
+      (when (some? card) ; card may be `nil` here if it comes from a text-only Dashcard
+        (assoc card :in_public_dashboard (contains? public-dashboard-card-ids (u/get-id card)))))))
 
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
