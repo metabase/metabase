@@ -29,7 +29,7 @@
   (-> card
       (select-keys [:name :description :display])
       (update :display name)
-      (assoc :id true)))
+      (assoc :id true, :include_csv false, :include_xls false)))
 
 (defn- recipient-details [user-kwd]
   (-> user-kwd
