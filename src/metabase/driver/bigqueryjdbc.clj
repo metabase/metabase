@@ -158,7 +158,8 @@
    "STRING"    identity
    "DATE"      parse-timestamp-str
    "DATETIME"  parse-timestamp-str
-   "TIMESTAMP" parse-timestamp-str})
+   "TIMESTAMP" parse-timestamp-str
+   "TIME"      parse-timestamp-str})
 
 (defn- post-process-native
   ([^QueryResponse response]
@@ -269,10 +270,10 @@
       "BigQuery statements can't be parameterized!")
     sql))
 
-(defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
+(defn- post-process-mbql [schema table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset
   ;; and table IDs
-  (let [demangle-name (u/rpartial str/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
+  (let [demangle-name (u/rpartial str/replace (re-pattern (str \.\*\?\_ table-name \_)) "")
         columns       (for [column columns]
                         (keyword (demangle-name column)))
         rows          (for [row rows]
@@ -291,13 +292,13 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [schema table-name mbql?]} :native, :as outer-query}]
   (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
                                                                      (unprepare/unprepare (cons sql params))
                                                                      sql))
         results (process-native* database sql)
         results (if mbql?
-                  (post-process-mbql dataset-id table-name results)
+                  (post-process-mbql schema table-name results)
                   (update results :columns (partial map keyword)))]
     (assoc results :annotate? mbql?)))
 
@@ -479,10 +480,10 @@
    [#"INT64"       :type/BigInteger]
    [#"RECORD"      :type/Dictionary]
    [#"STRING"      :type/Text]
-   [#"TIME"        :type/Time]
    [#"DATE"        :type/Date]
    [#"DATETIME"    :type/DateTime]
-   [#"TIMESTAMP"   :type/DateTime]])
+   [#"TIMESTAMP"   :type/DateTime]
+   [#"TIME"        :type/Time]])
 
 (defn- remove-rownum-column
 "Remove the `:__rownum__` column from results, if present."
