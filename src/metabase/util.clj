@@ -357,16 +357,15 @@
       [default args]))
 
 
-;; TODO - rename to `email?`
-(defn is-email?
+(defn email?
   "Is STRING a valid email address?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (s/lower-case s)))))
 
-;; TODO - rename to `url?`
-(defn is-url?
+
+(defn url?
   "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
   IP addresses will return `false`.)"
   ^Boolean [^String s]

@@ -73,7 +73,7 @@
   (cond
     ;; 1. url?
     (and (string? field-value)
-         (u/is-url? field-value)) :type/URL
+         (u/url? field-value)) :type/URL
     ;; 2. json?
     (and (string? field-value)
          (or (.startsWith "{" field-value)

@@ -28,7 +28,7 @@
 (defn- valid-json-url?
   "Is URL a valid HTTP URL and does it point to valid JSON?"
   [url]
-  (when (u/is-url? url)
+  (when (u/url? url)
     (valid-json? url)))
 
 (def ^:private valid-json-url-or-resource?

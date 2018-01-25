@@ -106,7 +106,7 @@
   "Format and send an email informing the user how to reset their password."
   [email google-auth? hostname password-reset-url]
   {:pre [(m/boolean? google-auth?)
-         (u/is-email? email)
+         (u/email? email)
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
@@ -148,7 +148,7 @@
 (defn send-notification-email!
   "Format and send an email informing the user about changes to objects in the system."
   [email context]
-  {:pre [(u/is-email? email) (map? context)]}
+  {:pre [(u/email? email) (map? context)]}
   (let [context      (merge (update context :dependencies build-dependencies)
                             notification-context
                             (random-quote-context))
@@ -162,7 +162,7 @@
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]
-  {:pre [(u/is-email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
+  {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
   (let [subject      (if (= "abandon" msg-type)
                        "[Metabase] Help make Metabase better."
                        "[Metabase] Tell us how things are going.")
