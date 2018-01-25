@@ -16,7 +16,7 @@ type Props = {
 
     isEditing: bool,
 
-    fieldId: FieldId,
+    fieldIds: FieldId[],
 };
 
 type State = {
@@ -41,23 +41,23 @@ export default class SearchTextWidget extends Component<*, Props, State> {
 
     static noPopover = true;
 
-    static format(entityId, fieldId) {
-        return <RemappedValue value={entityId} column={{ id: fieldId }} />
+    static format(value, fieldIds) {
+        return <RemappedValue value={value} column={{ id: fieldIds[0] }} />
     }
 
     render() {
         // $FlowFixMe: metadata provided by @connect
-        const { value, setValue, isEditing, fieldId, metadata } = this.props;
+        const { value, setValue, isEditing, fieldIds, metadata } = this.props;
         const { focused } = this.state;
 
         if (!focused && value) {
             return (
                 <div className="flex-full" onClick={() => this.setState({ focused: true })}>
-                    {SearchTextWidget.format(value , fieldId)}
+                    {SearchTextWidget.format(value, fieldIds)}
                 </div>
             );
         } else {
-            const field = metadata.fields[fieldId];
+            const field = metadata.fields[fieldIds[0]];
 
             return (
                 <FieldSearchInput
