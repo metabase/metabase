@@ -36,7 +36,9 @@
         (some? public-uuid))
    ;; if Dashboard is already hydrated no need to do it a second time
    (let [cards (or (dashcards->cards (:ordered_cards dashboard))
-                   (dashcards->cards (-> (db/select [DashboardCard :id :card_id], :dashboard_id (u/get-id dashboard))
+                   (dashcards->cards (-> (db/select [DashboardCard :id :card_id]
+                                           :dashboard_id (u/get-id dashboard)
+                                           :card_id      [:not= nil]) ; skip text-only Cards
                                          (hydrate [:card :in_public_dashboard] :series))))]
      (or (empty? cards)
          (some i/can-read? cards)))))

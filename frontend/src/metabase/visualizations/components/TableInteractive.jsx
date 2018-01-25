@@ -273,7 +273,8 @@ export default class TableInteractive extends Component {
         const isSortable = isClickable && column.source;
         const isRightAligned = isColumnRightAligned(column);
 
-        const isSorted = sort && sort[0] && sort[0][0] === column.id;
+        // the column id is in `["field-id", fieldId]` format
+        const isSorted = sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
         const isAscending = sort && sort[0] && sort[0][1] === "ascending";
 
         return (
