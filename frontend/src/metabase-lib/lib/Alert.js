@@ -29,7 +29,10 @@ export const getDefaultAlert = (question, user) => {
     };
 
     return {
-        card: { id: question.id() },
+        card: {
+            id: question.id(),
+            include_csv: alertType === ALERT_TYPE_ROWS
+        },
         channels: [defaultEmailChannel],
         ...typeDependentAlertFields
     };
