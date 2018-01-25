@@ -156,6 +156,7 @@
 ;; Check creation of a new rows alert with email notification
 (tt/expect-with-temp [Card [card1 {:name "My question"}]]
   [(-> (default-alert card1)
+       (assoc-in [:card :include_csv] true)
        (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
    (rasta-new-alert-email {"has any results" true})]
   (with-alert-setup
@@ -182,6 +183,7 @@
 (tt/expect-with-temp [Card [card1 {:name "My question"}]]
   [(-> (default-alert card1)
        (assoc :creator (user-details :crowberto))
+       (assoc-in [:card :include_csv] true)
        (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients (set (map recipient-details [:rasta :crowberto]))}))
    (merge (et/email-to :crowberto {:subject "You setup an alert",
                                    :body {"https://metabase.com/testmb" true,
