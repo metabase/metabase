@@ -657,3 +657,9 @@
  (var-get #'table-api/datetime-dimension-indexes)
  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
    (dimension-options-for-field response "date")))
+
+(qpt/expect-with-non-timeseries-dbs
+  []
+  (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+    (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
+      (dimension-options-for-field response "last_login_time"))))

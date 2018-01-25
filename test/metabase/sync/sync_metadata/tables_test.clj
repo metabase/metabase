@@ -7,18 +7,18 @@
             [toucan.db :as db]))
 
 (i/def-database-definition ^:const ^:private db-with-some-cruft
-  ["acquired_toucans"
-   [{:field-name "species",              :base-type :type/Text}
-    {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
-   [["Toco"               false]
-    ["Chestnut-Mandibled" true]
-    ["Keel-billed"        false]
-    ["Channel-billed"     false]]]
-  ["south_migrationhistory"
-   [{:field-name "app_name",  :base-type :type/Text}
-    {:field-name "migration", :base-type :type/Text}]
-   [["main" "0001_initial"]
-    ["main" "0002_add_toucans"]]])
+  [["acquired_toucans"
+     [{:field-name "species",              :base-type :type/Text}
+      {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
+     [["Toco"               false]
+      ["Chestnut-Mandibled" true]
+      ["Keel-billed"        false]
+      ["Channel-billed"     false]]]
+   ["south_migrationhistory"
+    [{:field-name "app_name",  :base-type :type/Text}
+     {:field-name "migration", :base-type :type/Text}]
+    [["main" "0001_initial"]
+     ["main" "0002_add_toucans"]]]])
 
 ;; south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such
 (expect
