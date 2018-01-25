@@ -21,7 +21,7 @@ import {
     FETCH_SEGMENT_XRAY,
     FETCH_SHARED_TYPE_COMPARISON_XRAY,
     FETCH_TABLE_XRAY,
-    FETCH_TWO_TYPES_COMPARISON_XRAY
+    FETCH_TWO_TYPES_COMPARISON_XRAY, FETCH_UNSAVED_CARD_XRAY
 } from "metabase/xray/xray";
 
 import FieldXray from "metabase/xray/containers/FieldXray";
@@ -62,7 +62,8 @@ import {
 describe("xray integration tests", () => {
     let segmentId = null;
     let segmentId2 = null;
-    let timeBreakoutQuestion = null;
+    let unsavedTimeBreakoutQuestion = null;
+    let savedTimeBreakoutQuestion = null;
     let segmentQuestion = null;
     let segmentQuestion2 = null;
 
@@ -77,7 +78,7 @@ describe("xray integration tests", () => {
             definition: { source_table: 1, filter: ["time-interval", ["field-id", 1], -15, "day"] }}
         segmentId2 = (await SegmentApi.create(segmentDef2)).id;
 
-        timeBreakoutQuestion = await createSavedQuestion(
+        unsavedTimeBreakoutQuestion =
             Question.create({databaseId: 1, tableId: 1, metadata: null})
                 .query()
                 .addAggregation(["count"])
@@ -85,7 +86,8 @@ describe("xray integration tests", () => {
                 .question()
                 .setDisplay("line")
                 .setDisplayName("Time breakout question")
-        )
+
+        savedTimeBreakoutQuestion = await createSavedQuestion(unsavedTimeBreakoutQuestion)
 
         segmentQuestion = await createSavedQuestion(
             Question.create({databaseId: 1, tableId: 1, metadata: null})
@@ -107,7 +109,7 @@ describe("xray integration tests", () => {
     afterAll(async () => {
         await SegmentApi.delete({ segmentId, revision_message: "Sadly this segment didn't enjoy a long life either" })
         await SegmentApi.delete({ segmentId: segmentId2, revision_message: "Sadly this segment didn't enjoy a long life either" })
-        await CardApi.delete({cardId: timeBreakoutQuestion.id()})
+        await CardApi.delete({cardId: savedTimeBreakoutQuestion.id()})
         await CardApi.delete({cardId: segmentQuestion.id()})
         await CardApi.delete({cardId: segmentQuestion2.id()})
         await SettingsApi.put({ key: 'enable-xrays' }, true)
@@ -229,7 +231,6 @@ describe("xray integration tests", () => {
 
             click(leftSideDropdown.find(ItemLink))
             const leftSidePopover = leftSideDropdown.find(TestPopover)
-            console.log(leftSidePopover.debug())
             expect(leftSidePopover.find(`a[href="/xray/compare/segment/${segmentId}/table/1/approximate"]`).length).toBe(0)
             // should filter out the current table
             expect(leftSidePopover.find(`a[href="/xray/compare/tables/1/1/approximate"]`).length).toBe(0)
@@ -237,7 +238,6 @@ describe("xray integration tests", () => {
             // right side should be be table and show only segments options as comparision options atm
             click(rightSideDropdown.find(ItemLink))
             const rightSidePopover = rightSideDropdown.find(TestPopover)
-            console.log(rightSidePopover.debug())
             expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId2}/approximate"]`).length).toBe(1)
             // should filter out the current segment
             expect(rightSidePopover.find(`a[href="/xray/compare/segments/${segmentId}/${segmentId}/approximate"]`).length).toBe(0)
@@ -280,16 +280,47 @@ describe("xray integration tests", () => {
     // NOTE Atte Keinänen 8/24/17: I wanted to test both QB action widget xray action and the card/segment xray pages
     // in the same tests so that we see that end-to-end user experience matches our expectations
 
-    describe("query builder actions", async () => {
+    fdescribe("query builder actions", async () => {
         beforeEach(async () => {
             await SettingsApi.put({ key: 'enable-xrays', value: 'true' })
         })
 
-        it("let you see card xray for a timeseries question", async () => {
+        it("let you see card xray for an unsaved timeseries question", async () => {
             await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
             const store = await createTestStore()
             // make sure xrays are on and at the proper cost
-            store.pushPath(Urls.question(timeBreakoutQuestion.id()))
+            console.log(unsavedTimeBreakoutQuestion.getUrl())
+            store.pushPath(unsavedTimeBreakoutQuestion.getUrl())
+            const app = mount(store.getAppContainer());
+
+            await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
+            // NOTE Atte Keinänen: Not sure why we need this delay to get most of action widget actions to appear :/
+            await delay(500);
+
+            const actionsWidget = app.find(ActionsWidget)
+            click(actionsWidget.childAt(0))
+            const xrayOptionIcon = actionsWidget.find('.Icon.Icon-beaker')
+            click(xrayOptionIcon);
+
+
+            await store.waitForActions([FETCH_UNSAVED_CARD_XRAY], {timeout: 20000})
+            expect(store.getPath()).toBe(`/xray/card/extended#${unsavedTimeBreakoutQuestion.getUrlHash()}`)
+
+            const cardXRay = app.find(CardXRay)
+            expect(cardXRay.length).toBe(1)
+            // expect(cardXRay.text()).toMatch(/Time breakout question/);
+
+            // Should contain the expected insights
+            expect(app.find(InsightCard).length > 0).toBe(true)
+            expect(app.find(NoisinessInsight).length).toBe(1)
+            expect(app.find(AutocorrelationInsight).length).toBe(1)
+        })
+
+        it("let you see card xray for a saved timeseries question", async () => {
+            await SettingsApi.put({ key: 'xray-max-cost', value: 'extended' })
+            const store = await createTestStore()
+            // make sure xrays are on and at the proper cost
+            store.pushPath(Urls.question(savedTimeBreakoutQuestion.id()))
             const app = mount(store.getAppContainer());
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
@@ -303,7 +334,7 @@ describe("xray integration tests", () => {
 
 
             await store.waitForActions([FETCH_CARD_XRAY], {timeout: 20000})
-            expect(store.getPath()).toBe(`/xray/card/${timeBreakoutQuestion.id()}/extended`)
+            expect(store.getPath()).toBe(`/xray/card/${savedTimeBreakoutQuestion.id()}/extended`)
 
             const cardXRay = app.find(CardXRay)
             expect(cardXRay.length).toBe(1)
@@ -368,7 +399,7 @@ describe("xray integration tests", () => {
             expect(getXrayEnabled(store.getState())).toEqual(false)
 
             // navigate to a previosuly x-ray-able entity
-            store.pushPath(Urls.question(timeBreakoutQuestion.id()))
+            store.pushPath(Urls.question(savedTimeBreakoutQuestion.id()))
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED])
 
             // for some reason a delay is needed to get the full action suite
