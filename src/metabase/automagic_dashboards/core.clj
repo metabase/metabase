@@ -28,7 +28,7 @@
                 [template-type (type model)]))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation base_type]}]
+  [_ {:keys [fk_target_field_id id link aggregation base_type fingerprint]}]
   (let [reference (cond
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
@@ -40,7 +40,7 @@
       (and aggregation
            ; We don't handle binning on non-analyzed fields gracefully
            (or (not (isa? base_type :type/Number))
-               (-> field :fingerprint :type :type/Number :min)))
+               (-> fingerprint :type :type/Number :min)))
       [:binning-strategy reference aggregation]
 
       :else
