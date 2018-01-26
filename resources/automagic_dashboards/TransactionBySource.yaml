@@ -41,10 +41,17 @@ filters:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
   - NewUsers:
       filter: ["time-interval", [dimension, Cohort], -30, day]
+groups:
+- Financial:
+    title: Financial
+- UserAcquisition:
+    title: User acquisition
 cards:
 - OrdersBySourceTimeseries:
     title: Sales by source
-    visualization: area
+    visualization:
+      area:
+        stackable.stack_type: stacked
     dimensions:
       - Timestamp
       - SourceSmall
@@ -52,6 +59,7 @@ cards:
     width: 18
     score: 100
 - OrderBySource:
+    group: Financial
     title: Total orders by source (top 10)
     visualization: row
     dimensions: Source
@@ -62,6 +70,7 @@ cards:
     score: 80
     height: 8
 - IncomeBySource:
+    group: Financial
     title: Total income by source (top 10)
     visualization: row
     dimensions: Source
@@ -72,6 +81,7 @@ cards:
     score: 80
     height: 8
 - AvgQuantityBySource:
+    group: Financial
     title: Average qunatity by source (top 10)
     visualization: row
     dimensions: Source
@@ -82,6 +92,7 @@ cards:
     score: 80
     height: 8
 - AvgIncomeBySource:
+   group: Financial
    title: Average income by source (top 10)
    visualization: row
    dimensions: Source
@@ -92,6 +103,7 @@ cards:
    score: 80
    height: 8
 - UsersBySource:
+    group: UserAcquisition
     visualization: row
     title: Number of users by source (top 10)
     dimensions: Source
@@ -102,6 +114,7 @@ cards:
     score: 90
     height: 8
 - NewUsersBySource:
+    group: UserAcquisition
     visualization: row
     title: New users in the last 30 days by source (top 10)
     dimensions: Source

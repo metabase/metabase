@@ -349,7 +349,7 @@
                        (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
                        (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
                        (assoc <> :filters (resolve-overloading <> (:filters rule))))
-           dashboard (->> (select-keys rule [:title :description])
+           dashboard (->> (select-keys rule [:title :description :groups])
                           (instantiate-metadata context {}))]
        (log/info (format "Applying heuristic %s to table %s."
                          (:table_type rule)
