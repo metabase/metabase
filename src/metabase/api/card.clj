@@ -36,6 +36,7 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -668,6 +669,11 @@
   (api/check-superuser)
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
+
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (related/related (Card id)))
 
 (api/define-routes
   (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))

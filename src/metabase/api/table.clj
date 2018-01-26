@@ -15,6 +15,7 @@
              [field-values :refer [FieldValues] :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -316,5 +317,9 @@
     (db/simple-delete! FieldValues :id [:in field-ids]))
   {:status :success})
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (related/related (Table id)))
 
 (api/define-routes)
