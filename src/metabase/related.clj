@@ -1,6 +1,8 @@
 (ns metabase.related
   "Related entities recommendations."
-  (:require [metabase.models
+  (:require [clojure.data :refer [diff]]
+            [kixi.stats.math :as math]
+            [metabase.models
              [card :refer [Card]]
              [dashboard-card :refer [DashboardCard]]
              [field :refer [Field]]
@@ -9,6 +11,22 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [toucan.db :as db]))
+
+(defn- similarity
+  [a b]
+  (let [[in-a in-b _] (diff a b)
+        branch?       (some-fn sequential? map?)
+        node-count    (comp count
+                            (partial remove (some-fn branch? nil?))
+                            (partial tree-seq branch? identity))]
+    (- 1  (/ (+ (node-count in-a)
+                (node-count in-b))
+             (+ (node-count a)
+                (node-count b))))))
+
+(defn- similarity-by
+  [keyfn a b]
+  (similarity (keyfn a) (keyfn b)))
 
 (defn- metrics-for-table
   [table]
@@ -45,6 +63,25 @@
          (map Card)
          (filter mi/can-read?))))
 
+(defn- card-similarity
+  "How similar are the two cards based on a structural comparison of the
+   aggregation and breakout clauses.
+   We take squares of similarity becouse a strong match in one facet is better
+   than a mediocre match on both facets."
+  [a b]
+  (/ (+ (math/sq (similarity-by (comp :breakout :query :dataset_query) a b))
+        (math/sq (similarity-by (comp :aggregation :query :dataset_query) a b)))
+     2))
+
+(defn- similar-questions
+  [card]
+  (->> (db/select Card
+         :table_id (:table_id card))
+       (map #(assoc % :similarity (card-similarity card %)))
+       (filter (every-pred (comp pos? :similarity)
+                           mi/can-read?))
+       (sort-by :similarity >)))
+
 (defmulti
   ^{:doc "Return related entities."
     :arglists '([entity])}
@@ -53,10 +90,11 @@
 (defmethod related (type Card)
   [card]
   (let [table (Table (:table_id card))]
-    {:table     table
-     :metrics   (metrics-for-table table)
-     :segments  (segments-for-table table)
-     :questions (cards-sharing-dashboard card)}))
+    {:table             table
+     :metrics           (metrics-for-table table)
+     :segments          (segments-for-table table)
+     :dashboard-mates   (cards-sharing-dashboard card)
+     :similar-questions (similar-questions card)}))
 
 (defmethod related (type Metric)
   [metric]
