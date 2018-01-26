@@ -107,6 +107,11 @@
     (doseq [recipient (non-creator-recipients alert)]
       (messages/send-you-were-added-alert-email! alert recipient @api/*current-user*))))
 
+(defn- maybe-include-csv [card alert-condition]
+  (if (= "rows" alert-condition)
+    (assoc card :include_csv true)
+    card))
+
 (api/defendpoint POST "/"
   "Create a new alert (`Pulse`)"
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal] :as req} :body}]
@@ -116,10 +121,11 @@
    card              su/Map
    channels          (su/non-empty [su/Map])}
   (pulse-api/check-card-read-permissions [card])
-  (let [new-alert (api/check-500
+  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/create-card-ref)
+        new-alert (api/check-500
                    (-> req
                        only-alert-keys
-                       (pulse/create-alert! api/*current-user-id* (pulse/create-card-ref card) channels)))]
+                       (pulse/create-alert! api/*current-user-id* alert-card channels)))]
 
     (notify-new-alert-created! new-alert)
 
