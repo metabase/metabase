@@ -16,11 +16,11 @@ type Props = {
 
     isEditing: bool,
 
-    fieldIds: FieldId[],
+    fields: Field[],
 };
 
 type State = {
-    focused: bool,
+    isFocused: bool,
 };
 
 const mapStateToProps = (state) => ({
@@ -35,39 +35,46 @@ export default class SearchTextWidget extends Component<*, Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = {
-            focused: false,
+            isFocused: false,
         };
     }
 
     static noPopover = true;
 
-    static format(value, fieldIds) {
-        return <RemappedValue value={value} column={{ id: fieldIds[0] }} />
+    static format(value, field) {
+        return <RemappedValue value={value} column={field} />
     }
 
     render() {
         // $FlowFixMe: metadata provided by @connect
-        const { value, setValue, isEditing, fieldIds, metadata } = this.props;
-        const { focused } = this.state;
+        const { value, setValue, isEditing, fields, metadata, parentFocusChanged } = this.props;
+        const { isFocused } = this.state;
+        const field = fields[0];
 
-        if (!focused && value) {
+        const defaultPlaceholder = isFocused ? "" : (this.props.placeholder || t`Enter a value...`);
+
+        const focusChanged = (isFocused) => {
+            if (parentFocusChanged) parentFocusChanged(isFocused);
+            this.setState({isFocused})
+        };
+
+        if (!isFocused && value) {
             return (
-                <div className="flex-full" onClick={() => this.setState({ focused: true })}>
-                    {SearchTextWidget.format(value, fieldIds)}
+                <div className="flex-full" onClick={() => focusChanged(true)}>
+                    {SearchTextWidget.format(value, field)}
                 </div>
             );
         } else {
-            const field = metadata.fields[fieldIds[0]];
 
             return (
                 <FieldSearchInput
                     value={value}
                     onChange={setValue}
-                    onFocus={() => this.setState({ focused: true })}
-                    onBlur={() => this.setState({ focused: false })}
-                    autoFocus={this.state.focused}
-                    placeholder={isEditing ? "Enter a default value..." : "Enter a value..."}
-
+                    isFocused={isFocused}
+                    onFocus={() => focusChanged(true)}
+                    onBlur={() => focusChanged(false)}
+                    autoFocus={this.state.isFocused}
+                    placeholder={isEditing ? "Enter a default value..." : defaultPlaceholder}
                     field={field}
                     searchField={field && field.parameterSearchField()}
                 />

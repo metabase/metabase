@@ -67,10 +67,10 @@ export default class FieldSearchInput extends Component {
     };
 
     render() {
-        const { field, searchField } = this.props;
-        let placeholder;
-        if (searchField && field !== searchField && field.isID()) {
-            placeholder = "Enter an ID or search for a " + singularize(searchField.table.display_name);
+        const { field, searchField, isFocused } = this.props;
+        let { placeholder } = this.props;
+        if (isFocused && searchField && field !== searchField && field.isID()) {
+            placeholder = singularize(searchField.table.display_name) + " ID or " + searchField.display_name;
         }
         return (
             <SearchInput

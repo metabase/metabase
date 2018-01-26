@@ -148,8 +148,8 @@ export const getMappingsByParameter = createSelector(
 
 /** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
-    [getDashboard, getMappingsByParameter],
-    (dashboard, mappingsByParameter) =>
+    [getMetadata, getDashboard, getMappingsByParameter],
+    (metadata, dashboard, mappingsByParameter) =>
         (dashboard && dashboard.parameters || []).map(parameter => {
             // get the unique list of field IDs these mappings reference
             const fieldIds = _.chain(mappingsByParameter[parameter.id])
@@ -161,7 +161,8 @@ export const getParameters = createSelector(
                 .value();
             return {
                 ...parameter,
-                field_ids: fieldIds
+                field_ids: fieldIds,
+                fields: fieldIds.map(id => metadata.fields[id]).filter(f => f)
             }
         })
 )

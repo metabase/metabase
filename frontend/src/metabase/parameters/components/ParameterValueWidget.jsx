@@ -77,7 +77,7 @@ export default class ParameterValueWidget extends Component {
             return DATE_WIDGETS[parameter.type];
         } else if (values && values.length > 0) {
             return CategoryWidget;
-        } else if (parameter.field_ids.length === 1) {
+        } else if (parameter.fields.length === 1 && parameter.fields[0].parameterIsSearchable()) {
             return SearchTextWidget;
         } else {
             return TextWidget;
@@ -163,7 +163,7 @@ export default class ParameterValueWidget extends Component {
                         placeholder={placeholder}
                         value={value}
                         values={values}
-                        fieldIds={parameter.field_ids}
+                        fields={parameter.fields}
                         setValue={setValue}
                         isEditing={isEditing}
                         commitImmediately={commitImmediately}
