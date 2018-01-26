@@ -149,7 +149,7 @@
    "INTEGER"   #(Long/parseLong %)
    "RECORD"    identity
    "STRING"    identity
-   "DATE"      parse-timestamp-str
+   "DATE"      #(u/parse-date "yyyy-MM-dd" %)
    "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str
    "TIME"      parse-timestamp-str})
