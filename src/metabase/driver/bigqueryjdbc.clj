@@ -393,6 +393,10 @@
 (defn- date-interval [unit amount]
   (hsql/raw (format "(DATE_ADD(NOW(), %d, '%s'))" (int amount) (name unit))))
 
+
+;;; ----------------------------------------------------- JDBC -----------------------------------------------------
+
+
 (def ^:private driver (BigQueryJDBCDriver.))
 
 (def ^:private ^:const pattern->type
