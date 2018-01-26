@@ -79,13 +79,6 @@
                         :let [^TableReference tableref (.getTableReference table)]]
                     {:schema nil, :name (.getTableId tableref)}))}))
 
-(defn- can-connect? [details-map]
-  {:pre [(map? details-map)]}
-  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're
-  ;; g2g
-  (boolean (list-tables {:details details-map})))
-
-
 (defn- ^Table get-table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
    (get-table (database->client database) project-id dataset-id table-id))
@@ -156,7 +149,7 @@
    "INTEGER"   #(Long/parseLong %)
    "RECORD"    identity
    "STRING"    identity
-   "DATE"      parse-timestamp-str
+   "DATE"      #(parse-timestamp-str (u/parse-date "yyyy-MM-dd" %))
    "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str
    "TIME"      parse-timestamp-str})
@@ -273,7 +266,7 @@
 (defn- post-process-mbql [schema table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset
   ;; and table IDs
-  (let [demangle-name (u/rpartial str/replace (re-pattern (str \.\*\?\_ table-name \_)) "")
+  (let [demangle-name (u/rpartial str/replace (re-pattern (str \^\.\*\?\_ table-name \_)) "")
         columns       (for [column columns]
                         (keyword (demangle-name column)))
         rows          (for [row rows]
@@ -477,7 +470,7 @@
 (def ^:private ^:const pattern->type
   [[#"BOOL"        :type/Boolean]
    [#"FLOAT"       :type/Float]
-   [#"INT64"       :type/BigInteger]
+   [#"INT"         :type/BigInteger]
    [#"RECORD"      :type/Dictionary]
    [#"STRING"      :type/Text]
    [#"DATE"        :type/Date]
