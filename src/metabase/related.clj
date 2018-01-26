@@ -4,6 +4,7 @@
              [card :refer [Card]]
              [dashboard-card :refer [DashboardCard]]
              [field :refer [Field]]
+             [interface :as mi]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
@@ -11,11 +12,11 @@
 
 (defn- metrics-for-table
   [table]
-  (db/select Metric :table_id (:id table)))
+  (filter mi/can-read? (db/select Metric :table_id (:id table))))
 
 (defn- segments-for-table
   [table]
-  (db/select Segment :table_id (:id table)))
+  (filter mi/can-read? (db/select Segment :table_id (:id table))))
 
 (defn- linking-to
   [table]
@@ -23,21 +24,26 @@
          :table_id (:id table)
          :fk_target_field_id [:not= nil])
        (map (comp Table :table_id Field))
-       distinct))
+       distinct
+       (filter mi/can-read?)))
 
 (defn- linked-from
   [table]
   (let [fields (db/select-field :id Field :table_id (:id table))]
-    (map Table (db/select-field :table_id Field
-                 :fk_target_field_id [:in fields]))))
+    (->> (db/select-field :table_id Field
+           :fk_target_field_id [:in fields])
+         (map Table)
+         (filter mi/can-read?))))
 
 (defn- cards-sharing-dashboard
   [card]
   (let [dashboards (db/select-field :dashboard_id DashboardCard
                      :card_id (:id card))]
-    (map Card (db/select-field :card_id DashboardCard
-                :dashboard_id [:in dashboards]
-                :card_id [:not= (:id card)]))))
+    (->> (db/select-field :card_id DashboardCard
+           :dashboard_id [:in dashboards]
+           :card_id [:not= (:id card)])
+         (map Card)
+         (filter mi/can-read?))))
 
 (defmulti
   ^{:doc "Return related entities."
@@ -57,9 +63,7 @@
   (let [table (Table (:table_id metric))]
     {:table          table
      :metrics        (remove #{metric} (metrics-for-table table))
-     :segments       (segments-for-table table)
-     ;:pinned-metrics
-     }))
+     :segments       (segments-for-table table)}))
 
 (defmethod related (type Segment)
   [segment]
