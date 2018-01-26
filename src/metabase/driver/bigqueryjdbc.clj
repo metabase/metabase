@@ -53,7 +53,7 @@
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
 (defn- describe-database
-  "Custom implementation of `describe-database` for Vertica."
+  "Custom implementation of `describe-database` for BigQuery"
   [driver database]
   (update (sql/describe-database driver database)))
 
