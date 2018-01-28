@@ -110,7 +110,6 @@ const GuideDetailEditor = ({
                         }
                         setSourceTableFn={(tableId) => {
                             const table = tables[tableId];
-                            console.log('lol table', table)
                             formField.id.onChange(table.id);
                             formField.type.onChange('table');
                             formField.points_of_interest.onChange(table.points_of_interest || null);

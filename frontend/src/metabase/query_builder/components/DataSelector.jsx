@@ -91,6 +91,7 @@ export default class DataSelector extends Component {
 
         const selectedSegmentId = props.selectedSegmentId
         const selectedSegment = selectedSegmentId ? props.segments.find(segment => segment.id === selectedSegmentId) : null;
+        const selectedField = props.selectedFieldId ? props.metadata.fields[props.selectedFieldId] : null
 
         this.state = {
             databases,
@@ -98,8 +99,8 @@ export default class DataSelector extends Component {
             selectedSchema,
             selectedTable,
             selectedSegment,
-            selectedField: null,
-            activeStep: steps[0],
+            selectedField,
+            activeStep: null,
             steps: steps,
             isLoading: false,
         };
@@ -137,46 +138,48 @@ export default class DataSelector extends Component {
     }
 
     hydrateActiveStep() {
-        let activeStep = this.state.steps[0];
-
-        if (this.props.selectedTableId) {
-            activeStep = TABLE_STEP;
-        }
-
         if (this.props.selectedFieldId) {
-            activeStep = FIELD_STEP;
-            this.fetchStepData(FIELD_STEP);
+            this.switchToStep(FIELD_STEP);
+        } else if (this.props.selectedTableId) {
+            if (this.props.segments) {
+                this.switchToStep(SEGMENT_OR_TABLE_STEP);
+            } else {
+                this.switchToStep(TABLE_STEP);
+            }
         }
-
-        this.setState({activeStep});
+        else {
+            let firstStep = this.state.steps[0];
+            this.switchToStep(firstStep)
+        }
     }
 
     nextStep = (stateChange = {}) => {
         let activeStepIndex = this.state.steps.indexOf(this.state.activeStep);
         if (activeStepIndex + 1 >= this.state.steps.length) {
+            this.setState(stateChange)
             this.refs.popover.toggle();
         } else {
-            activeStepIndex += 1;
+            const nextStep = this.state.steps[activeStepIndex + 1]
+            this.switchToStep(nextStep, stateChange);
+        }
+    }
+    
+    switchToStep = async (stepName, stateChange = {}) => {
+        const updatedState =  { ...this.state, ...stateChange, activeStep: stepName }
+
+        const loadersForSteps = {
+            [FIELD_STEP]: () => updatedState.selectedTable && this.props.fetchTableMetadata(updatedState.selectedTable.id)
+        }
+
+        if (loadersForSteps[stepName]) {
+            this.setState({ ...updatedState, isLoading: true });
+            await loadersForSteps[stepName]();
         }
 
         this.setState({
-            activeStep: this.state.steps[activeStepIndex],
-            ...stateChange
-        }, this.fetchStepData);
-    }
-
-    fetchStepData = async (stepName) => {
-        let promise, results;
-        stepName = stepName || this.state.activeStep;
-        switch(stepName) {
-            case FIELD_STEP: promise = this.props.fetchTableMetadata(this.state.selectedTable.id);
-        }
-        if (promise) {
-            this.setState({isLoading: true});
-            results = await promise;
-            this.setState({isLoading: false});
-        }
-        return results;
+            ...updatedState,
+            isLoading: false
+        });
     }
 
     hasPreviousStep = () => {
@@ -185,8 +188,8 @@ export default class DataSelector extends Component {
 
     onBack = () => {
         if (!this.hasPreviousStep()) { return; }
-        const activeStep = this.state.steps[this.state.steps.indexOf(this.state.activeStep) - 1];
-        this.setState({ activeStep });
+        const previousStep = this.state.steps[this.state.steps.indexOf(this.state.activeStep) - 1];
+        this.switchToStep(previousStep)
     }
 
     onChangeDatabase = (index, schemaInSameStep) => {
@@ -358,6 +361,8 @@ export default class DataSelector extends Component {
                     />
                 }
         }
+
+        return null;
     }
 
     render() {
@@ -376,11 +381,6 @@ export default class DataSelector extends Component {
         );
     }
 }
-
-// getFieldId() {
-//     return this.state.selectedField && this.state.selectedField.id;
-// }
-
 
 const DatabasePicker = ({ databases, selectedDatabase, onChangeDatabase }) => {
     if (databases.length === 0) {
@@ -432,10 +432,11 @@ const SegmentAndDatabasePicker = ({ databases, selectedSchema, onChangeSchema, o
             className="text-brand"
             sections={sections}
             onChange={onChangeSchema}
-            onChangeSection={(index) => index === 0 ?
-                onShowSegmentSection() :
-                onChangeDatabase(index - segmentItem.length)
-            }
+            onChangeSection={(index) => {
+                index === 0
+                    ? onShowSegmentSection()
+                    : onChangeDatabase(index - segmentItem.length, true)
+            }}
             itemIsSelected={(schema) => selectedSchema === schema}
             renderSectionIcon={(section) => <Icon className="Icon text-default" name={section.icon || "database"} size={18} />}
             renderItemIcon={() => <Icon name="folder" size={16} />}

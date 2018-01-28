@@ -2,6 +2,9 @@
 
 import React, { Component } from "react";
 import { t } from 'c-3po';
+import _ from "underscore";
+import { connect } from "react-redux";
+
 import Toggle from "metabase/components/Toggle.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
@@ -9,13 +12,12 @@ import DataSelector from '../DataSelector.jsx';
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
-
-import _ from "underscore";
-
 import type { TemplateTag } from "metabase/meta/types/Query";
 import type { Database } from "metabase/meta/types/Database"
 
 import Field from "metabase-lib/lib/metadata/Field";
+import { fetchField } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 type Props = {
     tag: TemplateTag,
@@ -25,8 +27,19 @@ type Props = {
     databases: Database[],
 };
 
+@connect((state) => ({ metadata: getMetadata(state) }),{ fetchField })
 export default class TagEditorParam extends Component {
     props: Props;
+
+    componentWillMount() {
+        const { tag, fetchField } = this.props
+
+        if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
+            const fieldId = tag.dimension[1]
+            // Field values might already have been loaded so force the load of other field information too
+            fetchField(fieldId, true)
+        }
+    }
 
     setParameterAttribute(attr, val) {
         // only register an update if the value actually changes
@@ -60,14 +73,14 @@ export default class TagEditorParam extends Component {
     }
 
     setDimension(fieldId) {
-        const { tag, onUpdate, databaseFields } = this.props;
+        const { tag, onUpdate, metadata } = this.props;
         const dimension = ["field-id", fieldId];
         if (!_.isEqual(tag.dimension !== dimension)) {
-            const field = _.findWhere(databaseFields, { id: fieldId });
+            const field = metadata.fields[dimension[1]]
             if (!field) {
                 return;
             }
-            const options = parameterOptionsForField(new Field(field));
+            const options = parameterOptionsForField(field);
             let widget_type;
             if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
                 widget_type = tag.widget_type;
@@ -83,14 +96,15 @@ export default class TagEditorParam extends Component {
     }
 
     render() {
-        const { tag, database, databases, databaseFields } = this.props;
+        const { tag, database, databases, metadata } = this.props;
 
         let widgetOptions, table;
         if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-            const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
+            const field = metadata.fields[tag.dimension[1]]
+
             if (field) {
-                widgetOptions = parameterOptionsForField(new Field(field));
-                table = _.findWhere(database.tables, { display_name: field.table_name });
+                widgetOptions = parameterOptionsForField(field);
+                table = field.table
             }
         }
 
@@ -129,7 +143,7 @@ export default class TagEditorParam extends Component {
                     <div className="pb1">
                         <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
 
-                        <DataSelector
+                        { (!Array.isArray(tag.dimension) || (Array.isArray(tag.dimension) && table)) && <DataSelector
                             ref="dataSection"
                             databases={databases}
                             selectedDatabaseId={database.id}
@@ -139,7 +153,8 @@ export default class TagEditorParam extends Component {
                             renderAsSelect={true}
                             skipDatabaseSelection={true}
                             className="AdminSelect flex align-center"
-                        />
+                            isInitiallyOpen={!tag.dimension}
+                        /> }
                     </div>
                 }
 
