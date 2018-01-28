@@ -84,19 +84,17 @@ const GuideDetailEditor = ({
                         className={cx(selectClasses, 'inline-block', 'rounded', 'text-bold')}
                         triggerIconSize={12}
                         includeTables={true}
-                        datasetQuery={{
-                            query: {
-                                source_table: formField.type.value === 'table' &&
-                                    Number.parseInt(formField.id.value)
-                            },
-                            database: (
-                                formField.type.value === 'table' &&
-                                tables[formField.id.value] &&
-                                tables[formField.id.value].db_id
-                            ) || Number.parseInt(Object.keys(databases)[0]),
-                            segment: formField.type.value === 'segment' &&
-                                Number.parseInt(formField.id.value)
-                        }}
+                        selectedTableId={
+                            formField.type.value === 'table' && Number.parseInt(formField.id.value)
+                        }
+                        selectedDatabaseId={
+                            formField.type.value === 'table' &&
+                            tables[formField.id.value] &&
+                            tables[formField.id.value].db_id
+                        }
+                        selectedSegmentId={
+                            formField.type.value === 'segment' && Number.parseInt(formField.id.value)
+                        }
                         databases={
                             Object.values(databases)
                                 .map(database => ({
@@ -112,10 +110,11 @@ const GuideDetailEditor = ({
                         }
                         setSourceTableFn={(tableId) => {
                             const table = tables[tableId];
+                            console.log('lol table', table)
                             formField.id.onChange(table.id);
                             formField.type.onChange('table');
-                            formField.points_of_interest.onChange(table.points_of_interest || '');
-                            formField.caveats.onChange(table.caveats || '');
+                            formField.points_of_interest.onChange(table.points_of_interest || null);
+                            formField.caveats.onChange(table.caveats || null);
                         }}
                         segments={Object.values(segments)}
                         disabledSegmentIds={selectedIdTypePairs

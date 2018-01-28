@@ -85,12 +85,6 @@ export default class TagEditorParam extends Component {
     render() {
         const { tag, database, databases, databaseFields } = this.props;
 
-        let dabaseHasSchemas = false;
-        if (databaseFields) {
-            let schemas = _.chain(databaseFields).pluck("schema").uniq().value();
-            dabaseHasSchemas = schemas.length > 1;
-        }
-
         let widgetOptions, table;
         if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });

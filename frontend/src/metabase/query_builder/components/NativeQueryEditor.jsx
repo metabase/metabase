@@ -270,7 +270,7 @@ export default class NativeQueryEditor extends Component {
                         <span className="GuiBuilder-section-label Query-label">{t`Database`}</span>
                         <DataSelector
                             databases={databases}
-                            datasetQuery={query.datasetQuery()}
+                            selectedDatabaseId={database && database.id}
                             setDatabaseFn={this.setDatabaseId}
                             isInitiallyOpen={database == null}
                         />
@@ -290,17 +290,14 @@ export default class NativeQueryEditor extends Component {
                         <span className="GuiBuilder-section-label Query-label">{t`Table`}</span>
                         <DataSelector
                             ref="dataSection"
-                            includeTables={true}
-                            datasetQuery={{
-                                type: "query",
-                                query: { source_table: selectedTable ? selectedTable.id : null },
-                                database: database && database.id
-                            }}
+                            selectedTableId={selectedTable ? selectedTable.id : null}
+                            selectedDatabaseId={database && database.id}
                             databases={[database]}
                             tables={tables}
                             setDatabaseFn={this.setDatabaseId}
                             setSourceTableFn={this.setTableId}
                             isInitiallyOpen={false}
+                            skipDatabaseSelection={true}
                         />
                     </div>
                 );
