@@ -176,14 +176,14 @@
 (defmethod related (type Segment)
   [segment]
   (let [table (Table (:table_id segment))]
-    {:table     table
-     :metrics   (->> table
-                     metrics-for-table
-                     (interesting-mix segment))
-     :segments  (->> table
-                     segments-for-table
-                     (interesting-mix segment))
-    :linking-to (linking-to table)}))
+    {:table      table
+     :metrics    (->> table
+                      metrics-for-table
+                      (interesting-mix segment))
+     :segments   (->> table
+                      segments-for-table
+                      (interesting-mix segment))
+     :linking-to (linking-to table)}))
 
 (defmethod related (type Table)
   [table]
