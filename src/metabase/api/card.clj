@@ -678,8 +678,6 @@
 (defn adhoc-query
   "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
   [{:keys [database], :as query}]
-  (when-not (= database database/virtual-id)
-    (api/read-check Database database))
   (->> {:dataset_query query}
        (merge (card/query->database-and-table-ids query))
        query/map->QueryInstance))
