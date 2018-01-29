@@ -55,6 +55,10 @@
     justify-content: flex-end;
 }
 
+.Query-section.Query-section-aggregation.AddButton {
+  padding-right: 50px;
+}
+
 .QueryName {
     font-weight: 200;
     margin-top: 0;

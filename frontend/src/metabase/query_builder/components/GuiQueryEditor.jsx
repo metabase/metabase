@@ -212,7 +212,11 @@ export default class GuiQueryEditor extends Component {
                     );
                 }
             }
-            return aggregationList
+            return (
+              <div className={cx("Query-section Query-section-breakout scroll-x scroll-show scroll-show--horizontal")}>
+                {aggregationList}
+              </div>
+            )
         } else {
             // TODO: move this into AggregationWidget?
             return (
