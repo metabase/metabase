@@ -97,3 +97,13 @@
             (ql/expressions {:x (ql/* $price 2.0)})
             (ql/aggregation (ql/count))
             (ql/breakout (ql/expression :x))))))
+
+;; Custom aggregation expressions should include their type
+(datasets/expect-with-engines (engines-that-support :expressions)
+  #{{:name "CATEGORY_ID" :base_type :type/Integer}
+    {:name "x" :base_type :type/Float}}
+  (set (map #(select-keys % [:name :base_type])
+            (-> (data/run-query venues
+                  (ql/aggregation (ql/named (ql/sum (ql/* $price -1)) "x"))
+                  (ql/breakout $category_id))
+                (get-in [:data :cols])))))

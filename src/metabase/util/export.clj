@@ -2,10 +2,8 @@
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream File]
            org.apache.poi.ss.usermodel.Cell))
-
-
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
@@ -20,6 +18,12 @@
                                (json/parse-string keyword)
                                :v))))
 
+(defn- results->cells
+  "Convert the resultset to a seq of rows with the first row as a header"
+  [results]
+  (cons (map :display_name (get-in results [:result :data :cols]))
+        (get-in results [:result :data :rows])))
+
 (defn- export-to-xlsx [columns rows]
   (let [wb  (spreadsheet/create-workbook "Query result" (cons (mapv name columns) rows))
         ;; note: byte array streams don't need to be closed
@@ -27,10 +31,24 @@
     (spreadsheet/save-workbook! out wb)
     (ByteArrayInputStream. (.toByteArray out))))
 
+(defn export-to-xlsx-file
+  "Write an XLS file to `FILE` with the header a and rows found in `RESULTS`"
+  [^File file results]
+  (let [file-path (.getAbsolutePath file)]
+    (->> (results->cells results)
+         (spreadsheet/create-workbook "Query result" )
+         (spreadsheet/save-workbook! file-path))))
+
 (defn- export-to-csv [columns rows]
   (with-out-str
     ;; turn keywords into strings, otherwise we get colons in our output
     (csv/write-csv *out* (into [(mapv name columns)] rows))))
+
+(defn export-to-csv-writer
+  "Write a CSV to `FILE` with the header a and rows found in `RESULTS`"
+  [^File file results]
+  (with-open [fw (java.io.FileWriter. file)]
+    (csv/write-csv fw (results->cells results))))
 
 (defn- export-to-json [columns rows]
   (for [row rows]

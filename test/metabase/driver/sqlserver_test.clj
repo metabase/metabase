@@ -18,9 +18,9 @@
   (apply str (repeatedly 1000 (partial rand-nth [\A \G \C \T]))))
 
 (def-database-definition ^:private ^:const genetic-data
-  ["genetic-data"
-   [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
-   [[a-gene]]])
+  [["genetic-data"
+     [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
+     [[a-gene]]]])
 
 (expect-with-engine :sqlserver
   [[1 a-gene]]
