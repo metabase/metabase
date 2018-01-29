@@ -100,8 +100,10 @@
 
 ;; Custom aggregation expressions should include their type
 (datasets/expect-with-engines (engines-that-support :expressions)
-  #{{:name "CATEGORY_ID" :base_type :type/Integer}
-    {:name "x" :base_type :type/Float}}
+  (conj #{{:name "x" :base_type :type/Float}}
+        (if (= datasets/*engine* :oracle)
+          {:name (data/format-name "category_id") :base_type :type/Decimal}
+          {:name (data/format-name "category_id") :base_type :type/Integer}))
   (set (map #(select-keys % [:name :base_type])
             (-> (data/run-query venues
                   (ql/aggregation (ql/named (ql/sum (ql/* $price -1)) "x"))
