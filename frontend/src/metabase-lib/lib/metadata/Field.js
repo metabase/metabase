@@ -135,7 +135,6 @@ export default class Field extends Base {
      * Returns the remapped field, if any
      */
     remappedField(): ?Field {
-        // TODO: use actual remappings once branch is merged
         const displayFieldId = this.dimensions && this.dimensions.human_readable_field_id;
         if (displayFieldId != null) {
             return this.metadata.fields[displayFieldId]
@@ -173,7 +172,11 @@ export default class Field extends Base {
     }
 
     parameterSearchField(): ?Field {
-        return _.find(this.table.fields, field => field.isEntityName());
+        if (this.isID()) {
+          return _.find(this.table.fields, field => field.isEntityName());
+        } else if (this.isSearchable()) {
+          return this;
+        }
     }
 
     filterIsSearchable(): boolean {

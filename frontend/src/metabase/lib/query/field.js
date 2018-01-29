@@ -91,6 +91,7 @@ export function getFieldValues(field: ?Field): FieldValues {
     }
 }
 
+// merge field values and remappings
 export function getRemappings(field: ?Field) {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
