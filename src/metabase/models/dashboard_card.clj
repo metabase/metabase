@@ -68,7 +68,7 @@
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
-  (db/select [Card :id :name :description :display :dataset_query :visualization_settings]
+  (db/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
     (mdb/join [Card :id] [DashboardCardSeries :card_id])
     (db/qualify DashboardCardSeries :dashboardcard_id) id
     {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))

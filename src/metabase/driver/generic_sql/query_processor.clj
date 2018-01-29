@@ -20,7 +20,7 @@
            [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
-            ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
+            ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
@@ -72,7 +72,6 @@
      (nth (:aggregation query) index)
      (recur index (:source-query query) (dec aggregation-level)))))
 
-
 (defmulti ^{:doc          (str "Return an appropriate HoneySQL form for an object. Dispatches off both driver and object "
                                "classes making this easy to override in any places needed for a given driver.")
             :arglists     '([driver x])
@@ -110,6 +109,10 @@
 (defmethod ->honeysql [Object DateTimeField]
   [driver {unit :unit, field :field}]
   (sql/date driver unit (->honeysql driver field)))
+
+(defmethod ->honeysql [Object TimeField]
+  [driver {field :field}]
+  (->honeysql driver field))
 
 (defmethod ->honeysql [Object BinnedField]
   [driver {:keys [bin-width min-value max-value field]}]
@@ -150,6 +153,9 @@
                                 (sql/current-datetime-fn driver)
                                 (driver/date-interval driver unit amount))))
 
+(defmethod ->honeysql [Object TimeValue]
+  [driver  {:keys [value]}]
+  (->honeysql driver value))
 
 ;;; ## Clause Handlers
 
@@ -408,6 +414,9 @@
   (fn [^PreparedStatement stmt params]
     (mapv (fn [^Integer i value]
             (cond
+
+              (and tz (instance? java.sql.Time value))
+              (.setTime stmt i value (Calendar/getInstance tz))
 
               (and tz (instance? java.sql.Timestamp value))
               (.setTimestamp stmt i value (Calendar/getInstance tz))

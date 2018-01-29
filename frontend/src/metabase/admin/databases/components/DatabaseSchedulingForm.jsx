@@ -92,7 +92,7 @@ export default class DatabaseSchedulingForm extends Component {
                         <div className="Form-offset mr4 mt4">
                             <div style={{maxWidth: 600}} className="border-bottom pb2">
                                 <p className="text-paragraph text-measure">
-                                  {t`To do some of its magic, Metabase needs to scan your database. We will also <em>re</em>scan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.`}
+                                  {t`To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.`}
                                 </p>
                             </div>
 

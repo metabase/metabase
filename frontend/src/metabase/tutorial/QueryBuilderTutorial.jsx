@@ -172,7 +172,7 @@ const QUERY_BUILDER_STEPS = [
                     src="app/assets/img/qb_tutorial/boat.png" width={190}
                 />
                 <h3>{t`Well done!`}</h3>
-                <p>{t`That's all! If you still have questions, check out our`} <a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/start">{t`User's Guide`}</a>. {t`Have fun exploring your data!`}</p>
+                <p>{t`That's all! If you still have questions, check out our`} <a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/start.html">{t`User's Guide`}</a>. {t`Have fun exploring your data!`}</p>
                 <a className="Button Button--primary" onClick={props.onNext}>{t`Thanks`}!</a>
             </div>
     },

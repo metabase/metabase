@@ -17,7 +17,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
 
-import { pulseIsValid, cleanPulse } from "metabase/lib/pulse";
+import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -75,25 +75,21 @@ export default class PulseEdit extends Component {
         this.props.updateEditingPulse(pulse);
     }
 
-    isValid() {
-        let { pulse } = this.props;
-        return pulse.name && pulse.cards.length && pulse.channels.length > 0 && pulse.channels.filter((c) => this.channelIsValid(c)).length > 0;
-    }
-
     getConfirmItems() {
-        return this.props.pulse.channels.map(c =>
+        return this.props.pulse.channels.map((c, index) =>
             c.channel_type === "email" ?
-                <span>{jt`This pulse will no longer be emailed to ${<strong>{c.recipients.length} {inflect("address", c.recipients.length)}</strong>} ${<strong>{c.schedule_type}</strong>}`}.</span>
+                <span key={index}>{jt`This pulse will no longer be emailed to ${<strong>{c.recipients.length} {inflect("address", c.recipients.length)}</strong>} ${<strong>{c.schedule_type}</strong>}`}.</span>
             : c.channel_type === "slack" ?
-                <span>{jt`Slack channel ${<strong>{c.details && c.details.channel}</strong>} will no longer get this pulse ${<strong>{c.schedule_type}</strong>}`}.</span>
+                <span key={index}>{jt`Slack channel ${<strong>{c.details && c.details.channel}</strong>} will no longer get this pulse ${<strong>{c.schedule_type}</strong>}`}.</span>
             :
-                <span>{jt`Channel ${<strong>{c.channel_type}</strong>} will no longer receive this pulse ${<strong>{c.schedule_type}</strong>}`}.</span>
+                <span key={index}>{jt`Channel ${<strong>{c.channel_type}</strong>} will no longer receive this pulse ${<strong>{c.schedule_type}</strong>}`}.</span>
         );
     }
 
     render() {
-        let { pulse, formInput } = this.props;
-        let isValid = pulseIsValid(pulse, formInput.channels);
+        const { pulse, formInput } = this.props;
+        const isValid = pulseIsValid(pulse, formInput.channels);
+        const attachmentsEnabled = emailIsEnabled(pulse);
         return (
             <div className="PulseEdit">
                 <div className="PulseEdit-header flex align-center border-bottom py3">
@@ -117,7 +113,7 @@ export default class PulseEdit extends Component {
                 </div>
                 <div className="PulseEdit-content pt2 pb4">
                     <PulseEditName {...this.props} setPulse={this.setPulse} />
-                    <PulseEditCards {...this.props} setPulse={this.setPulse} />
+                    <PulseEditCards {...this.props} setPulse={this.setPulse} attachmentsEnabled={attachmentsEnabled} />
                     <div className="py1 mb4">
                         <h2 className="mb3">Where should this data go?</h2>
                         <PulseEditChannels {...this.props} setPulse={this.setPulse} pulseIsValid={isValid} />
