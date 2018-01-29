@@ -9,6 +9,7 @@
              [field :refer [Field]]
              [interface :as mi]
              [metric :refer [Metric]]
+             [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [schema.core :as s]
@@ -156,6 +157,10 @@
      :dashboard-mates   (cards-sharing-dashboard card)
      :similar-questions (similar-questions card)
      :canonical-metric  (canonical-metric card)}))
+
+(defmethod related (type Query)
+  [query]
+  (related (with-meta query {:type (type Card)})))
 
 (defmethod related (type Metric)
   [metric]

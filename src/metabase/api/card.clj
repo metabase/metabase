@@ -675,5 +675,19 @@
   [id]
   (related/related (Card id)))
 
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [{:keys [database], :as query}]
+  (when-not (= database database/virtual-id)
+    (api/read-check Database database))
+  (->> {:dataset_query query}
+       (merge (card/query->database-and-table-ids query))
+       query/map->QueryInstance))
+
+(api/defendpoint POST "/related"
+  "Return related entities for an ad-hoc query."
+  [:as {query :body}]
+  (related/related (adhoc-query query)))
+
 (api/define-routes
   (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))
