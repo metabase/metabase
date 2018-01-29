@@ -1,14 +1,11 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { connect } from "react-redux";
 
 import FieldSearchInput from "metabase/containers/FieldSearchInput";
 import RemappedValue from "metabase/containers/RemappedValue";
 
-import { getMetadata } from "metabase/selectors/metadata";
-
-import type { FieldId } from "metabase/meta/types/Field";
+import Field from "metabase-lib/lib/metadata/Field";
 
 type Props = {
     value: any,
@@ -23,11 +20,6 @@ type State = {
     isFocused: bool,
 };
 
-const mapStateToProps = (state) => ({
-    metadata: getMetadata(state)
-})
-
-@connect(mapStateToProps)
 export default class SearchTextWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
@@ -46,8 +38,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
     }
 
     render() {
-        // $FlowFixMe: metadata provided by @connect
-        const { value, setValue, isEditing, fields, metadata, parentFocusChanged } = this.props;
+        const { value, setValue, isEditing, fields, parentFocusChanged } = this.props;
         const { isFocused } = this.state;
         const field = fields[0];
 

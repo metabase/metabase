@@ -77,7 +77,7 @@ export default class ParameterValueWidget extends Component {
             return DATE_WIDGETS[parameter.type];
         } else if (values && values.length > 0) {
             return CategoryWidget;
-        } else if (parameter.fields.length === 1 && parameter.fields[0].parameterIsSearchable()) {
+        } else if (parameter.fields.length === 1 && parameter.fields[0].parameterSearchField()) {
             return SearchTextWidget;
         } else {
             return TextWidget;

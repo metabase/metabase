@@ -179,19 +179,4 @@ export default class Field extends Base {
         }
     }
 
-    filterIsSearchable(): boolean {
-        if (this.isID()) {
-            return !!this.filterSearchField();
-        } else {
-            return this.isSearchable();
-        }
-    }
-
-    parameterIsSearchable(): boolean {
-        if (this.isID()) {
-            return !!this.parameterSearchField();
-        } else {
-            return this.isSearchable();
-        }
-    }
 }
