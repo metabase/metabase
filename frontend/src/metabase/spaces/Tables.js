@@ -2,7 +2,7 @@ import _ from 'underscore'
 import React from 'react'
 import { connect } from 'react-redux'
 import { Box, Flex, Border, Subhead, Heading } from 'rebass'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 
 import {
     getCurrentSpace,

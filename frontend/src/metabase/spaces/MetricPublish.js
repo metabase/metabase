@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 import { Absolute, Button, Box, Relative } from 'rebass'
 
 import {

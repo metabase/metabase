@@ -1,7 +1,7 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import { Box, Button, ButtonOutline, Card, Flex, Heading, Subhead } from 'rebass'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 
 import Modal from "metabase/components/Modal";
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import { connect } from 'react-redux'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 import { Box, Border, Flex, Heading, Subhead } from 'rebass'
 
 import Select from 'metabase/components/Select'

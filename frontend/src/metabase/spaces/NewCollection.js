@@ -1,6 +1,6 @@
 import React from 'react'
 import { Box, Button, ButtonOutline, Flex, Heading, Input } from 'rebass'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 
 const NewCollection = () =>
     <Box w={1/3} ml='auto' mr='auto'>

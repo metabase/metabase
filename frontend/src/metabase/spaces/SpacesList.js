@@ -1,6 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { Link } from "react-router";
+import { Link } from "metabase/spaces/Link";
 import cxs from 'cxs'
 import { Box, Border, Button, Card, Flex, Heading, Subhead } from 'rebass'
 

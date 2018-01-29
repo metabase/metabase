@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 import { connect } from 'react-redux'
 
 import { Absolute, Border, Box, Card, Flex, Heading, Relative, Subhead } from 'rebass'

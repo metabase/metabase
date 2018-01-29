@@ -2,7 +2,7 @@ import React from 'react'
 import { connect } from 'react-redux'
 import { Box, Border, Flex, Heading, Subhead } from 'rebass'
 import _ from 'underscore'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 
 import {
     getDatabasesForSpace,

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 import { Absolute, Box, ButtonOutline, Flex } from 'rebass'
 import { Burger } from 'reline'
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, ButtonOutline, Flex, Heading } from 'rebass'
 import { connect } from 'react-redux'
-import { Link } from "react-router"
+import { Link } from "metabase/spaces/Link"
 
 import { getTableById } from './selectors'
 
