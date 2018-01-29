@@ -11,6 +11,7 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^:private ^Integer max-best-matches        3)
@@ -18,16 +19,18 @@
 (def ^:private ^Integer max-matches             (+ max-best-matches
                                                    max-serendipity-matches))
 
-(defn- context-bearing-form?
-  [form]
-  (and (vector? form)
-       ((some-fn string? keyword?) (first form))
-       (-> form first name str/lower-case (#{"field-id" "metric" "segment"}))))
+(def ^:private ContextBearingForm
+  [(s/one (s/constrained (s/either s/Str s/Keyword)
+                         (comp #{"field-id" "metric" "segment"}
+                               str/lower-case
+                               name))
+          "head")
+   s/Any])
 
 (defn- collect-context-bearing-forms
   [form]
   (into #{}
-    (filter context-bearing-form?)
+    (remove (s/checker ContextBearingForm))
     (tree-seq sequential? identity form)))
 
 (defmulti
@@ -46,7 +49,7 @@
 
 (defmethod definition (type Metric)
   [metric]
-  (-> metric :definition :aggregation))
+  (-> metric :definition ((juxt :aggregation :filter))))
 
 (defmethod definition (type Segment)
   [segment]
@@ -61,8 +64,8 @@
    (more context-bearing forms), so we just check if the less specifc form is a
    subset of the more specific one."
   [a b]
-  (let [context-a (collect-context-bearing-forms (definition a))
-        context-b (collect-context-bearing-forms (definition b))]
+  (let [context-a (-> a definition collect-context-bearing-forms)
+        context-b (-> b definition collect-context-bearing-forms)]
     (if (= context-a context-b)
       1
       (max (/ (count (set/difference context-a context-b))
@@ -71,6 +74,9 @@
               (max (count context-b) 1))))))
 
 (defn- interesting-mix
+  "Create an interesting mix of matches. The idea is to have a balanced mix
+   between close (best) matches and more diverse matches to cover a wider field
+   of intents."
   [reference matches]
   (let [[best rest] (->> matches
                          (remove #{reference})
@@ -122,6 +128,17 @@
   [card]
   (interesting-mix card (db/select Card :table_id (:table_id card))))
 
+(defn- canonical-metric
+  [card]
+  (->> (db/select Metric :table_id (:table_id card))
+       (filter (every-pred mi/can-read?
+                           (comp #{(-> card
+                                       :dataset_query
+                                       :query
+                                       :aggregation)}
+                                 :aggregation :definition)))
+       first))
+
 (defmulti
   ^{:doc "Return related entities."
     :arglists '([entity])}
@@ -129,16 +146,18 @@
 
 (defmethod related (type Card)
   [card]
-  (let [table (Table (:table_id card))]
+  (let [table    (Table (:table_id card))
+        segments (->> table
+                      segments-for-table
+                      (interesting-mix card))]
     {:table             table
      :metrics           (->> table
                              metrics-for-table
                              (interesting-mix card))
-     :segments          (->> table
-                             segments-for-table
-                             (interesting-mix card))
+     :segments          segments
      :dashboard-mates   (cards-sharing-dashboard card)
-     :similar-questions (similar-questions card)}))
+     :similar-questions (similar-questions card)
+     :canonical-metric  (canonical-metric card)}))
 
 (defmethod related (type Metric)
   [metric]
