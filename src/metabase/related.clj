@@ -1,6 +1,7 @@
 (ns metabase.related
   "Related entities recommendations."
-  (:require [clojure.data :refer [diff]]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [kixi.stats.math :as math]
             [metabase.models
              [card :refer [Card]]
@@ -12,21 +13,72 @@
              [table :refer [Table]]]
             [toucan.db :as db]))
 
-(defn- similarity
-  [a b]
-  (let [[in-a in-b _] (diff a b)
-        branch?       (some-fn sequential? map?)
-        node-count    (comp count
-                            (partial remove (some-fn branch? nil?))
-                            (partial tree-seq branch? identity))]
-    (- 1  (/ (+ (node-count in-a)
-                (node-count in-b))
-             (+ (node-count a)
-                (node-count b))))))
+(def ^:private ^Integer max-best-matches        3)
+(def ^:private ^Integer max-serendipity-matches 2)
+(def ^:private ^Integer max-matches             (+ max-best-matches
+                                                   max-serendipity-matches))
 
-(defn- similarity-by
-  [keyfn a b]
-  (similarity (keyfn a) (keyfn b)))
+(defn- context-bearing-form?
+  [form]
+  (and (vector? form)
+       ((some-fn string? keyword?) (first form))
+       (-> form first name str/lower-case (#{"field-id" "metric" "segment"}))))
+
+(defn- collect-context-bearing-forms
+  [form]
+  (into #{}
+    (filter context-bearing-form?)
+    (tree-seq sequential? identity form)))
+
+(defmulti
+  ^{:doc "Return the relevant parts of a given entity's definition.
+          Relevant parts are those that carry semantic meaning, and especially
+          context-bearing forms."
+    :arglists '([entity])}
+  definition type)
+
+(defmethod definition (type Card)
+  [card]
+  (-> card
+      :dataset_query
+      :query
+      ((juxt :breakout :aggregation :expressions :fields))))
+
+(defmethod definition (type Metric)
+  [metric]
+  (-> metric :definition :aggregation))
+
+(defmethod definition (type Segment)
+  [segment]
+  (-> segment :definition :filter))
+
+(defn similarity
+  "How similar are entities `a` and `b` based on a structural comparison of their
+   definition (MBQL).
+   For the purposes of finding related entites we are only interested in
+   context-bearing subforms (field, segment, and metric references). We also
+   don't care about generalizations (less context-bearing forms) and refinements
+   (more context-bearing forms), so we just check if the less specifc form is a
+   subset of the more specific one."
+  [a b]
+  (let [context-a (collect-context-bearing-forms (definition a))
+        context-b (collect-context-bearing-forms (definition b))]
+    (if (= context-a context-b)
+      1
+      (max (/ (count (set/difference context-a context-b))
+              (max (count context-a) 1))
+           (/ (count (set/difference context-b context-a))
+              (max (count context-b) 1))))))
+
+(defn- interesting-mix
+  [reference matches]
+  (let [[best rest] (->> matches
+                         (remove #{reference})
+                         (map #(assoc % :similarity (similarity reference %)))
+                         (filter mi/can-read?)
+                         (sort-by :similarity >)
+                         (split-at max-best-matches))]
+    (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
 (defn- metrics-for-table
   [table]
@@ -43,7 +95,8 @@
          :fk_target_field_id [:not= nil])
        (map (comp Table :table_id Field))
        distinct
-       (filter mi/can-read?)))
+       (filter mi/can-read?)
+       (take max-matches)))
 
 (defn- linked-from
   [table]
@@ -51,7 +104,8 @@
     (->> (db/select-field :table_id Field
            :fk_target_field_id [:in fields])
          (map Table)
-         (filter mi/can-read?))))
+         (filter mi/can-read?)
+         (take max-matches))))
 
 (defn- cards-sharing-dashboard
   [card]
@@ -61,26 +115,12 @@
            :dashboard_id [:in dashboards]
            :card_id [:not= (:id card)])
          (map Card)
-         (filter mi/can-read?))))
-
-(defn- card-similarity
-  "How similar are the two cards based on a structural comparison of the
-   aggregation and breakout clauses.
-   We take squares of similarity becouse a strong match in one facet is better
-   than a mediocre match on both facets."
-  [a b]
-  (/ (+ (math/sq (similarity-by (comp :breakout :query :dataset_query) a b))
-        (math/sq (similarity-by (comp :aggregation :query :dataset_query) a b)))
-     2))
+         (filter mi/can-read?)
+         (take max-matches))))
 
 (defn- similar-questions
   [card]
-  (->> (db/select Card
-         :table_id (:table_id card))
-       (map #(assoc % :similarity (card-similarity card %)))
-       (filter (every-pred (comp pos? :similarity)
-                           mi/can-read?))
-       (sort-by :similarity >)))
+  (interesting-mix card (db/select Card :table_id (:table_id card))))
 
 (defmulti
   ^{:doc "Return related entities."
@@ -91,24 +131,36 @@
   [card]
   (let [table (Table (:table_id card))]
     {:table             table
-     :metrics           (metrics-for-table table)
-     :segments          (segments-for-table table)
+     :metrics           (->> table
+                             metrics-for-table
+                             (interesting-mix card))
+     :segments          (->> table
+                             segments-for-table
+                             (interesting-mix card))
      :dashboard-mates   (cards-sharing-dashboard card)
      :similar-questions (similar-questions card)}))
 
 (defmethod related (type Metric)
   [metric]
   (let [table (Table (:table_id metric))]
-    {:table          table
-     :metrics        (remove #{metric} (metrics-for-table table))
-     :segments       (segments-for-table table)}))
+    {:table    table
+     :metrics  (->> table
+                    metrics-for-table
+                    (interesting-mix metric))
+     :segments (->> table
+                    segments-for-table
+                    (interesting-mix metric))}))
 
 (defmethod related (type Segment)
   [segment]
   (let [table (Table (:table_id segment))]
-   {:table      table
-    :metrics    (metrics-for-table table)
-    :segments   (remove #{segment} (segments-for-table table))
+    {:table     table
+     :metrics   (->> table
+                     metrics-for-table
+                     (interesting-mix segment))
+     :segments  (->> table
+                     segments-for-table
+                     (interesting-mix segment))
     :linking-to (linking-to table)}))
 
 (defmethod related (type Table)
