@@ -66,12 +66,8 @@
   [a b]
   (let [context-a (-> a definition collect-context-bearing-forms)
         context-b (-> b definition collect-context-bearing-forms)]
-    (if (= context-a context-b)
-      1
-      (max (/ (count (set/difference context-a context-b))
-              (max (count context-a) 1))
-           (/ (count (set/difference context-b context-a))
-              (max (count context-b) 1))))))
+    (/ (count (set/intersection context-a context-b))
+       (max (min (count context-a) (count context-b)) 1))))
 
 (defn- interesting-mix
   "Create an interesting mix of matches. The idea is to have a balanced mix
@@ -81,7 +77,6 @@
   (let [[best rest] (->> matches
                          (remove #{reference})
                          (map #(assoc % :similarity (similarity reference %)))
-                         (filter mi/can-read?)
                          (sort-by :similarity >)
                          (split-at max-best-matches))]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
@@ -115,8 +110,8 @@
 
 (defn- cards-sharing-dashboard
   [card]
-  (let [dashboards (db/select-field :dashboard_id DashboardCard
-                     :card_id (:id card))]
+  (when-let [dashboards (not-empty (db/select-field :dashboard_id DashboardCard
+                                     :card_id (:id card)))]
     (->> (db/select-field :card_id DashboardCard
            :dashboard_id [:in dashboards]
            :card_id [:not= (:id card)])
@@ -126,7 +121,10 @@
 
 (defn- similar-questions
   [card]
-  (interesting-mix card (db/select Card :table_id (:table_id card))))
+  (->> (db/select Card :table_id (:table_id card))
+       (filter mi/can-read?)
+       (interesting-mix card)
+       (filter (comp pos? :similarity))))
 
 (defn- canonical-metric
   [card]
