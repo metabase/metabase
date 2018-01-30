@@ -1,4 +1,4 @@
-import { getQuestion, getCurrentSpace } from './selectors'
+import { getCurrentSpace } from './selectors'
 import { logItem } from './spaces'
 
 import React from 'react'
@@ -22,6 +22,9 @@ import {
 import {
     getTableById
 } from './selectors'
+import { initializeQB } from "metabase/query_builder/actions";
+import { getQuestion } from "metabase/query_builder/selectors";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 const mapStateToProps = (state) => {
 
@@ -83,7 +86,12 @@ class EditMenu extends React.Component {
 }
 
 class Question extends React.Component {
-    renderViz () {
+    componentWillMount() {
+        // NOTE Atte Keinänen: a temporary quick way to load a question
+        this.props.initializeQB({}, { cardId: this.props.params.id })
+    }
+
+    renderViz() {
         const { scalar, time } = this.props
         if(scalar) {
             return <Heading>31</Heading>
@@ -96,6 +104,12 @@ class Question extends React.Component {
     render () {
         const { space, metrics, question, edit, connectedTables, showQB, segments } = this.props
         const wide = showQB || edit
+
+        console.log('the current state of questions', question)
+        if (!question) {
+            return <LoadingAndErrorWrapper loading />;
+        }
+
         return (
             <Box>
                 { edit && (
@@ -114,7 +128,7 @@ class Question extends React.Component {
                 )}
                 <Flex mb={4} mt={2} style={{ marginTop: edit ? 80 : 40 }}>
                     <Heading>
-                        { question.name }
+                        { question.displayName() }
                     </Heading>
                     <Flex ml='auto' align='center'>
                         { showQB && (
@@ -207,4 +221,4 @@ class Question extends React.Component {
 } 
 
 
-export default connect(mapStateToProps)(Question)
+export default connect(mapStateToProps, { initializeQB })(Question)
