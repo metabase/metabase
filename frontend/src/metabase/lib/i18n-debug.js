@@ -38,6 +38,7 @@ export function enableTranslatedStringReplacement() {
       return new Array(Math.ceil(string.length / 2) + 1).join("█");
     }
   }
+  // eslint-disable-next-line react/display-name
   c3po.jt = (...args) => {
     const elements = _jt(...args);
     return (
