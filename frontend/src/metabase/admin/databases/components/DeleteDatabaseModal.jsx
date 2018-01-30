@@ -61,10 +61,10 @@ export default class DeleteDatabaseModal extends Component {
                         <p className="text-paragraph">{t`<strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost.`}</p>
                     }
                     <p className="text-paragraph">
-                      {t`All saved questions, metrics, and segments that rely on this database will be lost. <strong>This cannot be undone</strong>.`}
+                      {t`All saved questions, metrics, and segments that rely on this database will be lost.`} <strong>{t`This cannot be undone.`}</strong>
                     </p>
                     <p className="text-paragraph">
-                      {t`If you're sure, please type <strong>DELETE</strong> in this box:`}
+                      {t`If you're sure, please type`} <strong>{t`DELETE`}</strong> {t`in this box:`}
                     </p>
                     <input className="Form-input" type="text" onChange={(e) => this.setState({ confirmValue: e.target.value })} autoFocus />
                 </div>

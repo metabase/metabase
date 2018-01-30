@@ -8,6 +8,7 @@ import { FieldIDDimension } from "../Dimension";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
     isDate,
+    isTime,
     isNumber,
     isNumeric,
     isBoolean,
@@ -43,6 +44,9 @@ export default class Field extends Base {
 
     isDate() {
         return isDate(this);
+    }
+    isTime() {
+        return isTime(this);
     }
     isNumber() {
         return isNumber(this);

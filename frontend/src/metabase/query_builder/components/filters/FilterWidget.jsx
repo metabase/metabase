@@ -67,7 +67,7 @@ export default class FilterWidget extends Component {
         // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
         if (operator && operator.multi && values.length > maxDisplayValues) {
             formattedValues = [values.length + " selections"];
-        } else if (dimension.field().isDate()) {
+        } else if (dimension.field().isDate() && !dimension.field().isTime()) {
             formattedValues = generateTimeFilterValuesDescriptions(filter);
         } else {
             formattedValues = values
