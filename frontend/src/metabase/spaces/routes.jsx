@@ -1,8 +1,7 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRoute } from 'react-router';
-
-const Placeholder = ({ location, params }) => <pre>{JSON.stringify({ location, params }, null, 2)}</pre>
+import { Provider as RebassProvider } from 'rebass'
 
 import SpacesList from './SpacesList'
 import Data from './Data'
@@ -35,7 +34,13 @@ import SpaceLayout from './layouts/Space'
 import EntityLayout from './layouts/Entity'
 
 const LayoutViewComponent = ({ layout, view, children, ...props }) =>
-  React.cloneElement(layout, props, view);
+    <RebassProvider
+        theme={{
+            font: '"Lato", "Helvetica Neue", "sans-serif"'
+        }}
+    >
+        { React.cloneElement(layout, props, view) }
+    </RebassProvider>
 
 const getRoutes = (store) =>
 <Route path="/_spaces" component={LayoutViewComponent}>

@@ -34,7 +34,7 @@ export default class App extends Component {
 
         return (
             <div className="spread flex flex-column">
-                <Navbar location={location} className="flex-no-shrink"/>
+                { !location.pathname.includes("_spaces") && <Navbar location={location} className="flex-no-shrink"/> }
                 { errorPage ? getErrorComponent(errorPage) : children }
                 <UndoListing />
             </div>
