@@ -6,12 +6,15 @@
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]]
+            [metabase.query-processor :as qp]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
+
+;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
 (def ^:private FieldType
   "Schema for a valid `Field` type."
@@ -92,6 +95,9 @@
     ;; return updated field
     (hydrate (Field id) :dimensions)))
 
+
+;;; ------------------------------------------------- Field Metadata -------------------------------------------------
+
 (api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
@@ -99,20 +105,8 @@
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
 
-(def ^:private empty-field-values
-  {:values []})
 
-(api/defendpoint GET "/:id/values"
-  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
-  values of the field, and a map of human-readable values defined by the user."
-  [id]
-  (let [field (api/read-check Field id)]
-    (if-let [field-values (and (field-values/field-should-have-field-values? field)
-                               (field-values/create-field-values-if-needed! field))]
-      (-> field-values
-          (assoc :values (field-values/field-values->pairs field-values))
-          (dissoc :human_readable_values))
-      {:values []})))
+;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
@@ -143,6 +137,24 @@
   (let [field (api/write-check Field id)]
     (db/delete! Dimension :field_id id)
     api/generic-204-no-content))
+
+
+;;; -------------------------------------------------- FieldValues ---------------------------------------------------
+
+(def ^:private empty-field-values
+  {:values []})
+
+(api/defendpoint GET "/:id/values"
+  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
+  values of the field, and a map of human-readable values defined by the user."
+  [id]
+  (let [field (api/read-check Field id)]
+    (if-let [field-values (and (field-values/field-should-have-field-values? field)
+                               (field-values/create-field-values-if-needed! field))]
+      (-> field-values
+          (assoc :values (field-values/field-values->pairs field-values))
+          (dissoc :human_readable_values))
+      {:values []})))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
@@ -210,6 +222,44 @@
   (api/check-superuser)
   (field-values/clear-field-values! (api/check-404 (Field id)))
   {:status :success})
+
+
+;;; --------------------------------------------------- Searching ----------------------------------------------------
+
+(api/defendpoint GET "/:id/search/:search-id"
+  "Search for values of a Field that match values of another Field when breaking out by the "
+  [id search-id value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+  (let [field        (api/read-check Field id)
+        search-field (api/read-check Field search-id)
+        results      (qp/process-query
+                       {:database (db/select-one-field :db_id 'Table :id (:table_id field))
+                        :type     :query
+                        :query    {:source-table (:table_id field)
+                                   :filter       [:starts-with [:field-id search-id] value]
+                                   :breakout     [[:field-id id]]
+                                   :fields       [[:field-id id]
+                                                  [:field-id search-id]]
+                                   :limit        (when limit (Integer/parseUnsignedInt limit))}})]
+    ;; return rows if they exist
+    (get-in results [:data :rows])))
+
+(api/defendpoint GET "/:id/remapping/:remapped-id"
+  "Fetch remapped Field values."
+  [id remapped-id value]
+  (let [field          (api/read-check Field id)
+        remapped-field (api/read-check Field remapped-id)
+        results        (qp/process-query
+                         {:database (db/select-one-field :db_id 'Table :id (:table_id field))
+                          :type     :query
+                          :query    {:source-table (:table_id field)
+                                     :filter       [:= [:field-id id] value]
+                                     :fields       [[:field-id id]
+                                                    [:field-id remapped-id]]
+                                     :limit        1}})]
+    ;; return first row if it exists
+    (get-in results [:data :rows 0])))
 
 
 (api/define-routes)
