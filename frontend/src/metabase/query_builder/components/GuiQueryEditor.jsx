@@ -6,13 +6,13 @@ import ReactDOM from "react-dom";
 import { t } from 'c-3po';
 import AggregationWidget_LEGACY from './AggregationWidget.jsx';
 import BreakoutWidget_LEGACY from './BreakoutWidget.jsx';
-import DataSelector from './DataSelector.jsx';
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -284,7 +284,7 @@ export default class GuiQueryEditor extends Component {
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
                 <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
                 { this.props.features.data ?
-                    <DataSelector
+                    <DatabaseSchemaAndTableDataSelector
                         ref="dataSection"
                         databases={databases}
                         selectedTableId={sourceTableId}

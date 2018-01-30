@@ -34,7 +34,7 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import { delay } from "metabase/lib/promise";
 import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { getQuery } from "metabase/query_builder/selectors";
-import { ADD_PARAM_VALUES, FETCH_FIELD_VALUES, FETCH_TABLE_METADATA } from "metabase/redux/metadata";
+import { ADD_PARAM_VALUES, FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Parameters from "metabase/parameters/components/Parameters";

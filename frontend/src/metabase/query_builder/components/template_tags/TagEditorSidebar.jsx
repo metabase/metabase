@@ -12,6 +12,7 @@ import cx from "classnames";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { DatasetQuery } from "metabase/meta/types/Card"
 import type { TableId } from "metabase/meta/types/Table"
+import type { Database } from "metabase/meta/types/Database"
 import type { TemplateTag } from "metabase/meta/types/Query"
 import type { Field as FieldObject } from "metabase/meta/types/Field"
 
@@ -22,6 +23,7 @@ type Props = {
     updateTemplateTag: (tag: TemplateTag) => void,
 
     databaseFields: FieldObject[],
+    databases: Database[],
     sampleDatasetId: TableId,
 
     onClose: () => void,

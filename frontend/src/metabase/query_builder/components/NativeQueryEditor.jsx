@@ -29,7 +29,6 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
 
-import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import Parameters from "metabase/parameters/components/Parameters";
 
@@ -50,6 +49,10 @@ import type { TableId } from "metabase/meta/types/Table";
 import type { ParameterId } from "metabase/meta/types/Parameter";
 import type { LocationDescriptor } from "metabase/meta/types";
 import type { RunQueryParams } from "metabase/query_builder/actions";
+import {
+    DatabaseDataSelector,
+    SchemaAndTableDataSelector,
+} from "metabase/query_builder/components/DataSelector";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -268,7 +271,7 @@ export default class NativeQueryEditor extends Component {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">{t`Database`}</span>
-                        <DataSelector
+                        <DatabaseDataSelector
                             databases={databases}
                             selectedDatabaseId={database && database.id}
                             setDatabaseFn={this.setDatabaseId}
@@ -288,16 +291,14 @@ export default class NativeQueryEditor extends Component {
                 dataSelectors.push(
                     <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">{t`Table`}</span>
-                        <DataSelector
+                        <SchemaAndTableDataSelector
                             ref="dataSection"
                             selectedTableId={selectedTable ? selectedTable.id : null}
                             selectedDatabaseId={database && database.id}
                             databases={[database]}
                             tables={tables}
-                            setDatabaseFn={this.setDatabaseId}
                             setSourceTableFn={this.setTableId}
                             isInitiallyOpen={false}
-                            skipDatabaseSelection={true}
                         />
                     </div>
                 );

@@ -8,10 +8,10 @@ import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import DataSelector from "metabase/query_builder/components/DataSelector.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { typeToBgClass } from "../utils.js";
+import { SchemaTableAndSegmentDataSelector } from "metabase/query_builder/components/DataSelector";
 
 const GuideDetailEditor = ({
     className,
@@ -80,10 +80,9 @@ const GuideDetailEditor = ({
                         }}
                         placeholder={t`Select...`}
                     /> :
-                    <DataSelector
+                    <SchemaTableAndSegmentDataSelector
                         className={cx(selectClasses, 'inline-block', 'rounded', 'text-bold')}
                         triggerIconSize={12}
-                        includeTables={true}
                         selectedTableId={
                             formField.type.value === 'table' && Number.parseInt(formField.id.value)
                         }

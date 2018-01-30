@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import { t } from 'c-3po';
 import _ from "underscore";
@@ -8,7 +6,6 @@ import { connect } from "react-redux";
 import Toggle from "metabase/components/Toggle.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
-import DataSelector from '../DataSelector.jsx';
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
@@ -18,6 +15,9 @@ import type { Database } from "metabase/meta/types/Database"
 import Field from "metabase-lib/lib/metadata/Field";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { FieldId } from "metabase/meta/types/Field";
 
 type Props = {
     tag: TemplateTag,
@@ -25,6 +25,8 @@ type Props = {
     databaseFields: Field[],
     database: Database,
     databases: Database[],
+    metadata: Metadata,
+    fetchField: (FieldId) => void
 };
 
 @connect((state) => ({ metadata: getMetadata(state) }),{ fetchField })
@@ -98,16 +100,19 @@ export default class TagEditorParam extends Component {
     render() {
         const { tag, database, databases, metadata } = this.props;
 
-        let widgetOptions, table;
+        let widgetOptions, table, fieldMetadataLoaded = false;
         if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
             const field = metadata.fields[tag.dimension[1]]
 
             if (field) {
                 widgetOptions = parameterOptionsForField(field);
                 table = field.table
+                fieldMetadataLoaded = true
             }
         }
 
+        const isDimension = tag.type === "dimension"
+        const hasSelectedDimensionField = isDimension && Array.isArray(tag.dimension)
         return (
             <div className="pb2 mb2 border-bottom border-dark">
                 <h3 className="pb2">{tag.name}</h3>
@@ -143,18 +148,17 @@ export default class TagEditorParam extends Component {
                     <div className="pb1">
                         <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
 
-                        { (!Array.isArray(tag.dimension) || (Array.isArray(tag.dimension) && table)) && <DataSelector
-                            ref="dataSection"
-                            databases={databases}
-                            selectedDatabaseId={database.id}
-                            selectedTableId={table ? table.id : null}
-                            selectedFieldId={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
-                            setFieldFn={(fieldId) => this.setDimension(fieldId)}
-                            renderAsSelect={true}
-                            skipDatabaseSelection={true}
-                            className="AdminSelect flex align-center"
-                            isInitiallyOpen={!tag.dimension}
-                        /> }
+                        { (!hasSelectedDimensionField || (hasSelectedDimensionField && fieldMetadataLoaded)) &&
+                            <SchemaTableAndFieldDataSelector
+                                databases={databases}
+                                selectedDatabaseId={database.id}
+                                selectedTableId={table ? table.id : null}
+                                selectedFieldId={hasSelectedDimensionField ? tag.dimension[1] : null}
+                                setFieldFn={(fieldId) => this.setDimension(fieldId)}
+                                className="AdminSelect flex align-center"
+                                isInitiallyOpen={!tag.dimension}
+                            />
+                        }
                     </div>
                 }
 
