@@ -237,9 +237,9 @@
 
 (defmethod related (type Dashboard)
   [dashboard]
-  {:cards (->> (db/select-field :card_id DashboardCard
-                 :dashboard_id (:id dashboard))
-               (mapcat (comp (partial take max-best-matches)
-                             similar-questions
-                             Card))
-               distinct)})
+  (let [cards (map Card (db/select-field :card_id DashboardCard
+                          :dashboard_id (:id dashboard)))]
+    {:cards (->> cards
+                 (mapcat (comp (partial take max-best-matches) similar-questions))
+                 (remove (set cards))
+                 distinct)}))
