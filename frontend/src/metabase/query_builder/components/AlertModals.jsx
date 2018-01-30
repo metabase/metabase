@@ -502,9 +502,11 @@ class RawDataAlertTip extends Component {
     render() {
         const display = this.props.question.display()
         const vizSettings = this.props.visualizationSettings
+        const goalEnabled = vizSettings["graph.show_goal"]
         const isLineAreaBar = display === "line" || display === "area" || display === "bar"
         const isMultiSeries =
             isLineAreaBar && vizSettings["graph.metrics"] && vizSettings["graph.metrics"].length > 1
+        const showMultiSeriesGoalAlert = goalEnabled && isMultiSeries
 
         return (
             <div className="border-row-divider p3 flex align-center">
@@ -512,7 +514,7 @@ class RawDataAlertTip extends Component {
                     <Icon name="lightbulb" size="20" />
                 </div>
                 <div>
-                    { isMultiSeries
+                    { showMultiSeriesGoalAlert
                         ? jt`${<strong>Heads up:</strong>} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has ${<em>results</em>}.`
                         : jt`${<strong>Tip:</strong>} This kind of alert is most useful when your saved question doesn’t ${<em>usually</em>} return any results, but you want to know when it does.`
                     }
