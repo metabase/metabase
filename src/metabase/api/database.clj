@@ -16,7 +16,7 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
-             [field :refer [Field]]
+             [field :refer [Field readable-fields-only]]
              [field-values :refer [FieldValues]]
              [interface :as mi]
              [permissions :as perms]
@@ -104,7 +104,7 @@
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   []
   (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-          :result_metadata [:not= nil]
+          :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
     (remove card-uses-unnestable-aggregation? <>)
@@ -150,7 +150,7 @@
       []))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id ------------------------------------------------------------
+;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (def ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
@@ -167,7 +167,8 @@
    :metadata_sync      (cron-util/cron-string->schedule-map (:metadata_sync_schedule db))})
 
 (defn- add-expanded-schedules
-  "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend consumption."
+  "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
+  consumption."
   [db]
   (assoc db :schedules (expanded-schedules db)))
 
@@ -177,7 +178,7 @@
   (add-expanded-schedules (api/read-check Database id)))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/metadata ------------------------------------------------------------
+;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
 ;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
@@ -207,7 +208,7 @@
   (db-metadata id))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/autocomplete_suggestions ------------------------------------------------------------
+;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id prefix]
   (db/select [Table :id :db_id :schema :name]
@@ -239,7 +240,7 @@
 
 (defn- autocomplete-suggestions [db-id prefix]
   (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
-        fields (filter mi/can-read? (autocomplete-fields db-id prefix))]
+        fields (readable-fields-only (autocomplete-fields db-id prefix))]
     (autocomplete-results tables fields)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
@@ -284,7 +285,7 @@
   [id]
   (api/read-check Database id)
   (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
-                                                                         (hydrate :table)))))
+                                                                       (hydrate :table)))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
@@ -295,23 +296,34 @@
    field    m
    :message m})
 
-(defn- test-database-connection
+(defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
-  [engine {:keys [host port] :as details}]
+  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
+                                              :or   {invalid-response-handler invalid-connection-response}}]
   ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
   (when-not config/is-test?
     (let [engine  (keyword engine)
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
-          (and host port (u/host-port-up? host port))                           (invalid-connection-response :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-          (and host (u/host-up? host))                                          (invalid-connection-response :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-          host                                                                  (invalid-connection-response :host   (format "'%s' is not reachable" host))
-          :else                                                                 (invalid-connection-response :db     "Unable to connect to database."))
+          (driver/can-connect-with-details? engine details :rethrow-exceptions)
+          nil
+
+          (and host port (u/host-port-up? host port))
+          (invalid-response-handler :dbname (format "Connection to '%s:%d' successful, but could not connect to DB."
+                                                    host port))
+
+          (and host (u/host-up? host))
+          (invalid-response-handler :port (format "Connection to '%s' successful, but port %d is invalid." port))
+
+          host
+          (invalid-response-handler :host (format "'%s' is not reachable" host))
+
+          :else
+          (invalid-response-handler :db "Unable to connect to database."))
         (catch Throwable e
-          (invalid-connection-response :dbname (.getMessage e)))))))
+          (invalid-response-handler :dbname (.getMessage e)))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?

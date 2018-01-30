@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
-
+import { t } from 'c-3po';
 import cx from "classnames";
 
 type Props = {
@@ -48,10 +48,10 @@ export default class ActionButton extends Component {
 
     static defaultProps = {
         className: "Button",
-        normalText: "Save",
-        activeText: "Saving...",
-        failedText: "Save failed",
-        successText: "Saved",
+        normalText: t`Save`,
+        activeText: t`Saving...`,
+        failedText: t`Save failed`,
+        successText: t`Saved`,
         forceActiveStyle: false
     };
 

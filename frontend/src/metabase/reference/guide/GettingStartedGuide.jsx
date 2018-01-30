@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from 'react-redux';
-import { t } from 'c-3po';
+import { t, jt } from 'c-3po';
 import cx from "classnames";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -53,10 +53,10 @@ const isGuideEmpty = ({
     true;
 
 // This function generates a link for each important field of a Metric.
-// The link goes to a question comprised of this Metric broken out by 
+// The link goes to a question comprised of this Metric broken out by
 // That important field.
 const exploreLinksForMetric = (metricId, guide, metadataFields, tables) => {
-    if (guide.metric_important_fields[metricId]) { 
+    if (guide.metric_important_fields[metricId]) {
         return guide.metric_important_fields[metricId]
                 .map(fieldId => metadataFields[fieldId])
                 .map(field => ({
@@ -132,7 +132,7 @@ export default class GettingStartedGuide extends Component {
         return (
             <div className="full relative py4" style={style}>
                 <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
-                { () => 
+                { () =>
                     <div>
                         <GuideHeader
                             startEditing={startEditing}
@@ -226,7 +226,7 @@ export default class GettingStartedGuide extends Component {
                                     <GuideText>
                                         { Object.keys(segments).length > 0 ? (
                                             <span>
-                                                {t`Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>`}
+                                                {jt`Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like ${<b>"Recent orders."</b>}`}
                                             </span>
                                         ) : t`Tables are the building blocks of your company's data.`
                                         }

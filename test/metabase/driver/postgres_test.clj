@@ -5,17 +5,19 @@
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [query-processor-test :refer [rows]]
              [sync :as sync]
              [util :as u]]
             [metabase.driver
              [generic-sql :as sql]
              [postgres :as postgres]]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qpi]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test
@@ -165,7 +167,9 @@
 
 ;;; Util Fns
 
-(defn- drop-if-exists-and-create-db! [db-name]
+(defn drop-if-exists-and-create-db!
+  "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
+  [db-name]
   (let [spec (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))]
     ;; kill any open connections
     (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -242,14 +246,12 @@
 
 ;;; timezone tests
 
-(tu/resolve-private-vars metabase.driver.generic-sql.query-processor
-  run-query-with-timezone)
-
 (defn- get-timezone-with-report-timezone [report-timezone]
-  (ffirst (:rows (run-query-with-timezone pg-driver
-                                          {:report-timezone report-timezone}
-                                          (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
-                                          {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
+  (ffirst (:rows (#'sqlqp/run-query-with-timezone
+                  pg-driver
+                  {:report-timezone report-timezone}
+                  (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
+                  {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
 
 ;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
 (expect-with-engine :postgres
@@ -374,11 +376,11 @@
                   (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
 
-;; check that values for enum types get wrapped in appropriate CAST() fn calls in prepare-value
+;; check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`
 (expect-with-engine :postgres
   {:name :cast, :args ["toucan" (keyword "bird type")]}
-  (#'postgres/prepare-value {:field {:database-type "bird type", :base-type :type/PostgresEnum}
-                             :value "toucan"}))
+  (sqlqp/->honeysql pg-driver (qpi/map->Value {:field {:database-type "bird type", :base-type :type/PostgresEnum}
+                                               :value "toucan"})))
 
 ;; End-to-end check: make sure everything works as expected when we run an actual query
 (expect-with-engine :postgres

@@ -23,7 +23,6 @@
            [java.sql SQLException Timestamp]
            [java.text Normalizer Normalizer$Form]
            [java.util Calendar Date TimeZone]
-           javax.xml.bind.DatatypeConverter
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
@@ -36,21 +35,19 @@
 ;; for pprinting huge things like expanded queries
 (intern 'clojure.pprint '*print-right-margin* 200)
 
-(declare pprint-to-str)
-
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
   {:style/indent 0}
   [& body]
   `(try ~@body (catch Throwable ~'_)))
 
-;;; ### Protocols
 
 (defprotocol ITimestampCoercible
   "Coerce object to a `java.sql.Timestamp`."
   (->Timestamp ^java.sql.Timestamp [this]
-    "Coerce this object to a `java.sql.Timestamp`.
-     Strings are parsed as ISO-8601."))
+    "Coerce this object to a `java.sql.Timestamp`. Strings are parsed as ISO-8601."))
+
+(declare str->date-time)
 
 (extend-protocol ITimestampCoercible
   nil       (->Timestamp [_]
@@ -66,7 +63,7 @@
               (->Timestamp (.getTime this)))
   ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
   String    (->Timestamp [this]
-              (->Timestamp (DatatypeConverter/parseDateTime this)))
+              (->Timestamp (str->date-time this)))
   DateTime  (->Timestamp [this]
               (->Timestamp (.getMillis this))))
 
@@ -76,18 +73,22 @@
   (->DateTimeFormatter ^org.joda.time.format.DateTimeFormatter [this]
     "Coerce object to a `DateTimeFormatter`."))
 
+(declare pprint-to-str)
+
 (extend-protocol IDateTimeFormatterCoercible
   ;; Specify a format string like "yyyy-MM-dd"
   String            (->DateTimeFormatter [this] (time/formatter this))
   DateTimeFormatter (->DateTimeFormatter [this] this)
   ;; Keyword will be used to get matching formatter from time/formatters
-  Keyword           (->DateTimeFormatter [this] (or (time/formatters this)
-                                                    (throw (Exception. (format "Invalid formatter name, must be one of:\n%s"
-                                                                               (pprint-to-str (sort (keys time/formatters)))))))))
+  Keyword           (->DateTimeFormatter [this]
+                      (or (time/formatters this)
+                          (throw (Exception. (format "Invalid formatter name, must be one of:\n%s"
+                                                     (pprint-to-str (sort (keys time/formatters)))))))))
+
 
 (defn parse-date
-  "Parse a datetime string S with a custom DATE-FORMAT, which can be a format string,
-   clj-time formatter keyword, or anything else that can be coerced to a `DateTimeFormatter`.
+  "Parse a datetime string S with a custom DATE-FORMAT, which can be a format string, clj-time formatter keyword, or
+  anything else that can be coerced to a `DateTimeFormatter`.
 
      (parse-date \"yyyyMMdd\" \"20160201\") -> #inst \"2016-02-01\"
      (parse-date :date-time \"2016-02-01T00:00:00.000Z\") -> #inst \"2016-02-01\""
@@ -114,9 +115,6 @@
   java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
   org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
 
-
-;;; ## Date Stuff
-
 (defn is-temporal?
   "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
   [v]
@@ -124,8 +122,8 @@
       (instance? org.joda.time.DateTime v)))
 
 (defn new-sql-timestamp
-  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
-   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
+  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current
+  date. (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
   ^java.sql.Timestamp []
   (->Timestamp (System/currentTimeMillis)))
 
@@ -204,7 +202,8 @@
 
 
 (def ^:private ^:const date-extract-units
-  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year :year})
+  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year
+    :year})
 
 (defn date-extract
   "Extract UNIT from DATE. DATE defaults to now.
@@ -253,7 +252,7 @@
   (let [year    (date-extract :year date timezone-id)
         quarter (date-extract :quarter-of-year date timezone-id)
         month   (- (* 3 quarter) 2)]
-    (format "%d-%02d-01ZZ" year month)))
+    (format "%d-%02d-01'T'ZZ" year month)))
 
 (defn date-trunc
   "Truncate DATE to UNIT. DATE defaults to now.
@@ -269,11 +268,11 @@
      ;; For minute and hour truncation timezone should not be taken into account
      :minute  (trunc-with-floor date (* 60 1000))
      :hour    (trunc-with-floor date (* 60 60 1000))
-     :day     (trunc-with-format "yyyy-MM-ddZZ" date timezone-id)
-     :week    (trunc-with-format "yyyy-MM-ddZZ" (->first-day-of-week date timezone-id) timezone-id)
-     :month   (trunc-with-format "yyyy-MM-01ZZ" date timezone-id)
+     :day     (trunc-with-format "yyyy-MM-dd'T'ZZ" date timezone-id)
+     :week    (trunc-with-format "yyyy-MM-dd'T'ZZ" (->first-day-of-week date timezone-id) timezone-id)
+     :month   (trunc-with-format "yyyy-MM-01'T'ZZ" date timezone-id)
      :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
-     :year    (trunc-with-format "yyyy-01-01ZZ" date timezone-id))))
+     :year    (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
 
 
 (defn date-trunc-or-extract
@@ -339,9 +338,8 @@
 
 
 (defn optional
-  "Helper function for defining functions that accept optional arguments.
-   If PRED? is true of the first item in ARGS, a pair like `[first-arg other-args]`
-   is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
+  "Helper function for defining functions that accept optional arguments. If PRED? is true of the first item in ARGS,
+  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
 
    If DEFAULT is not specified, `nil` will be returned when PRED? is false.
 
@@ -454,17 +452,6 @@
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
-
-(defn first-index-satisfying
-  "Return the index of the first item in COLL where `(pred item)` is logically `true`.
-
-     (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
-  {:style/indent 1}
-  [pred coll]
-  (loop [i 0, [item & more] coll]
-    (cond
-      (pred item) i
-      (seq more)  (recur (inc i) more))))
 
 (defmacro prog1
   "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of
@@ -771,7 +758,9 @@
   ([message & body]
    `(let [start-time# (System/nanoTime)]
       (prog1 (do ~@body)
-        (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+        (println (format-color '~'green "%s took %s"
+                   ~message
+                   (format-nanoseconds (- (System/nanoTime) start-time#))))))))
 
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
@@ -786,7 +775,7 @@
                                  (not (.contains (name ns-symb) "test")))]
                 ns-symb))))
 
-(def ^:const ^java.util.regex.Pattern uuid-regex
+(def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
 
@@ -841,10 +830,9 @@
              {k (get m k)})))
 
 (defn select-keys-when
-  "Returns a map that only contains keys that are either `:present` or `:non-nil`.
-   Combines behavior of `select-keys` and `select-non-nil-keys`.
-   This is useful for API endpoints that update a model, which often have complex rules about what gets updated
-   (some keys are updated if `nil`, others only if non-nil).
+  "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`
+  and `select-non-nil-keys`. This is useful for API endpoints that update a model, which often have complex rules
+  about what gets updated (some keys are updated if `nil`, others only if non-nil).
 
      (select-keys-when {:a 100, :b nil, :d 200, :e nil}
        :present #{:a :b :c}
@@ -871,8 +859,7 @@
     m))
 
 (def ^:private date-time-with-millis-no-t
-  "This primary use for this formatter is for Dates formatted by the
-  built-in SQLite functions"
+  "This primary use for this formatter is for Dates formatted by the built-in SQLite functions"
   (->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
 (def ^:private ordered-date-parsers
@@ -889,9 +876,9 @@
 (defn str->date-time
   "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date or nil if it
   was unable to be parsed."
-  ([^String date-str]
+  (^org.joda.time.DateTime [^String date-str]
    (str->date-time date-str nil))
-  ([^String date-str ^TimeZone tz]
+  (^org.joda.time.DateTime [^String date-str, ^TimeZone tz]
    (let [dtz (some-> tz .getID t/time-zone-for-id)]
      (first
       (for [formatter ordered-date-parsers

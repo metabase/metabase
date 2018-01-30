@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import cx from "classnames";
-
+import { t } from 'c-3po';
 import AuthScene from "../components/AuthScene.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
@@ -14,7 +14,6 @@ import Icon from "metabase/components/Icon.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 
 import * as authActions from "../auth";
-
 
 import { SessionApi } from "metabase/services";
 
@@ -103,10 +102,10 @@ export default class PasswordResetApp extends Component {
                                     <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
                                 </div>
                                 <div className="Grid-cell bordered rounded shadowed">
-                                    <h3 className="Login-header Form-offset mt4">Whoops, that's an expired link</h3>
+                                    <h3 className="Login-header Form-offset mt4">{t`Whoops, that's an expired link`}</h3>
                                     <p className="Form-offset mb4 mr4">
-                                        For security reasons, password reset links expire after a little while. If you still need
-                                        to reset your password, you can <Link to="/auth/forgot_password" className="link">request a new reset email</Link>.
+                                        {t`For security reasons, password reset links expire after a little while. If you still need
+                                        to reset your password, you can <Link to="/auth/forgot_password" className="link">request a new reset email</Link>.`}
                                     </p>
                                 </div>
                             </div>
@@ -126,21 +125,21 @@ export default class PasswordResetApp extends Component {
                           { !resetSuccess ?
                           <div className="Grid-cell">
                               <form className="ForgotForm Login-wrapper bg-white Form-new bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)} noValidate>
-                                  <h3 className="Login-header Form-offset">New password</h3>
+                                  <h3 className="Login-header Form-offset">{t`New password`}</h3>
 
-                                  <p className="Form-offset text-grey-3 mb4">To keep your data secure, passwords {passwordComplexity}</p>
+                                  <p className="Form-offset text-grey-3 mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
 
                                   <FormMessage formError={resetError && resetError.data.message ? resetError : null} ></FormMessage>
 
                                   <FormField key="password" fieldName="password" formError={resetError}>
-                                      <FormLabel title={"Create a new password"}  fieldName={"password"} formError={resetError} />
-                                      <input className="Form-input Form-offset full" name="password" placeholder="Make sure its secure like the instructions above" type="password" onChange={(e) => this.onChange("password", e.target.value)} autoFocus />
+                                      <FormLabel title={t`Create a new password`}  fieldName={"password"} formError={resetError} />
+                                      <input className="Form-input Form-offset full" name="password" placeholder={t`Make sure its secure like the instructions above`} type="password" onChange={(e) => this.onChange("password", e.target.value)} autoFocus />
                                       <span className="Form-charm"></span>
                                   </FormField>
 
                                   <FormField key="password2" fieldName="password2" formError={resetError}>
-                                      <FormLabel title={"Confirm new password"}  fieldName={"password2"} formError={resetError} />
-                                      <input className="Form-input Form-offset full" name="password2" placeholder="Make sure it matches the one you just entered" type="password" onChange={(e) => this.onChange("password2", e.target.value)} />
+                                      <FormLabel title={t`Confirm new password`}  fieldName={"password2"} formError={resetError} />
+                                      <input className="Form-input Form-offset full" name="password2" placeholder={t`Make sure it matches the one you just entered`} type="password" onChange={(e) => this.onChange("password2", e.target.value)} />
                                       <span className="Form-charm"></span>
                                   </FormField>
 
@@ -157,12 +156,12 @@ export default class PasswordResetApp extends Component {
                                   <div className="SuccessMark">
                                       <Icon name="check" />
                                   </div>
-                                  <p>Your password has been reset.</p>
+                                  <p>{t`Your password has been reset.`}</p>
                                   <p>
                                       { newUserJoining ?
-                                      <Link to="/?new" className="Button Button--primary">Sign in with your new password</Link>
+                                      <Link to="/?new" className="Button Button--primary">{t`Sign in with your new password`}</Link>
                                       :
-                                      <Link to="/" className="Button Button--primary">Sign in with your new password</Link>
+                                      <Link to="/" className="Button Button--primary">{t`Sign in with your new password`}</Link>
                                       }
                                   </p>
                               </div>

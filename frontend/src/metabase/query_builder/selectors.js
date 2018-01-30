@@ -97,6 +97,7 @@ export const getDatabaseFields = createSelector(
 
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
 import { getAlerts } from "metabase/alert/selectors";
+import { extractRemappings, getVisualizationTransformed } from "metabase/visualizations";
 
 export const getMode = createSelector(
     [getLastRunCard, getTableMetadata],
@@ -162,3 +163,32 @@ export const getQuestionAlerts = createSelector(
     [getAlerts, getCard],
     (alerts, card) => card && card.id && _.pick(alerts, (alert) => alert.card.id === card.id) || {}
 )
+
+/**
+ * Returns the card and query results data in a format that `Visualization.jsx` expects
+ */
+export const getRawSeries = state => {
+    const question = getQuestion(state)
+    const results = getQueryResults(state)
+    const isObjectDetail = getIsObjectDetail(state)
+    const lasRunDatasetQuery = getLastRunDatasetQuery(state)
+
+    // we want to provide the visualization with a card containing the latest
+    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
+    // BUT the last executed "dataset_query" (to ensure data matches the query)
+    return question.atomicQueries().map((metricQuery, index) => ({
+        card: {
+            ...question.card(),
+            display: isObjectDetail ? "object" : question.card().display,
+            dataset_query: lasRunDatasetQuery
+        },
+        data: results[index] && results[index].data
+    }))
+};
+
+/**
+ * Returns the final series data that all visualization (starting from the root-level
+ * `Visualization.jsx` component) code uses for rendering visualizations.
+ */
+export const getTransformedSeries = state =>
+    getVisualizationTransformed(extractRemappings(getRawSeries(state))).series

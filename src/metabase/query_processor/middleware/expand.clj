@@ -331,23 +331,33 @@
 (s/defn ^:ql time-interval :- i/Filter
   "Filter subclause. Syntactic sugar for specifying a specific time interval.
 
-    ;; return rows where datetime Field 100's value is in the current day
-    (filter {} (time-interval (field-id 100) :current :day)) "
-  [f n unit]
+ Optionally accepts a map of `options`. The following options are currently implemented:
+
+ *  `:include-current` Should we include partial results for the current day/month/etc? Defaults to `false`; set
+     this to `true` to include them.
+
+     ;; return rows where datetime Field 100's value is in the current month
+     (filter {} (time-interval (field-id 100) :current :month))
+
+     ;; return rows where datetime Field 100's value is in the current month, including partial results for the
+     ;; current day
+     (filter {} (time-interval (field-id 100) :current :month {:include-current true}))"
+  [f n unit & [options]]
   (if-not (integer? n)
     (case (qputil/normalize-token n)
-      :current (recur f  0 unit)
-      :last    (recur f -1 unit)
-      :next    (recur f  1 unit))
-    (let [f (datetime-field f unit)]
+      :current (recur f  0 unit options)
+      :last    (recur f -1 unit options)
+      :next    (recur f  1 unit options))
+    (let [f                (datetime-field f unit)
+          include-current? (qputil/get-normalized options :include-current)]
       (cond
         (core/= n  0) (= f (value f (relative-datetime  0 unit)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
         (core/= n  1) (= f (value f (relative-datetime  1 unit)))
-        (core/< n -1) (between f (value f (relative-datetime  n unit))
-                                 (value f (relative-datetime -1 unit)))
-        (core/> n  1) (between f (value f (relative-datetime  1 unit))
-                                 (value f (relative-datetime  n unit)))))))
+        (core/< n -1) (between f (value f (relative-datetime                          n unit))
+                                 (value f (relative-datetime (if include-current? 0 -1) unit)))
+        (core/> n  1) (between f (value f (relative-datetime (if include-current? 0  1) unit))
+                                 (value f (relative-datetime                          n unit)))))))
 
 (s/defn ^:ql filter
   "Filter the results returned by the query.

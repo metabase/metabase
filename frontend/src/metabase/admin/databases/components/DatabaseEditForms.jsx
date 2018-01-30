@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
+import { t } from 'c-3po';
 
 export default class DatabaseEditForms extends Component {
     static propTypes = {
@@ -25,7 +26,7 @@ export default class DatabaseEditForms extends Component {
                     <label className="Select Form-offset mt1">
                         <select className="Select" defaultValue={database.engine}
                                 onChange={(e) => this.props.selectEngine(e.target.value)}>
-                            <option value="" disabled>Select a database type</option>
+                            <option value="" disabled>{t`Select a database type`}</option>
                             {Object.keys(engines).sort().map(opt =>
                                 <option key={opt} value={opt}>{engines[opt]['driver-name']}</option>
                             )}
@@ -45,7 +46,7 @@ export default class DatabaseEditForms extends Component {
                             id: this.props.database.id
                         }, database.details)}
                         isNewDatabase={!database.id}
-                        submitButtonText={'Save'}
+                        submitButtonText={t`Save`}
                         submitting={isSubmitting}>
                     </DatabaseDetailsForm>
                     : null

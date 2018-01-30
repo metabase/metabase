@@ -14,7 +14,7 @@ or one like
 
 If this happens, setting a few JVM options should fix your issue:
 
-    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar target/uberjar/metabase.jar
+    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar metabase.jar
 
 You can also pass JVM arguments by setting the environment variable `JAVA_TOOL_OPTIONS`, e.g.
 

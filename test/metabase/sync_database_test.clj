@@ -1,4 +1,6 @@
 (ns metabase.sync-database-test
+  "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
+  been written. For newer sync tests see `metabase.sync.*` test namespaces."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [expectations :refer :all]

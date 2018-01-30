@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-
+import { t } from 'c-3po';
 import ObjectRetireModal from "./ObjectRetireModal.jsx";
 
 import { capitalize } from "metabase/lib/formatting";
@@ -33,12 +33,12 @@ export default class ObjectActionsSelect extends Component {
                     <ul className="UserActionsSelect">
                         <li>
                             <Link to={"/admin/datamodel/" + objectType + "/" + object.id} data-metabase-event={"Data Model;"+objectType+" Edit Page"} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
-                                Edit {capitalize(objectType)}
+                                {t`Edit`} {capitalize(objectType)}
                             </Link>
                         </li>
                         <li>
                             <Link to={"/admin/datamodel/" + objectType + "/" + object.id + "/revisions"} data-metabase-event={"Data Model;"+objectType+" History"} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
-                                Revision History
+                                {t`Revision History`}
                             </Link>
                         </li>
                         <li className="mt1 border-top">

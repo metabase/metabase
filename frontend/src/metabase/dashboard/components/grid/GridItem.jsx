@@ -81,7 +81,7 @@ export default class GridItem extends Component {
         let child = React.Children.only(this.props.children);
         return (
             <DraggableCore
-                cancel=".react-resizable-handle"
+                cancel=".react-resizable-handle, .drag-disabled"
                 onStart={this.onDragHandler("onDragStart")}
                 onDrag={this.onDragHandler("onDrag")}
                 onStop={this.onDragHandler("onDragStop")}

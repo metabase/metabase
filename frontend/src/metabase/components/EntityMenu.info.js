@@ -1,7 +1,7 @@
 import React from 'react'
 
 import EntityMenu from 'metabase/components/EntityMenu'
-
+import { t } from 'c-3po';
 export const component = EntityMenu
 
 export const description = `
@@ -21,10 +21,10 @@ export const examples = {
             <EntityMenu
                 triggerIcon='pencil'
                 items={[
-                    { title: "Edit this question", icon: "editdocument", action: () => alert('Action type') },
-                    { title: "View revision history", icon: "history", link: '/derp' },
-                    { title: "Move", icon: "move", action: () => alert('Move action') },
-                    { title: "Archive", icon: "archive", action: () => alert('Archive action') }
+                    { title: t`Edit this question`, icon: "editdocument", action: () => alert(t`Action type`) },
+                    { title: t`View revision history`, icon: "history", link: '/derp' },
+                    { title: t`Move`, icon: "move", action: () => alert(t`Move action`) },
+                    { title: t`Archive`, icon: "archive", action: () => alert(t`Archive action`) }
                 ]}
             />
         </DemoAlignRight>
@@ -34,9 +34,9 @@ export const examples = {
             <EntityMenu
                 triggerIcon='share'
                 items={[
-                    { title: "Add to dashboard", icon: "addtodash", action: () => alert('Action type') },
-                    { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "embed", action: () => alert('Another action type') },
+                    { title: t`Add to dashboard`, icon: "addtodash", action: () => alert(t`Action type`) },
+                    { title: t`Download results`, icon: "download", link: '/download' },
+                    { title: t`Sharing and embedding`, icon: "embed", action: () => alert(t`Another action type`) },
                 ]}
             />
         </DemoAlignRight>
@@ -46,8 +46,8 @@ export const examples = {
             <EntityMenu
                 triggerIcon='burger'
                 items={[
-                    { title: "Get alerts about this", icon: "alert", action: () => alert('Get alerts about this') },
-                    { title: "View the SQL", icon: "sql", link: '/download' },
+                    { title: t`Get alerts about this`, icon: "alert", action: () => alert(t`Get alerts about this`) },
+                    { title: t`View the SQL`, icon: "sql", link: '/download' },
                 ]}
             />
         </DemoAlignRight>
@@ -57,25 +57,25 @@ export const examples = {
             <EntityMenu
                 triggerIcon='pencil'
                 items={[
-                    { title: "Edit this question", icon: "editdocument", action: () => alert('Action type') },
-                    { title: "View revision history", icon: "history", link: '/derp' },
-                    { title: "Move", icon: "move", action: () => alert('Move action') },
-                    { title: "Archive", icon: "archive", action: () => alert('Archive action') }
+                    { title: t`Edit this question`, icon: "editdocument", action: () => alert(t`Action type`) },
+                    { title: t`View revision history`, icon: "history", link: '/derp' },
+                    { title: t`Move`, icon: "move", action: () => alert(t`Move action`) },
+                    { title: t`Archive`, icon: "archive", action: () => alert(t`Archive action`) }
                 ]}
             />
             <EntityMenu
                 triggerIcon='share'
                 items={[
-                    { title: "Add to dashboard", icon: "addtodash", action: () => alert('Action type') },
-                    { title: "Download results", icon: "download", link: '/download' },
-                    { title: "Sharing and embedding", icon: "embed", action: () => alert('Another action type') },
+                    { title: t`Add to dashboard`, icon: "addtodash", action: () => alert(t`Action type`) },
+                    { title: t`Download results`, icon: "download", link: '/download' },
+                    { title: t`Sharing and embedding`, icon: "embed", action: () => alert(t`Another action type`) },
                 ]}
             />
             <EntityMenu
                 triggerIcon='burger'
                 items={[
-                    { title: "Get alerts about this", icon: "alert", action: () => alert('Get alerts about this') },
-                    { title: "View the SQL", icon: "sql", link: '/download' },
+                    { title: t`Get alerts about this`, icon: "alert", action: () => alert(t`Get alerts about this`) },
+                    { title: t`View the SQL`, icon: "sql", link: '/download' },
                 ]}
             />
         </DemoAlignRight>

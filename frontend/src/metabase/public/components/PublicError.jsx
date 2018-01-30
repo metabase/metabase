@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-
+import { t } from 'c-3po';
 import { connect } from "react-redux";
 import { getErrorMessage } from "metabase/selectors/app";
 
@@ -15,7 +15,7 @@ type Props = {
     message?: string
 };
 
-const PublicError = ({ message = "An error occurred" }: Props) =>
+const PublicError = ({ message = t`An error occurred` }: Props) =>
     <EmbedFrame className="spread">
         <div className="flex layout-centered flex-full flex-column">
             <div className="QueryError-image QueryError-image--noRows"></div>

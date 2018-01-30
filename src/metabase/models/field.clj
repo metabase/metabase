@@ -10,9 +10,10 @@
             [metabase.util :as u]
             [toucan
              [db :as db]
+             [hydrate :refer [hydrate]]
              [models :as models]]))
 
-;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
+;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
 (def ^:const visibility-types
   "Possible values for `Field.visibility_type`."
@@ -23,8 +24,7 @@
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
 
-
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Field :metabase_field)
 
@@ -110,8 +110,7 @@
           :can-write?        i/superuser?}))
 
 
-;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------
-
+;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn target
   "Return the FK target `Field` that this `Field` points to."
@@ -158,6 +157,13 @@
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
+(defn readable-fields-only
+  "Efficiently checks if each field is readable and returns only readable fields"
+  [fields]
+  (for [field (hydrate fields :table)
+        :when (i/can-read? field)]
+    (dissoc field :table)))
+
 (defn with-targets
   "Efficiently hydrate the FK target fields for a collection of FIELDS."
   {:batched-hydrate :target}
@@ -167,7 +173,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (filter i/can-read? (db/select Field :id [:in target-field-ids]))))]
+                                         (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))

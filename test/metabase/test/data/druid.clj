@@ -1,10 +1,10 @@
 (ns metabase.test.data.druid
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
+            [metabase.driver.druid :as druid]
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as i]]
-            [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
   (:import metabase.driver.druid.DruidDriver))
 
@@ -23,9 +23,9 @@
 
 ;;; Setting Up a Server w/ Druid Test Data
 
-;; Unfortunately the process of loading test data onto an external server for CI purposes is a little involved.
-;; A complete step-by-step guide is available on the wiki at `https://github.com/metabase/metabase/wiki/Setting-up-Druid-for-CI-on-EC2`
-;; Refer to that page for more information.
+;; Unfortunately the process of loading test data onto an external server for CI purposes is a little involved. A
+;; complete step-by-step guide is available on the wiki at
+;; `https://github.com/metabase/metabase/wiki/Setting-up-Druid-for-CI-on-EC2` Refer to that page for more information.
 
 
 (def ^:private ^:const default-filename "Default filename for batched ingestion data file."
@@ -96,17 +96,15 @@
   "Maximum number of seconds we should wait for the indexing task to finish before deciding it's failed."
   300) ; five minutes
 
-(resolve-private-vars metabase.driver.druid GET POST)
-
 (defn- run-indexing-task
   "Run a batched ingestion task on HOST."
   [host & {:as indexing-task-args}]
   (let [indexer-endpoint (str host ":8090/druid/indexer/v1/task")
-        {:keys [task]} (POST indexer-endpoint, :body (indexing-task indexing-task-args))
+        {:keys [task]} (#'druid/POST indexer-endpoint, :body (indexing-task indexing-task-args))
         status-url     (str indexer-endpoint "/" task "/status")]
     (println "STATUS URL: " (str indexer-endpoint "/" task "/status"))
     (loop [remaining-seconds indexer-timeout-seconds]
-      (let [status (get-in (GET status-url) [:status :status])]
+      (let [status (get-in (#'druid/GET status-url) [:status :status])]
         (printf "%s (%d seconds elapsed)\n" status (- indexer-timeout-seconds remaining-seconds))
         (when (not= status "SUCCESS")
           (when (<= remaining-seconds 0)

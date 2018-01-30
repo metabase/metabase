@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
-
+import { t } from 'c-3po';
 import SaveStatus from "metabase/components/SaveStatus.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -78,11 +78,11 @@ export default class MetadataHeader extends Component {
         return (
             <div className="MetadataEditor-header flex align-center flex-no-shrink">
                 <div className="MetadataEditor-headerSection py2 h2">
-                    <span className="text-grey-4">Current database:</span> {this.renderDbSelector()}
+                    <span className="text-grey-4">{t`Current database:`}</span> {this.renderDbSelector()}
                 </div>
                 <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
                     <SaveStatus ref="status" />
-                    <span className="mr1">Show original schema</span>
+                    <span className="mr1">{t`Show original schema`}</span>
                     <Toggle value={this.props.isShowingSchema} onChange={this.props.toggleShowSchema} />
                     {this.renderTableSettingsButton()}
                 </div>

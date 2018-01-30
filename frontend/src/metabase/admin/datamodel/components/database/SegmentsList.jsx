@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-
+import { t } from 'c-3po';
 import SegmentItem from "./SegmentItem.jsx";
 
 export default class SegmentsList extends Component {
@@ -19,15 +19,15 @@ export default class SegmentsList extends Component {
         return (
             <div id="SegmentsList" className="my3">
                 <div className="flex mb1">
-                    <h2 className="px1 text-purple">Segments</h2>
-                    <Link to={"/admin/datamodel/segment/create?table="+tableMetadata.id} data-metabase-event="Data Model;Add Segment Page" className="flex-align-right float-right text-bold text-brand no-decoration">+ Add a Segment</Link>
+                    <h2 className="px1 text-purple">{t`Segments`}</h2>
+                    <Link to={"/admin/datamodel/segment/create?table="+tableMetadata.id} data-metabase-event="Data Model;Add Segment Page" className="flex-align-right float-right text-bold text-brand no-decoration">+ {t`Add a Segment`}</Link>
                 </div>
                 <table className="AdminTable">
                     <thead>
                         <tr>
-                            <th style={{ minWidth: "200px" }}>Name</th>
-                            <th className="full">Definition</th>
-                            <th>Actions</th>
+                            <th style={{ minWidth: "200px" }}>{t`Name`}</th>
+                            <th className="full">{t`Definition`}</th>
+                            <th>{t`Actions`}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -43,7 +43,7 @@ export default class SegmentsList extends Component {
                 </table>
                 { tableMetadata.segments.length === 0 &&
                     <div className="flex layout-centered m4 text-grey-3">
-                        Create segments to add them to the Filter dropdown in the query builder
+                        {t`Create segments to add them to the Filter dropdown in the query builder`}
                     </div>
                 }
             </div>

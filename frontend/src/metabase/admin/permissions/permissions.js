@@ -2,7 +2,7 @@ import { createAction, createThunkAction, handleActions, combineReducers } from 
 
 import { canEditPermissions } from "metabase/lib/groups";
 import MetabaseAnalytics from "metabase/lib/analytics";
-
+import { t } from 'c-3po';
 import { PermissionsApi, CollectionsApi } from "metabase/services";
 
 const RESET = "metabase/admin/permissions/RESET";
@@ -104,7 +104,7 @@ const saveError = handleActions({
     [RESET]: { next: () => null },
     [SAVE_PERMISSIONS]: {
         next: (state) => null,
-        throw: (state, { payload }) => (payload && typeof payload.data === "string" ? payload.data : payload.data.message) || "Sorry, an error occurred."
+        throw: (state, { payload }) => (payload && typeof payload.data === "string" ? payload.data : payload.data.message) || t`Sorry, an error occurred.`
     },
     [LOAD_PERMISSIONS]: {
         next: (state) => null,

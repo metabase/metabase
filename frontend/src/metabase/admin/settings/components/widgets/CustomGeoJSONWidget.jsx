@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 
 import Utils from "metabase/lib/utils";
-
 import Select, { Option } from "metabase/components/Select.jsx";
 import Confirm from "metabase/components/Confirm.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
@@ -172,7 +171,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) =>
             <thead>
                 <tr>
                     <th>{t`Name`}</th>
-                    <th>URL</th>
+                    <th>{t`URL`}</th>
                 </tr>
             </thead>
             <tbody>
@@ -185,7 +184,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) =>
                         <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
                     </td>
                     <td className="Table-actions">
-                        <Confirm action={() => onDeleteMap(map)} title="Delete custom map">
+                        <Confirm action={() => onDeleteMap(map)} title={t`Delete custom map`}>
                             <button className="Button Button--danger">{t`Remove`}</button>
                         </Confirm>
                     </td>
@@ -210,7 +209,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
         <Select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Select…"
+            placeholder={t`Select…`}
         >
             {Object.entries(options).map(([name, values]) =>
                 <Option key={name} value={name}>
@@ -254,11 +253,11 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                     <input
                         type="text"
                         className="SettingsInput AdminInput bordered rounded h3"
-                        placeholder="Like https://my-mb-server.com/maps/my-map.json"
+                        placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
                         value={map.url}
                         onChange={(e) => onMapChange({ ...map, "url": e.target.value })}
                     />
-                <button className={cx("Button ml1", { "Button--primary" : !geoJson, disabled: !map.url })} onClick={onLoadGeoJson}>{geoJson ? t`Refresh` : t`Load`}</button>
+                    <button className={cx("Button ml1", { "Button--primary" : !geoJson, disabled: !map.url })} onClick={onLoadGeoJson}>{geoJson ? t`Refresh` : t`Load`}</button>
                 </div>
             </SettingContainer>
             <div className={cx({ "disabled": !geoJson })}>

@@ -139,7 +139,7 @@ class ChartSettings extends Component {
                         <div className="flex-full relative">
                             <Visualization
                                 className="spread"
-                                series={series}
+                                rawSeries={series}
                                 isEditing
                                 showTitle
                                 isDashboard

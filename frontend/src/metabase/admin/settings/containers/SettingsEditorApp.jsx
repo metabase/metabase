@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
-
+import { t } from 'c-3po';
 import AdminLayout from "metabase/components/AdminLayout.jsx";
 
 import SettingsSetting from "../components/SettingsSetting.jsx";
@@ -103,7 +103,7 @@ export default class SettingsEditorApp extends Component {
         const { settings, updateSetting } = this.props;
         const setting = _.findWhere(settings, { key });
         if (!setting) {
-            throw new Error("Unknown setting " + key);
+            throw new Error(t`Unknown setting ${key}`);
         }
         return updateSetting({ ...setting, value });
     }
@@ -247,7 +247,7 @@ export default class SettingsEditorApp extends Component {
         return (
             <AdminLayout
                 ref={(layout) => this.layout = layout}
-                title="Settings"
+                title={t`Settings`}
                 sidebar={this.renderSettingsSections()}
             >
                 {this.renderSettingsPane()}

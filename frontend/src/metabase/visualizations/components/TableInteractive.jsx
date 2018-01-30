@@ -227,6 +227,7 @@ export default class TableInteractive extends Component {
                 key={key} style={style}
                 className={cx("TableInteractive-cellWrapper", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+                    "TableInteractive-cellWrapper--lastColumn": columnIndex === cols.length - 1,
                     "cursor-pointer": isClickable,
                     "justify-end": isColumnRightAligned(column),
                     "link": isClickable && isID(column)
@@ -281,6 +282,7 @@ export default class TableInteractive extends Component {
                 style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
                 className={cx("TableInteractive-cellWrapper TableInteractive-headerCellData", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+                    "TableInteractive-cellWrapper--lastColumn": columnIndex === cols.length - 1,
                     "TableInteractive-headerCellData--sorted": isSorted,
                     "cursor-pointer": isClickable,
                     "justify-end": isRightAligned
