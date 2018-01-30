@@ -2,9 +2,11 @@
   "Related entities recommendations."
   (:require [clojure.set :as set]
             [clojure.string :as str]
-            [kixi.stats.math :as math]
+            [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [field :refer [Field]]
              [interface :as mi]
@@ -70,16 +72,19 @@
     (/ (count (set/intersection context-a context-b))
        (max (min (count context-a) (count context-b)) 1))))
 
+(defn- rank-by-similarity
+  [reference entities]
+  (->> entities
+       (remove #{reference})
+       (map #(assoc % :similarity (similarity reference %)))
+       (sort-by :similarity >)))
+
 (defn- interesting-mix
   "Create an interesting mix of matches. The idea is to have a balanced mix
    between close (best) matches and more diverse matches to cover a wider field
    of intents."
-  [reference matches]
-  (let [[best rest] (->> matches
-                         (remove #{reference})
-                         (map #(assoc % :similarity (similarity reference %)))
-                         (sort-by :similarity >)
-                         (split-at max-best-matches))]
+  [matches]
+  (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
 (defn- metrics-for-table
@@ -124,7 +129,7 @@
   [card]
   (->> (db/select Card :table_id (:table_id card))
        (filter mi/can-read?)
-       (interesting-mix card)
+       (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
 (defn- canonical-metric
@@ -138,6 +143,33 @@
                                  :aggregation :definition)))
        first))
 
+(defn- recently-modified-dashboards
+  []
+  (->> (db/select-field :dashboard_id DashboardCard
+         {:order-by [[:updated_at :desc]]})
+       (take max-serendipity-matches)))
+
+(defn- recommended-dashboards
+  [cards]
+  (let [recent           (recently-modified-dashboards)
+        card->dashboards (->> (db/select [DashboardCard :dashboard_id :card_id]
+                                :card_id [:in (map :id cards)]
+                                :dashboard_id [:not-in recent])
+                              (group-by :card_id))
+        best             (->> cards
+                              (mapcat (comp card->dashboards :id))
+                              (map :dashboard_id)
+                              distinct
+                              (take max-best-matches))]
+    (map Dashboard (concat best recent))))
+
+(defn- recommended-collections
+  [cards]
+  (->> cards
+       (m/distinct-by :collection_id)
+       interesting-mix
+       (map (comp Collection :collection_id))))
+
 (defmulti
   ^{:doc "Return related entities."
     :arglists '([entity])}
@@ -145,18 +177,22 @@
 
 (defmethod related (type Card)
   [card]
-  (let [table    (Table (:table_id card))
-        segments (->> table
-                      segments-for-table
-                      (interesting-mix card))]
+  (let [table             (Table (:table_id card))
+        similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table
                              metrics-for-table
-                             (interesting-mix card))
-     :segments          segments
+                             (rank-by-similarity card)
+                             interesting-mix)
+     :segments          (->> table
+                             segments-for-table
+                             (rank-by-similarity card)
+                             interesting-mix)
      :dashboard-mates   (cards-sharing-dashboard card)
-     :similar-questions (similar-questions card)
-     :canonical-metric  (canonical-metric card)}))
+     :similar-questions (interesting-mix similar-questions)
+     :canonical-metric  (canonical-metric card)
+     :dashboards        (recommended-dashboards similar-questions)
+     :collections       (recommended-collections similar-questions)}))
 
 (defmethod related (type Query)
   [query]
@@ -168,10 +204,12 @@
     {:table    table
      :metrics  (->> table
                     metrics-for-table
-                    (interesting-mix metric))
+                    (rank-by-similarity metric)
+                    interesting-mix)
      :segments (->> table
                     segments-for-table
-                    (interesting-mix metric))}))
+                    (rank-by-similarity metric)
+                    interesting-mix)}))
 
 (defmethod related (type Segment)
   [segment]
@@ -179,10 +217,12 @@
     {:table       table
      :metrics     (->> table
                        metrics-for-table
-                       (interesting-mix segment))
+                       (rank-by-similarity segment)
+                       interesting-mix)
      :segments    (->> table
                        segments-for-table
-                       (interesting-mix segment))
+                       (rank-by-similarity segment)
+                       interesting-mix)
      :linked-from (linked-from table)}))
 
 (defmethod related (type Table)
