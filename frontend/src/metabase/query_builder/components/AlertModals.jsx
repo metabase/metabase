@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import ModalContent from "metabase/components/ModalContent";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { getQuestion, getVisualizationSettings } from "metabase/query_builder/selectors";
 import _ from "underscore";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import { fetchPulseFormInput, fetchUsers } from "metabase/pulse/actions";
@@ -37,6 +37,7 @@ const classes = cxs ({
 
 @connect((state) => ({
     question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state),
     isAdmin: getUserIsAdmin(state),
     user: getUser(state),
     hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
@@ -52,11 +53,11 @@ export class CreateAlertModalContent extends Component {
     constructor(props) {
         super()
 
-        const { question, user } = props
+        const { question, user, visualizationSettings } = props
 
         this.state = {
             hasSeenEducationalScreen: MetabaseCookies.getHasSeenAlertSplash(),
-            alert: getDefaultAlert(question, user)
+            alert: getDefaultAlert(question, user, visualizationSettings)
         }
     }
 
@@ -102,6 +103,7 @@ export class CreateAlertModalContent extends Component {
     render() {
         const {
             question,
+            visualizationSettings,
             onCancel,
             hasConfiguredAnyChannel,
             hasConfiguredEmailChannel,
@@ -140,7 +142,7 @@ export class CreateAlertModalContent extends Component {
                 <div className="PulseEdit ml-auto mr-auto mb4" style={{maxWidth: "550px"}}>
                     <AlertModalTitle text={t`Let's set up your alert`} />
                     <AlertEditForm
-                        alertType={question.alertType()}
+                        alertType={question.alertType(visualizationSettings)}
                         alert={alert}
                         onAlertChange={this.onAlertChange}
                     />
@@ -199,6 +201,7 @@ export class AlertEducationalScreen extends Component {
     user: getUser(state),
     isAdmin: getUserIsAdmin(state),
     question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state)
 }), { updateAlert, deleteAlert })
 export class UpdateAlertModalContent extends Component {
     props: {
@@ -233,7 +236,7 @@ export class UpdateAlertModalContent extends Component {
     }
 
     render() {
-        const { onCancel, question, alert, user, isAdmin } = this.props
+        const { onCancel, question, visualizationSettings, alert, user, isAdmin } = this.props
         const { modifiedAlert } = this.state
 
         const isCurrentUser = alert.creator.id === user.id
@@ -246,7 +249,7 @@ export class UpdateAlertModalContent extends Component {
                 <div className="PulseEdit ml-auto mr-auto mb4" style={{maxWidth: "550px"}}>
                     <AlertModalTitle text={title} />
                     <AlertEditForm
-                        alertType={question.alertType()}
+                        alertType={question.alertType(visualizationSettings)}
                         alert={modifiedAlert}
                         onAlertChange={this.onAlertChange}
                     />

@@ -36,12 +36,13 @@ import Utils from "metabase/lib/utils";
 import EntityMenu from "metabase/components/EntityMenu";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { AlertListPopoverContent } from "metabase/query_builder/components/AlertListPopoverContent";
-import { getQuestionAlerts } from "metabase/query_builder/selectors";
+import { getQuestionAlerts, getVisualizationSettings } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/home/selectors";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 const mapStateToProps = (state, props) => ({
     questionAlerts: getQuestionAlerts(state),
+    visualizationSettings: getVisualizationSettings(state),
     user: getUser(state)
 })
 
@@ -242,7 +243,7 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { question, questionAlerts, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { question, questionAlerts, visualizationSettings, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
         var buttonSections = [];
@@ -454,7 +455,7 @@ export default class QueryHeader extends Component {
             </Tooltip>
         ]);
 
-        if (!isEditing && card && question.alertType() !== null) {
+        if (!isEditing && card && question.alertType(visualizationSettings) !== null) {
             const createAlertItem = {
                 title: t`Get alerts about this`,
                 icon: "alert",

@@ -2,6 +2,12 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
+// Needed due to wrong dependency resolution order
+// eslint-disable-next-line no-unused-vars
+import Visualization from "metabase/visualizations/components/Visualization";
+
+import { getSettings as _getVisualizationSettings } from "metabase/visualizations/lib/settings";
+
 import { getParametersWithExtras } from "metabase/meta/Card";
 
 import { isCardDirty } from "metabase/lib/card";
@@ -167,28 +173,37 @@ export const getQuestionAlerts = createSelector(
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
-export const getRawSeries = state => {
-    const question = getQuestion(state)
-    const results = getQueryResults(state)
-    const isObjectDetail = getIsObjectDetail(state)
-    const lasRunDatasetQuery = getLastRunDatasetQuery(state)
-
-    // we want to provide the visualization with a card containing the latest
-    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-    // BUT the last executed "dataset_query" (to ensure data matches the query)
-    return question.atomicQueries().map((metricQuery, index) => ({
-        card: {
-            ...question.card(),
-            display: isObjectDetail ? "object" : question.card().display,
-            dataset_query: lasRunDatasetQuery
-        },
-        data: results[index] && results[index].data
-    }))
-};
+export const getRawSeries = createSelector(
+    [getQuestion, getQueryResults, getIsObjectDetail, getLastRunDatasetQuery],
+    (question, results, isObjectDetail, lastRunDatasetQuery) => {
+        // we want to provide the visualization with a card containing the latest
+        // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
+        // BUT the last executed "dataset_query" (to ensure data matches the query)
+        return results && question.atomicQueries().map((metricQuery, index) => ({
+            card: {
+                ...question.card(),
+                display: isObjectDetail ? "object" : question.card().display,
+                dataset_query: lastRunDatasetQuery
+            },
+            data: results[index] && results[index].data
+        }))
+    }
+)
 
 /**
  * Returns the final series data that all visualization (starting from the root-level
  * `Visualization.jsx` component) code uses for rendering visualizations.
  */
-export const getTransformedSeries = state =>
-    getVisualizationTransformed(extractRemappings(getRawSeries(state))).series
+export const getTransformedSeries = createSelector(
+    [getRawSeries],
+    (rawSeries) => rawSeries && getVisualizationTransformed(extractRemappings(rawSeries)).series
+)
+
+/**
+ * Returns complete visualization settings (including default values for those settings which aren't explicitly set)
+ */
+export const getVisualizationSettings = createSelector(
+    [getTransformedSeries],
+    (series) => series && _getVisualizationSettings(series)
+)
+

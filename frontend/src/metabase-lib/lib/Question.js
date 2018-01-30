@@ -230,7 +230,14 @@ export default class Question {
         return this._card && this._card.can_write;
     }
 
-    alertType() {
+    /**
+     * Returns the type of alert that current question supports
+     *
+     * The `visualization_settings` in card object doesn't contain default settings,
+     * so you can provide the complete visualization settings object to `alertType`
+     * for taking those into account
+     */
+    alertType(visualizationSettings) {
         const display = this.display();
 
         if (!this.canRun()) {
@@ -242,20 +249,12 @@ export default class Question {
         if (display === "progress") {
             return ALERT_TYPE_PROGRESS_BAR_GOAL;
         } else if (isLineAreaBar) {
-            const vizSettings = this.card().visualization_settings;
+            const vizSettings = visualizationSettings ? visualizationSettings : this.card().visualization_settings
+            const goalEnabled = vizSettings["graph.show_goal"]
+            const hasSingleYAxisColumn = vizSettings["graph.metrics"].length === 1
 
-            // Don't support multiseries questions
-            // FIXME Atte Keinänen 1/18/17: This only detects visualizations where the user has manually
-            // added multiple columns for the Y axis; this should be extended to cover also scenario where
-            // the Y axis isn't manually set and its column(s) are automatically inferred
-            const hasSingleYAxisColumn = !vizSettings["graph.metrics"] || vizSettings["graph.metrics"].length === 1
-            if (!hasSingleYAxisColumn) {
-                return null;
-            }
-
-            // NOTE Atte Keinänen 11/6/17: Seems that `graph.goal_value` setting can be missing if
-            // only the "Show goal" toggle has been toggled but "Goal value" value hasn't explicitly been set
-            if (vizSettings["graph.show_goal"] === true) {
+            // We don't currently support goal alerts for multiseries question
+            if (goalEnabled && hasSingleYAxisColumn) {
                 return ALERT_TYPE_TIMESERIES_GOAL;
             } else {
                 return ALERT_TYPE_ROWS;
