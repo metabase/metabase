@@ -48,13 +48,15 @@
                                :name          (tu/random-name)
                                :dataset_query {:type :query
                                                :database database-id
-                                               :query {:aggregation [:sum [:field-id 1]]
+                                               :query {:source_table table-id
+                                                       :aggregation [:sum [:field-id 1]]
                                                        :breakout [[:field-id 2]]}}}]
                     Card     [{card-id-2 :id}
                               {:table_id      table-id
                                :creator_id    api/*current-user-id*
                                :name          (tu/random-name)
                                :dataset_query {:type :query
+                                               :source_table table-id
                                                :database database-id
                                                :query {:aggregation [:sum [:field-id 3]]
                                                        :breakout [[:field-id 2]]}}}]
@@ -63,6 +65,7 @@
                                :creator_id    api/*current-user-id*
                                :name          (tu/random-name)
                                :dataset_query {:type :query
+                                               :source_table table-id
                                                :database database-id
                                                :query {:aggregation [:sum [:field-id 3]]
                                                        :breakout [[:field-id 4]]}}}]]
