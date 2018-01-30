@@ -1051,14 +1051,21 @@ export const persistDefaultVisualizationSettings = () => {
         const series = getTransformedSeries(getState())
 
         const updatedQuestion = getQuestionWithDefaultVisualizationSettings(question, series)
-        dispatch(updateQuestion(updatedQuestion))
+        if (updatedQuestion !== question) dispatch(updateQuestion(updatedQuestion))
     }
 }
 
 const getQuestionWithDefaultVisualizationSettings = (question, series) => {
     const oldVizSettings = question.visualizationSettings()
     const newVizSettings = { ...getPersistableDefaultSettings(series), ...oldVizSettings }
-    return question.setVisualizationSettings(newVizSettings)
+
+    // Don't update the question unnecessarily
+    // (even if fields values haven't changed, updating the settings will make the question appear dirty)
+    if (!_.isEqual(oldVizSettings, newVizSettings)) {
+        return question.setVisualizationSettings(newVizSettings)
+    } else {
+        return question
+    }
 }
 
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
