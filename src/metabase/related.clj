@@ -3,6 +3,7 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -145,8 +146,10 @@
 
 (defn- recently-modified-dashboards
   []
-  (->> (db/select-field :dashboard_id DashboardCard
-         {:order-by [[:updated_at :desc]]})
+  (->> (db/select-field :model_id 'Revision
+         :model   "Dashboard"
+         :user_id api/*current-user-id*
+         {:order-by [[:timestamp :desc]]})
        (take max-serendipity-matches)))
 
 (defn- recommended-dashboards
@@ -231,3 +234,12 @@
    :metrics     (metrics-for-table table)
    :linking-to  (linking-to table)
    :linked-from (linked-from table)})
+
+(defmethod related (type Dashboard)
+  [dashboard]
+  {:cards (->> (db/select-field :card_id DashboardCard
+                 :dashboard_id (:id dashboard))
+               (mapcat (comp (partial take max-best-matches)
+                             similar-questions
+                             Card))
+               distinct)})
