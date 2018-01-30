@@ -155,10 +155,14 @@
 (defn- recommended-dashboards
   [cards]
   (let [recent           (recently-modified-dashboards)
-        card->dashboards (->> (db/select [DashboardCard :dashboard_id :card_id]
-                                :card_id [:in (map :id cards)]
-                                :dashboard_id [:not-in recent])
-                              (group-by :card_id))
+        card->dashboards (apply db/select-field->field :card_id :dashboard_id
+                                DashboardCard
+                                (cond-> []
+                                  (not-empty cards)
+                                  (concat [:card_id [:in (map :id cards)]])
+
+                                  (not-empty recent)
+                                  (concat [:dashboard_id [:not-in recent]])))
         best             (->> cards
                               (mapcat (comp card->dashboards :id))
                               (map :dashboard_id)
