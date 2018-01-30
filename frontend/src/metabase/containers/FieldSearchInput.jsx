@@ -45,16 +45,18 @@ export default class FieldSearchInput extends Component {
     search = async (value: String, cancelled: Promise<void>) => {
         const { field, searchField, maxResults } = this.props;
 
-        if (!field || !searchField) {
+        if (!field || !searchField || !value) {
             return;
         }
 
+        const fieldId = (field.target || field).id;
+        const searchFieldId = searchField.id;
         let results = await MetabaseApi.field_search(
             {
                 value,
-                field,
-                searchField,
-                maxResults
+                fieldId,
+                searchFieldId,
+                limit: maxResults
             },
             { cancelled }
         );

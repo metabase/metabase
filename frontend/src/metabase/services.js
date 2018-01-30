@@ -151,52 +151,10 @@ export const MetabaseApi = {
     field_dimension_delete:   DELETE("/api/field/:fieldId/dimension"),
     field_rescan_values:        POST("/api/field/:fieldId/rescan_values"),
     field_discard_values:       POST("/api/field/:fieldId/discard_values"),
+    field_search:                GET("/api/field/:fieldId/search/:searchFieldId"),
+    field_remapping:             GET("/api/field/:fieldId/remapping/:remappedFieldId"),
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration"),
-
-    // $FlowFixMe: arg types
-    field_search: async ({ value, field, searchField, maxResults = 100 }, options) => {
-        field = field.target || field;
-        searchField = searchField || field;
-        const datasetQuery = {
-            database: field.table.database.id,
-            type: "query",
-            query: {
-                source_table: field.table.id,
-                // TODO: case-insensitivity
-                filter: ["starts-with", ["field-id", searchField.id], value],
-                breakout: [["field-id", field.id]],
-                fields: [
-                    ["field-id", field.id],
-                    ["field-id", searchField.id]
-                ],
-                limit: maxResults,
-            }
-        };
-        const result = await MetabaseApi.dataset(datasetQuery, options);
-        return result && result.data && result.data.rows;
-    },
-
-    // $FlowFixMe: arg types
-    field_remapping: async ({ value, field, remappedField }, options) => {
-        field = field.target || field;
-
-        const datasetQuery = {
-            database: field.table.database.id,
-            type: "query",
-            query: {
-                source_table: field.table.id,
-                filter: ["=", ["field-id", field.id], value],
-                fields: [
-                    ["field-id", field.id],
-                    ["field-id", remappedField.id]
-                ],
-                limit: 1,
-            }
-        };
-        const result = await MetabaseApi.dataset(datasetQuery, options);
-        return result && result.data && result.data.rows && result.data.rows[0];
-    }
 };
 
 export const AsyncApi = {

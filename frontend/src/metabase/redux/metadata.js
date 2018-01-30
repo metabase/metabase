@@ -492,12 +492,14 @@ export const fetchRemapping = createThunkAction(FETCH_REMAPPING, (value, fieldId
         const field = metadata.fields[fieldId];
         const remappedField = field && field.remappedField();
         if (field && remappedField && field.remappedValue(value) === undefined) {
+            const fieldId = (field.target || field).id;
+            const remappedFieldId = remappedField.id;
             fetchData({
                 dispatch,
                 getState,
                 requestStatePath: ["metadata", "remapping", fieldId, JSON.stringify(value)],
                 getData: async () => {
-                    const remapping = await MetabaseApi.field_remapping({ value, field, remappedField });
+                    const remapping = await MetabaseApi.field_remapping({ value, fieldId, remappedFieldId });
                     if (remapping) {
                         dispatch(addRemappings(fieldId, [remapping]));
                     }
