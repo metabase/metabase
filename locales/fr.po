@@ -22,7 +22,7 @@ msgstr ""
 
 #: frontend/src/metabase/home/components/Activity.jsx:131
 msgid "Hello World!"
-msgstr "Bonjour tous le monde!"
+msgstr "Bonjour tout le monde!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:132
 msgid "Metabase is up and running."
@@ -75,19 +75,19 @@ msgstr "Salutations"
 
 #: frontend/src/metabase/lib/greeting.js:6
 msgid "Good to see you"
-msgstr "Content de te voir"
+msgstr "Content de vous voir"
 
 #: frontend/src/metabase/lib/greeting.js:10
 msgid "What do you want to know?"
-msgstr "Que veux-tu savoir?"
+msgstr "Que voulez-vous savoir?"
 
 #: frontend/src/metabase/lib/greeting.js:11
 msgid "What's on your mind?"
-msgstr "Qu'avez vous en tête?"
+msgstr "Qu'avez-vous en tête?"
 
 #: frontend/src/metabase/lib/greeting.js:12
 msgid "What do you want to find out?"
-msgstr "Qu'est-ce que tu veux savoir?"
+msgstr "Qu'est-ce que vous voulez savoir?"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:129
 msgid "Dashboards"
