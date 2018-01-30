@@ -497,12 +497,26 @@ export class AlertEditChannels extends Component {
 }
 
 // TODO: Not sure how to translate text with formatting properly
-export const RawDataAlertTip = () =>
-    <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
-            <Icon name="lightbulb" size="20" />
-        </div>
-        <div>
-            {jt`${<strong>Tip:</strong>} This kind of alert is most useful when your saved question doesn’t ${<em>usually</em>} return any results, but you want to know when it does.`}
-        </div>
-    </div>
+@connect((state) => ({ question: getQuestion(state), visualizationSettings: getVisualizationSettings(state) }))
+class RawDataAlertTip extends Component {
+    render() {
+        const display = this.props.question.display()
+        const isLineAreaBar = display === "line" || display === "area" || display === "bar"
+        const isMultiSeries = this.props.visualizationSettings["graph.metrics"].length > 1
+        const showMultiSeriesWarning = isLineAreaBar && isMultiSeries
+
+        return (
+            <div className="border-row-divider p3 flex align-center">
+                <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
+                    <Icon name="lightbulb" size="20" />
+                </div>
+                <div>
+                    { showMultiSeriesWarning
+                        ? jt`${<strong>Heads up:</strong>} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has ${<em>results</em>}.`
+                        : jt`${<strong>Tip:</strong>} This kind of alert is most useful when your saved question doesn’t ${<em>usually</em>} return any results, but you want to know when it does.`
+                    }
+                </div>
+            </div>
+        )
+    }
+}
