@@ -84,6 +84,28 @@
   (require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
+(defn ^:command check-i18n
+  "Run normally, but with fake translations in place for all user-facing backend strings. Useful for checking what
+  things need to be translated."
+  []
+  (println "Swapping out implementation of puppetlabs.i18n.core/fmt...")
+  (require 'puppetlabs.i18n.core)
+  (let [orig-fn @(resolve 'puppetlabs.i18n.core/fmt)]
+    (intern 'puppetlabs.i18n.core 'fmt (comp str/reverse orig-fn)))
+  (println "Ok.")
+  (println "Reloading all Metabase namespaces...")
+  (let [namespaces-to-reload (for [ns-symb @u/metabase-namespace-symbols
+                                   :when (and (not (#{'metabase.cmd 'metabase.core} ns-symb))
+                                              (u/ignore-exceptions
+                                                ;; try to resolve namespace. If it's not loaded yet, this will throw
+                                                ;; an Exception, so we can skip reloading it
+                                                (the-ns ns-symb)))]
+                               ns-symb)]
+    (apply require (conj (vec namespaces-to-reload) :reload)))
+  (println "Ok.")
+  (println "Starting normally with swapped i18n strings...")
+  ((resolve 'metabase.core/start-normally)))
+
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
