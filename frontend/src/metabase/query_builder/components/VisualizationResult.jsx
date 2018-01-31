@@ -9,8 +9,6 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { Component } from "react/lib/ReactBaseClasses";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
-import { connect } from "react-redux";
-import { getRawSeries } from "metabase/query_builder/selectors";
 
 type Props = {
     question: Question,
@@ -23,11 +21,6 @@ type Props = {
     rawSeries: any
 }
 
-const mapStateToProps = (state) => ({
-    rawSeries: getRawSeries(state)
-})
-
-@connect(mapStateToProps, null)
 export default class VisualizationResult extends Component {
     props: Props
     state = {
@@ -74,7 +67,6 @@ export default class VisualizationResult extends Component {
                 </Modal> }
             </div>
         } else {
-
             return (
                 <Visualization
                     rawSeries={rawSeries}

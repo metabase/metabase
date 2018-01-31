@@ -1044,7 +1044,10 @@ export const queryCompleted = (card, queryResults) => {
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that
  * 1) don't have a value yet and 2) have `persistDefault` flag enabled.
+ *
+ * Needed for persisting visualization columns for pulses/alerts, see #6749.
  */
+export const PERSIST_DEFAULT_VIZ_SETTINGS = "metabase/qb/PERSIST_DEFAULT_VIZ_SETTINGS";
 export const persistDefaultVisualizationSettings = () => {
     return (dispatch, getState) => {
         const question = getQuestion(getState())
@@ -1052,6 +1055,7 @@ export const persistDefaultVisualizationSettings = () => {
 
         const updatedQuestion = getQuestionWithDefaultVisualizationSettings(question, series)
         if (updatedQuestion !== question) dispatch(updateQuestion(updatedQuestion))
+            dispatch.action(PERSIST_DEFAULT_VIZ_SETTINGS)
     }
 }
 

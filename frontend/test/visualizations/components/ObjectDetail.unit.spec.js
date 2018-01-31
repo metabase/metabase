@@ -3,7 +3,7 @@ import { mount } from 'enzyme'
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-import Visualization from "metabase/visualizations/components/Visualization";
+import "metabase/visualizations/components/Visualization";
 
 import { ObjectDetail } from 'metabase/visualizations/visualizations/ObjectDetail'
 import { TYPE } from "metabase/lib/types";

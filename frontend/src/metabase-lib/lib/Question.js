@@ -251,7 +251,7 @@ export default class Question {
         } else if (isLineAreaBar) {
             const vizSettings = visualizationSettings ? visualizationSettings : this.card().visualization_settings
             const goalEnabled = vizSettings["graph.show_goal"]
-            const hasSingleYAxisColumn = vizSettings["graph.metrics"].length === 1
+            const hasSingleYAxisColumn = vizSettings["graph.metrics"] && vizSettings["graph.metrics"].length === 1
 
             // We don't currently support goal alerts for multiseries question
             if (goalEnabled && hasSingleYAxisColumn) {
