@@ -18,10 +18,10 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private ^Integer max-best-matches        3)
-(def ^:private ^Integer max-serendipity-matches 2)
-(def ^:private ^Integer max-matches             (+ max-best-matches
-                                                   max-serendipity-matches))
+(def ^:private ^Long max-best-matches        3)
+(def ^:private ^Long max-serendipity-matches 2)
+(def ^:private ^Long max-matches             (+ max-best-matches
+                                                max-serendipity-matches))
 
 (def ^:private ContextBearingForm
   [(s/one (s/constrained (s/either s/Str s/Keyword)
