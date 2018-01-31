@@ -250,16 +250,20 @@
   [id remapped-id value]
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
+        parsed-value   (if (isa? (:base_type field) :type/Number)
+                           ;; FIXME: parse floats too
+                           (Integer/parseUnsignedInt value)
+                           value)
         results        (qp/process-query
                          {:database (db/select-one-field :db_id 'Table :id (:table_id field))
                           :type     :query
                           :query    {:source-table (:table_id field)
-                                     :filter       [:= [:field-id id] value]
+                                     :filter       [:= [:field-id id] parsed-value]
                                      :fields       [[:field-id id]
                                                     [:field-id remapped-id]]
                                      :limit        1}})]
     ;; return first row if it exists
-    (get-in results [:data :rows 0])))
+    (first (get-in results [:data :rows]))))
 
 
 (api/define-routes)
