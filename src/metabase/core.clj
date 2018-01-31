@@ -4,7 +4,6 @@
   (:require [cheshire.core :as json]
             [clojure.pprint :as pprint]
             [clojure.tools.logging :as log]
-            environ.core
             [medley.core :as m]
             [metabase
              [config :as config]

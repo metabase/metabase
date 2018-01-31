@@ -39,6 +39,7 @@
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
+  (require 'environ.core)
   (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
   (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
