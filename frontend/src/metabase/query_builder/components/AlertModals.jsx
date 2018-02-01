@@ -207,7 +207,7 @@ export class AlertEducationalScreen extends Component {
     isAdmin: getUserIsAdmin(state),
     question: getQuestion(state),
     visualizationSettings: getVisualizationSettings(state)
-}), { updateAlert, deleteAlert })
+}), { apiUpdateQuestion, updateAlert, deleteAlert })
 export class UpdateAlertModalContent extends Component {
     props: {
         alert: any,
@@ -228,8 +228,12 @@ export class UpdateAlertModalContent extends Component {
     onAlertChange = (modifiedAlert) => this.setState({ modifiedAlert })
 
     onUpdateAlert = async () => {
-        const { updateAlert, onAlertUpdated } = this.props
+        const { apiUpdateQuestion, updateAlert, onAlertUpdated } = this.props
         const { modifiedAlert } = this.state
+
+        // Resave the question here (for persisting the x/y axes; see #6749)
+        await apiUpdateQuestion()
+
         await updateAlert(modifiedAlert)
         onAlertUpdated()
     }
