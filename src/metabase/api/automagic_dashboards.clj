@@ -1,8 +1,13 @@
 (ns metabase.api.automagic-dashboards
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.models.table :refer [Table]]
+            [metabase.automagic-dashboards
+             [core :as magic]
+             [comparison :as magic.comparison]]
+            [metabase.models
+             [dashboard :refer [Dashboard]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
             [toucan.db :as db]))
 
 ; Should be POST, GET for testing convinience
@@ -19,5 +24,13 @@
   "Create an automagic dashboard for table with id `ìd`."
   [id]
   [(magic/automagic-dashboard (Table id))])
+
+(api/defendpoint GET "/compare/dashboard/:dashboard-id/segments/:left-id/:right-id"
+  "Create an automagic comparison dashboard based on dashboard with ID
+   `dashboard-id`, comparing segments with IDs `left-id` and `right-id`."
+  [dashboard-id left-id right-id]
+  [(:id (magic.comparison/compare (Dashboard dashboard-id)
+                                  (Segment left-id)
+                                  (Segment right-id)))])
 
 (api/define-routes)
