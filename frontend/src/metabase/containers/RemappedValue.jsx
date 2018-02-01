@@ -9,38 +9,41 @@ const RemappedValue = Remapped(({
     column,
     displayValue,
     displayColumn,
-    renderRemapped = defaultRenderRemapped
+    renderNormal = defaultRenderNormal,
+    renderRemapped = defaultRenderRemapped,
 }) => {
-    if (displayColumn) {
-        return renderRemapped({
-            value: formatValue(value, {
-                column: column,
-                jsx: true,
-                remap: false
-            }),
-            displayValue: formatValue(displayValue, {
-                column: displayColumn,
-                jsx: true,
-                remap: false
-            })
-        });
+    if (column != null) {
+      value = formatValue(value, {
+          column: column,
+          jsx: true,
+          remap: false
+      })
+    }
+    if (displayColumn != null) {
+      displayValue = formatValue(displayValue, {
+          column: displayColumn,
+          jsx: true,
+          remap: false
+      });
+    }
+    if (displayValue != null) {
+      return renderRemapped({ value, displayValue, column, displayColumn });
     } else {
-        return (
-            <span>
-                {formatValue(value, {
-                    column: column,
-                    jsx: true,
-                    remap: false
-                })}
-            </span>
-        );
+      return renderNormal({ value, column });
     }
 });
 
-const defaultRenderRemapped = ({ value, displayValue }) => (
+const defaultRenderNormal = ({ value, column }) => (
+    <span className="text-bold">{value}</span>
+);
+
+const defaultRenderRemapped = ({ value, displayValue, column, displayColumn }) => (
     <span>
         <span className="text-bold">{displayValue}</span>
-        <span style={{ opacity: 0.5 }}>{" - " + value}</span>
+        {/* Show the underlying ID for PK/FK */}
+        { column.isID() &&
+            <span style={{ opacity: 0.5 }}>{" - " + value}</span>
+        }
     </span>
 );
 

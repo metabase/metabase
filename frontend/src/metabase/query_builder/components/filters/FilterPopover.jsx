@@ -196,19 +196,7 @@ export default class FilterPopover extends Component {
                 values = [this.state.filter[2 + index]];
                 onValuesChange = (values) => this.setValue(index, values[0]);
             }
-            if (operatorField.type === "select") {
-                return (
-                    <SelectPicker
-                        options={operatorField.values}
-                        // $FlowFixMe
-                        values={(values: Array<string>)}
-                        onValuesChange={onValuesChange}
-                        placeholder={placeholder}
-                        multi={operator.multi}
-                        onCommit={this.onCommit}
-                    />
-                );
-            } else if (field && field.filterSearchField()) {
+            if (field) {
                 return (
                     <SearchPicker
                         // $FlowFixMe
@@ -220,6 +208,18 @@ export default class FilterPopover extends Component {
                         // $FlowFixMe
                         field={field}
                         searchField={field.filterSearchField()}
+                    />
+                );
+            } else if (operatorField.type === "select") {
+                return (
+                    <SelectPicker
+                        options={operatorField.values}
+                        // $FlowFixMe
+                        values={(values: Array<string>)}
+                        onValuesChange={onValuesChange}
+                        placeholder={placeholder}
+                        multi={operator.multi}
+                        onCommit={this.onCommit}
                     />
                 );
             } else if (operatorField.type === "text") {

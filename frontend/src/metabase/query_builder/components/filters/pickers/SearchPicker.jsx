@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 
 import FieldSearchInput from "metabase/containers/FieldSearchInput";
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
 import cx from "classnames";
 
@@ -33,6 +34,11 @@ export default class SearchPicker extends Component {
 
                     field={field}
                     searchField={field.filterSearchField()}
+                />
+                <FieldValuesWidget
+                  value={values}
+                  onChange={onValuesChange}
+                  field={field}
                 />
             </div>
         );

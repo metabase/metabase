@@ -20,7 +20,7 @@ import {
 } from "metabase/lib/keyboard";
 
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
-export default class RecipientPicker extends Component {
+export default class TokenField extends Component {
     constructor(props) {
         super(props);
 
@@ -71,6 +71,15 @@ export default class RecipientPicker extends Component {
         }, this._updateFilteredValues);
     }
 
+    filterOption(option, inputValue) {
+      const { filterOption, labelKey } = this.props;
+      if (filterOption) {
+        return filterOption(option, inputValue);
+      } else {
+        return String(option[labelKey] || "").indexOf(inputValue) >= 0;
+      }
+    }
+
     _updateFilteredValues = () => {
       const { options, value, removeSelected, filterOption, valueKey } = this.props;
       let { inputValue, selectedOptionValue } = this.state;
@@ -79,7 +88,7 @@ export default class RecipientPicker extends Component {
       let filteredOptions = options.filter(option =>
           // filter out options who have already been selected
           (!removeSelected || !selectedValues.has(JSON.stringify(option[valueKey]))) &&
-          filterOption(option, inputValue)
+          this.filterOption(option, inputValue)
       );
 
       if (selectedOptionValue == null || !_.find(filteredOptions, (option) => this._valueIsEqual(selectedOptionValue, option[valueKey]))) {
@@ -100,7 +109,7 @@ export default class RecipientPicker extends Component {
 
     onInputChange = ({ target: { value } }) => {
         if (this.props.onInputChange) {
-          value = this.props.onInputChange(value);
+          value = this.props.onInputChange(value) || "";
         }
         this.setInputValue(value);
     }
@@ -158,6 +167,16 @@ export default class RecipientPicker extends Component {
         }, 100)
     }
 
+    onInputPaste = (e) => {
+      if (this.props.onAddFreeform) {
+        const string = e.clipboardData.getData('Text')
+        const values = string.split(/\n|,/g).map(this.props.onAddFreeform).filter(s => s);
+        if (values.length > 0) {
+          this.addValue(values);
+        }
+      }
+    }
+
     onMouseDownCapture = (e) => {
         let input = findDOMNode(this.refs.input);
         input.focus();
@@ -196,7 +215,9 @@ export default class RecipientPicker extends Component {
         const { value, onChange } = this.props
         onChange(value.concat(valueToAdd));
         // reset the input value
-        this.setInputValue("");
+        setTimeout(() =>
+          this.setInputValue("")
+        )
     }
 
     removeValue(valueToRemove) {
@@ -215,7 +236,10 @@ export default class RecipientPicker extends Component {
         const { placeholder, value, valueKey, optionRenderer, valueRenderer, layoutRenderer } = this.props;
 
         const valuesList =
-          <ul className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
+          <ul
+              className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })}
+              onMouseDownCapture={this.onMouseDownCapture}
+          >
               {value.map((v, index) =>
                   <li className="mr1 py1 pl1 mt1 rounded bg-grey-1">
                       <span className="h4 text-bold">
@@ -240,6 +264,7 @@ export default class RecipientPicker extends Component {
                       onChange={this.onInputChange}
                       onFocus={this.onInputFocus}
                       onBlur={this.onInputBlur}
+                      onPaste={this.onInputPaste}
                   />
               </li>
           </ul>
