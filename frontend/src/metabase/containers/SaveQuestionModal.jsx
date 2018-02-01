@@ -11,7 +11,6 @@ import Button from "metabase/components/Button";
 import CollectionList from "metabase/questions/containers/CollectionList";
 
 import Query from "metabase/lib/query";
-import { cancelable } from "metabase/lib/promise";
 import { t } from 'c-3po';
 import "./SaveQuestionModal.css";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -51,12 +50,6 @@ export default class SaveQuestionModal extends Component {
 
     componentDidUpdate() {
         this.validateForm();
-    }
-
-    componentWillUnmount() {
-        if (this.requestPromise) {
-            this.requestPromise.cancel();
-        }
     }
 
     validateForm() {
@@ -110,14 +103,12 @@ export default class SaveQuestionModal extends Component {
             };
 
             if (details.saveType === "create") {
-                this.requestPromise = cancelable(createFn(card));
+                await createFn(card);
             } else if (details.saveType === "overwrite") {
                 card.id = this.props.originalCard.id;
-                this.requestPromise = cancelable(saveFn(card));
+                await saveFn(card);
             }
 
-            await this.requestPromise;
-            this.requestPromise = null;
             this.props.onClose();
         } catch (error) {
             if (error && !error.isCanceled) {
