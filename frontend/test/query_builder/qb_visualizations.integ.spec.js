@@ -69,7 +69,7 @@ describe("Query Builder visualization logic", () => {
         questionId = getQuestion(store.getState()).id()
     });
 
-    fit("should save the default x axis and y axis to `visualization_settings` when saving a new question in QB", async () => {
+    it("should save the default x axis and y axis to `visualization_settings` when saving a new question in QB", async () => {
         const store = await createTestStore()
         store.pushPath(Urls.question(savedTimeBreakoutQuestion.id()));
         const app = mount(store.connectContainer(<QueryBuilder />));
