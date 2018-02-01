@@ -348,7 +348,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
 export const createSavedQuestion = async (unsavedQuestion) => {
     const savedQuestion = await unsavedQuestion.apiCreate()
-    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
+    savedQuestion._card = { ...savedQuestion.card(), original_card_id: savedQuestion.id() }
     return savedQuestion
 }
 
