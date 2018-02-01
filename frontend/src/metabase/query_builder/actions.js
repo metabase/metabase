@@ -51,6 +51,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
 import { clearRequestState } from "metabase/redux/requests";
+import { getRawSeries, getVisualizationSettings } from "metabase/query_builder/selectors";
 
 type UiControls = {
     isEditing?: boolean,
@@ -1075,6 +1076,7 @@ export const queryCompleted = (card, queryResults) => {
             cardDisplay: getDisplayTypeForCard(card, queryResults),
             queryResults
         })
+        console.log(getRawSeries(getState()), getPersistableDefaultSettings(getTransformedSeries(getState())), getVisualizationSettings(getState()), )
     };
 };
 

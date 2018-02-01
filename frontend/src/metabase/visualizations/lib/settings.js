@@ -226,8 +226,10 @@ export function getPersistableDefaultSettings(series) {
 
     for (let id in settingsDefs) {
         const settingDef = settingsDefs[id]
+        const seriesForSettingsDef = settingDef.useRawSeries && series._raw ? series._raw : series
+
         if (settingDef.persistDefault) {
-            persistableDefaultSettings[id] = settingDef.getDefault(series, completeSettings)
+            persistableDefaultSettings[id] = settingDef.getDefault(seriesForSettingsDef, completeSettings)
         }
     }
 
