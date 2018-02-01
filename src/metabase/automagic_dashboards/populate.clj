@@ -63,7 +63,7 @@
      :sizeX (:width card)
      :sizeY (:height card)}))
 
-(defn- add-text-card!
+(defn add-text-card!
   [dashboard {:keys [text width height]} [x y]]
   (dashboard/add-dashcard! dashboard nil
     {:creator_id             api/*current-user-id*

@@ -29,8 +29,8 @@
   "Create an automagic comparison dashboard based on dashboard with ID
    `dashboard-id`, comparing segments with IDs `left-id` and `right-id`."
   [dashboard-id left-id right-id]
-  [(:id (magic.comparison/compare (Dashboard dashboard-id)
-                                  (Segment left-id)
-                                  (Segment right-id)))])
+  [(:id (magic.comparison/comparison-dashboard (Dashboard dashboard-id)
+                                               (Segment left-id)
+                                               (Segment right-id)))])
 
 (api/define-routes)
