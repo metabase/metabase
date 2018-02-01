@@ -137,6 +137,7 @@ describe("parameters", () => {
             expect(fieldFilterVarType.text()).toBe("Field Filter");
             click(fieldFilterVarType);
 
+            // there's an async error here for some reason
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
 
             await delay(500);
@@ -150,6 +151,7 @@ describe("parameters", () => {
 
             // close the template variable sidebar
             click(tagEditorSidebar.find(".Icon-close"));
+
 
             // test without the parameter
             click(app.find(RunButton));

@@ -28,6 +28,7 @@ import MetabaseCookies from "metabase/lib/cookies";
 import cxs from 'cxs';
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import { apiUpdateQuestion } from "metabase/query_builder/actions";
 
 const getScheduleFromChannel = (channel) =>
     _.pick(channel, "schedule_day", "schedule_frame", "schedule_hour", "schedule_type")
@@ -43,7 +44,7 @@ const classes = cxs ({
     hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
     hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
     hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state)
-}), { createAlert, fetchPulseFormInput })
+}), { createAlert, fetchPulseFormInput, apiUpdateQuestion })
 export class CreateAlertModalContent extends Component {
     props: {
         onCancel: () => void,
@@ -84,10 +85,14 @@ export class CreateAlertModalContent extends Component {
     onAlertChange = (alert) => this.setState({ alert })
 
     onCreateAlert = async () => {
-        const { createAlert, onAlertCreated } = this.props
+        const { createAlert, apiUpdateQuestion, onAlertCreated } = this.props
         const { alert } = this.state
 
+        // Resave the question here (for persisting the x/y axes; see #6749)
+        await apiUpdateQuestion()
+
         await createAlert(alert)
+
         // should close be triggered manually like this
         // but the creation notification would appear automatically ...?
         // OR should the modal visibility be part of QB redux state
@@ -498,7 +503,7 @@ export class AlertEditChannels extends Component {
 
 // TODO: Not sure how to translate text with formatting properly
 @connect((state) => ({ question: getQuestion(state), visualizationSettings: getVisualizationSettings(state) }))
-class RawDataAlertTip extends Component {
+export class RawDataAlertTip extends Component {
     render() {
         const display = this.props.question.display()
         const vizSettings = this.props.visualizationSettings

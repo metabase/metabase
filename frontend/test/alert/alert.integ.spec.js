@@ -24,7 +24,8 @@ import {
     AlertEducationalScreen,
     AlertSettingToggle,
     CreateAlertModalContent,
-    RawDataAlertTip, UpdateAlertModalContent
+    RawDataAlertTip,
+    UpdateAlertModalContent
 } from "metabase/query_builder/components/AlertModals";
 import Button from "metabase/components/Button";
 import {

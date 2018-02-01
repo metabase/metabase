@@ -633,9 +633,13 @@ export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = (question) => {
     return async (dispatch, getState) => {
+        // Needed for persisting visualization columns for pulses/alerts, see #6749
+        const series = getTransformedSeries(getState())
+        const questionWithVizSettings = series ? getQuestionWithDefaultVisualizationSettings(question, series) : question
+
         let resultsMetadata = getResultsMetadata(getState())
         const createdQuestion = await (
-            question
+            questionWithVizSettings
                 .setQuery(question.query().clean())
                 .setResultsMetadata(resultsMetadata)
                 .apiCreate()
@@ -656,9 +660,15 @@ export const apiCreateQuestion = (question) => {
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
 export const apiUpdateQuestion = (question) => {
     return async (dispatch, getState) => {
+        question = question || getQuestion(getState())
+
+        // Needed for persisting visualization columns for pulses/alerts, see #6749
+        const series = getTransformedSeries(getState())
+        const questionWithVizSettings = series ? getQuestionWithDefaultVisualizationSettings(question, series) : question
+
         let resultsMetadata = getResultsMetadata(getState())
         const updatedQuestion = await (
-            question
+            questionWithVizSettings
                 .setQuery(question.query().clean())
                 .setResultsMetadata(resultsMetadata)
                 .apiUpdate()
@@ -1065,8 +1075,6 @@ export const queryCompleted = (card, queryResults) => {
             cardDisplay: getDisplayTypeForCard(card, queryResults),
             queryResults
         })
-
-        dispatch(persistDefaultVisualizationSettings())
     };
 };
 
@@ -1076,18 +1084,6 @@ export const queryCompleted = (card, queryResults) => {
  *
  * Needed for persisting visualization columns for pulses/alerts, see #6749.
  */
-export const PERSIST_DEFAULT_VIZ_SETTINGS = "metabase/qb/PERSIST_DEFAULT_VIZ_SETTINGS";
-export const persistDefaultVisualizationSettings = () => {
-    return (dispatch, getState) => {
-        const question = getQuestion(getState())
-        const series = getTransformedSeries(getState())
-
-        const updatedQuestion = getQuestionWithDefaultVisualizationSettings(question, series)
-        if (updatedQuestion !== question) dispatch(updateQuestion(updatedQuestion))
-            dispatch.action(PERSIST_DEFAULT_VIZ_SETTINGS)
-    }
-}
-
 const getQuestionWithDefaultVisualizationSettings = (question, series) => {
     const oldVizSettings = question.visualizationSettings()
     const newVizSettings = { ...getPersistableDefaultSettings(series), ...oldVizSettings }
