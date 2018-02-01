@@ -252,6 +252,7 @@ export default class Question {
             const vizSettings = visualizationSettings
                 ? visualizationSettings
                 : this.card().visualization_settings;
+
             const goalEnabled = vizSettings["graph.show_goal"];
             const hasSingleYAxisColumn = vizSettings["graph.metrics"] &&
                 vizSettings["graph.metrics"].length === 1;

@@ -679,7 +679,7 @@ export const apiUpdateQuestion = (question) => {
         await dispatch(fetchAlertsForQuestion(updatedQuestion.id()))
 
         // remove the databases in the store that are used to populate the QB databases list.
-        // This is done when saving a Card because the newly saved card will be elligable for use as a source query
+        // This is done when saving a Card because the newly saved card will be eligible for use as a source query
         // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
         dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
 

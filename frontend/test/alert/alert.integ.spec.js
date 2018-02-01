@@ -99,6 +99,10 @@ describe("Alerts", () => {
                 .addBreakout(["datetime-field", ["field-id", 1], "day"])
                 .question()
                 .setDisplay("line")
+                .setVisualizationSettings({
+                    "graph.dimensions": ["CREATED_AT"],
+                    "graph.metrics": ["count"]
+                })
                 .setDisplayName("Time series line")
         )
 
@@ -109,7 +113,12 @@ describe("Alerts", () => {
                 .addBreakout(["datetime-field", ["field-id", 1], "day"])
                 .question()
                 .setDisplay("line")
-                .setVisualizationSettings({ "graph.show_goal": true, "graph.goal_value": 10 })
+                .setVisualizationSettings({
+                    "graph.show_goal": true,
+                    "graph.goal_value": 10,
+                    "graph.dimensions": ["CREATED_AT"],
+                    "graph.metrics": ["count"]
+                })
                 .setDisplayName("Time series line with goal")
         )
 
@@ -317,7 +326,6 @@ describe("Alerts", () => {
             // as a recipient.
             useSharedAdminLogin()
             const adminUser = await UserApi.current();
-            // TODO TODO TODO THIS ALERT HAZ A COMP-LETELY WRONG TYPE!
             await AlertApi.create(getDefaultAlert(timeSeriesWithGoalQuestion, adminUser))
 
             useSharedNormalLogin()
