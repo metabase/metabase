@@ -3,14 +3,20 @@ import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link";
 import cxs from 'cxs'
 import { Box, Border, Button, Card, Flex, Heading, Subhead } from 'rebass'
+import { loadCollections } from "metabase/questions/collections";
+import { getAllCollections } from "metabase/questions/selectors";
 
-const mapStateToProps = ({ _spaces }) => ({
-    spaces: _spaces.spaces,
-    log: _spaces.log.reverse().slice(0, 15),
-    databases: _spaces.databases
+const mapStateToProps = (state, props) => ({
+    spaces: getAllCollections(state, props),
+    log: state._spaces.log.reverse().slice(0, 15),
+    databases: state._spaces.databases
 })
 
-class SpacesList extends Component {
+@connect(mapStateToProps, { loadCollections })
+export default class SpacesList extends Component {
+    componentWillMount() {
+        this.props.loadCollections();
+    }
     render() {
         const { databases, spaces, log } = this.props
         return (
@@ -58,5 +64,3 @@ class SpacesList extends Component {
     }
 }
 
-
-export default connect(mapStateToProps)(SpacesList);

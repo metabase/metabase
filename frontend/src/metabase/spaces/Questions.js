@@ -13,17 +13,30 @@ import { pinItem } from './spaces'
 import { getAllEntities } from "metabase/questions/selectors";
 import { loadEntities } from "metabase/questions/questions";
 import { Component } from "react/lib/ReactBaseClasses";
+import { SPACES } from "metabase/spaces/fixtures";
 
 const mapStateToProps = (state) => {
+    // temporary override for having a mixture of real and fixture data
+    const stateWithFixtureSpace = {
+        ...state,
+        params: {
+            ...state.params,
+            space: SPACES[2].slug
+        }
+    }
+
+    const collection = state.params.space
+
     return {
-        space: getCurrentSpace(state),
+        space: getCurrentSpace(stateWithFixtureSpace),
         // questions: getQuestionsForSpace(state)
         // NOTE Atte Keinänen: just a quick n' dirty way to get a list of all questions
-        questions: getAllEntities(state)
+        questions: getAllEntities(state).filter((entity) => entity.collection === null)
     }
 }
 
-class Questions extends Component  {
+@connect(mapStateToProps, { loadEntities })
+export default class Questions extends Component  {
     componentWillMount() {
         this.props.loadEntities("cards", {f: "all", collection: "", ...location.query});
     }
@@ -77,4 +90,3 @@ class Questions extends Component  {
     }
 }
 
-export default connect(mapStateToProps, { loadEntities })(Questions)
