@@ -170,6 +170,11 @@ export const getQuestionAlerts = createSelector(
     (alerts, card) => card && card.id && _.pick(alerts, (alert) => alert.card.id === card.id) || {}
 )
 
+export const getResultsMetadata = createSelector(
+    [getQueryResult],
+    (result) => result && result.data && result.data.results_metadata
+)
+
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */

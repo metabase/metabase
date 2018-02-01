@@ -18,7 +18,7 @@ import {
     QUERY_ERRORED,
     RUN_QUERY,
     CANCEL_QUERY,
-    NOTIFY_CARD_UPDATED
+    API_UPDATE_QUESTION
 } from "metabase/query_builder/actions";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
 
@@ -162,7 +162,7 @@ describe("QueryBuilder", () => {
                 expect(qbWrapper.find(SaveQuestionModal).find(Radio).prop("value")).toBe("overwrite")
                 // Click Save in "Save question" dialog
                 clickButton(qbWrapper.find(SaveQuestionModal).find("button").last());
-                await store.waitForActions([NOTIFY_CARD_UPDATED])
+                await store.waitForActions([API_UPDATE_QUESTION])
 
                 // Should not show a "add to dashboard" dialog in this case
                 // This is included because of regression #6541

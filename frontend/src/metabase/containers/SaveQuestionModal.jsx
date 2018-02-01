@@ -85,6 +85,14 @@ export default class SaveQuestionModal extends Component {
             }
 
             let { details } = this.state;
+            // TODO Atte Keinäenn 31/1/18 Refactor this
+            // I think that the primary change should be that
+            // SaveQuestionModal uses Question objects instead of directly modifying card objects –
+            // but that is something that doesn't need to be done first)
+            // question
+            //     .setDisplayName(details.name.trim())
+            //     .setDescription(details.description ? details.description.trim() : null)
+            //     .setCollectionId(details.collection_id)
             let { card, originalCard, createFn, saveFn } = this.props;
 
             card = {

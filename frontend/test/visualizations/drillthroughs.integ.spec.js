@@ -52,7 +52,7 @@ describe('Visualization drill-through', () => {
                 // (we are intentionally simplifying things by not rendering the QB but just focusing the redux state instead)
                 await store.dispatch(initializeQB(urlParse(question.getUrl()), {}))
 
-                const results = await question.getResults();
+                const results = await question.apiGetResults();
                 const viz = shallow(getVisualization(question, results, navigateToNewCardInsideQB));
                 const clickActions = viz.find(ChartClickActions).dive();
 

@@ -21,7 +21,7 @@ import EmbeddingLegalese from "metabase/admin/settings/components/widgets/Embedd
 import {
     CREATE_PUBLIC_LINK,
     INITIALIZE_QB,
-    NOTIFY_CARD_CREATED,
+    API_CREATE_QUESTION,
     QUERY_COMPLETED,
     RUN_QUERY,
     SET_QUERY_MODE,
@@ -171,7 +171,7 @@ describe("parameters", () => {
             setInputValue(app.find(SaveQuestionModal).find("input[name='name']"), "sql parametrized");
 
             clickButton(app.find(SaveQuestionModal).find("button").last());
-            await store.waitForActions([NOTIFY_CARD_CREATED]);
+            await store.waitForActions([API_CREATE_QUESTION]);
 
             click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(

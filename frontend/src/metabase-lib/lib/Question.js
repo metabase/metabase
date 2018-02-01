@@ -12,9 +12,7 @@ import StructuredQuery, {
 import NativeQuery from "./queries/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
-import Utils from "metabase/lib/utils";
 import * as Card_DEPRECATED from "metabase/lib/card";
-import Query_DEPRECATED from "metabase/lib/query";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
 
@@ -244,14 +242,19 @@ export default class Question {
             return null;
         }
 
-        const isLineAreaBar = display === "line" || display === "area" || display === "bar"
+        const isLineAreaBar = display === "line" ||
+            display === "area" ||
+            display === "bar";
 
         if (display === "progress") {
             return ALERT_TYPE_PROGRESS_BAR_GOAL;
         } else if (isLineAreaBar) {
-            const vizSettings = visualizationSettings ? visualizationSettings : this.card().visualization_settings
-            const goalEnabled = vizSettings["graph.show_goal"]
-            const hasSingleYAxisColumn = vizSettings["graph.metrics"] && vizSettings["graph.metrics"].length === 1
+            const vizSettings = visualizationSettings
+                ? visualizationSettings
+                : this.card().visualization_settings;
+            const goalEnabled = vizSettings["graph.show_goal"];
+            const hasSingleYAxisColumn = vizSettings["graph.metrics"] &&
+                vizSettings["graph.metrics"].length === 1;
 
             // We don't currently support goal alerts for multiseries question
             if (goalEnabled && hasSingleYAxisColumn) {
@@ -354,6 +357,14 @@ export default class Question {
         return this.setCard(assoc(this.card(), "name", name));
     }
 
+    collectionId(): ?number {
+        return this._card && this._card.collection_id;
+    }
+
+    setCollectionId(collectionId: number) {
+        return this.setCard(assoc(this.card(), "collection_id", collectionId));
+    }
+
     id(): number {
         return this._card && this._card.id;
     }
@@ -375,13 +386,24 @@ export default class Question {
             : Urls.question(this.id(), "");
     }
 
+    setResultsMetadata(resultsMetadata) {
+        let metadataColumns = resultsMetadata && resultsMetadata.columns;
+        let metadataChecksum = resultsMetadata && resultsMetadata.checksum;
+
+        return this.setCard({
+            ...this.card(),
+            result_metadata: metadataColumns,
+            metadata_checksum: metadataChecksum
+        });
+    }
+
     /**
      * Runs the query and returns an array containing results for each single query.
      *
      * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
      * This way we benefit from caching and query optimizations done by Metabase backend.
      */
-    async getResults(
+    async apiGetResults(
         { cancelDeferred, isDirty = false, ignoreCache = false } = {}
     ): Promise<[Dataset]> {
         // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
@@ -423,6 +445,16 @@ export default class Question {
                 query.datasetQuery());
             return Promise.all(datasetQueries.map(getDatasetQueryResult));
         }
+    }
+
+    async apiCreate() {
+        const createdCard = await CardApi.create(this.card());
+        return this.setCard(createdCard);
+    }
+
+    async apiUpdate() {
+        const updatedCard = await CardApi.update(this.card());
+        return this.setCard(updatedCard);
     }
 
     // TODO: Fix incorrect Flow signature
@@ -475,20 +507,13 @@ export default class Question {
     }
 
     // Internal methods
-
     _serializeForUrl({ includeOriginalCardId = true } = {}) {
-        // TODO Atte Keinänen 5/31/17: Remove code mutation and unnecessary copying
-        const dataset_query = Utils.copy(this._card.dataset_query);
-        if (dataset_query.query) {
-            dataset_query.query = Query_DEPRECATED.cleanQuery(
-                dataset_query.query
-            );
-        }
+        const cleanedQuery = this.query().clean();
 
         const cardCopy = {
             name: this._card.name,
             description: this._card.description,
-            dataset_query: dataset_query,
+            dataset_query: cleanedQuery.datasetQuery(),
             display: this._card.display,
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,

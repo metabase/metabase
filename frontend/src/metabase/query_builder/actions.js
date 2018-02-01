@@ -32,7 +32,8 @@ import {
     getOriginalCard,
     getIsEditing,
     getIsShowingDataReference,
-    getTransformedSeries
+    getTransformedSeries,
+    getResultsMetadata
 } from "./selectors";
 
 import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
@@ -49,6 +50,7 @@ import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
+import { clearRequestState } from "metabase/redux/requests";
 
 type UiControls = {
     isEditing?: boolean,
@@ -525,30 +527,6 @@ export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId,
     return { id: parameterId, value };
 });
 
-// Used after a question is successfully created in QueryHeader component code
-export const NOTIFY_CARD_CREATED = "metabase/qb/NOTIFY_CARD_CREATED";
-export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
-    return (dispatch, getState) => {
-        dispatch(updateUrl(card, { dirty: false }));
-
-        MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", card.dataset_query.type);
-
-        return card;
-    }
-});
-
-// Used after a question is successfully updated in QueryHeader component code
-export const NOTIFY_CARD_UPDATED = "metabase/qb/NOTIFY_CARD_UPDATED";
-export const notifyCardUpdatedFn = createThunkAction(NOTIFY_CARD_UPDATED, (card) => {
-    return (dispatch, getState) => {
-        dispatch(updateUrl(card, { dirty: false }));
-
-        MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", card.dataset_query.type);
-
-        return card;
-    }
-});
-
 // reloadCard
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
@@ -648,8 +626,59 @@ export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
         } else if (newTagCount === 0 && !getIsShowingDataReference(getState())) {
             dispatch(setIsShowingTemplateTagsEditor(false));
         }
+
     };
 };
+
+export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
+export const apiCreateQuestion = (question) => {
+    return async (dispatch, getState) => {
+        let resultsMetadata = getResultsMetadata(getState())
+        const createdQuestion = await (
+            question
+                .setQuery(question.query().clean())
+                .setResultsMetadata(resultsMetadata)
+                .apiCreate()
+        )
+
+        // remove the databases in the store that are used to populate the QB databases list.
+        // This is done when saving a Card because the newly saved card will be eligible for use as a source query
+        // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
+        dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
+
+        dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", createdQuestion.query().datasetQuery().type);
+
+        dispatch.action(API_CREATE_QUESTION, createdQuestion.card())
+    }
+}
+
+export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+export const apiUpdateQuestion = (question) => {
+    return async (dispatch, getState) => {
+        let resultsMetadata = getResultsMetadata(getState())
+        const updatedQuestion = await (
+            question
+                .setQuery(question.query().clean())
+                .setResultsMetadata(resultsMetadata)
+                .apiUpdate()
+        )
+
+        // reload the question alerts for the current question
+        // (some of the old alerts might be removed during update)
+        await dispatch(fetchAlertsForQuestion(updatedQuestion.id()))
+
+        // remove the databases in the store that are used to populate the QB databases list.
+        // This is done when saving a Card because the newly saved card will be elligable for use as a source query
+        // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
+        dispatch(clearRequestState({ statePath: ["metadata", "databases"] }));
+
+        dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", updatedQuestion.query().datasetQuery().type);
+
+        dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card())
+    }
+}
 
 // setDatasetQuery
 // TODO Atte Keinänen 6/1/17: Deprecated, superseded by updateQuestion
@@ -983,7 +1012,7 @@ export const runQuestionQuery = ({
         const startTime = new Date();
         const cancelQueryDeferred = defer();
 
-        question.getResults({ cancelDeferred: cancelQueryDeferred, isDirty: cardIsDirty })
+        question.apiGetResults({ cancelDeferred: cancelQueryDeferred, isDirty: cardIsDirty })
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
             .catch((error) => dispatch(queryErrored(startTime, error)));
 
