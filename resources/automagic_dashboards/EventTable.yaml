@@ -34,7 +34,9 @@ cards:
      dimensions:
        - Timestamp
        - CategorySmall
-     visualization: area
+     visualization:
+       area:
+         stackable.stack_type: stacked
      score: 100
   - EventsByDay:
       title: Events by time

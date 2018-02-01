@@ -35,6 +35,9 @@ dimensions:
       field_type: ga:channelGrouping
   - Source:
       field_type: ga:source
+groups:
+- SessionsBreakdown:
+    title: Session breakdown
 cards:
   - SessionsOverTime:
       title: Sessions per day
