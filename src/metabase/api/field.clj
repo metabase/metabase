@@ -12,7 +12,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]])
+  (:import java.text.NumberFormat))
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
@@ -247,18 +248,17 @@
 
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [id remapped-id value]
+  [id remapped-id, ^String value]
   (let [field          (api/read-check Field id)
         remapped-field (api/read-check Field remapped-id)
-        parsed-value   (if (isa? (:base_type field) :type/Number)
-                           ;; FIXME: parse floats too
-                           (Integer/parseUnsignedInt value)
-                           value)
+        value          (if (isa? (:base_type field) :type/Number)
+                         (.parse (NumberFormat/getInstance) value)
+                         value)
         results        (qp/process-query
                          {:database (db/select-one-field :db_id 'Table :id (:table_id field))
                           :type     :query
                           :query    {:source-table (:table_id field)
-                                     :filter       [:= [:field-id id] parsed-value]
+                                     :filter       [:= [:field-id id] value]
                                      :fields       [[:field-id id]
                                                     [:field-id remapped-id]]
                                      :limit        1}})]
