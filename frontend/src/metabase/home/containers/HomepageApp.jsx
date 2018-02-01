@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from 'c-3po'
 import { push } from "react-router-redux";
 
-import Greeting from "metabase/lib/greeting";
+import { sayHello } from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal";
 
 import Activity from "../components/Activity";
@@ -48,7 +48,7 @@ export default class HomepageApp extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            greeting: Greeting.sayHello(props.user && props.user.first_name),
+            greeting: sayHello(props.user && props.user.first_name),
             onboarding: props.showOnboarding,
         }
     }

@@ -1,46 +1,47 @@
 import { t } from 'c-3po'
+import _ from "underscore";
 
-const greetingPrefixes = [
+export const questionGreetingPrefixes = [
+    t`How's it going`
+];
+
+export const greetingPrefixes = [
+    ...questionGreetingPrefixes,
     t`Hey there`,
-    t`How's it going`,
     t`Howdy`,
     t`Greetings`,
     t`Good to see you`
 ];
 
-const subheadPrefixes = [
+export const subheadPrefixes = [
     t`What do you want to know?`,
     t`What's on your mind?`,
     t`What do you want to find out?`
 ];
 
-var Greeting = {
-    simpleGreeting: function() {
-        // TODO - this can result in an undefined thing
-        const randomIndex = Math.floor(Math.random() * (greetingPrefixes.length - 1));
-        return greetingPrefixes[randomIndex];
-    },
+function isQuoteAQuestion(quote) {
+    return _.contains(questionGreetingPrefixes, quote);
+}
 
-	sayHello: function(personalization) {
-        if(personalization) {
-            var g = Greeting.simpleGreeting();
-            if (g === t`How's it going`){
-                return g + ', ' + personalization + '?';
-            } else {
-                return g + ', ' + personalization;
-            }
+export function simpleGreeting() {
+    return _.sample(greetingPrefixes);
+}
 
-        } else {
-        	return Greeting.simpleGreeting();
-        }
-    },
+export function sayHello(personalization, greetingGeneratorFn = simpleGreeting) {
+    let greetingQuote = greetingGeneratorFn();
+    let finalGreeting = greetingQuote;
 
-    encourageCuriosity: function() {
-        // TODO - this can result in an undefined thing
-        const randomIndex = Math.floor(Math.random() * (subheadPrefixes.length - 1));
-
-        return subheadPrefixes[randomIndex];
+    if(personalization) {
+        finalGreeting += ', ' + personalization;
     }
-};
 
-export default Greeting;
+    if(isQuoteAQuestion(greetingQuote)) {
+        finalGreeting += '?';
+    }
+
+    return finalGreeting;
+}
+
+export function encourageCuriosity() {
+    return _.sample(subheadPrefixes);
+}
