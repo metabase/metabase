@@ -25,7 +25,7 @@
 
 (def ^:private ContextBearingForm
   [(s/one (s/constrained (s/either s/Str s/Keyword)
-                         (comp #{"field-id" "metric" "segment"}
+                         (comp #{"field-id" "metric" "segment" "fk->"}
                                str/lower-case
                                name))
           "head")
