@@ -94,10 +94,10 @@ export default class QueryHeader extends Component {
         , 5000);
     }
 
-    onCreate(card, showSavedModal = true) {
+    onCreate = async (card, showSavedModal = true) => {
         const { question, apiCreateQuestion } = this.props
         const questionWithUpdatedCard = question.setCard(card)
-        apiCreateQuestion(questionWithUpdatedCard)
+        await apiCreateQuestion(questionWithUpdatedCard)
 
         this.setState({
             recentlySaved: "created",
@@ -108,7 +108,7 @@ export default class QueryHeader extends Component {
     onSave = async (card, showSavedModal = true) => {
         const { question, apiUpdateQuestion } = this.props
         const questionWithUpdatedCard = question.setCard(card)
-        apiUpdateQuestion(questionWithUpdatedCard)
+        await apiUpdateQuestion(questionWithUpdatedCard)
 
         if (this.props.fromUrl) {
             this.onGoBack();
