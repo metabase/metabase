@@ -9,7 +9,7 @@ export default class FieldValuesWidget extends Component {
   }
 
   render() {
-    const { value, onChange, field } = this.props;
+    const { value, onChange, field, placeholder, multi } = this.props;
     let options = [];
     if (field && field.values) {
       options = field.values.map(value => ({ value: value[0], label: value[1] || value[0] }))
@@ -19,15 +19,21 @@ export default class FieldValuesWidget extends Component {
       <div>
         <TokenField
           value={value.filter(v => v != null)}
-          valueRenderer={value => <RemappedValue value={value} column={field} />}
-          optionRenderer={option => <RemappedValue value={option.value} column={field} />}
+          onChange={onChange}
+          placeholder={placeholder}
+          multi={multi}
+
+          options={options}
+
+          valueRenderer={value => <RemappedValue value={value} column={field} round={false} />}
+          optionRenderer={option => <RemappedValue value={option.value} column={field} round={false} />}
           layoutRenderer={({ valuesList, optionsList, focused, onClose }) =>
             <div>
               {valuesList}
               {optionsList}
             </div>
           }
-          onChange={onChange}
+
           onInputChange={this.onInputChange}
           onAddFreeform={v => {
             // if the field is numeric we need to parse the string into an integer
@@ -39,7 +45,6 @@ export default class FieldValuesWidget extends Component {
             }
             return v;
           }}
-          options={options}
         />
       </div>
     )

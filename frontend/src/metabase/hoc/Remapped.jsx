@@ -55,13 +55,13 @@ export default ComposedComponent =>
         }
 
         render() {
-            let { displayValue, displayColumn } = this.props;
+            let { displayValue, displayColumn, fetchRemapping, ...props } = this.props;
             if (displayValue === undefined) {
                 displayColumn = null;
             }
             return (
                 <ComposedComponent
-                    {...this.props}
+                    {...props}
                     displayValue={displayValue}
                     displayColumn={displayColumn}
                 />

@@ -37,6 +37,7 @@ export default class TokenField extends Component {
         options: PropTypes.array,
         placeholder: PropTypes.string,
         autoFocus: PropTypes.bool,
+        multi: PropTypes.bool,
 
         valueKey: PropTypes.string,
         labelKey: PropTypes.string,
@@ -169,7 +170,7 @@ export default class TokenField extends Component {
 
     onInputPaste = (e) => {
       if (this.props.onAddFreeform) {
-        const string = e.clipboardData.getData('Text')
+        const string = e.clipboardData.getData('Text');
         const values = string.split(/\n|,/g).map(this.props.onAddFreeform).filter(s => s);
         if (values.length > 0) {
           this.addValue(values);
@@ -212,8 +213,15 @@ export default class TokenField extends Component {
     }
 
     addValue(valueToAdd) {
-        const { value, onChange } = this.props
-        onChange(value.concat(valueToAdd));
+        const { value, onChange, multi } = this.props;
+        if (!Array.isArray(valueToAdd)) {
+          valueToAdd = [valueToAdd]
+        }
+        if (multi) {
+            onChange(value.concat(valueToAdd));
+        } else {
+            onChange(valueToAdd.slice(0,1));
+        }
         // reset the input value
         setTimeout(() =>
           this.setInputValue("")

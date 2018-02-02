@@ -11,9 +11,11 @@ const RemappedValue = Remapped(({
     displayColumn,
     renderNormal = defaultRenderNormal,
     renderRemapped = defaultRenderRemapped,
+    ...props,
 }) => {
     if (column != null) {
       value = formatValue(value, {
+          ...props,
           column: column,
           jsx: true,
           remap: false
@@ -21,6 +23,7 @@ const RemappedValue = Remapped(({
     }
     if (displayColumn != null) {
       displayValue = formatValue(displayValue, {
+          ...props,
           column: displayColumn,
           jsx: true,
           remap: false

@@ -24,9 +24,17 @@ export type FormattingOptions = {
     column?: Column,
     majorWidth?: number,
     type?: "axis"|"cell"|"tooltip",
-    comma?: boolean,
     jsx?: boolean,
+    // number options:
+    comma?: boolean,
     compact?: boolean,
+    round?: boolean,
+}
+
+const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
+    comma: true,
+    compact: false,
+    round: true,
 }
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -41,7 +49,7 @@ const BINNING_DEGREES_FORMATTER       = (value, binWidth) => {
 const RANGE_SEPARATOR = ` – `;
 
 export function formatNumber(number: number, options: FormattingOptions = {}) {
-    options = { comma: true, ...options};
+    options = { ...DEFAULT_NUMBER_OPTIONS, ...options};
     if (options.compact) {
         if (number === 0) {
             // 0 => 0
@@ -61,11 +69,14 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
         // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
         return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
     } else {
-        // anything else rounds to at most 2 decimal points
+        // anything else rounds to at most 2 decimal points, unless disabled
+        if (options.round) {
+          number = d3.round(number, 2);
+        }
         if (options.comma) {
-            return FIXED_NUMBER_FORMATTER(d3.round(number, 2));
+            return FIXED_NUMBER_FORMATTER(number);
         } else {
-            return FIXED_NUMBER_FORMATTER_NO_COMMA(d3.round(number, 2));
+            return FIXED_NUMBER_FORMATTER_NO_COMMA(number);
         }
     }
 }
