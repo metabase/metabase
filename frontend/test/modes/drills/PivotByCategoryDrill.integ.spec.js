@@ -26,7 +26,7 @@ describe("PivotByCategoryDrill", () => {
 
         const pivotedQuestion = question.pivot([["field-id", 4]]);
 
-        const results = await pivotedQuestion.getResults();
+        const results = await pivotedQuestion.apiGetResults();
         expect(results[0]).toBeDefined();
     });
 });
