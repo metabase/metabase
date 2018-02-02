@@ -10,7 +10,8 @@
              [util :as tu]]
             [toucan.db :as db]))
 
-;;; ------------------------------------------------------------ :details-only fields  ------------------------------------------------------------
+;;; ---------------------------------------------- :details-only fields ----------------------------------------------
+
 ;; make sure that rows where visibility_type = details-only are included and properly marked up
 (defn- get-col-names []
   (-> (data/run-query venues
@@ -36,7 +37,8 @@
        (get-col-names))])
 
 
-;;; ------------------------------------------------------------ :sensitive fields ------------------------------------------------------------
+;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
+
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
   {:columns     (->columns "id" "name" "last_login")

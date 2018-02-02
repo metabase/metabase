@@ -180,7 +180,7 @@
                  SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
-    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
+    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed. This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
   (process-query-in-context [this, ^clojure.lang.IFn qp]

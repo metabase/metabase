@@ -16,7 +16,8 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import [java.util Date TimeZone]
+  (:import java.sql.Time
+           [java.util Date TimeZone]
            org.joda.time.format.DateTimeFormatter))
 
 (defrecord MySQLDriver []
@@ -147,6 +148,10 @@
       ;; otherwise if we don't have a report timezone we can continue to pass the object as-is, e.g. as a prepared
       ;; statement param
       date)))
+
+(defmethod sqlqp/->honeysql [MySQLDriver Time]
+  [_ time-value]
+  (hx/->time time-value))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an

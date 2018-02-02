@@ -22,7 +22,7 @@
   (:import java.util.TimeZone
            metabase.models.card.CardInstance))
 
-;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
+;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 
 ;; TODO: this is probably something that could live somewhere else and just be reused
@@ -221,7 +221,7 @@
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
     (when (should-send-notification? pulse results)
 
-      (when  (:alert_first_only pulse)
+      (when (:alert_first_only pulse)
         (db/delete! Pulse :id (:id pulse)))
 
       (for [channel-id channel-ids

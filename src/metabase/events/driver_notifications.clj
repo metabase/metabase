@@ -1,4 +1,9 @@
 (ns metabase.events.driver-notifications
+  "Driver notifications are used to let drivers know database details or other relevant information has
+  changed (`:database-update`) or that a Database has been deleted (`:database-delete`). Drivers can choose to be
+  notified of these events by implementing the `notify-database-updated` method of `IDriver`. At the time of this
+  writing, the Generic SQL driver 'superclass' is the only thing that implements this method, and does so to close
+  connection pools when database details change or when they are deleted."
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase
@@ -14,7 +19,7 @@
   (async/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
 
 (defn process-driver-notifications-event
@@ -30,7 +35,7 @@
 
 
 
-;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
+;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 
 
 (defn events-init

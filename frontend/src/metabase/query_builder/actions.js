@@ -393,9 +393,11 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
                 await dispatch(loadTableMetadata(singleQuery.tableId()));
             }
 
-            if (singleQuery instanceof NativeQuery && singleQuery.databaseId() != null) {
-                await dispatch(loadDatabaseFields(singleQuery.databaseId()));
-            }
+            // NOTE Atte Keinänen 1/29/18:
+            // For native queries we don't normally know which table(s) we are working on.
+            // We could load all tables of the current database but historically that has caused
+            // major performance problems with users having large databases.
+            // Now components needing table metadata fetch it on-demand.
         }
 
         if (query) {

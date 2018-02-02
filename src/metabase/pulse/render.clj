@@ -44,6 +44,8 @@
 ;;; ## STYLES
 (def ^:private ^:const color-brand  "rgb(45,134,212)")
 (def ^:private ^:const color-purple "rgb(135,93,175)")
+(def ^:private ^:const color-gold   "#F9D45C")
+(def ^:private ^:const color-error  "#EF8C8C")
 (def ^:private ^:const color-gray-1 "rgb(248,248,248)")
 (def ^:private ^:const color-gray-2 "rgb(189,193,191)")
 (def ^:private ^:const color-gray-3 "rgb(124,131,129)")
@@ -87,7 +89,7 @@
 
 ;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
 
-(defn- style
+(defn style
   "Compile one or more CSS style maps into a string.
 
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
@@ -461,6 +463,7 @@
 
 (def ^:private external-link-url (io/resource "frontend_client/app/assets/img/external_link.png"))
 (def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/pulse_no_results@2x.png"))
+(def ^:private attached-url      (io/resource "frontend_client/app/assets/img/attachment@2x.png"))
 
 (def ^:private external-link-image
   (delay
@@ -469,6 +472,10 @@
 (def ^:private no-results-image
   (delay
    (make-image-bundle :attachment no-results-url)))
+
+(def ^:private attached-image
+  (delay
+   (make-image-bundle :attachment attached-url)))
 
 (defn- external-link-image-bundle [render-type]
   (case render-type
@@ -479,6 +486,11 @@
   (case render-type
     :attachment @no-results-image
     :inline (make-image-bundle render-type no-results-url)))
+
+(defn- attached-image-bundle [render-type]
+  (case render-type
+    :attachment @attached-image
+    :inline (make-image-bundle render-type attached-url)))
 
 (defn- image-bundle->attachment [{:keys [render-type content-id image-url]}]
   (case render-type
@@ -550,9 +562,41 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :104px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style {:margin-top :8px
+                   [:div {:style (style font-style
+                                        {:margin-top :8px
                                          :color      color-gray-4})}
                     "No results"]]}))
+
+(s/defn ^:private render:attached :- RenderedPulseCard
+  [render-type _ _]
+  (let [image-bundle (attached-image-bundle render-type)]
+    {:attachments (image-bundle->attachment image-bundle)
+     :content     [:div {:style (style {:text-align :center})}
+                   [:img {:style (style {:width :30px})
+                          :src   (:image-src image-bundle)}]
+                   [:div {:style (style font-style
+                                        {:margin-top :8px
+                                         :color      color-gray-4})}
+                    "This question has been included as a file attachment"]]}))
+
+(s/defn ^:private render:unknown :- RenderedPulseCard
+  [_ _]
+  {:attachments nil
+   :content     [:div {:style (style font-style
+                                     {:color       color-gold
+                                      :font-weight 700})}
+                 "We were unable to display this card."
+                 [:br]
+                 "Please view this card in Metabase."]})
+
+(s/defn ^:private render:error :- RenderedPulseCard
+  [_ _]
+  {:attachments nil
+   :content     [:div {:style (style font-style
+                                     {:color       color-error
+                                      :font-weight 700
+                                      :padding     :16px})}
+                 "An error occurred while displaying this card."]})
 
 (defn detect-pulse-card-type
   "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
@@ -564,11 +608,11 @@
         col-2                     (col-2-rowfn (:cols data))
         aggregation               (-> card :dataset_query :query :aggregation first)]
     (cond
-      (or (= aggregation :rows)
-          (contains? #{:pin_map :state :country} (:display card))) nil
       (or (zero? row-count)
           ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
           (= [[nil]] (-> data :rows)))                             :empty
+      (or (> col-count 3)
+          (contains? #{:pin_map :state :country} (:display card))) nil
       (and (= col-count 1)
            (= row-count 1))                                        :scalar
       (and (= col-count 2)
@@ -590,13 +634,18 @@
                                             :width         :100%})}
                      [:tbody
                       [:tr
-                       [:td [:span {:style header-style}
+                       [:td [:span {:style (style header-style)}
                              (-> card :name h)]]
                        [:td {:style (style {:text-align :right})}
                         (when *include-buttons*
                           [:img {:style (style {:width :16px})
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
+
+(defn- is-attached?
+  [card]
+  (or (:include_csv card)
+      (:include_xls card)))
 
 (s/defn ^:private render-pulse-card-body :- RenderedPulseCard
   [render-type timezone card {:keys [data error]}]
@@ -610,19 +659,12 @@
       :sparkline (render:sparkline render-type timezone card data)
       :bar       (render:bar       timezone card data)
       :table     (render:table     timezone card data)
-      {:attachments nil
-       :content     [:div {:style (style font-style
-                                         {:color       "#F9D45C"
-                                          :font-weight 700})}
-                     "We were unable to display this card." [:br] "Please view this card in Metabase."]})
+      (if (is-attached? card)
+        (render:attached render-type card data)
+        (render:unknown card data)))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
-      {:attachments nil
-       :content     [:div {:style (style font-style
-                                         {:color       "#EF8C8C"
-                                          :font-weight 700
-                                          :padding     :16px})}
-                     "An error occurred while displaying this card."]})))
+      (render:error card data))))
 
 (s/defn ^:private render-pulse-card :- RenderedPulseCard
   "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."

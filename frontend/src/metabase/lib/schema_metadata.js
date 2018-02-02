@@ -119,6 +119,8 @@ export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.N
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
 export const isNumber = (field) => field && isNumericBaseType(field) && (field.special_type == null || field.special_type === TYPE.Number);
 
+export const isTime         = (field) => isa(field && field.base_type, TYPE.Time);
+
 export const isAddress      = (field) => isa(field && field.special_type, TYPE.Address);
 export const isState        = (field) => isa(field && field.special_type, TYPE.State);
 export const isCountry      = (field) => isa(field && field.special_type, TYPE.Country);
