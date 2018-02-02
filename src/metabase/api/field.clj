@@ -5,7 +5,8 @@
             [metabase.models
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
-             [field-values :as field-values :refer [FieldValues]]]
+             [field-values :as field-values :refer [FieldValues]]
+             [table :refer [Table]]]
             [metabase.query-processor :as qp]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -227,24 +228,87 @@
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
+(defn- table-id [field]
+  (u/get-id (:table_id field)))
+
+(defn- db-id [field]
+  (u/get-id (db/select-one-field :db_id Table :id (table-id field))))
+
+(defn- follow-fks
+  "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
+  non-FK Fields, returns them as-is. For example, with the Sample Dataset:
+
+     (follow-fks <PEOPLE.ID Field>)        ;-> <PEOPLE.ID Field>
+     (follow-fks <REVIEWS.REVIEWER Field>) ;-> <PEOPLE.ID Field>
+
+  This is used below to seamlessly handle either PK or FK Fields without having to think about which is which in the
+  `search-values` and `remapped-value` functions."
+  [{special-type :special_type, fk-target-field-id :fk_target_field_id, :as field}]
+  (if (and (isa? special-type :type/FK)
+           fk-target-field-id)
+    (db/select-one Field :id fk-target-field-id)
+    field))
+
+
+(s/defn ^:private search-values
+  "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
+
+      [<value-of-field> <matching-value-of-search-field>].
+
+   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name starts
+   with `Ma` as follows:
+
+      (search-values <PEOPLE.ID Field> <PEOPLE.NAME Field> \"Ma\" 3)
+      ;; -> ((14 \"Marilyne Mohr\")
+             (36 \"Margot Farrell\")
+             (48 \"Maryam Douglas\"))"
+  [field search-field value & [limit]]
+  (let [field   (follow-fks field)
+        results (qp/process-query
+                  {:database (db-id field)
+                   :type     :query
+                   :query    {:source-table (table-id field)
+                              :filter       [:starts-with [:field-id (u/get-id search-field)] value]
+                              :breakout     [[:field-id (u/get-id field)]]
+                              :fields       [[:field-id (u/get-id field)]
+                                             [:field-id (u/get-id search-field)]]
+                              :limit        limit}})]
+    ;; return rows if they exist
+    (get-in results [:data :rows])))
+
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field that match values of another Field when breaking out by the "
   [id search-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
   (let [field        (api/read-check Field id)
-        search-field (api/read-check Field search-id)
-        results      (qp/process-query
-                       {:database (db/select-one-field :db_id 'Table :id (:table_id field))
-                        :type     :query
-                        :query    {:source-table (:table_id field)
-                                   :filter       [:starts-with [:field-id search-id] value]
-                                   :breakout     [[:field-id id]]
-                                   :fields       [[:field-id id]
-                                                  [:field-id search-id]]
-                                   :limit        (when limit (Integer/parseUnsignedInt limit))}})]
-    ;; return rows if they exist
-    (get-in results [:data :rows])))
+        search-field (api/read-check Field search-id)]
+    (search-values field search-field value (when limit (Integer/parseUnsignedInt limit)))))
+
+
+(defn remapped-value
+  "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
+
+      [<value-of-field> <value-of-remapped-field>]
+
+   if a match is found.
+
+   For example, with the Sample Dataset, you could find the name of the Person with ID 20 as follows:
+
+      (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
+      ;; -> [20 \"Peter Watsica\"]"
+  [field remapped-field value]
+  (let [field   (follow-fks field)
+        results (qp/process-query
+                  {:database (db-id field)
+                   :type     :query
+                   :query    {:source-table (table-id field)
+                              :filter       [:= [:field-id (u/get-id field)] value]
+                              :fields       [[:field-id (u/get-id field)]
+                                             [:field-id (u/get-id remapped-field)]]
+                              :limit        1}})]
+    ;; return first row if it exists
+    (first (get-in results [:data :rows]))))
 
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
@@ -253,17 +317,8 @@
         remapped-field (api/read-check Field remapped-id)
         value          (if (isa? (:base_type field) :type/Number)
                          (.parse (NumberFormat/getInstance) value)
-                         value)
-        results        (qp/process-query
-                         {:database (db/select-one-field :db_id 'Table :id (:table_id field))
-                          :type     :query
-                          :query    {:source-table (:table_id field)
-                                     :filter       [:= [:field-id id] value]
-                                     :fields       [[:field-id id]
-                                                    [:field-id remapped-id]]
-                                     :limit        1}})]
-    ;; return first row if it exists
-    (first (get-in results [:data :rows]))))
+                         value)]
+    (remapped-value field remapped-field value)))
 
 
 (api/define-routes)
