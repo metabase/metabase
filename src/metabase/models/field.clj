@@ -157,6 +157,25 @@
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
+(def ^:private ^:const listable-field-values-threshold
+  "Any Field with this many distinct values or less should display a list widget rather than a search widget. (?)"
+  300)
+
+(defn with-has-remappings
+  "Efficiently add a `has_remappings` property to each Field in `fields`. There are three possible values:
+
+    *  `:list`       - Anything that has a `Dimension` (i.e. remapping), and has a cardinality under the threshold
+                       above
+    *  `:searchable` - Anything else with a `Dimension` but *above* the threshold
+    *  `nil`         - Anything without a `Dimension`."
+  [fields]
+  ;; TODO - I am not sure this acutally what we want. Ask Tom what exactly he wants
+  (for [{{{:keys [distinct-count]} :global} :fingerprint, dimensions :dimensions :as field} (with-dimensions fields)]
+    (assoc field :has_remappings (when (and distinct-count (seq dimensions))
+                                   (if (<= distinct-count listable-field-values-threshold)
+                                     :list
+                                     :searchable)))))
+
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
   [fields]
