@@ -127,7 +127,12 @@
 .text-slate-extra-light { background-color: var(--slate-extra-light-color); }
 
 .bg-gold { background-color: var(--gold-color); }
-.bg-purple { background-color: var(--purple-color); }
+
+.bg-purple,
+.bg-purple-hover:hover {
+  background-color: var(--purple-color);
+}
+
 .bg-green { background-color: var(--green-color); }
 
 /* alt */

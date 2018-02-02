@@ -284,16 +284,18 @@ export default class TokenField extends Component {
           </ul>
 
         const optionsList = filteredOptions.length === 0 ? null :
-            <ul className="py1 scroll-y scroll-show" style={{ maxHeight: 300 }}>
+            <ul className="ml1 scroll-y scroll-show" style={{ maxHeight: 300 }}>
                 {filteredOptions.map(option =>
                     <li
                         className={cx(
-                            "py1 px2 flex align-center text-bold bg-brand-hover text-white-hover", {
-                            "bg-grey-1": this._valueIsEqual(selectedOptionValue, option[valueKey])
+                            "", {
+                                //"bg-grey-1": this._valueIsEqual(selectedOptionValue, option[valueKey])
                         })}
                         onClick={() => this.addOption(option)}
                     >
-                      {optionRenderer(option)}
+                        <div className="py1 pl1 pr2 block rounded text-bold text-white-hover inline-block bg-purple-hover cursor-pointer">
+                            {optionRenderer(option)}
+                        </div>
                     </li>
                 )}
             </ul>
