@@ -25,23 +25,21 @@ import { clearRequestState } from "metabase/redux/requests";
 import { CardApi, RevisionApi } from "metabase/services";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Query from "metabase/lib/query";
-import { cancelable } from "metabase/lib/promise";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Utils from "metabase/lib/utils";
 import EntityMenu from "metabase/components/EntityMenu";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { AlertListPopoverContent } from "metabase/query_builder/components/AlertListPopoverContent";
-import { getQuestionAlerts } from "metabase/query_builder/selectors";
+import { getQuestionAlerts, getVisualizationSettings } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/home/selectors";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 const mapStateToProps = (state, props) => ({
     questionAlerts: getQuestionAlerts(state),
+    visualizationSettings: getVisualizationSettings(state),
     user: getUser(state)
 })
 
@@ -86,9 +84,6 @@ export default class QueryHeader extends Component {
 
     componentWillUnmount() {
         clearTimeout(this.timeout);
-        if (this.requestPromise) {
-            this.requestPromise.cancel();
-        }
     }
 
     resetStateOnTimeout() {
@@ -99,99 +94,31 @@ export default class QueryHeader extends Component {
         , 5000);
     }
 
-    _getCleanedCard(card) {
-        if (card.dataset_query.query) {
-            const query = Utils.copy(card.dataset_query.query);
-            return {
-                ...card,
-                dataset_query: {
-                    ...card.dataset_query,
-                    query: Query.cleanQuery(query)
-                }
-            }
-        } else {
-            return card
-        }
-    }
+    onCreate = async (card, showSavedModal = true) => {
+        const { question, apiCreateQuestion } = this.props
+        const questionWithUpdatedCard = question.setCard(card)
+        await apiCreateQuestion(questionWithUpdatedCard)
 
-    /// Add result_metadata and metadata_checksum columns to card as expected by the endpoints used for saving
-    /// and updating Cards. These values are returned as part of Query Processor results and fetched from there
-    addResultMetadata(card) {
-        let metadata = this.props.result && this.props.result.data && this.props.result.data.results_metadata;
-        let metadataChecksum = metadata && metadata.checksum;
-        let metadataColumns = metadata && metadata.columns;
-
-        card.result_metadata = metadataColumns;
-        card.metadata_checksum = metadataChecksum;
-    }
-
-    /// remove the databases in the store that are used to populate the QB databases list.
-    /// This is done when saving a Card because the newly saved card will be elligable for use as a source query
-    /// so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    clearQBDatabases() {
-        this.props.clearRequestState({ statePath: ["metadata", "databases"] });
-    }
-
-    onCreate(card, showSavedModal = true) {
-        // MBQL->NATIVE
-        // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
-        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
-        //     delete card.dataset_query.query;
-        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
-        //     delete card.dataset_query.native;
-        // }
-
-        const cleanedCard = this._getCleanedCard(card);
-        this.addResultMetadata(cleanedCard);
-
-        // TODO: reduxify
-        this.requestPromise = cancelable(CardApi.create(cleanedCard));
-        return this.requestPromise.then(newCard => {
-            this.clearQBDatabases();
-
-            this.props.notifyCardCreatedFn(newCard);
-
-            this.setState({
-                recentlySaved: "created",
-                ...(showSavedModal ? { modal: "saved" } : {})
-            }, this.resetStateOnTimeout);
-        });
+        this.setState({
+            recentlySaved: "created",
+            ...(showSavedModal ? { modal: "saved" } : {})
+        }, this.resetStateOnTimeout);
     }
 
     onSave = async (card, showSavedModal = true) => {
-        // MBQL->NATIVE
-        // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
-        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
-        //     delete card.dataset_query.query;
-        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
-        //     delete card.dataset_query.native;
-        // }
-        const { fetchAlertsForQuestion } = this.props
+        const { question, apiUpdateQuestion } = this.props
+        const questionWithUpdatedCard = question.setCard(card)
+        await apiUpdateQuestion(questionWithUpdatedCard)
 
-        const cleanedCard = this._getCleanedCard(card);
-        this.addResultMetadata(cleanedCard);
+        if (this.props.fromUrl) {
+            this.onGoBack();
+            return;
+        }
 
-        // TODO: reduxify
-        this.requestPromise = cancelable(CardApi.update(cleanedCard));
-        return this.requestPromise.then(async updatedCard => {
-            // reload the question alerts for the current question
-            // (some of the old alerts might be removed during update)
-            await fetchAlertsForQuestion(updatedCard.id)
-
-            this.clearQBDatabases();
-
-            if (this.props.fromUrl) {
-                this.onGoBack();
-                return;
-            }
-
-            this.props.notifyCardUpdatedFn(updatedCard);
-
-            this.setState({
-                recentlySaved: "updated",
-                ...(showSavedModal ? { modal: "saved" } : {})
-            }, this.resetStateOnTimeout);
-        });
+        this.setState({
+            recentlySaved: "updated",
+            ...(showSavedModal ? { modal: "saved" } : {})
+        }, this.resetStateOnTimeout);
     }
 
     onBeginEditing() {
@@ -242,7 +169,7 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { question, questionAlerts, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { question, questionAlerts, visualizationSettings, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
         var buttonSections = [];
@@ -454,7 +381,7 @@ export default class QueryHeader extends Component {
             </Tooltip>
         ]);
 
-        if (!isEditing && card && question.alertType() !== null) {
+        if (!isEditing && card && question.alertType(visualizationSettings) !== null) {
             const createAlertItem = {
                 title: t`Get alerts about this`,
                 icon: "alert",

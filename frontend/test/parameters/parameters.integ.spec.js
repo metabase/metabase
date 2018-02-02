@@ -21,7 +21,7 @@ import EmbeddingLegalese from "metabase/admin/settings/components/widgets/Embedd
 import {
     CREATE_PUBLIC_LINK,
     INITIALIZE_QB,
-    NOTIFY_CARD_CREATED,
+    API_CREATE_QUESTION,
     QUERY_COMPLETED,
     RUN_QUERY,
     SET_QUERY_MODE,
@@ -141,6 +141,7 @@ describe("parameters", () => {
             expect(fieldFilterVarType.text()).toBe("Field Filter");
             click(fieldFilterVarType);
 
+            // there's an async error here for some reason
             await store.waitForActions([UPDATE_TEMPLATE_TAG]);
 
             await delay(500);
@@ -166,6 +167,7 @@ describe("parameters", () => {
             // close the template variable sidebar
             click(tagEditorSidebar.find(".Icon-close"));
 
+
             // test without the parameter
             click(app.find(RunButton));
             await store.waitForActions([RUN_QUERY, QUERY_COMPLETED])
@@ -186,7 +188,8 @@ describe("parameters", () => {
             setInputValue(app.find(SaveQuestionModal).find("input[name='name']"), "sql parametrized");
 
             clickButton(app.find(SaveQuestionModal).find("button").last());
-            await store.waitForActions([NOTIFY_CARD_CREATED]);
+            await store.waitForActions([API_CREATE_QUESTION]);
+            await delay(100)
 
             click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(

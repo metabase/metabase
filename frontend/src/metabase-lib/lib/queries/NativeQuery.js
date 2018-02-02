@@ -190,6 +190,10 @@ export default class NativeQuery extends AtomicQuery {
         return getIn(this.datasetQuery(), ["native", "template_tags"]) || {};
     }
 
+    setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
+        return new NativeQuery(this._originalQuestion, datasetQuery);
+    }
+
     /**
      * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
      */

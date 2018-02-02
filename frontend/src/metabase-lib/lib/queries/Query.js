@@ -43,6 +43,10 @@ export default class Query {
         }
     }
 
+    clean(): Query {
+        return this;
+    }
+
     /**
      * Convenience method for accessing the global metadata
      */
@@ -64,7 +68,12 @@ export default class Query {
         return this._datasetQuery;
     }
 
+    setDatasetQuery(datasetQuery: DatasetQuery): Query {
+        return this;
+    }
+
     /**
+     *
      * Query is considered empty, i.e. it is in a plain state with no properties / query clauses set
      */
     isEmpty(): boolean {
