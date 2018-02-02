@@ -63,7 +63,7 @@ export default class TokenField extends Component {
     };
 
     componentWillReceiveProps(nextProps, nextState) {
-      this._updateFilteredValues()
+      setTimeout(this._updateFilteredValues, 0);
     }
 
     setInputValue(inputValue) {
@@ -230,7 +230,8 @@ export default class TokenField extends Component {
 
     removeValue(valueToRemove) {
         const { value, onChange } = this.props
-        onChange(value.filter(v => !this._valueIsEqual(v, valueToRemove)));
+        const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
+        onChange(values);
         // reset the input value
         this.setInputValue("");
     }
@@ -240,8 +241,13 @@ export default class TokenField extends Component {
     }
 
     render() {
-        const { filteredOptions, inputValue, focused, selectedOptionValue } = this.state;
-        const { placeholder, value, valueKey, optionRenderer, valueRenderer, layoutRenderer } = this.props;
+        let { value, placeholder, multi, valueKey, optionRenderer, valueRenderer, layoutRenderer } = this.props;
+        let { inputValue, filteredOptions, focused, selectedOptionValue } = this.state;
+
+        if (!multi && focused) {
+            inputValue = inputValue || value[0];
+            value = [];
+        }
 
         const valuesList =
           <ul
@@ -261,7 +267,7 @@ export default class TokenField extends Component {
                       </a>
                   </li>
               )}
-              <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": " 100px" }}>
+              <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": focused ? 100 : 0 }}>
                   <input
                       ref="input"
                       className="full h4 text-bold text-default no-focus borderless"

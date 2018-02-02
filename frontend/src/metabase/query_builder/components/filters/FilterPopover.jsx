@@ -11,7 +11,7 @@ import TimePicker from "./pickers/TimePicker.jsx";
 import NumberPicker from "./pickers/NumberPicker.jsx";
 import SelectPicker from "./pickers/SelectPicker.jsx";
 import TextPicker from "./pickers/TextPicker.jsx";
-import SearchPicker from "./pickers/SearchPicker.jsx";
+import FieldValuesWidget from "metabase/components/FieldValuesWidget.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -198,16 +198,12 @@ export default class FilterPopover extends Component {
             }
             if (field) {
                 return (
-                    <SearchPicker
-                        // $FlowFixMe
-                        values={(values: Array<string>)}
-                        onValuesChange={onValuesChange}
-                        placeholder={placeholder}
-                        multi={operator.multi}
-                        onCommit={this.onCommit}
-                        // $FlowFixMe
-                        field={field}
-                        searchField={field.filterSearchField()}
+                    <FieldValuesWidget
+                      value={(values: Array<string>)}
+                      onChange={onValuesChange}
+                      multi={operator.multi}
+                      placeholder={placeholder}
+                      field={field}
                     />
                 );
             } else if (operatorField.type === "select") {

@@ -186,6 +186,16 @@ export default class Field extends Base {
         return searchField;
     }
 
+    hasFieldValues() {
+      if (this.values && this.values.length > 0) {
+        return "list";
+      } else if (this.isSearchable() || (this.remappedField() && this.remappedField().isSearchable())) {
+        return "search";
+      } else {
+        return null;
+      }
+    }
+
     parameterSearchField(): ?Field {
         if (this.isID()) {
           return _.find(this.table.fields, field => field.isEntityName());

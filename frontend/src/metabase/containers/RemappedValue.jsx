@@ -2,9 +2,23 @@ import React from "react";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import Remapped from "metabase/hoc/Remapped";
+import AutoLoadRemapped from "metabase/hoc/Remapped";
 
-const RemappedValue = Remapped(({
+const defaultRenderNormal = ({ value, column }) => (
+    <span className="text-bold">{value}</span>
+);
+
+const defaultRenderRemapped = ({ value, displayValue, column, displayColumn }) => (
+    <span>
+        <span className="text-bold">{displayValue}</span>
+        {/* Show the underlying ID for PK/FK */}
+        { column.isID() &&
+            <span style={{ opacity: 0.5 }}>{" - " + value}</span>
+        }
+    </span>
+);
+
+const RemappedValueContent = ({
     value,
     column,
     displayValue,
@@ -34,20 +48,22 @@ const RemappedValue = Remapped(({
     } else {
       return renderNormal({ value, column });
     }
-});
+}
 
-const defaultRenderNormal = ({ value, column }) => (
-    <span className="text-bold">{value}</span>
-);
+export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
-const defaultRenderRemapped = ({ value, displayValue, column, displayColumn }) => (
-    <span>
-        <span className="text-bold">{displayValue}</span>
-        {/* Show the underlying ID for PK/FK */}
-        { column.isID() &&
-            <span style={{ opacity: 0.5 }}>{" - " + value}</span>
-        }
-    </span>
-);
+export const FieldRemappedValue = (props) =>
+  <RemappedValueContent
+    {...props}
+    displayValue={props.column.remappedValue(props.value)}
+    displayColumn={props.column.remappedField()}
+  />
+
+const RemappedValue = ({ autoLoad = true, ...props }) =>
+  autoLoad ?
+    <AutoLoadRemappedValue {...props} />
+  :
+    <FieldRemappedValue {...props} />
+
 
 export default RemappedValue;
