@@ -251,16 +251,16 @@ export default class TokenField extends Component {
 
         const valuesList =
           <ul
-              className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })}
+              className={cx("m1 px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })}
               onMouseDownCapture={this.onMouseDownCapture}
           >
               {value.map((v, index) =>
-                  <li className="mr1 py1 pl1 mt1 rounded bg-grey-1">
+                  <li className="mr1 py1 pl1 mt1 rounded bg-purple text-white">
                       <span className="h4 text-bold">
                         {valueRenderer(v)}
                       </span>
                       <a
-                          className="text-grey-2 text-grey-4-hover px1"
+                          className="text-grey-2 text-white-hover px1"
                           onClick={() => this.removeValue(v)}
                       >
                           <Icon name="close" className="" size={12} />
@@ -284,7 +284,7 @@ export default class TokenField extends Component {
           </ul>
 
         const optionsList = filteredOptions.length === 0 ? null :
-            <ul className="py1">
+            <ul className="py1 scroll-y scroll-show" style={{ maxHeight: 300 }}>
                 {filteredOptions.map(option =>
                     <li
                         className={cx(
