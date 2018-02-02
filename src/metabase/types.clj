@@ -127,6 +127,7 @@
 (derive :type/State :type/Category)
 (derive :type/Country :type/Category)
 (derive :type/Name :type/Category)
+(derive :type/Title :type/Category)
 
 (derive :type/User :type/*)
 (derive :type/Author :type/User)
