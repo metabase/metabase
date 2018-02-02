@@ -8,6 +8,7 @@
             [metabase.sync.analyze.fingerprint.sample :as sample]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
+            [metabase.test.util]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -36,7 +37,9 @@
 
 ;; a datetime field
 (expect
-  {:global {:distinct-count 618}}
+  {:global {:distinct-count 618}
+   :type   {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+                            :latest   "2015-12-29T00:00:00.000Z"}}}
   (fingerprint (Field (data/id :checkins :date))))
 
 
