@@ -243,28 +243,16 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         ...options
     };
 
-    // "column" may also be a field object
-    // $FlowFixMe: remapping is a special field added by Visualization.jsx or getMetadata selector
-    if (column && column.remapping && column.remapping.size > 0 && options.remap) {
-        // $FlowFixMe
-        const remappedValueSample = column.remapping.values().next().value
-
-        // Even if the column only has a list of analyzed values without remappings, those values
-        // are keys in `remapping` array with value `undefined`
-        const hasSetRemappings = remappedValueSample !== undefined
-        if (hasSetRemappings) {
-            // $FlowFixMe
-            if (column.remapping.has(value)) {
-                // $FlowFixMe
-                return column.remapping.get(value);
-            }
-
-            const remappedValueIsString = typeof remappedValueSample
-            if (remappedValueIsString) {
-                // A simple way to hide intermediate ticks for a numeral value that has been remapped to a string
-                return null;
-            }
-        }
+    if (options.remap && column) {
+      // "column" may be a Field object with hasRemappedValue/remappedValue methods
+      if (column.hasRemappedValue && column.hasRemappedValue(value)) {
+        return column.remappedValue(value);
+      }
+      // or it may be a raw column object with a "remapping" object
+      if (column.remapping && column.remapping.has(value)) {
+        return column.remapping.get(value);
+      }
+      // TODO: get rid of one of these two code paths?
     }
 
     if (value == undefined) {

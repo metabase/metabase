@@ -153,7 +153,18 @@ export default class Field extends Base {
         if (this.isNumeric() && typeof value !== "number") {
             value = parseFloat(value);
         }
-        return this.remapping.get(value);
+        return this.remapping && this.remapping.get(value);
+    }
+
+    /**
+     * Returns whether the field has a human readable remapped value for this value
+     */
+    hasRemappedValue(value): ?string {
+        // TODO: Ugh. Should this be handled further up by the parameter widget?
+        if (this.isNumeric() && typeof value !== "number") {
+            value = parseFloat(value);
+        }
+        return this.remapping && this.remapping.has(value);
     }
 
     /**
