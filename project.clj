@@ -103,7 +103,7 @@
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
-            [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
+            [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
             [puppetlabs/i18n "0.8.0"]]                                ; i18n helpers
   :main ^:skip-aot metabase.core

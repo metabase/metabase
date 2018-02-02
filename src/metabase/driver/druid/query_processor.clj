@@ -86,7 +86,8 @@
 (def ^:private ^:const query-type->default-query
   (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
                   :granularity :all
-                  :context     {:timeout 60000}}]
+                  :context     {:timeout 60000
+                                :queryId (str (java.util.UUID/randomUUID))}}]
     {::select             (merge defaults {:queryType  :select
                                            :pagingSpec {:threshold i/absolute-max-results}})
      ::total              (merge defaults {:queryType :timeseries})

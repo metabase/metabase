@@ -669,5 +669,4 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-(api/define-routes
-  (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))
+(api/define-routes)

@@ -9,16 +9,19 @@
              [query-processor-test :refer [rows rows+column-names]]
              [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
-            metabase.driver.druid
+            [metabase.driver.druid :as druid]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
              [table :refer [Table]]]
             [metabase.query-processor.middleware.expand :as ql]
+            [metabase.query-processor-test.query-cancellation-test :as cancel-test]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets :refer [expect-with-engine]]]
             [toucan.util.test :as tt])
   (:import metabase.driver.druid.DruidDriver))
 
@@ -332,3 +335,22 @@
       (driver/can-connect-with-details? engine details :rethrow-exceptions))
        (catch Exception e
          (.getMessage e))))
+
+;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
+;; everything works correctly together
+(datasets/expect-with-engine :druid
+  [false ;; Ensure the query promise hasn't fired yet
+   false ;; Ensure the cancellation promise hasn't fired yet
+   true  ;; Was query called?
+   false ;; Cancel should not have been called yet
+   true  ;; Cancel should have been called now
+   true  ;; The paused query can proceed now
+   ]
+  (tu/call-with-paused-query
+   (fn [query-thunk called-query? called-cancel? pause-query]
+     (future
+       ;; stub out the query and delete functions so that we know when one is called vs. the other
+       (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
+                     druid/DELETE   (fn [url] (deliver called-cancel? true))]
+         (data/run-query checkins
+           (ql/aggregation (ql/count))))))))
