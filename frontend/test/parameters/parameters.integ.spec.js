@@ -189,6 +189,7 @@ describe("parameters", () => {
 
             clickButton(app.find(SaveQuestionModal).find("button").last());
             await store.waitForActions([API_CREATE_QUESTION]);
+            await delay(100)
 
             click(app.find('#QuestionSavedModal .Button[children="Not now"]'))
             // wait for modal to close :'(
