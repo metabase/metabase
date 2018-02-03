@@ -83,12 +83,12 @@
        (or (not (string? v))
            (not (str/blank? v)))))
 
-(s/defn ^:private validate-params
+(s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
   "Validate that the TOKEN-PARAMS passed in the JWT and the USER-PARAMS (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's OBJECT-EMBEDDING-PARAMS
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
-  returns a merged parameters map."
-  [object-embedding-params :- su/EmbeddingParams, token-params user-params]
+  returns a *merged* parameters map."
+  [object-embedding-params :- su/EmbeddingParams, token-params :- {s/Keyword s/Any}, user-params :- {s/Keyword s/Any}]
   (validate-param-sets object-embedding-params
                        (set (keys (m/filter-vals valid-param? token-params)))
                        (set (keys (m/filter-vals valid-param? user-params))))
@@ -177,6 +177,14 @@
           :when         param]
       (assoc param :target (:target param-mapping)))))
 
+(s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
+  "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
+  `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
+  ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
+  [query-params]
+  (m/map-keys keyword query-params))
+
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
@@ -199,7 +207,7 @@
   {:style/indent 0}
   [& {:keys [card-id embedding-params token-params query-params options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [parameter-values (validate-params embedding-params token-params query-params)
+  (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
     (apply public-api/run-query-for-card-with-id card-id parameters, :context :embedded-question, options)))
 
@@ -224,8 +232,9 @@
   [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params]}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
-  (let [parameter-values (validate-params embedding-params token-params query-params)
-        parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id) parameter-values)]
+  (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
+                                                 parameter-values)]
     (public-api/public-dashcard-results dashboard-id card-id parameters, :context :embedded-dashboard)))
 
 
