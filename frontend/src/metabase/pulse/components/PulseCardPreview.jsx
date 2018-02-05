@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { t } from "c-3po";
 import cx from "classnames";
@@ -46,8 +47,12 @@ export default class PulseCardPreview extends Component {
         const { card, onChange } = this.props;
         if (this.hasAttachment()) {
             onChange({ ...card, include_csv: false, include_xls: false })
+
+            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveAttachment");
         } else {
             onChange({ ...card, include_csv: true })
+
+            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "AddAttachment", 'csv');
         }
     }
 

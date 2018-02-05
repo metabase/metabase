@@ -61,7 +61,7 @@ export default class PulseEditCards extends Component {
         if (hasAttachment) {
             notices.push({
                 head: t`Attachment`,
-                body: <AttachmentWidget card={card} onChange={(card) => this.setCard(index, card)} />
+                body: <AttachmentWidget card={card} onChange={(card) => this.setCard(index, card)} index={index} pulseId={this.props.pulseId}  />
             });
         }
         if (cardPreview) {
@@ -128,6 +128,7 @@ export default class PulseEditCards extends Component {
                                     <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
                                     { card ?
                                         <PulseCardPreview
+                                            pulseId={this.props.pulseId}
                                             card={card}
                                             cardPreview={cardPreviews[card.id]}
                                             onChange={this.setCard.bind(this, index)}
@@ -155,7 +156,7 @@ export default class PulseEditCards extends Component {
 
 const ATTACHMENT_TYPES = ["csv", "xls"];
 
-const AttachmentWidget = ({ card, onChange }) =>
+const AttachmentWidget = ({ card, onChange, pulseId }) =>
     <div>
         { ATTACHMENT_TYPES.map(type =>
             <span
@@ -166,6 +167,8 @@ const AttachmentWidget = ({ card, onChange }) =>
                     for (const attachmentType of ATTACHMENT_TYPES) {
                       newCard["include_" + attachmentType] = type === attachmentType;
                     }
+
+                    MetabaseAnalytics.trackEvent((pulseId) ? "PulseEdit" : "PulseCreate", "AttachmentTypeChanged", type);
                     onChange(newCard)
                 }}
             >
@@ -176,5 +179,6 @@ const AttachmentWidget = ({ card, onChange }) =>
 
 AttachmentWidget.propTypes = {
     card: PropTypes.object.isRequired,
-    onChange: PropTypes.func.isRequired
+    onChange: PropTypes.func.isRequired,
+    pulseId: PropTypes.number
 }
