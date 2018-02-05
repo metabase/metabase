@@ -150,9 +150,9 @@
    We then pick out all outlier etas. These are break candidates. However as we
    are using a sliding window there will likely be several candidates for the
    same break (even when the pivot is not perfectly positioned we still expect a
-   significant difference between left and right half-window). We select the point
-   with the highest eta among consecutive points (this also means we can only
-   detect breaks that are more than w apart).
+   significant difference between left and right half-window). We select the
+   point with the highest eta among consecutive points (this also means we can
+   only detect breaks that are more than w apart).
 
    https://en.wikipedia.org/wiki/Structural_break
    http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0059279#pone.0059279.s003"

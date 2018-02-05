@@ -136,5 +136,4 @@
                       (remove zero?)
                       (map #(* % (math/log %))))
                 +
-                0.0
                 (pdf histogram))))
