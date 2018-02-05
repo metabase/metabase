@@ -53,13 +53,17 @@ export default class TokenField extends Component {
         valueRenderer: PropTypes.func.isRequired, // TODO: default
         optionRenderer: PropTypes.func.isRequired, // TODO: default
         layoutRenderer: PropTypes.func,
+
+
     };
 
     static defaultProps = {
         removeSelected: true,
         layoutRenderer: (props) => <DefaultTokenFieldLayout {...props} />,
         valueKey: "value",
-        labelKey: "label"
+        labelKey: "label",
+
+        color: "brand",
     };
 
     componentWillReceiveProps(nextProps, nextState) {
@@ -121,7 +125,7 @@ export default class TokenField extends Component {
           this.props.onInputKeyDown(event);
         }
 
-        const keyCode = event.keyCode
+        const keyCode = event.keyCode;
 
         const { valueKey } = this.props;
         const { filteredOptions, selectedOptionValue } = this.state
@@ -129,6 +133,7 @@ export default class TokenField extends Component {
         // enter, tab, comma
         if (keyCode === KEYCODE_ESCAPE || keyCode === KEYCODE_TAB || keyCode === KEYCODE_COMMA || keyCode === KEYCODE_ENTER) {
             this.addSelectedOption();
+            event.stopPropagation();
         }
 
         // up arrow
@@ -241,7 +246,7 @@ export default class TokenField extends Component {
     }
 
     render() {
-        let { value, placeholder, multi, valueKey, optionRenderer, valueRenderer, layoutRenderer } = this.props;
+        let { value, placeholder, multi, valueKey, optionRenderer, valueRenderer, layoutRenderer, color } = this.props;
         let { inputValue, filteredOptions, focused, selectedOptionValue } = this.state;
 
         if (!multi && focused) {
@@ -251,11 +256,13 @@ export default class TokenField extends Component {
 
         const valuesList =
           <ul
-              className={cx("m1 px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })}
+              className={cx("m1 px1 pb1 bordered rounded flex flex-wrap bg-white", {
+                [`input--focus border-${color}`]: this.state.focused
+              })}
               onMouseDownCapture={this.onMouseDownCapture}
           >
               {value.map((v, index) =>
-                  <li className="mr1 py1 pl1 mt1 rounded bg-purple text-white">
+                  <li className={`mr1 py1 pl1 mt1 rounded bg-${color} text-white`}>
                       <span className="h4 text-bold">
                         {valueRenderer(v)}
                       </span>
@@ -286,16 +293,18 @@ export default class TokenField extends Component {
         const optionsList = filteredOptions.length === 0 ? null :
             <ul className="ml1 scroll-y scroll-show" style={{ maxHeight: 300 }}>
                 {filteredOptions.map(option =>
-                    <li
+                    <li>
+                      <div
                         className={cx(
-                            "", {
-                                //"bg-grey-1": this._valueIsEqual(selectedOptionValue, option[valueKey])
-                        })}
+                          `py1 pl1 pr2 block rounded text-bold inline-block cursor-pointer`,
+                          `text-white-hover bg-${color}-hover`, {
+                            [`text-white bg-${color}`]: this._valueIsEqual(selectedOptionValue, option[valueKey])
+                          }
+                        )}
                         onClick={() => this.addOption(option)}
-                    >
-                        <div className="py1 pl1 pr2 block rounded text-bold text-white-hover inline-block bg-purple-hover cursor-pointer">
-                            {optionRenderer(option)}
-                        </div>
+                      >
+                        {optionRenderer(option)}
+                      </div>
                     </li>
                 )}
             </ul>

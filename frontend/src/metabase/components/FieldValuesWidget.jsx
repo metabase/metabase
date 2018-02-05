@@ -10,6 +10,7 @@ import { MetabaseApi } from "metabase/services";
 import { addRemappings } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
+import { stripId } from "metabase/lib/formatting";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -22,7 +23,8 @@ export default class FieldValuesWidget extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      options: []
+      options: [],
+      loadingState: "INIT"
     }
   }
 
@@ -120,14 +122,27 @@ export default class FieldValuesWidget extends Component {
 
 
   render() {
-    const { value, onChange, field, placeholder, multi } = this.props;
+    const { value, onChange, field, multi } = this.props;
     const { loadingState } = this.state;
+    const hasFieldValues = field.hasFieldValues();
+
+    let placeholder;
+    if (hasFieldValues === "list") {
+      placeholder = `Select a ${field.display_name}`;
+    } else if (hasFieldValues === "search") {
+      placeholder = `Search for a ${stripId(field.display_name)}`;
+      if (field.isID()) {
+        placeholder += ` or enter an ID`;
+      }
+    } else {
+      placeholder = `Enter a ${field.display_name}`
+    }
 
     let options = [];
-    if (field.hasFieldValues() === "list") {
+    if (hasFieldValues === "list") {
       options = field.values;
-    } else if (field.hasFieldValues() === "search" && loadingState === "LOADED") {
-      options = this.state.options
+    } else if (hasFieldValues === "search" && loadingState === "LOADED") {
+      options = this.state.options;
     } else {
       options = [];
     }
@@ -139,6 +154,7 @@ export default class FieldValuesWidget extends Component {
           onChange={onChange}
           placeholder={placeholder}
           multi={multi}
+          color="purple"
 
           options={options}
 
@@ -170,10 +186,8 @@ export default class FieldValuesWidget extends Component {
           }}
         />
         { loadingState === "LOADING" &&
-            <div className="flex align-center m2">
-                <div className="mr2">
-                    <LoadingSpinner size={24} />
-                </div>
+            <div className="flex layout-centered align-center" style={{ minHeight: 100 }}>
+              <LoadingSpinner size={32} />
             </div>
         }
       </div>

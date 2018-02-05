@@ -56,6 +56,7 @@ export default class RecipientPicker extends Component {
           onChange={this.handleOnChange}
           placeholder={recipients.length === 0 ? t`Enter email addresses you'd like this data to go to` : null}
           autoFocus={autoFocus && recipients.length === 0}
+          multi
           valueRenderer={value =>
             value.common_name || value.email
           }
