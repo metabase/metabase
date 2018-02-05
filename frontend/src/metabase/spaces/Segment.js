@@ -133,6 +133,13 @@ const mapStateToProps = (state) => {
 export class Segment extends React.Component {
     render () {
         const { space, metrics, segment, connectedTables, source } = this.props
+
+        // NOTE Atte Keinänen 2/5/18: Simple hack for displaying a warning
+        // while still keeping the router paths and component code in place
+        if (!space) {
+            return <h3>This section isn't demoable yet</h3>
+        }
+
         return (
             <Box>
                 <Flex mb={4} mt={2}>

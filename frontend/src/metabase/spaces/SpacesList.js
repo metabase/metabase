@@ -4,17 +4,20 @@ import { Link } from "metabase/spaces/Link";
 import { Box, Button, Card, Flex, Heading, Subhead } from 'rebass'
 import { loadCollections } from "metabase/questions/collections";
 import { getAllCollections } from "metabase/questions/selectors";
+import { getDatabasesList } from "metabase/selectors/metadata";
+import { fetchRealDatabases } from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
     spaces: getAllCollections(state, props),
     log: state._spaces.log.reverse().slice(0, 15),
-    databases: state._spaces.databases
+    databases: getDatabasesList(state)
 })
 
-@connect(mapStateToProps, { loadCollections })
+@connect(mapStateToProps, { fetchRealDatabases, loadCollections })
 export class SpacesList extends Component {
     componentWillMount() {
-        this.props.loadCollections();
+        this.props.loadCollections()
+        this.props.fetchRealDatabases()
     }
     render() {
         const { databases, spaces } = this.props

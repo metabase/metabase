@@ -21,6 +21,13 @@ const mapStateToProps = (state) => {
 export class Segments extends Component {
     render() {
         const { segments, space } = this.props
+
+        // NOTE Atte Keinänen 2/5/18: Simple hack for displaying a warning
+        // while still keeping the router paths and component code in place
+        if (!space) {
+            return <h3>This section isn't demoable yet</h3>
+        }
+
         return (
             <Box>
                 <Heading>Useful data</Heading>

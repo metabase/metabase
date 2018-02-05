@@ -78,7 +78,8 @@ const mapStateToProps = (state) => {
 
     return {
         logs: getLogsForSpace(stateWithFixtureSpace).slice(0, 8),
-        currentSpace: getCurrentSpace(stateWithFixtureSpace),
+        currentSpace: null,
+        // currentSpace: getCurrentSpace(stateWithFixtureSpace),
         // this should actually just be called important
         recents: getMetricsForSpace(stateWithFixtureSpace).slice(0, 8),
         segments: getImportantSegmentsForSpace(stateWithFixtureSpace).slice(0, 5),
@@ -102,6 +103,12 @@ export class Guide extends Component {
             logs,
             questions
         } = this.props
+
+        // NOTE Atte Keinänen 2/5/18: Simple hack for displaying a warning
+        // while still keeping the router paths and component code in place
+        if (!currentSpace) {
+            return <h3>This section isn't demoable yet</h3>
+        }
 
         const dashHeight = 700
         const hasPinnedDash = currentSpace.pinnedDashId !== null
