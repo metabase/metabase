@@ -15,8 +15,8 @@
   #{:druid})
 
 (def ^:private flattened-db-def
-  "The normal test-data DB definition as a flattened, single-table DB definition.
-  (this is a function rather than a straight delay because clojure complains when they delay gets embedding in expanded macros)"
+  "The normal test-data DB definition as a flattened, single-table DB definition. (This is a function rather than a
+  straight delay because clojure complains when they delay gets embedding in expanded macros)"
   (delay (i/flatten-dbdef defs/test-data "checkins")))
 
 ;; force loading of the flattened db definitions for the DBs that need it
@@ -397,6 +397,20 @@
           (ql/breakout $venue_category_name)
           (ql/filter (ql/starts-with $venue_category_name "Me")))))
 
+(expect-with-timeseries-dbs
+  {:columns ["venue_category_name"]
+   :rows    []}
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/starts-with $venue_category_name "ME")))))
+
+(expect-with-timeseries-dbs
+  {:columns ["venue_category_name"]
+   :rows    [["Mediterannian"] ["Mexican"]]}
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/starts-with $venue_category_name "ME" {:case-sensitive? false})))))
+
 ;;; filter ENDS_WITH
 (expect-with-timeseries-dbs
   {:columns ["venue_category_name"]
@@ -412,6 +426,27 @@
           (ql/breakout $venue_category_name)
           (ql/filter (ql/ends-with $venue_category_name "an")))))
 
+(expect-with-timeseries-dbs
+  {:columns ["venue_category_name"]
+   :rows    []}
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/ends-with $venue_category_name "AN")))))
+
+(expect-with-timeseries-dbs
+  {:columns ["venue_category_name"]
+   :rows    [["American"]
+             ["Artisan"]
+             ["Asian"]
+             ["Caribbean"]
+             ["German"]
+             ["Korean"]
+             ["Mediterannian"]
+             ["Mexican"]]}
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/ends-with $venue_category_name "AN" {:case-sensitive? false})))))
+
 ;;; filter CONTAINS
 (expect-with-timeseries-dbs
   {:columns ["venue_category_name"]
@@ -426,6 +461,27 @@
   (data (data/run-query checkins
           (ql/breakout $venue_category_name)
           (ql/filter (ql/contains $venue_category_name "er")))))
+
+(expect-with-timeseries-dbs
+  {:columns ["venue_category_name"]
+   :rows    []}
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/contains $venue_category_name "eR")))))
+
+(expect-with-timeseries-dbs
+  {:columns ["venue_category_name"]
+   :rows    [["American"]
+             ["Bakery"]
+             ["Brewery"]
+             ["Burger"]
+             ["Diner"]
+             ["German"]
+             ["Mediterannian"]
+             ["Southern"]]}
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/contains $venue_category_name "eR" {:case-sensitive? false})))))
 
 ;;; order by aggregate field (?)
 (expect-with-timeseries-dbs
@@ -754,9 +810,13 @@
                                                                 (ql/contains $venue_name "BBQ"))))))
 
 ;;; time-interval
-(expect-with-timeseries-dbs [1000] (first-row (data/run-query checkins
-                                                (ql/aggregation (ql/count)) ; test data is all in the past so nothing happened today <3
-                                                (ql/filter (ql/not (ql/time-interval $timestamp :current :day))))))
+(expect-with-timeseries-dbs
+  [1000]
+  (first-row
+    (data/run-query checkins
+      (ql/aggregation (ql/count))
+      ;; test data is all in the past so nothing happened today <3
+      (ql/filter (ql/not (ql/time-interval $timestamp :current :day))))))
 
 
 
@@ -777,7 +837,8 @@
                                                (ql/aggregation (ql/min $count)))))
 
 (expect-with-timeseries-dbs
-  [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]] ; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
+ ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
+  [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
   (rows (data/run-query checkins
           (ql/aggregation (ql/min $venue_latitude))
           (ql/breakout $venue_price))))

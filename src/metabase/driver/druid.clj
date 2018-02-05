@@ -60,6 +60,7 @@
     (try (vec (POST (details->url details-with-tunnel "/druid/v2"), :body query))
          (catch Throwable e
            ;; try to extract the error
+           (println "(u/pprint-to-str 'red e):" (u/pprint-to-str 'red (or (ex-data e) e))) ; NOCOMMIT
            (let [message (or (u/ignore-exceptions
                                (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
                              (.getMessage e))]

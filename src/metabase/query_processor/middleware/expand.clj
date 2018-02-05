@@ -289,12 +289,35 @@
   (and (between lat-field lat-min lat-max)
        (between lon-field lon-min lon-max)))
 
-(s/defn ^:private string-filter :- StringFilter [filter-type f s]
-  (i/map->StringFilter {:filter-type filter-type, :field (field f), :value (value f s)}))
 
-(def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string S."    (partial string-filter :starts-with))
-(def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string S."       (partial string-filter :contains))
-(def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string S." (partial string-filter :ends-with))
+(s/defn ^:private string-filter :- StringFilter
+  "String search filter clauses: `contains`, `starts-with`, and `ends-with`. First shipped in `0.11.0` (before initial
+  public release) but only supported case-sensitive searches. In `0.29.0` support for case-insensitive searches was
+  added. For backwards-compatibility, and to avoid possible performance implications, case-sensitive is the default
+  option if no `options-maps` is specified."
+  ([filter-type f s]
+   (string-filter filter-type f s {:case-sensitive? true}))
+  ([filter-type f s options-map]
+   (i/strict-map->StringFilter (assoc options-map
+                                 :filter-type filter-type
+                                 :field       (field f)
+                                 :value       (value f s)))))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} starts-with
+  "Filter subclause. Return results where F starts with the string S. By default, is case-sensitive, but you may pass an
+  `options-map` with `{:case-sensitive? false}` for case-insensitive searches."
+  (partial string-filter :starts-with))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} contains
+  "Filter subclause. Return results where F contains the string S. By default, is case-sensitive, but you may pass an
+  `options-map` with `{:case-sensitive? false}` for case-insensitive searches."
+  (partial string-filter :contains))
+
+(def ^:ql ^{:arglists '([f s] [f s options-map])} ends-with
+  "Filter subclause. Return results where F ends with with the string S. By default, is case-sensitive, but you may pass
+  an `options-map` with `{:case-sensitive? false}` for case-insensitive searches."
+  (partial string-filter :ends-with))
+
 
 (s/defn ^:ql not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.

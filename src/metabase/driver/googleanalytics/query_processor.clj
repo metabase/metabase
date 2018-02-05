@@ -95,7 +95,7 @@
 ;;; ### filter
 
 ;; TODO: implement negate?
-(defn- parse-filter-subclause:filters [{:keys [filter-type field value] :as filter} & [negate?]]
+(defn- parse-filter-subclause:filters [{:keys [filter-type field value], :as filter} & [negate?]]
   (if negate? (throw (Exception. ":not is :not yet implemented")))
   (when-not (instance? DateTimeField field)
     (let [field (when field (->rvalue field))

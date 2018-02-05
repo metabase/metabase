@@ -4,7 +4,7 @@
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]))
 
-;;; ------------------------------------------------------------ "FILTER" CLAUSE ------------------------------------------------------------
+;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
 
 ;;; FILTER -- "AND", ">", ">="
 (expect-with-non-timeseries-dbs
@@ -140,11 +140,11 @@
         (nil? result))))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------+
-;;; |                                  NEW FILTER TYPES - CONTAINS, STARTS_WITH, ENDS_WITH                                 |
-;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            STRING SEARCH FILTERS - CONTAINS, STARTS-WITH, ENDS-WITH                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------------------ STARTS_WITH ------------------------------------------------------------
+;;; -------------------------------------------------- starts-with ---------------------------------------------------
 (expect-with-non-timeseries-dbs
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
@@ -153,8 +153,23 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
+(expect-with-non-timeseries-dbs
+  []
+  (-> (data/run-query venues
+        (ql/filter (ql/starts-with $name "CHE"))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
-;;; ------------------------------------------------------------ ENDS_WITH ------------------------------------------------------------
+(expect-with-non-timeseries-dbs
+  [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
+   [74 "Chez Jay"           2 34.0104 -118.493 2]]
+  (-> (data/run-query venues
+        (ql/filter (ql/starts-with $name "CHE" {:case-sensitive? false}))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
+
+
+;;; --------------------------------------------------- ends-with ----------------------------------------------------
 (expect-with-non-timeseries-dbs
   [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
    [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
@@ -166,7 +181,25 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;;; ------------------------------------------------------------ CONTAINS ------------------------------------------------------------
+(expect-with-non-timeseries-dbs
+  []
+  (-> (data/run-query venues
+        (ql/filter (ql/ends-with $name "RESTAURANT"))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
+
+(expect-with-non-timeseries-dbs
+  [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
+   [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
+   [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
+   [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
+   [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
+  (-> (data/run-query venues
+        (ql/filter (ql/ends-with $name "RESTAURANT" {:case-sensitive? false}))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
+
+;;; ---------------------------------------------------- contains ----------------------------------------------------
 (expect-with-non-timeseries-dbs
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
@@ -176,7 +209,28 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;;; ------------------------------------------------------------ Nested AND / OR ------------------------------------------------------------
+;; case-insensitive
+(expect-with-non-timeseries-dbs
+  []
+  (-> (data/run-query venues
+        (ql/filter (ql/contains $name "bbq"))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
+
+;; case-insensitive
+(expect-with-non-timeseries-dbs
+  [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
+   [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
+   [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
+  (-> (data/run-query venues
+        (ql/filter (ql/contains $name "bbq" {:case-sensitive? false}))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             NESTED AND/OR CLAUSES                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect-with-non-timeseries-dbs
   [[81]]
@@ -188,7 +242,9 @@
        rows (format-rows-by [int])))
 
 
-;;; ------------------------------------------------------------ = / != with multiple values ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         = AND != WITH MULTIPLE VALUES                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (expect-with-non-timeseries-dbs
   [[81]]
@@ -205,14 +261,18 @@
        rows (format-rows-by [int])))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------------+
-;;; |                                                      NOT FILTER                                                      |
-;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   NOT FILTER                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; `not` filter -- Test that we can negate the various other filter clauses
-;; The majority of these tests aren't necessary since `not` automatically translates them to simpler, logically equivalent expressions
-;; but I already wrote them so in this case it doesn't hurt to have a little more test coverage than we need
-;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all these extra queries?
+;;
+;; The majority of these tests aren't necessary since `not` automatically translates them to simpler, logically
+;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
+;; than we need
+;;
+;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all
+;; these extra queries?
 
 ;;; =
 (expect-with-non-timeseries-dbs
@@ -313,7 +373,9 @@
         (ql/filter (ql/not (ql/contains $name "BBQ")))))))
 
 ;;; does-not-contain
-;; This should literally be the exact same query as the one above by the time it leaves the Query eXpander, so this is more of a QX test than anything else
+;;
+;; This should literally be the exact same query as the one above by the time it leaves the Query eXpander, so this is
+;; more of a QX test than anything else
 (expect-with-non-timeseries-dbs
   [97]
   (first-row
