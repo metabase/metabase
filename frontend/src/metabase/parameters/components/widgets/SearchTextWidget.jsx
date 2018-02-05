@@ -2,7 +2,8 @@
 
 import React, { Component } from "react";
 
-import FieldSearchInput from "metabase/containers/FieldSearchInput";
+import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import Popover from "metabase/components/Popover";
 import RemappedValue from "metabase/containers/RemappedValue";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -49,27 +50,54 @@ export default class SearchTextWidget extends Component<*, Props, State> {
             this.setState({isFocused})
         };
 
-        if (!isFocused && value) {
+        const placeholder = isEditing ? "Enter a default value..." : defaultPlaceholder;
+
+        if (!isFocused) {
             return (
                 <div className="flex-full" onClick={() => focusChanged(true)}>
-                    {SearchTextWidget.format(value, field)}
+                    { value != null ?
+                      SearchTextWidget.format(value, field)
+                    :
+                      <span>
+                        {placeholder}
+                      </span>
+                    }
                 </div>
             );
         } else {
-
             return (
-                <FieldSearchInput
-                    value={value}
-                    onChange={setValue}
-                    isFocused={isFocused}
-                    onFocus={() => focusChanged(true)}
-                    onBlur={() => focusChanged(false)}
-                    autoFocus={this.state.isFocused}
-                    placeholder={isEditing ? "Enter a default value..." : defaultPlaceholder}
-                    field={field}
-                    searchField={field && field.parameterSearchField()}
+              <Popover
+                tetherOptions={{
+                    attachment: "top left",
+                    targetAttachment: "top left",
+                    targetOffset: "-15 -25"
+                }}
+                hasArrow={false}
+                onClose={() => focusChanged(false)}
+              >
+                <FieldValuesWidget
+                  // TODO: multi
+                  value={[value]}
+                  onChange={values => setValue(values[0])}
+                  placeholder={placeholder}
+                  field={field}
+                  autoFocus
                 />
+              </Popover>
             )
+            // return (
+            //     <FieldSearchInput
+            //         value={value}
+            //         onChange={setValue}
+            //         isFocused={isFocused}
+            //         onFocus={() => focusChanged(true)}
+            //         onBlur={() => focusChanged(false)}
+            //         autoFocus={this.state.isFocused}
+            //         placeholder={isEditing ? "Enter a default value..." : defaultPlaceholder}
+            //         field={field}
+            //         searchField={field && field.parameterSearchField()}
+            //     />
+            // )
         }
     }
 }

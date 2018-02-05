@@ -122,7 +122,7 @@ export default class FieldValuesWidget extends Component {
 
 
   render() {
-    const { value, onChange, field, multi } = this.props;
+    const { value, onChange, field, multi, autoFocus } = this.props;
     const { loadingState } = this.state;
     const hasFieldValues = field.hasFieldValues();
 
@@ -154,6 +154,7 @@ export default class FieldValuesWidget extends Component {
           onChange={onChange}
           placeholder={placeholder}
           multi={multi}
+          autoFocus={autoFocus}
           color="purple"
 
           options={options}
