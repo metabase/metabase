@@ -380,6 +380,10 @@
     min-width: 100px;
 }
 
+.GuiBuilder-section--right {
+  justify-content: flex-end;
+}
+
 .GuiBuilder-section-label {
     background-color: white;
     position: absolute;
@@ -410,6 +414,20 @@
     z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
+
+/* AGGREGATION LIST SECTION */
+
+.Aggregation-section-breakout {
+  display: flex;
+  white-space: nowrap;
+  overflow-y: hidden;
+  max-width: 400px;
+
+}
+
+.Aggregation-sectoin-breakout.Aggregation-sectoin-breakout--right {
+    justify-content: flex-end;
+}
 /* FILTER BY SECTION */
 
 .Filter-section-field,

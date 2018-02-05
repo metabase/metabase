@@ -213,7 +213,7 @@ export default class GuiQueryEditor extends Component {
                 }
             }
             return (
-                {aggregationList}
+                <div className="Aggregation-section-breakout scroll-x scroll-show">{aggregationList}</div>
             )
         } else {
             // TODO: move this into AggregationWidget?
@@ -269,7 +269,7 @@ export default class GuiQueryEditor extends Component {
         }
 
         return (
-            <div className={cx("Query-section Query-section-breakout", { disabled: breakoutList.length === 0 })}>
+            <div className={cx("Query-section Query-section-breakout scroll-x scroll-show", { disabled: breakoutList.length === 0 })}>
                 {breakoutList}
             </div>
         );
