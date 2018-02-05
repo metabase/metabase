@@ -4,6 +4,6 @@
             [metabase.sync.analyze.fingerprint.datetime :refer :all]))
 
 (expect
-  {:earliest "2013"
-   :latest   "2018"}
+  {:earliest "2013-01-01T00:00:00.000Z"
+   :latest   "2018-01-01T00:00:00.000Z"}
   (datetime-fingerprint ["2013" "2018" "2015"]))
