@@ -27,11 +27,8 @@
   "For graphs with goals, this function returns the index of the default column that should be used to compare against
   the goal. This follows the frontend code getDefaultLineAreaBarColumns closely with a slight change (detailed in the
   code)"
-  [results]
-  (let [graph-type (get-in results [:card :display])
-        [col-1 col-2 col-3 :as all-cols] (get-in results [:result :data :cols])
-        cols-count (count all-cols)]
-
+  [{graph-type :display :as card} {[col-1 col-2 col-3 :as all-cols] :cols :as result}]
+  (let [cols-count (count all-cols)]
     (cond
       ;; Progress goals return a single row and column, compare that
       (= :progress graph-type)
@@ -63,19 +60,39 @@
 
 (defn- column-name->index
   "The results seq is seq of vectors, this function returns the index in that vector of the given `COLUMN-NAME`"
-  [results ^String column-name]
-  (when column-name
-    (first (map-indexed (fn [idx column]
-                          (when (.equalsIgnoreCase column-name (:name column))
-                            idx))
-                        (get-in results [:result :data :cols])))))
+  [^String column-name {:keys [cols] :as result}]
+  (first (remove nil? (map-indexed (fn [idx column]
+                                     (when (.equalsIgnoreCase column-name (:name column))
+                                       idx))
+                                   cols))))
 
-(defn goal-comparison-column
+(defn- graph-column-index [viz-kwd card results]
+  (when-let [metrics-col-index (some-> card
+                                       (get-in [:visualization_settings viz-kwd])
+                                       first
+                                       (column-name->index results))]
+    (fn [row]
+      (nth row metrics-col-index))))
+
+(defn y-axis-rowfn
+  "This is used as the Y-axis column in the UI"
+  [card results]
+  (graph-column-index :graph.metrics card results))
+
+(defn x-axis-rowfn
+  "This is used as the X-axis column in the UI"
+  [card results]
+  (graph-column-index :graph.dimensions card results))
+
+(defn make-goal-comparison-rowfn
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come
   from the visualization settings if the column is specified, or from our default column logic"
-  [result]
-  (or (column-name->index result (get-in result [:card :visualization_settings :graph.metrics]))
-      (default-goal-column-index result)))
+  [card result]
+  (if-let [user-specified-rowfn (y-axis-rowfn card result)]
+    user-specified-rowfn
+    (when-let [default-col-index (default-goal-column-index card result)]
+      (fn [row]
+        (nth row default-col-index)))))
 
 (defn find-goal-value
   "The goal value can come from a progress goal or a graph goal_value depending on it's type"

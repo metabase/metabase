@@ -279,6 +279,23 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
     };
 });
 
+export const FETCH_FIELD = "metabase/metadata/FETCH_FIELD";
+export const fetchField = createThunkAction(FETCH_FIELD, function(fieldId, reload) {
+    return async function(dispatch, getState) {
+        const requestStatePath = ["metadata", "fields", fieldId];
+        const existingStatePath = requestStatePath;
+        const getData = () => MetabaseApi.field_get({ fieldId })
+
+        return await fetchData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
+            reload: true
+        });
+    };
+});
 export const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
 export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(fieldId, reload) {
     return async function(dispatch, getState) {
@@ -510,6 +527,17 @@ export const fetchRemapping = createThunkAction(FETCH_REMAPPING, (value, fieldId
     }
 );
 
+const FETCH_REAL_DATABASES_WITH_METADATA = "metabase/metadata/FETCH_REAL_DATABASES_WITH_METADATA";
+export const fetchRealDatabasesWithMetadata = createThunkAction(FETCH_REAL_DATABASES_WITH_METADATA, (reload = false) => {
+    return async (dispatch, getState) => {
+        await dispatch(fetchRealDatabases())
+        const databases = getIn(getState(), ['metadata', 'databases']);
+        await Promise.all(Object.values(databases).map(database =>
+            dispatch(fetchDatabaseMetadata(database.id))
+        ));
+    };
+});
+
 const databases = handleActions({
 }, {});
 
@@ -521,6 +549,14 @@ const tables = handleActions({
 }, {});
 
 const fields = handleActions({
+    [FETCH_FIELD]: { next: (state, { payload: field }) =>
+        ({
+            ...state,
+            [field.id]: {
+                ...(state[field.id] || {}),
+                ...field
+            }
+        })},
     [FETCH_FIELD_VALUES]: { next: (state, { payload: fieldValues }) =>
         fieldValues ? assocIn(state, [fieldValues.field_id, "values"], fieldValues) : state },
     [ADD_PARAM_VALUES]: { next: (state, { payload: paramValues }) => {

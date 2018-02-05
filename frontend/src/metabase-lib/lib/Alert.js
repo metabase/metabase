@@ -7,8 +7,8 @@ export type AlertType =
     | ALERT_TYPE_TIMESERIES_GOAL
     | ALERT_TYPE_PROGRESS_BAR_GOAL;
 
-export const getDefaultAlert = (question, user) => {
-    const alertType = question.alertType();
+export const getDefaultAlert = (question, user, visualizationSettings) => {
+    const alertType = question.alertType(visualizationSettings);
 
     const typeDependentAlertFields = alertType === ALERT_TYPE_ROWS
         ? { alert_condition: "rows", alert_first_only: false }

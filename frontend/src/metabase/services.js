@@ -142,7 +142,7 @@ export const MetabaseApi = {
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
     table_rescan_values:       POST("/api/table/:tableId/rescan_values"),
     table_discard_values:      POST("/api/table/:tableId/discard_values"),
-    // field_get:                   GET("/api/field/:fieldId"),
+    field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
     field_values:                GET("/api/field/:fieldId/values"),
     field_values_update:        POST("/api/field/:fieldId/values"),
