@@ -34,6 +34,7 @@ export const GRAPH_DATA_SETTINGS = {
           columnsAreValid(card.visualization_settings["graph.metrics"], data, vizSettings["graph._metric_filter"]),
       getDefault: (series, vizSettings) =>
           getDefaultColumns(series).dimensions,
+      persistDefault: true,
       getProps: ([{ card, data }], vizSettings) => {
           const value = vizSettings["graph.dimensions"];
           const options = data.cols.filter(vizSettings["graph._dimension_filter"]).map(getOptionFromColumn);
@@ -57,6 +58,7 @@ export const GRAPH_DATA_SETTINGS = {
           columnsAreValid(card.visualization_settings["graph.metrics"], data, vizSettings["graph._metric_filter"]),
       getDefault: (series, vizSettings) =>
           getDefaultColumns(series).metrics,
+      persistDefault: true,
       getProps: ([{ card, data }], vizSettings) => {
           const value = vizSettings["graph.dimensions"];
           const options = data.cols.filter(vizSettings["graph._metric_filter"]).map(getOptionFromColumn);

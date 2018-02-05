@@ -10,7 +10,9 @@
             [clojure.tools.logging :as log]
             [hiccup.core :refer [h html]]
             [metabase.util :as u]
-            [metabase.util.urls :as urls]
+            [metabase.util
+             [ui-logic :as ui-logic]
+             [urls :as urls]]
             [puppetlabs.i18n.core :refer [tru trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
@@ -495,30 +497,35 @@
     :attachment {content-id image-url}
     :inline     nil))
 
+(defn- graphing-columns [card {:keys [cols] :as data}]
+  [(or (ui-logic/x-axis-rowfn card data)
+       first)
+   (or (ui-logic/y-axis-rowfn card data)
+       second)])
+
 (s/defn ^:private render:sparkline :- RenderedPulseCard
-  [render-type timezone card {:keys [rows cols]}]
-  (let [ft-row (if (datetime-field? (first cols))
+  [render-type timezone card {:keys [rows cols] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
+        ft-row (if (datetime-field? (x-axis-rowfn cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
-        rows   (if (> (ft-row (ffirst rows))
-                      (ft-row (first (last rows))))
+        rows   (if (> (ft-row (x-axis-rowfn (first rows)))
+                      (ft-row (x-axis-rowfn (last rows))))
                  (reverse rows)
                  rows)
-        xs     (for [row  rows
-                     :let [x (first row)]]
-                 (ft-row x))
+        xs     (map (comp ft-row x-axis-rowfn) rows)
         xmin   (apply min xs)
         xmax   (apply max xs)
         xrange (- xmax xmin)
         xs'    (map #(/ (double (- % xmin)) xrange) xs)
-        ys     (map second rows)
+        ys     (map y-axis-rowfn rows)
         ymin   (apply min ys)
         ymax   (apply max ys)
         yrange (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
         ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
-        values (map (comp format-number second) rows')
-        labels (format-timestamp-pair timezone (map first rows') (first cols))
+        values (map (comp format-number y-axis-rowfn) rows')
+        labels (format-timestamp-pair timezone (map x-axis-rowfn rows') (x-axis-rowfn cols))
         image-bundle (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
 
     {:attachments (when image-bundle
@@ -594,11 +601,12 @@
 (defn detect-pulse-card-type
   "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
   [card data]
-  (let [col-count (-> data :cols count)
-        row-count (-> data :rows count)
-        col-1 (-> data :cols first)
-        col-2 (-> data :cols second)
-        aggregation (-> card :dataset_query :query :aggregation first)]
+  (let [col-count                 (-> data :cols count)
+        row-count                 (-> data :rows count)
+        [col-1-rowfn col-2-rowfn] (graphing-columns card data)
+        col-1                     (col-1-rowfn (:cols data))
+        col-2                     (col-2-rowfn (:cols data))
+        aggregation               (-> card :dataset_query :query :aggregation first)]
     (cond
       (or (zero? row-count)
           ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters

@@ -16,8 +16,8 @@ import {
     LOAD_TABLE_METADATA,
     LOAD_DATABASE_FIELDS,
     RELOAD_CARD,
-    NOTIFY_CARD_CREATED,
-    NOTIFY_CARD_UPDATED,
+    API_CREATE_QUESTION,
+    API_UPDATE_QUESTION,
     SET_CARD_AND_RUN,
     SET_CARD_ATTRIBUTE,
     SET_CARD_VISUALIZATION,
@@ -58,7 +58,7 @@ export const uiControls = handleActions({
 
     [BEGIN_EDITING]: { next: (state, { payload }) => ({ ...state, isEditing: true }) },
     [CANCEL_EDITING]: { next: (state, { payload }) => ({ ...state, isEditing: false }) },
-    [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => ({ ...state, isEditing: false }) },
+    [API_UPDATE_QUESTION]: { next: (state, { payload }) => ({ ...state, isEditing: false }) },
     [RELOAD_CARD]: { next: (state, { payload }) => ({ ...state, isEditing: false })},
 
     [RUN_QUERY]: (state) => ({ ...state, isRunning: true }),
@@ -82,8 +82,8 @@ export const card = handleActions({
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
-    [NOTIFY_CARD_CREATED]: { next: (state, { payload }) => payload },
-    [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => payload },
+    [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
+    [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
     [SET_CARD_ATTRIBUTE]: { next: (state, { payload }) => ({...state, [payload.attr]: payload.value }) },
     [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
@@ -115,8 +115,8 @@ export const originalCard = handleActions({
     [RELOAD_CARD]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.originalCard ? Utils.copy(payload.originalCard) : null },
-    [NOTIFY_CARD_CREATED]: { next: (state, { payload }) => Utils.copy(payload) },
-    [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => Utils.copy(payload) },
+    [API_CREATE_QUESTION]: { next: (state, { payload }) => Utils.copy(payload) },
+    [API_UPDATE_QUESTION]: { next: (state, { payload }) => Utils.copy(payload) },
 }, null);
 
 export const tableForeignKeys = handleActions({
