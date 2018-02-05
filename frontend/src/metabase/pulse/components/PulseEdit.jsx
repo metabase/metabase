@@ -115,7 +115,7 @@ export default class PulseEdit extends Component {
                     <PulseEditName {...this.props} setPulse={this.setPulse} />
                     <PulseEditCards {...this.props} setPulse={this.setPulse} attachmentsEnabled={attachmentsEnabled} />
                     <div className="py1 mb4">
-                        <h2 className="mb3">Where should this data go?</h2>
+                        <h2 className="mb3">{t`Where should this data go?`}</h2>
                         <PulseEditChannels {...this.props} setPulse={this.setPulse} pulseIsValid={isValid} />
                     </div>
                     <PulseEditSkip {...this.props} setPulse={this.setPulse} />
@@ -133,7 +133,7 @@ export default class PulseEdit extends Component {
                                     >
                                         <DeleteModalWithConfirm
                                             objectType="pulse"
-                                            title={"Delete \"" + pulse.name + "\"?"}
+                                            title={t`Delete`+" \"" + pulse.name + "\"?"}
                                             confirmItems={this.getConfirmItems()}
                                             onClose={() => this.refs["deleteModal"+pulse.id].close()}
                                             onDelete={this.delete}

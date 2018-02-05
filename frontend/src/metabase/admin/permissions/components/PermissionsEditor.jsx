@@ -13,7 +13,7 @@ import cx from "classnames";
 
 import _ from "underscore";
 
-const PermissionsEditor = ({ title = "Permissions", modal, admin, grid, onUpdatePermission, onSave, onCancel, confirmCancel, isDirty, saveError, diff, location }) => {
+const PermissionsEditor = ({ title = t`Permissions`, modal, admin, grid, onUpdatePermission, onSave, onCancel, confirmCancel, isDirty, saveError, diff, location }) => {
     const saveButton =
         <Confirm
             title={t`Save permissions?`}
