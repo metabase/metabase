@@ -1,12 +1,11 @@
 import React from 'react'
-import { Link } from "metabase/spaces/Link"
 import { Box } from 'rebass'
 
 import { Wrapper } from './shared'
 
 import Header from '../Header'
 
-const Entity = ({ children }) => {
+export const EntityLayout = ({ children }) => {
     return (
         <div style={{ height: '100vh' }}>
             <Header />
@@ -19,4 +18,3 @@ const Entity = ({ children }) => {
     )
 }
 
-export default Entity

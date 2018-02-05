@@ -2,11 +2,17 @@ import React from 'react'
 import { connect } from 'react-redux'
 
 import { getCurrentSpace } from './selectors'
-import { pinItem } from './spaces'
 
-class PinLink extends React.Component {
+const mapStateToProps = (state) => {
+    return {
+        space: getCurrentSpace(state)
+    }
+}
+
+@connect(mapStateToProps)
+export class PinLink extends React.Component {
     pinItem = () => {
-        const { dispatch, item, itemType } = this.props
+        // const { dispatch, item, itemType } = this.props
     }
     render () {
         return (
@@ -15,10 +21,3 @@ class PinLink extends React.Component {
     }
 }
 
-const mapStateToProps = (state) => {
-    return {
-        space: getCurrentSpace(state)
-    }
-}
-
-export default connect()(PinLink)

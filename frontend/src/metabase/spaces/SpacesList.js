@@ -1,8 +1,7 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link";
-import cxs from 'cxs'
-import { Box, Border, Button, Card, Flex, Heading, Subhead } from 'rebass'
+import { Box, Button, Card, Flex, Heading, Subhead } from 'rebass'
 import { loadCollections } from "metabase/questions/collections";
 import { getAllCollections } from "metabase/questions/selectors";
 
@@ -13,12 +12,12 @@ const mapStateToProps = (state, props) => ({
 })
 
 @connect(mapStateToProps, { loadCollections })
-export default class SpacesList extends Component {
+export class SpacesList extends Component {
     componentWillMount() {
         this.props.loadCollections();
     }
     render() {
-        const { databases, spaces, log } = this.props
+        const { databases, spaces } = this.props
         return (
             <Box>
                 <Flex align='center' py={3}>

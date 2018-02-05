@@ -4,11 +4,10 @@ import { Link } from "metabase/spaces/Link"
 import { Absolute, Box, ButtonOutline, Card, Flex, Heading, Relative, Subhead } from 'rebass'
 
 import faker from 'faker'
-import FakeTable from './FakeTable'
+import { FakeTable } from './FakeTable'
 
 import {
     diceRoll,
-    ModifyOption,
     ModifyHeader,
     ModifyOptions,
     ModifySection,
@@ -23,23 +22,6 @@ import {
 
 const Badge = () =>
     <img src={'app/assets/_spaces/verified_badge.png'} />
-
-const mapStateToProps = (state) => {
-    const segment = getSegmentById(state)
-    const tables = state._spaces.tables
-    const metrics = state._spaces.metrics
-    const source = tables.filter(t => segment.table_id === t.id)[0]
-    const space = getCurrentSpace(state)
-    const connectedTables = tables.filter(t => t.db.id === source.db.id)
-    return {
-        segment,
-        related: faker.random.arrayElement(tables),
-        metric: faker.random.arrayElement(metrics),
-        source,
-        space,
-        connectedTables
-    }
-}
 
 class EditMenu extends React.Component {
     state = {
@@ -129,7 +111,26 @@ class ShareMenu extends React.Component {
         )
     }
 }
-class Segment extends React.Component {
+
+const mapStateToProps = (state) => {
+    const segment = getSegmentById(state)
+    const tables = state._spaces.tables
+    const metrics = state._spaces.metrics
+    const source = tables.filter(t => segment.table_id === t.id)[0]
+    const space = getCurrentSpace(state)
+    const connectedTables = tables.filter(t => t.db.id === source.db.id)
+    return {
+        segment,
+        related: faker.random.arrayElement(tables),
+        metric: faker.random.arrayElement(metrics),
+        source,
+        space,
+        connectedTables
+    }
+}
+
+@connect(mapStateToProps)
+export class Segment extends React.Component {
     render () {
         const { space, metrics, segment, connectedTables, source } = this.props
         return (
@@ -242,4 +243,3 @@ class Segment extends React.Component {
     }
 } 
 
-export default connect(mapStateToProps)(Segment)

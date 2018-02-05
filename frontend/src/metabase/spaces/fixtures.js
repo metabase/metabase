@@ -1,12 +1,3 @@
-import insight from 'insightful'
-import faker from 'faker'
-
-export const TABLES = Array.from(Array(1000)).map((x, i) => ({
-    name: faker.random.word(),
-    id: i,
-    spaces: [assignSpace()]
-}))
-
 export const SPACES = [
     {
         id: 0,
@@ -311,9 +302,17 @@ export const PULSES = [
     },
 ]
 
-// Return a random integer comprising one of the space IDs to 
+// TODO Atte Keinänen: Remove if this turns out to be useless
+// import faker from 'faker'
+// export const TABLES = Array.from(Array(1000)).map((x, i) => ({
+//     name: faker.random.word(),
+//     id: i,
+//     spaces: [assignSpace()]
+// }))
+//
+// Return a random integer comprising one of the space IDs to
 // associate an item with a space
-function assignSpace() {
-    return Math.floor(Math.random() * (2 - 1 + 1) + 1)
-}
+// function assignSpace() {
+//     return Math.floor(Math.random() * (2 - 1 + 1) + 1)
+// }
 

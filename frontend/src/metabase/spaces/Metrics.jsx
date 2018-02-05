@@ -10,7 +10,16 @@ import {
     getCurrentSpace
 } from './selectors'
 
-class Metrics extends Component {
+const mapStateToProps = (state) => {
+    return {
+        space: getCurrentSpace(state),
+        metrics: getMetricsForSpace(state),
+        spaces: state._spaces.spaces
+    }
+}
+
+@connect(mapStateToProps)
+export class Metrics extends Component {
     state = {
         showModal: false
     }
@@ -66,12 +75,3 @@ class Metrics extends Component {
     }
 }
 
-const mapStateToProps = (state) => {
-    return {
-        space: getCurrentSpace(state),
-        metrics: getMetricsForSpace(state),
-        spaces: state._spaces.spaces
-    }
-}
-
-export default connect(mapStateToProps)(Metrics)

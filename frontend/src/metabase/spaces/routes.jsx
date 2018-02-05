@@ -3,35 +3,34 @@ import { Route } from "metabase/hoc/Title";
 import { IndexRoute } from 'react-router';
 import { Provider as RebassProvider } from 'rebass'
 
-import SpacesList from './SpacesList'
-import Data from './Data'
-import Guide from './Guide'
-import Shared from './Shared'
-import Dashboard from './Dashboard'
-import Database from './Database'
-import Table from './Table'
-import Questions from './Questions'
-import Question from './Question'
+import { SpacesList } from './SpacesList'
+import { Data } from './Data'
+import { Guide } from './Guide'
+import { Shared } from './Shared'
+import { Dashboard } from './Dashboard'
+import { Database } from './Database'
+import { Table } from './Table'
+import { Questions } from './Questions'
+import { Question } from './Question'
 import Profile from './Profile'
-import NQF from './NQF'
+import { NQF } from './NQF'
 
 // Metric list and detail
-import Metrics from './Metrics'
-import Metric from './Metric'
-import MetricPublish from './MetricPublish'
-import MetricDescription from './MetricDescription'
-import Publish from './Publish'
-import SegmentPublish from './SegmentPublish'
-import Segment from './Segment'
-import Segments from './Segments'
-import Metadata from './Metadata'
-
-import NewCollection from './NewCollection'
+import { Metrics } from './Metrics'
+import { Metric } from './Metric'
+import { MetricPublish } from './MetricPublish'
+import { MetricDescription } from './MetricDescription'
+import { Publish } from './Publish'
+import { SegmentPublish } from './SegmentPublish'
+import { Segment } from './Segment'
+import { Segments } from './Segments'
+import { Metadata } from './Metadata'
+import { NewCollection } from './NewCollection'
 
 // Layouts
-import OverworldLayout from './layouts/Overworld'
-import SpaceLayout from './layouts/Space'
-import EntityLayout from './layouts/Entity'
+import { OverworldLayout } from './layouts/Overworld'
+import { SpaceLayout } from './layouts/Space'
+import { EntityLayout } from './layouts/Entity'
 
 const LayoutViewComponent = ({ layout, view, children, ...props }) =>
     <RebassProvider

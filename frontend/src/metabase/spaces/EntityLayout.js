@@ -1,7 +1,6 @@
 import React from 'react'
-import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link"
-import { Absolute, Box, ButtonOutline, Card, Flex, Heading, Relative, Subhead } from 'rebass'
+import { Absolute, Box, Card, Flex, Relative } from 'rebass'
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper"
 
@@ -79,9 +78,6 @@ export class ShareMenu extends React.Component {
 export class Menu extends React.Component {
     state = {
         open: false
-    }
-    handleToggle() {
-        this.setState({ open: !this.state.open})
     }
     render () {
     const { name, children } = this.props

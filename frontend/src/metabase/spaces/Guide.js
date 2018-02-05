@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { Component } from 'react'
 import { Link } from "metabase/spaces/Link"
 import { connect } from 'react-redux'
 
-import { Absolute, Border, Box, Card, Flex, Heading, Relative, Subhead } from 'rebass'
+import { Absolute, Border, Box, Card, Flex, Heading, Subhead } from 'rebass'
 
 import { Wrapper } from './layouts/shared'
 
@@ -16,11 +16,10 @@ import {
 import {
     Menu
 } from './EntityLayout'
-import { Component } from "react/lib/ReactBaseClasses";
 import { SPACES } from "metabase/spaces/fixtures";
 import { loadEntities } from "metabase/questions/questions";
 
-const MoreMenu = ({ id, space }) =>
+const MoreMenu = () =>
     <Menu name='More'>
         <Box my={3}>
             <Link>Permissions</Link>
@@ -30,7 +29,6 @@ const MoreMenu = ({ id, space }) =>
 
 class EditMenu extends React.Component {
     render () {
-        const { id, space } = this.props
         return (
             <Menu name='Edit'>
                 <Box my={3}>
@@ -60,7 +58,7 @@ const Section = ({ children }) =>
         { children }
     </Box>
 
-const SectionHeading = ({ children, allLink }) => 
+const SectionHeading = ({ children }) =>
     <Border bottom mb={3} pb={2}>
         <Flex align='center'>
             <Subhead>{ children }</Subhead>
@@ -89,7 +87,7 @@ const mapStateToProps = (state) => {
 }
 
 @connect(mapStateToProps, { loadEntities })
-export default class Guide extends Component {
+export class Guide extends Component {
     componentWillMount() {
         // load all questions already?
         this.props.loadEntities("cards", {f: "all", collection: "", ...location.query});
@@ -107,7 +105,6 @@ export default class Guide extends Component {
 
         const dashHeight = 700
         const hasPinnedDash = currentSpace.pinnedDashId !== null
-        console.log(logs)
         return (
             <div>
                 { hasPinnedDash && (

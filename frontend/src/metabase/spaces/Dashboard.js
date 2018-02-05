@@ -10,17 +10,23 @@ import {
 } from './selectors'
 
 var METABASE_SITE_URL = "https://stats.metabase.com";
-var METABASE_SECRET_KEY = "";
-
-var payload = {
-    resource: { dashboard: 60 },
-    params: {}
-};
-
+// var METABASE_SECRET_KEY = "";
+// var payload = {
+//     resource: { dashboard: 60 },
+//     params: {}
+// };
 var token = null//jwt.sign(payload, METABASE_SECRET_KEY);
 var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";
 
-class Dashboard extends React.Component {
+const mapStateToProps = (state) => {
+    return {
+        space: getCurrentSpace(state),
+        dashboard: getDashboard(state)
+    }
+}
+
+connect(mapStateToProps)
+export class Dashboard extends React.Component {
     componentDidMount () {
         const { dashboard, space, dispatch } = this.props
         dispatch(logItem(space.id, dashboard, 'Dashboard'))
@@ -39,12 +45,3 @@ class Dashboard extends React.Component {
         )
     }
 }
-
-const mapStateToProps = (state) => {
-    return {
-        space: getCurrentSpace(state),
-        dashboard: getDashboard(state)
-    }
-}
-
-export default connect(mapStateToProps)(Dashboard)

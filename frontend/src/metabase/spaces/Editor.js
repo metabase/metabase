@@ -1,6 +1,4 @@
 import React from 'react'
 
-const Editor = ({ value }) => 
+export const Editor = () =>
     <img src={'app/assets/_spaces/sql.png'} />
-
-export default Editor

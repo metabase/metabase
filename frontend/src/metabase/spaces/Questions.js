@@ -1,18 +1,17 @@
-import React from 'react'
+import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link"
-import { Box, Border, Flex, Heading, Subhead } from 'rebass'
+import { Box, Border, Flex, Heading } from 'rebass'
 
 import Select from 'metabase/components/Select'
 
-import { getQuestionsForSpace, getCurrentSpace } from './selectors'
+import { getCurrentSpace } from './selectors'
 
-import PinLink from './PinLink'
+import { PinLink } from './PinLink'
 
 import { pinItem } from './spaces'
 import { getAllEntities } from "metabase/questions/selectors";
 import { loadEntities } from "metabase/questions/questions";
-import { Component } from "react/lib/ReactBaseClasses";
 import { SPACES } from "metabase/spaces/fixtures";
 
 const mapStateToProps = (state) => {
@@ -25,7 +24,7 @@ const mapStateToProps = (state) => {
         }
     }
 
-    const collection = state.params.space
+    // const collection = state.params.space
 
     return {
         space: getCurrentSpace(stateWithFixtureSpace),
@@ -36,7 +35,7 @@ const mapStateToProps = (state) => {
 }
 
 @connect(mapStateToProps, { loadEntities })
-export default class Questions extends Component  {
+export class Questions extends Component  {
     componentWillMount() {
         this.props.loadEntities("cards", {f: "all", collection: "", ...location.query});
     }

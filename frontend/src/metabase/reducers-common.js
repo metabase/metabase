@@ -15,7 +15,6 @@ import {
   locationReducer,
   paramsReducer
 } from 'react-router-redux-sync';
-import { combineReducers } from "redux";
 
 /* user */
 import { currentUser } from "metabase/redux/user";

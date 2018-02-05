@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, Flex, Subhead } from 'rebass'
 
-const NQF = () =>
+export const NQF = () =>
     <Flex align='center' justify='center' style={{ height: '100vh' }}>
         <Flex width={'100%'}>
             <Box w={1/3}>
@@ -15,5 +15,3 @@ const NQF = () =>
             </Box>
         </Flex>
     </Flex>
-
-export default NQF

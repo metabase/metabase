@@ -17,7 +17,8 @@ const mapStateToProps = (state) => {
     }
 }
 
-class Shared extends React.Component {
+@connect(mapStateToProps)
+export class Shared extends React.Component {
     state = {
         showDashModal: false
     }
@@ -69,4 +70,3 @@ class Shared extends React.Component {
     }
 }
 
-export default connect(mapStateToProps)(Shared)

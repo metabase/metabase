@@ -18,7 +18,7 @@ const ActivityFeed = () =>
         </div>
     </Link>
 
-const Overworld = ({ children }) =>
+export const OverworldLayout = ({ children }) =>
     <div>
         <Absolute top right p={3}>
             <Flex align='center'>
@@ -35,4 +35,3 @@ const Overworld = ({ children }) =>
         </Wrapper>
     </div>
 
-export default Overworld

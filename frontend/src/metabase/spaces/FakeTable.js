@@ -1,7 +1,7 @@
 import React from 'react'
 import faker from 'faker'
 
-const FakeTable = () => {
+export const FakeTable = () => {
     return (
         <table style={{ borderCollapse: 'collapse' }}>
             <thead style={{ borderBottom: '2px solid #ddd',}}>
@@ -24,5 +24,3 @@ const FakeTable = () => {
 
     )
 }
-
-export default FakeTable

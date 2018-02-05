@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Component } from 'react'
 import { Link } from "metabase/spaces/Link"
 import { Absolute, Button, Box, Relative } from 'rebass'
 
@@ -16,17 +16,22 @@ const mapStateToProps = (state) => {
     }
 }
 
-const MetricPublish = ({ space, question }) =>
-    <Relative style={{ height: '100vh' }}>
-        <Box style={{ overflow: 'hidden', height: 810 }} ml='auto' mr='auto'>
-            <img src={'app/assets/_spaces/publish_metric_step_1.png'} alt="a" />
-        </Box>
-        <Absolute style={{ bottom: 0, right: 0 }}>
-            <Link to='MetricDescription' params={{ space: space.slug, id: question.id }} style={{ width: 300, height: 300, display: 'block' }}>
-                <Button>Next</Button>
-            </Link>
-        </Absolute>
-    </Relative>
+@connect(mapStateToProps)
+export class MetricPublish extends Component {
+    render() {
+        const { space, question } = this.props
 
-
-export default connect(mapStateToProps)(MetricPublish)
+        return (
+            <Relative style={{ height: '100vh' }}>
+                <Box style={{ overflow: 'hidden', height: 810 }} ml='auto' mr='auto'>
+                    <img src={'app/assets/_spaces/publish_metric_step_1.png'} alt="a" />
+                </Box>
+                <Absolute style={{ bottom: 0, right: 0 }}>
+                    <Link to='MetricDescription' params={{ space: space.slug, id: question.id }} style={{ width: 300, height: 300, display: 'block' }}>
+                        <Button>Next</Button>
+                    </Link>
+                </Absolute>
+            </Relative>
+        )
+    }
+}

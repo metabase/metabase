@@ -46,8 +46,7 @@ export function getSegmentsForSpace (state) {
 }
 
 export function getImportantSegmentsForSpace (state) {
-    const segments = getSegmentsForSpace(state)
-    return segments
+    return getSegmentsForSpace(state)
 }
 
 export function getSegmentById (state) {
@@ -81,7 +80,7 @@ export function getLogsForSpace (state) {
 
 // get a given entity type given a space
 export function getEntityForSpace (state, entityType) {
-    const { _spaces, params } = state
+    const { _spaces } = state
 
     const currentSpace = getCurrentSpace(state)
     if (!currentSpace) {
@@ -91,9 +90,6 @@ export function getEntityForSpace (state, entityType) {
     if(currentSpace.global) {
         return _spaces[entityType]
     }
-
-    console.log('GET entity', entityType)
-    console.log('----------', _spaces[entityType])
 
     return _spaces[entityType].filter(e => {
         return e.spaces && e.spaces[0] === currentSpace.id

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from "metabase/spaces/Link"
-import { Absolute, Box, ButtonOutline, Flex } from 'rebass'
+import { Absolute, Box, Flex } from 'rebass'
 import { Burger } from 'reline'
 
 import SpaceHomeLink from './SpaceHomeLink'

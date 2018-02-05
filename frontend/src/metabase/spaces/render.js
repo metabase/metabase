@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Provider } from 'rebass'
+import { Provider } from 'rebass'
 
 import { injectGlobal } from 'styled-components'
 

@@ -1,16 +1,15 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link"
-import { Absolute, Box, Button, ButtonOutline, Card, Flex, Heading, Input, Relative, Subhead } from 'rebass'
+import { Box, Button, ButtonOutline, Card, Flex, Heading, Input, Subhead } from 'rebass'
 import faker from 'faker'
-import FakeTable from './FakeTable'
+import { FakeTable } from './FakeTable'
 
 import Select from 'metabase/components/Select'
 import Modal from "metabase/components/Modal";
 
 import {
     diceRoll,
-    ModifyOption,
     ModifyHeader,
     ModifyOptions,
     ModifySection,
@@ -22,61 +21,6 @@ import {
 import {
     getTableById
 } from './selectors'
-
-const mapStateToProps = (state) => {
-    const table = getTableById(state)
-    const tables = state._spaces.tables
-    const segments = state._spaces.segments.filter(s => s.table_id === table.id).slice(0, 3)
-    const metrics = state._spaces.metrics.filter(m => m.table_id === table.id)
-    const connectedTables = state._spaces.tables.filter(t => t.db.id === table.db.id).slice(0, 4)
-
-    return {
-        table,
-        related: faker.random.arrayElement(tables),
-        metrics,
-        segments,
-        connectedTables,
-        showQB: state.params.qb,
-        scalar: state.params.scalar,
-        time: state.params.time,
-        spaces: state._spaces.spaces,
-        edit: state.params.edit
-    }
-}
-
-class EditMenu extends React.Component {
-    state = {
-        open: false
-    }
-
-    render () {
-        return (
-            <Relative>
-                <div onClick={() => this.setState({ open: true })}>
-                    Edit
-                </div>
-                { this.state.open && (
-                    <Absolute top={20} right={0}>
-                        <Card>
-                            <Box my={3}>
-                                <Link>Edit</Link>
-                            </Box>
-                            <Box my={3}>
-                                <Link>Edit</Link>
-                            </Box>
-                            <Box my={3}>
-                                <Link>Edit</Link>
-                            </Box>
-                            <Box my={3}>
-                                <Link>Edit</Link>
-                            </Box>
-                        </Card>
-                    </Absolute>
-                )}
-            </Relative>
-        )
-    }
-}
 
 class ShareMenu extends React.Component {
     state = {
@@ -100,7 +44,30 @@ class ShareMenu extends React.Component {
         )
     }
 }
-class Table extends React.Component {
+
+const mapStateToProps = (state) => {
+    const table = getTableById(state)
+    const tables = state._spaces.tables
+    const segments = state._spaces.segments.filter(s => s.table_id === table.id).slice(0, 3)
+    const metrics = state._spaces.metrics.filter(m => m.table_id === table.id)
+    const connectedTables = state._spaces.tables.filter(t => t.db.id === table.db.id).slice(0, 4)
+
+    return {
+        table,
+        related: faker.random.arrayElement(tables),
+        metrics,
+        segments,
+        connectedTables,
+        showQB: state.params.qb,
+        scalar: state.params.scalar,
+        time: state.params.time,
+        spaces: state._spaces.spaces,
+        edit: state.params.edit
+    }
+}
+
+@connect(mapStateToProps)
+export class Table extends React.Component {
     state = {
         showSave: false,
         selectedSpaces: ''
@@ -119,7 +86,7 @@ class Table extends React.Component {
         this.setState({ selectedSpaces: selection })
     }
     render () {
-        const { space, spaces, metrics, table, connectedTables, showQB, segments, time, scalar } = this.props
+        const { spaces, metrics, table, connectedTables, showQB, segments, time, scalar } = this.props
         console.log('segments')
         return (
             <Box>
@@ -335,4 +302,4 @@ class Table extends React.Component {
     }
 }
 
-export default connect(mapStateToProps)(Table)
+

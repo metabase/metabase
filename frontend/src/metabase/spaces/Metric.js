@@ -1,14 +1,10 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link"
-import { Absolute, Box, Button, ButtonOutline, Card, Flex, Heading, Relative, Subhead } from 'rebass'
-
-import faker from 'faker'
-import FakeTable from './FakeTable'
+import { Box, Button, ButtonOutline, Card, Flex, Heading, Subhead } from 'rebass'
 
 import {
     diceRoll,
-    ModifyOption,
     Menu,
     ModifyHeader,
     ModifyOptions,
@@ -26,25 +22,6 @@ import {
 
 const Badge = () =>
     <img src={'app/assets/_spaces/verified_badge.png'} />
-
-const mapStateToProps = (state) => {
-    const metric = getMetricById(state)
-    const space = getCurrentSpace(state)
-    const source = state._spaces.tables.filter(t => t.id === metric.table_id)[0]
-    const metrics = state._spaces.metrics.filter(m => m.table_id === metric.table_id)
-    const segments = state._spaces.segments.filter(m => m.table_id === metric.table_id)
-    return {
-        metric,
-        space,
-        source,
-        metrics,
-        showQB: state.params.qb,
-        scalar: state.params.scalar,
-        time: state.params.time,
-        segments,
-        filtered: state.params.segmentId
-    }
-}
 
 class EditMenu extends React.Component {
     render () {
@@ -83,9 +60,29 @@ class MoreMenu extends React.Component {
     }
 }
 
-class Metric extends React.Component {
+const mapStateToProps = (state) => {
+    const metric = getMetricById(state)
+    const space = getCurrentSpace(state)
+    const source = state._spaces.tables.filter(t => t.id === metric.table_id)[0]
+    const metrics = state._spaces.metrics.filter(m => m.table_id === metric.table_id)
+    const segments = state._spaces.segments.filter(m => m.table_id === metric.table_id)
+    return {
+        metric,
+        space,
+        source,
+        metrics,
+        showQB: state.params.qb,
+        scalar: state.params.scalar,
+        time: state.params.time,
+        segments,
+        filtered: state.params.segmentId
+    }
+}
+
+@connect(mapStateToProps)
+export class Metric extends React.Component {
     render () {
-        const { space, metrics, metric, connectedTables, source, showQB, segments, filtered } = this.props
+        const { space, metrics, metric, source, showQB, segments, filtered } = this.props
         return (
             <Box>
                 <Flex mb={4} mt={2}>
@@ -216,4 +213,3 @@ class Metric extends React.Component {
     }
 }
 
-export default connect(mapStateToProps)(Metric)

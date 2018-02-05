@@ -15,7 +15,7 @@ const dbRaw = DATA.map(d => d.db)
 const DATABASES = _.uniq(dbRaw, 'id')
 
 // [[DBID, [SPACE IDs]]
-const DB_TO_SPACE = [
+export const DB_TO_SPACE = [
     [13, []], // GA
     [6, [5]], // Crunch
     [12, []], // App

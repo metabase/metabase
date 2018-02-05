@@ -1,53 +1,23 @@
 import { getCurrentSpace } from './selectors'
-import { logItem } from './spaces'
 
 import React from 'react'
 import { connect } from 'react-redux'
 import { Link } from "metabase/spaces/Link"
-import { Absolute, Box, Button, ButtonOutline, Card, Flex, Heading, Relative, Subhead } from 'rebass'
+import { Absolute, Box, Button, ButtonOutline, Card, Flex, Heading, Subhead } from 'rebass'
 import faker from 'faker'
-import FakeTable from './FakeTable'
-import Editor from './Editor'
+import { FakeTable } from './FakeTable'
+import { Editor } from './Editor'
 
 import {
-    diceRoll,
-    ModifyOption,
     ModifyHeader,
     ModifyOptions,
     ModifySection,
-    InterestText,
     Menu,
 } from './EntityLayout'
 
-import {
-    getTableById
-} from './selectors'
 import { initializeQB } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
-const mapStateToProps = (state) => {
-
-    const question = getQuestion(state)
-    const space = getCurrentSpace(state)
-    const tables = state._spaces.tables
-    //const segments = state._spaces.segments.filter(s => s.table_id === table.id).slice(0, 3)
-    //const metrics = state._spaces.metrics.filter(m => m.table_id === table.id)
-    //const connectedTables = state._spaces.tables.filter(t => t.db.id === table.db.id).slice(0, 4)
-
-    return {
-        question,
-        related: faker.random.arrayElement(tables),
-        //metrics,
-        space,
-        //segments,
-        //connectedTables,
-        showQB: state.params.qb,
-        scalar: state.params.scalar,
-        time: state.params.time,
-        edit: state.params.edit
-    }
-}
 
 const ShareMenu = ({ id, space }) =>
     <Menu name='Share'>
@@ -85,7 +55,30 @@ class EditMenu extends React.Component {
     }
 }
 
-class Question extends React.Component {
+const mapStateToProps = (state) => {
+    const question = getQuestion(state)
+    const space = getCurrentSpace(state)
+    const tables = state._spaces.tables
+    //const segments = state._spaces.segments.filter(s => s.table_id === table.id).slice(0, 3)
+    //const metrics = state._spaces.metrics.filter(m => m.table_id === table.id)
+    //const connectedTables = state._spaces.tables.filter(t => t.db.id === table.db.id).slice(0, 4)
+
+    return {
+        question,
+        related: faker.random.arrayElement(tables),
+        //metrics,
+        space,
+        //segments,
+        //connectedTables,
+        showQB: state.params.qb,
+        scalar: state.params.scalar,
+        time: state.params.time,
+        edit: state.params.edit
+    }
+}
+
+@connect(mapStateToProps, { initializeQB })
+export class Question extends React.Component {
     componentWillMount() {
         // NOTE Atte Keinänen: a temporary quick way to load a question
         this.props.initializeQB({}, { cardId: this.props.params.id })
@@ -102,7 +95,7 @@ class Question extends React.Component {
         return <FakeTable />
     }
     render () {
-        const { space, metrics, question, edit, connectedTables, showQB, segments } = this.props
+        const { space, question, edit, connectedTables, showQB } = this.props
         const wide = showQB || edit
 
         console.log('the current state of questions', question)
@@ -221,4 +214,3 @@ class Question extends React.Component {
 } 
 
 
-export default connect(mapStateToProps, { initializeQB })(Question)
