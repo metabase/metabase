@@ -38,10 +38,17 @@ export default class PulseEditCards extends Component {
         });
     }
 
+    trackPulseEvent = (eventName: string, eventValue: string) => {
+        MetabaseAnalytics.trackEvent(
+            (this.props.pulseId) ? "PulseEdit" : "PulseCreate",
+            eventName,
+            eventValue
+        );
+    }
+
     addCard(index, cardId) {
         this.setCard(index, { id: cardId })
-
-        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "AddCard", index);
+        this.trackPulseEvent("AddCard", index);
     }
 
     removeCard(index) {
@@ -51,7 +58,7 @@ export default class PulseEditCards extends Component {
             cards: [...pulse.cards.slice(0, index), ...pulse.cards.slice(index + 1)]
         });
 
-        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveCard", index);
+        this.trackPulseEvent("RmoveCard", index);
     }
 
     getNotices(card, cardPreview, index) {
@@ -61,7 +68,7 @@ export default class PulseEditCards extends Component {
         if (hasAttachment) {
             notices.push({
                 head: t`Attachment`,
-                body: <AttachmentWidget card={card} onChange={(card) => this.setCard(index, card)} index={index} pulseId={this.props.pulseId}  />
+                body: <AttachmentWidget card={card} onChange={(card) => this.setCard(index, card)} trackPulseEvent={this.trackPulseEvent} />
             });
         }
         if (cardPreview) {
@@ -128,13 +135,13 @@ export default class PulseEditCards extends Component {
                                     <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
                                     { card ?
                                         <PulseCardPreview
-                                            pulseId={this.props.pulseId}
                                             card={card}
                                             cardPreview={cardPreviews[card.id]}
                                             onChange={this.setCard.bind(this, index)}
                                             onRemove={this.removeCard.bind(this, index)}
                                             fetchPulseCardPreview={this.props.fetchPulseCardPreview}
                                             attachmentsEnabled={this.props.attachmentsEnabled}
+                                            trackPulseEvent={this.trackPulseEvent}
                                         />
                                     :
                                         <CardPicker
@@ -156,7 +163,7 @@ export default class PulseEditCards extends Component {
 
 const ATTACHMENT_TYPES = ["csv", "xls"];
 
-const AttachmentWidget = ({ card, onChange, pulseId }) =>
+const AttachmentWidget = ({ card, onChange, trackPulseEvent }) =>
     <div>
         { ATTACHMENT_TYPES.map(type =>
             <span
@@ -168,7 +175,7 @@ const AttachmentWidget = ({ card, onChange, pulseId }) =>
                       newCard["include_" + attachmentType] = type === attachmentType;
                     }
 
-                    MetabaseAnalytics.trackEvent((pulseId) ? "PulseEdit" : "PulseCreate", "AttachmentTypeChanged", type);
+                    trackPulseEvent("AttachmentTypeChanged", type);
                     onChange(newCard)
                 }}
             >
@@ -180,5 +187,5 @@ const AttachmentWidget = ({ card, onChange, pulseId }) =>
 AttachmentWidget.propTypes = {
     card: PropTypes.object.isRequired,
     onChange: PropTypes.func.isRequired,
-    pulseId: PropTypes.number
+    trackPulseEvent: PropTypes.func.isRequired
 }

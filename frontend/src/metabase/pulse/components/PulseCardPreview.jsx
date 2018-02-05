@@ -6,7 +6,6 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { t } from "c-3po";
 import cx from "classnames";
@@ -23,6 +22,7 @@ export default class PulseCardPreview extends Component {
         onRemove: PropTypes.func.isRequired,
         fetchPulseCardPreview: PropTypes.func.isRequired,
         attachmentsEnabled: PropTypes.bool,
+        trackPulseEvent: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -48,11 +48,11 @@ export default class PulseCardPreview extends Component {
         if (this.hasAttachment()) {
             onChange({ ...card, include_csv: false, include_xls: false })
 
-            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveAttachment");
+            this.props.trackPulseEvent("RemoveAttachment")
         } else {
             onChange({ ...card, include_csv: true })
 
-            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "AddAttachment", 'csv');
+            this.props.trackPulseEvent("AddAttachment", 'csv')
         }
     }
 
