@@ -481,10 +481,13 @@
                                    :result_metadata [{:name "age_in_bird_years"}])]]
   (saved-questions-virtual-db
     (assoc (virtual-table-for-card card)
-      :fields [{:name         "age_in_bird_years"
-                :table_id     (str "card__" (u/get-id card))
-                :id           ["field-literal" "age_in_bird_years" "type/*"]
-                :special_type nil}]))
+      :fields [{:name                     "age_in_bird_years"
+                :table_id                 (str "card__" (u/get-id card))
+                :id                       ["field-literal" "age_in_bird_years" "type/*"]
+                :special_type             nil
+                :base_type                nil
+                :default_dimension_option nil
+                :dimension_options        []}]))
   ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
 
 ;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`

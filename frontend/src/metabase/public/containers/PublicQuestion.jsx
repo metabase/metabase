@@ -158,7 +158,7 @@ export default class PublicQuestion extends Component {
                 <LoadingAndErrorWrapper loading={!result}>
                 { () =>
                     <Visualization
-                        series={[{ card: card, data: result && result.data }]}
+                        rawSeries={[{ card: card, data: result && result.data }]}
                         className="full flex-full"
                         onUpdateVisualizationSettings={(settings) =>
                             this.setState({

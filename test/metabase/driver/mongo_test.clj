@@ -177,11 +177,11 @@
 
 ;;; Check that we support Mongo BSON ID and can filter by it (#1367)
 (i/def-database-definition ^:private with-bson-ids
-  ["birds"
-   [{:field-name "name", :base-type :type/Text}
-    {:field-name "bird_id", :base-type :type/MongoBSONID}]
-   [["Rasta Toucan" (ObjectId. "012345678901234567890123")]
-    ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]])
+  [["birds"
+     [{:field-name "name", :base-type :type/Text}
+      {:field-name "bird_id", :base-type :type/MongoBSONID}]
+     [["Rasta Toucan" (ObjectId. "012345678901234567890123")]
+      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]]])
 
 (datasets/expect-with-engine :mongo
   [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]

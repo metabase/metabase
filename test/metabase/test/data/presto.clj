@@ -41,6 +41,7 @@
       :type/Text       "cast('' AS varchar(255))"
       :type/Date       "current_timestamp" ; this should probably be a date type, but the test data begs to differ
       :type/DateTime   "current_timestamp"
+      :type/Time       "cast(current_time as TIME)"
       "from_hex('00')") ; this might not be the best default ever
     ;; we were given a native type, map it back to a base-type and try again
     (field-base-type->dummy-value (#'presto/presto-type->base-type field-type))))
@@ -82,7 +83,6 @@
       (#'presto/execute-presto-query! details (create-table-sql dbdef tabledef))
       (doseq [batch batches]
         (#'presto/execute-presto-query! details (insert-sql dbdef tabledef batch))))))
-
 
 ;;; IDriverTestExtensions implementation
 

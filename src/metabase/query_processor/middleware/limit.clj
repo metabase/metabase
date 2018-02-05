@@ -4,7 +4,8 @@
                                       [util :as qputil])))
 
 (defn limit
-  "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that can be returned in post-processing."
+  "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that
+  can be returned in post-processing."
   [qp]
   (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
     (let [query   (cond-> query
