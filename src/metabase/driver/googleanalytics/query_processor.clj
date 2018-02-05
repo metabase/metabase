@@ -249,11 +249,12 @@
 
 (defn- built-in-metrics
   [{query :query}]
-  (s/join "," (for [[aggregation-type metric-name] (aggregations query)
-                    :when (and aggregation-type
-                               (= :metric (qputil/normalize-token aggregation-type))
-                               (string? metric-name))]
-                metric-name)))
+  (if-not (empty? (aggregations query))
+    (s/join "," (for [[aggregation-type metric-name] (aggregations query)
+                      :when (and aggregation-type
+                                 (= :metric (qputil/normalize-token aggregation-type))
+                                 (string? metric-name))]
+                  metric-name))))
 
 (defn- handle-built-in-metrics [query]
   (-> query
