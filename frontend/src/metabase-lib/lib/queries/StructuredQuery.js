@@ -47,6 +47,7 @@ import type { TableId } from "metabase/meta/types/Table";
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./Aggregation";
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
+import Utils from "metabase/lib/utils";
 
 export const STRUCTURED_QUERY_TEMPLATE = {
     database: null,
@@ -222,6 +223,20 @@ export default class StructuredQuery extends AtomicQuery {
      */
     tableMetadata(): ?TableMetadata {
         return this.table();
+    }
+
+    clean() {
+        const datasetQuery = this.datasetQuery();
+        if (datasetQuery.query) {
+            const query = Utils.copy(datasetQuery.query);
+
+            return this.setDatasetQuery({
+                ...datasetQuery,
+                query: Q_deprecated.cleanQuery(query)
+            });
+        } else {
+            return this;
+        }
     }
 
     // AGGREGATIONS

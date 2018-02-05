@@ -109,7 +109,7 @@ export default class DashCard extends Component {
                     errorIcon={errorIcon}
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
-                    series={series}
+                    rawSeries={series}
                     showTitle
                     isDashboard
                     isEditing={isEditing}
