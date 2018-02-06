@@ -22,6 +22,7 @@ export default class PulseCardPreview extends Component {
         onRemove: PropTypes.func.isRequired,
         fetchPulseCardPreview: PropTypes.func.isRequired,
         attachmentsEnabled: PropTypes.bool,
+        trackPulseEvent: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -46,8 +47,12 @@ export default class PulseCardPreview extends Component {
         const { card, onChange } = this.props;
         if (this.hasAttachment()) {
             onChange({ ...card, include_csv: false, include_xls: false })
+
+            this.props.trackPulseEvent("RemoveAttachment")
         } else {
             onChange({ ...card, include_csv: true })
+
+            this.props.trackPulseEvent("AddAttachment", 'csv')
         }
     }
 
