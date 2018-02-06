@@ -11,7 +11,7 @@
              [core :as s]]
             [yaml.core :as yaml]))
 
-(def ^Integer max-score
+(def ^Long max-score
   "Maximal (and default) value for heuristics scores."
   100)
 

@@ -7,14 +7,12 @@
             [clojure.walk :as walk]
             [kixi.stats.core :as stats]
             [medley.core :as m]
-            [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [populate :as populate]
              [rules :as rules]]
             [metabase.models
              [card :as card]
              [field :refer [Field]]
-             [permissions :as perms]
              [table :refer [Table]]]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -156,20 +154,46 @@
 
 (defn- make-binding
   [context [identifier definition]]
-  {(name identifier) (->> definition
-                          (field-candidates context)
-                          (map #(merge % definition))
-                          (assoc definition :matches))})
+  (->> definition
+       (field-candidates context)
+       (map #(->> (merge % definition)
+                  vector
+                  (assoc definition :matches)
+                  (hash-map (name identifier))))))
+
+(def ^:private ^{:arglists '([definitions])} most-specific-definition
+  "Return the most specific defintion among `definitions`.
+   Specificity is determined based on:
+   1) how many ancestors `field_type` has (if field_type has a table prefix,
+      ancestors for both table and field are counted);
+   2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
+      `links_to`, ...) are used;
+   3) if there is still a tie, `score`."
+  (comp last (partial sort-by (comp (fn [[_ definition]]
+                                      [(->> definition
+                                            :field_type
+                                            (map (comp count ancestors))
+                                            (reduce + ))
+                                       (count definition)
+                                       (:score definition)])
+                                    first))))
 
 (defn- bind-dimensions
+  "Bind fields to dimensions and resolve overloading.
+   Each field will be bound to only one dimension. If multiple dimension
+   definitions match a single field, the field is bound to the specific
+   definition is used (see `most-specific-defintion` for details)."
   [context dimensions]
   (->> dimensions
-       (map (comp (partial make-binding context) first))
+       (mapcat (comp (partial make-binding context) first))
+       (group-by (comp :id first :matches val first))
+       (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
-                           (case (map (comp empty? :matches) [a b])
-                             [false true] a
-                             [true false] b
-                             (max-key :score a b))))))
+                           (case (compare (:score a) (:score b))
+                             1  a
+                             0  (update a :matches concat (:matches b))
+                             -1 b))
+              {})))
 
 (defn- index-of
   [pred coll]
@@ -188,11 +212,6 @@
        (if (dimensions identifier)
          [:dimension identifier]
          [:aggregate-field (index-of #{identifier} metrics)])])))
-
-(defn- have-permissions?
-  [query]
-  (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                           (card/query-perms-set query :write)))
 
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
@@ -228,7 +247,7 @@
   [dimensions definition]
   (->> definition
        rules/collect-dimensions
-       (every? (comp not-empty :matches dimensions))))
+       (every? (partial get dimensions))))
 
 (defn- resolve-overloading
   "Find the overloaded definition with the highest `score` for which all
@@ -269,15 +288,16 @@
         filters         (map (partial get (:filters context)) filters)
         score           (if query
                           score
-                          (->> dimensions
-                               (map (partial get (:dimensions context)))
-                               (concat filters metrics)
-                               (transduce (keep :score) stats/mean)
-                               (* (/ score rules/max-score))))
+                          (* (or (->> dimensions
+                                      (map (partial get (:dimensions context)))
+                                      (concat filters metrics)
+                                      (transduce (keep :score) stats/mean))
+                                 rules/max-score)
+                             (/ score rules/max-score)))
         dimensions      (map (partial vector :dimension) dimensions)
         used-dimensions (rules/collect-dimensions [dimensions metrics filters query])]
     (->> used-dimensions
-         (map (some-fn (comp :matches (partial get (:dimensions context)))
+         (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % context) rules/->entity)))
          (apply combo/cartesian-product)
          ; distinct? doesn't have a 0-arity, hence the :dummy
@@ -292,10 +312,9 @@
                                                dimensions
                                                limit
                                                order_by))]
-                   (when (have-permissions? query)
-                     (-> (instantiate-metadata context bindings card)
-                         (assoc :score score
-                                :query query)))))))))
+                   (-> (instantiate-metadata context bindings card)
+                       (assoc :score score
+                              :query query))))))))
 
 (defn- matching-rules
   "Pick the most specific among applicable rules.
@@ -370,8 +389,7 @@
                                             (card-candidates context)
                                             not-empty
                                             (hash-map (name identifier)))))
-                    not-empty
-                    (apply merge-with (partial max-key (comp :score first)))
+                    (apply merge-with (partial max-key (comp :score first)) {})
                     vals
                     (apply concat)
                     (populate/create-dashboard! dashboard)
