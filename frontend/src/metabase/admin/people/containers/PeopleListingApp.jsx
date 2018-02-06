@@ -242,7 +242,7 @@ export default class PeopleListingApp extends Component {
                 ]}
                 onClose={this.onCloseModal}
             >
-                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{jt`We’ve sent an invite to ${<span className="text-bold">${user.email}</span>} with instructions to set their password.`}</div>
+                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">{jt`We’ve sent an invite to ${<span className="text-bold">{user.email}</span>} with instructions to set their password.`}</div>
             </Modal>
         );
     }
