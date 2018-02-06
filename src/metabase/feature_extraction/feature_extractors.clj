@@ -116,8 +116,8 @@
 
 ; The largest dataset returned will be 2*target-1 points as we need at least
 ; 2 points per bucket for downsampling to have any effect.
-(def ^:private ^Integer datapoint-target-smooth 100)
-(def ^:private ^Integer datapoint-target-noisy  300)
+(def ^:private ^Long datapoint-target-smooth 100)
+(def ^:private ^Long datapoint-target-noisy  300)
 
 (def ^:private ^Double noisiness-threshold 0.05)
 
@@ -373,16 +373,17 @@
 (defmethod feature-extractor [DateTime Num]
   [{:keys [max-cost query]} field]
   (redux/post-complete
-   ((map (fn [[^java.util.Date x y]]
-           [(some-> x .getTime double) y]))
-    (redux/fuse {; y = a + b*x
+   ((comp ts/drop-incomplete-periods
+          (map (fn [[^java.util.Date x y]]
+                 [(some-> x .getTime double) y])))
+    (redux/fuse {;; y = a + b*x
                  :linear-regression     (stats/simple-linear-regression
                                          first second)
-                 ; y = e^a * x^b
+                 ;; y = e^a * x^b
                  :power-law-regression  (stats/simple-linear-regression
                                          #(Math/log (first %))
                                          #(Math/log (second %)))
-                 ; y = a + b*ln(x)
+                 ;; y = a + b*ln(x)
                  :log-linear-regression (stats/simple-linear-regression
                                          #(Math/log (first %)) second)
                  :series                conj}))
@@ -390,8 +391,8 @@
     (field-metadata-extractor field)
     (fn [{:keys [series linear-regression power-law-regression
                  log-linear-regression] :as features}]
-      (let [; We add a small regularization penalty to more complex curves to
-            ; prevent technically correct but nonsense solutions.
+      (let [;; We add a small regularization penalty to more complex curves to
+            ;; prevent technically correct but nonsense solutions.
             lambda     0.1
             regularize (fn [penalty]
                          (fn [ssr]

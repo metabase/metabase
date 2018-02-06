@@ -11,6 +11,7 @@
             [metabase.feature-extraction
              [histogram :as h]
              [math :as math]]
+            [net.cgrand.xforms :as x]
             [redux.core :as redux])
   (:import (com.github.brandtg.stl StlDecomposition StlResult StlConfig)))
 
@@ -177,3 +178,7 @@
          (math/outliers :eta)
          most-likely-breaks
          (map :x))))
+
+(def ^{:arglists '([series])} drop-incomplete-periods
+  "A Transducer that drops presumably incomplete first and last period."
+  (comp (drop 1) (x/drop-last 1)))

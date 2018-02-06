@@ -55,3 +55,27 @@
                                           (repeat 100 20))))
    (breaks 12 (map vector (range) (take 100 (cycle (range 10)))))
    (breaks 4 nil)])
+
+(expect
+  [[(t/date-time 2016 3) 4]
+   [(t/date-time 2016 4) 0]
+   [(t/date-time 2016 5) 0]
+   [(t/date-time 2016 6) 0]
+   [(t/date-time 2016 7) 0]
+   [(t/date-time 2016 8) 0]
+   [(t/date-time 2016 9) 0]
+   [(t/date-time 2016 10) 0]
+   [(t/date-time 2016 11) 0]]
+  (transduce drop-incomplete-periods
+             conj
+             [[(t/date-time 2016 2) 0]
+              [(t/date-time 2016 3) 4]
+              [(t/date-time 2016 4) 0]
+              [(t/date-time 2016 5) 0]
+              [(t/date-time 2016 6) 0]
+              [(t/date-time 2016 7) 0]
+              [(t/date-time 2016 8) 0]
+              [(t/date-time 2016 9) 0]
+              [(t/date-time 2016 10) 0]
+              [(t/date-time 2016 11) 0]
+              [(t/date-time 2016 12) 0]]))

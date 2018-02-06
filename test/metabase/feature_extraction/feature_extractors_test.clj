@@ -127,7 +127,8 @@
                 {:base_type :type/Number}]
                [[(make-sql-timestamp 2015 6 1) 0]
                 [(make-sql-timestamp 2015 6 2) 1000000]
-                [(make-sql-timestamp 2015 6 3) Double/MAX_VALUE]])))
+                [(make-sql-timestamp 2015 6 3) Double/MAX_VALUE]
+                [(make-sql-timestamp 2015 6 4) -13]])))
 
 (expect
   [:some
