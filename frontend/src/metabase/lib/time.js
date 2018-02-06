@@ -11,7 +11,7 @@ export function parseTimestamp(value, unit) {
         // workaround for https://github.com/metabase/metabase/issues/1992
         return moment().year(value).startOf("year");
     } else {
-        return moment.utc(value);
+        return moment.utc(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"]);
     }
 }
 
