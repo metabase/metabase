@@ -300,8 +300,6 @@
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % context) rules/->entity)))
          (apply combo/cartesian-product)
-         ; distinct? doesn't have a 0-arity, hence the :dummy
-         (filter (partial apply distinct? :dummy))
          (keep (fn [instantiations]
                  (let [bindings (zipmap used-dimensions instantiations)
                        query    (if query
