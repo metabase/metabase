@@ -254,6 +254,11 @@ export default class TokenField extends Component {
             value = [];
         }
 
+        // if not focused we won't get key events to accept the selected value, so don't render as selected
+        if (!focused) {
+          selectedOptionValue = null;
+        }
+
         const valuesList =
           <ul
               className={cx("m1 px1 pb1 bordered rounded flex flex-wrap bg-white", {
