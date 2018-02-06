@@ -58,7 +58,7 @@ export default class PulseEditCards extends Component {
             cards: [...pulse.cards.slice(0, index), ...pulse.cards.slice(index + 1)]
         });
 
-        this.trackPulseEvent("RmoveCard", index);
+        this.trackPulseEvent("RemoveCard", index);
     }
 
     getNotices(card, cardPreview, index) {
