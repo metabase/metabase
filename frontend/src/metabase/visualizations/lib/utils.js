@@ -301,3 +301,10 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         };
     }
 }
+export function getUserBrowserLanguage() {
+    return (window.navigator.languages && window.navigator.languages[0]) ||
+        window.navigator.language ||
+        window.navigator.userLanguage ||
+        window.navigator.browserLanguage ||
+        'en';
+}

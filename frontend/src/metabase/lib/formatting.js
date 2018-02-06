@@ -12,7 +12,7 @@ import { isDate, isNumber, isCoordinate, isLatitude, isLongitude } from "metabas
 import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp,parseTime } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getFriendlyName, getUserBrowserLanguage } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
@@ -145,12 +145,14 @@ export function formatTimeWithUnit(value: Value, unit: DatetimeUnit, options: Fo
     if (!m.isValid()) {
         return String(value);
     }
+    // date displayed in the graph is optimized by the user's browser language. if it can not be acquired, default: 'en'.
+    m.locale(getUserBrowserLanguage())
 
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
             return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"), options);
         case "day": // January 1, 2015
-            return m.format("MMMM D, YYYY");
+            return m.format("LL");
         case "week": // 1st - 2015
             if (options.type === "tooltip") {
                 // tooltip show range like "January 1 - 7, 2017"
@@ -277,7 +279,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
-        return parseTimestamp(value, column && column.unit).format("LLLL");
+        return parseTimestamp(value, column && column.unit).locale(getUserBrowserLanguage()).format("LLLL");
     } else if (typeof value === "string") {
         return formatStringFallback(value, options);
     } else if (typeof value === "number") {
