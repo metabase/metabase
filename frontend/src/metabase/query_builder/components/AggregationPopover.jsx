@@ -149,7 +149,7 @@ export default class AggregationPopover extends Component {
 
         if (availableAggregations.length > 0) {
             sections.push({
-                name: showOnlyProvidedAggregations ? null : "Metabasics",
+                name: showOnlyProvidedAggregations ? null : t`Metabasics`,
                 items: availableAggregations.map(aggregation => ({
                     name: aggregation.name,
                     value: [aggregation.short].concat(aggregation.fields.map(field => null)),
