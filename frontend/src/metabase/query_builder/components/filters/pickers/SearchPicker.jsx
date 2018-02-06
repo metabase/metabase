@@ -33,7 +33,7 @@ export default class SearchPicker extends Component {
                     placeholder={placeholder}
 
                     field={field}
-                    searchField={field.filterSearchField()}
+                    searchField={field.searchField()}
                 />
                 <FieldValuesWidget
                   value={values}

@@ -77,6 +77,7 @@ export default class FilterWidget extends Component {
                         key={index}
                         value={value}
                         column={dimension.field()}
+                        remap
                     />
                 ));
         }

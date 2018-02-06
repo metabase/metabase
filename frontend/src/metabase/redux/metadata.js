@@ -508,7 +508,7 @@ export const fetchRemapping = createThunkAction(FETCH_REMAPPING, (value, fieldId
         const metadata = getMetadata(getState());
         const field = metadata.fields[fieldId];
         const remappedField = field && field.remappedField();
-        if (field && remappedField && field.remappedValue(value) === undefined) {
+        if (field && remappedField && !field.hasRemappedValue(value)) {
             const fieldId = (field.target || field).id;
             const remappedFieldId = remappedField.id;
             fetchData({

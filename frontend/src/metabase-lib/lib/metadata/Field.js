@@ -143,6 +143,15 @@ export default class Field extends Base {
         if (displayFieldId != null) {
             return this.metadata.fields[displayFieldId]
         }
+        // this enables "implicit" remappings from type/PK to type/Name on the same table,
+        // used in FieldValuesWidget, but not table/object detail listings
+        if (this.isPK()) {
+          const nameField = _.find(this.table.fields, f => f.isEntityName());
+          if (nameField) {
+            return nameField;
+          }
+        }
+        return null;
     }
 
     /**
@@ -178,30 +187,24 @@ export default class Field extends Base {
     /**
      * Returns the field to be searched for this field, either the remapped field or itself
      */
-    filterSearchField(): ?Field {
-        let searchField = this.remappedField();
-        if (!searchField && this.isSearchable()) {
-            searchField = this;
+    searchField(): ?Field {
+        let remappedField = this.remappedField();
+        if (remappedField && remappedField.isSearchable()) {
+          return remappedField;
         }
-        return searchField;
+        if (this.isSearchable()) {
+          return this;
+        }
+        return null;
     }
 
     hasFieldValues() {
       if (this.values && this.values.length > 0) {
         return "list";
-      } else if (this.isSearchable() || (this.remappedField() && this.remappedField().isSearchable())) {
+      } else if (this.searchField()) {
         return "search";
       } else {
         return null;
       }
     }
-
-    parameterSearchField(): ?Field {
-        if (this.isID()) {
-          return _.find(this.table.fields, field => field.isEntityName());
-        } else if (this.isSearchable()) {
-          return this;
-        }
-    }
-
 }

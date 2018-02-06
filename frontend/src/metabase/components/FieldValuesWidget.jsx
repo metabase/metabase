@@ -44,7 +44,7 @@ export default class FieldValuesWidget extends Component {
 
   search = async (value: String, cancelled: Promise<void>) => {
       const { field, maxResults } = this.props;
-      const searchField = field.filterSearchField()
+      const searchField = field.searchField()
 
       if (!field || !searchField || !value) {
           return;
@@ -130,7 +130,7 @@ export default class FieldValuesWidget extends Component {
     if (hasFieldValues === "list") {
       placeholder = `Select a ${field.display_name}`;
     } else if (hasFieldValues === "search") {
-      placeholder = `Search for a ${stripId(field.display_name)}`;
+      placeholder = `Search for a ${stripId(field.searchField().display_name)}`;
       if (field.isID()) {
         placeholder += ` or enter an ID`;
       }
