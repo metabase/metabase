@@ -41,3 +41,28 @@
   (with-rasta
     (tu/with-model-cleanup ['Card 'Dashboard 'Collection 'DashboardCard]
       (-> (keep automagic-dashboard (Table)) count pos?))))
+
+(expect
+  [:d1 :d2 :d3 :d2 :d3]
+  (map (comp key first #'magic/most-specific-definition)
+       [; Identity
+        [{:d1 {:field_type [:type/Category] :score 100}}]
+        ; Base case: more ancestors
+        [{:d1 {:field_type [:type/Category] :score 100}}
+         {:d2 {:field_type [:type/State] :score 100}}]
+        ; Break ties based on the number of additional filters
+        [{:d1 {:field_type [:type/Category] :score 100}}
+         {:d2 {:field_type [:type/State] :score 100}}
+         {:d3 {:field_type [:type/State]
+               :named      "foo"
+               :score      100}}]
+        ; Break ties on score
+        [{:d1 {:field_type [:type/Category] :score 100}}
+         {:d2 {:field_type [:type/State] :score 100}}
+         {:d3 {:field_type [:type/State] :score 90}}]
+        ; Number of additional filters has precedence over score
+        [{:d1 {:field_type [:type/Category] :score 100}}
+         {:d2 {:field_type [:type/State] :score 100}}
+         {:d3 {:field_type [:type/State]
+               :named      "foo"
+               :score      0}}]]))
