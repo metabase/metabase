@@ -142,13 +142,12 @@ export default class ChartClickActions extends Component {
                             <div key={key} className="border-row-divider p2 flex align-center text-default-hover">
                                 <Icon name={SECTIONS[key] && SECTIONS[key].icon || "unknown"} className="mr3" size={16} />
                                 { actions.map((action, index) =>
-                                    <div
-                                        key={index}
-                                        className={cx("text-brand-hover cursor-pointer", { "pr2": index === actions.length - 1, "pr4": index != actions.length - 1})}
-                                        onClick={() => this.handleClickAction(action)}
-                                    >
-                                        {action.title}
-                                    </div>
+                                    <ChartClickAction
+                                        index={index}
+                                        action={action}
+                                        isLastItem={index === actions.length - 1}
+                                        handleClickAction={this.handleClickAction}
+                                    />
                                 )}
                             </div>
                         )}
@@ -158,3 +157,11 @@ export default class ChartClickActions extends Component {
         );
     }
 }
+
+export const ChartClickAction = ({ action, isLastItem, handleClickAction }: { action: any, isLastItem: any, handleClickAction: any }) =>
+    <div
+        className={cx("text-brand-hover cursor-pointer", { "pr2": isLastItem, "pr4": !isLastItem})}
+        onClick={() => handleClickAction(action)}
+    >
+        { action.title }
+    </div>

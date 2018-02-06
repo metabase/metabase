@@ -37,7 +37,7 @@ export const SchemaTableAndSegmentDataSelector = (props) =>
         getTriggerElementContent={SchemaAndSegmentTriggerContent}
         {...props}
     />
-const SchemaAndSegmentTriggerContent = ({ selectedTable, selectedSegment }) => {
+export const SchemaAndSegmentTriggerContent = ({ selectedTable, selectedSegment }) => {
     if (selectedTable) {
         return  <span className="text-grey no-decoration">{selectedTable.display_name || selectedTable.name}</span>;
     } else if (selectedSegment) {
@@ -53,7 +53,7 @@ export const DatabaseDataSelector = (props) =>
         getTriggerElementContent={DatabaseTriggerContent}
         {...props}
     />
-const DatabaseTriggerContent = ({ selectedDatabase }) =>
+export const DatabaseTriggerContent = ({ selectedDatabase }) =>
     selectedDatabase
         ? <span className="text-grey no-decoration">{selectedDatabase.name}</span>
         : <span className="text-grey-4 no-decoration">{t`Select a database`}</span>
@@ -66,7 +66,7 @@ export const SchemaTableAndFieldDataSelector = (props) =>
         renderAsSelect={true}
         {...props}
     />
-const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
+export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
     if (!selectedField || !selectedField.table) {
         return <span className="flex-full text-grey-4 no-decoration">{t`Select...`}</span>
     } else {
@@ -94,7 +94,7 @@ export const SchemaAndTableDataSelector = (props) =>
         getTriggerElementContent={TableTriggerContent}
         {...props}
     />
-const TableTriggerContent = ({ selectedTable }) =>
+export const TableTriggerContent = ({ selectedTable }) =>
     selectedTable
         ? <span className="text-grey no-decoration">{selectedTable.display_name || selectedTable.name}</span>
         : <span className="text-grey-4 no-decoration">{t`Select a table`}</span>
@@ -102,8 +102,16 @@ const TableTriggerContent = ({ selectedTable }) =>
 @connect(state => ({metadata: getMetadata(state)}), { fetchTableMetadata })
 export default class DataSelector extends Component {
     constructor(props) {
-        super();
+        super()
 
+        this.state = {
+            ...this.getStepsAndSelectedEntities(props),
+            activeStep: null,
+            isLoading: false
+        }
+    }
+
+    getStepsAndSelectedEntities = (props) => {
         let selectedSchema, selectedTable;
         let selectedDatabaseId = props.selectedDatabaseId;
         // augment databases with schemas
@@ -151,22 +159,19 @@ export default class DataSelector extends Component {
         const selectedSegment = selectedSegmentId ? props.segments.find(segment => segment.id === selectedSegmentId) : null;
         const selectedField = props.selectedFieldId ? props.metadata.fields[props.selectedFieldId] : null
 
-        this.state = {
+        return {
             databases,
             selectedDatabase,
             selectedSchema,
             selectedTable,
             selectedSegment,
             selectedField,
-            activeStep: null,
-            steps,
-            isLoading: false,
-        };
+            steps
+        }
     }
 
     static propTypes = {
         selectedDatabaseId: PropTypes.number,
-        selectedSchemaId: PropTypes.number,
         selectedTableId: PropTypes.number,
         selectedFieldId: PropTypes.number,
         selectedSegmentId: PropTypes.number,
@@ -195,6 +200,13 @@ export default class DataSelector extends Component {
         }
 
         this.hydrateActiveStep();
+    }
+
+    componentWillReceiveProps(nextProps) {
+        const newStateProps = this.getStepsAndSelectedEntities(nextProps)
+
+        // only update non-empty properties
+        this.setState(_.pick(newStateProps, (propValue) => !!propValue))
     }
 
     hydrateActiveStep() {
@@ -306,7 +318,7 @@ export default class DataSelector extends Component {
     onChangeSegment = (item) => {
         if (item.segment != null) {
             this.props.setSourceSegmentFn && this.props.setSourceSegmentFn(item.segment.id);
-            this.nextStep({ selectedSegment: item.segment })
+            this.nextStep({ selectedTable: null, selectedSegment: item.segment })
         }
     }
 
@@ -322,7 +334,7 @@ export default class DataSelector extends Component {
 
         return (
             <span className={className || "px2 py2 text-bold cursor-pointer text-default"} style={style}>
-                { getTriggerElementContent({ selectedDatabase, selectedSegment, selectedTable, selectedField }) }
+                { React.createElement(getTriggerElementContent, { selectedDatabase, selectedSegment, selectedTable, selectedField }) }
                 <Icon className="ml1" name="chevrondown" size={triggerIconSize || 8}/>
             </span>
         );
@@ -560,6 +572,12 @@ export const DatabaseSchemaPicker = ({ skipDatabaseSelection, databases, selecte
     }
 
 export const TablePicker = ({ selectedDatabase, selectedSchema, selectedTable, disabledTableIds, onChangeTable, hasAdjacentStep, onBack }) => {
+    // In case DataSelector props get reseted
+    if (!selectedDatabase) {
+        if (onBack) onBack()
+        return null
+    }
+
     const isSavedQuestionList = selectedDatabase.is_saved_questions;
     let header = (
         <div className="flex flex-wrap align-center">
@@ -623,6 +641,11 @@ export const TablePicker = ({ selectedDatabase, selectedSchema, selectedTable, d
 export class FieldPicker extends Component {
     render() {
         const { isLoading, selectedTable, selectedField, onChangeField, metadata, onBack } = this.props
+        // In case DataSelector props get reseted
+        if (!selectedTable) {
+            if (onBack) onBack()
+            return null
+        }
 
         const header = (
             <span className="flex align-center">

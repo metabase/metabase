@@ -292,7 +292,6 @@ export default class NativeQueryEditor extends Component {
                     <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">{t`Table`}</span>
                         <SchemaAndTableDataSelector
-                            ref="dataSection"
                             selectedTableId={selectedTable ? selectedTable.id : null}
                             selectedDatabaseId={database && database.id}
                             databases={[database]}
