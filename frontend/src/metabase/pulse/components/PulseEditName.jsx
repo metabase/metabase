@@ -32,7 +32,7 @@ export default class PulseEditName extends Component {
         let { pulse } = this.props;
         return (
             <div className="py1">
-                <h2>Name your pulse</h2>
+                <h2>{t`Name your pulse`}</h2>
                 <p className="mt1 h4 text-bold text-grey-3">{t`Give your pulse a name to help others understand what it's about`}.</p>
                 <div className="my3">
                     <input

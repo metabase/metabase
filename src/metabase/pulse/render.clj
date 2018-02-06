@@ -10,7 +10,9 @@
             [clojure.tools.logging :as log]
             [hiccup.core :refer [h html]]
             [metabase.util :as u]
-            [metabase.util.urls :as urls]
+            [metabase.util
+             [ui-logic :as ui-logic]
+             [urls :as urls]]
             [puppetlabs.i18n.core :refer [tru trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
@@ -42,6 +44,8 @@
 ;;; ## STYLES
 (def ^:private ^:const color-brand  "rgb(45,134,212)")
 (def ^:private ^:const color-purple "rgb(135,93,175)")
+(def ^:private ^:const color-gold   "#F9D45C")
+(def ^:private ^:const color-error  "#EF8C8C")
 (def ^:private ^:const color-gray-1 "rgb(248,248,248)")
 (def ^:private ^:const color-gray-2 "rgb(189,193,191)")
 (def ^:private ^:const color-gray-3 "rgb(124,131,129)")
@@ -85,7 +89,7 @@
 
 ;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
 
-(defn- style
+(defn style
   "Compile one or more CSS style maps into a string.
 
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
@@ -459,6 +463,7 @@
 
 (def ^:private external-link-url (io/resource "frontend_client/app/assets/img/external_link.png"))
 (def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/pulse_no_results@2x.png"))
+(def ^:private attached-url      (io/resource "frontend_client/app/assets/img/attachment@2x.png"))
 
 (def ^:private external-link-image
   (delay
@@ -467,6 +472,10 @@
 (def ^:private no-results-image
   (delay
    (make-image-bundle :attachment no-results-url)))
+
+(def ^:private attached-image
+  (delay
+   (make-image-bundle :attachment attached-url)))
 
 (defn- external-link-image-bundle [render-type]
   (case render-type
@@ -478,35 +487,45 @@
     :attachment @no-results-image
     :inline (make-image-bundle render-type no-results-url)))
 
+(defn- attached-image-bundle [render-type]
+  (case render-type
+    :attachment @attached-image
+    :inline (make-image-bundle render-type attached-url)))
+
 (defn- image-bundle->attachment [{:keys [render-type content-id image-url]}]
   (case render-type
     :attachment {content-id image-url}
     :inline     nil))
 
+(defn- graphing-columns [card {:keys [cols] :as data}]
+  [(or (ui-logic/x-axis-rowfn card data)
+       first)
+   (or (ui-logic/y-axis-rowfn card data)
+       second)])
+
 (s/defn ^:private render:sparkline :- RenderedPulseCard
-  [render-type timezone card {:keys [rows cols]}]
-  (let [ft-row (if (datetime-field? (first cols))
+  [render-type timezone card {:keys [rows cols] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
+        ft-row (if (datetime-field? (x-axis-rowfn cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
-        rows   (if (> (ft-row (ffirst rows))
-                      (ft-row (first (last rows))))
+        rows   (if (> (ft-row (x-axis-rowfn (first rows)))
+                      (ft-row (x-axis-rowfn (last rows))))
                  (reverse rows)
                  rows)
-        xs     (for [row  rows
-                     :let [x (first row)]]
-                 (ft-row x))
+        xs     (map (comp ft-row x-axis-rowfn) rows)
         xmin   (apply min xs)
         xmax   (apply max xs)
         xrange (- xmax xmin)
         xs'    (map #(/ (double (- % xmin)) xrange) xs)
-        ys     (map second rows)
+        ys     (map y-axis-rowfn rows)
         ymin   (apply min ys)
         ymax   (apply max ys)
         yrange (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
         ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
-        values (map (comp format-number second) rows')
-        labels (format-timestamp-pair timezone (map first rows') (first cols))
+        values (map (comp format-number y-axis-rowfn) rows')
+        labels (format-timestamp-pair timezone (map x-axis-rowfn rows') (x-axis-rowfn cols))
         image-bundle (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
 
     {:attachments (when image-bundle
@@ -543,24 +562,57 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :104px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style {:margin-top :8px
+                   [:div {:style (style font-style
+                                        {:margin-top :8px
                                          :color      color-gray-4})}
                     "No results"]]}))
+
+(s/defn ^:private render:attached :- RenderedPulseCard
+  [render-type _ _]
+  (let [image-bundle (attached-image-bundle render-type)]
+    {:attachments (image-bundle->attachment image-bundle)
+     :content     [:div {:style (style {:text-align :center})}
+                   [:img {:style (style {:width :30px})
+                          :src   (:image-src image-bundle)}]
+                   [:div {:style (style font-style
+                                        {:margin-top :8px
+                                         :color      color-gray-4})}
+                    "This question has been included as a file attachment"]]}))
+
+(s/defn ^:private render:unknown :- RenderedPulseCard
+  [_ _]
+  {:attachments nil
+   :content     [:div {:style (style font-style
+                                     {:color       color-gold
+                                      :font-weight 700})}
+                 "We were unable to display this card."
+                 [:br]
+                 "Please view this card in Metabase."]})
+
+(s/defn ^:private render:error :- RenderedPulseCard
+  [_ _]
+  {:attachments nil
+   :content     [:div {:style (style font-style
+                                     {:color       color-error
+                                      :font-weight 700
+                                      :padding     :16px})}
+                 "An error occurred while displaying this card."]})
 
 (defn detect-pulse-card-type
   "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
   [card data]
-  (let [col-count (-> data :cols count)
-        row-count (-> data :rows count)
-        col-1 (-> data :cols first)
-        col-2 (-> data :cols second)
-        aggregation (-> card :dataset_query :query :aggregation first)]
+  (let [col-count                 (-> data :cols count)
+        row-count                 (-> data :rows count)
+        [col-1-rowfn col-2-rowfn] (graphing-columns card data)
+        col-1                     (col-1-rowfn (:cols data))
+        col-2                     (col-2-rowfn (:cols data))
+        aggregation               (-> card :dataset_query :query :aggregation first)]
     (cond
-      (or (= aggregation :rows)
-          (contains? #{:pin_map :state :country} (:display card))) nil
       (or (zero? row-count)
           ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
           (= [[nil]] (-> data :rows)))                             :empty
+      (or (> col-count 3)
+          (contains? #{:pin_map :state :country} (:display card))) nil
       (and (= col-count 1)
            (= row-count 1))                                        :scalar
       (and (= col-count 2)
@@ -582,13 +634,18 @@
                                             :width         :100%})}
                      [:tbody
                       [:tr
-                       [:td [:span {:style header-style}
+                       [:td [:span {:style (style header-style)}
                              (-> card :name h)]]
                        [:td {:style (style {:text-align :right})}
                         (when *include-buttons*
                           [:img {:style (style {:width :16px})
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
+
+(defn- is-attached?
+  [card]
+  (or (:include_csv card)
+      (:include_xls card)))
 
 (s/defn ^:private render-pulse-card-body :- RenderedPulseCard
   [render-type timezone card {:keys [data error]}]
@@ -602,19 +659,12 @@
       :sparkline (render:sparkline render-type timezone card data)
       :bar       (render:bar       timezone card data)
       :table     (render:table     timezone card data)
-      {:attachments nil
-       :content     [:div {:style (style font-style
-                                         {:color       "#F9D45C"
-                                          :font-weight 700})}
-                     "We were unable to display this card." [:br] "Please view this card in Metabase."]})
+      (if (is-attached? card)
+        (render:attached render-type card data)
+        (render:unknown card data)))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
-      {:attachments nil
-       :content     [:div {:style (style font-style
-                                         {:color       "#EF8C8C"
-                                          :font-weight 700
-                                          :padding     :16px})}
-                     "An error occurred while displaying this card."]})))
+      (render:error card data))))
 
 (s/defn ^:private render-pulse-card :- RenderedPulseCard
   "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."

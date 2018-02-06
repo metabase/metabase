@@ -1,28 +1,47 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 import { t } from 'c-3po';
+import _ from "underscore";
+import { connect } from "react-redux";
+
 import Toggle from "metabase/components/Toggle.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
-
-import _ from "underscore";
-
-import type { TemplateTag } from "metabase/meta/types/Query"
+import type { TemplateTag } from "metabase/meta/types/Query";
+import type { Database } from "metabase/meta/types/Database"
 
 import Field from "metabase-lib/lib/metadata/Field";
+import { fetchField } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import type { FieldId } from "metabase/meta/types/Field";
 
 type Props = {
     tag: TemplateTag,
     onUpdate: (tag: TemplateTag) => void,
-    databaseFields: Field[]
-}
+    databaseFields: Field[],
+    database: Database,
+    databases: Database[],
+    metadata: Metadata,
+    fetchField: (FieldId) => void
+};
 
+@connect((state) => ({ metadata: getMetadata(state) }),{ fetchField })
 export default class TagEditorParam extends Component {
     props: Props;
+
+    componentWillMount() {
+        const { tag, fetchField } = this.props
+
+        if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
+            const fieldId = tag.dimension[1]
+            // Field values might already have been loaded so force the load of other field information too
+            fetchField(fieldId, true)
+        }
+    }
 
     setParameterAttribute(attr, val) {
         // only register an update if the value actually changes
@@ -56,14 +75,14 @@ export default class TagEditorParam extends Component {
     }
 
     setDimension(fieldId) {
-        const { tag, onUpdate, databaseFields } = this.props;
+        const { tag, onUpdate, metadata } = this.props;
         const dimension = ["field-id", fieldId];
         if (!_.isEqual(tag.dimension !== dimension)) {
-            const field = _.findWhere(databaseFields, { id: fieldId });
+            const field = metadata.fields[dimension[1]]
             if (!field) {
                 return;
             }
-            const options = parameterOptionsForField(new Field(field));
+            const options = parameterOptionsForField(field);
             let widget_type;
             if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
                 widget_type = tag.widget_type;
@@ -79,22 +98,21 @@ export default class TagEditorParam extends Component {
     }
 
     render() {
-        const { tag, databaseFields } = this.props;
+        const { tag, database, databases, metadata } = this.props;
 
-        let dabaseHasSchemas = false;
-        if (databaseFields) {
-            let schemas = _.chain(databaseFields).pluck("schema").uniq().value();
-            dabaseHasSchemas = schemas.length > 1;
-        }
-
-        let widgetOptions;
+        let widgetOptions, table, fieldMetadataLoaded = false;
         if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-            const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
+            const field = metadata.fields[tag.dimension[1]]
+
             if (field) {
-                widgetOptions = parameterOptionsForField(new Field(field));
+                widgetOptions = parameterOptionsForField(field);
+                table = field.table
+                fieldMetadataLoaded = true
             }
         }
 
+        const isDimension = tag.type === "dimension"
+        const hasSelectedDimensionField = isDimension && Array.isArray(tag.dimension)
         return (
             <div className="pb2 mb2 border-bottom border-dark">
                 <h3 className="pb2">{tag.name}</h3>
@@ -129,27 +147,18 @@ export default class TagEditorParam extends Component {
                 { tag.type === "dimension" &&
                     <div className="pb1">
                         <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
-                        <Select
-                            className="border-med bg-white block"
-                            value={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
-                            onChange={(e) => this.setDimension(e.target.value)}
-                            searchProp="name"
-                            searchCaseInsensitive
-                            isInitiallyOpen={!tag.dimension}
-                            placeholder={t`Select…`}
-                            rowHeight={60}
-                            width={280}
-                        >
-                            {databaseFields && databaseFields.map(field =>
-                                <Option key={field.id} value={field.id} name={field.name}>
-                                    <div className="cursor-pointer">
-                                        <div className="h6 text-bold text-uppercase text-grey-2">{dabaseHasSchemas && (field.schema + " > ")}{field.table_name}</div>
-                                        <div className="h4 text-bold text-default">{field.name}</div>
-                                    </div>
-                                </Option>
-                            )}
-                        </Select>
 
+                        { (!hasSelectedDimensionField || (hasSelectedDimensionField && fieldMetadataLoaded)) &&
+                            <SchemaTableAndFieldDataSelector
+                                databases={databases}
+                                selectedDatabaseId={database.id}
+                                selectedTableId={table ? table.id : null}
+                                selectedFieldId={hasSelectedDimensionField ? tag.dimension[1] : null}
+                                setFieldFn={(fieldId) => this.setDimension(fieldId)}
+                                className="AdminSelect flex align-center"
+                                isInitiallyOpen={!tag.dimension}
+                            />
+                        }
                     </div>
                 }
 

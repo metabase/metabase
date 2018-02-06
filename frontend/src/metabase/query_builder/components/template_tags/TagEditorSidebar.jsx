@@ -12,6 +12,7 @@ import cx from "classnames";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { DatasetQuery } from "metabase/meta/types/Card"
 import type { TableId } from "metabase/meta/types/Table"
+import type { Database } from "metabase/meta/types/Database"
 import type { TemplateTag } from "metabase/meta/types/Query"
 import type { Field as FieldObject } from "metabase/meta/types/Field"
 
@@ -22,6 +23,7 @@ type Props = {
     updateTemplateTag: (tag: TemplateTag) => void,
 
     databaseFields: FieldObject[],
+    databases: Database[],
     sampleDatasetId: TableId,
 
     onClose: () => void,
@@ -51,8 +53,10 @@ export default class TagEditorSidebar extends Component {
     }
 
     render() {
-        const { query } = this.props;
-        const tags = query.templateTags()
+        const { databases, databaseFields, sampleDatasetId, setDatasetQuery, query, updateTemplateTag, onClose } = this.props;
+        const tags = query.templateTags();
+        const databaseId = query.datasetQuery().database;
+        const database = databases.find(db => db.id === databaseId);
 
         let section;
         if (tags.length === 0) {
@@ -67,7 +71,7 @@ export default class TagEditorSidebar extends Component {
                     <h2 className="text-default">
                         {t`Variables`}
                     </h2>
-                    <a className="flex-align-right text-default text-brand-hover no-decoration" onClick={() => this.props.onClose()}>
+                    <a className="flex-align-right text-default text-brand-hover no-decoration" onClick={() => onClose()}>
                         <Icon name="close" size={18} />
                     </a>
                 </div>
@@ -77,9 +81,18 @@ export default class TagEditorSidebar extends Component {
                         <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setSection("help")}>{t`Help`}</a>
                     </div>
                     { section === "settings" ?
-                        <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>
+                        <SettingsPane
+                            tags={tags}
+                            onUpdate={updateTemplateTag}
+                            databaseFields={databaseFields}
+                            database={database}
+                            databases={databases}
+                        />
                     :
-                        <TagEditorHelp sampleDatasetId={this.props.sampleDatasetId} setDatasetQuery={this.props.setDatasetQuery}/>
+                        <TagEditorHelp
+                            sampleDatasetId={sampleDatasetId}
+                            setDatasetQuery={setDatasetQuery}
+                        />
                     }
                 </div>
             </div>
@@ -87,11 +100,17 @@ export default class TagEditorSidebar extends Component {
     }
 }
 
-const SettingsPane = ({ tags, onUpdate, databaseFields }) =>
+const SettingsPane = ({ tags, onUpdate, databaseFields, database, databases }) =>
     <div>
         { tags.map(tag =>
             <div key={tags.name}>
-                <TagEditorParam tag={tag} onUpdate={onUpdate} databaseFields={databaseFields} />
+                <TagEditorParam
+                    tag={tag}
+                    onUpdate={onUpdate}
+                    databaseFields={databaseFields}
+                    database={database}
+                    databases={databases}
+                />
             </div>
         ) }
     </div>

@@ -110,7 +110,7 @@ const CompareHistograms = ({ itemA, itemAColor, itemB, itemBColor, showAxis = fa
         <div className="flex-full">
             <Visualization
                 className="full-height"
-                series={[
+                rawSeries={[
                     {
                         card: {
                             display: "bar",

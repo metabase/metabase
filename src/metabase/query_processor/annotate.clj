@@ -169,7 +169,8 @@
          ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
          ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
          ;; for the purposes of a patch release.
-         (when (instance? ExpressionRef ag-field)
+         (when (or (instance? ExpressionRef ag-field)
+                   (instance? Expression ag-field))
            {:base-type    :type/Float
             :special-type :type/Number})))
 
