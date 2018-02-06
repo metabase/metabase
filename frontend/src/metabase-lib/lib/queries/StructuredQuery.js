@@ -244,9 +244,22 @@ export default class StructuredQuery extends AtomicQuery {
     /**
      * @returns an array of MBQL @type {Aggregation}s.
      */
-    aggregations(): Aggregation[] {
-        return Q.getAggregations(this.query());
-    }
+     aggregations(): Aggregation[] {
+
+      // if ga, restructure back to original non-native query structure
+      let aggregationList = Q.getAggregations(this.query());
+      if (aggregationList.length !== 0) {
+        if (aggregationList[0][1].includes('ga:')) {
+          let reformattedQueryList = aggregationList[0][1].split(", ");
+          let revertToOriginalAggregationFormat = []
+          for (let i = 0; i < reformattedQueryList.length; i ++){
+            revertToOriginalAggregationFormat.push([aggregationList[0][0], reformattedQueryList[i]])
+          }
+          return revertToOriginalAggregationFormat
+        }
+      }
+       return Q.getAggregations(this.query());
+   }
 
     /**
      * @returns an array of aggregation wrapper objects
