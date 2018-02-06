@@ -63,10 +63,10 @@
 
 ;;; ### breakout
 
-(defn- first-aggregation [{aggregations :aggregation}]
+(defn- aggregations [{aggregations :aggregation}]
   (if (every? sequential? aggregations)
-    (first aggregations)
-    aggregations))
+    aggregations
+    [aggregations]))
 
 (defn- unit->ga-dimension
   [unit]
@@ -170,7 +170,7 @@
                                 :descending "-")
                               (cond
                                 (instance? DateTimeField field) (unit->ga-dimension (:unit field))
-                                (instance? AgFieldRef field)    (second (first-aggregation query)) ; aggregation is of format [ag-type metric-name]; get the metric-name
+                                (instance? AgFieldRef field)    (second (nth (aggregations query) (:index field))) ; aggregation is of format [ag-type metric-name]; get the metric-name
                                 :else                           (->rvalue field)))))}))
 
 ;;; ### limit
@@ -249,11 +249,12 @@
 
 (defn- built-in-metrics
   [{query :query}]
-  (let [[aggregation-type metric-name] (first-aggregation query)]
-    (when (and aggregation-type
-               (= :metric (qputil/normalize-token aggregation-type))
-               (string? metric-name))
-      metric-name)))
+  (if-not (empty? (aggregations query))
+    (s/join "," (for [[aggregation-type metric-name] (aggregations query)
+                      :when (and aggregation-type
+                                 (= :metric (qputil/normalize-token aggregation-type))
+                                 (string? metric-name))]
+                  metric-name))))
 
 (defn- handle-built-in-metrics [query]
   (-> query
