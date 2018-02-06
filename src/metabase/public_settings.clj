@@ -28,6 +28,10 @@
   (tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
+(defsetting site-uuid
+  (tru "The identifier for this instance of Metabase.")
+  :default (str (java.util.UUID/randomUUID)))
+
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
