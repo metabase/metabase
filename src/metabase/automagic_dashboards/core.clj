@@ -180,13 +180,13 @@
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
-   Each field will be bound to only one dimension. If multiple dimension
-   definitions match a single field, the field is bound to the specific
+   Each field x aggregation pair will be bound to only one dimension. If multiple
+   dimension definitions match a single field, the field is bound to the specific
    definition is used (see `most-specific-defintion` for details)."
   [context dimensions]
   (->> dimensions
        (mapcat (comp (partial make-binding context) first))
-       (group-by (comp :id first :matches val first))
+       (group-by (comp (juxt :id :aggregation) first :matches val first))
        (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
