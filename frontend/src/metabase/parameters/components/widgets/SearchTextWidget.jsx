@@ -22,6 +22,7 @@ type State = {
     isFocused: bool,
 };
 
+// TODO: rename this something else since we're using it for more than searching and more than text
 export default class SearchTextWidget extends Component<*, Props, State> {
     props: Props;
     state: State;
@@ -109,7 +110,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
                   primary
                   className="mx1 mb1"
                   onClick={() => {
-                    setValue(value);
+                    setValue(value.length > 0 ? value : null);
                     focusChanged(false);
                   }}
                 >
