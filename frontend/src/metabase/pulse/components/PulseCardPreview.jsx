@@ -62,7 +62,7 @@ export default class PulseCardPreview extends Component {
         const isAttachmentOnly = attachmentsEnabled && hasAttachment && cardPreview && cardPreview.pulse_card_type == null;
         return (
             <div className="flex relative flex-full">
-                <div className="absolute top right p2 text-grey-2">
+                <div className="absolute p2 text-grey-2" style={{ top: 2, right: 2, background: 'linear-gradient(to right, rgba(255,255,255,0.2), white, white)', paddingLeft: 100}}>
                     { attachmentsEnabled && !isAttachmentOnly &&
                         <Tooltip tooltip={hasAttachment ? t`Remove attachment` : t`Attach file with results`}>
                             <Icon
