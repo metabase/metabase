@@ -13,6 +13,7 @@
             [metabase.models
              [card :as card]
              [field :refer [Field]]
+             [metric :refer [Metric]]
              [table :refer [Table]]]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -180,13 +181,13 @@
 
 (defn- bind-dimensions
   "Bind fields to dimensions and resolve overloading.
-   Each field will be bound to only one dimension. If multiple dimension
-   definitions match a single field, the field is bound to the specific
+   Each field x aggregation pair will be bound to only one dimension. If multiple
+   dimension definitions match a single field, the field is bound to the specific
    definition is used (see `most-specific-defintion` for details)."
   [context dimensions]
   (->> dimensions
        (mapcat (comp (partial make-binding context) first))
-       (group-by (comp :id first :matches val first))
+       (group-by (comp (juxt :id :aggregation) first :matches val first))
        (map (comp most-specific-definition val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
@@ -277,7 +278,8 @@
         (update :title fill-template)
         (u/update-when :visualization (partial instantate-visualization bindings
                                                (:metrics context)))
-        (u/update-when :description fill-template))))
+        (u/update-when :description fill-template)
+        (u/update-when :text fill-template))))
 
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
@@ -300,21 +302,19 @@
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % context) rules/->entity)))
          (apply combo/cartesian-product)
-         ; distinct? doesn't have a 0-arity, hence the :dummy
-         (filter (partial apply distinct? :dummy))
-         (keep (fn [instantiations]
-                 (let [bindings (zipmap used-dimensions instantiations)
-                       query    (if query
-                                  (build-query context bindings query)
-                                  (build-query context bindings
-                                               filters
-                                               metrics
-                                               dimensions
-                                               limit
-                                               order_by))]
-                   (-> (instantiate-metadata context bindings card)
-                       (assoc :score score
-                              :query query))))))))
+         (map (fn [instantiations]
+                (let [bindings (zipmap used-dimensions instantiations)
+                      query    (if query
+                                 (build-query context bindings query)
+                                 (build-query context bindings
+                                              filters
+                                              metrics
+                                              dimensions
+                                              limit
+                                              order_by))]
+                  (-> (instantiate-metadata context bindings card)
+                      (assoc :score score
+                             :query query))))))))
 
 (defn- matching-rules
   "Pick the most specific among applicable rules.
@@ -356,43 +356,65 @@
          {:where [:and [:= :table_id (:id table)]
                   [:not= :special_type "type/PK"]]})))
 
+(defn- make-context
+  [root rule]
+  (let [context (as-> {:root-table root
+                       :rule       (:table_type rule)
+                       :tables     (concat [root] (linked-tables root))
+                       :database   (:db_id root)} <>
+                  (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
+                  (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
+                  (assoc <> :filters (resolve-overloading <> (:filters rule))))]
+    (log/info (format "Dimensions bindings:\n%s"
+                      (->> context
+                           :dimensions
+                           (m/map-vals #(update % :matches (partial map :name)))
+                           u/pprint-to-str)))
+    (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
+                      (-> context :metrics u/pprint-to-str)
+                      (-> context :filters u/pprint-to-str)))
+    context))
+
+(defn- make-cards
+  [context {:keys [cards]}]
+  (some->> cards
+           (map first)
+           (map-indexed (fn [position [identifier card]]
+                          (some->> (assoc card :position position)
+                                   (card-candidates context)
+                                   not-empty
+                                   (hash-map (name identifier)))))
+           (apply merge-with (partial max-key (comp :score first)) {})
+           vals
+           (apply concat)))
+
 (defn automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [root]
   (keep
    (fn [rule]
-     (let [context   (as-> {:root-table root
-                            :rule       (:table_type rule)
-                            :tables     (concat [root] (linked-tables root))
-                            :database   (:db_id root)} <>
-                       (assoc <> :dimensions (bind-dimensions <> (:dimensions rule)))
-                       (assoc <> :metrics (resolve-overloading <> (:metrics rule)))
-                       (assoc <> :filters (resolve-overloading <> (:filters rule))))
+     (log/info (format "Applying heuristic %s to table %s."
+                       (:table_type rule)
+                       (:name root)))
+     (let [context   (make-context root rule)
            dashboard (->> (select-keys rule [:title :description :groups])
-                          (instantiate-metadata context {}))]
-       (log/info (format "Applying heuristic %s to table %s."
-                         (:table_type rule)
-                         (:name root)))
-       (log/info (format "Dimensions bindings:\n%s"
-                         (->> context
-                              :dimensions
-                              (m/map-vals #(update % :matches (partial map :name)))
-                              u/pprint-to-str)))
-       (log/info (format "Using definitions:\nMetrics:\n%s\nFilters:\n%s"
-                         (-> context :metrics u/pprint-to-str)
-                         (-> context :filters u/pprint-to-str)))
-       (or (some->> rule
-                    :cards
-                    (map first)
-                    (map-indexed (fn [position [identifier card]]
-                                   (some->> (assoc card :position position)
-                                            (card-candidates context)
-                                            not-empty
-                                            (hash-map (name identifier)))))
-                    (apply merge-with (partial max-key (comp :score first)) {})
-                    vals
-                    (apply concat)
-                    (populate/create-dashboard! dashboard)
-                    :id)
-           (log/info "Skipping: no cards fully match the topology."))))
+                          (instantiate-metadata context {}))
+           cards     (make-cards context rule)]
+       (if cards
+         (->> cards (populate/create-dashboard! dashboard) :id)
+         (log/info "Skipping: no cards fully match the topology."))))
    (matching-rules (rules/load-rules) root)))
+
+(defn automagic-analysis
+  [metric]
+  (let [rule      (-> "/special/metric.yaml"
+                      rules/load-rule
+                      (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
+                                                       :score  100}}))
+        context   (make-context (Table (:table_id metric)) rule)
+        cards     (->> rule
+                       (make-cards context)
+                       not-empty)
+        dashboard {:title  (format "Analysis of %s" (:name metric))
+                   :groups (:groups rule)}]
+    (some->> cards (populate/create-dashboard! dashboard (count cards)) :id)))

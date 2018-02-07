@@ -179,7 +179,9 @@
 
 (u/strict-extend (class PulseCard)
   test/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:position 0})})
+  {:with-temp-defaults (fn [_] {:position    0
+                                :include_csv false
+                                :include_xls false})})
 
 (u/strict-extend (class PulseChannel)
   test/WithTempDefaults

@@ -9,7 +9,8 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [ssh :as ssh]])
+  (:import java.sql.Time))
 
 (defrecord SQLServerDriver []
   clojure.lang.Named
@@ -154,6 +155,10 @@
 (defmethod sqlqp/->honeysql [SQLServerDriver Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sqlqp/->honeysql [SQLServerDriver Time]
+  [_ time-value]
+  (hx/->time time-value))
 
 (defn- string-length-fn [field-key]
   (hsql/call :len (hx/cast :VARCHAR field-key)))

@@ -11,13 +11,13 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-(def ^Integer grid-width
+(def ^Long grid-width
   "Total grid width."
   18)
-(def ^Integer default-card-width
+(def ^Long default-card-width
   "Default card width."
   6)
-(def ^Integer default-card-height
+(def ^Long default-card-height
   "Default card height"
   4)
 
@@ -34,7 +34,7 @@
    Value is wrapped in a delay so that we don't hit the DB out of order."
   (delay
    (or (db/select-one 'Collection
-                      :name "Automatically Generated Questions")
+         :name "Automatically Generated Questions")
        (create-collection! "Automatically Generated Questions"
                            "#000000"
                            "Cards used in automatically generated dashboards."))))
@@ -131,6 +131,9 @@
           bottom
           (recur next-bottom))))))
 
+(def ^:private ^{:arglists '([card])} text-card?
+  :text)
+
 (defn- add-group!
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
@@ -140,7 +143,9 @@
                     group            (+ 2))]
     (reduce (fn [grid card]
               (let [xy (card-position grid start-row card)]
-                (add-card! dashboard card xy)
+                (if (text-card? card)
+                  (add-text-card! dashboard card xy)
+                  (add-card! dashboard card xy))
                 (fill-grid grid xy card)))
             (if group
               (let [xy   [(- start-row 2) 0]
@@ -160,7 +165,7 @@
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
-  [cards]
+  [n cards]
   (->> cards
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]
@@ -178,31 +183,30 @@
                  :size  (count group)})))
        (sort-by (juxt :score :size) (comp (partial * -1) compare))
        (mapcat :cards)
-       (take max-cards)))
+       (take n)))
 
 (defn create-dashboard!
   "Create dashboard and populate it with cards."
-  [{:keys [title description groups]} cards]
-  (let [dashboard (db/insert! 'Dashboard
-                    :name        title
-                    :description description
-                    :creator_id  api/*current-user-id*
-                    :parameters  [])
-        cards     (sort-by :position (shown-cards cards))
-        ;; Binding return value to make linter happy
-        _         (try
-                    (->> cards
-                            (partition-by :group)
-                            (reduce (fn [grid cards]
-                                      (let [group (some-> cards first :group groups)]
-                                        (add-group! dashboard grid group cards)))
-                                    ;; Height doesn't need to be precise, just some
-                                    ;; safe upper bound.
-                                    (make-grid grid-width (* max-cards grid-width))))
-                    (catch Exception e (log/error [e groups])))]
-    (events/publish-event! :dashboard-create dashboard)
-    (log/info (format "Adding %s cards to dashboard %s:\n%s"
-                      (count cards)
-                      (:id dashboard)
-                      (str/join "; " (map :title cards))))
-    dashboard))
+  ([dashboard cards] (create-dashboard! dashboard max-cards cards))
+  ([{:keys [title description groups]} n cards]
+   (let [dashboard (db/insert! 'Dashboard
+                     :name        title
+                     :description description
+                     :creator_id  api/*current-user-id*
+                     :parameters  [])
+         cards     (->> cards (shown-cards n) (sort-by :position))
+         ;; Binding return value to make linter happy
+         _         (->> cards
+                        (partition-by :group)
+                        (reduce (fn [grid cards]
+                                  (let [group (some-> cards first :group groups)]
+                                    (add-group! dashboard grid group cards)))
+                                ;; Height doesn't need to be precise, just some
+                                ;; safe upper bound.
+                                (make-grid grid-width (* n grid-width))))]
+     (events/publish-event! :dashboard-create dashboard)
+     (log/info (format "Adding %s cards to dashboard %s:\n%s"
+                       (count cards)
+                       (:id dashboard)
+                       (str/join "; " (map :title cards))))
+     dashboard)))

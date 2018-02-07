@@ -102,7 +102,7 @@ export const wrappedFetchGuide = async (props) => {
                      props.fetchDashboards(),
                      props.fetchMetrics(),
                      props.fetchSegments(),
-                     props.fetchDatabasesWithMetadata()]
+                     props.fetchRealDatabasesWithMetadata()]
                 )}
         )()
 }

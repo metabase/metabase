@@ -7,12 +7,17 @@
   (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
     (for [row rows]
       (for [v row]
-        (if (u/is-temporal? v)
-          ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
-          ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
-          ;;       GH issues: #2282, #2035
+        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+        ;;       GH issues: #2282, #2035
+        (cond
+          (u/is-time? v)
+          (u/format-time v timezone)
+
+          (u/is-temporal? v)
           (u/->iso-8601-datetime v timezone)
-          v)))))
+
+          :else v)))))
 
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
