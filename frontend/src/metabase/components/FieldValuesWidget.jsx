@@ -165,7 +165,7 @@ export default class FieldValuesWidget extends Component {
           options={options}
 
           valueKey={0}
-          valueRenderer={value => <RemappedValue value={value} column={field} round={false} autoLoad={false} />}
+          valueRenderer={value => <RemappedValue value={value} column={field} round={false} autoLoad={true} />}
           optionRenderer={option => <RemappedValue value={option[0]} column={field} round={false} autoLoad={false} />}
           layoutRenderer={({ valuesList, optionsList, focused, onClose }) =>
             <div>
