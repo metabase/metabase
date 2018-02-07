@@ -203,7 +203,7 @@
                                     (add-group! dashboard grid group cards)))
                                 ;; Height doesn't need to be precise, just some
                                 ;; safe upper bound.
-                                (make-grid grid-width (* max-cards grid-width))))]
+                                (make-grid grid-width (* n grid-width))))]
      (events/publish-event! :dashboard-create dashboard)
      (log/info (format "Adding %s cards to dashboard %s:\n%s"
                        (count cards)

@@ -405,37 +405,16 @@
          (log/info "Skipping: no cards fully match the topology."))))
    (matching-rules (rules/load-rules) root)))
 
-(defn- inject-metric
-  [metric rule]
-  (-> rule
-      (update :cards (partial map (comp
-                                   (fn [[identifier card]]
-                                     {identifier (assoc card :metrics ["Metric"])})
-                                   first)))
-      (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
-                                       :score  100}})))
-
 (defn automagic-analysis
   [metric]
-  (let [rule      (->> "/special/metric.yaml"
-                       rules/load-rule
-                       (inject-metric metric))
-        root      (Table (:table_id metric))
-        context   (make-context root rule)
+  (let [rule      (-> "/special/metric.yaml"
+                      rules/load-rule
+                      (update :metrics conj {"Metric" {:metric ["METRIC" (:id metric)]
+                                                       :score  100}}))
+        context   (make-context (Table (:table_id metric)) rule)
         cards     (->> rule
                        (make-cards context)
-                       (mapcat (fn [card]
-                                 [(assoc card
-                                    :group "Interesting"
-                                    :width (* populate/grid-width (/ 2 3)))
-                                  {:group    "Interesting"
-                                   :position (+ (:position card) 0.1)
-                                   :width    (* populate/grid-width (/ 3))
-                                   :height   (:height card)
-                                   :text     "Insight ..."
-                                   :score    (:score card)}]))
                        not-empty)
         dashboard {:title  (format "Analysis of %s" (:name metric))
-                   :groups {"Interesting" {:title "Interesting"}
-                            "Rest"        {:title "Rest"}}}]
+                   :groups (:groups rule)}]
     (some->> cards (populate/create-dashboard! dashboard (count cards)) :id)))
