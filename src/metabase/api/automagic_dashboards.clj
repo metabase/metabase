@@ -2,7 +2,9 @@
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
-            [metabase.models.table :refer [Table]]
+            [metabase.models
+             [metric :refer [Metric]]
+             [table :refer [Table]]]
             [toucan.db :as db]))
 
 ; Should be POST, GET for testing convinience
@@ -19,5 +21,10 @@
   "Create an automagic dashboard for table with id `ìd`."
   [id]
   [(magic/automagic-dashboard (Table id))])
+
+(api/defendpoint GET "/analize/metric/:id"
+  "Create an automagic dashboard analyzing metric with id `id`."
+  [id]
+  [(magic/automagic-analysis (Metric id))])
 
 (api/define-routes)

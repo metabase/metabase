@@ -82,8 +82,9 @@
 
 (def ^:private Card
   {Identifier {(s/required-key :title)         s/Str
-               (s/required-key :visualization) Visualization
                (s/required-key :score)         Score
+               (s/optional-key :visualization) Visualization
+               (s/optional-key :text)          s/Str
                (s/optional-key :dimensions)    [s/Str]
                (s/optional-key :filters)       [s/Str]
                (s/optional-key :metrics)       [s/Str]
@@ -148,10 +149,10 @@
 
 (def ^:private Rules
   (s/constrained
-   {(s/required-key :table_type)  TableType
-    (s/required-key :title)       s/Str
+   {(s/required-key :title)       s/Str
     (s/required-key :dimensions)  [Dimension]
     (s/required-key :cards)       [Card]
+    (s/optional-key :table_type)  TableType
     (s/optional-key :description) s/Str
     (s/optional-key :metrics)     [Metric]
     (s/optional-key :filters)     [Filter]
@@ -220,6 +221,28 @@
 (def ^:private ^{:arglists '([f])} file-name->table-type
   (comp (partial re-find #".+(?=\.yaml)") (memfn ^java.io.File getName)))
 
+(defn load-rule
+  "Load and validate rule from file `f`."
+  [^java.io.File f]
+  (let [f (if (string? f)
+            (java.io.File. (str rules-dir f))
+            f)]
+    (try
+      (-> f
+          slurp
+          yaml/parse-string
+          (update :table_type #(or % (file-name->table-type f)))
+          rules-validator)
+      (catch Exception e
+        (log/error (format "Error parsing %s:\n%s"
+                           (.getName f)
+                           (or (some-> e
+                                       ex-data
+                                       (select-keys [:error :value])
+                                       u/pprint-to-str)
+                               e)))
+        nil))))
+
 (defn load-rules
   "Load and validate all rules in `rules-dir`."
   []
@@ -227,22 +250,7 @@
        clojure.java.io/file
        file-seq
        (filter (memfn ^java.io.File isFile))
-       (map (fn [^java.io.File f]
-              (try
-                (-> f
-                    slurp
-                    yaml/parse-string
-                    (update :table_type #(or % (file-name->table-type f)))
-                    rules-validator)
-                (catch Exception e
-                  (log/error (format "Error parsing %s:\n%s"
-                                     (.getName f)
-                                     (or (some-> e
-                                                 ex-data
-                                                 (select-keys [:error :value])
-                                                 u/pprint-to-str)
-                                         e)))
-                  nil))))))
+       (map load-rule)))
 
 (defn -main
   "Entry point for lein task `validate-automagic-dashboards`"

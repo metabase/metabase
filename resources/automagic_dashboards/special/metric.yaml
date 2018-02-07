@@ -1,0 +1,111 @@
+title: Analysis of metric
+table_type: GenericTable
+dimensions:
+  - Country:
+      field_type: GenericTable.Country
+  - State:
+      field_type: GenericTable.State
+  - GenericNumber:
+      field_type: GenericTable.Number
+      aggregation: default
+  - GenericCategorySmall:
+      field_type: GenericTable.Category
+      max_cardinality: 5
+      score: 100
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      max_cardinality: 12
+      score: 90
+  - GenericCategoryLarge:
+      field_type: GenericTable.Category
+      score: 80
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 90
+  - DayOfWeek:
+      field_type: DateTime
+      aggregation: day-of-week
+  - HourOfDay:
+      field_type: DateTime
+      aggregation: hour-of-day
+  - DayOfMonth:
+      field_type: DateTime
+      aggregation: day-of-month
+  - MonthOfYear:
+      field_type: DateTime
+      aggregation: month-of-year
+  - QuarterOfYear:
+      field_type: DateTime
+      aggregation: quarter-of-year
+  - LongLat:
+      field_type: GenericTable.Coordinate
+      aggregation: default
+  - ZipCode:
+      field_type: GenericTable.ZipCode
+      aggregation: default
+cards:
+  - ByCountry:
+      title: Distribution by country
+      dimensions: Country
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+  - ByState:
+      title: Distribution by state
+      dimensions: State
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+  - ByNumber:
+      title: Distribution by [[GenericNumber]]
+      dimensions: GenericNumber
+      visualization: bar
+  - ByCategoryLarge:
+      title: Distribution by [[GenericCategoryLarge]]
+      dimensions: GenericCategoryLarge
+      visualization: table
+      height: 8
+  - ByCategoryMedium:
+      title: Distribution by [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      visualization: row
+      height: 8
+  - ByCategoryAndTime:
+      title: Distribution by [[GenericCategorySmall]] over time
+      dimensions:
+        - GenericCategorySmall
+        - Timestamp
+      visualization: area
+  - ByCategorySmall:
+      title: Distribution by [[GenericCategorySmall]]
+      dimensions: GenericCategorySmall
+      visualization: row
+  - ByTime:
+      title: Distribution over time
+      visualization: line
+      dimensions: Timestamp
+  - DayOfWeek:
+      title: Distribution by day of week
+      visualization: bar
+      dimensions: DayOfWeek
+  - HourOfDay:
+      title: Distribution by hour of day
+      visualization: bar
+      dimensions: HourOfDay
+  - DayOfMonth:
+      title: Distribution by day of month
+      visualization: bar
+      dimensions: DayOfMonth
+  - MonthOfYear:
+      title: Distribution by month of year
+      visualization: bar
+      dimensions: MonthOfYear
+  - QuerterOfYear:
+      title: Distribution by quarter of year
+      visualization: bar
+      dimensions: QuarterOfYear
