@@ -322,6 +322,7 @@ export default class TokenField extends Component {
               className={cx("m1 px1 pb1 bordered rounded flex flex-wrap bg-white", {
                 [`input--focus border-${color}`]: this.state.focused
               })}
+              style={this.props.style}
               onMouseDownCapture={this.onMouseDownCapture}
           >
               {value.map((v, index) =>
@@ -340,10 +341,12 @@ export default class TokenField extends Component {
                       </a>
                   </li>
               )}
-              <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": focused ? 100 : 0 }}>
+              <li className="flex-full mr1 py1 pl1 mt1 bg-white">
                   <input
                       ref="input"
                       className="full h4 text-bold text-default no-focus borderless"
+                      // set size=1 since we're using "width: 100%"
+                      size={1}
                       placeholder={placeholder}
                       value={inputValue}
                       autoFocus={focused}

@@ -4,6 +4,7 @@ import React, { Component } from "react";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
+import Button from "metabase/components/Button";
 import RemappedValue from "metabase/containers/RemappedValue";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -29,19 +30,32 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         super(props);
         this.state = {
             isFocused: false,
+            value: props.value,
         };
     }
 
     static noPopover = true;
 
     static format(value, field) {
-        return <RemappedValue value={value} column={field} />
+        if (!Array.isArray(value)) {
+            value = [value];
+        }
+        if (value.length > 1) {
+            return `${value.length} selections`;
+        } else {
+            return <RemappedValue value={value[0]} column={field} />
+        }
     }
 
     render() {
-        const { value, setValue, isEditing, fields, parentFocusChanged } = this.props;
-        const { isFocused } = this.state;
+        let { setValue, isEditing, fields, parentFocusChanged } = this.props;
+        let { value, isFocused } = this.state;
+
         const field = fields[0];
+
+        if (!Array.isArray(value)) {
+          value = value != null ? [value] : [];
+        }
 
         const defaultPlaceholder = isFocused ? "" : (this.props.placeholder || t`Enter a value...`);
 
@@ -55,7 +69,7 @@ export default class SearchTextWidget extends Component<*, Props, State> {
         if (!isFocused) {
             return (
                 <div className="flex-full" onClick={() => focusChanged(true)}>
-                    { value != null ?
+                    { value.length > 0 ?
                       SearchTextWidget.format(value, field)
                     :
                       <span>
@@ -77,12 +91,30 @@ export default class SearchTextWidget extends Component<*, Props, State> {
               >
                 <FieldValuesWidget
                   // TODO: multi
-                  value={[value]}
-                  onChange={values => setValue(values[0])}
+                  value={value}
+                  onChange={(value) => {
+                    this.setState({ value });
+                  }}
                   placeholder={placeholder}
                   field={field}
+                  multi
                   autoFocus
+                  color="brand"
+                  style={{
+                    borderWidth: 2,
+                    minWidth: 182
+                  }}
                 />
+                <Button
+                  primary
+                  className="mx1 mb1"
+                  onClick={() => {
+                    setValue(value);
+                    focusChanged(false);
+                  }}
+                >
+                  Done
+                </Button>
               </Popover>
             )
             // return (

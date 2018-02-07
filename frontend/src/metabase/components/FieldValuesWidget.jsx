@@ -29,6 +29,7 @@ export default class FieldValuesWidget extends Component {
   }
 
   static defaultProps = {
+      color: "purple",
       maxResults: MAX_SEARCH_RESULTS
   };
 
@@ -122,7 +123,7 @@ export default class FieldValuesWidget extends Component {
 
 
   render() {
-    const { value, onChange, field, multi, autoFocus } = this.props;
+    const { value, onChange, field, multi, autoFocus, color } = this.props;
     const { loadingState } = this.state;
     const hasFieldValues = field.hasFieldValues();
 
@@ -155,7 +156,9 @@ export default class FieldValuesWidget extends Component {
           placeholder={placeholder}
           multi={multi}
           autoFocus={autoFocus}
-          color="purple"
+
+          color={color}
+          style={this.props.style}
 
           updateOnInputChange
 
