@@ -48,7 +48,7 @@ export default class TokenField extends Component {
         onChange: PropTypes.func.isRequired,
         onInputChange: PropTypes.func,
         onInputKeyDown: PropTypes.func,
-        onAddFreeform: PropTypes.func,
+        parseFreeformValue: PropTypes.func,
 
         valueRenderer: PropTypes.func.isRequired, // TODO: default
         optionRenderer: PropTypes.func.isRequired, // TODO: default
@@ -113,10 +113,33 @@ export default class TokenField extends Component {
     }
 
     onInputChange = ({ target: { value } }) => {
-        if (this.props.onInputChange) {
-          value = this.props.onInputChange(value) || "";
+      const { updateOnInputChange, onInputChange, parseFreeformValue } = this.props;
+
+      if (onInputChange) {
+        value = onInputChange(value) || "";
+      }
+
+      // update the input value
+      this.setInputValue(value);
+
+      // if updateOnInputChange is true and parseFreeformValue is enabled then try adding/updating the freeform value immediately
+      if (updateOnInputChange && parseFreeformValue) {
+        const currentLastValue = this.props.value[this.props.value.length - 1];
+        const currentFreeformValue = parseFreeformValue(this.state.inputValue);
+        // check to see if the current last value is the same as the inputValue, in which case we should replace it or remove it
+        const replaceLast = currentLastValue === currentFreeformValue;
+        // call parseFreeformValue to make sure we can add it
+        const freeformValue = parseFreeformValue(value);
+        if (freeformValue != null) {
+          // if so, add it, replacing the last value if necessary
+          this.addValue(freeformValue, replaceLast);
+        } else {
+          // otherwise remove the value if necessary, e.x. after deleting
+          if (replaceLast) {
+            this.removeValue(currentFreeformValue);
+          }
         }
-        this.setInputValue(value);
+      }
     }
 
     // capture events on the input to allow for convenient keyboard shortcuts
@@ -132,8 +155,9 @@ export default class TokenField extends Component {
 
         // enter, tab, comma
         if (keyCode === KEYCODE_ESCAPE || keyCode === KEYCODE_TAB || keyCode === KEYCODE_COMMA || keyCode === KEYCODE_ENTER) {
-            this.addSelectedOption();
-            event.stopPropagation();
+            if (this.addSelectedOption(event)) {
+                event.stopPropagation();
+            }
         }
 
         // up arrow
@@ -169,14 +193,14 @@ export default class TokenField extends Component {
 
     onInputBlur = () => {
         setTimeout(() => {
-          this.setState({ inputValue: "", focused: false });
+          this.setState({ focused: false });
         }, 100)
     }
 
     onInputPaste = (e) => {
-      if (this.props.onAddFreeform) {
+      if (this.props.parseFreeformValue) {
         const string = e.clipboardData.getData('Text');
-        const values = string.split(/\n|,/g).map(this.props.onAddFreeform).filter(s => s);
+        const values = string.split(/\n|,/g).map(this.props.parseFreeformValue).filter(s => s);
         if (values.length > 0) {
           this.addValue(values);
         }
@@ -196,17 +220,31 @@ export default class TokenField extends Component {
         this.setState({ focused: false });
     }
 
-    addSelectedOption() {
-        const { valueKey } = this.props
+    addSelectedOption(e) {
+        const { valueKey, multi } = this.props
         const { selectedOptionValue } = this.state;
         let input = findDOMNode(this.refs.input);
         let option = _.find(this.state.filteredOptions, (option) => this._valueIsEqual(selectedOptionValue, option[valueKey]));
         if (option) {
             this.addOption(option);
-        } else if (this.props.onAddFreeform) {
-            const value = this.props.onAddFreeform(input.value);
-            if (value) {
-                this.addValue(value);
+            return true;
+        } else if (this.props.parseFreeformValue) {
+            // if we previously updated on input change then we don't need to do it again,
+            if (this.props.updateOnInputChange) {
+              // also prevent the input from changing due to this key press
+              e.preventDefault();
+              // and clear the input
+              setTimeout(() => this.setInputValue(""), 0);
+              // return false so we don't stop the keyDown from propagating in case we're listening
+              // for it, e.x. in the filter popover this allows enter to commit the filter
+              return false;
+            } else {
+              const value = this.props.parseFreeformValue(input.value);
+              if (value != null && (multi || value !== this.props.value[0])) {
+                  this.addValue(value);
+                  setTimeout(() => this.setInputValue(""), 0);
+                  return true;
+              }
             }
         }
     }
@@ -217,20 +255,24 @@ export default class TokenField extends Component {
         this.addValue(option[valueKey]);
     }
 
-    addValue(valueToAdd) {
+    addValue(valueToAdd, replaceLast = false) {
         const { value, onChange, multi } = this.props;
         if (!Array.isArray(valueToAdd)) {
           valueToAdd = [valueToAdd]
         }
         if (multi) {
-            onChange(value.concat(valueToAdd));
+            if (replaceLast) {
+                onChange(dedup(value.slice(0, -1).concat(valueToAdd)));
+            } else {
+                onChange(dedup(value.concat(valueToAdd)));
+            }
         } else {
             onChange(valueToAdd.slice(0,1));
         }
         // reset the input value
-        setTimeout(() =>
-          this.setInputValue("")
-        )
+        // setTimeout(() =>
+        //   this.setInputValue("")
+        // )
     }
 
     removeValue(valueToRemove) {
@@ -238,7 +280,7 @@ export default class TokenField extends Component {
         const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
         onChange(values);
         // reset the input value
-        this.setInputValue("");
+        // this.setInputValue("");
     }
 
     _valueIsEqual(v1, v2) {
@@ -246,7 +288,7 @@ export default class TokenField extends Component {
     }
 
     render() {
-        let { value, placeholder, multi, valueKey, optionRenderer, valueRenderer, layoutRenderer, color } = this.props;
+        let { value, placeholder, multi, valueKey, optionRenderer, valueRenderer, layoutRenderer, color, parseFreeformValue, updateOnInputChange } = this.props;
         let { inputValue, filteredOptions, focused, selectedOptionValue } = this.state;
 
         if (!multi && focused) {
@@ -254,9 +296,25 @@ export default class TokenField extends Component {
             value = [];
         }
 
+        // if we have a value and updateOnInputChange is enabled, and the last value matches the inputValue
+        if (value.length > 0 && updateOnInputChange && parseFreeformValue && value[value.length - 1] === parseFreeformValue(inputValue)) {
+            if (focused) {
+              // if focused, don't render the last value
+              value = value.slice(0, -1);
+            } else {
+              // if not focused, don't render the inputValue
+              inputValue = "";
+            }
+        }
+
         // if not focused we won't get key events to accept the selected value, so don't render as selected
         if (!focused) {
           selectedOptionValue = null;
+        }
+
+        // don't show the placeholder if we already have a value
+        if (value.length > 0) {
+            placeholder = null;
         }
 
         const valuesList =
@@ -273,7 +331,10 @@ export default class TokenField extends Component {
                       </span>
                       <a
                           className="text-grey-2 text-white-hover px1"
-                          onClick={() => this.removeValue(v)}
+                          onClick={(e) => {
+                            this.removeValue(v);
+                            e.preventDefault();
+                          }}
                       >
                           <Icon name="close" className="" size={12} />
                       </a>
@@ -306,7 +367,10 @@ export default class TokenField extends Component {
                             [`text-white bg-${color}`]: this._valueIsEqual(selectedOptionValue, option[valueKey])
                           }
                         )}
-                        onClick={() => this.addOption(option)}
+                        onClick={(e) => {
+                          this.addOption(option);
+                          e.preventDefault();
+                        }}
                       >
                         {optionRenderer(option)}
                       </div>
@@ -317,6 +381,8 @@ export default class TokenField extends Component {
         return layoutRenderer({ valuesList, optionsList, focused, onClose: this.onClose })
     }
 }
+
+const dedup = (array) => Array.from(new Set(array));
 
 const DefaultTokenFieldLayout = ({ valuesList, optionsList, focused, onClose }) =>
   <OnClickOutsideWrapper handleDismissal={onClose}>

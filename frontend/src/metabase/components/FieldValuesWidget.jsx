@@ -157,6 +157,8 @@ export default class FieldValuesWidget extends Component {
           autoFocus={autoFocus}
           color="purple"
 
+          updateOnInputChange
+
           options={options}
 
           valueKey={0}
@@ -170,16 +172,19 @@ export default class FieldValuesWidget extends Component {
           }
 
           filterOption={(option, filterString) => (
-              (option[0] != null && ~String(option[0]).toLowerCase().indexOf(filterString.toLowerCase())) ||
-              (option[1] != null && ~String(option[1]).toLowerCase().indexOf(filterString.toLowerCase()))
+              (option[0] != null && String(option[0]).toLowerCase().indexOf(filterString.toLowerCase()) === 0) ||
+              (option[1] != null && String(option[1]).toLowerCase().indexOf(filterString.toLowerCase()) === 0)
           )}
 
           onInputChange={this.onInputChange}
-          onAddFreeform={v => {
+          parseFreeformValue={v => {
+            // trim whitespace
+            v = v.trim();
             // if the field is numeric we need to parse the string into an integer
             if (field.isNumeric()) {
-              v = parseFloat(v);
-              if (isNaN(v)) {
+              if (/^-?\d+(\.\d+)?$/.test(v)) {
+                return parseFloat(v);
+              } else {
                 return null;
               }
             }
