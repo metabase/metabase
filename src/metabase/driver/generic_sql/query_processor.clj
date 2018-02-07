@@ -151,7 +151,7 @@
       (->honeysql driver field))))
 
 ;; TODO - can't we just roll this into the ->honeysql method for `expression`?
-(defn- expression-aggregation->honeysql
+(defn expression-aggregation->honeysql
   "Generate the HoneySQL form for an expression aggregation."
   [driver expression]
   (->honeysql driver

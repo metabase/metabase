@@ -13,7 +13,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine]]))
+            [metabase.test.data.datasets :refer [expect-with-engine do-with-engine]]))
 
 (def ^:private col-defaults
   {:remapped_to nil, :remapped_from nil})
@@ -76,24 +76,38 @@
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
 
+(defn- aggregation-names [query-map]
+  (->> query-map
+       :aggregation
+       (map :custom-name)))
+
+(defn- pre-alias-aggregations' [query-map]
+  (binding [qpi/*driver* (driver/engine->driver :bigquery)]
+    (aggregation-names (#'bigquery/pre-alias-aggregations query-map))))
+
+(defn- agg-query-map [aggregations]
+  (-> {}
+      (ql/source-table 1)
+      (ql/aggregation aggregations)))
+
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
 (expect
   ["sum" "count" "sum_2" "avg" "sum_3" "min"]
-  (#'bigquery/deduplicate-aliases ["sum" "count" "sum" "avg" "sum" "min"]))
+  (pre-alias-aggregations' (agg-query-map [(ql/sum (ql/field-id 2))
+                                           (ql/count (ql/field-id 2))
+                                           (ql/sum (ql/field-id 2))
+                                           (ql/avg (ql/field-id 2))
+                                           (ql/sum (ql/field-id 2))
+                                           (ql/min (ql/field-id 2))])))
 
 (expect
   ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
-  (#'bigquery/deduplicate-aliases ["sum" "count" "sum" "avg" "sum_2" "min"]))
-
-(expect
-  ["sum" "count" nil "sum_2"]
-  (#'bigquery/deduplicate-aliases ["sum" "count" nil "sum"]))
-
-(expect
-  [[:user_id "user_id_2"] :venue_id]
-  (#'bigquery/update-select-subclause-aliases [[:user_id "user_id"] :venue_id]
-                                              ["user_id_2" nil]))
-
+  (pre-alias-aggregations' (agg-query-map [(ql/sum (ql/field-id 2))
+                                           (ql/count (ql/field-id 2))
+                                           (ql/sum (ql/field-id 2))
+                                           (ql/avg (ql/field-id 2))
+                                           (assoc (ql/sum (ql/field-id 2)) :custom-name "sum_2")
+                                           (ql/min (ql/field-id 2))])))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
