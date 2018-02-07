@@ -75,7 +75,7 @@ export default class TextWidget extends Component {
                     focusChanged(false);
                     this.setState({ value: this.props.value });
                 }}
-                placeholder={isEditing ? t`"Enter a default value...` : defaultPlaceholder}
+                placeholder={isEditing ? t`Enter a default value...` : defaultPlaceholder}
             />
         );
     }
