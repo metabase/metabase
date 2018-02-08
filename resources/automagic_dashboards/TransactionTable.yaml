@@ -112,7 +112,9 @@ cards:
     height: 8
 - OrdersBySource:
     title: Sales by source
-    visualization: area
+    visualization:
+      area:
+        stackable.stack_type: stacked
     dimensions:
       - Timestamp
       - SourceSmall

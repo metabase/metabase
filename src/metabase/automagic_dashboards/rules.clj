@@ -95,6 +95,10 @@
                (s/optional-key :height)        Height
                (s/optional-key :group)         s/Str}})
 
+(def ^:private Groups
+  {Identifier {(s/required-key :title)       s/Str
+               (s/optional-key :description) s/Str}})
+
 (def ^:private ^{:arglists '([definitions])} identifiers
   (comp set (partial map (comp key first))))
 
@@ -129,13 +133,14 @@
 (defn- valid-references?
   "Check if all references to metrics, dimensions, and filters are valid (ie.
    have a corresponding definition)."
-  [{:keys [metrics dimensions filters cards] :as rule}]
+  [{:keys [metrics dimensions filters cards groups] :as rule}]
   (let [defined-dimensions (identifiers dimensions)
         defined-metrics    (identifiers metrics)
         defined-filters    (identifiers filters)]
     (and (every? defined-metrics (all-references :metrics cards))
          (every? defined-filters (all-references :filters cards))
          (every? defined-dimensions (all-references :dimensions cards))
+         (every? groups (keep (comp :group val first) cards))
          (every? (comp (into defined-dimensions defined-metrics) key first)
                  (all-references :order_by cards))
          (every? (some-fn defined-dimensions (comp table-type? ->entity))
@@ -149,7 +154,8 @@
     (s/required-key :cards)       [Card]
     (s/optional-key :description) s/Str
     (s/optional-key :metrics)     [Metric]
-    (s/optional-key :filters)     [Filter]}
+    (s/optional-key :filters)     [Filter]
+    (s/optional-key :groups)      Groups}
    valid-references? "Valid references"))
 
 (defn- with-defaults
@@ -206,7 +212,8 @@
     Identifier    (fn [x]
                     (if (keyword? x)
                       (name x)
-                      x))}))
+                      x))
+    Groups        (partial apply merge)}))
 
 (def ^:private rules-dir "resources/automagic_dashboards")
 

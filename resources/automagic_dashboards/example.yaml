@@ -90,6 +90,12 @@ dimensions:
     field_type: Integer
     named: batch           # name pattern (regex)
 
+# Groups
+
+groups:
+- OrderBreakdown:
+    title: Some breakdown
+
 # Cards
 #
 # Cards that go on the dashboard.
